@@ -13,7 +13,7 @@ import Charts
 struct OverviewView: View {
     @State private var showAddWorkout = false
     @EnvironmentObject var viewModel: WorkoutViewModel
-    
+    @State private var navigateToNewWorkout = false
     // --- СОСТОЯНИЕ ДЛЯ ИНТЕРАКТИВНОСТИ ---
     @State private var selectedAngle: Int?
     
@@ -128,6 +128,11 @@ struct OverviewView: View {
                 .padding()
             }
             .navigationTitle("Overview")
+            .navigationDestination(isPresented: $navigateToNewWorkout) {
+                           if !viewModel.workouts.isEmpty {
+                               WorkoutDetailView(workout: $viewModel.workouts[0])
+                           }
+                       }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                 Button {
@@ -156,10 +161,13 @@ struct OverviewView: View {
                 SettingsView()
             }
             .sheet(isPresented: $showAddWorkout) {
-                AddWorkoutView(workouts: $viewModel.workouts)
-            }
-        }
-    }
+                            AddWorkoutView(workouts: $viewModel.workouts, onWorkoutCreated: {
+                                // Когда тренировка создана, включаем флаг перехода
+                                navigateToNewWorkout = true
+                            })
+                        }
+                    }
+                }
     
     // --- ВЫНЕСЕННЫЕ БЛОКИ ---
     

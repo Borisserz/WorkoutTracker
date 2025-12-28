@@ -6,14 +6,120 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		ACE68D0E2EFC421700FD186D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
+		ACE68D102EFC421700FD186D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
+		ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AC71653F2F0169FC00C0DCDE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACF4FC842F01579900850F6E;
+			remoteInfo = WorkoutTrackerWatch;
+		};
+		AC7165412F016A0000C0DCDE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACF4FC842F01579900850F6E;
+			remoteInfo = WorkoutTrackerWatch;
+		};
+		ACE68D1F2EFC421800FD186D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACE68D0A2EFC421700FD186D;
+			remoteInfo = WorkoutTimerWidgetExtension;
+		};
+		ACF4FCA42F01684800850F6E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACF4FC842F01579900850F6E;
+			remoteInfo = WorkoutTrackerWatch;
+		};
+		ACF4FCA62F01685000850F6E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACF4FC842F01579900850F6E;
+			remoteInfo = WorkoutTrackerWatch;
+		};
+		ACF4FCA82F01698C00850F6E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACF4FC842F01579900850F6E;
+			remoteInfo = WorkoutTrackerWatch;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		ACE68D262EFC421800FD186D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ACF4FCAD2F01698F00850F6E /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkoutTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WorkoutTimerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACE68D0D2EFC421700FD186D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		ACE68D0F2EFC421700FD186D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		ACE68D222EFC421800FD186D /* Exceptions for "WorkoutTimerWidget" folder in "WorkoutTimerWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */;
+		};
+		ACE68D2C2EFC43AF00FD186D /* Exceptions for "WorkoutTracker" folder in "WorkoutTimerWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Models/WorkoutActivityAttributes.swift,
+			);
+			target = ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		ACE68CDB2EFBFD1A00FD186D /* WorkoutTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ACE68D2C2EFC43AF00FD186D /* Exceptions for "WorkoutTracker" folder in "WorkoutTimerWidgetExtension" target */,
+			);
 			path = WorkoutTracker;
+			sourceTree = "<group>";
+		};
+		ACE68D112EFC421700FD186D /* WorkoutTimerWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ACE68D222EFC421800FD186D /* Exceptions for "WorkoutTimerWidget" folder in "WorkoutTimerWidgetExtension" target */,
+			);
+			path = WorkoutTimerWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -26,6 +132,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ACE68D082EFC421700FD186D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ACE68D102EFC421700FD186D /* SwiftUI.framework in Frameworks */,
+				ACE68D0E2EFC421700FD186D /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -33,6 +148,8 @@
 			isa = PBXGroup;
 			children = (
 				ACE68CDB2EFBFD1A00FD186D /* WorkoutTracker */,
+				ACE68D112EFC421700FD186D /* WorkoutTimerWidget */,
+				ACE68D0C2EFC421700FD186D /* Frameworks */,
 				ACE68CDA2EFBFD1A00FD186D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +158,18 @@
 			isa = PBXGroup;
 			children = (
 				ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */,
+				ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		ACE68D0C2EFC421700FD186D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				ACE68D0D2EFC421700FD186D /* WidgetKit.framework */,
+				ACE68D0F2EFC421700FD186D /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -55,10 +182,18 @@
 				ACE68CD52EFBFD1900FD186D /* Sources */,
 				ACE68CD62EFBFD1900FD186D /* Frameworks */,
 				ACE68CD72EFBFD1900FD186D /* Resources */,
+				ACE68D262EFC421800FD186D /* Embed Foundation Extensions */,
+				ACF4FCAD2F01698F00850F6E /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				ACE68D202EFC421800FD186D /* PBXTargetDependency */,
+				ACF4FCA52F01684800850F6E /* PBXTargetDependency */,
+				ACF4FCA72F01685000850F6E /* PBXTargetDependency */,
+				ACF4FCA92F01698C00850F6E /* PBXTargetDependency */,
+				AC7165402F0169FC00C0DCDE /* PBXTargetDependency */,
+				AC7165422F016A0000C0DCDE /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				ACE68CDB2EFBFD1A00FD186D /* WorkoutTracker */,
@@ -69,6 +204,28 @@
 			productName = WorkoutTracker;
 			productReference = ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */;
 			productType = "com.apple.product-type.application";
+		};
+		ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ACE68D232EFC421800FD186D /* Build configuration list for PBXNativeTarget "WorkoutTimerWidgetExtension" */;
+			buildPhases = (
+				ACE68D072EFC421700FD186D /* Sources */,
+				ACE68D082EFC421700FD186D /* Frameworks */,
+				ACE68D092EFC421700FD186D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				ACE68D112EFC421700FD186D /* WorkoutTimerWidget */,
+			);
+			name = WorkoutTimerWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = WorkoutTimerWidgetExtension;
+			productReference = ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -83,6 +240,9 @@
 					ACE68CD82EFBFD1900FD186D = {
 						CreatedOnToolsVersion = 26.2;
 					};
+					ACE68D0A2EFC421700FD186D = {
+						CreatedOnToolsVersion = 26.2;
+					};
 				};
 			};
 			buildConfigurationList = ACE68CD42EFBFD1900FD186D /* Build configuration list for PBXProject "WorkoutTracker" */;
@@ -91,6 +251,7 @@
 			knownRegions = (
 				en,
 				Base,
+				ru,
 			);
 			mainGroup = ACE68CD02EFBFD1900FD186D;
 			minimizedProjectReferenceProxies = 1;
@@ -100,12 +261,20 @@
 			projectRoot = "";
 			targets = (
 				ACE68CD82EFBFD1900FD186D /* WorkoutTracker */,
+				ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		ACE68CD72EFBFD1900FD186D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		ACE68D092EFC421700FD186D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +291,42 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ACE68D072EFC421700FD186D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AC7165402F0169FC00C0DCDE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			targetProxy = AC71653F2F0169FC00C0DCDE /* PBXContainerItemProxy */;
+		};
+		AC7165422F016A0000C0DCDE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			targetProxy = AC7165412F016A0000C0DCDE /* PBXContainerItemProxy */;
+		};
+		ACE68D202EFC421800FD186D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */;
+			targetProxy = ACE68D1F2EFC421800FD186D /* PBXContainerItemProxy */;
+		};
+		ACF4FCA52F01684800850F6E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			targetProxy = ACF4FCA42F01684800850F6E /* PBXContainerItemProxy */;
+		};
+		ACF4FCA72F01685000850F6E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			targetProxy = ACF4FCA62F01685000850F6E /* PBXContainerItemProxy */;
+		};
+		ACF4FCA92F01698C00850F6E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			targetProxy = ACF4FCA82F01698C00850F6E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		ACE68CE22EFBFD1A00FD186D /* Debug */ = {
@@ -177,14 +381,16 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
 			};
 			name = Debug;
 		};
@@ -234,13 +440,15 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 11.6;
 			};
 			name = Release;
 		};
@@ -251,19 +459,21 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.WorkoutTracker;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -282,23 +492,93 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.WorkoutTracker;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		ACE68D242EFC421800FD186D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LSCCP92LMG;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WorkoutTimerWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTimerWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.WorkoutTimerWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		ACE68D252EFC421800FD186D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LSCCP92LMG;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WorkoutTimerWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTimerWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.WorkoutTimerWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
@@ -323,6 +603,15 @@
 			buildConfigurations = (
 				ACE68CE52EFBFD1A00FD186D /* Debug */,
 				ACE68CE62EFBFD1A00FD186D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		ACE68D232EFC421800FD186D /* Build configuration list for PBXNativeTarget "WorkoutTimerWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ACE68D242EFC421800FD186D /* Debug */,
+				ACE68D252EFC421800FD186D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

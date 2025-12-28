@@ -10,9 +10,11 @@ internal import SwiftUI
 
 @main
 struct WorkoutTrackerApp: App {
-    // 1. Создаем объект-хранилище. Он живет пока жива программа.
-    @StateObject private var viewModel = WorkoutViewModel()
-    // Добавляем инициализатор для запроса прав
+    // 1. Создаем ViewModel для тренировок
+     @StateObject private var viewModel = WorkoutViewModel()
+     
+     // 2. !!! СОЗДАЕМ МЕНЕДЖЕР ЗАМЕТОК !!!
+     @StateObject private var notesManager = ExerciseNotesManager.shared
        init() {
            NotificationManager.shared.requestPermission()
        }
@@ -20,6 +22,7 @@ struct WorkoutTrackerApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(viewModel)
+                .environmentObject(notesManager) 
                 .onAppear { // <--- ДОБАВЬТЕ ЭТОТ МОДИФИКАТОР
                     print("--- APP HAS APPEARED, CONSOLE IS WORKING ---")
                 }

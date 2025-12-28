@@ -1,88 +1,69 @@
-//
-//  WorkoutTimerWidget.swift
-//  WorkoutTimerWidget
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-
 import WidgetKit
 import SwiftUI
+import ActivityKit
 
-struct Provider: AppIntentTimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
-    }
-
-    func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
-    }
-    
-    func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        var entries: [SimpleEntry] = []
-
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
-        let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
-            entries.append(entry)
+@main
+struct WorkoutTimerWidget: Widget {
+    var body: some WidgetConfiguration {
+        ActivityConfiguration(for: WorkoutActivityAttributes.self) { context in
+            // UI для экрана блокировки
+            LockScreenView(context: context)
+                .activityBackgroundTint(Color.black.opacity(0.8))
+        
+        } dynamicIsland: { context in
+            DynamicIsland {
+                // РАСШИРЕННЫЙ ВИД
+                DynamicIslandExpandedRegion(.leading) {
+                    Label("Workout", systemImage: "figure.strengthtraining.traditional")
+                }
+                DynamicIslandExpandedRegion(.trailing) {
+                    // ИСПРАВЛЕНИЕ ЗДЕСЬ
+                    Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
+                        .monospacedDigit().font(.title2).foregroundColor(.red)
+                        .frame(width: 90) // Фиксируем ширину, чтобы не прыгал
+                }
+                DynamicIslandExpandedRegion(.center) {
+                    Text(context.attributes.workoutTitle).font(.headline).lineLimit(1)
+                }
+            } compactLeading: {
+                // КОМПАКТНЫЙ ВИД (Слева)
+                Image(systemName: "figure.strengthtraining.traditional").foregroundColor(.red).font(.title3)
+                
+            } compactTrailing: {
+                // И ИСПРАВЛЕНИЕ ЗДЕСЬ
+                Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
+                    .monospacedDigit().frame(width: 50).font(.caption).foregroundColor(.red)
+            } minimal: {
+                // МИНИМАЛЬНЫЙ ВИД
+                Image(systemName: "timer").foregroundColor(.red)
+            }
+            .widgetURL(nil)
         }
-
-        return Timeline(entries: entries, policy: .atEnd)
     }
-
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
 }
 
-struct SimpleEntry: TimelineEntry {
-    let date: Date
-    let configuration: ConfigurationAppIntent
-}
 
-struct WorkoutTimerWidgetEntryView : View {
-    var entry: Provider.Entry
+// View для экрана блокировки
+struct LockScreenView: View {
+    let context: ActivityViewContext<WorkoutActivityAttributes>
 
     var body: some View {
-        VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+        HStack {
+            VStack(alignment: .leading) {
+                Label("Live Workout", systemImage: "record.circle")
+                    .font(.caption2).foregroundStyle(.red)
+                
+                Text(context.attributes.workoutTitle)
+                    .font(.headline).foregroundStyle(.white)
+            }
+            
+            Spacer()
+            
+            // И ТРЕТЬЕ ИСПРАВЛЕНИЕ ЗДЕСЬ
+            Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
+                .font(.system(size: 32, weight: .semibold).monospacedDigit())
+                .foregroundStyle(.white)
         }
+        .padding()
     }
-}
-
-struct WorkoutTimerWidget: Widget {
-    let kind: String = "WorkoutTimerWidget"
-
-    var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
-            WorkoutTimerWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
-        }
-    }
-}
-
-extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
-        return intent
-    }
-}
-
-#Preview(as: .systemSmall) {
-    WorkoutTimerWidget()
-} timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
 }

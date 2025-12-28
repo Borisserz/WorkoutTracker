@@ -9,21 +9,22 @@ internal import SwiftUI
 
 struct ConfigureExerciseView: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var viewModel: WorkoutViewModel
     
-    // Принимаем имя, которое выбрали в каталоге
     let exerciseName: String
     let muscleGroup: String
     
-    // Замыкание: передаем данные назад, когда нажали "Save"
     var onAdd: (Exercise) -> Void
     
-    // Поля ввода
     @State private var sets = 3
     @State private var reps = 10
     @State private var weight = 0.0
     @State private var effort = 5
     
-    // Вспомогательная функция цвета (дублируем или выносим в Utils)
+    // Состояние для отображения поздравления
+    @State private var showPRCelebration = false
+    
+    // Вспомогательная функция цвета
     func effortColor(_ value: Int) -> Color {
         switch value {
         case 1...4: return .green
@@ -34,55 +35,117 @@ struct ConfigureExerciseView: View {
     }
     
     var body: some View {
-        Form {
-            Section(header: Text("Configuration")) {
-                HStack {
-                    Text("Exercise")
-                    Spacer()
-                    Text(exerciseName).bold()
+        ZStack {
+            // 1. ОСНОВНАЯ ФОРМА
+            Form {
+                Section(header: Text("Configuration")) {
+                    HStack {
+                        Text("Exercise")
+                        Spacer()
+                        Text(exerciseName).bold()
+                    }
+                    
+                    Stepper("Sets: \(sets)", value: $sets, in: 1...20)
+                    Stepper("Reps: \(reps)", value: $reps, in: 1...100)
+                    
+                    HStack {
+                        Text("Weight (kg):")
+                        TextField("0", value: $weight, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                    }
                 }
                 
-                Stepper("Sets: \(sets)", value: $sets, in: 1...20)
-                Stepper("Reps: \(reps)", value: $reps, in: 1...100)
-                
-                HStack {
-                    Text("Weight (kg):")
-                    TextField("0", value: $weight, format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
+                Section(header: Text("Effort (RPE)")) {
+                    HStack {
+                        Text("\(effort)/10")
+                            .bold()
+                            .foregroundColor(effortColor(effort))
+                        Slider(value: Binding(get: { Double(effort) }, set: { effort = Int($0) }), in: 1...10, step: 1)
+                            .tint(effortColor(effort))
+                    }
+                    Text("1 = Easy, 10 = Failure")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
+                
+                Button("Add Exercise") {
+                    handleSave()
+                }
+                .frame(maxWidth: .infinity)
+                .buttonStyle(.borderedProminent)
             }
+            // Блокируем форму, пока показывается поздравление
+            .disabled(showPRCelebration)
+            .blur(radius: showPRCelebration ? 3 : 0) // Размываем фон для красоты
             
-            Section(header: Text("Effort (RPE)")) {
-                HStack {
-                    Text("\(effort)/10")
+            // 2. ВСПЛЫВАЮЩЕЕ ПОЗДРАВЛЕНИЕ
+            if showPRCelebration {
+                VStack(spacing: 20) {
+                    Image(systemName: "trophy.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.yellow)
+                        .shadow(color: .orange, radius: 10)
+                        .symbolEffect(.bounce, value: showPRCelebration) // Анимация прыжка
+                    
+                    Text("New Record!")
+                        .font(.title)
                         .bold()
-                        .foregroundColor(effortColor(effort))
-                    Slider(value: Binding(get: { Double(effort) }, set: { effort = Int($0) }), in: 1...10, step: 1)
-                        .tint(effortColor(effort))
+                        .foregroundColor(.white)
+                    
+                    Text("You lifted \(Int(weight)) kg for the first time!")
+                        .font(.body)
+                        .foregroundColor(.white.opacity(0.9))
+                        .multilineTextAlignment(.center)
                 }
-                Text("1 = Easy, 10 = Failure")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                .padding(40)
+                .background(Color.black.opacity(0.8))
+                .cornerRadius(20)
+                .shadow(radius: 20)
+                .transition(.scale.combined(with: .opacity))
+                .zIndex(100)
             }
-            
-            Button("Add Exercise") {
-                // Создаем упражнение
-                let newExercise = Exercise(
-                    name: exerciseName,
-                    muscleGroup: muscleGroup,
-                    sets: sets,
-                    reps: reps,
-                    weight: weight,
-                    effort: effort
-                )
-                // Отправляем назад
-                onAdd(newExercise)
-                dismiss() // Закрываем
-            }
-            .frame(maxWidth: .infinity)
-            .buttonStyle(.borderedProminent)
         }
         .navigationTitle("Configure")
+    }
+    
+    // ЛОГИКА СОХРАНЕНИЯ
+    func handleSave() {
+        let newExercise = Exercise(
+            name: exerciseName,
+            muscleGroup: muscleGroup,
+            sets: sets,
+            reps: reps,
+            weight: weight,
+            effort: effort
+        )
+        
+        // 1. Проверяем рекорд
+        let currentRecord = viewModel.getPersonalRecord(for: exerciseName)
+        
+        // Если вес больше старого рекорда И больше 0
+        if weight > currentRecord && weight > 0 {
+            // ЭТО РЕКОРД!
+            
+            // Запускаем анимацию
+            withAnimation(.spring()) {
+                showPRCelebration = true
+            }
+            
+            // Ждем 1.5 секунды, чтобы юзер насладился моментом
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                onAdd(newExercise)
+                dismiss()
+            }
+            
+            // Тут можно добавить вибрацию
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+            
+        } else {
+            // ОБЫЧНОЕ СОХРАНЕНИЕ (сразу закрываем)
+            onAdd(newExercise)
+            dismiss()
+        }
     }
 }
