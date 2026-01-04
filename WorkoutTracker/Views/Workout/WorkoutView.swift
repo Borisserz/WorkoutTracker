@@ -10,78 +10,374 @@ internal import SwiftUI
 struct WorkoutView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
     
+    // Состояние для открытия шторки с советом
+    @State private var showImbalanceInfo = false
     
+    // Навигация и модальные окна
+    @State private var showAddWorkout = false
+    @State private var navigateToNewWorkout = false
     
+    // Поиск и фильтры
+    @State private var searchText = ""
+    @State private var selectedFilter: FilterPeriod = .all
+    @State private var sortOption: SortOption = .dateDescending
     
+    enum FilterPeriod: String, CaseIterable {
+        case all = "All"
+        case week = "Last Week"
+        case month = "Last Month"
+        case threeMonths = "Last 3 Months"
+        case year = "Last Year"
+    }
     
+    enum SortOption: String, CaseIterable {
+        case dateDescending = "Newest First"
+        case dateAscending = "Oldest First"
+        case durationDescending = "Longest First"
+        case durationAscending = "Shortest First"
+        case effortDescending = "Highest Effort"
+        case effortAscending = "Lowest Effort"
+    }
     
+    // Отфильтрованные и отсортированные тренировки
+    var filteredWorkouts: [Workout] {
+        var workouts = viewModel.workouts
+        
+        // Фильтр по периоду
+        let calendar = Calendar.current
+        let now = Date()
+        switch selectedFilter {
+        case .all:
+            break
+        case .week:
+            if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) {
+                workouts = workouts.filter { $0.date >= weekAgo }
+            }
+        case .month:
+            if let monthAgo = calendar.date(byAdding: .month, value: -1, to: now) {
+                workouts = workouts.filter { $0.date >= monthAgo }
+            }
+        case .threeMonths:
+            if let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: now) {
+                workouts = workouts.filter { $0.date >= threeMonthsAgo }
+            }
+        case .year:
+            if let yearAgo = calendar.date(byAdding: .year, value: -1, to: now) {
+                workouts = workouts.filter { $0.date >= yearAgo }
+            }
+        }
+        
+        // Поиск по названию
+        if !searchText.isEmpty {
+            workouts = workouts.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+        }
+        
+        // Сортировка
+        switch sortOption {
+        case .dateDescending:
+            workouts.sort { $0.date > $1.date }
+        case .dateAscending:
+            workouts.sort { $0.date < $1.date }
+        case .durationDescending:
+            workouts.sort { $0.duration > $1.duration }
+        case .durationAscending:
+            workouts.sort { $0.duration < $1.duration }
+        case .effortDescending:
+            workouts.sort { $0.effortPercentage > $1.effortPercentage }
+        case .effortAscending:
+            workouts.sort { $0.effortPercentage < $1.effortPercentage }
+        }
+        
+        return workouts
+    }
     
     var body: some View {
         NavigationStack {
-            Group {
-                if viewModel.workouts.isEmpty {
-                    // Пустое состояние
-                    VStack(spacing: 20) {
-                        Image(systemName: "dumbbell.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.gray.opacity(0.3))
-                        Text("No workouts yet")
-                            .font(.title2)
-                            .bold()
-                            .foregroundColor(.secondary)
-                        Text("Start your first workout from the Overview tab!")
-                            .font(.caption)
-                            .foregroundColor(.gray)
+            content
+                .navigationTitle("History")
+                // --- НАВИГАЦИЯ ---
+                .navigationDestination(isPresented: $navigateToNewWorkout) {
+                    if !viewModel.workouts.isEmpty {
+                        WorkoutDetailView(workout: $viewModel.workouts[0])
                     }
-                } else {
-                    // Список тренировок
-                    List {
-                        // Используем binding ($workout), чтобы можно было передать его в DetailView
-                        ForEach($viewModel.workouts) { $workout in
+                }
+                // --- ВЕРХНЯЯ ПАНЕЛЬ (TOOLBAR) ---
+                .toolbar {
+                    // 1. Кнопка "Начать тренировку" (слева)
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button {
+                            showAddWorkout = true
+                        } label: {
+                            Text("Start Workout")
+                                .font(.headline)
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    
+                    // 2. Кнопка "Править" (справа)
+                    if !viewModel.workouts.isEmpty {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            EditButton()
+                        }
+                    }
+                    
+                    // 3. КНОПКА ДИСБАЛАНСА
+                    // Показываем ТОЛЬКО если есть рекомендация (не nil)
+                    if viewModel.getImbalanceRecommendation() != nil {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button {
+                                showImbalanceInfo = true
+                            } label: {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .symbolRenderingMode(.multicolor) // Желтый треугольник с восклицательным знаком
+                                    .font(.title3)
+                            }
+                        }
+                    }
+                }
+                // --- ВСПЛЫВАЮЩИЕ ШТОРКИ (SHEETS) ---
+                .sheet(isPresented: $showAddWorkout) {
+                    AddWorkoutView(workouts: $viewModel.workouts, onWorkoutCreated: {
+                        navigateToNewWorkout = true
+                    })
+                }
+                .sheet(isPresented: $showImbalanceInfo) {
+                    if let advice = viewModel.getImbalanceRecommendation() {
+                        ImbalanceDetailSheet(advice: advice)
+                            .presentationDetents([.fraction(0.35)]) // Шторка занимает 35% экрана снизу
+                            .presentationDragIndicator(.visible)
+                    }
+                }
+        }
+    }
+    
+    // Выносим содержимое в отдельную переменную
+    @ViewBuilder
+    var content: some View {
+        if viewModel.workouts.isEmpty {
+            emptyState
+        } else {
+            List {
+                // Статистика вверху
+                Section {
+                    statsSection
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                
+                // Поиск и фильтры
+                Section {
+                    searchAndFiltersSection
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                
+                // Список тренировок
+                Section {
+                    if filteredWorkouts.isEmpty {
+                        VStack(spacing: 12) {
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 50))
+                                .foregroundColor(.gray.opacity(0.3))
+                            Text("No workouts found")
+                                .font(.headline)
+                                .foregroundColor(.secondary)
+                            Text("Try adjusting your search or filters")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        .padding(.vertical, 40)
+                        .frame(maxWidth: .infinity)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
+                    } else {
+                        ForEach(filteredWorkouts) { workout in
                             ZStack {
-                                // Ссылка на детали (невидимая, но активная)
-                                NavigationLink(destination: WorkoutDetailView(workout: $workout)) {
+                                NavigationLink(destination: WorkoutDetailView(workout: Binding(
+                                    get: { workout },
+                                    set: { newValue in
+                                        if let index = viewModel.workouts.firstIndex(where: { $0.id == workout.id }) {
+                                            viewModel.workouts[index] = newValue
+                                        }
+                                    }
+                                ))) {
                                     EmptyView()
                                 }
                                 .opacity(0)
                                 
-                                // Внешний вид ячейки
                                 WorkoutRow(workout: workout)
                             }
-                            .listRowSeparator(.hidden) // Убираем стандартные линии разделители
-                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)) // Отступы
+                            .listRowSeparator(.hidden)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         }
-                        // МАГИЯ УДАЛЕНИЯ (Свайп)
                         .onDelete(perform: deleteWorkout)
                     }
-                    .listStyle(.plain) // Стиль списка
                 }
+                .listRowInsets(EdgeInsets())
             }
-            .navigationTitle("History")
-            .toolbar {
-                // КНОПКА EDIT (Сверху справа, как в будильнике)
-                // Она активирует режим удаления (красные минусы)
-                if !viewModel.workouts.isEmpty {
-                    EditButton()
-                }
-            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
         }
     }
     
-    // Функция удаления
+    // Секция статистики
+    private var statsSection: some View {
+        let totalWorkouts = viewModel.workouts.count
+        let avgDuration = viewModel.workouts.isEmpty ? 0 : viewModel.workouts.reduce(0) { $0 + $1.duration } / viewModel.workouts.count
+        let totalVolume = viewModel.workouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.computedVolume } }
+        let avgVolume = totalWorkouts > 0 ? Int(totalVolume / Double(totalWorkouts)) : 0
+        
+        return VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "Avg Duration",
+                    value: "\(avgDuration)",
+                    subtitle: "min",
+                    icon: "stopwatch"
+                )
+                
+                StatCard(
+                    title: "Avg Volume",
+                    value: "\(avgVolume)",
+                    subtitle: "kg",
+                    icon: "scalemass"
+                )
+            }
+            .padding(.horizontal)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+        }
+    }
+    
+    // Секция поиска и фильтров
+    private var searchAndFiltersSection: some View {
+        VStack(spacing: 12) {
+            // Поиск
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                TextField("Search workouts...", text: $searchText)
+                    .textFieldStyle(.plain)
+            }
+            .padding()
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
+            .padding(.horizontal)
+            
+            // Фильтры и сортировка
+            HStack(spacing: 12) {
+                Menu {
+                    ForEach(FilterPeriod.allCases, id: \.self) { period in
+                        Button(period.rawValue) {
+                            selectedFilter = period
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "calendar")
+                        Text(selectedFilter.rawValue)
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(8)
+                }
+                
+                Menu {
+                    ForEach(SortOption.allCases, id: \.self) { option in
+                        Button(option.rawValue) {
+                            sortOption = option
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.up.arrow.down")
+                        Text(sortOption.rawValue)
+                    }
+                    .font(.subheadline)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(8)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.bottom, 8)
+        }
+    }
+    
+    // Экран, когда пусто
+    var emptyState: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "dumbbell.fill")
+                .font(.system(size: 80))
+                .foregroundColor(.gray.opacity(0.3))
+            Text("No workouts yet")
+                .font(.title2)
+                .bold()
+                .foregroundColor(.secondary)
+            Text("Start your first workout from the Overview tab!")
+                .font(.caption)
+                .foregroundColor(.gray)
+        }
+    }
+    
+    
     func deleteWorkout(at offsets: IndexSet) {
-        // Удаляем из массива во ViewModel
         withAnimation {
-            viewModel.workouts.remove(atOffsets: offsets)
+            let workoutsToDelete = offsets.map { filteredWorkouts[$0] }
+            for workout in workoutsToDelete {
+                if let index = viewModel.workouts.firstIndex(where: { $0.id == workout.id }) {
+                    viewModel.workouts.remove(at: index)
+                }
+            }
         }
     }
 }
 
-// Вынесенный дизайн ячейки для чистоты кода
+// --- НОВАЯ ВЬЮХА ДЛЯ ВСПЛЫВАЮЩЕГО ОКНА ---
+struct ImbalanceDetailSheet: View {
+    let advice: (title: String, message: String)
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            // Иконка
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 50))
+                .foregroundStyle(.orange)
+                .padding(.top, 20)
+            
+            VStack(spacing: 8) {
+                Text(advice.title)
+                    .font(.title2)
+                    .bold()
+                    .multilineTextAlignment(.center)
+                
+                Text(advice.message)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            }
+            
+            Spacer()
+            
+            Button("Got it, Coach!") {
+                dismiss()
+            }
+            .buttonStyle(.bordered)
+            .padding(.bottom, 20)
+        }
+        .padding()
+    }
+}
+
+// --- ДИЗАЙН ЯЧЕЙКИ ТРЕНИРОВКИ ---
 struct WorkoutRow: View {
     let workout: Workout
     
-    // Вспомогательная функция для цвета
     func effortColor(percentage: Int) -> Color {
         if percentage > 80 { return .red }
         if percentage > 50 { return .orange }
@@ -90,7 +386,6 @@ struct WorkoutRow: View {
     
     var body: some View {
         HStack {
-            // Иконка
             Image(systemName: workout.icon)
                 .font(.title2)
                 .foregroundColor(.blue)
@@ -98,7 +393,6 @@ struct WorkoutRow: View {
                 .background(Color.blue.opacity(0.1))
                 .clipShape(Circle())
             
-            // Текст (Название и Дата)
             VStack(alignment: .leading, spacing: 4) {
                 Text(workout.title)
                     .font(.headline)
@@ -111,14 +405,11 @@ struct WorkoutRow: View {
             
             Spacer()
             
-            // Статистика справа
             VStack(alignment: .trailing, spacing: 4) {
-                // Длительность
                 Text("\(workout.duration) min")
                     .font(.subheadline)
                     .bold()
                 
-                // Усилие
                 Text("Effort: \(workout.effortPercentage)%")
                     .font(.caption2)
                     .fontWeight(.bold)
@@ -130,10 +421,46 @@ struct WorkoutRow: View {
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground)) // Адаптивный фон (серый/черный)
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
-        // Тень для красоты "карточки"
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+    }
+}
+
+// Карточка статистики
+struct StatCard: View {
+    let title: String
+    let value: String
+    let subtitle: String
+    let icon: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(.blue)
+                    .font(.title3)
+                Spacer()
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(value)
+                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(12)
     }
 }
 

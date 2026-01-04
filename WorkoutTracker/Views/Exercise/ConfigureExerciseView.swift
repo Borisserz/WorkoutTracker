@@ -4,148 +4,186 @@
 //
 //  Created by Boris Serzhanovich on 24.12.25.
 //
+//  Экран первоначальной настройки упражнения перед добавлением в тренировку.
+//  Позволяет задать количество подходов, повторений, вес или время/дистанцию.
+//  На основе этих данных генерируется начальный список сетов.
+//
 
 internal import SwiftUI
 
 struct ConfigureExerciseView: View {
+    
+    // MARK: - Environment
+    
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var viewModel: WorkoutViewModel
     
+    // MARK: - Input Parameters
+    
     let exerciseName: String
     let muscleGroup: String
+    var exerciseType: ExerciseType = .strength
     
+    /// Замыкание для возврата созданного упражнения
     var onAdd: (Exercise) -> Void
     
+    // MARK: - Local State
+    
+    // Значения по умолчанию
     @State private var sets = 3
     @State private var reps = 10
     @State private var weight = 0.0
-    @State private var effort = 5
+    @State private var distance = 0.0
     
-    // Состояние для отображения поздравления
-    @State private var showPRCelebration = false
+    // Время разбито на минуты и секунды для удобства ввода
+    @State private var minutes = 0
+    @State private var seconds = 0
     
-    // Вспомогательная функция цвета
-    func effortColor(_ value: Int) -> Color {
-        switch value {
-        case 1...4: return .green
-        case 5...7: return .orange
-        case 8...10: return .red
-        default: return .blue
-        }
+    // MARK: - Binding Adapters
+    // Эти вычисляемые свойства нужны для адаптации @State (non-optional)
+    // к Binding<Double?>, который требуется компонентом ClearableTextField.
+    
+    private var weightBinding: Binding<Double?> {
+        Binding<Double?>(get: { weight }, set: { weight = $0 ?? 0 })
     }
     
+    private var distanceBinding: Binding<Double?> {
+        Binding<Double?>(get: { distance }, set: { distance = $0 ?? 0 })
+    }
+    
+    private var minutesBinding: Binding<Double?> {
+        Binding<Double?>(get: { Double(minutes) }, set: { minutes = Int($0 ?? 0) })
+    }
+    
+    private var secondsBinding: Binding<Double?> {
+        Binding<Double?>(get: { Double(seconds) }, set: { seconds = Int($0 ?? 0) })
+    }
+
+    // MARK: - Body
+    
     var body: some View {
-        ZStack {
-            // 1. ОСНОВНАЯ ФОРМА
+        NavigationStack {
             Form {
+                // Основная секция настроек
                 Section(header: Text("Configuration")) {
+                    // Заголовок с именем упражнения
                     HStack {
                         Text("Exercise")
                         Spacer()
                         Text(exerciseName).bold()
                     }
                     
-                    Stepper("Sets: \(sets)", value: $sets, in: 1...20)
-                    Stepper("Reps: \(reps)", value: $reps, in: 1...100)
-                    
-                    HStack {
-                        Text("Weight (kg):")
-                        TextField("0", value: $weight, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
+                    // Контент в зависимости от типа упражнения
+                    switch exerciseType {
+                    case .strength:
+                        strengthConfig
+                    case .cardio:
+                        cardioConfig
+                    case .duration:
+                        durationConfig
                     }
                 }
                 
-                Section(header: Text("Effort (RPE)")) {
-                    HStack {
-                        Text("\(effort)/10")
-                            .bold()
-                            .foregroundColor(effortColor(effort))
-                        Slider(value: Binding(get: { Double(effort) }, set: { effort = Int($0) }), in: 1...10, step: 1)
-                            .tint(effortColor(effort))
-                    }
-                    Text("1 = Easy, 10 = Failure")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
+                // Кнопка действия
                 Button("Add Exercise") {
                     handleSave()
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
             }
-            // Блокируем форму, пока показывается поздравление
-            .disabled(showPRCelebration)
-            .blur(radius: showPRCelebration ? 3 : 0) // Размываем фон для красоты
-            
-            // 2. ВСПЛЫВАЮЩЕЕ ПОЗДРАВЛЕНИЕ
-            if showPRCelebration {
-                VStack(spacing: 20) {
-                    Image(systemName: "trophy.fill")
-                        .font(.system(size: 60))
-                        .foregroundColor(.yellow)
-                        .shadow(color: .orange, radius: 10)
-                        .symbolEffect(.bounce, value: showPRCelebration) // Анимация прыжка
-                    
-                    Text("New Record!")
-                        .font(.title)
-                        .bold()
-                        .foregroundColor(.white)
-                    
-                    Text("You lifted \(Int(weight)) kg for the first time!")
-                        .font(.body)
-                        .foregroundColor(.white.opacity(0.9))
-                        .multilineTextAlignment(.center)
-                }
-                .padding(40)
-                .background(Color.black.opacity(0.8))
-                .cornerRadius(20)
-                .shadow(radius: 20)
-                .transition(.scale.combined(with: .opacity))
-                .zIndex(100)
-            }
+            .navigationTitle("Configure")
         }
-        .navigationTitle("Configure")
     }
     
-    // ЛОГИКА СОХРАНЕНИЯ
-    func handleSave() {
+    // MARK: - View Components
+    
+    // 1. Силовая конфигурация
+    @ViewBuilder
+    private var strengthConfig: some View {
+        Stepper("Sets: \(sets)", value: $sets, in: 1...20)
+        Stepper("Reps: \(reps)", value: $reps, in: 1...100)
+        
+        HStack {
+            Text("Weight (kg):")
+            Spacer()
+            ClearableTextField(placeholder: "kg", value: weightBinding)
+                .frame(width: 80)
+        }
+    }
+    
+    // 2. Кардио конфигурация
+    @ViewBuilder
+    private var cardioConfig: some View {
+        HStack {
+            Text("Distance (km):")
+            Spacer()
+            ClearableTextField(placeholder: "km", value: distanceBinding)
+                .frame(width: 80)
+        }
+        timePickerRow(label: "Duration")
+    }
+    
+    // 3. Конфигурация на время
+    @ViewBuilder
+    private var durationConfig: some View {
+        Stepper("Sets: \(sets)", value: $sets, in: 1...10)
+        timePickerRow(label: "Time per set")
+    }
+    
+    // Вспомогательная строка для ввода времени (Мин : Сек)
+    private func timePickerRow(label: String) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            HStack(spacing: 5) {
+                ClearableTextField(placeholder: "0", value: minutesBinding)
+                    .frame(width: 50)
+                Text("min")
+                
+                ClearableTextField(placeholder: "0", value: secondsBinding)
+                    .frame(width: 50)
+                Text("sec")
+            }
+        }
+    }
+    
+    // MARK: - Logic
+    
+    private func handleSave() {
+        let totalSeconds = (minutes * 60) + seconds
+        
+        // Для кардио всегда считаем как 1 подход, для остальных берем из степпера
+        let setsCount = (exerciseType == .cardio) ? 1 : sets
+        
+        // Генерация начальных сетов на основе введенных данных
+        var generatedSets: [WorkoutSet] = []
+        for i in 1...setsCount {
+            generatedSets.append(WorkoutSet(
+                index: i,
+                weight: (exerciseType == .strength) ? weight : nil,
+                reps: (exerciseType == .strength) ? reps : nil,
+                distance: (exerciseType == .cardio) ? distance : nil,
+                time: (totalSeconds > 0) ? totalSeconds : nil,
+                isCompleted: false,
+                type: .normal
+            ))
+        }
+        
+        // Создаем объект упражнения
         let newExercise = Exercise(
             name: exerciseName,
             muscleGroup: muscleGroup,
-            sets: sets,
+            type: exerciseType,
+            sets: setsCount,
             reps: reps,
             weight: weight,
-            effort: effort
+            distance: (exerciseType == .cardio) ? distance : nil,
+            timeSeconds: (totalSeconds > 0) ? totalSeconds : nil,
+            effort: 5,
+            setsList: generatedSets // <-- Передаем сгенерированный список
         )
         
-        // 1. Проверяем рекорд
-        let currentRecord = viewModel.getPersonalRecord(for: exerciseName)
-        
-        // Если вес больше старого рекорда И больше 0
-        if weight > currentRecord && weight > 0 {
-            // ЭТО РЕКОРД!
-            
-            // Запускаем анимацию
-            withAnimation(.spring()) {
-                showPRCelebration = true
-            }
-            
-            // Ждем 1.5 секунды, чтобы юзер насладился моментом
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                onAdd(newExercise)
-                dismiss()
-            }
-            
-            // Тут можно добавить вибрацию
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-            
-        } else {
-            // ОБЫЧНОЕ СОХРАНЕНИЕ (сразу закрываем)
-            onAdd(newExercise)
-            dismiss()
-        }
+        onAdd(newExercise)
+        dismiss()
     }
 }

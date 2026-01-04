@@ -2,106 +2,143 @@ internal import SwiftUI
 
 struct ProfileView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
-    // ProgressManager нам больше не нужен, так как мы убрали уровень
     @Environment(\.dismiss) var dismiss
     
-    // Состояние для выбранной ачивки (чтобы показать описание)
+    // --- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ---
+    @AppStorage("userName") private var userName = "Fitness Enthusiast"
+    @AppStorage("userBodyWeight") private var userBodyWeight = 75.0
+    
+    // Состояния для редактирования
+    @State private var isEditingName = false
+    @State private var isEditingWeight = false
+    @State private var tempName = ""
+    @State private var tempWeight = ""
+    
     @State private var selectedAchievement: Achievement?
     
-    // Вычисляем ачивки на лету
+    // Ачивки
     var achievements: [Achievement] {
         let streak = viewModel.calculateWorkoutStreak()
         return AchievementCalculator.calculateAchievements(workouts: viewModel.workouts, streak: streak)
     }
     
-    // Сетка: 3 колонки
-    let columns = [
-        GridItem(.flexible()),
-        GridItem(.flexible()),
-        GridItem(.flexible())
-    ]
+    // Рекорды
+    var personalRecords: [WorkoutViewModel.BestResult] {
+        return viewModel.getAllPersonalRecords()
+    }
+    
+    let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 25) {
                     
-                    // 1. HEADER (Только Аватар и Имя)
+                    // 1. HEADER (Аватар, Имя, Вес)
                     VStack(spacing: 15) {
                         Image(systemName: "person.crop.circle.fill")
                             .resizable()
                             .frame(width: 100, height: 100)
                             .foregroundColor(.gray.opacity(0.3))
-                            .overlay(
-                                Circle().stroke(Color.blue, lineWidth: 3)
-                            )
+                            .overlay(Circle().stroke(Color.blue, lineWidth: 3))
                             .shadow(radius: 5)
                         
-                        VStack(spacing: 5) {
-                            Text("Fitness Enthusiast") // Тут можно сделать поле для ввода имени
-                                .font(.title2)
-                                .bold()
+                        VStack(spacing: 8) {
+                            // ИМЯ (Кликабельное)
+                            HStack {
+                                Text(userName).font(.title2).bold()
+                                Image(systemName: "pencil").font(.caption).foregroundColor(.blue)
+                            }
+                           
                             
-                            Text("Keep pushing your limits!")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            // ВЕС (Кликабельный)
+                            HStack {
+                                Text("Weight: \(String(format: "%.1f", userBodyWeight)) kg")
+                                    .font(.subheadline).foregroundColor(.secondary)
+                                    .padding(.horizontal, 10).padding(.vertical, 4)
+                                    .background(Color.gray.opacity(0.1)).cornerRadius(8)
+                            }
+                            
                         }
                     }
                     .padding(.top, 20)
                     
-                    // 2. СТАТИСТИКА (Streak и кол-во)
-                    HStack(spacing: 40) {
-                        statItem(value: "\(viewModel.workouts.count)", label: "Workouts")
-                        
-                        VStack {
-                            Image(systemName: "flame.fill")
-                                .font(.title)
-                                .foregroundColor(.orange)
-                            Text("\(viewModel.calculateWorkoutStreak())")
-                                .font(.title2).bold()
-                            Text("Day Streak").font(.caption).foregroundColor(.secondary)
-                        }
-                        
-                        let unlockedCount = achievements.filter { $0.isUnlocked }.count
-                        statItem(value: "\(unlockedCount)", label: "Unlocked")
-                    }
-                    .padding()
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(16)
-                    .padding(.horizontal)
-                    
-                    Divider()
-                    
-                    // 3. СЕТКА АЧИВОК
+                    // 2. СЕТКА АЧИВОК
                     VStack(alignment: .leading) {
-                        Text("Achievements")
-                            .font(.title3)
-                            .bold()
-                            .padding(.horizontal)
-                            .padding(.bottom, 5)
+                        Text("Achievements").font(.title3).bold().padding(.horizontal)
                         
                         LazyVGrid(columns: columns, spacing: 20) {
                             ForEach(achievements) { achievement in
-                                AchievementBadge(achievement: achievement)
-                                    // ДОБАВИЛИ НАЖАТИЕ
-                                    .onTapGesture {
-                                        selectedAchievement = achievement
-                                    }
-                            }
+                                AchievementBadge(achievement: achievement).onTapGesture {
+                                   selectedAchievement = achievement
+                                    
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred()
+                                }
                         }
-                        .padding(.horizontal)
+                    }
+                    .padding(.horizontal)
+                    }
+                    
+                    Divider()
+                    
+                    // 3. ЛИЧНЫЕ РЕКОРДЫ (НОВАЯ СЕКЦИЯ)
+                    if !personalRecords.isEmpty {
+                        VStack(alignment: .leading, spacing: 15) {
+                            Text("Personal Records").font(.title3).bold().padding(.horizontal)
+                            
+                            VStack(spacing: 0) {
+                                ForEach(personalRecords) { record in
+                                    HStack {
+                                        // Иконка типа
+                                        Image(systemName: getIcon(for: record.type))
+                                            .foregroundColor(getColor(for: record.type))
+                                            .frame(width: 30)
+                                        
+                                        Text(LocalizedStringKey(record.exerciseName))
+                                            .font(.body)
+                                        
+                                        Spacer()
+                                        
+                                        Text(record.value)
+                                            .font(.headline)
+                                            .foregroundColor(.blue)
+                                    }
+                                    .padding()
+                                    
+                                    if record.id != personalRecords.last?.id {
+                                        Divider().padding(.leading, 50)
+                                    }
+                                }
+                            }
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                        }
+                    } else {
+                        Text("Complete workouts to see your records!")
+                            .font(.caption).foregroundColor(.secondary)
                     }
                 }
                 .padding(.bottom, 40)
             }
             .navigationTitle("Profile")
-            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Close") { dismiss() }
                 }
             }
-            // --- ВСПЛЫВАЮЩЕЕ ОКНО С ОПИСАНИЕМ ---
+            // АЛЕРТЫ
+            .alert("Change Name", isPresented: $isEditingName) {
+                TextField("Name", text: $tempName)
+                Button("Save") { if !tempName.isEmpty { userName = tempName } }
+                Button("Cancel", role: .cancel) { }
+            }
+            .alert("Update Body Weight", isPresented: $isEditingWeight) {
+                TextField("Weight (kg)", text: $tempWeight).keyboardType(.decimalPad)
+                Button("Save") { if let val = Double(tempWeight) { userBodyWeight = val } }
+                Button("Cancel", role: .cancel) { }
+            }
             .alert(item: $selectedAchievement) { achievement in
                 Alert(
                     title: Text(achievement.title),
@@ -112,65 +149,52 @@ struct ProfileView: View {
         }
     }
     
-    func statItem(value: String, label: String) -> some View {
-        VStack {
-            Text(value).font(.title2).bold()
-            Text(label).font(.caption).foregroundColor(.secondary)
+    // Вспомогательные функции для иконок
+    func getIcon(for type: ExerciseType) -> String {
+        switch type {
+        case .strength: return "dumbbell.fill"
+        case .cardio: return "figure.run"
+        case .duration: return "stopwatch.fill"
+        }
+    }
+    
+    func getColor(for type: ExerciseType) -> Color {
+        switch type {
+        case .strength: return .blue
+        case .cardio: return .orange
+        case .duration: return .purple
         }
     }
 }
 
-// --- ЯЧЕЙКА АЧИВКИ ---
+// AchievementBadge без изменений (но должен быть в проекте)
 struct AchievementBadge: View {
     let achievement: Achievement
-    
     var body: some View {
         VStack {
             ZStack {
-                // Фон круга
                 Circle()
                     .fill(achievement.isUnlocked ? achievement.color.opacity(0.15) : Color.gray.opacity(0.1))
                     .frame(width: 75, height: 75)
-                    .shadow(color: achievement.isUnlocked ? achievement.color.opacity(0.3) : .clear, radius: 5)
-                
-                // Иконка
                 Image(systemName: achievement.icon)
-                    .font(.largeTitle) // Чуть крупнее
+                    .font(.largeTitle)
                     .foregroundColor(achievement.isUnlocked ? achievement.color : .gray)
             }
             .overlay(alignment: .bottomTrailing) {
-                // Замочек, если закрыто
                 if !achievement.isUnlocked {
                     Image(systemName: "lock.fill")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                        .padding(5)
-                        .background(Circle().fill(Color.gray))
+                        .font(.caption).foregroundColor(.white)
+                        .padding(5).background(Circle().fill(Color.gray))
                         .offset(x: 0, y: 5)
                 }
             }
-            
-            // Текст
             Text(achievement.title)
-                .font(.caption)
-                .fontWeight(.medium)
+                .font(.caption).fontWeight(.medium)
                 .multilineTextAlignment(.center)
                 .foregroundColor(achievement.isUnlocked ? .primary : .secondary)
                 .lineLimit(2)
-                .frame(height: 35, alignment: .top) // Фиксированная высота для ровности сетки
-            
-            // Прогресс бар (например, 4/10)
-            if !achievement.isUnlocked && !achievement.progress.isEmpty {
-                Text(achievement.progress)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            } else if achievement.isUnlocked {
-                // Галочка если открыто
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.caption2)
-                    .foregroundColor(achievement.color)
-            }
+                .frame(height: 35, alignment: .top)
         }
-        .contentShape(Rectangle()) // Чтобы нажатие работало на всей области, включая пустоты
+        .contentShape(Rectangle())
     }
 }

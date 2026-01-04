@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		ACDA5B9F2F06CF77007FF65F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
+		ACDA5BA02F06CF77007FF65F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
+		ACDA5BAF2F06CF78007FF65F /* StatsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACE68D0E2EFC421700FD186D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
 		ACE68D102EFC421700FD186D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
 		ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -26,6 +29,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = ACF4FC842F01579900850F6E;
 			remoteInfo = WorkoutTrackerWatch;
+		};
+		ACDA5BAD2F06CF78007FF65F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = ACE68CD12EFBFD1900FD186D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = ACDA5B9D2F06CF77007FF65F;
+			remoteInfo = StatsWidgetExtension;
 		};
 		ACE68D1F2EFC421800FD186D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -64,6 +74,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				ACDA5BAF2F06CF78007FF65F /* StatsWidgetExtension.appex in Embed Foundation Extensions */,
 				ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
@@ -82,6 +93,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StatsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACDA5BB42F06CF92007FF65F /* StatsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StatsWidgetExtension.entitlements; sourceTree = "<group>"; };
 		ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkoutTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WorkoutTimerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACE68D0D2EFC421700FD186D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -89,6 +102,27 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		ACDA5B942F06BF1F007FF65F /* Exceptions for "WorkoutTracker" folder in "WorkoutTracker" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = ACE68CD82EFBFD1900FD186D /* WorkoutTracker */;
+		};
+		ACDA5BB32F06CF78007FF65F /* Exceptions for "StatsWidget" folder in "StatsWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */;
+		};
+		ACDA5BB62F06D002007FF65F /* Exceptions for "WorkoutTracker" folder in "StatsWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Managers/WidgetDataShared.swift,
+			);
+			target = ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */;
+		};
 		ACE68D222EFC421800FD186D /* Exceptions for "WorkoutTimerWidget" folder in "WorkoutTimerWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -106,10 +140,20 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		ACDA5BA12F06CF77007FF65F /* StatsWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				ACDA5BB32F06CF78007FF65F /* Exceptions for "StatsWidget" folder in "StatsWidgetExtension" target */,
+			);
+			path = StatsWidget;
+			sourceTree = "<group>";
+		};
 		ACE68CDB2EFBFD1A00FD186D /* WorkoutTracker */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				ACDA5B942F06BF1F007FF65F /* Exceptions for "WorkoutTracker" folder in "WorkoutTracker" target */,
 				ACE68D2C2EFC43AF00FD186D /* Exceptions for "WorkoutTracker" folder in "WorkoutTimerWidgetExtension" target */,
+				ACDA5BB62F06D002007FF65F /* Exceptions for "WorkoutTracker" folder in "StatsWidgetExtension" target */,
 			);
 			path = WorkoutTracker;
 			sourceTree = "<group>";
@@ -125,6 +169,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		ACDA5B9B2F06CF77007FF65F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ACDA5BA02F06CF77007FF65F /* SwiftUI.framework in Frameworks */,
+				ACDA5B9F2F06CF77007FF65F /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		ACE68CD62EFBFD1900FD186D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -147,8 +200,10 @@
 		ACE68CD02EFBFD1900FD186D = {
 			isa = PBXGroup;
 			children = (
+				ACDA5BB42F06CF92007FF65F /* StatsWidgetExtension.entitlements */,
 				ACE68CDB2EFBFD1A00FD186D /* WorkoutTracker */,
 				ACE68D112EFC421700FD186D /* WorkoutTimerWidget */,
+				ACDA5BA12F06CF77007FF65F /* StatsWidget */,
 				ACE68D0C2EFC421700FD186D /* Frameworks */,
 				ACE68CDA2EFBFD1A00FD186D /* Products */,
 			);
@@ -159,6 +214,7 @@
 			children = (
 				ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */,
 				ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */,
+				ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -175,6 +231,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = ACDA5BB02F06CF78007FF65F /* Build configuration list for PBXNativeTarget "StatsWidgetExtension" */;
+			buildPhases = (
+				ACDA5B9A2F06CF77007FF65F /* Sources */,
+				ACDA5B9B2F06CF77007FF65F /* Frameworks */,
+				ACDA5B9C2F06CF77007FF65F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				ACDA5BA12F06CF77007FF65F /* StatsWidget */,
+			);
+			name = StatsWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = StatsWidgetExtension;
+			productReference = ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		ACE68CD82EFBFD1900FD186D /* WorkoutTracker */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = ACE68CE42EFBFD1A00FD186D /* Build configuration list for PBXNativeTarget "WorkoutTracker" */;
@@ -194,6 +272,7 @@
 				ACF4FCA92F01698C00850F6E /* PBXTargetDependency */,
 				AC7165402F0169FC00C0DCDE /* PBXTargetDependency */,
 				AC7165422F016A0000C0DCDE /* PBXTargetDependency */,
+				ACDA5BAE2F06CF78007FF65F /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				ACE68CDB2EFBFD1A00FD186D /* WorkoutTracker */,
@@ -237,6 +316,9 @@
 				LastSwiftUpdateCheck = 2620;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					ACDA5B9D2F06CF77007FF65F = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					ACE68CD82EFBFD1900FD186D = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -262,11 +344,19 @@
 			targets = (
 				ACE68CD82EFBFD1900FD186D /* WorkoutTracker */,
 				ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */,
+				ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		ACDA5B9C2F06CF77007FF65F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		ACE68CD72EFBFD1900FD186D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -284,6 +374,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		ACDA5B9A2F06CF77007FF65F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		ACE68CD52EFBFD1900FD186D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -309,6 +406,11 @@
 			isa = PBXTargetDependency;
 			targetProxy = AC7165412F016A0000C0DCDE /* PBXContainerItemProxy */;
 		};
+		ACDA5BAE2F06CF78007FF65F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */;
+			targetProxy = ACDA5BAD2F06CF78007FF65F /* PBXContainerItemProxy */;
+		};
 		ACE68D202EFC421800FD186D /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */;
@@ -329,6 +431,70 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		ACDA5BB12F06CF78007FF65F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = StatsWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LSCCP92LMG;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = StatsWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = StatsWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.StatsWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		ACDA5BB22F06CF78007FF65F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = StatsWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LSCCP92LMG;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = StatsWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = StatsWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.StatsWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		ACE68CE22EFBFD1A00FD186D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -457,11 +623,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WorkoutTracker/Info.plist;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -490,11 +658,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WorkoutTracker/Info.plist;
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -589,6 +759,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		ACDA5BB02F06CF78007FF65F /* Build configuration list for PBXNativeTarget "StatsWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ACDA5BB12F06CF78007FF65F /* Debug */,
+				ACDA5BB22F06CF78007FF65F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		ACE68CD42EFBFD1900FD186D /* Build configuration list for PBXProject "WorkoutTracker" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

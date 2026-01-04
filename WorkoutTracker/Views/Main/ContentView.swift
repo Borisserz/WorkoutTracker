@@ -1,57 +1,30 @@
 internal import SwiftUI
 
-
 struct ContentView: View {
-    // Нам нужен доступ к ViewModel, чтобы знать, показывать таймер или нет
     @EnvironmentObject var viewModel: WorkoutViewModel
+    @EnvironmentObject var tutorialManager: TutorialManager
 
     var body: some View {
-        // Оборачиваем TabView в ZStack
         ZStack(alignment: .bottom) {
-            
             TabView {
-                // 1. Главная
                 OverviewView()
-                    .tabItem {
-                        Image(systemName: "chart.pie")
-                        Text("Overview")
-                    }
+                    .tabItem { Image(systemName: "chart.pie"); Text("Overview") }
+                    // УБРАЛИ ПОДСВЕТКУ .spotlight(...) отсюда
                 
-                // 2. Тренировка
                 WorkoutView()
-                    .tabItem {
-                        Image(systemName: "figure.run")
-                        Text("Workout")
-                    }
-                    
-                // 3. Каталог
-                ExerciseView()
-                    .tabItem {
-                        Image(systemName: "list.bullet")
-                        Text("Exercises")
-                    }
+                    .tabItem { Image(systemName: "figure.run"); Text("Workout") }
                 
-                // 4. Прогресс
                 StatsView()
-                    .tabItem {
-                        Image(systemName: "trophy")
-                        Text("Progress")
-                    }
+                    .tabItem { Image(systemName: "trophy"); Text("Progress") }
+                    .spotlight(step: .progressTab, manager: tutorialManager, text: "Check your Progress", alignment: .bottom, xOffset: -20) // Сдвинул чуть левее
             }
             
-            // --- ГЛОБАЛЬНЫЙ ТАЙМЕР ---
-            // Он теперь живет здесь, поверх всех табов
             if viewModel.isRestTimerActive {
                 RestTimerView()
-                    .padding(.bottom, 60) // Поднимаем чуть выше TabBar'а
+                    .padding(.bottom, 60)
                     .transition(.move(edge: .bottom))
-                    .zIndex(100) // Гарантируем, что он сверху всего
+                    .zIndex(100)
             }
         }
     }
-}
-
-#Preview {
-    ContentView()
-        .environmentObject(WorkoutViewModel())
 }

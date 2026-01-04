@@ -4,49 +4,37 @@
 //
 //  Created by Boris Serzhanovich on 27.12.25.
 //
+//  Менеджер уведомлений.
+//  Отвечает за:
+//  1. Таймер отдыха (короткие уведомления).
+//  2. Напоминания о восстановлении и пропуске тренировок (длинные уведомления).
+//  3. Управление правами доступа к уведомлениям.
+//
 
 import Foundation
 import UserNotifications
 
 class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
+    
+    // MARK: - Singleton
     static let shared = NotificationManager()
     
+    // MARK: - Constants
+    private let restTimerId = "rest_timer_done"
+    private let recoveryId = "recovery_notification"
+    private let inactivityId = "inactivity_notification"
+    private let recoveryHoursKey = "userRecoveryHours"
     
-    // ... внутри class NotificationManager ...
-
-        // 1. Запланировать уведомление о конце отдыха
-        func scheduleRestTimerNotification(seconds: Double) {
-            // Сначала удаляем старый таймер, если был
-            cancelRestTimerNotification()
-            
-            let content = UNMutableNotificationContent()
-            content.title = "Rest Finished! ⚡️"
-            content.body = "Time to get back to work!"
-            content.sound = UNNotificationSound.default
-            // Можно добавить кастомный звук, если он есть в проекте
-            // content.sound = UNNotificationSound(named: UNNotificationSoundName("ding.mp3"))
-
-            // Триггер сработает ровно через seconds
-            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
-            
-            let request = UNNotificationRequest(identifier: "rest_timer_done", content: content, trigger: trigger)
-            
-            UNUserNotificationCenter.current().add(request)
-        }
-        
-        // 2. Отменить уведомление (если пользователь нажал "Стоп" раньше времени)
-        func cancelRestTimerNotification() {
-            UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["rest_timer_done"])
-        }
-    
-    
+    // MARK: - Init
     override init() {
         super.init()
         // Делегат нужен, чтобы обрабатывать пуши, даже если приложение открыто
         UNUserNotificationCenter.current().delegate = self
     }
     
-    // 1. Запрос прав
+    // MARK: - Permissions & Setup
+    
+    /// Запрос прав на отправку уведомлений
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if granted {
@@ -57,18 +45,44 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
     
-    // 2. Настройка показа пуша, если приложение открыто (полезно для отладки)
+    /// Настройка показа пуша, если приложение открыто (показываем баннер и звук)
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
         completionHandler([.banner, .sound, .list])
     }
     
-    // 3. ГЛАВНАЯ ЛОГИКА
+    // MARK: - Rest Timer Logic
+    
+    /// Запланировать уведомление о конце отдыха
+    func scheduleRestTimerNotification(seconds: Double) {
+        // Сначала удаляем старый таймер, если был
+        cancelRestTimerNotification()
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Rest Finished! ⚡️"
+        content.body = "Time to get back to work!"
+        content.sound = UNNotificationSound.default
+        
+        // Триггер сработает ровно через seconds
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
+        let request = UNNotificationRequest(identifier: restTimerId, content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    /// Отменить уведомление таймера (если пользователь нажал "Стоп" раньше времени)
+    func cancelRestTimerNotification() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [restTimerId])
+    }
+    
+    // MARK: - Workout Recovery Logic
+    
+    /// Планирует уведомления о восстановлении и напоминания после завершения тренировки
     func scheduleNotifications(after workout: Workout) {
-        // Удаляем старые, чтобы не спамить
+        // Удаляем старые уведомления о восстановлении, чтобы не спамить
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         
-        // --- ШАГ 1: ВОССТАНОВЛЕНИЕ (через 48 часов или как в настройках) ---
-        let savedHours = UserDefaults.standard.double(forKey: "userRecoveryHours")
+        // --- ШАГ 1: ВОССТАНОВЛЕНИЕ (Recovery) ---
+        let savedHours = UserDefaults.standard.double(forKey: recoveryHoursKey)
         let recoveryHours = savedHours > 0 ? savedHours : 48.0
         
         // Дата восстановления = Сейчас + часы * 3600 сек
@@ -78,24 +92,27 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         let (title, body) = getMotivationalText(for: dominantGroup)
         
         scheduleNotification(
-            id: "recovery_notification",
+            id: recoveryId,
             title: title,
             body: body,
             date: recoveryDate
         )
         
-        // --- ШАГ 2: НАПОМИНАНИЕ (через 3 дня / 72 часа) ---
+        // --- ШАГ 2: НАПОМИНАНИЕ (Inactivity) ---
+        // Через 3 дня (72 часа)
         let inactivityDate = Date().addingTimeInterval(72 * 3600)
         
         scheduleNotification(
-            id: "inactivity_notification",
+            id: inactivityId,
             title: "We miss you! 🥺",
             body: "It's been 3 days since your last workout. Don't lose your streak!",
             date: inactivityDate
         )
     }
     
-    // Вспомогательная: Ставит уведомление по Календарю
+    // MARK: - Private Helpers
+    
+    /// Вспомогательная функция для создания календарного уведомления
     private func scheduleNotification(id: String, title: String, body: String, date: Date) {
         let content = UNMutableNotificationContent()
         content.title = title
@@ -117,20 +134,24 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
     
-    // Вспомогательная: Определяет главную группу мышц
+    /// Определяет главную группу мышц в тренировке (по количеству упражнений)
     private func getDominantGroup(for workout: Workout) -> String {
         var counts: [String: Int] = [:]
+        
         for exercise in workout.exercises {
             if exercise.isSuperset {
-                for sub in exercise.subExercises { counts[sub.muscleGroup, default: 0] += 1 }
+                for sub in exercise.subExercises {
+                    counts[sub.muscleGroup, default: 0] += 1
+                }
             } else {
                 counts[exercise.muscleGroup, default: 0] += 1
             }
         }
+        
         return counts.sorted { $0.value > $1.value }.first?.key ?? "General"
     }
     
-    // Вспомогательная: Тексты
+    /// Возвращает мотивационный текст в зависимости от группы мышц
     private func getMotivationalText(for group: String) -> (String, String) {
         switch group {
         case "Chest":

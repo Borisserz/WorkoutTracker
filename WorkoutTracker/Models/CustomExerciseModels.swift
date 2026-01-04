@@ -10,6 +10,7 @@ import Foundation
 struct CustomExerciseDefinition: Codable, Identifiable, Hashable {
     var id = UUID()
     var name: String
-    var category: String      // Например "Chest"
-    var targetedMuscles: [String] // Технические слаги: ["chest", "triceps"]
+    var category: String
+    var targetedMuscles: [String]
+    var type: ExerciseType = .strength // <-- Добавляем тип сюда тоже
 }
