@@ -65,7 +65,12 @@ struct StatsView: View {
         let bestWeek = viewModel.getBestStats(for: Period.week)
         let bestMonth = viewModel.getBestStats(for: Period.month)
         
-        // 3. Передаем готовые данные в View
+        // 3. Новые данные аналитики
+        let weakPoints = viewModel.getWeakPoints()
+        let recommendations = viewModel.getRecommendations()
+        let detailedComparison = viewModel.getDetailedComparison(period: selectedPeriod)
+        
+        // 4. Передаем готовые данные в View
         return StatsContentView(
             selectedPeriod: $selectedPeriod,
             selectedMetric: $selectedMetric,
@@ -75,7 +80,10 @@ struct StatsView: View {
             chartData: chartData,
             recentPRs: recentPRs,
             bestWeek: bestWeek,
-            bestMonth: bestMonth
+            bestMonth: bestMonth,
+            weakPoints: weakPoints,
+            recommendations: recommendations,
+            detailedComparison: detailedComparison
         )
     }
     
@@ -128,6 +136,11 @@ struct StatsContentView: View {
     let bestWeek: WorkoutViewModel.PeriodStats
     let bestMonth: WorkoutViewModel.PeriodStats
     
+    // Новые данные аналитики
+    let weakPoints: [WorkoutViewModel.WeakPoint]
+    let recommendations: [WorkoutViewModel.Recommendation]
+    let detailedComparison: [WorkoutViewModel.DetailedComparison]
+    
     @State private var showProfile = false
     
     // MARK: - Body
@@ -139,6 +152,26 @@ struct StatsContentView: View {
                 periodPicker
                 highlightsSection
                 chartSection
+                
+                // Детальное сравнение с предыдущим периодом
+                if !detailedComparison.isEmpty {
+                    Section(header: Text("Detailed Comparison")) {
+                        DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
+                    }
+                }
+                
+                // Анализ слабых мест
+                if !weakPoints.isEmpty {
+                    Section(header: Text("Weak Points Analysis")) {
+                        WeakPointsView(weakPoints: weakPoints)
+                    }
+                }
+                
+                // Рекомендации (всегда показываем секцию)
+                Section(header: Text("Recommendations")) {
+                    RecommendationsView(recommendations: recommendations)
+                }
+                
                 prSection
                 bestStatsSection
             }

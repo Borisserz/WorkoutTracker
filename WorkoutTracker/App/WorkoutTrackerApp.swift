@@ -17,8 +17,7 @@ struct WorkoutTrackerApp: App {
     @State private var showImportAlert = false
     
     init() {
-       // УДАЛИЛИ: NotificationManager.shared.requestPermission()
-       // Теперь мы запрашиваем это вежливо на 3-м шаге анбординга
+
     }
 
     var body: some Scene {

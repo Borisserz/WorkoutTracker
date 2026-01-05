@@ -46,6 +46,22 @@ struct ExerciseHistoryView: View {
         case all = "All"
     }
     
+    enum TrendPeriod: String, CaseIterable, Identifiable {
+        case month = "Month"
+        case threeMonths = "3 Months"
+        case year = "Year"
+        
+        var id: Self { self }
+        
+        var displayName: String {
+            switch self {
+            case .month: return "1M"
+            case .threeMonths: return "3M"
+            case .year: return "1Y"
+            }
+        }
+    }
+    
     struct DataPoint: Identifiable {
         let id = UUID()
         let date: Date
@@ -58,6 +74,7 @@ struct ExerciseHistoryView: View {
     let allWorkouts: [Workout]
     
     @EnvironmentObject var notesManager: ExerciseNotesManager
+    @EnvironmentObject var viewModel: WorkoutViewModel
     @FocusState private var isInputActive: Bool
     
     // MARK: - State
@@ -66,6 +83,7 @@ struct ExerciseHistoryView: View {
     @State private var selectedTimeRange: TimeRange = .all
     @State private var exerciseNote: String = ""
     @State private var selectedMetric: GraphMetric = .none
+    @State private var selectedTrendPeriod: TrendPeriod = .month
     
     // MARK: - Computed Properties (General)
     
@@ -171,7 +189,17 @@ struct ExerciseHistoryView: View {
             // 1. Блок графика
             chartContainerView
             
-            // 2. Блок заметок
+            // 2. Тренды упражнения
+            if let exerciseTrend = exerciseTrend {
+                exerciseTrendSection(trend: exerciseTrend)
+            }
+            
+            // 3. Прогноз прогресса
+            if let exerciseForecast = exerciseForecast {
+                exerciseForecastSection(forecast: exerciseForecast)
+            }
+            
+            // 4. Блок заметок
             noteSection
         }
     }
@@ -560,6 +588,103 @@ struct ExerciseHistoryView: View {
         }.sorted(by: { $0.date > $1.date })
     }
     
+    /// Тренд для текущего упражнения
+    var exerciseTrend: WorkoutViewModel.ExerciseTrend? {
+        let period: StatsView.Period
+        switch selectedTrendPeriod {
+        case .month:
+            period = .month
+        case .threeMonths:
+            // Для 3 месяцев используем кастомную логику
+            return getCustomTrendPeriod(months: 3)
+        case .year:
+            period = .year
+        }
+        let trends = viewModel.getExerciseTrends(period: period)
+        return trends.first { $0.exerciseName == exerciseName }
+    }
+    
+    /// Кастомный расчет тренда для периода в месяцах
+    private func getCustomTrendPeriod(months: Int) -> WorkoutViewModel.ExerciseTrend? {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Текущий период
+        let currentStart = calendar.date(byAdding: .month, value: -months, to: now)!
+        let currentInterval = DateInterval(start: currentStart, end: now)
+        
+        // Предыдущий период
+        let previousEnd = currentStart
+        let previousStart = calendar.date(byAdding: .month, value: -months, to: previousEnd)!
+        let previousInterval = DateInterval(start: previousStart, end: previousEnd)
+        
+        let currentWorkouts = allWorkouts.filter { currentInterval.contains($0.date) }
+        let previousWorkouts = allWorkouts.filter { previousInterval.contains($0.date) }
+        
+        // Находим максимальный вес в каждом периоде для этого упражнения
+        var currentMax: Double = 0
+        var previousMax: Double = 0
+        
+        for workout in currentWorkouts {
+            if let exercise = findExerciseInWorkout(workout), exercise.type == .strength {
+                let maxWeight = exercise.setsList
+                    .filter { $0.isCompleted && $0.type != .warmup }
+                    .compactMap { $0.weight }
+                    .max() ?? 0
+                if maxWeight > currentMax {
+                    currentMax = maxWeight
+                }
+            }
+        }
+        
+        for workout in previousWorkouts {
+            if let exercise = findExerciseInWorkout(workout), exercise.type == .strength {
+                let maxWeight = exercise.setsList
+                    .filter { $0.isCompleted && $0.type != .warmup }
+                    .compactMap { $0.weight }
+                    .max() ?? 0
+                if maxWeight > previousMax {
+                    previousMax = maxWeight
+                }
+            }
+        }
+        
+        guard currentMax > 0 || previousMax > 0 else { return nil }
+        
+        let change: Double
+        let direction: WorkoutViewModel.TrendDirection
+        
+        if previousMax == 0 {
+            change = 100.0
+            direction = .growing
+        } else if currentMax == 0 {
+            change = -100.0
+            direction = .declining
+        } else {
+            change = ((currentMax - previousMax) / previousMax) * 100.0
+            if abs(change) < 2.0 {
+                direction = .stable
+            } else {
+                direction = change > 0 ? .growing : .declining
+            }
+        }
+        
+        return WorkoutViewModel.ExerciseTrend(
+            exerciseName: exerciseName,
+            trend: direction,
+            changePercentage: change,
+            currentValue: currentMax,
+            previousValue: previousMax,
+            period: "\(months)M"
+        )
+    }
+    
+    /// Прогноз для текущего упражнения
+    var exerciseForecast: WorkoutViewModel.ProgressForecast? {
+        let forecasts = viewModel.getProgressForecast(daysAhead: 30)
+        return forecasts.first { $0.exerciseName == exerciseName }
+    }
+    
     // MARK: - Helpers
     
     func formatTime(_ seconds: Int) -> String {
@@ -653,5 +778,153 @@ struct ExerciseHistoryView: View {
             }
         }
         return nil
+    }
+    
+    // MARK: - Exercise Trends & Forecast Views
+    
+    /// Секция тренда упражнения
+    @ViewBuilder
+    private func exerciseTrendSection(trend: WorkoutViewModel.ExerciseTrend) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Exercise Trend")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                // Переключатель периода в правом верхнем углу
+                Picker("Period", selection: $selectedTrendPeriod) {
+                    ForEach(TrendPeriod.allCases) { period in
+                        Text(period.displayName).tag(period)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 120)
+            }
+            
+            HStack {
+                Image(systemName: trend.trend.icon)
+                    .foregroundColor(trend.trend.color)
+                    .frame(width: 24)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text("\(Int(trend.previousValue)) kg")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Image(systemName: "arrow.right")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        
+                        Text("\(Int(trend.currentValue)) kg")
+                            .font(.caption)
+                            .bold()
+                    }
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("\(trend.changePercentage, specifier: "%.0f")%")
+                        .font(.headline)
+                        .foregroundColor(trend.trend.color)
+                    
+                    Text(trend.trend == .growing ? "↑ Growing" : trend.trend == .declining ? "↓ Declining" : "→ Stable")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(radius: 5)
+    }
+    
+    /// Секция прогноза упражнения
+    @ViewBuilder
+    private func exerciseForecastSection(forecast: WorkoutViewModel.ProgressForecast) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Progress Forecast")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                // Индикатор уверенности с цветовой кодировкой
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(forecast.confidence >= 70 ? Color.green :
+                              forecast.confidence >= 50 ? Color.orange : Color.red)
+                        .frame(width: 8, height: 8)
+                    Text("\(forecast.confidence)%")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Current")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text("\(Int(forecast.currentMax)) kg")
+                        .font(.subheadline)
+                        .bold()
+                }
+                
+                Image(systemName: "arrow.right")
+                    .foregroundColor(.blue)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Predicted")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text("\(Int(forecast.predictedMax)) kg")
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundColor(.blue)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("+\(Int(forecast.predictedMax - forecast.currentMax)) kg")
+                        .font(.caption)
+                        .bold()
+                        .foregroundColor(.green)
+                    Text("in \(forecast.timeframe)")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            // Прогресс бар для визуализации
+            GeometryReader { geometry in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(height: 6)
+                        .cornerRadius(3)
+                    
+                    Rectangle()
+                        .fill(Color.blue.gradient)
+                        .frame(
+                            width: geometry.size.width * min(1.0, forecast.predictedMax / max(forecast.currentMax, 1)),
+                            height: 6
+                        )
+                        .cornerRadius(3)
+                }
+            }
+            .frame(height: 6)
+        }
+        .padding()
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(radius: 5)
     }
 }

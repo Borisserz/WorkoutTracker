@@ -893,7 +893,699 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 10. Widget
+    // MARK: - 10. Advanced Analytics
+    
+    // MARK: - Exercise Trends
+    
+    struct ExerciseTrend: Identifiable {
+        let id = UUID()
+        let exerciseName: String
+        let trend: TrendDirection
+        let changePercentage: Double
+        let currentValue: Double
+        let previousValue: Double
+        let period: String
+    }
+    
+    enum TrendDirection {
+        case growing, declining, stable
+        
+        var icon: String {
+            switch self {
+            case .growing: return "arrow.up.right"
+            case .declining: return "arrow.down.right"
+            case .stable: return "arrow.right"
+            }
+        }
+        
+        var color: Color {
+            switch self {
+            case .growing: return .green
+            case .declining: return .red
+            case .stable: return .orange
+            }
+        }
+    }
+    
+    /// Анализ трендов по упражнениям (рост/падение)
+    func getExerciseTrends(period: StatsView.Period = .month) -> [ExerciseTrend] {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        var currentInterval: DateInterval
+        var previousInterval: DateInterval
+        
+        switch period {
+        case .week:
+            currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
+            let lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: now)!
+            previousInterval = calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
+        case .month:
+            currentInterval = calendar.dateInterval(of: .month, for: now)!
+            let lastMonth = calendar.date(byAdding: .month, value: -1, to: now)!
+            previousInterval = calendar.dateInterval(of: .month, for: lastMonth)!
+        case .year:
+            currentInterval = calendar.dateInterval(of: .year, for: now)!
+            let lastYear = calendar.date(byAdding: .year, value: -1, to: now)!
+            previousInterval = calendar.dateInterval(of: .year, for: lastYear)!
+        }
+        
+        let currentWorkouts = workouts.filter { currentInterval.contains($0.date) }
+        let previousWorkouts = workouts.filter { previousInterval.contains($0.date) }
+        
+        var exerciseData: [String: (current: Double, previous: Double, count: Int)] = [:]
+        
+        // Собираем данные по текущему периоду
+        for workout in currentWorkouts {
+            for exercise in workout.exercises {
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for ex in targetExercises where ex.type == .strength {
+                    let maxWeight = ex.setsList
+                        .filter { $0.isCompleted && $0.type != .warmup }
+                        .compactMap { $0.weight }
+                        .max() ?? 0
+                    
+                    if maxWeight > 0 {
+                        let existing = exerciseData[ex.name] ?? (0, 0, 0)
+                        exerciseData[ex.name] = (max(existing.current, maxWeight), existing.previous, existing.count + 1)
+                    }
+                }
+            }
+        }
+        
+        // Собираем данные по предыдущему периоду
+        for workout in previousWorkouts {
+            for exercise in workout.exercises {
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for ex in targetExercises where ex.type == .strength {
+                    let maxWeight = ex.setsList
+                        .filter { $0.isCompleted && $0.type != .warmup }
+                        .compactMap { $0.weight }
+                        .max() ?? 0
+                    
+                    if maxWeight > 0 {
+                        let existing = exerciseData[ex.name] ?? (0, 0, 0)
+                        exerciseData[ex.name] = (existing.current, max(existing.previous, maxWeight), existing.count)
+                    }
+                }
+            }
+        }
+        
+        // Формируем тренды
+        var trends: [ExerciseTrend] = []
+        for (name, data) in exerciseData {
+            guard data.current > 0 || data.previous > 0 else { continue }
+            
+            let change: Double
+            let direction: TrendDirection
+            
+            if data.previous == 0 {
+                change = 100.0
+                direction = .growing
+            } else if data.current == 0 {
+                change = -100.0
+                direction = .declining
+            } else {
+                change = ((data.current - data.previous) / data.previous) * 100.0
+                if abs(change) < 2.0 {
+                    direction = .stable
+                } else {
+                    direction = change > 0 ? .growing : .declining
+                }
+            }
+            
+            trends.append(ExerciseTrend(
+                exerciseName: name,
+                trend: direction,
+                changePercentage: change,
+                currentValue: data.current,
+                previousValue: data.previous,
+                period: period.rawValue
+            ))
+        }
+        
+        // Сортируем тренды: сначала растущие (по убыванию изменения), затем падающие (по возрастанию изменения)
+        // Это позволяет показать наиболее значимые положительные изменения и самые проблемные падения
+        return trends.sorted { trend1, trend2 in
+            // Приоритет растущим трендам
+            if trend1.trend == .growing && trend2.trend != .growing {
+                return true
+            }
+            if trend1.trend != .growing && trend2.trend == .growing {
+                return false
+            }
+            // Если оба одного типа, сортируем по абсолютному значению изменения
+            return abs(trend1.changePercentage) > abs(trend2.changePercentage)
+        }
+    }
+    
+    // MARK: - Progress Forecasting
+    
+    struct ProgressForecast: Identifiable {
+        let id = UUID()
+        let exerciseName: String
+        let currentMax: Double
+        let predictedMax: Double
+        let confidence: Int // 0-100
+        let timeframe: String
+    }
+    
+    /// Прогноз прогресса на основе исторических данных
+    ///
+    /// **Принцип работы:**
+    /// 1. Собирает историю выполнения упражнения за последние 90 дней
+    /// 2. Для каждого упражнения находит максимальный вес в каждой тренировке
+    /// 3. Вычисляет средний прирост веса в день (линейная экстраполяция)
+    /// 4. Прогнозирует результат через N дней: текущий_макс + (средний_прирост × дни)
+    ///
+    /// **Уверенность (confidence):**
+    /// - 70-100%: Высокая уверенность (много данных, стабильный рост)
+    /// - 50-69%: Средняя уверенность (достаточно данных, но есть колебания)
+    /// - 30-49%: Низкая уверенность (мало данных или нестабильный прогресс)
+    ///
+    /// **Факторы, влияющие на уверенность:**
+    /// - Количество точек данных (больше тренировок = выше уверенность)
+    /// - Стабильность прогресса (постоянный рост = выше уверенность)
+    /// - Временной охват данных (данные за больший период = выше уверенность)
+    func getProgressForecast(daysAhead: Int = 30) -> [ProgressForecast] {
+        let calendar = Calendar.current
+        let now = Date()
+        let cutoffDate = calendar.date(byAdding: .day, value: -90, to: now)!
+        
+        let recentWorkouts = workouts.filter { $0.date >= cutoffDate }
+        
+        var exerciseHistory: [String: [(date: Date, maxWeight: Double)]] = [:]
+        
+        // Собираем историю по каждому упражнению
+        for workout in recentWorkouts {
+            for exercise in workout.exercises {
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for ex in targetExercises where ex.type == .strength {
+                    let maxWeight = ex.setsList
+                        .filter { $0.isCompleted && $0.type != .warmup }
+                        .compactMap { $0.weight }
+                        .max() ?? 0
+                    
+                    if maxWeight > 0 {
+                        if exerciseHistory[ex.name] == nil {
+                            exerciseHistory[ex.name] = []
+                        }
+                        exerciseHistory[ex.name]?.append((date: workout.date, maxWeight: maxWeight))
+                    }
+                }
+            }
+        }
+        
+        var forecasts: [ProgressForecast] = []
+        
+        for (name, history) in exerciseHistory {
+            guard history.count >= 3 else { continue } // Нужно минимум 3 точки данных
+            
+            let sortedHistory = history.sorted { $0.date < $1.date }
+            let currentMax = sortedHistory.last?.maxWeight ?? 0
+            
+            // Улучшенная линейная регрессия для прогноза
+            // Преобразуем даты в дни от начала истории (для упрощения расчетов)
+            let firstDate = sortedHistory.first!.date
+            let daysFromStart = sortedHistory.map { now.timeIntervalSince($0.date) / 86400 }
+            let weights = sortedHistory.map { $0.maxWeight }
+            
+            // Вычисляем средний прирост в день (линейная регрессия)
+            var totalIncrease = 0.0
+            var totalDays = 0.0
+            var positiveChanges = 0
+            var negativeChanges = 0
+            
+            for i in 1..<sortedHistory.count {
+                let daysDiff = abs(daysFromStart[i] - daysFromStart[i-1])
+                if daysDiff > 0 {
+                    let weightDiff = weights[i] - weights[i-1]
+                    totalIncrease += weightDiff
+                    totalDays += daysDiff
+                    
+                    if weightDiff > 0 {
+                        positiveChanges += 1
+                    } else if weightDiff < 0 {
+                        negativeChanges += 1
+                    }
+                }
+            }
+            
+            // Средний прирост в день (кг/день)
+            let avgIncreasePerDay = totalDays > 0 ? totalIncrease / totalDays : 0
+            
+            // Прогнозируемый прирост за указанный период
+            let predictedIncrease = avgIncreasePerDay * Double(daysAhead)
+            
+            // Прогнозируемый максимум (не может быть меньше текущего)
+            let predictedMax = max(currentMax, currentMax + predictedIncrease)
+            
+            // Расчет уверенности (confidence) в процентах:
+            // 1. Базовый уровень: количество точек данных (больше данных = выше уверенность)
+            //    Минимум 30%, максимум 70% за счет данных
+            let dataPointsScore = min(70, max(30, sortedHistory.count * 8))
+            
+            // 2. Стабильность прогресса: если есть положительный тренд, добавляем бонус
+            let trendBonus = avgIncreasePerDay > 0 ? 15 : 0
+            
+            // 3. Консистентность: если прогресс стабильный (больше положительных изменений),
+            //    добавляем бонус. Если много отрицательных - штрафуем
+            let consistencyBonus: Int
+            let totalChanges = positiveChanges + negativeChanges
+            if totalChanges > 0 {
+                let positiveRatio = Double(positiveChanges) / Double(totalChanges)
+                if positiveRatio >= 0.7 {
+                    consistencyBonus = 15 // Стабильный рост
+                } else if positiveRatio >= 0.5 {
+                    consistencyBonus = 5  // Смешанный тренд
+                } else {
+                    consistencyBonus = -10 // Больше падений, чем ростов
+                }
+            } else {
+                consistencyBonus = 0
+            }
+            
+            // 4. Временной охват: если данные за большой период, выше уверенность
+            let timeSpan = daysFromStart.first! - daysFromStart.last!
+            let timeSpanBonus = min(10, Int(timeSpan / 30)) // До 10% за каждый месяц данных
+            
+            // Итоговая уверенность (0-100%)
+            let confidence = min(100, max(30, dataPointsScore + trendBonus + consistencyBonus + timeSpanBonus))
+            
+            let timeframe = daysAhead == 30 ? "30 days" : "\(daysAhead) days"
+            
+            forecasts.append(ProgressForecast(
+                exerciseName: name,
+                currentMax: currentMax,
+                predictedMax: predictedMax,
+                confidence: confidence,
+                timeframe: timeframe
+            ))
+        }
+        
+        return forecasts.sorted { $0.predictedMax > $1.predictedMax }
+    }
+    
+    // MARK: - Weak Points Analysis
+    
+    struct WeakPoint: Identifiable {
+        let id = UUID()
+        let muscleGroup: String
+        let frequency: Int // Количество тренировок за последние 30 дней
+        let averageVolume: Double
+        let recommendation: String
+    }
+    
+    /// Анализ слабых мест (недостаточно тренируемые группы мышц)
+    func getWeakPoints() -> [WeakPoint] {
+        let calendar = Calendar.current
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        let recentWorkouts = workouts.filter { $0.date >= thirtyDaysAgo }
+        
+        if recentWorkouts.isEmpty { return [] }
+        
+        var muscleGroupData: [String: (frequency: Int, totalVolume: Double)] = [:]
+        
+        // Собираем данные по группам мышц
+        for workout in recentWorkouts {
+            var uniqueMusclesInWorkout = Set<String>()
+            
+            for exercise in workout.exercises {
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for ex in targetExercises where ex.type == .strength {
+                    let muscles = MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup)
+                    let volume = ex.computedVolume
+                    
+                    for muscle in muscles {
+                        uniqueMusclesInWorkout.insert(muscle)
+                        let existing = muscleGroupData[muscle] ?? (0, 0)
+                        muscleGroupData[muscle] = (existing.frequency, existing.totalVolume + volume)
+                    }
+                }
+            }
+            
+            // Увеличиваем частоту для каждой уникальной группы в этой тренировке
+            for muscle in uniqueMusclesInWorkout {
+                let existing = muscleGroupData[muscle] ?? (0, 0)
+                muscleGroupData[muscle] = (existing.frequency + 1, existing.totalVolume)
+            }
+        }
+        
+        // Определяем средние значения для сравнения
+        let avgFrequency = muscleGroupData.values.map { Double($0.frequency) }.reduce(0, +) / Double(max(muscleGroupData.count, 1))
+        let avgVolume = muscleGroupData.values.map { $0.totalVolume }.reduce(0, +) / Double(max(muscleGroupData.count, 1))
+        
+        // Находим слабые места
+        var weakPoints: [WeakPoint] = []
+        
+        let muscleDisplayNames: [String: String] = [
+            "chest": "Chest", "upper-back": "Back", "lats": "Back", "lower-back": "Lower Back",
+            "trapezius": "Trapezius", "deltoids": "Shoulders", "biceps": "Biceps", "triceps": "Triceps",
+            "forearm": "Forearms", "abs": "Abs", "obliques": "Obliques", "gluteal": "Glutes",
+            "hamstring": "Hamstrings", "quadriceps": "Legs", "adductors": "Legs", "abductors": "Legs",
+            "legs": "Legs", "calves": "Calves"
+        ]
+        
+        for (slug, data) in muscleGroupData {
+            let displayName = muscleDisplayNames[slug] ?? slug.capitalized
+            let frequency = data.frequency
+            let avgVol = data.totalVolume / Double(max(frequency, 1))
+            
+            // Считаем слабым местом, если частота или объем ниже среднего
+            if Double(frequency) < avgFrequency * 0.7 || avgVol < avgVolume * 0.7 {
+                let recommendation: String
+                if frequency == 0 {
+                    recommendation = "Start training this muscle group"
+                } else if Double(frequency) < avgFrequency * 0.5 {
+                    recommendation = "Increase training frequency"
+                } else {
+                    recommendation = "Increase training volume"
+                }
+                
+                weakPoints.append(WeakPoint(
+                    muscleGroup: displayName,
+                    frequency: frequency,
+                    averageVolume: avgVol,
+                    recommendation: recommendation
+                ))
+            }
+        }
+        
+        return weakPoints.sorted { $0.frequency < $1.frequency }
+    }
+    
+    // MARK: - Data-based Recommendations
+    
+    struct Recommendation: Identifiable {
+        let id = UUID()
+        let type: RecommendationType
+        let title: String
+        let message: String
+        let priority: Int // 1-5, где 5 - самый высокий приоритет
+    }
+    
+    enum RecommendationType {
+        case frequency, volume, balance, recovery, progression, positive
+        
+        var icon: String {
+            switch self {
+            case .frequency: return "calendar"
+            case .volume: return "scalemass"
+            case .balance: return "scalemass.2"
+            case .recovery: return "bed.double"
+            case .progression: return "chart.line.uptrend.xyaxis"
+            case .positive: return "checkmark.circle.fill"
+            }
+        }
+        
+        var color: Color {
+            switch self {
+            case .frequency: return .blue
+            case .volume: return .purple
+            case .balance: return .orange
+            case .recovery: return .green
+            case .progression: return .pink
+            case .positive: return .green
+            }
+        }
+    }
+    
+    /// Генерация рекомендаций на основе данных
+    func getRecommendations() -> [Recommendation] {
+        var recommendations: [Recommendation] = []
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let thirtyDaysAgo = calendar.date(byAdding: .day, value: -30, to: now) ?? now
+        let recentWorkouts = workouts.filter { $0.date >= thirtyDaysAgo }
+        
+        // 1. Рекомендация по частоте тренировок
+        let daysSinceLastWorkout = recentWorkouts.isEmpty ? 999 : 
+            calendar.dateComponents([.day], from: recentWorkouts[0].date, to: now).day ?? 0
+        
+        if daysSinceLastWorkout > 7 {
+            recommendations.append(Recommendation(
+                type: .frequency,
+                title: "Increase Training Frequency",
+                message: "It's been \(daysSinceLastWorkout) days since your last workout. Try to maintain consistency!",
+                priority: 5
+            ))
+        } else if recentWorkouts.count < 8 {
+            recommendations.append(Recommendation(
+                type: .frequency,
+                title: "Build Consistency",
+                message: "You've trained \(recentWorkouts.count) times in the last 30 days. Aim for 3-4 times per week!",
+                priority: 4
+            ))
+        }
+        
+        // 2. Рекомендация по балансу (используем существующий метод)
+        if let imbalance = getImbalanceRecommendation() {
+            recommendations.append(Recommendation(
+                type: .balance,
+                title: imbalance.title,
+                message: imbalance.message,
+                priority: 4
+            ))
+        }
+        
+        // 3. Рекомендация по слабым местам
+        let weakPoints = getWeakPoints()
+        if !weakPoints.isEmpty {
+            let topWeakPoint = weakPoints[0]
+            recommendations.append(Recommendation(
+                type: .volume,
+                title: "Focus on \(topWeakPoint.muscleGroup)",
+                message: topWeakPoint.recommendation + ". Only trained \(topWeakPoint.frequency) times in the last 30 days.",
+                priority: 3
+            ))
+        }
+        
+        // 4. Рекомендация по прогрессу
+        let trends = getExerciseTrends(period: .month)
+        let decliningExercises = trends.filter { $0.trend == .declining && abs($0.changePercentage) > 10 }
+        if !decliningExercises.isEmpty {
+            let exercise = decliningExercises[0]
+            recommendations.append(Recommendation(
+                type: .progression,
+                title: "Review \(exercise.exerciseName)",
+                message: "Your performance decreased by \(Int(abs(exercise.changePercentage)))%. Consider adjusting your training plan.",
+                priority: 3
+            ))
+        }
+        
+        // 5. Рекомендация по восстановлению
+        let lowRecoveryMuscles = recoveryStatus.filter { $0.recoveryPercentage < 50 }
+        if !lowRecoveryMuscles.isEmpty {
+            recommendations.append(Recommendation(
+                type: .recovery,
+                title: "Allow More Recovery",
+                message: "\(lowRecoveryMuscles.count) muscle group(s) need more rest. Consider a rest day.",
+                priority: 2
+            ))
+        }
+        
+        // 6. Позитивные рекомендации (если нет проблем)
+        if recommendations.isEmpty {
+            // Все хорошо - добавляем позитивные сообщения
+            if !recentWorkouts.isEmpty {
+                let workoutCount = recentWorkouts.count
+                let streak = calculateWorkoutStreak()
+                
+                if workoutCount >= 12 {
+                    recommendations.append(Recommendation(
+                        type: .positive,
+                        title: "Excellent Consistency! 🎉",
+                        message: "You've trained \(workoutCount) times in the last 30 days. Keep up the great work!",
+                        priority: 5
+                    ))
+                } else if workoutCount >= 8 {
+                    recommendations.append(Recommendation(
+                        type: .positive,
+                        title: "Great Progress! 💪",
+                        message: "You've trained \(workoutCount) times in the last 30 days. You're on the right track!",
+                        priority: 4
+                    ))
+                }
+                
+                if streak >= 7 {
+                    recommendations.append(Recommendation(
+                        type: .positive,
+                        title: "Amazing Streak! 🔥",
+                        message: "You have a \(streak) day workout streak! Your dedication is inspiring!",
+                        priority: 5
+                    ))
+                }
+                
+                // Проверяем баланс мышц (позитивно)
+                if getImbalanceRecommendation() == nil && recentWorkouts.count >= 4 {
+                    recommendations.append(Recommendation(
+                        type: .positive,
+                        title: "Well-Balanced Training! ⚖️",
+                        message: "Your muscle groups are well-balanced. Great job maintaining symmetry!",
+                        priority: 3
+                    ))
+                }
+                
+                // Проверяем прогресс (позитивно)
+                let trends = getExerciseTrends(period: .month)
+                let growingExercises = trends.filter { $0.trend == .growing && $0.changePercentage > 5 }
+                if !growingExercises.isEmpty {
+                    let topExercise = growingExercises.sorted { $0.changePercentage > $1.changePercentage }.first!
+                    recommendations.append(Recommendation(
+                        type: .positive,
+                        title: "Strong Progress! 📈",
+                        message: "\(topExercise.exerciseName) improved by \(Int(topExercise.changePercentage))%. Keep pushing!",
+                        priority: 4
+                    ))
+                }
+            } else {
+                // Нет тренировок - мотивирующее сообщение
+                recommendations.append(Recommendation(
+                    type: .positive,
+                    title: "Ready to Start? 🚀",
+                    message: "Start your fitness journey today! Every workout counts towards your goals.",
+                    priority: 3
+                ))
+            }
+        }
+        
+        return recommendations.sorted { $0.priority > $1.priority }
+    }
+    
+    // MARK: - Detailed Period Comparison
+    
+    struct DetailedComparison {
+        let metric: String
+        let currentValue: Double
+        let previousValue: Double
+        let change: Double
+        let changePercentage: Double
+        let trend: TrendDirection
+    }
+    
+    /// Детальное сравнение с предыдущим периодом
+    func getDetailedComparison(period: StatsView.Period) -> [DetailedComparison] {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        var currentInterval: DateInterval
+        var previousInterval: DateInterval
+        
+        switch period {
+        case .week:
+            currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
+            let lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: now)!
+            previousInterval = calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
+        case .month:
+            currentInterval = calendar.dateInterval(of: .month, for: now)!
+            let lastMonth = calendar.date(byAdding: .month, value: -1, to: now)!
+            previousInterval = calendar.dateInterval(of: .month, for: lastMonth)!
+        case .year:
+            currentInterval = calendar.dateInterval(of: .year, for: now)!
+            let lastYear = calendar.date(byAdding: .year, value: -1, to: now)!
+            previousInterval = calendar.dateInterval(of: .year, for: lastYear)!
+        }
+        
+        let currentStats = getStats(for: currentInterval)
+        let previousStats = getStats(for: previousInterval)
+        
+        func calculateChange(current: Double, previous: Double) -> (change: Double, percentage: Double, trend: TrendDirection) {
+            let change = current - previous
+            let percentage = previous == 0 ? (current > 0 ? 100.0 : 0.0) : (change / previous) * 100.0
+            let trend: TrendDirection = abs(percentage) < 2 ? .stable : (percentage > 0 ? .growing : .declining)
+            return (change, percentage, trend)
+        }
+        
+        var comparisons: [DetailedComparison] = []
+        
+        // Workout Count
+        let (wcChange, wcPct, wcTrend) = calculateChange(
+            current: Double(currentStats.workoutCount),
+            previous: Double(previousStats.workoutCount)
+        )
+        comparisons.append(DetailedComparison(
+            metric: "Workouts",
+            currentValue: Double(currentStats.workoutCount),
+            previousValue: Double(previousStats.workoutCount),
+            change: wcChange,
+            changePercentage: wcPct,
+            trend: wcTrend
+        ))
+        
+        // Total Volume
+        let (volChange, volPct, volTrend) = calculateChange(
+            current: currentStats.totalVolume,
+            previous: previousStats.totalVolume
+        )
+        comparisons.append(DetailedComparison(
+            metric: "Total Volume (kg)",
+            currentValue: currentStats.totalVolume,
+            previousValue: previousStats.totalVolume,
+            change: volChange,
+            changePercentage: volPct,
+            trend: volTrend
+        ))
+        
+        // Total Reps
+        let (repsChange, repsPct, repsTrend) = calculateChange(
+            current: Double(currentStats.totalReps),
+            previous: Double(previousStats.totalReps)
+        )
+        comparisons.append(DetailedComparison(
+            metric: "Total Reps",
+            currentValue: Double(currentStats.totalReps),
+            previousValue: Double(previousStats.totalReps),
+            change: repsChange,
+            changePercentage: repsPct,
+            trend: repsTrend
+        ))
+        
+        // Total Duration
+        let (durChange, durPct, durTrend) = calculateChange(
+            current: Double(currentStats.totalDuration),
+            previous: Double(previousStats.totalDuration)
+        )
+        comparisons.append(DetailedComparison(
+            metric: "Duration (min)",
+            currentValue: Double(currentStats.totalDuration),
+            previousValue: Double(previousStats.totalDuration),
+            change: durChange,
+            changePercentage: durPct,
+            trend: durTrend
+        ))
+        
+        // Total Distance
+        let (distChange, distPct, distTrend) = calculateChange(
+            current: currentStats.totalDistance,
+            previous: previousStats.totalDistance
+        )
+        comparisons.append(DetailedComparison(
+            metric: "Distance (km)",
+            currentValue: currentStats.totalDistance,
+            previousValue: previousStats.totalDistance,
+            change: distChange,
+            changePercentage: distPct,
+            trend: distTrend
+        ))
+        
+        // Average Volume per Workout
+        let currentAvgVol = currentStats.workoutCount > 0 ? currentStats.totalVolume / Double(currentStats.workoutCount) : 0
+        let previousAvgVol = previousStats.workoutCount > 0 ? previousStats.totalVolume / Double(previousStats.workoutCount) : 0
+        let (avgVolChange, avgVolPct, avgVolTrend) = calculateChange(current: currentAvgVol, previous: previousAvgVol)
+        comparisons.append(DetailedComparison(
+            metric: "Avg Volume/Workout (kg)",
+            currentValue: currentAvgVol,
+            previousValue: previousAvgVol,
+            change: avgVolChange,
+            changePercentage: avgVolPct,
+            trend: avgVolTrend
+        ))
+        
+        return comparisons
+    }
+    
+    // MARK: - 11. Widget
     
     func updateWidgetData() {
         let currentStreak = calculateWorkoutStreak()
