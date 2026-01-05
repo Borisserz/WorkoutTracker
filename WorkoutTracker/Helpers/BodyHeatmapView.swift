@@ -4,6 +4,7 @@ struct BodyHeatmapView: View {
     // ИЗМЕНЕНИЕ 1: Вместо Set принимаем Словарь (Мышца -> Количество повторений)
     var muscleIntensities: [String: Int]
     
+    @AppStorage("userGender") private var userGender = "male"
     @State private var isFrontView = true
     @State private var selectedMuscleName: String? = nil
     
@@ -31,12 +32,20 @@ struct BodyHeatmapView: View {
             GeometryReader { geo in
                 let scale = min(geo.size.width / canvasWidth, geo.size.height / canvasHeight)
                 
+                let currentMuscles: [MuscleGroup] = {
+                    if userGender == "female" {
+                        return isFrontView ? BodyData.frontMusclesFemale : BodyData.backMusclesFemale
+                    } else {
+                        return isFrontView ? BodyData.frontMuscles : BodyData.backMuscles
+                    }
+                }()
+                
                 ZStack {
-                    let currentMuscles = isFrontView ? BodyData.frontMuscles : BodyData.backMuscles
-                    
+                    // Сначала рисуем все мышцы
                     ForEach(currentMuscles) { muscle in
                         drawMuscle(muscle)
                     }
+                
                 }
                 .frame(width: canvasWidth, height: canvasHeight)
                 .scaleEffect(scale)
@@ -80,7 +89,15 @@ struct BodyHeatmapView: View {
     @ViewBuilder
     func drawMuscle(_ muscle: MuscleGroup) -> some View {
         let rawPath = combinedPath(from: muscle.paths)
-        let xOffset: CGFloat = isFrontView ? 0 : -backViewOffset
+        
+        // Специальные смещения для центрирования женского тела
+        let femaleFrontOffset: CGFloat = 25   // Передняя часть смещена влево, нужно сдвинуть вправо
+        let femaleBackOffset: CGFloat = -10    // Задняя часть смещена вправо, нужно дополнительно сдвинуть влево
+        
+        let baseXOffset: CGFloat = isFrontView ? 0 : -backViewOffset
+        let genderOffset: CGFloat = (userGender == "female") ? (isFrontView ? femaleFrontOffset : femaleBackOffset) : 0
+        
+        var xOffset = baseXOffset + genderOffset
         let finalXOffset = (isFrontView == false && muscle.slug == "head") ? xOffset + 37 : xOffset
         
         let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
@@ -99,6 +116,7 @@ struct BodyHeatmapView: View {
                 }
             }
     }
+    
     
     // --- ИЗМЕНЕНИЕ 3: ГРАДАЦИЯ ЦВЕТА ---
     func colorForMuscle(_ slug: String, isSelected: Bool) -> Color {
@@ -131,7 +149,12 @@ struct BodyHeatmapView: View {
     
     // Вспомогательная для поиска слага по имени (для отображения текста)
     func findSlug(forName name: String) -> String {
-        let all = BodyData.frontMuscles + BodyData.backMuscles
+        let all: [MuscleGroup]
+        if userGender == "female" {
+            all = BodyData.frontMusclesFemale + BodyData.backMusclesFemale
+        } else {
+            all = BodyData.frontMuscles + BodyData.backMuscles
+        }
         return all.first(where: { $0.name == name })?.slug ?? ""
     }
 }

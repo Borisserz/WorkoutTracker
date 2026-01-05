@@ -104,6 +104,10 @@ class WorkoutViewModel: ObservableObject {
     private var restEndTime: Date?
     private var restTimer: Timer?
     
+    // Для оптимизации расчета восстановления
+    private var recoveryCalculationTask: Task<Void, Never>?
+    private var recoveryCalculationCancellable: AnyCancellable?
+    
     // MARK: - Init
     
     init() {
@@ -466,65 +470,107 @@ class WorkoutViewModel: ObservableObject {
     
     // MARK: - 4. Recovery Logic
     
-    func calculateRecovery(hours: Double? = nil) {
-        var rawFatigueMap: [String: Double] = [:]
+    /// Оптимизированный расчет восстановления с дебаунсом и фоновым потоком
+    func calculateRecovery(hours: Double? = nil, debounce: Bool = false) {
+        // Отменяем предыдущую задачу, если она еще выполняется
+        recoveryCalculationTask?.cancel()
         
-        // Если часы передали (со слайдера), используем их.
-        // Иначе берем сохраненное значение.
-        let fullRecoveryHours: Double
-        if let hours = hours {
-            fullRecoveryHours = hours
+        // Захватываем данные для фонового потока
+        let workoutsCopy = self.workouts
+        
+        // Если нужен дебаунс (для слайдера), используем Task с задержкой
+        if debounce {
+            recoveryCalculationTask = Task {
+                // Ждем 150ms перед расчетом, чтобы не считать на каждом движении слайдера
+                try? await Task.sleep(nanoseconds: 150_000_000) // 150ms
+                
+                guard !Task.isCancelled else { return }
+                await performRecoveryCalculation(hours: hours, workouts: workoutsCopy)
+            }
         } else {
-            let savedHours = UserDefaults.standard.double(forKey: "userRecoveryHours")
-            fullRecoveryHours = savedHours > 0 ? savedHours : 48.0
+            // Для немедленного расчета (при загрузке данных)
+            recoveryCalculationTask = Task {
+                await performRecoveryCalculation(hours: hours, workouts: workoutsCopy)
+            }
         }
-
-        let sortedWorkouts = workouts.sorted(by: { $0.date < $1.date })
-        
-        for workout in sortedWorkouts {
-            let hoursSince = Date().timeIntervalSince(workout.date) / 3600
-            if hoursSince >= fullRecoveryHours { continue }
+    }
+    
+    /// Выполняет расчет восстановления на фоновом потоке
+    private func performRecoveryCalculation(hours: Double?, workouts: [Workout]) async {
+        // Выполняем тяжелые вычисления на фоновом потоке
+        let result = await Task.detached(priority: .userInitiated) { () -> [MuscleRecoveryStatus] in
+            var rawFatigueMap: [String: Double] = [:]
             
-            let fatigueFactor = 1.0 - (hoursSince / fullRecoveryHours)
+            // Если часы передали (со слайдера), используем их.
+            // Иначе берем сохраненное значение.
+            let fullRecoveryHours: Double
+            if let hours = hours {
+                fullRecoveryHours = hours
+            } else {
+                let savedHours = UserDefaults.standard.double(forKey: "userRecoveryHours")
+                fullRecoveryHours = savedHours > 0 ? savedHours : 48.0
+            }
             
-            for exercise in workout.exercises {
-                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targets where ex.type == .strength {
-                    let affected = MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup)
-                    for slug in affected {
-                        rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, fatigueFactor)
+            // ОПТИМИЗАЦИЯ: Фильтруем тренировки ДО сортировки
+            // Тренировки старше fullRecoveryHours не влияют на восстановление
+            let cutoffDate = Date().addingTimeInterval(-fullRecoveryHours * 3600)
+            let relevantWorkouts = workouts.filter { $0.date >= cutoffDate }
+            
+            // Сортируем только релевантные тренировки
+            let sortedWorkouts = relevantWorkouts.sorted(by: { $0.date < $1.date })
+            
+            let now = Date()
+            for workout in sortedWorkouts {
+                let hoursSince = now.timeIntervalSince(workout.date) / 3600
+                // Дополнительная проверка (на случай если фильтрация не сработала)
+                if hoursSince >= fullRecoveryHours { continue }
+                
+                let fatigueFactor = 1.0 - (hoursSince / fullRecoveryHours)
+                
+                for exercise in workout.exercises {
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targets where ex.type == .strength {
+                        let affected = MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup)
+                        for slug in affected {
+                            rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, fatigueFactor)
+                        }
                     }
                 }
             }
-        }
-        
-        // Маппинг слага в красивое имя
-        let slugToDisplayName: [String: String] = [
-            "chest": "Chest", "upper-back": "Back", "lats": "Back", "lower-back": "Lower Back",
-            "trapezius": "Trapezius", "deltoids": "Shoulders", "biceps": "Biceps", "triceps": "Triceps",
-            "forearm": "Forearms", "abs": "Abs", "obliques": "Obliques", "gluteal": "Glutes",
-            "hamstring": "Hamstrings", "quadriceps": "Legs", "adductors": "Legs", "abductors": "Legs",
-            "legs": "Legs", "calves": "Calves"
-        ]
-        
-        var displayFatigueMap: [String: Double] = [:]
-        for (slug, fatigue) in rawFatigueMap {
-            if let name = slugToDisplayName[slug] {
-                displayFatigueMap[name] = max(displayFatigueMap[name] ?? 0.0, fatigue)
+            
+            // Маппинг слага в красивое имя
+            let slugToDisplayName: [String: String] = [
+                "chest": "Chest", "upper-back": "Back", "lats": "Back", "lower-back": "Lower Back",
+                "trapezius": "Trapezius", "deltoids": "Shoulders", "biceps": "Biceps", "triceps": "Triceps",
+                "forearm": "Forearms", "abs": "Abs", "obliques": "Obliques", "gluteal": "Glutes",
+                "hamstring": "Hamstrings", "quadriceps": "Legs", "adductors": "Legs", "abductors": "Legs",
+                "legs": "Legs", "calves": "Calves"
+            ]
+            
+            var displayFatigueMap: [String: Double] = [:]
+            for (slug, fatigue) in rawFatigueMap {
+                if let name = slugToDisplayName[slug] {
+                    displayFatigueMap[name] = max(displayFatigueMap[name] ?? 0.0, fatigue)
+                }
             }
-        }
-        
-        // Убедимся, что все мышцы из allMuscleGroups присутствуют в списке, даже если они 100%
-        let allMuscleNames = Set(slugToDisplayName.values)
-        for name in allMuscleNames {
-            if displayFatigueMap[name] == nil {
-                displayFatigueMap[name] = 0.0
+            
+            // Убедимся, что все мышцы из allMuscleGroups присутствуют в списке, даже если они 100%
+            let allMuscleNames = Set(slugToDisplayName.values)
+            for name in allMuscleNames {
+                if displayFatigueMap[name] == nil {
+                    displayFatigueMap[name] = 0.0
+                }
             }
-        }
+            
+            return displayFatigueMap.map { (name, fatigue) in
+                let percent = max(0, min(100, Int((1.0 - fatigue) * 100)))
+                return MuscleRecoveryStatus(muscleGroup: name, recoveryPercentage: percent)
+            }
+        }.value
         
-        self.recoveryStatus = displayFatigueMap.map { (name, fatigue) in
-            let percent = max(0, min(100, Int((1.0 - fatigue) * 100)))
-            return MuscleRecoveryStatus(muscleGroup: name, recoveryPercentage: percent)
+        // Обновляем UI на главном потоке
+        await MainActor.run {
+            self.recoveryStatus = result
         }
     }
     

@@ -7,6 +7,7 @@ struct ProfileView: View {
     // --- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ---
     @AppStorage("userName") private var userName = "Fitness Enthusiast"
     @AppStorage("userBodyWeight") private var userBodyWeight = 75.0
+    @AppStorage("userGender") private var userGender = "male" // "male" or "female"
     
     // Состояния для редактирования
     @State private var isEditingName = false
@@ -58,6 +59,14 @@ struct ProfileView: View {
                                     .padding(.horizontal, 10).padding(.vertical, 4)
                                     .background(Color.gray.opacity(0.1)).cornerRadius(8)
                             }
+                            
+                            // ПЕРЕКЛЮЧАТЕЛЬ ПОЛА
+                            Picker("Gender", selection: $userGender) {
+                                Text("Male").tag("male")
+                                Text("Female").tag("female")
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(width: 200)
                             
                         }
                     }

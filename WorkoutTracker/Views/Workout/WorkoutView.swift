@@ -103,25 +103,14 @@ struct WorkoutView: View {
                 }
                 // --- ВЕРХНЯЯ ПАНЕЛЬ (TOOLBAR) ---
                 .toolbar {
-                    // 1. Кнопка "Начать тренировку" (слева)
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button {
-                            showAddWorkout = true
-                        } label: {
-                            Text("Start Workout")
-                                .font(.headline)
-                                .foregroundColor(.blue)
-                        }
-                    }
-                    
-                    // 2. Кнопка "Править" (справа)
+                    // 1. Кнопка "Править" (справа)
                     if !viewModel.workouts.isEmpty {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             EditButton()
                         }
                     }
                     
-                    // 3. КНОПКА ДИСБАЛАНСА
+                    // 2. КНОПКА ДИСБАЛАНСА
                     // Показываем ТОЛЬКО если есть рекомендация (не nil)
                     if viewModel.getImbalanceRecommendation() != nil {
                         ToolbarItem(placement: .navigationBarTrailing) {
@@ -158,6 +147,23 @@ struct WorkoutView: View {
             emptyState
         } else {
             List {
+                // Кнопка "Начать тренировку" - на всю ширину
+                Section {
+                    Button {
+                        showAddWorkout = true
+                    } label: {
+                        Text("Start Workout")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                }
+                .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
+                .listRowBackground(Color.clear)
+                
                 // Статистика вверху
                 Section {
                     statsSection

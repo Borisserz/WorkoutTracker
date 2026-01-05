@@ -57,9 +57,9 @@ struct DetailedRecoveryView: View {
         }
         
         // СЛЕЖЕНИЕ ЗА ИЗМЕНЕНИЯМИ (Live Update)
-        // Здесь мы только считаем математику для UI. Сохранять в память не нужно, чтобы не было лагов.
+        // Используем дебаунс для оптимизации производительности при движении слайдера
         .onChange(of: localRecoveryHours) { _, newValue in
-            viewModel.calculateRecovery(hours: newValue)
+            viewModel.calculateRecovery(hours: newValue, debounce: true)
         }
     }
     
