@@ -12,5 +12,5 @@ struct CustomExerciseDefinition: Codable, Identifiable, Hashable {
     var name: String
     var category: String
     var targetedMuscles: [String]
-    var type: ExerciseType = .strength // <-- Добавляем тип сюда тоже
+    var type: ExerciseType = .strength
 }

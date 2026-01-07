@@ -5,16 +5,32 @@
 //
 
 internal import SwiftUI
+import UserNotifications
+import UIKit
 
 @main
 struct WorkoutTrackerApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = WorkoutViewModel()
     @StateObject private var notesManager = ExerciseNotesManager.shared
     @StateObject private var tutorialManager = TutorialManager()    // Флаг: прошел ли пользователь анбординг?
     
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @AppStorage("appearanceMode") private var appearanceMode: String = "system"
     
     @State private var showImportAlert = false
+    
+    // Вычисляемое свойство для цветовой схемы
+    private var colorScheme: ColorScheme? {
+        switch appearanceMode {
+        case "light":
+            return .light
+        case "dark":
+            return .dark
+        default:
+            return nil // nil означает системная тема
+        }
+    }
     
     init() {
 
@@ -38,7 +54,6 @@ struct WorkoutTrackerApp: App {
             }
             // --- ЛОВИМ ССЫЛКУ ИЛИ ФАЙЛ ---
             .onOpenURL { url in
-                print("🔗 Received URL: \(url)")
                 if viewModel.importPreset(from: url) {
                     showImportAlert = true
                 }
@@ -46,20 +61,28 @@ struct WorkoutTrackerApp: App {
             // Обработка открытия файлов через систему
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                 if let url = userActivity.webpageURL {
-                    print("🌐 Received web URL: \(url)")
                     if viewModel.importPreset(from: url) {
                         showImportAlert = true
                     }
                 }
             }
             // Алерт для пользователя
-            .alert("Template Imported! 🎉", isPresented: $showImportAlert) {
-                Button("OK", role: .cancel) { }
+            .alert(Text(LocalizedStringKey("Template Imported! 🎉")), isPresented: $showImportAlert) {
+                Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: {
-                Text("A new workout template has been added to your collection.")
+                Text(LocalizedStringKey("A new workout template has been added to your collection."))
             }
             // Анимация смены рутового экрана
             .animation(.default, value: hasCompletedOnboarding)
+            // Применяем выбранную тему
+            .preferredColorScheme(colorScheme)
+            // Сбрасываем бейдж и очищаем доставленные уведомления при входе в приложение
+            .onChange(of: scenePhase) { newPhase in
+                if newPhase == .active {
+                    UIApplication.shared.applicationIconBadgeNumber = 0
+                    UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+                }
+            }
         }
     }
 }

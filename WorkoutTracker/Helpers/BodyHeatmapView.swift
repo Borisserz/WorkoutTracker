@@ -19,9 +19,9 @@ struct BodyHeatmapView: View {
     
     var body: some View {
         VStack {
-            Picker("View", selection: $isFrontView) {
-                Text("Front").tag(true)
-                Text("Back").tag(false)
+            Picker(LocalizedStringKey("View"), selection: $isFrontView) {
+                Text(LocalizedStringKey("Front")).tag(true)
+                Text(LocalizedStringKey("Back")).tag(false)
             }
             .pickerStyle(.segmented)
             .padding()
@@ -40,12 +40,14 @@ struct BodyHeatmapView: View {
                     }
                 }()
                 
+                // Вычисляем автоматическое смещение для центрирования
+                let centeringOffset = calculateCenteringOffset(for: currentMuscles, isFront: isFrontView)
+                
                 ZStack {
                     // Сначала рисуем все мышцы
                     ForEach(currentMuscles) { muscle in
-                        drawMuscle(muscle)
+                        drawMuscle(muscle, centeringOffset: centeringOffset)
                     }
-                
                 }
                 .frame(width: canvasWidth, height: canvasHeight)
                 .scaleEffect(scale)
@@ -62,7 +64,7 @@ struct BodyHeatmapView: View {
                             Text(LocalizedStringKey(name))
                                 .font(.headline)
                             if count > 0 {
-                                Text("\(count) exercises")
+                                Text(LocalizedStringKey("\(count) exercises"))
                                     .font(.caption)
                                     .foregroundColor(.white.opacity(0.8))
                             }
@@ -86,19 +88,58 @@ struct BodyHeatmapView: View {
         }
     }
     
+    // Вычисляет автоматическое смещение для центрирования тела
+    func calculateCenteringOffset(for muscles: [MuscleGroup], isFront: Bool) -> CGFloat {
+        var minX: CGFloat = .greatestFiniteMagnitude
+        var maxX: CGFloat = -.greatestFiniteMagnitude
+        
+        // Вычисляем bounding box всех мышц
+        for muscle in muscles {
+            let path = combinedPath(from: muscle.paths)
+            let cgPath = path.cgPath
+            let boundingBox = cgPath.boundingBox
+            
+            // Пропускаем пустые пути
+            guard !boundingBox.isNull && !boundingBox.isEmpty else { continue }
+            
+            // Учитываем смещение для заднего вида
+            let baseOffset = isFront ? 0 : -backViewOffset
+            
+            // Учитываем специальное смещение для головы на заднем виде при вычислении bounding box
+            // Это нужно для правильного центрирования всего тела
+            let headOffset: CGFloat = (!isFront && muscle.slug == "head") ? 37.0 : 0.0
+            
+            let adjustedMinX = boundingBox.minX + baseOffset + headOffset
+            let adjustedMaxX = boundingBox.maxX + baseOffset + headOffset
+            
+            minX = min(minX, adjustedMinX)
+            maxX = max(maxX, adjustedMaxX)
+        }
+        
+        // Если не нашли ни одной мышцы, возвращаем 0
+        guard minX != .greatestFiniteMagnitude && maxX != -.greatestFiniteMagnitude else {
+            return 0
+        }
+        
+        // Вычисляем центр всех мышц
+        let bodyCenterX = (minX + maxX) / 2
+        
+        // Вычисляем центр canvas
+        let canvasCenterX = canvasWidth / 2
+        
+        // Возвращаем смещение, необходимое для центрирования
+        return canvasCenterX - bodyCenterX
+    }
+    
     @ViewBuilder
-    func drawMuscle(_ muscle: MuscleGroup) -> some View {
+    func drawMuscle(_ muscle: MuscleGroup, centeringOffset: CGFloat) -> some View {
         let rawPath = combinedPath(from: muscle.paths)
         
-        // Специальные смещения для центрирования женского тела
-        let femaleFrontOffset: CGFloat = 25   // Передняя часть смещена влево, нужно сдвинуть вправо
-        let femaleBackOffset: CGFloat = -10    // Задняя часть смещена вправо, нужно дополнительно сдвинуть влево
-        
         let baseXOffset: CGFloat = isFrontView ? 0 : -backViewOffset
-        let genderOffset: CGFloat = (userGender == "female") ? (isFrontView ? femaleFrontOffset : femaleBackOffset) : 0
+        var xOffset = baseXOffset + centeringOffset
         
-        var xOffset = baseXOffset + genderOffset
-        let finalXOffset = (isFrontView == false && muscle.slug == "head") ? xOffset + 37 : xOffset
+        // Специальное смещение для головы на заднем виде (если нужно)
+        let finalXOffset = (isFrontView == false && muscle.slug == "head") ? xOffset + 37.0 : xOffset
         
         let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
         let isSelected = selectedMuscleName == muscle.name
@@ -112,12 +153,11 @@ struct BodyHeatmapView: View {
             .onTapGesture {
                 withAnimation(.spring()) {
                     selectedMuscleName = muscle.name
-                    print("Tapped: \(muscle.name) (slug: \(muscle.slug))")
                 }
             }
     }
     
-    
+   
     // --- ИЗМЕНЕНИЕ 3: ГРАДАЦИЯ ЦВЕТА ---
     func colorForMuscle(_ slug: String, isSelected: Bool) -> Color {
         if isSelected { return Color.blue.opacity(0.8) }

@@ -18,7 +18,6 @@ class WidgetDataManager {
     static let suiteName = "group.com.borisdev.WorkoutTracker"
     static let key = "widget_data"
     
-    // ИСПРАВЛЕНИЕ: Теперь принимаем готовые точки, а не Workouts
     static func save(streak: Int, weeklyStats: [WidgetData.WeeklyPoint]) {
         
         let data = WidgetData(
@@ -31,7 +30,6 @@ class WidgetDataManager {
            let encoded = try? JSONEncoder().encode(data) {
             defaults.set(encoded, forKey: key)
             // Виджет обновится сам по своему таймлайну
-            print("💾 Widget Data Saved: \(streak) days streak")
         }
     }
     

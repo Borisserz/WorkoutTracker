@@ -46,7 +46,7 @@ struct DetailedRecoveryView: View {
             }
             .padding(.bottom)
         }
-        .navigationTitle("Muscle Status")
+        .navigationTitle(LocalizedStringKey("Muscle Status"))
         .background(Color(UIColor.systemGroupedBackground))
         
         // Инициализация при открытии экрана
@@ -66,14 +66,14 @@ struct DetailedRecoveryView: View {
     // MARK: - View Components
     private var settingsSection: some View {
             VStack(alignment: .leading, spacing: 10) {
-                Text("Recovery Settings").font(.headline)
+                Text(LocalizedStringKey("Recovery Settings")).font(.headline)
                 
                 VStack {
                     HStack {
-                        Text("Full Recovery Time:")
+                        Text(LocalizedStringKey("Full Recovery Time:"))
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text("\(Int(localRecoveryHours)) hours")
+                        Text(LocalizedStringKey("\(Int(localRecoveryHours)) hours"))
                             .bold()
                             .foregroundColor(.blue)
                     }
@@ -91,17 +91,16 @@ struct DetailedRecoveryView: View {
                     .tint(.blue)
                 }
                 .padding()
-                .background(Color.white)
+                .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(12)
                 
-                Text("Adjust this based on how fast you recover. Standard is 48h.")
+                Text(LocalizedStringKey("Adjust this based on how fast you recover. Standard is 48h."))
                     .font(.caption)
                     .foregroundColor(.gray)
                     .padding(.horizontal, 5)
             }
             .padding(.horizontal)
             .padding(.top)
-            // ИСПРАВЛЕНИЕ: Текст СВЕРХУ (alignment: .top) + отступ
             .spotlight(
                 step: .recoverySlider,
                 manager: tutorialManager,
@@ -118,7 +117,7 @@ struct DetailedRecoveryView: View {
     
     private var muscleListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Full Muscle Breakdown")
+            Text(LocalizedStringKey("Full Muscle Breakdown"))
                 .font(.headline)
                 .foregroundColor(.secondary)
                 .padding(.horizontal)
@@ -184,10 +183,10 @@ struct MuscleStatusRow: View {
     }
     
     private var statusText: String {
-        if percentage >= 100 { return "Fully Recovered" }
-        if percentage >= 80 { return "Ready to Train" }
-        if percentage >= 50 { return "Recovering..." }
-        return "Exhausted"
+        if percentage >= 100 { return NSLocalizedString("Fully Recovered", comment: "") }
+        if percentage >= 80 { return NSLocalizedString("Ready to Train", comment: "") }
+        if percentage >= 50 { return NSLocalizedString("Recovering...", comment: "") }
+        return NSLocalizedString("Exhausted", comment: "")
     }
 }
 

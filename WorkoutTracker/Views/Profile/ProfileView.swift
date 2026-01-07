@@ -6,8 +6,11 @@ struct ProfileView: View {
     
     // --- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ---
     @AppStorage("userName") private var userName = "Fitness Enthusiast"
-    @AppStorage("userBodyWeight") private var userBodyWeight = 75.0
+    @AppStorage("userBodyWeight") private var userBodyWeight = 75.0  // Хранится в кг
     @AppStorage("userGender") private var userGender = "male" // "male" or "female"
+    
+    @StateObject private var unitsManager = UnitsManager.shared
+    @StateObject private var weightManager = WeightTrackingManager.shared
     
     // Состояния для редактирования
     @State private var isEditingName = false
@@ -16,19 +19,20 @@ struct ProfileView: View {
     @State private var tempWeight = ""
     
     @State private var selectedAchievement: Achievement?
+    @State private var showingWeightHistory = false
     
-    // Ачивки
-    var achievements: [Achievement] {
-        let streak = viewModel.calculateWorkoutStreak()
-        return AchievementCalculator.calculateAchievements(workouts: viewModel.workouts, streak: streak)
-    }
-    
-    // Рекорды
-    var personalRecords: [WorkoutViewModel.BestResult] {
-        return viewModel.getAllPersonalRecords()
-    }
+    // Кешированные значения для производительности
+    @State private var cachedAchievements: [Achievement] = []
+    @State private var cachedPersonalRecords: [WorkoutViewModel.BestResult] = []
     
     let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
+    
+    // Функция для обновления кеша
+    private func updateCache() {
+        let streak = viewModel.calculateWorkoutStreak()
+        cachedAchievements = AchievementCalculator.calculateAchievements(workouts: viewModel.workouts, streak: streak)
+        cachedPersonalRecords = viewModel.getAllPersonalRecords()
+    }
     
     var body: some View {
         NavigationStack {
@@ -50,20 +54,45 @@ struct ProfileView: View {
                                 Text(userName).font(.title2).bold()
                                 Image(systemName: "pencil").font(.caption).foregroundColor(.blue)
                             }
-                           
+                            .onTapGesture {
+                                tempName = userName
+                                isEditingName = true
+                            }
                             
-                            // ВЕС (Кликабельный)
-                            HStack {
-                                Text("Weight: \(String(format: "%.1f", userBodyWeight)) kg")
-                                    .font(.subheadline).foregroundColor(.secondary)
-                                    .padding(.horizontal, 10).padding(.vertical, 4)
-                                    .background(Color.gray.opacity(0.1)).cornerRadius(8)
+                            // ВЕС под ником (Кликабельный)
+                            let convertedWeight = unitsManager.convertFromKilograms(userBodyWeight)
+                            Text("\(LocalizationHelper.shared.formatDecimal(convertedWeight)) \(unitsManager.weightUnitString())")
+                                .font(.title3)
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
+                                .onTapGesture {
+                                    tempWeight = LocalizationHelper.shared.formatDecimal(convertedWeight)
+                                    isEditingWeight = true
+                                }
+                            
+                            // Кнопка просмотра истории веса
+                            Button {
+                                showingWeightHistory = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "chart.line.uptrend.xyaxis")
+                                    Text(LocalizedStringKey("View Weight History"))
+                                }
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
                             }
                             
                             // ПЕРЕКЛЮЧАТЕЛЬ ПОЛА
-                            Picker("Gender", selection: $userGender) {
-                                Text("Male").tag("male")
-                                Text("Female").tag("female")
+                            Picker(LocalizedStringKey("Gender"), selection: $userGender) {
+                                Text(LocalizedStringKey("Male")).tag("male")
+                                Text(LocalizedStringKey("Female")).tag("female")
                             }
                             .pickerStyle(.segmented)
                             .frame(width: 200)
@@ -74,10 +103,10 @@ struct ProfileView: View {
                     
                     // 2. СЕТКА АЧИВОК
                     VStack(alignment: .leading) {
-                        Text("Achievements").font(.title3).bold().padding(.horizontal)
+                        Text(LocalizedStringKey("Achievements")).font(.title3).bold().padding(.horizontal)
                         
                         LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(achievements) { achievement in
+                            ForEach(cachedAchievements) { achievement in
                                 AchievementBadge(achievement: achievement).onTapGesture {
                                    selectedAchievement = achievement
                                     
@@ -92,12 +121,12 @@ struct ProfileView: View {
                     Divider()
                     
                     // 3. ЛИЧНЫЕ РЕКОРДЫ (НОВАЯ СЕКЦИЯ)
-                    if !personalRecords.isEmpty {
+                    if !cachedPersonalRecords.isEmpty {
                         VStack(alignment: .leading, spacing: 15) {
-                            Text("Personal Records").font(.title3).bold().padding(.horizontal)
+                            Text(LocalizedStringKey("Personal Records")).font(.title3).bold().padding(.horizontal)
                             
                             VStack(spacing: 0) {
-                                ForEach(personalRecords) { record in
+                                ForEach(cachedPersonalRecords) { record in
                                     HStack {
                                         // Иконка типа
                                         Image(systemName: getIcon(for: record.type))
@@ -115,7 +144,7 @@ struct ProfileView: View {
                                     }
                                     .padding()
                                     
-                                    if record.id != personalRecords.last?.id {
+                                    if record.id != cachedPersonalRecords.last?.id {
                                         Divider().padding(.leading, 50)
                                     }
                                 }
@@ -125,34 +154,56 @@ struct ProfileView: View {
                             .padding(.horizontal)
                         }
                     } else {
-                        Text("Complete workouts to see your records!")
+                        Text(LocalizedStringKey("Complete workouts to see your records!"))
                             .font(.caption).foregroundColor(.secondary)
                     }
                 }
                 .padding(.bottom, 40)
             }
-            .navigationTitle("Profile")
+            .navigationTitle(LocalizedStringKey("Profile"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Close") { dismiss() }
+                    Button(LocalizedStringKey("Close")) { dismiss() }
                 }
             }
             // АЛЕРТЫ
-            .alert("Change Name", isPresented: $isEditingName) {
-                TextField("Name", text: $tempName)
-                Button("Save") { if !tempName.isEmpty { userName = tempName } }
-                Button("Cancel", role: .cancel) { }
+            .alert(LocalizedStringKey("Change Name"), isPresented: $isEditingName) {
+                TextField(LocalizedStringKey("Name"), text: $tempName)
+                Button(LocalizedStringKey("Save")) { if !tempName.isEmpty { userName = tempName } }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) { }
             }
-            .alert("Update Body Weight", isPresented: $isEditingWeight) {
-                TextField("Weight (kg)", text: $tempWeight).keyboardType(.decimalPad)
-                Button("Save") { if let val = Double(tempWeight) { userBodyWeight = val } }
-                Button("Cancel", role: .cancel) { }
+            .alert(LocalizedStringKey("Update Body Weight"), isPresented: $isEditingWeight) {
+                TextField(LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"), text: $tempWeight).keyboardType(.decimalPad)
+                Button(LocalizedStringKey("Save")) { 
+                    if let val = Double(tempWeight) { 
+                        // Конвертируем из выбранных единиц в кг для сохранения
+                        let weightInKg = unitsManager.convertToKilograms(val)
+                        userBodyWeight = weightInKg
+                        
+                        // Автоматически сохраняем запись в историю веса
+                        weightManager.addWeightEntry(weight: weightInKg, date: Date())
+                    }
+                }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) { }
+            }
+            .sheet(isPresented: $showingWeightHistory) {
+                WeightHistoryView()
+            }
+            .onAppear {
+                // Инициализируем первый вес из профиля, если истории еще нет
+                weightManager.initializeFirstWeightIfNeeded(from: userBodyWeight)
+                // Обновляем кеш при появлении view
+                updateCache()
+            }
+            .onChange(of: viewModel.workouts.count) { _, _ in
+                // Обновляем кеш когда изменяется количество тренировок
+                updateCache()
             }
             .alert(item: $selectedAchievement) { achievement in
                 Alert(
                     title: Text(achievement.title),
                     message: Text(achievement.description + "\n\n" + (achievement.isUnlocked ? "✅ Unlocked" : "🔒 Locked")),
-                    dismissButton: .default(Text("Cool!"))
+                    dismissButton: .default(Text(LocalizedStringKey("Cool!")))
                 )
             }
         }

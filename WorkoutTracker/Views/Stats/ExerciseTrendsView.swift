@@ -13,7 +13,7 @@ struct ExerciseTrendsView: View {
     
     var body: some View {
         if trends.isEmpty {
-            Text("No exercise trends available")
+            Text(LocalizedStringKey("No exercise trends available"))
                 .foregroundColor(.secondary)
                 .frame(height: 100, alignment: .center)
         } else {
@@ -89,7 +89,7 @@ struct ExerciseTrendRow: View {
                     .font(.headline)
                     .foregroundColor(trend.trend.color)
                 
-                Text(trend.trend == .growing ? "↑ Growing" : trend.trend == .declining ? "↓ Declining" : "→ Stable")
+                Text(trend.trend == .growing ? LocalizedStringKey("↑ Growing") : trend.trend == .declining ? LocalizedStringKey("↓ Declining") : LocalizedStringKey("→ Stable"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }

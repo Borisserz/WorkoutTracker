@@ -9,6 +9,7 @@ internal import SwiftUI
 
 struct WorkoutView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
+    @StateObject private var unitsManager = UnitsManager.shared
     
     // Состояние для открытия шторки с советом
     @State private var showImbalanceInfo = false
@@ -22,8 +23,13 @@ struct WorkoutView: View {
     @State private var selectedFilter: FilterPeriod = .all
     @State private var sortOption: SortOption = .dateDescending
     
+    // Удаление с предупреждением
+    @State private var showDeleteAlert = false
+    @State private var workoutsToDelete: [Workout] = []
+    
     enum FilterPeriod: String, CaseIterable {
         case all = "All"
+        case favorites = "Favorites"
         case week = "Last Week"
         case month = "Last Month"
         case threeMonths = "Last 3 Months"
@@ -49,6 +55,8 @@ struct WorkoutView: View {
         switch selectedFilter {
         case .all:
             break
+        case .favorites:
+            workouts = workouts.filter { $0.isFavorite }
         case .week:
             if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) {
                 workouts = workouts.filter { $0.date >= weekAgo }
@@ -94,7 +102,7 @@ struct WorkoutView: View {
     var body: some View {
         NavigationStack {
             content
-                .navigationTitle("History")
+                .navigationTitle(LocalizedStringKey("History"))
                 // --- НАВИГАЦИЯ ---
                 .navigationDestination(isPresented: $navigateToNewWorkout) {
                     if !viewModel.workouts.isEmpty {
@@ -137,6 +145,20 @@ struct WorkoutView: View {
                             .presentationDragIndicator(.visible)
                     }
                 }
+                .alert(LocalizedStringKey("Delete Workout?"), isPresented: $showDeleteAlert) {
+                    Button(LocalizedStringKey("Delete"), role: .destructive) {
+                        deleteWorkouts()
+                    }
+                    Button(LocalizedStringKey("Cancel"), role: .cancel) {
+                        workoutsToDelete = []
+                    }
+                } message: {
+                    if workoutsToDelete.count == 1 {
+                        Text(LocalizedStringKey("Are you sure you want to delete '\(workoutsToDelete.first?.title ?? "")'? This action cannot be undone."))
+                    } else {
+                        Text(LocalizedStringKey("Are you sure you want to delete \(workoutsToDelete.count) workouts? This action cannot be undone."))
+                    }
+                }
         }
     }
     
@@ -152,7 +174,7 @@ struct WorkoutView: View {
                     Button {
                         showAddWorkout = true
                     } label: {
-                        Text("Start Workout")
+                        Text(LocalizedStringKey("Start Workout"))
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -185,10 +207,10 @@ struct WorkoutView: View {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 50))
                                 .foregroundColor(.gray.opacity(0.3))
-                            Text("No workouts found")
+                            Text(LocalizedStringKey("No workouts found"))
                                 .font(.headline)
                                 .foregroundColor(.secondary)
-                            Text("Try adjusting your search or filters")
+                            Text(LocalizedStringKey("Try adjusting your search or filters"))
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
@@ -216,7 +238,11 @@ struct WorkoutView: View {
                             .listRowSeparator(.hidden)
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         }
-                        .onDelete(perform: deleteWorkout)
+                        .onDelete { indexSet in
+                            let toDelete = indexSet.map { filteredWorkouts[$0] }
+                            workoutsToDelete = toDelete
+                            showDeleteAlert = true
+                        }
                     }
                 }
                 .listRowInsets(EdgeInsets())
@@ -236,16 +262,16 @@ struct WorkoutView: View {
         return VStack(spacing: 12) {
             HStack(spacing: 12) {
                 StatCard(
-                    title: "Avg Duration",
+                    title: LocalizedStringKey("Avg Duration"),
                     value: "\(avgDuration)",
-                    subtitle: "min",
+                    subtitle: LocalizedStringKey("min"),
                     icon: "stopwatch"
                 )
                 
                 StatCard(
-                    title: "Avg Volume",
-                    value: "\(avgVolume)",
-                    subtitle: "kg",
+                    title: LocalizedStringKey("Avg Volume"),
+                    value: "\(Int(unitsManager.convertFromKilograms(Double(avgVolume))))",
+                    subtitle: LocalizedStringKey(unitsManager.weightUnitString()),
                     icon: "scalemass"
                 )
             }
@@ -262,7 +288,7 @@ struct WorkoutView: View {
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.secondary)
-                TextField("Search workouts...", text: $searchText)
+                TextField(LocalizedStringKey("Search workouts..."), text: $searchText)
                     .textFieldStyle(.plain)
             }
             .padding()
@@ -274,14 +300,14 @@ struct WorkoutView: View {
             HStack(spacing: 12) {
                 Menu {
                     ForEach(FilterPeriod.allCases, id: \.self) { period in
-                        Button(period.rawValue) {
+                        Button(LocalizedStringKey(period.rawValue)) {
                             selectedFilter = period
                         }
                     }
                 } label: {
                     HStack {
                         Image(systemName: "calendar")
-                        Text(selectedFilter.rawValue)
+                        Text(LocalizedStringKey(selectedFilter.rawValue))
                     }
                     .font(.subheadline)
                     .padding(.horizontal, 12)
@@ -319,25 +345,25 @@ struct WorkoutView: View {
             Image(systemName: "dumbbell.fill")
                 .font(.system(size: 80))
                 .foregroundColor(.gray.opacity(0.3))
-            Text("No workouts yet")
+            Text(LocalizedStringKey("No workouts yet"))
                 .font(.title2)
                 .bold()
                 .foregroundColor(.secondary)
-            Text("Start your first workout from the Overview tab!")
+            Text(LocalizedStringKey("Start your first workout from the Overview tab!"))
                 .font(.caption)
                 .foregroundColor(.gray)
         }
     }
     
     
-    func deleteWorkout(at offsets: IndexSet) {
+    func deleteWorkouts() {
         withAnimation {
-            let workoutsToDelete = offsets.map { filteredWorkouts[$0] }
             for workout in workoutsToDelete {
                 if let index = viewModel.workouts.firstIndex(where: { $0.id == workout.id }) {
                     viewModel.workouts.remove(at: index)
                 }
             }
+            workoutsToDelete = []
         }
     }
 }
@@ -370,7 +396,7 @@ struct ImbalanceDetailSheet: View {
             
             Spacer()
             
-            Button("Got it, Coach!") {
+            Button(LocalizedStringKey("Got it, Coach!")) {
                 dismiss()
             }
             .buttonStyle(.bordered)
@@ -412,11 +438,11 @@ struct WorkoutRow: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
-                Text("\(workout.duration) min")
+                Text(LocalizedStringKey("\(workout.duration) min"))
                     .font(.subheadline)
                     .bold()
                 
-                Text("Effort: \(workout.effortPercentage)%")
+                Text(LocalizedStringKey("Effort: \(workout.effortPercentage)%"))
                     .font(.caption2)
                     .fontWeight(.bold)
                     .padding(.horizontal, 6)
@@ -435,9 +461,9 @@ struct WorkoutRow: View {
 
 // Карточка статистики
 struct StatCard: View {
-    let title: String
+    let title: LocalizedStringKey
     let value: String
-    let subtitle: String
+    let subtitle: LocalizedStringKey
     let icon: String
     
     var body: some View {

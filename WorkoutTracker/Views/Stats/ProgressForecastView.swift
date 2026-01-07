@@ -13,7 +13,7 @@ struct ProgressForecastView: View {
     
     var body: some View {
         if forecasts.isEmpty {
-            Text("Not enough data for forecasting")
+            Text(LocalizedStringKey("Not enough data for forecasting"))
                 .foregroundColor(.secondary)
                 .frame(height: 100, alignment: .center)
         } else {
@@ -51,10 +51,10 @@ struct ProgressForecastRow: View {
             
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Current")
+                    Text(LocalizedStringKey("Current"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                    Text("\(Int(forecast.currentMax)) kg")
+                    Text(LocalizedStringKey("\(Int(forecast.currentMax)) kg"))
                         .font(.subheadline)
                         .bold()
                 }
@@ -63,10 +63,10 @@ struct ProgressForecastRow: View {
                     .foregroundColor(.blue)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Predicted")
+                    Text(LocalizedStringKey("Predicted"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                    Text("\(Int(forecast.predictedMax)) kg")
+                    Text(LocalizedStringKey("\(Int(forecast.predictedMax)) kg"))
                         .font(.subheadline)
                         .bold()
                         .foregroundColor(.blue)
@@ -75,11 +75,11 @@ struct ProgressForecastRow: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("+\(Int(forecast.predictedMax - forecast.currentMax)) kg")
+                    Text(LocalizedStringKey("+\(Int(forecast.predictedMax - forecast.currentMax)) kg"))
                         .font(.caption)
                         .bold()
                         .foregroundColor(.green)
-                    Text("in \(forecast.timeframe)")
+                    Text(LocalizedStringKey("in \(forecast.timeframe)"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }

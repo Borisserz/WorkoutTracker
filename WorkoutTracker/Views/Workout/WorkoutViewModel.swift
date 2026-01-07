@@ -99,6 +99,25 @@ class WorkoutViewModel: ObservableObject {
     @Published var isRestTimerActive: Bool = false
     @Published var restTimerFinished: Bool = false
     
+    // MARK: - Error Handling
+    
+    /// Модель ошибки для отображения пользователю
+    struct AppError: Identifiable {
+        let id = UUID()
+        let title: String
+        let message: String
+    }
+    
+    /// Ошибка для отображения пользователю
+    @Published var currentError: AppError?
+    
+    /// Показывает ошибку пользователю
+    func showError(title: String, message: String) {
+        DispatchQueue.main.async {
+            self.currentError = AppError(title: title, message: message)
+        }
+    }
+    
     // MARK: - Private Properties
     
     private var restEndTime: Date?
@@ -116,6 +135,16 @@ class WorkoutViewModel: ObservableObject {
         loadCustomExercises()
         loadDeletedDefaultExercises()
         calculateRecovery()
+    }
+    
+    deinit {
+        // Критично: инвалидируем таймер при деинициализации, чтобы избежать утечки памяти
+        restTimer?.invalidate()
+        restTimer = nil
+        
+        // Отменяем фоновые задачи расчета восстановления
+        recoveryCalculationTask?.cancel()
+        recoveryCalculationCancellable?.cancel()
     }
     
     // MARK: - 1. Statistics & Records Logic
@@ -151,7 +180,7 @@ class WorkoutViewModel: ObservableObject {
             var valString = ""
             switch data.type {
             case .strength: valString = "\(Int(data.result)) kg"
-            case .cardio:   valString = String(format: "%.2f km", data.result)
+            case .cardio:   valString = "\(LocalizationHelper.shared.formatTwoDecimals(data.result)) km"
             case .duration:
                 let m = Int(data.result) / 60
                 let s = Int(data.result) % 60
@@ -446,6 +475,7 @@ class WorkoutViewModel: ObservableObject {
     
     func finishTimer() {
         restTimer?.invalidate()
+        restTimer = nil
         restTimerFinished = true
         restEndTime = nil
         
@@ -622,16 +652,51 @@ class WorkoutViewModel: ObservableObject {
     }
     
     private func loadWorkouts() {
-           let loaded = DataManager.shared.loadWorkouts()
-           // Если загружать нечего, оставляем массив пустым.
-           // Не подгружаем Workout.examples, чтобы туториал видел "пустое состояние".
-           self.workouts = loaded
-       }
+        DataManager.shared.loadWorkouts { [weak self] result in
+            switch result {
+            case .success(let workouts):
+                DispatchQueue.main.async {
+                    self?.workouts = workouts
+                }
+            case .failure(let error):
+                // Ошибка загрузки критична только если у нас уже были данные
+                if !(self?.workouts.isEmpty ?? true) {
+                    self?.showError(
+                        title: NSLocalizedString("Failed to Load Workouts", comment: "Error title when loading workouts fails"),
+                        message: String(format: NSLocalizedString("Could not load your workout history. Some data may be missing.\n\nError: %@", comment: "Error message when loading workouts fails"), error.localizedDescription)
+                    )
+                }
+                // При первом запуске ошибка нормальна (файла еще нет)
+            }
+        }
+    }
     private func saveWorkouts() {
         // Не сохраняем дефолтные примеры
         let isExample = workouts.count == Workout.examples.count && workouts.map{$0.id} == Workout.examples.map{$0.id}
         if !isExample {
-            DataManager.shared.saveWorkouts(workouts)
+            DataManager.shared.saveWorkouts(workouts) { [weak self] error in
+                self?.showError(
+                    title: NSLocalizedString("Failed to Save Workouts", comment: "Error title when saving workouts fails"),
+                    message: String(format: NSLocalizedString("Your workout data could not be saved. Please try again or restart the app.\n\nError: %@", comment: "Error message when saving workouts fails"), error.localizedDescription)
+                )
+            }
+            
+            // Автоматическое резервное копирование
+            performAutoBackupIfNeeded()
+        }
+    }
+    
+    /// Выполняет автоматическое резервное копирование, если это необходимо
+    private func performAutoBackupIfNeeded() {
+        let backupManager = BackupManager.shared
+        
+        // Проверяем, нужно ли создавать бэкап
+        guard backupManager.shouldCreateBackup() else { return }
+        
+        // Выполняем бэкап в фоновом потоке
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            backupManager.createBackup(workouts: self.workouts, viewModel: self)
         }
     }
     
@@ -690,8 +755,6 @@ class WorkoutViewModel: ObservableObject {
            // Если шаблонов нет (первый запуск), мы берем примеры из Workout.examples
            // и превращаем их в шаблоны (WorkoutPreset).
            if self.presets.isEmpty {
-               print("Creating default presets...")
-               
                // Берем твои старые примеры тренировок
                let examples = Workout.examples
                
@@ -786,6 +849,15 @@ class WorkoutViewModel: ObservableObject {
     // MARK: - 9. Import / Export
     
     func generateShareLink(for preset: WorkoutPreset) -> URL? {
+        // Проверка интернет-соединения перед экспортом через URL
+        guard NetworkManager.shared.checkConnection() else {
+            showError(
+                title: "No Internet Connection",
+                message: "An internet connection is required to generate a share link. Please check your network settings and try again."
+            )
+            return nil
+        }
+        
         do {
             let jsonData = try JSONEncoder().encode(preset)
             let compressedData = try (jsonData as NSData).compressed(using: .zlib) as Data
@@ -796,7 +868,10 @@ class WorkoutViewModel: ObservableObject {
             components.queryItems = [URLQueryItem(name: "data", value: base64String)]
             return components.url
         } catch {
-            print("❌ Export error: \(error)")
+            showError(
+                title: "Export Failed",
+                message: "Could not generate share link for the workout template.\n\nError: \(error.localizedDescription)"
+            )
             return nil
         }
     }
@@ -819,9 +894,94 @@ class WorkoutViewModel: ObservableObject {
             
             return tempURL
         } catch {
-            print("❌ Export to file error: \(error)")
+            showError(
+                title: "Export Failed",
+                message: "Could not export the workout template to file.\n\nError: \(error.localizedDescription)"
+            )
             return nil
         }
+    }
+    
+    func exportPresetToCSV(_ preset: WorkoutPreset) -> URL? {
+        var csvLines: [String] = []
+        
+        // Заголовок
+        csvLines.append("# Workout Template Export")
+        csvLines.append("# Preset Name: \(preset.name)")
+        csvLines.append("# Icon: \(preset.icon)")
+        csvLines.append("# Exercise Count: \(preset.exercises.count)")
+        csvLines.append("")
+        
+        // Основная информация о пресете
+        csvLines.append("## PRESET INFO")
+        csvLines.append("Preset ID,Name,Icon,Exercise Count")
+        csvLines.append("\(preset.id.uuidString),\"\(escapeCSV(preset.name))\",\(preset.icon),\(preset.exercises.count)")
+        csvLines.append("")
+        
+        // Упражнения
+        csvLines.append("## EXERCISES")
+        csvLines.append("Exercise ID,Name,Muscle Group,Type,Effort,Is Completed,Set Count")
+        
+        for exercise in preset.exercises {
+            csvLines.append("\(exercise.id.uuidString),\"\(escapeCSV(exercise.name))\",\(exercise.muscleGroup),\(exercise.type.rawValue),\(exercise.effort),\(exercise.isCompleted),\(exercise.setsList.count)")
+        }
+        csvLines.append("")
+        
+        // Сеты
+        csvLines.append("## SETS")
+        csvLines.append("Set ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (km),Time (sec),Is Completed,Set Type")
+        
+        for exercise in preset.exercises {
+            for set in exercise.setsList {
+                let weightStr = set.weight != nil ? String(set.weight!) : ""
+                let repsStr = set.reps != nil ? String(set.reps!) : ""
+                let distanceStr = set.distance != nil ? String(set.distance!) : ""
+                let timeStr = set.time != nil ? String(set.time!) : ""
+                
+                csvLines.append("\(set.id.uuidString),\(exercise.id.uuidString),\"\(escapeCSV(exercise.name))\",\(set.index),\(weightStr),\(repsStr),\(distanceStr),\(timeStr),\(set.isCompleted),\(set.type.rawValue)")
+            }
+        }
+        
+        // Создаем CSV файл
+        do {
+            let csvContent = csvLines.joined(separator: "\n")
+            guard let csvData = csvContent.data(using: .utf8) else {
+                showError(
+                    title: "Export Failed",
+                    message: "Could not convert CSV content to data."
+                )
+                return nil
+            }
+            
+            // Очищаем имя файла от недопустимых символов
+            let sanitizedName = preset.name
+                .replacingOccurrences(of: "/", with: "-")
+                .replacingOccurrences(of: "\\", with: "-")
+                .replacingOccurrences(of: ":", with: "-")
+            
+            let tempURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent("\(sanitizedName).csv")
+            
+            try csvData.write(to: tempURL)
+            
+            return tempURL
+        } catch {
+            showError(
+                title: "Export Failed",
+                message: "Could not export the workout template to CSV file.\n\nError: \(error.localizedDescription)"
+            )
+            return nil
+        }
+    }
+    
+    /// Экранирует специальные символы для CSV
+    private func escapeCSV(_ string: String) -> String {
+        // Если строка содержит запятую, кавычки или перенос строки, оборачиваем в кавычки
+        if string.contains(",") || string.contains("\"") || string.contains("\n") {
+            // Экранируем кавычки удвоением
+            return string.replacingOccurrences(of: "\"", with: "\"\"")
+        }
+        return string
     }
     
     func importPreset(from url: URL) -> Bool {
@@ -836,12 +996,16 @@ class WorkoutViewModel: ObservableObject {
     }
     
     private func importPresetFromFile(_ fileURL: URL) -> Bool {
-        guard let jsonData = try? Data(contentsOf: fileURL) else {
-            print("❌ Failed to read file data")
+        do {
+            let jsonData = try Data(contentsOf: fileURL)
+            return processImportedData(jsonData)
+        } catch {
+            showError(
+                title: "Import Failed",
+                message: "Could not read the workout template file. Please make sure the file is valid.\n\nError: \(error.localizedDescription)"
+            )
             return false
         }
-        
-        return processImportedData(jsonData)
     }
     
     private func importPresetFromURL(_ url: URL) -> Bool {
@@ -888,7 +1052,10 @@ class WorkoutViewModel: ObservableObject {
             }
             return true
         } catch {
-            print("❌ Import JSON Error: \(error)")
+            showError(
+                title: "Import Failed",
+                message: "The workout template file is invalid or corrupted. Please check the file and try again.\n\nError: \(error.localizedDescription)"
+            )
             return false
         }
     }

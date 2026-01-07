@@ -57,10 +57,6 @@ class TestDataGenerator {
         var allWorkouts: [Workout] = []
         var currentDate = start
         
-        print("🔄 Начинаю генерацию тестовых данных...")
-        print("📅 Период: \(start.formatted(date: .long, time: .omitted)) - \(Date().formatted(date: .long, time: .omitted))")
-        print("💪 Всего тренировок будет создано: \(totalWorkouts)")
-        
         // Генерируем тренировки на протяжении 2 лет
         var workoutNumber = 0
         
@@ -82,21 +78,128 @@ class TestDataGenerator {
             }
             
             workoutNumber += 1
-            
-            // Прогресс-бар в консоли каждые 50 тренировок
-            if workoutNumber % 50 == 0 {
-                print("✅ Сгенерировано тренировок: \(workoutNumber)/\(totalWorkouts)")
-            }
         }
         
         // Сохраняем данные
         DataManager.shared.saveWorkouts(allWorkouts)
+    }
+    
+    /// Генерирует тестовые данные за 2026 год (будущий год)
+    static func generate2026TestData() {
+        // Создаем дату начала 2026 года
+        var components = DateComponents()
+        components.year = 2026
+        components.month = 1
+        components.day = 1
+        guard let start2026 = Calendar.current.date(from: components) else {
+            return
+        }
         
-        print("✅ Готово! Создано \(allWorkouts.count) тренировок")
-        print("📊 Статистика:")
-        print("   - Первая тренировка: \(allWorkouts.first?.date.formatted(date: .long, time: .omitted) ?? "N/A")")
-        print("   - Последняя тренировка: \(allWorkouts.last?.date.formatted(date: .long, time: .omitted) ?? "N/A")")
-        print("   - Всего упражнений: \(allWorkouts.reduce(0) { $0 + $1.exercises.count })")
+        // Генерируем тренировки на весь 2026 год
+        var allWorkouts: [Workout] = []
+        let workoutsFor2026 = workoutsPerWeek * weeksInYear // 156 тренировок за год
+        
+        var workoutNumber = 0
+        var baseWorkoutIndex = totalWorkouts // Продолжаем нумерацию с конца прошлых данных
+        
+        while workoutNumber < workoutsFor2026 {
+            // 3 тренировки в неделю (например: понедельник, среда, пятница)
+            let dayOffset = (workoutNumber % workoutsPerWeek) * 2 // 0, 2, 4 (пн, ср, пт)
+            let weekOffset = workoutNumber / workoutsPerWeek
+            let daysToAdd = weekOffset * 7 + dayOffset
+            
+            if let workoutDate = Calendar.current.date(byAdding: .day, value: daysToAdd, to: start2026) {
+                // Проверяем, что не вышли за пределы 2026 года
+                let calendar = Calendar.current
+                if calendar.component(.year, from: workoutDate) > 2026 {
+                    break
+                }
+                
+                let workout = generateWorkout(for: workoutDate, workoutIndex: baseWorkoutIndex + workoutNumber)
+                allWorkouts.append(workout)
+            }
+            
+            workoutNumber += 1
+        }
+        
+        // Используем семафор для синхронизации асинхронной загрузки
+        let semaphore = DispatchSemaphore(value: 0)
+        var existingWorkouts: [Workout] = []
+        
+        // Загружаем существующие тренировки
+        DataManager.shared.loadWorkouts { result in
+            switch result {
+            case .success(let workouts):
+                existingWorkouts = workouts
+            case .failure:
+                existingWorkouts = []
+            }
+            semaphore.signal()
+        }
+        
+        // Ждем завершения загрузки
+        semaphore.wait()
+        
+        // Объединяем существующие и новые тренировки
+        var combinedWorkouts = existingWorkouts
+        combinedWorkouts.append(contentsOf: allWorkouts)
+        // Сортируем по дате
+        combinedWorkouts.sort { $0.date < $1.date }
+        
+        // Сохраняем объединенные данные
+        DataManager.shared.saveWorkouts(combinedWorkouts)
+    }
+    
+    /// Генерирует тестовые данные веса для графика
+    /// Генерирует данные за последние 2 года с реалистичными колебаниями
+    static func generateWeightTestData() {
+        let weightManager = WeightTrackingManager.shared
+        
+        // Начальный вес (в кг)
+        let startWeight = 75.0
+        
+        // Генерируем данные за последние 2 года (730 дней)
+        let daysToGenerate = 730
+        var currentDate = Calendar.current.date(byAdding: .day, value: -daysToGenerate, to: Date()) ?? Date()
+        
+        var weightEntries: [WeightEntry] = []
+        var currentWeight = startWeight
+        
+        // Генерируем записи примерно раз в 3-7 дней (не каждый день)
+        var dayOffset = 0
+        
+        while dayOffset < daysToGenerate {
+            if let entryDate = Calendar.current.date(byAdding: .day, value: dayOffset, to: currentDate) {
+                // Добавляем реалистичные колебания веса
+                // Общий тренд: медленное снижение веса (похудение)
+                let progressFactor = Double(dayOffset) / Double(daysToGenerate) // 0.0 до 1.0
+                let targetWeight = startWeight - 5.0 * progressFactor // Потеря 5 кг за 2 года
+                
+                // Ежедневные колебания: ±0.3 кг
+                let dailyVariation = Double.random(in: -0.3...0.3)
+                
+                // Недельные колебания: ±0.5 кг
+                let weeklyVariation = sin(Double(dayOffset) / 7.0 * 2 * .pi) * 0.5
+                
+                // Случайные скачки: иногда ±1 кг
+                let randomSpike = Bool.random() && Int.random(in: 1...20) == 1 ? Double.random(in: -1.0...1.0) : 0.0
+                
+                currentWeight = targetWeight + dailyVariation + weeklyVariation + randomSpike
+                
+                // Ограничиваем разумными значениями
+                currentWeight = max(65.0, min(85.0, currentWeight))
+                
+                weightEntries.append(WeightEntry(date: entryDate, weight: currentWeight))
+            }
+            
+            // Следующая запись через 3-7 дней
+            dayOffset += Int.random(in: 3...7)
+        }
+        
+        // Добавляем записи в менеджер веса
+        for entry in weightEntries {
+            weightManager.addWeightEntry(weight: entry.weight, date: entry.date)
+        }
     }
     
     // MARK: - Workout Generation

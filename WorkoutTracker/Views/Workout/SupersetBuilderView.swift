@@ -21,6 +21,7 @@ struct SupersetBuilderView: View {
     
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WorkoutViewModel
+    @StateObject private var unitsManager = UnitsManager.shared
     
     // Если редактируем — передаем сюда существующий супер-сет
     @State var existingSuperset: Exercise?
@@ -32,6 +33,8 @@ struct SupersetBuilderView: View {
     @State private var showExerciseSelector = false
     @State private var exerciseToEdit: Exercise?
     @State private var showDeleteAlert = false
+    @State private var showDeleteExerciseAlert = false
+    @State private var exercisesToDelete: IndexSet?
     
     // MARK: - Callbacks
     
@@ -54,7 +57,7 @@ struct SupersetBuilderView: View {
                     deleteButton
                 }
             }
-            .navigationTitle(existingSuperset == nil ? "New Superset" : "Edit Superset")
+            .navigationTitle(existingSuperset == nil ? LocalizedStringKey("New Superset") : LocalizedStringKey("Edit Superset"))
             .onAppear {
                 // Загружаем данные при открытии
                 if let ex = existingSuperset {
@@ -62,14 +65,36 @@ struct SupersetBuilderView: View {
                 }
             }
             // --- Modals & Alerts ---
-            .alert("Delete Superset?", isPresented: $showDeleteAlert) {
-                Button("Delete", role: .destructive) {
+            .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteAlert) {
+                Button(LocalizedStringKey("Delete"), role: .destructive) {
                     onDelete?()
                     dismiss()
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) { }
             } message: {
-                Text("This action cannot be undone.")
+                Text(LocalizedStringKey("This action cannot be undone."))
+            }
+            .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
+                Button(LocalizedStringKey("Delete"), role: .destructive) {
+                    if let indexSet = exercisesToDelete {
+                        addedExercises.remove(atOffsets: indexSet)
+                        exercisesToDelete = nil
+                    }
+                }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) {
+                    exercisesToDelete = nil
+                }
+            } message: {
+                if let indexSet = exercisesToDelete {
+                    let count = indexSet.count
+                    if count == 1, let firstIndex = indexSet.first, firstIndex < addedExercises.count {
+                        Text(LocalizedStringKey("Are you sure you want to delete '\(addedExercises[firstIndex].name)'? This action cannot be undone."))
+                    } else {
+                        Text(LocalizedStringKey("Are you sure you want to delete \(count) exercises? This action cannot be undone."))
+                    }
+                } else {
+                    Text(LocalizedStringKey("Are you sure you want to delete this exercise? This action cannot be undone."))
+                }
             }
             .sheet(isPresented: $showExerciseSelector) {
                 ExerciseSelectionView(selectedExercises: $addedExercises)
@@ -89,9 +114,9 @@ struct SupersetBuilderView: View {
     // MARK: - View Components
     
     private var exercisesListSection: some View {
-        Section(header: Text("Exercises in Superset")) {
+        Section(header: Text(LocalizedStringKey("Exercises in Superset"))) {
             if addedExercises.isEmpty {
-                Text("Add at least 2 exercises")
+                Text(LocalizedStringKey("Add at least 2 exercises"))
                     .foregroundColor(.secondary)
                     .italic()
             }
@@ -101,8 +126,9 @@ struct SupersetBuilderView: View {
                     VStack(alignment: .leading) {
                         Text(ex.name).bold()
                         // Превью параметров (берем из первого сета)
-                        if let firstSet = ex.setsList.first {
-                            Text("\(ex.setsList.count) sets • \(Int(firstSet.weight ?? 0))kg x \(firstSet.reps ?? 0) reps")
+                        if let firstSet = ex.setsList.first, let weight = firstSet.weight {
+                            let convertedWeight = unitsManager.convertFromKilograms(weight)
+                            Text(LocalizedStringKey("\(ex.setsList.count) sets • \(Int(convertedWeight))\(unitsManager.weightUnitString()) x \(firstSet.reps ?? 0) reps"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -118,19 +144,20 @@ struct SupersetBuilderView: View {
                 }
             }
             .onDelete { indexSet in
-                addedExercises.remove(atOffsets: indexSet)
+                exercisesToDelete = indexSet
+                showDeleteExerciseAlert = true
             }
             
             Button {
                 showExerciseSelector = true
             } label: {
-                Label("Add Exercise", systemImage: "plus")
+                Label(LocalizedStringKey("Add Exercise"), systemImage: "plus")
             }
         }
     }
     
     private var saveButton: some View {
-        Button(existingSuperset == nil ? "Create Superset" : "Save Changes") {
+        Button(existingSuperset == nil ? LocalizedStringKey("Create Superset") : LocalizedStringKey("Save Changes")) {
             saveSuperset()
         }
         .disabled(addedExercises.count < 2)
@@ -142,7 +169,7 @@ struct SupersetBuilderView: View {
         Button(role: .destructive) {
             showDeleteAlert = true
         } label: {
-            Text("Delete Superset")
+            Text(LocalizedStringKey("Delete Superset"))
                 .frame(maxWidth: .infinity)
         }
     }
@@ -181,6 +208,7 @@ struct EditSupersetItemView: View {
     @State var exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
+    @StateObject private var unitsManager = UnitsManager.shared
     
     // MARK: - Bindings Adapters
     
@@ -190,9 +218,15 @@ struct EditSupersetItemView: View {
                 guard !exercise.setsList.isEmpty, let reps = exercise.setsList[0].reps else { return nil }
                 return Double(reps)
             },
-            set: {
+            set: { newValue in
                 guard !exercise.setsList.isEmpty else { return }
-                exercise.setsList[0].reps = $0.map { Int($0) }
+                if let value = newValue {
+                    let intValue = Int(value)
+                    let validation = InputValidator.validateReps(intValue)
+                    exercise.setsList[0].reps = validation.clampedValue
+                } else {
+                    exercise.setsList[0].reps = nil
+                }
             }
         )
     }
@@ -210,6 +244,32 @@ struct EditSupersetItemView: View {
         )
     }
     
+    private var weightBindingAdapter: Binding<Double?> {
+        Binding<Double?>(
+            get: {
+                guard !exercise.setsList.isEmpty, let weight = exercise.setsList[0].weight else { return nil }
+                // Конвертируем из кг в выбранные единицы для отображения
+                return unitsManager.convertFromKilograms(weight)
+            },
+            set: { newValue in
+                guard !exercise.setsList.isEmpty else { return }
+                if let value = newValue {
+                    // Конвертируем из выбранных единиц в кг для сохранения
+                    let kgValue = unitsManager.convertToKilograms(value)
+                    let validation = InputValidator.validateWeight(kgValue)
+                    if validation.isValid {
+                        exercise.setsList[0].weight = kgValue
+                    } else {
+                        // Clamp to valid value
+                        exercise.setsList[0].weight = validation.clampedValue
+                    }
+                } else {
+                    exercise.setsList[0].weight = nil
+                }
+            }
+        )
+    }
+    
     // MARK: - Body
     
     var body: some View {
@@ -218,27 +278,27 @@ struct EditSupersetItemView: View {
                 Section(header: Text(exercise.name)) {
                     if !exercise.setsList.isEmpty {
                         
-                        Stepper("Sets: \(exercise.setsList.count)", onIncrement: addSet, onDecrement: removeSet)
+                        Stepper(LocalizedStringKey("Sets: \(exercise.setsList.count)"), onIncrement: addSet, onDecrement: removeSet)
                         
                         // Поля ввода в зависимости от типа
                         switch exercise.type {
                         case .strength:
-                            inputRow(label: "Weight (kg):", placeholder: "kg", binding: $exercise.setsList[0].weight)
-                            inputRow(label: "Reps:", placeholder: "reps", binding: repsBinding)
+                            inputRow(label: LocalizedStringKey("Weight (\(unitsManager.weightUnitString())):"), placeholder: unitsManager.weightUnitString(), binding: weightBindingAdapter)
+                            inputRow(label: LocalizedStringKey("Reps:"), placeholder: "reps", binding: repsBinding)
                             
                         case .cardio:
-                            inputRow(label: "Distance (km):", placeholder: "km", binding: $exercise.setsList[0].distance)
-                            inputRow(label: "Time (min):", placeholder: "min", binding: timeBinding)
+                            inputRow(label: LocalizedStringKey("Distance (km):"), placeholder: "km", binding: $exercise.setsList[0].distance)
+                            inputRow(label: LocalizedStringKey("Time (min):"), placeholder: "min", binding: timeBinding)
                             
                         case .duration:
-                            inputRow(label: "Time (sec):", placeholder: "sec", binding: timeBinding)
+                            inputRow(label: LocalizedStringKey("Time (sec):"), placeholder: "sec", binding: timeBinding)
                         }
                     } else {
-                        Button("Create First Set", action: addSet)
+                        Button(LocalizedStringKey("Create First Set"), action: addSet)
                     }
                 }
                 
-                Button("Save") {
+                Button(LocalizedStringKey("Save")) {
                     propagateFirstSetData()
                     onSave(exercise)
                     dismiss()
@@ -246,10 +306,10 @@ struct EditSupersetItemView: View {
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
             }
-            .navigationTitle("Edit Details")
+            .navigationTitle(LocalizedStringKey("Edit Details"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(LocalizedStringKey("Cancel")) { dismiss() }
                 }
             }
         }
@@ -257,7 +317,7 @@ struct EditSupersetItemView: View {
     
     // MARK: - Helper Views
     
-    private func inputRow(label: String, placeholder: String, binding: Binding<Double?>) -> some View {
+    private func inputRow(label: LocalizedStringKey, placeholder: String, binding: Binding<Double?>) -> some View {
         HStack {
             Text(label)
             Spacer()

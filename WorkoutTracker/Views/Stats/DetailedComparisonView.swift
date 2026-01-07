@@ -14,9 +14,12 @@ struct DetailedComparisonView: View {
     
     var body: some View {
         if comparisons.isEmpty {
-            Text("No comparison data available")
-                .foregroundColor(.secondary)
-                .frame(height: 100, alignment: .center)
+            EmptyStateView(
+                icon: "chart.bar.xaxis",
+                title: LocalizedStringKey("No comparison data available"),
+                message: LocalizedStringKey("Complete more workouts to see detailed comparisons between periods. Track your progress over time!")
+            )
+            .frame(height: 150)
         } else {
             VStack(alignment: .leading, spacing: 16) {
                 ForEach(comparisons, id: \.metric) { comparison in
@@ -44,7 +47,7 @@ struct DetailedComparisonRow: View {
             
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Previous")
+                    Text(LocalizedStringKey("Previous"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     Text(formatValue(comparison.previousValue))
@@ -55,7 +58,7 @@ struct DetailedComparisonRow: View {
                     .foregroundColor(.blue)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Current")
+                    Text(LocalizedStringKey("Current"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     Text(formatValue(comparison.currentValue))
@@ -80,13 +83,7 @@ struct DetailedComparisonRow: View {
     }
     
     private func formatValue(_ value: Double) -> String {
-        if value >= 1000 {
-            return String(format: "%.1f", value)
-        } else if value >= 1 {
-            return String(format: "%.0f", value)
-        } else {
-            return String(format: "%.2f", value)
-        }
+        return LocalizationHelper.shared.formatSmart(value)
     }
 }
 

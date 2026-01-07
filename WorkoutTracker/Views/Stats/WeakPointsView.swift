@@ -13,9 +13,12 @@ struct WeakPointsView: View {
     
     var body: some View {
         if weakPoints.isEmpty {
-            Text("No weak points detected. Great job!")
-                .foregroundColor(.secondary)
-                .frame(height: 100, alignment: .center)
+            EmptyStateView(
+                icon: "checkmark.shield.fill",
+                title: LocalizedStringKey("No weak points detected"),
+                message: LocalizedStringKey("Great job! Your training is well-balanced. Keep up the excellent work!")
+            )
+            .frame(height: 150)
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(Array(weakPoints.prefix(5))) { weakPoint in
@@ -56,7 +59,7 @@ struct WeakPointRow: View {
                 }
                 .foregroundColor(.orange)
                 
-                Text("\(Int(weakPoint.averageVolume)) kg avg")
+                Text(LocalizedStringKey("\(Int(weakPoint.averageVolume)) kg avg"))
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }

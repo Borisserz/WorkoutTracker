@@ -20,6 +20,7 @@ struct SetRowView: View {
     
     @Binding var set: WorkoutSet
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
+    @StateObject private var unitsManager = UnitsManager.shared
     let exerciseType: ExerciseType
     let isLastSet: Bool
     let isExerciseCompleted: Bool // Флаг завершения упражнения
@@ -53,7 +54,15 @@ struct SetRowView: View {
     private var repsBinding: Binding<Double?> {
         Binding<Double?>(
             get: { set.reps.map { Double($0) } },
-            set: { set.reps = $0.map { Int($0) } }
+            set: { newValue in
+                if let doubleValue = newValue {
+                    let intValue = Int(doubleValue)
+                    let validation = InputValidator.validateReps(intValue)
+                    set.reps = validation.clampedValue
+                } else {
+                    set.reps = nil
+                }
+            }
         )
     }
     
@@ -61,7 +70,51 @@ struct SetRowView: View {
     private var timeBinding: Binding<Double?> {
         Binding<Double?>(
             get: { set.time.map { Double($0) } },
-            set: { set.time = $0.map { Int($0) } }
+            set: { newValue in
+                if let doubleValue = newValue {
+                    let intValue = Int(doubleValue)
+                    let validation = InputValidator.validateTime(intValue)
+                    set.time = validation.clampedValue
+                } else {
+                    set.time = nil
+                }
+            }
+        )
+    }
+    
+    // Validated binding for weight (конвертирует между кг и выбранными единицами)
+    private var weightBinding: Binding<Double?> {
+        Binding<Double?>(
+            get: { 
+                // Конвертируем из кг в выбранные единицы для отображения
+                guard let kg = set.weight else { return nil }
+                return unitsManager.convertFromKilograms(kg)
+            },
+            set: { newValue in
+                if let value = newValue {
+                    // Конвертируем из выбранных единиц в кг для сохранения
+                    let kg = unitsManager.convertToKilograms(value)
+                    let validation = InputValidator.validateWeight(kg)
+                    set.weight = validation.clampedValue
+                } else {
+                    set.weight = nil
+                }
+            }
+        )
+    }
+    
+    // Validated binding for distance
+    private var distanceBinding: Binding<Double?> {
+        Binding<Double?>(
+            get: { set.distance },
+            set: { newValue in
+                if let value = newValue {
+                    let validation = InputValidator.validateDistance(value)
+                    set.distance = validation.clampedValue
+                } else {
+                    set.distance = nil
+                }
+            }
         )
     }
 
@@ -117,9 +170,12 @@ struct SetRowView: View {
             // Вес + Повторы
             HStack(spacing: 4) {
                 inputColumn(
-                    placeholder: "kg",
-                    binding: $set.weight,
-                    ghostText: prevWeight.map { "\(Int($0))" }
+                    placeholder: unitsManager.weightUnitString(),
+                    binding: weightBinding,
+                    ghostText: prevWeight.map { 
+                        let converted = unitsManager.convertFromKilograms($0)
+                        return LocalizationHelper.shared.formatFlexible(converted)
+                    }
                 )
                 
                 inputColumn(
@@ -133,8 +189,8 @@ struct SetRowView: View {
             // Дистанция + Время
             inputColumn(
                 placeholder: "km",
-                binding: $set.distance,
-                ghostText: prevDist.map { String(format: "%.1f", $0) }
+                binding: distanceBinding,
+                ghostText: prevDist.map { LocalizationHelper.shared.formatDecimal($0) }
             )
             
             Spacer()
@@ -175,11 +231,11 @@ struct SetRowView: View {
     private func getActiveBinding() -> Binding<Double?> {
         switch activeBindingType {
         case .weight:
-            return $set.weight
+            return weightBinding
         case .reps:
             return repsBinding
         case .distance:
-            return $set.distance
+            return distanceBinding
         case .time:
             return timeBinding
         }
@@ -187,21 +243,25 @@ struct SetRowView: View {
     
     /// Форматирует значение для отображения
     private func formatValue(_ value: Double?, placeholder: String) -> String {
-        guard let value = value, value > 0 else {
+        guard let value = value, value >= 0 else {
             return placeholder
         }
         
+        // Проверяем, является ли placeholder единицей веса
+        let weightUnitString = unitsManager.weightUnitString()
+        if placeholder == weightUnitString || placeholder == "kg" || placeholder == "lbs" {
+            return LocalizationHelper.shared.formatFlexible(value)
+        }
+        
         switch placeholder {
-        case "kg":
-            return value.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(value))" : String(format: "%.1f", value)
         case "reps":
-            return "\(Int(value))"
+            return LocalizationHelper.shared.formatInteger(value)
         case "km":
-            return String(format: "%.1f", value)
+            return LocalizationHelper.shared.formatDecimal(value)
         case "min", "sec":
-            return "\(Int(value))"
+            return LocalizationHelper.shared.formatInteger(value)
         default:
-            return value.truncatingRemainder(dividingBy: 1) == 0 ? "\(Int(value))" : String(format: "%.1f", value)
+            return LocalizationHelper.shared.formatFlexible(value)
         }
     }
     
@@ -210,17 +270,17 @@ struct SetRowView: View {
         VStack(spacing: 2) {
             Button {
                 activePlaceholder = placeholder
-                // Определяем тип binding
-                switch placeholder {
-                case "kg":
+                // Определяем тип binding (проверяем и старые, и новые единицы)
+                let weightUnitString = unitsManager.weightUnitString()
+                if placeholder == weightUnitString || placeholder == "kg" || placeholder == "lbs" {
                     activeBindingType = .weight
-                case "reps":
+                } else if placeholder == "reps" {
                     activeBindingType = .reps
-                case "km":
+                } else if placeholder == "km" {
                     activeBindingType = .distance
-                case "min", "sec":
+                } else if placeholder == "min" || placeholder == "sec" {
                     activeBindingType = .time
-                default:
+                } else {
                     activeBindingType = .weight
                 }
                 showSliderSheet = true

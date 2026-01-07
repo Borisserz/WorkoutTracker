@@ -43,7 +43,6 @@ struct OnboardingFlowView: View {
                     .tag(1)
                 
                 // ШАГ 3: Разрешения
-                // ИСПРАВЛЕНО: onNext вместо onFinish, и действие nextStep() вместо completeOnboarding()
                 PermissionsView(onNext: {
                     nextStep()
                 })
@@ -158,18 +157,18 @@ struct UserDataInputView: View {
         VStack(spacing: 25) {
             Spacer()
             
-            Text("About You")
+            Text(LocalizedStringKey("About You"))
                 .font(.largeTitle).bold()
             
-            Text("This helps us personalize your profile and calculate stats.")
+            Text(LocalizedStringKey("This helps us personalize your profile and calculate stats."))
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
             
             VStack(spacing: 20) {
                 VStack(alignment: .leading) {
-                    Text("Your Name").font(.caption).foregroundColor(.gray)
-                    TextField("Name", text: $name)
+                    Text(LocalizedStringKey("Your Name")).font(.caption).foregroundColor(.gray)
+                    TextField(LocalizedStringKey("Name"), text: $name)
                         .font(.title3)
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
@@ -179,8 +178,9 @@ struct UserDataInputView: View {
                 }
                 
                 VStack(alignment: .leading) {
-                    Text("Body Weight (kg)").font(.caption).foregroundColor(.gray)
-                    TextField("75", text: $weightString)
+                    let unitsManager = UnitsManager.shared
+                    Text(LocalizedStringKey("Body Weight (\(unitsManager.weightUnitString()))")).font(.caption).foregroundColor(.gray)
+                    TextField(LocalizedStringKey("75"), text: $weightString)
                         .font(.title3)
                         .keyboardType(.decimalPad)
                         .padding()
@@ -198,7 +198,7 @@ struct UserDataInputView: View {
             Spacer()
             
             Button(action: onNext) {
-                Text("Continue")
+                Text(LocalizedStringKey("Continue"))
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -211,7 +211,7 @@ struct UserDataInputView: View {
             .padding(.bottom, 50)
         }
         .onAppear {
-            weightString = String(format: "%.0f", weight)
+            weightString = LocalizationHelper.shared.formatInteger(weight)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 isNameFocused = true
             }
@@ -237,10 +237,10 @@ struct PermissionsView: View {
                 .padding()
                 .background(Circle().fill(Color.orange.opacity(0.1)).frame(width: 150, height: 150))
             
-            Text("Stay on Track")
+            Text(LocalizedStringKey("Stay on Track"))
                 .font(.largeTitle).bold()
             
-            Text("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam.")
+            Text(LocalizedStringKey("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam."))
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
                 .padding(.horizontal)
@@ -249,7 +249,7 @@ struct PermissionsView: View {
                 requestNotifications()
             } label: {
                 HStack {
-                    Text(notificationsAllowed ? "Allowed" : "Enable Notifications")
+                    Text(notificationsAllowed ? LocalizedStringKey("Allowed") : LocalizedStringKey("Enable Notifications"))
                     if notificationsAllowed {
                         Image(systemName: "checkmark")
                     }
@@ -267,7 +267,7 @@ struct PermissionsView: View {
             Spacer()
             
             Button(action: onNext) {
-                Text("Continue")
+                Text(LocalizedStringKey("Continue"))
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -306,10 +306,10 @@ struct TutorialChoiceView: View {
                 .padding()
                 .background(Circle().fill(Color.purple.opacity(0.1)).frame(width: 150, height: 150))
             
-            Text("Quick Tutorial")
+            Text(LocalizedStringKey("Quick Tutorial"))
                 .font(.largeTitle).bold()
             
-            Text("Would you like a quick interactive tour to learn how to create workouts and track progress?")
+            Text(LocalizedStringKey("Would you like a quick interactive tour to learn how to create workouts and track progress?"))
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
                 .padding(.horizontal)
@@ -321,7 +321,7 @@ struct TutorialChoiceView: View {
                 Button {
                     startTutorial()
                 } label: {
-                    Text("Start Tutorial")
+                    Text(LocalizedStringKey("Start Tutorial"))
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -335,7 +335,7 @@ struct TutorialChoiceView: View {
                 Button {
                     skipTutorial()
                 } label: {
-                    Text("No, I'll figure it out")
+                    Text(LocalizedStringKey("No, I'll figure it out"))
                         .font(.headline)
                         .foregroundColor(.gray)
                         .padding()
@@ -360,13 +360,13 @@ struct TutorialChoiceView: View {
 // Расширение теперь находится вне структуры
 extension NotificationManager {
     func requestPermission(completion: @escaping (Bool) -> Void) {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+        var options: UNAuthorizationOptions = [.alert, .badge, .sound]
+        // Для iOS 15+ добавляем временно чувствительные уведомления
+        if #available(iOS 15.0, *) {
+            options.insert(.timeSensitive)
+        }
+        UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
             completion(granted)
-            if granted {
-                print("🔔 Notifications allowed")
-            } else if let error = error {
-                print("❌ Notification error: \(error.localizedDescription)")
-            }
         }
     }
 }

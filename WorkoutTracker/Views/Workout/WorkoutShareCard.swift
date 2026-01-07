@@ -99,7 +99,7 @@ struct WorkoutShareCard: View {
                 .font(.title)
                 .foregroundColor(.blue)
             
-            Text("WORKOUT COMPLETE")
+            Text(LocalizedStringKey("WORKOUT COMPLETE"))
                 .font(.headline)
                 .tracking(2) // Разрядка букв
                 .foregroundColor(.white.opacity(0.7))
@@ -134,7 +134,7 @@ struct WorkoutShareCard: View {
     private var tagsSection: some View {
         if !topMuscles.isEmpty {
             VStack(spacing: 10) {
-                Text("TARGETED MUSCLES")
+                Text(LocalizedStringKey("TARGETED MUSCLES"))
                     .font(.caption)
                     .fontWeight(.bold)
                     .foregroundColor(.gray)
@@ -162,7 +162,7 @@ struct WorkoutShareCard: View {
     private var footerSection: some View {
         HStack {
             Image(systemName: "applewatch")
-            Text("Tracked with WorkoutTracker")
+            Text(LocalizedStringKey("Tracked with WorkoutTracker"))
         }
         .font(.caption)
         .foregroundColor(.gray.opacity(0.5))

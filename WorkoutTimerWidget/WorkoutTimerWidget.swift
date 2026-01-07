@@ -17,7 +17,6 @@ struct WorkoutTimerWidget: Widget {
                     Label("Workout", systemImage: "figure.strengthtraining.traditional")
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    // ИСПРАВЛЕНИЕ ЗДЕСЬ
                     Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
                         .monospacedDigit().font(.title2).foregroundColor(.red)
                         .frame(width: 90) // Фиксируем ширину, чтобы не прыгал
@@ -30,7 +29,6 @@ struct WorkoutTimerWidget: Widget {
                 Image(systemName: "figure.strengthtraining.traditional").foregroundColor(.red).font(.title3)
                 
             } compactTrailing: {
-                // И ИСПРАВЛЕНИЕ ЗДЕСЬ
                 Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
                     .monospacedDigit().frame(width: 50).font(.caption).foregroundColor(.red)
             } minimal: {
@@ -59,7 +57,6 @@ struct LockScreenView: View {
             
             Spacer()
             
-            // И ТРЕТЬЕ ИСПРАВЛЕНИЕ ЗДЕСЬ
             Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
                 .font(.system(size: 32, weight: .semibold).monospacedDigit())
                 .foregroundStyle(.white)

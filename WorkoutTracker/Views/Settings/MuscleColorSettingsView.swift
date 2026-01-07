@@ -30,16 +30,16 @@ struct MuscleColorSettingsView: View {
                     } label: {
                         HStack {
                             Spacer()
-                            Text("Reset All Colors")
+                            Text(LocalizedStringKey("Reset All Colors"))
                             Spacer()
                         }
                     }
                 }
             }
-            .navigationTitle("Muscle Group Colors")
+            .navigationTitle(LocalizedStringKey("Muscle Group Colors"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
+                    Button(LocalizedStringKey("Done")) {
                         dismiss()
                     }
                 }
@@ -90,7 +90,7 @@ struct MuscleColorRow: View {
             } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .foregroundColor(.secondary)
-                    .font(.caption)
+                    .font(.body)
             }
         }
     }

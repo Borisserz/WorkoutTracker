@@ -21,6 +21,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     // MARK: - Constants
     private let restTimerId = "rest_timer_done"
+    private let restTimerCategoryId = "REST_TIMER_CATEGORY"
     private let recoveryId = "recovery_notification"
     private let inactivityId = "inactivity_notification"
     private let recoveryHoursKey = "userRecoveryHours"
@@ -30,24 +31,66 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         super.init()
         // Делегат нужен, чтобы обрабатывать пуши, даже если приложение открыто
         UNUserNotificationCenter.current().delegate = self
+        setupNotificationCategories()
     }
     
     // MARK: - Permissions & Setup
     
     /// Запрос прав на отправку уведомлений
     func requestPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
-            if granted {
-                print("✅ Notification permission granted.")
-            } else if let error = error {
-                print("❌ Notification permission error: \(error.localizedDescription)")
-            }
+        var options: UNAuthorizationOptions = [.alert, .badge, .sound]
+        // Для iOS 15+ добавляем временно чувствительные уведомления
+        if #available(iOS 15.0, *) {
+            options.insert(.timeSensitive)
         }
+        UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
+            // Permission requested
+        }
+    }
+    
+    /// Настройка категорий уведомлений для вибрации и действий
+    private func setupNotificationCategories() {
+        // Создаем действие "Готово" для уведомления таймера
+        let doneAction = UNNotificationAction(
+            identifier: "DONE_ACTION",
+            title: "Готово",
+            options: [.foreground]
+        )
+        
+        // Создаем категорию с действиями
+        let restTimerCategory = UNNotificationCategory(
+            identifier: restTimerCategoryId,
+            actions: [doneAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+        
+        // Регистрируем категорию
+        UNUserNotificationCenter.current().setNotificationCategories([restTimerCategory])
     }
     
     /// Настройка показа пуша, если приложение открыто (показываем баннер и звук)
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        completionHandler([.banner, .sound, .list])
+        // Для уведомления таймера показываем все опции, включая звук
+        if notification.request.identifier == restTimerId {
+            completionHandler([.banner, .sound, .list, .badge])
+        } else {
+            completionHandler([.banner, .sound, .list])
+        }
+    }
+    
+    /// Обработка действий в уведомлениях
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        
+        // Обрабатываем действие "Готово" для таймера
+        if response.actionIdentifier == "DONE_ACTION" || 
+           (response.notification.request.identifier == restTimerId && response.actionIdentifier == UNNotificationDefaultActionIdentifier) {
+            // Уведомляем приложение, что таймер завершен
+            NotificationCenter.default.post(name: NSNotification.Name("RestTimerFinished"), object: nil)
+        }
+        
+        completionHandler()
     }
     
     // MARK: - Rest Timer Logic
@@ -58,9 +101,20 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         cancelRestTimerNotification()
         
         let content = UNMutableNotificationContent()
-        content.title = "Rest Finished! ⚡️"
-        content.body = "Time to get back to work!"
+        content.title = "⏰ Таймер завершен!"
+        content.body = "Время отдыха истекло. Пора возвращаться к тренировке! 💪"
+        // Используем системный звук по умолчанию (вызывает вибрацию на iPhone)
         content.sound = UNNotificationSound.default
+        content.categoryIdentifier = restTimerCategoryId
+        content.badge = 1
+        content.userInfo = ["type": "rest_timer"]
+        // Добавляем threadIdentifier для группировки уведомлений
+        content.threadIdentifier = "rest_timer"
+        
+        // Для iOS 15+ добавляем interruptionLevel для более заметного уведомления
+        if #available(iOS 15.0, *) {
+            content.interruptionLevel = .timeSensitive
+        }
         
         // Триггер сработает ровно через seconds
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
@@ -126,11 +180,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
         
         UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("❌ Error scheduling: \(error.localizedDescription)")
-            } else {
-                print("✅ Scheduled '\(title)' for \(date.formatted())")
-            }
+            // Notification scheduled
         }
     }
     

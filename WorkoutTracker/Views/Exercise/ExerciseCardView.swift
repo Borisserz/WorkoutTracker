@@ -17,6 +17,7 @@ struct ExerciseCardView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     @Binding var exercise: Exercise
     @EnvironmentObject var viewModel: WorkoutViewModel
+    @StateObject private var unitsManager = UnitsManager.shared
     
     // MARK: - Properties
     
@@ -25,12 +26,17 @@ struct ExerciseCardView: View {
     var onSwap: (() -> Void)? = nil
     var isEmbeddedInSuperset: Bool = false // Флаг: скрывать кнопку Finish, если это часть суперсета
     var isWorkoutCompleted: Bool = false // Флаг завершения тренировки
+    var isCurrentExercise: Bool = false // Флаг: является ли это упражнение текущим (активным)
     
     // MARK: - Local State
     
     @State private var showEffortSheet = false
     @State private var showPRCelebration = false
-    @State private var isExpanded: Bool // Состояние раскрытия/сворачивания упражнения
+    @Binding var isExpanded: Bool // Состояние раскрытия/сворачивания упражнения (управляется извне)
+    @State private var showDeleteAlert = false
+    
+    // Callback при завершении упражнения (вызывается после закрытия EffortSheet)
+    var onExerciseFinished: (() -> Void)? = nil
     
     // MARK: - Initializer
     
@@ -41,7 +47,9 @@ struct ExerciseCardView: View {
         onSwap: (() -> Void)? = nil,
         isEmbeddedInSuperset: Bool = false,
         isWorkoutCompleted: Bool = false,
-        initialExpanded: Bool = true
+        isExpanded: Binding<Bool>,
+        onExerciseFinished: (() -> Void)? = nil,
+        isCurrentExercise: Bool = false
     ) {
         self._exercise = exercise
         self.currentWorkoutId = currentWorkoutId
@@ -49,7 +57,9 @@ struct ExerciseCardView: View {
         self.onSwap = onSwap
         self.isEmbeddedInSuperset = isEmbeddedInSuperset
         self.isWorkoutCompleted = isWorkoutCompleted
-        self._isExpanded = State(initialValue: initialExpanded)
+        self._isExpanded = isExpanded
+        self.onExerciseFinished = onExerciseFinished
+        self.isCurrentExercise = isCurrentExercise
     }
     
     // MARK: - Body
@@ -99,7 +109,7 @@ struct ExerciseCardView: View {
                                 Button(role: .destructive) {
                                     removeSet(at: index)
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label(LocalizedStringKey("Delete"), systemImage: "trash")
                                 }
                             }
                         }
@@ -113,8 +123,29 @@ struct ExerciseCardView: View {
                 }
             }
             .padding()
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(
+                isCurrentExercise && !exercise.isCompleted
+                    ? Color.blue.opacity(0.08)
+                    : Color(UIColor.secondarySystemBackground)
+            )
             .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        isCurrentExercise && !exercise.isCompleted
+                            ? Color.blue.opacity(0.5)
+                            : Color.clear,
+                        lineWidth: isCurrentExercise && !exercise.isCompleted ? 2 : 0
+                    )
+            )
+            .shadow(
+                color: isCurrentExercise && !exercise.isCompleted
+                    ? Color.blue.opacity(0.2)
+                    : Color.clear,
+                radius: isCurrentExercise && !exercise.isCompleted ? 8 : 0,
+                x: 0,
+                y: 2
+            )
             
             // Оверлей рекорда (PR)
             if showPRCelebration {
@@ -122,8 +153,21 @@ struct ExerciseCardView: View {
             }
         }
         // Модификаторы
-        .sheet(isPresented: $showEffortSheet) {
+        .sheet(isPresented: $showEffortSheet, onDismiss: {
+            // После закрытия EffortSheet вызываем callback для сворачивания и перехода к следующему упражнению
+            if exercise.isCompleted {
+                onExerciseFinished?()
+            }
+        }) {
             EffortInputView(effort: $exercise.effort)
+        }
+        .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteAlert) {
+            Button(LocalizedStringKey("Delete"), role: .destructive) {
+                onDelete()
+            }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
+        } message: {
+            Text(LocalizedStringKey("Are you sure you want to delete '\(exercise.name)'? This action cannot be undone."))
         }
         .blur(radius: showPRCelebration ? 5 : 0)
     }
@@ -131,50 +175,69 @@ struct ExerciseCardView: View {
     // MARK: - View Components
     
     private var headerSection: some View {
-        HStack {
-            // Иконка "бутерброда" для раскрытия/сворачивания
-            Image(systemName: "line.3.horizontal")
-                .foregroundColor(.gray)
-                .font(.caption)
-                .frame(width: 20, height: 20)
-            
-            NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name, allWorkouts: viewModel.workouts)) {
-                HStack {
-                    Image(systemName: getIcon())
-                        .foregroundColor(getColor())
-                        .font(.caption)
-                    
-                    Text(LocalizedStringKey(exercise.name))
-                        .font(.headline)
-                        .foregroundColor(.blue)
-                }
-            }
-            .highPriorityGesture(TapGesture().onEnded { })
-            
-            Spacer()
-            
-            // Информация о количестве сетов (показывается всегда)
-            Text("\(exercise.setsList.count) sets")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            Menu {
-                // Опция замены упражнения
-                if let onSwap = onSwap {
-                    Button(action: onSwap) {
-                        Label("Swap Exercise", systemImage: "arrow.triangle.2.circlepath")
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                // Иконка "бутерброда" для раскрытия/сворачивания
+                Image(systemName: "line.3.horizontal")
+                    .foregroundColor(.gray)
+                    .font(.caption)
+                    .frame(width: 20, height: 20)
+                
+                NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name, allWorkouts: viewModel.workouts)) {
+                    HStack {
+                        Image(systemName: getIcon())
+                            .foregroundColor(getColor())
+                            .font(.caption)
+                        
+                        Text(LocalizedStringKey(exercise.name))
+                            .font(.headline)
+                            .foregroundColor(.blue)
                     }
                 }
+                .highPriorityGesture(TapGesture().onEnded { })
                 
-                Button(role: .destructive, action: onDelete) {
-                    Label("Remove Exercise", systemImage: "trash")
+                Spacer()
+                
+                // Информация о количестве сетов (показывается всегда)
+                Text(LocalizedStringKey("\(exercise.setsList.count) sets"))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Menu {
+                    // Опция замены упражнения
+                    if let onSwap = onSwap {
+                        Button(action: onSwap) {
+                            Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    }
+                    
+                    Button(role: .destructive) {
+                        showDeleteAlert = true
+                    } label: {
+                        Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(.gray)
+                        .padding(10)
                 }
-            } label: {
-                Image(systemName: "ellipsis")
-                    .foregroundColor(.gray)
-                    .padding(10)
+                .highPriorityGesture(TapGesture().onEnded { })
             }
-            .highPriorityGesture(TapGesture().onEnded { })
+            
+            // Таргетные мускулы
+            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exercise.name, muscleGroup: exercise.muscleGroup)
+            if !targetMuscles.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Text(targetMuscles.joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                .padding(.leading, 28)
+            }
         }
         .padding(.bottom, 10)
         .contentShape(Rectangle())
@@ -188,24 +251,24 @@ struct ExerciseCardView: View {
     
     private var columnHeadersSection: some View {
         HStack(spacing: 8) {
-            Text("Set")
+            Text(LocalizedStringKey("Set"))
                 .font(.caption2)
                 .frame(width: 25)
                 .foregroundColor(.secondary)
             
             switch exercise.type {
             case .strength:
-                Text("kg").font(.caption2).frame(width: 100).foregroundColor(.secondary)
-                Text("Reps").font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                Text(unitsManager.weightUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                Text(LocalizedStringKey("Reps")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
             case .cardio:
-                Text("km").font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                Text(LocalizedStringKey("km")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
                 Spacer()
-                Text("Time").font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
             case .duration:
-                Text("Time").font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
             }
             
-            Text("Type").font(.caption2).frame(width: 32).foregroundColor(.secondary)
+            Text(LocalizedStringKey("Type")).font(.caption2).frame(width: 32).foregroundColor(.secondary)
             Image(systemName: "checkmark").font(.caption2).frame(width: 32).foregroundColor(.secondary)
         }
         .padding(.horizontal, 8)
@@ -215,7 +278,7 @@ struct ExerciseCardView: View {
     private var collapsedInfoSection: some View {
         HStack {
             Spacer()
-            Text("Tap to expand")
+            Text(LocalizedStringKey("Tap to expand"))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .italic()
@@ -227,7 +290,7 @@ struct ExerciseCardView: View {
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
             Button(action: addSet) {
-                Text("+ Add Set")
+                Text(LocalizedStringKey("+ Add Set"))
                     .font(.subheadline).bold()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -241,7 +304,7 @@ struct ExerciseCardView: View {
             // Показываем кнопку "Finish", только если это НЕ вложенное упражнение
             if !isEmbeddedInSuperset {
                 Button(action: finishExercise) {
-                    Text("Finish Exercise")
+                    Text(LocalizedStringKey("Finish Exercise"))
                         .font(.subheadline).bold()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -250,8 +313,7 @@ struct ExerciseCardView: View {
                         .cornerRadius(8)
                 }
                 .buttonStyle(BorderlessButtonStyle())
-                .disabled(exercise.isCompleted || isWorkoutCompleted) // Запрещаем завершать, если упражнение или тренировка завершены
-                // ИСПРАВЛЕННАЯ ПОДСВЕТКА
+                .disabled(exercise.isCompleted || isWorkoutCompleted)
                 .spotlight(
                     step: .finishExercise,       // Убедись, что используешь правильный шаг (finishExercise)
                     manager: tutorialManager,    // Переменная @EnvironmentObject var tutorialManager
@@ -269,7 +331,7 @@ struct ExerciseCardView: View {
             Image(systemName: "trophy.fill")
                 .font(.system(size: 50))
                 .foregroundColor(.yellow)
-            Text("New Record!")
+            Text(LocalizedStringKey("New Record!"))
                 .font(.title).bold()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

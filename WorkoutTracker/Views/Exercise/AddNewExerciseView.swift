@@ -50,13 +50,13 @@ struct AddNewExerciseView: View {
                 // 2. Выбор мышц (Список с галочками)
                 muscleSelectionSection
             }
-            .navigationTitle("New Exercise")
+            .navigationTitle(LocalizedStringKey("New Exercise"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(LocalizedStringKey("Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(LocalizedStringKey("Save")) {
                         saveExercise()
                     }
                     .disabled(name.isEmpty || selectedMuscles.isEmpty)
@@ -68,16 +68,16 @@ struct AddNewExerciseView: View {
     // MARK: - View Components
     
     private var basicInfoSection: some View {
-        Section(header: Text("Basic Info")) {
-            TextField("Exercise Name", text: $name)
+        Section(header: Text(LocalizedStringKey("Basic Info"))) {
+            TextField(LocalizedStringKey("Exercise Name"), text: $name)
             
-            Picker("Category", selection: $selectedCategory) {
+            Picker(LocalizedStringKey("Category"), selection: $selectedCategory) {
                 ForEach(categories, id: \.self) { cat in
                     Text(cat).tag(cat)
                 }
             }
             
-            Picker("Exercise Type", selection: $selectedType) {
+            Picker(LocalizedStringKey("Exercise Type"), selection: $selectedType) {
                 ForEach(ExerciseType.allCases) { type in
                     Text(type.rawValue).tag(type)
                 }
@@ -87,7 +87,7 @@ struct AddNewExerciseView: View {
     }
     
     private var muscleSelectionSection: some View {
-        Section(header: Text("Affected Muscles (for Heatmap)")) {
+        Section(header: Text(LocalizedStringKey("Affected Muscles (for Heatmap)"))) {
             // Используем ForEach вместо List, т.к. мы уже внутри Form
             ForEach(availableMuscles, id: \.slug) { muscle in
                 HStack {

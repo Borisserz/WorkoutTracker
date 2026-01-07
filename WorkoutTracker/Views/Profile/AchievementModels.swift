@@ -145,7 +145,7 @@ class AchievementCalculator {
             icon: "figure.run.circle.fill",
             color: .green,
             isUnlocked: totalDistance >= 42.0,
-            progress: String(format: "%.1f/42 km", totalDistance)
+            progress: "\(LocalizationHelper.shared.formatDecimal(totalDistance))/42 km"
         ))
         
         // "Жим 100" (Поднять 100кг в жиме лежа хотя бы 1 раз)

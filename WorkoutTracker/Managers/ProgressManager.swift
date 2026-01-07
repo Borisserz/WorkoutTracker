@@ -83,7 +83,6 @@ class ProgressManager: ObservableObject {
     func addXP(for workout: Workout) {
         let xpGained = calculateXP(for: workout)
         totalXP += xpGained
-        print("🎉 Gained \(xpGained) XP! Total XP is now \(totalXP).")
         
         checkForLevelUp()
         saveProgress()
@@ -106,7 +105,6 @@ class ProgressManager: ObservableObject {
         // Проверяем, хватает ли XP на следующий уровень (может апнуться сразу несколько)
         while totalXP >= cumulativeXPRequired(forLevel: level + 1) {
             level += 1
-            print("🆙 LEVEL UP! Now level \(level)")
         }
         saveProgress()
     }
@@ -119,7 +117,6 @@ class ProgressManager: ObservableObject {
         }
         
         if level != calculatedLevel {
-            print("⚠️ Correction: Level adjusted from \(level) to \(calculatedLevel) based on XP")
             level = calculatedLevel
             saveProgress()
         }

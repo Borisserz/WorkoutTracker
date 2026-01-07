@@ -55,10 +55,10 @@ struct ChartWidgetView : View {
                     .background(Circle().fill(Color.blue.opacity(0.2)))
                 
                 VStack(alignment: .leading) {
-                    Text("Workouts")
+                    Text(LocalizedStringKey("Workouts"))
                         .font(.caption2)
                         .fontWeight(.bold)
-                    Text("Per Week")
+                    Text(LocalizedStringKey("Per Week"))
                         .font(.caption2)
                         .fontWeight(.bold)
                 }
@@ -152,7 +152,7 @@ struct StreakWidgetView : View {
                     .foregroundColor(.white)
                     .contentTransition(.numericText(value: Double(entry.data.streak)))
                 
-                Text("Day Streak")
+                Text(LocalizedStringKey("Day Streak"))
                     .font(.caption)
                     .fontWeight(.bold)
                     .foregroundColor(.white.opacity(0.8))

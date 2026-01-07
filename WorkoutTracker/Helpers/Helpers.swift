@@ -1,5 +1,65 @@
 internal import SwiftUI
 
+// MARK: - Input Validation Helper
+
+struct InputValidator {
+    // Maximum reasonable values
+    static let maxWeight: Double = 500.0  // kg
+    static let maxReps: Int = 1000
+    static let maxDistance: Double = 1000.0  // km
+    static let maxTime: Int = 86400  // 24 hours in seconds
+    
+    // Minimum values
+    static let minWeight: Double = 0.0  // Minimum weight: 0 kg
+    static let minReps: Int = 0  // Minimum reps: 0
+    static let minDistance: Double = 0.0
+    static let minTime: Int = 0
+    
+    /// Validates and clamps weight value (can be 0)
+    static func validateWeight(_ value: Double) -> (isValid: Bool, clampedValue: Double, errorMessage: String?) {
+        if value < 0 {
+            return (false, minWeight, NSLocalizedString("Weight cannot be negative", comment: ""))
+        }
+        if value > maxWeight {
+            return (false, maxWeight, String(format: NSLocalizedString("Weight cannot exceed %d kg", comment: ""), Int(maxWeight)))
+        }
+        return (true, value, nil)
+    }
+    
+    /// Validates and clamps reps value (can be 0)
+    static func validateReps(_ value: Int) -> (isValid: Bool, clampedValue: Int, errorMessage: String?) {
+        if value < 0 {
+            return (false, minReps, NSLocalizedString("Reps cannot be negative", comment: ""))
+        }
+        if value > maxReps {
+            return (false, maxReps, String(format: NSLocalizedString("Reps cannot exceed %d", comment: ""), maxReps))
+        }
+        return (true, value, nil)
+    }
+    
+    /// Validates and clamps distance value
+    static func validateDistance(_ value: Double) -> (isValid: Bool, clampedValue: Double, errorMessage: String?) {
+        if value < minDistance {
+            return (false, minDistance, NSLocalizedString("Distance cannot be negative", comment: ""))
+        }
+        if value > maxDistance {
+            return (false, maxDistance, String(format: NSLocalizedString("Distance cannot exceed %d km", comment: ""), Int(maxDistance)))
+        }
+        return (true, value, nil)
+    }
+    
+    /// Validates and clamps time value (in seconds)
+    static func validateTime(_ value: Int) -> (isValid: Bool, clampedValue: Int, errorMessage: String?) {
+        if value < minTime {
+            return (false, minTime, NSLocalizedString("Time cannot be negative", comment: ""))
+        }
+        if value > maxTime {
+            return (false, maxTime, NSLocalizedString("Time cannot exceed 24 hours", comment: ""))
+        }
+        return (true, value, nil)
+    }
+}
+
 struct SVGParser {
     static func path(from string: String) -> Path {
         var path = Path()
@@ -138,5 +198,94 @@ struct SVGParser {
             }
         }
         return path
+    }
+}
+
+// MARK: - Empty State View Component
+
+// MARK: - Muscle Display Helper
+
+struct MuscleDisplayHelper {
+    /// Маппинг слага в читаемое имя мышцы
+    private static let slugToDisplayName: [String: String] = [
+        "chest": "Chest",
+        "upper-back": "Upper Back",
+        "lats": "Lats",
+        "lower-back": "Lower Back",
+        "trapezius": "Trapezius",
+        "deltoids": "Shoulders",
+        "biceps": "Biceps",
+        "triceps": "Triceps",
+        "forearm": "Forearms",
+        "abs": "Abs",
+        "obliques": "Obliques",
+        "gluteal": "Glutes",
+        "hamstring": "Hamstrings",
+        "quadriceps": "Quads",
+        "adductors": "Adductors",
+        "abductors": "Abductors",
+        "legs": "Legs",
+        "calves": "Calves",
+        "neck": "Neck",
+        "tibialis": "Tibialis",
+        "hands": "Hands",
+        "ankles": "Ankles",
+        "feet": "Feet"
+    ]
+    
+    /// Получить читаемые имена таргетных мускулов для упражнения
+    static func getTargetMuscleNames(for exerciseName: String, muscleGroup: String) -> [String] {
+        let muscleSlugs = MuscleMapping.getMuscles(for: exerciseName, group: muscleGroup)
+        return muscleSlugs.compactMap { slugToDisplayName[$0] ?? $0.capitalized }
+    }
+    
+    /// Получить строку с таргетными мускулами (через запятую)
+    static func getTargetMusclesString(for exerciseName: String, muscleGroup: String) -> String {
+        let names = getTargetMuscleNames(for: exerciseName, muscleGroup: muscleGroup)
+        return names.isEmpty ? muscleGroup : names.joined(separator: ", ")
+    }
+}
+
+// MARK: - Empty State View Component
+
+struct EmptyStateView: View {
+    let icon: String
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
+    let iconSize: CGFloat
+    let iconColor: Color
+    
+    init(
+        icon: String,
+        title: LocalizedStringKey,
+        message: LocalizedStringKey,
+        iconSize: CGFloat = 60,
+        iconColor: Color = .gray.opacity(0.5)
+    ) {
+        self.icon = icon
+        self.title = title
+        self.message = message
+        self.iconSize = iconSize
+        self.iconColor = iconColor
+    }
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: iconSize))
+                .foregroundColor(iconColor)
+            
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
     }
 }

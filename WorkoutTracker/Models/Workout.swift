@@ -74,14 +74,166 @@ struct Exercise: Identifiable, Codable, Hashable {
     // Для супер-сетов
     var subExercises: [Exercise] = []
     
-    // СТАРЫЕ ПОЛЯ (Оставляем для совместимости JSON, но логика теперь в setsList)
-    var sets: Int
-    var reps: Int
-    var weight: Double
-    var distance: Double?
-    var timeSeconds: Int?
+    // MARK: - Private Stored Properties (только для Codable)
+    // Эти поля используются только для декодирования старых JSON файлов
+    private var _sets: Int = 0
+    private var _reps: Int = 0
+    private var _weight: Double = 0
+    private var _distance: Double? = nil
+    private var _timeSeconds: Int? = nil
     
-    // MARK: - Computed Properties
+    // MARK: - Computed Properties (синхронизированы с setsList)
+    
+    /// Количество сетов (синхронизировано с setsList)
+    var sets: Int {
+        get {
+            // Если setsList не пустой, берем количество из него
+            if !setsList.isEmpty {
+                return setsList.count
+            }
+            // Fallback для старых данных (только при загрузке)
+            return _sets
+        }
+        set {
+            // При записи обновляем setsList
+            _sets = newValue
+            syncSetsListFromLegacyFields()
+        }
+    }
+    
+    /// Количество повторов (берется из первого сета или fallback)
+    var reps: Int {
+        get {
+            // Если setsList не пустой, берем из первого сета
+            if let firstSet = setsList.first, let firstReps = firstSet.reps {
+                return firstReps
+            }
+            // Fallback для старых данных
+            return _reps
+        }
+        set {
+            // При записи обновляем все сеты в setsList
+            _reps = newValue
+            syncSetsListFromLegacyFields()
+        }
+    }
+    
+    /// Вес (берется из первого сета или fallback)
+    var weight: Double {
+        get {
+            // Если setsList не пустой, берем из первого сета
+            if let firstSet = setsList.first, let firstWeight = firstSet.weight {
+                return firstWeight
+            }
+            // Fallback для старых данных
+            return _weight
+        }
+        set {
+            // При записи обновляем все сеты в setsList
+            _weight = newValue
+            syncSetsListFromLegacyFields()
+        }
+    }
+    
+    /// Дистанция (берется из первого сета или fallback)
+    var distance: Double? {
+        get {
+            // Если setsList не пустой, берем из первого сета
+            if let firstSet = setsList.first, let firstDistance = firstSet.distance {
+                return firstDistance
+            }
+            // Fallback для старых данных
+            return _distance
+        }
+        set {
+            // При записи обновляем все сеты в setsList
+            _distance = newValue
+            syncSetsListFromLegacyFields()
+        }
+    }
+    
+    /// Время в секундах (берется из первого сета или fallback)
+    var timeSeconds: Int? {
+        get {
+            // Если setsList не пустой, берем из первого сета
+            if let firstSet = setsList.first, let firstTime = firstSet.time {
+                return firstTime
+            }
+            // Fallback для старых данных
+            return _timeSeconds
+        }
+        set {
+            // При записи обновляем все сеты в setsList
+            _timeSeconds = newValue
+            syncSetsListFromLegacyFields()
+        }
+    }
+    
+    // MARK: - Helper Methods
+    
+    /// Синхронизирует setsList на основе старых полей (вызывается при записи в старые поля)
+    /// ВАЖНО: Этот метод используется только для обратной совместимости при редактировании через старые поля.
+    /// В новом коде следует работать напрямую с setsList.
+    private mutating func syncSetsListFromLegacyFields() {
+        // Если setsList пустой, создаем сеты на основе старых полей
+        if setsList.isEmpty && _sets > 0 {
+            setsList = []
+            for i in 1..._sets {
+                setsList.append(WorkoutSet(
+                    index: i,
+                    weight: _weight >= 0 ? _weight : nil,
+                    reps: _reps >= 0 ? _reps : nil,
+                    distance: _distance,
+                    time: _timeSeconds,
+                    isCompleted: false,
+                    type: .normal
+                ))
+            }
+        } else if !setsList.isEmpty {
+            // Если setsList не пустой, обновляем количество сетов (добавляем/удаляем)
+            // и обновляем значения только если они действительно изменились
+            let currentCount = setsList.count
+            let targetCount = _sets
+            
+            if targetCount > currentCount {
+                // Добавляем новые сеты
+                for i in (currentCount + 1)...targetCount {
+                    let lastSet = setsList.last
+                    setsList.append(WorkoutSet(
+                        index: i,
+                        weight: type == .strength ? (_weight >= 0 ? _weight : lastSet?.weight) : nil,
+                        reps: type == .strength ? (_reps >= 0 ? _reps : lastSet?.reps) : nil,
+                        distance: type == .cardio ? (_distance ?? lastSet?.distance) : nil,
+                        time: type == .cardio || type == .duration ? (_timeSeconds ?? lastSet?.time) : nil,
+                        isCompleted: false,
+                        type: .normal
+                    ))
+                }
+            } else if targetCount < currentCount {
+                // Удаляем лишние сеты (с конца)
+                setsList.removeLast(currentCount - targetCount)
+                // Обновляем индексы
+                for i in 0..<setsList.count {
+                    setsList[i].index = i + 1
+                }
+            }
+            
+            // Обновляем значения в существующих сетах только если они действительно изменились
+            // Это нужно для обратной совместимости при редактировании через старые поля
+            // (например, в PresetEditorView или EditExerciseView)
+            for i in 0..<setsList.count {
+                if type == .strength {
+                    if _weight >= 0 { setsList[i].weight = _weight }
+                    if _reps >= 0 { setsList[i].reps = _reps }
+                } else if type == .cardio {
+                    if let dist = _distance { setsList[i].distance = dist }
+                    if let time = _timeSeconds { setsList[i].time = time }
+                } else if type == .duration {
+                    if let time = _timeSeconds { setsList[i].time = time }
+                }
+            }
+        }
+    }
     
     var isSuperset: Bool {
         return !subExercises.isEmpty
@@ -126,19 +278,23 @@ struct Exercise: Identifiable, Codable, Hashable {
         self.name = name
         self.muscleGroup = muscleGroup
         self.type = type
-        self.sets = sets
-        self.reps = reps
-        self.weight = weight
-        self.distance = distance
-        self.timeSeconds = timeSeconds
         self.effort = effort
         self.subExercises = subExercises
-        self.setsList = setsList
         self.isCompleted = isCompleted
         
-        // Если при создании список сетов пустой, создаем их на основе переданных простых параметров.
-        // Это нужно, чтобы при добавлении упражнения в UI сразу появлялись строчки.
-        if self.setsList.isEmpty && subExercises.isEmpty && sets > 0 {
+        // Сохраняем в private stored properties для обратной совместимости
+        self._sets = sets
+        self._reps = reps
+        self._weight = weight
+        self._distance = distance
+        self._timeSeconds = timeSeconds
+        
+        // Если передан setsList, используем его, иначе создаем на основе старых полей
+        if !setsList.isEmpty {
+            self.setsList = setsList
+        } else if subExercises.isEmpty && sets > 0 {
+            // Если при создании список сетов пустой, создаем их на основе переданных простых параметров.
+            // Это нужно, чтобы при добавлении упражнения в UI сразу появлялись строчки.
             for i in 1...sets {
                 self.setsList.append(WorkoutSet(
                     index: i,
@@ -150,6 +306,8 @@ struct Exercise: Identifiable, Codable, Hashable {
                     type: .normal
                 ))
             }
+        } else {
+            self.setsList = []
         }
     }
 
@@ -159,15 +317,18 @@ struct Exercise: Identifiable, Codable, Hashable {
         id = try container.decode(UUID.self, forKey: .id)
         name = try container.decode(String.self, forKey: .name)
         muscleGroup = try container.decode(String.self, forKey: .muscleGroup)
-        sets = try container.decode(Int.self, forKey: .sets)
-        reps = try container.decode(Int.self, forKey: .reps)
-        weight = try container.decode(Double.self, forKey: .weight)
+        
+        // Декодируем в private stored properties
+        _sets = try container.decode(Int.self, forKey: .sets)
+        _reps = try container.decode(Int.self, forKey: .reps)
+        _weight = try container.decode(Double.self, forKey: .weight)
+        _distance = try container.decodeIfPresent(Double.self, forKey: .distance)
+        _timeSeconds = try container.decodeIfPresent(Int.self, forKey: .timeSeconds)
+        
         effort = try container.decode(Int.self, forKey: .effort)
         subExercises = try container.decodeIfPresent([Exercise].self, forKey: .subExercises) ?? []
         
         type = try container.decodeIfPresent(ExerciseType.self, forKey: .type) ?? .strength
-        distance = try container.decodeIfPresent(Double.self, forKey: .distance)
-        timeSeconds = try container.decodeIfPresent(Int.self, forKey: .timeSeconds)
         isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
         
         // ВАЖНО: Пробуем загрузить новый список сетов (setsList)
@@ -175,17 +336,17 @@ struct Exercise: Identifiable, Codable, Hashable {
             setsList = loadedSets
         } else {
             // МИГРАЦИЯ: Если в файле нет setsList (старая версия приложения),
-            // создаем сеты на основе старых полей (sets, reps, weight).
+            // создаем сеты на основе старых полей (_sets, _reps, _weight).
             var newSets: [WorkoutSet] = []
-            if sets > 0 {
-                for i in 1...sets {
+            if _sets > 0 {
+                for i in 1..._sets {
                     // Считаем старые упражнения выполненными (isCompleted: true), так как это история
                     newSets.append(WorkoutSet(
                         index: i,
-                        weight: weight,
-                        reps: reps,
-                        distance: distance,
-                        time: timeSeconds,
+                        weight: _weight,
+                        reps: _reps,
+                        distance: _distance,
+                        time: _timeSeconds,
                         isCompleted: true,
                         type: .normal
                     ))
@@ -204,18 +365,24 @@ struct Exercise: Identifiable, Codable, Hashable {
         try container.encode(type, forKey: .type)
         try container.encode(effort, forKey: .effort)
         try container.encode(subExercises, forKey: .subExercises)
-        try container.encode(distance, forKey: .distance)
-        try container.encode(timeSeconds, forKey: .timeSeconds)
         try container.encode(isCompleted, forKey: .isCompleted)
         
-        // 1. Сохраняем актуальный список сетов
+        // 1. Сохраняем актуальный список сетов (основной источник истины)
         try container.encode(setsList, forKey: .setsList)
         
-        // 2. Обновляем старые поля "для вида" (Backwards Compatibility).
-        // Берем данные из первого сета или нули.
-        try container.encode(setsList.count, forKey: .sets)
-        try container.encode(setsList.first?.reps ?? 0, forKey: .reps)
-        try container.encode(setsList.first?.weight ?? 0.0, forKey: .weight)
+        // 2. Синхронизируем и сохраняем старые поля для обратной совместимости.
+        // Берем данные из setsList (или используем fallback значения).
+        let syncSets = setsList.isEmpty ? _sets : setsList.count
+        let syncReps = setsList.first?.reps ?? _reps
+        let syncWeight = setsList.first?.weight ?? _weight
+        let syncDistance = setsList.first?.distance ?? _distance
+        let syncTimeSeconds = setsList.first?.time ?? _timeSeconds
+        
+        try container.encode(syncSets, forKey: .sets)
+        try container.encode(syncReps, forKey: .reps)
+        try container.encode(syncWeight, forKey: .weight)
+        try container.encode(syncDistance, forKey: .distance)
+        try container.encode(syncTimeSeconds, forKey: .timeSeconds)
     }
 }
 
@@ -235,6 +402,7 @@ struct Workout: Identifiable, Codable {
     var endTime: Date? = nil
     var icon: String = "figure.run"
     var exercises: [Exercise]
+    var isFavorite: Bool = false
     
     // MARK: - Computed Properties
     

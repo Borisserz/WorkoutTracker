@@ -28,10 +28,22 @@ class ExerciseNotesManager: ObservableObject {
     
     private let userDefaultsKey = "savedExerciseNotes"
     
+    // MARK: - Debounce для сохранения
+    
+    private var saveCancellable: AnyCancellable?
+    private let saveSubject = PassthroughSubject<Void, Never>()
+    
     // MARK: - Init
     
     init() {
         loadNotes()
+        
+        // Настраиваем debounce для сохранения (500ms задержка)
+        saveCancellable = saveSubject
+            .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.performSave()
+            }
     }
     
     // MARK: - Public Methods
@@ -46,25 +58,44 @@ class ExerciseNotesManager: ObservableObject {
     ///   - note: Текст заметки. Если пустой — запись удаляется.
     ///   - exerciseName: Название упражнения (ключ).
     func setNote(_ note: String, for exerciseName: String) {
+        // Обновляем локальное состояние сразу (для UI)
         if note.isEmpty {
             notes.removeValue(forKey: exerciseName)
         } else {
             notes[exerciseName] = note
         }
         
-        // Сразу сохраняем изменения на диск
-        saveNotes()
+        // Сохраняем на диск с debounce (не блокируем UI)
+        saveSubject.send()
+    }
+    
+    /// Принудительное сохранение (например, при закрытии view)
+    func saveImmediately() {
+        // Отменяем отложенное сохранение и выполняем сразу
+        saveCancellable?.cancel()
+        performSave()
+        
+        // Восстанавливаем подписку для будущих изменений
+        saveCancellable = saveSubject
+            .debounce(for: .milliseconds(500), scheduler: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.performSave()
+            }
     }
     
     // MARK: - Persistence (UserDefaults)
     
-    private func saveNotes() {
-        do {
-            let encoded = try JSONEncoder().encode(notes)
-            UserDefaults.standard.set(encoded, forKey: userDefaultsKey)
-            // print("💾 Note saved to disk!")
-        } catch {
-            print("❌ Error saving notes: \(error.localizedDescription)")
+    private func performSave() {
+        // Выполняем сохранение асинхронно в фоновой очереди
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            guard let self = self else { return }
+            
+            do {
+                let encoded = try JSONEncoder().encode(self.notes)
+                UserDefaults.standard.set(encoded, forKey: self.userDefaultsKey)
+            } catch {
+                // Error saving notes
+            }
         }
     }
     
@@ -77,9 +108,7 @@ class ExerciseNotesManager: ObservableObject {
         do {
             let decodedNotes = try JSONDecoder().decode([String: String].self, from: data)
             self.notes = decodedNotes
-            print("📂 Notes loaded from disk: \(decodedNotes.count)")
         } catch {
-            print("❌ Error loading notes: \(error.localizedDescription)")
             self.notes = [:]
         }
     }

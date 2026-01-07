@@ -38,7 +38,6 @@ struct OverviewView: View {
     
     var body: some View {
         NavigationStack {
-            // ИСПОЛЬЗУЕМ ZSTACK ДЛЯ НАЛОЖЕНИЯ ФАНТОМНОЙ КНОПКИ
             ZStack(alignment: .topTrailing) {
                 
                 // --- СЛОЙ 1: ОСНОВНОЙ КОНТЕНТ ---
@@ -52,10 +51,10 @@ struct OverviewView: View {
                                     .font(.system(size: 60))
                                     .foregroundColor(.blue.opacity(0.8))
                                 
-                                Text("Welcome to WorkoutTracker!")
+                                Text(LocalizedStringKey("Welcome to WorkoutTracker!"))
                                     .font(.title3).bold()
                                 
-                                Text("Your journey starts here. Create your first workout to begin tracking.")
+                                Text(LocalizedStringKey("Your journey starts here. Create your first workout to begin tracking."))
                                     .font(.body)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -68,7 +67,7 @@ struct OverviewView: View {
                                         tutorialManager.nextStep()
                                     }
                                 } label: {
-                                    Text("Start First Workout")
+                                    Text(LocalizedStringKey("Start First Workout"))
                                         .font(.headline)
                                         .foregroundColor(.white)
                                         .padding()
@@ -76,7 +75,6 @@ struct OverviewView: View {
                                         .background(Color.blue)
                                         .cornerRadius(12)
                                 }
-                                // --- ДОБАВЛЯЕМ ПОДСВЕТКУ СЮДА ---
                                 .spotlight(
                                     step: .tapPlus, // Это самый первый шаг (0)
                                     manager: tutorialManager,
@@ -123,7 +121,7 @@ struct OverviewView: View {
                         .allowsHitTesting(false)
                 }
             }
-            .navigationTitle("Overview")
+            .navigationTitle(LocalizedStringKey("Overview"))
             
             // --- НАВИГАЦИЯ ---
             .navigationDestination(isPresented: $navigateToNewWorkout) {
@@ -268,14 +266,14 @@ struct OverviewView: View {
             NavigationLink(destination: DetailedRecoveryView()) {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Text("Muscle Recovery").font(.headline).foregroundColor(.primary)
+                        Text(LocalizedStringKey("Muscle Recovery")).font(.headline).foregroundColor(.primary)
                         Spacer()
-                        Text("See details").font(.caption).foregroundColor(.blue)
+                        Text(LocalizedStringKey("See details")).font(.caption).foregroundColor(.blue)
                         Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
                     }
                     Divider()
                     if viewModel.workouts.isEmpty {
-                        Text("Complete a workout to see data").font(.caption).foregroundColor(.secondary)
+                        Text(LocalizedStringKey("Complete a workout to see data")).font(.caption).foregroundColor(.secondary)
                     } else {
                         ForEach(aggregatedRecovery, id: \.name) { group in
                             VStack(spacing: 5) {
@@ -298,7 +296,6 @@ struct OverviewView: View {
                     tutorialManager.nextStep()
                 }
             })
-            // ИСПРАВЛЕНИЕ: Текст СВЕРХУ (alignment: .top), чтобы не лез на график снизу
             .spotlight(
                 step: .recoveryCheck,
                 manager: tutorialManager,
@@ -311,7 +308,7 @@ struct OverviewView: View {
     private var chartSection: some View {
         VStack(alignment: .leading) {
             HStack {
-                Text("Muscles Worked").font(.headline).foregroundColor(.secondary)
+                Text(LocalizedStringKey("Muscles Worked")).font(.headline).foregroundColor(.secondary)
                 Spacer()
                 Button {
                     showMuscleColorSettings = true
@@ -322,7 +319,7 @@ struct OverviewView: View {
                 }
             }
             if muscleData.isEmpty {
-                Text("No workouts yet").padding().frame(maxWidth: .infinity).foregroundColor(.secondary)
+                Text(LocalizedStringKey("No workouts yet")).padding().frame(maxWidth: .infinity).foregroundColor(.secondary)
             } else {
                 Chart(muscleData, id: \.muscle) { item in
                     SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.6), angularInset: 2)
@@ -338,7 +335,7 @@ struct OverviewView: View {
                         VStack {
                             if let selected = selectedMuscleInfo {
                                 Text(LocalizedStringKey(selected.muscle)).font(.headline).multilineTextAlignment(.center)
-                                Text("\(selected.count) sets").font(.title2).bold().foregroundColor(.blue)
+                                Text(LocalizedStringKey("\(selected.count) sets")).font(.title2).bold().foregroundColor(.blue)
                             } else {
                                 Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(.secondary)
                                 Text("\(totalExercisesCount)").font(.title).bold().foregroundColor(.primary)
@@ -350,7 +347,6 @@ struct OverviewView: View {
             }
         }
         .padding().background(Color.gray.opacity(0.1)).cornerRadius(12)
-        // ИСПРАВЛЕНИЕ: Текст СВЕРХУ (alignment: .top)
         .spotlight(
             step: .highlightChart,
             manager: tutorialManager,
@@ -370,12 +366,12 @@ struct OverviewView: View {
          VStack(alignment: .leading, spacing: 10) {
              if !topExercises.isEmpty {
                  HStack {
-                     Text("Exercises").font(.title2).bold()
+                     Text(LocalizedStringKey("Exercises")).font(.title2).bold()
                      Spacer()
                      Button {
                          navigateToExercises = true
                      } label: {
-                         Text("See all").font(.subheadline).foregroundColor(.blue)
+                         Text(LocalizedStringKey("See all")).font(.subheadline).foregroundColor(.blue)
                      }
                  }
                  .padding(.top, 10)
@@ -389,7 +385,7 @@ struct OverviewView: View {
                              Text("\(item.count) times").font(.subheadline).foregroundColor(.secondary)
                              Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
                          }
-                         .padding().background(Color.white).cornerRadius(10).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                         .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(10).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                      }
                  }
              }

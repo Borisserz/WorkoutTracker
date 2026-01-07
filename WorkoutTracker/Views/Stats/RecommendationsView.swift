@@ -13,9 +13,12 @@ struct RecommendationsView: View {
     
     var body: some View {
         if recommendations.isEmpty {
-            Text("No recommendations at this time")
-                .foregroundColor(.secondary)
-                .frame(height: 100, alignment: .center)
+            EmptyStateView(
+                icon: "checkmark.circle.fill",
+                title: LocalizedStringKey("No recommendations"),
+                message: LocalizedStringKey("You're doing great! Keep up the consistent training to receive personalized recommendations.")
+            )
+            .frame(height: 150)
         } else {
             VStack(alignment: .leading, spacing: 12) {
                 ForEach(Array(recommendations.prefix(5))) { recommendation in

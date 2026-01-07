@@ -25,9 +25,9 @@ struct ExerciseHistoryView: View {
         
         var localizedName: String {
             switch self {
-            case .summary: return "Summary"
-            case .technique: return "Technique"
-            case .history: return "History"
+            case .summary: return NSLocalizedString("Summary", comment: "")
+            case .technique: return NSLocalizedString("Technique", comment: "")
+            case .history: return NSLocalizedString("History", comment: "")
             }
         }
     }
@@ -75,6 +75,7 @@ struct ExerciseHistoryView: View {
     
     @EnvironmentObject var notesManager: ExerciseNotesManager
     @EnvironmentObject var viewModel: WorkoutViewModel
+    @StateObject private var unitsManager = UnitsManager.shared
     @FocusState private var isInputActive: Bool
     
     // MARK: - State
@@ -84,6 +85,7 @@ struct ExerciseHistoryView: View {
     @State private var exerciseNote: String = ""
     @State private var selectedMetric: GraphMetric = .none
     @State private var selectedTrendPeriod: TrendPeriod = .month
+    @State private var saveTask: Task<Void, Never>?
     
     // MARK: - Computed Properties (General)
     
@@ -97,7 +99,7 @@ struct ExerciseHistoryView: View {
     
     var unitLabel: String {
         switch exerciseType {
-        case .strength: return "kg"
+        case .strength: return unitsManager.weightUnitString()
         case .cardio: return "km"
         case .duration: return "min"
         }
@@ -207,29 +209,30 @@ struct ExerciseHistoryView: View {
     /// Контент вкладки Technique (Техника упражнения)
     private var techniqueContent: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Exercise Technique")
+            Text(LocalizedStringKey("Exercise Technique"))
                 .font(.title2)
                 .bold()
                 .padding(.bottom, 10)
             
             // Базовое описание упражнения
             VStack(alignment: .leading, spacing: 15) {
-                Text("How to Perform")
+                Text(LocalizedStringKey("How to Perform"))
                     .font(.headline)
                     .foregroundColor(.secondary)
                 
                 Text(getTechniqueDescription())
                     .font(.body)
                     .lineSpacing(4)
+                    .foregroundColor(.primary)
             }
             .padding()
-            .background(Color.white)
+            .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(12)
             .shadow(radius: 5)
             
             // Основные советы
             VStack(alignment: .leading, spacing: 15) {
-                Text("Key Tips")
+                Text(LocalizedStringKey("Key Tips"))
                     .font(.headline)
                     .foregroundColor(.secondary)
                 
@@ -247,23 +250,46 @@ struct ExerciseHistoryView: View {
                 }
             }
             .padding()
-            .background(Color.white)
+            .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(12)
             .shadow(radius: 5)
             
             // Мышцы, которые работают
-            if let muscleGroup = getMuscleGroup() {
+            let muscleGroup = getMuscleGroup() ?? NSLocalizedString("Unknown", comment: "")
+            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exerciseName, muscleGroup: muscleGroup)
+            
+            if !targetMuscles.isEmpty {
                 VStack(alignment: .leading, spacing: 15) {
-                    Text("Target Muscles")
-                        .font(.headline)
-                        .foregroundColor(.secondary)
+                    HStack {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(LocalizedStringKey("Target Muscles"))
+                            .font(.headline)
+                            .foregroundColor(.secondary)
+                    }
                     
-                    Text(muscleGroup)
-                        .font(.body)
-                        .lineSpacing(4)
+                    // Отображаем мускулы как теги в LazyVGrid
+                    LazyVGrid(columns: [
+                        GridItem(.adaptive(minimum: 100), spacing: 8)
+                    ], spacing: 8) {
+                        ForEach(targetMuscles, id: \.self) { muscle in
+                            HStack(spacing: 4) {
+                                Image(systemName: "figure.strengthtraining.traditional")
+                                    .font(.caption2)
+                                Text(muscle)
+                                    .font(.subheadline)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundColor(.blue)
+                            .cornerRadius(8)
+                        }
+                    }
                 }
                 .padding()
-                .background(Color.white)
+                .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(12)
                 .shadow(radius: 5)
             }
@@ -280,7 +306,7 @@ struct ExerciseHistoryView: View {
     /// Секция заметок
     private var noteSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("My Notes").font(.headline).foregroundColor(.secondary)
+            Text(LocalizedStringKey("My Notes")).font(.headline).foregroundColor(.secondary)
             
             TextEditor(text: $exerciseNote)
                 .frame(minHeight: 100, maxHeight: 200)
@@ -289,25 +315,46 @@ struct ExerciseHistoryView: View {
                 .cornerRadius(8)
                 .focused($isInputActive)
                 .overlay(
-                    Text(exerciseNote.isEmpty ? "Write notes..." : "")
+                    Text(exerciseNote.isEmpty ? LocalizedStringKey("Write notes...") : "")
                         .foregroundColor(.gray.opacity(0.6))
                         .padding(12)
                         .allowsHitTesting(false),
                     alignment: .topLeading
                 )
                 .onChange(of: exerciseNote) { oldValue, newValue in
-                    notesManager.setNote(newValue, for: exerciseName)
+                    // Отменяем предыдущую задачу сохранения
+                    saveTask?.cancel()
+                    
+                    // Сохраняем с debounce (300ms) для плавности
+                    saveTask = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
+                        if !Task.isCancelled {
+                            notesManager.setNote(newValue, for: exerciseName)
+                        }
+                    }
                 }
                 .toolbar {
                     ToolbarItemGroup(placement: .keyboard) {
                         Spacer()
-                        Button("Done") { isInputActive = false }.bold()
+                        Button(LocalizedStringKey("Done")) {
+                            // При закрытии клавиатуры сохраняем сразу
+                            saveTask?.cancel()
+                            notesManager.setNote(exerciseNote, for: exerciseName)
+                            notesManager.saveImmediately()
+                            isInputActive = false
+                        }.bold()
                     }
+                }
+                .onDisappear {
+                    // При закрытии view сохраняем финальное значение
+                    saveTask?.cancel()
+                    notesManager.setNote(exerciseNote, for: exerciseName)
+                    notesManager.saveImmediately()
                 }
         }
         .id("notesSection")
         .padding()
-        .background(Color.white)
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(radius: 5)
     }
@@ -319,7 +366,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(chartTitle).font(.headline).foregroundColor(.secondary)
                 Spacer()
-                Picker("Range", selection: $selectedTimeRange) {
+                Picker(LocalizedStringKey("Range"), selection: $selectedTimeRange) {
                     ForEach(TimeRange.allCases, id: \.self) { range in
                         Text(LocalizedStringKey(range.rawValue)).tag(range)
                     }
@@ -329,7 +376,7 @@ struct ExerciseHistoryView: View {
             }
             
             if graphData.isEmpty {
-                Text("Not enough data")
+                Text(LocalizedStringKey("Not enough data"))
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(Color.gray.opacity(0.1))
@@ -343,9 +390,9 @@ struct ExerciseHistoryView: View {
                 // Выбор метрики (Среднее / Макс), если данных достаточно
                 if graphData.count > 1 {
                     HStack {
-                        Text("Show line:")
+                        Text(LocalizedStringKey("Show line:"))
                             .font(.caption).foregroundColor(.secondary)
-                        Picker("Metric", selection: $selectedMetric) {
+                        Picker(LocalizedStringKey("Metric"), selection: $selectedMetric) {
                             ForEach(GraphMetric.allCases, id: \.self) { metric in
                                 Text(LocalizedStringKey(metric.rawValue)).tag(metric)
                             }
@@ -356,7 +403,7 @@ struct ExerciseHistoryView: View {
             }
         }
         .padding()
-        .background(Color.white)
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(radius: 5)
     }
@@ -375,10 +422,11 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .trailing) {
                     switch exercise.type {
                     case .strength:
-                        Text("\(Int(exercise.weight)) kg").bold().foregroundColor(.blue)
+                        let convertedWeight = unitsManager.convertFromKilograms(exercise.weight)
+                        Text("\(Int(convertedWeight)) \(unitsManager.weightUnitString())").bold().foregroundColor(.blue)
                         Text("\(exercise.sets) x \(exercise.reps)").font(.caption).foregroundColor(.secondary)
                     case .cardio:
-                        Text("\(String(format: "%.1f", exercise.distance ?? 0)) km").bold().foregroundColor(.orange)
+                        Text("\(LocalizationHelper.shared.formatDecimal(exercise.distance ?? 0)) km").bold().foregroundColor(.orange)
                         Text(formatTime(exercise.timeSeconds ?? 0)).font(.caption).foregroundColor(.secondary)
                     case .duration:
                         Text(formatTime(exercise.timeSeconds ?? 0)).bold().foregroundColor(.purple)
@@ -393,10 +441,15 @@ struct ExerciseHistoryView: View {
     /// Список истории тренировок
     private var historyListSection: some View {
         VStack(alignment: .leading) {
-            Text("History").font(.title2).bold()
+            Text(LocalizedStringKey("History")).font(.title2).bold()
             
             if filteredWorkouts.isEmpty {
-                Text("No history yet.").foregroundColor(.secondary).padding(.top, 5)
+                EmptyStateView(
+                    icon: "clock.fill",
+                    title: LocalizedStringKey("No history yet"),
+                    message: LocalizedStringKey("This exercise hasn't been performed in any workouts yet. Add it to a workout to start tracking your progress!")
+                )
+                .padding(.top, 20)
             } else {
                 ForEach(filteredWorkouts) { workout in
                     // filteredWorkouts гарантирует, что упражнение существует
@@ -420,20 +473,33 @@ struct ExerciseHistoryView: View {
             if let val = metricValue, graphData.count > 1 {
                 RuleMark(y: .value("Metric", val))
                     .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(.secondary)
                     .annotation(position: .top, alignment: .leading) {
                         Text("\(selectedMetric.rawValue): \(val, format: .number.precision(.fractionLength(1))) \(unitLabel)")
                             .font(.caption).bold()
-                            .foregroundColor(.gray)
+                            .foregroundColor(.secondary)
                     }
             }
         }
         .frame(height: 250)
         .chartXAxis {
             AxisMarks(values: .automatic) { _ in
-                AxisGridLine()
-                AxisTick()
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(.secondary.opacity(0.3))
+                AxisTick(stroke: StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(.secondary)
                 AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
+                    .foregroundStyle(.primary)
+            }
+        }
+        .chartYAxis {
+            AxisMarks { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(.secondary.opacity(0.3))
+                AxisTick(stroke: StrokeStyle(lineWidth: 1))
+                    .foregroundStyle(.secondary)
+                AxisValueLabel()
+                    .foregroundStyle(.primary)
             }
         }
 
@@ -465,7 +531,7 @@ struct ExerciseHistoryView: View {
                 .symbolSize(graphData.count == 1 ? 50 : 30)
                 .annotation(position: .top) {
                     if graphData.count < 10 {
-                        Text(String(format: "%.0f", dataPoint.value))
+                        Text(LocalizationHelper.shared.formatInteger(dataPoint.value))
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -477,9 +543,9 @@ struct ExerciseHistoryView: View {
     
     var chartTitle: String {
         switch exerciseType {
-        case .strength: return "Progress (Weight)"
-        case .cardio: return "Progress (Distance)"
-        case .duration: return "Progress (Time)"
+        case .strength: return NSLocalizedString("Progress (Weight)", comment: "")
+        case .cardio: return NSLocalizedString("Progress (Distance)", comment: "")
+        case .duration: return NSLocalizedString("Progress (Time)", comment: "")
         }
     }
     
@@ -529,7 +595,9 @@ struct ExerciseHistoryView: View {
                     .filter { $0.isCompleted && $0.type != .warmup }
                     .compactMap { $0.weight }
                     .max()
-                value = maxSetWeight ?? exercise.weight
+                let kgValue = maxSetWeight ?? exercise.weight
+                // Конвертируем в выбранные единицы для графика
+                value = unitsManager.convertFromKilograms(kgValue)
                 
             case .cardio:
                 // 2. КАРДИО: Сумма дистанции
@@ -627,10 +695,11 @@ struct ExerciseHistoryView: View {
         
         for workout in currentWorkouts {
             if let exercise = findExerciseInWorkout(workout), exercise.type == .strength {
-                let maxWeight = exercise.setsList
+                let maxWeightKg = exercise.setsList
                     .filter { $0.isCompleted && $0.type != .warmup }
                     .compactMap { $0.weight }
                     .max() ?? 0
+                let maxWeight = unitsManager.convertFromKilograms(maxWeightKg)
                 if maxWeight > currentMax {
                     currentMax = maxWeight
                 }
@@ -639,10 +708,11 @@ struct ExerciseHistoryView: View {
         
         for workout in previousWorkouts {
             if let exercise = findExerciseInWorkout(workout), exercise.type == .strength {
-                let maxWeight = exercise.setsList
+                let maxWeightKg = exercise.setsList
                     .filter { $0.isCompleted && $0.type != .warmup }
                     .compactMap { $0.weight }
                     .max() ?? 0
+                let maxWeight = unitsManager.convertFromKilograms(maxWeightKg)
                 if maxWeight > previousMax {
                     previousMax = maxWeight
                 }
@@ -669,12 +739,13 @@ struct ExerciseHistoryView: View {
             }
         }
         
+        // Возвращаем значения в кг для внутреннего использования
         return WorkoutViewModel.ExerciseTrend(
             exerciseName: exerciseName,
             trend: direction,
             changePercentage: change,
-            currentValue: currentMax,
-            previousValue: previousMax,
+            currentValue: unitsManager.convertToKilograms(currentMax),
+            previousValue: unitsManager.convertToKilograms(previousMax),
             period: "\(months)M"
         )
     }
@@ -716,17 +787,17 @@ struct ExerciseHistoryView: View {
         let lowercased = exerciseName.lowercased()
         
         if lowercased.contains("squat") {
-            return "Stand with your feet shoulder-width apart. Lower your body by bending your knees and pushing your hips back, as if sitting into a chair. Keep your chest up and core engaged. Lower until your thighs are parallel to the ground, then push through your heels to return to the starting position."
+            return NSLocalizedString("Stand with your feet shoulder-width apart. Lower your body by bending your knees and pushing your hips back, as if sitting into a chair. Keep your chest up and core engaged. Lower until your thighs are parallel to the ground, then push through your heels to return to the starting position.", comment: "")
         } else if lowercased.contains("bench") || lowercased.contains("press") {
-            return "Lie on a flat bench with your feet flat on the floor. Grip the bar with hands slightly wider than shoulder-width. Lower the bar to your chest with control, then press it back up explosively. Keep your shoulders retracted and core tight throughout the movement."
+            return NSLocalizedString("Lie on a flat bench with your feet flat on the floor. Grip the bar with hands slightly wider than shoulder-width. Lower the bar to your chest with control, then press it back up explosively. Keep your shoulders retracted and core tight throughout the movement.", comment: "")
         } else if lowercased.contains("deadlift") {
-            return "Stand with feet hip-width apart, bar over mid-foot. Hinge at the hips and bend your knees to grip the bar. Keep your back straight and chest up. Drive through your heels and extend your hips and knees simultaneously to lift the bar. Keep the bar close to your body throughout the movement."
+            return NSLocalizedString("Stand with feet hip-width apart, bar over mid-foot. Hinge at the hips and bend your knees to grip the bar. Keep your back straight and chest up. Drive through your heels and extend your hips and knees simultaneously to lift the bar. Keep the bar close to your body throughout the movement.", comment: "")
         } else if lowercased.contains("pull") || lowercased.contains("row") {
-            return "Grasp the bar or handles with an overhand or underhand grip. Pull the weight toward your torso, squeezing your shoulder blades together at the end of the movement. Keep your core engaged and avoid swinging. Lower the weight with control to complete the repetition."
+            return NSLocalizedString("Grasp the bar or handles with an overhand or underhand grip. Pull the weight toward your torso, squeezing your shoulder blades together at the end of the movement. Keep your core engaged and avoid swinging. Lower the weight with control to complete the repetition.", comment: "")
         } else if lowercased.contains("curl") {
-            return "Stand or sit with a dumbbell in each hand, arms fully extended. Keeping your elbows close to your body, curl the weights up by contracting your biceps. Squeeze at the top of the movement, then lower the weights slowly with control."
+            return NSLocalizedString("Stand or sit with a dumbbell in each hand, arms fully extended. Keeping your elbows close to your body, curl the weights up by contracting your biceps. Squeeze at the top of the movement, then lower the weights slowly with control.", comment: "")
         } else {
-            return "Perform this exercise with proper form, focusing on controlled movements and full range of motion. Engage your core throughout the exercise and avoid using momentum. Consult with a fitness professional for specific technique guidance."
+            return NSLocalizedString("Perform this exercise with proper form, focusing on controlled movements and full range of motion. Engage your core throughout the exercise and avoid using momentum. Consult with a fitness professional for specific technique guidance.", comment: "")
         }
     }
     
@@ -736,35 +807,35 @@ struct ExerciseHistoryView: View {
         
         if lowercased.contains("squat") {
             return [
-                "Keep your knees in line with your toes, never let them cave inward",
-                "Maintain a neutral spine throughout the entire movement",
-                "Focus on pushing through your heels, not your toes",
-                "Don't let your knees go past your toes when descending",
-                "Keep your chest up and gaze forward to maintain proper posture"
+                NSLocalizedString("Keep your knees in line with your toes, never let them cave inward", comment: ""),
+                NSLocalizedString("Maintain a neutral spine throughout the entire movement", comment: ""),
+                NSLocalizedString("Focus on pushing through your heels, not your toes", comment: ""),
+                NSLocalizedString("Don't let your knees go past your toes when descending", comment: ""),
+                NSLocalizedString("Keep your chest up and gaze forward to maintain proper posture", comment: "")
             ]
         } else if lowercased.contains("bench") || lowercased.contains("press") {
             return [
-                "Keep your shoulder blades retracted and pressed into the bench",
-                "Lower the bar with control - don't let it drop onto your chest",
-                "Keep your feet firmly planted on the floor for stability",
-                "Maintain a slight arch in your lower back (not excessive)",
-                "Press the bar in a straight line up and slightly back"
+                NSLocalizedString("Keep your shoulder blades retracted and pressed into the bench", comment: ""),
+                NSLocalizedString("Lower the bar with control - don't let it drop onto your chest", comment: ""),
+                NSLocalizedString("Keep your feet firmly planted on the floor for stability", comment: ""),
+                NSLocalizedString("Maintain a slight arch in your lower back (not excessive)", comment: ""),
+                NSLocalizedString("Press the bar in a straight line up and slightly back", comment: "")
             ]
         } else if lowercased.contains("deadlift") {
             return [
-                "Keep the bar close to your body - it should almost scrape your shins",
-                "Start with your hips higher than your knees",
-                "Drive through your heels and extend your hips forward at the top",
-                "Never round your back - keep it neutral throughout",
-                "Breathe out as you lift and breathe in as you lower"
+                NSLocalizedString("Keep the bar close to your body - it should almost scrape your shins", comment: ""),
+                NSLocalizedString("Start with your hips higher than your knees", comment: ""),
+                NSLocalizedString("Drive through your heels and extend your hips forward at the top", comment: ""),
+                NSLocalizedString("Never round your back - keep it neutral throughout", comment: ""),
+                NSLocalizedString("Breathe out as you lift and breathe in as you lower", comment: "")
             ]
         } else {
             return [
-                "Focus on proper form over the amount of weight",
-                "Control the negative (lowering) portion of the movement",
-                "Keep your core engaged throughout the exercise",
-                "Breathe properly - exhale on exertion, inhale on return",
-                "If you feel sharp pain, stop immediately and consult a professional"
+                NSLocalizedString("Focus on proper form over the amount of weight", comment: ""),
+                NSLocalizedString("Control the negative (lowering) portion of the movement", comment: ""),
+                NSLocalizedString("Keep your core engaged throughout the exercise", comment: ""),
+                NSLocalizedString("Breathe properly - exhale on exertion, inhale on return", comment: ""),
+                NSLocalizedString("If you feel sharp pain, stop immediately and consult a professional", comment: "")
             ]
         }
     }
@@ -787,14 +858,14 @@ struct ExerciseHistoryView: View {
     private func exerciseTrendSection(trend: WorkoutViewModel.ExerciseTrend) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Exercise Trend")
+                Text(LocalizedStringKey("Exercise Trend"))
                     .font(.headline)
                     .foregroundColor(.secondary)
                 
                 Spacer()
                 
                 // Переключатель периода в правом верхнем углу
-                Picker("Period", selection: $selectedTrendPeriod) {
+                Picker(LocalizedStringKey("Period"), selection: $selectedTrendPeriod) {
                     ForEach(TrendPeriod.allCases) { period in
                         Text(period.displayName).tag(period)
                     }
@@ -809,8 +880,10 @@ struct ExerciseHistoryView: View {
                     .frame(width: 24)
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        Text("\(Int(trend.previousValue)) kg")
+                        HStack(spacing: 8) {
+                        let prevConverted = unitsManager.convertFromKilograms(trend.previousValue)
+                        let currConverted = unitsManager.convertFromKilograms(trend.currentValue)
+                        Text("\(Int(prevConverted)) \(unitsManager.weightUnitString())")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
@@ -818,7 +891,7 @@ struct ExerciseHistoryView: View {
                             .font(.caption2)
                             .foregroundColor(.secondary)
                         
-                        Text("\(Int(trend.currentValue)) kg")
+                        Text("\(Int(currConverted)) \(unitsManager.weightUnitString())")
                             .font(.caption)
                             .bold()
                     }
@@ -831,7 +904,7 @@ struct ExerciseHistoryView: View {
                         .font(.headline)
                         .foregroundColor(trend.trend.color)
                     
-                    Text(trend.trend == .growing ? "↑ Growing" : trend.trend == .declining ? "↓ Declining" : "→ Stable")
+                    Text(trend.trend == .growing ? LocalizedStringKey("↑ Growing") : trend.trend == .declining ? LocalizedStringKey("↓ Declining") : LocalizedStringKey("→ Stable"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -839,7 +912,7 @@ struct ExerciseHistoryView: View {
             .padding(.vertical, 8)
         }
         .padding()
-        .background(Color.white)
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(radius: 5)
     }
@@ -849,7 +922,7 @@ struct ExerciseHistoryView: View {
     private func exerciseForecastSection(forecast: WorkoutViewModel.ProgressForecast) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Progress Forecast")
+                Text(LocalizedStringKey("Progress Forecast"))
                     .font(.headline)
                     .foregroundColor(.secondary)
                 
@@ -869,10 +942,11 @@ struct ExerciseHistoryView: View {
             
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Current")
+                    Text(LocalizedStringKey("Current"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                    Text("\(Int(forecast.currentMax)) kg")
+                    let currentConverted = unitsManager.convertFromKilograms(forecast.currentMax)
+                    Text("\(Int(currentConverted)) \(unitsManager.weightUnitString())")
                         .font(.subheadline)
                         .bold()
                 }
@@ -881,10 +955,11 @@ struct ExerciseHistoryView: View {
                     .foregroundColor(.blue)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Predicted")
+                    Text(LocalizedStringKey("Predicted"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                    Text("\(Int(forecast.predictedMax)) kg")
+                    let predictedConverted = unitsManager.convertFromKilograms(forecast.predictedMax)
+                    Text("\(Int(predictedConverted)) \(unitsManager.weightUnitString())")
                         .font(.subheadline)
                         .bold()
                         .foregroundColor(.blue)
@@ -893,11 +968,12 @@ struct ExerciseHistoryView: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("+\(Int(forecast.predictedMax - forecast.currentMax)) kg")
+                    let diffConverted = unitsManager.convertFromKilograms(forecast.predictedMax - forecast.currentMax)
+                    Text("+\(Int(diffConverted)) \(unitsManager.weightUnitString())")
                         .font(.caption)
                         .bold()
                         .foregroundColor(.green)
-                    Text("in \(forecast.timeframe)")
+                    Text(LocalizedStringKey("in \(forecast.timeframe)"))
                         .font(.caption2)
                         .foregroundColor(.secondary)
                 }
@@ -923,7 +999,7 @@ struct ExerciseHistoryView: View {
             .frame(height: 6)
         }
         .padding()
-        .background(Color.white)
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
         .shadow(radius: 5)
     }

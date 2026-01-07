@@ -12,6 +12,11 @@ struct EffortInputView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var tutorialManager: TutorialManager
     
+    // Локальное состояние для слайдера - обновляется мгновенно без задержек
+    @State private var localEffort: Int = 5
+    @State private var updateTask: Task<Void, Never>?
+    @State private var isDragging: Bool = false
+    
     func effortColor(_ value: Int) -> Color {
         switch value {
         case 1...4: return .green
@@ -21,9 +26,43 @@ struct EffortInputView: View {
         }
     }
     
+    // Binding для слайдера с локальным состоянием
+    private var sliderBinding: Binding<Double> {
+        Binding<Double>(
+            get: { Double(localEffort) },
+            set: { newValue in
+                let intValue = Int(newValue)
+                localEffort = intValue
+                handleSliderValueChange(intValue)
+            }
+        )
+    }
+    
+    // Обрабатывает изменение значения слайдера с debounce
+    private func handleSliderValueChange(_ newValue: Int) {
+        // Отменяем предыдущую задачу
+        updateTask?.cancel()
+        
+        // Отмечаем, что происходит перетаскивание
+        if !isDragging {
+            isDragging = true
+        }
+        
+        // Обновляем binding с задержкой после последнего изменения
+        updateTask = Task {
+            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms debounce
+            if !Task.isCancelled {
+                await MainActor.run {
+                    isDragging = false
+                    effort = localEffort
+                }
+            }
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 20) {
-            Text("Rate Your Effort")
+            Text(LocalizedStringKey("Rate Your Effort"))
                 .font(.title2).bold()
             
             // ОБЪЕДИНЯЕМ СЛАЙДЕР И КНОПКУ В ОДНУ ГРУППУ ДЛЯ ПОДСВЕТКИ
@@ -31,17 +70,21 @@ struct EffortInputView: View {
                 
                 // 1. Слайдер
                 HStack {
-                    Text("\(effort)/10")
+                    Text("\(localEffort)/10")
                         .font(.title3.bold())
-                        .foregroundColor(effortColor(effort))
+                        .foregroundColor(effortColor(localEffort))
                         .frame(width: 60)
                     
-                    Slider(value: Binding(get: { Double(effort) }, set: { effort = Int($0) }), in: 1...10, step: 1)
-                        .tint(effortColor(effort))
+                    Slider(value: sliderBinding, in: 1...10, step: 1)
+                        .tint(effortColor(localEffort))
                 }
                 
                 // 2. Кнопка
-                Button("Done") {
+                Button(LocalizedStringKey("Done")) {
+                    // Отменяем любые ожидающие задачи
+                    updateTask?.cancel()
+                    // При закрытии сохраняем финальное значение
+                    effort = localEffort
                     dismiss()
                     if tutorialManager.currentStep == .explainEffort {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -67,5 +110,9 @@ struct EffortInputView: View {
         }
         .padding()
         .presentationDetents([.height(250)]) // Чуть увеличил высоту, чтобы все влезло комфортно
+        .onAppear {
+            // Инициализируем локальное значение при появлении
+            localEffort = effort
+        }
     }
 }

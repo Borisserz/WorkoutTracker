@@ -95,7 +95,7 @@ struct WorkoutCalendarView: View {
             // 2. Скролл календаря
             calendarList
         }
-        .navigationTitle("Calendar")
+        .navigationTitle(LocalizedStringKey("Calendar"))
         .navigationBarTitleDisplayMode(.inline)
     }
     
@@ -103,7 +103,7 @@ struct WorkoutCalendarView: View {
     
     private var statsHeader: some View {
         VStack(spacing: 10) {
-            Picker("Time Range", selection: $selectedTimeRange) {
+            Picker(LocalizedStringKey("Time Range"), selection: $selectedTimeRange) {
                 ForEach(TimeRange.allCases, id: \.self) { range in
                     Text(LocalizedStringKey(range.rawValue)).tag(range)
                 }
@@ -115,7 +115,7 @@ struct WorkoutCalendarView: View {
                     .font(.system(size: 50, weight: .bold, design: .rounded))
                     .contentTransition(.numericText())
                 
-                Text("workouts done")
+                Text(LocalizedStringKey("workouts done"))
                     .font(.headline)
                     .foregroundColor(.secondary)
                     .padding(.bottom, 6)
@@ -129,14 +129,23 @@ struct WorkoutCalendarView: View {
     private var calendarList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(spacing: 25) {
-                    ForEach(monthsToDisplay.indices, id: \.self) { index in
-                        // ViewModel передается через Environment, поэтому MonthView найдет его сам
-                        MonthView(monthDate: monthsToDisplay[index])
-                            .id(index)
+                if viewModel.workouts.isEmpty {
+                    EmptyStateView(
+                        icon: "calendar.badge.exclamationmark",
+                        title: LocalizedStringKey("No workouts yet"),
+                        message: LocalizedStringKey("Start tracking your workouts to see them appear on the calendar. Each completed workout will be highlighted!")
+                    )
+                    .padding(.top, 50)
+                } else {
+                    VStack(spacing: 25) {
+                        ForEach(monthsToDisplay.indices, id: \.self) { index in
+                            // ViewModel передается через Environment, поэтому MonthView найдет его сам
+                            MonthView(monthDate: monthsToDisplay[index])
+                                .id(index)
+                        }
                     }
+                    .padding()
                 }
-                .padding()
             }
             .onChange(of: selectedTimeRange) { _ in
                 // При изменении диапазона прокручиваем к началу (к текущему месяцу)

@@ -8,6 +8,7 @@ struct SupersetCardView: View {
     var isWorkoutCompleted: Bool = false // Флаг завершения тренировки
     @State private var showEffortSheet = false
     @State private var showPRCelebration = false
+    @State private var showDeleteAlert = false
     
     var body: some View {
         ZStack { // Обертка для оверлея рекорда
@@ -28,6 +29,14 @@ struct SupersetCardView: View {
             .sheet(isPresented: $showEffortSheet) {
                 EffortInputView(effort: $superset.effort)
             }
+            .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteAlert) {
+                Button(LocalizedStringKey("Delete"), role: .destructive) {
+                    onDelete()
+                }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) { }
+            } message: {
+                Text(LocalizedStringKey("Are you sure you want to delete this superset? This action cannot be undone."))
+            }
             .blur(radius: showPRCelebration ? 5 : 0)
             
             // Оверлей рекорда
@@ -43,12 +52,14 @@ struct SupersetCardView: View {
         HStack {
             HStack {
                 Image(systemName: "link").foregroundColor(.purple)
-                Text("Superset").font(.headline).foregroundColor(.purple)
+                Text(LocalizedStringKey("Superset")).font(.headline).foregroundColor(.purple)
             }
             Spacer()
             Menu {
-                Button(role: .destructive, action: onDelete) {
-                    Label("Remove Superset", systemImage: "trash")
+                Button(role: .destructive) {
+                    showDeleteAlert = true
+                } label: {
+                    Label(LocalizedStringKey("Remove Superset"), systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis").foregroundColor(.gray).padding(10)
@@ -61,6 +72,7 @@ struct SupersetCardView: View {
         ForEach($superset.subExercises.indices, id: \.self) { index in
             let isLast = index == superset.subExercises.count - 1
             VStack(spacing: 0) {
+                // Для вложенных упражнений в суперсете всегда раскрыты
                 ExerciseCardView(
                     exercise: $superset.subExercises[index],
                     currentWorkoutId: currentWorkoutId,
@@ -72,7 +84,9 @@ struct SupersetCardView: View {
                         }
                     },
                     isEmbeddedInSuperset: true,
-                    isWorkoutCompleted: isWorkoutCompleted
+                    isWorkoutCompleted: isWorkoutCompleted,
+                    isExpanded: .constant(true), // Вложенные упражнения всегда раскрыты
+                    isCurrentExercise: false // Вложенные упражнения в суперсете не выделяются отдельно
                 )
                 .background(Color.clear)
                 .shadow(color: .clear, radius: 0)
@@ -88,7 +102,7 @@ struct SupersetCardView: View {
     
     var finishButton: some View {
         Button(action: finishSuperset) { // <--- ИЗМЕНЕНО
-            Text("Finish Superset")
+            Text(LocalizedStringKey("Finish Superset"))
                 .font(.subheadline).bold()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
@@ -104,7 +118,7 @@ struct SupersetCardView: View {
     var recordOverlay: some View {
         VStack {
             Image(systemName: "trophy.fill").font(.system(size: 50)).foregroundColor(.yellow)
-            Text("New Record!").font(.title).bold()
+            Text(LocalizedStringKey("New Record!")).font(.title).bold()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.4))

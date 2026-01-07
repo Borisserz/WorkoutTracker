@@ -20,6 +20,9 @@ struct ExerciseView: View {
     @State private var showAddSheet = false
     @State private var selectedGroups: Set<String> = []
     @State private var searchText: String = ""
+    @State private var showDeleteAlert = false
+    @State private var exerciseToDelete: (name: String, category: String)?
+    @State private var exercisesToDelete: [(name: String, category: String)] = []
     
     // MARK: - Body
     
@@ -32,31 +35,62 @@ struct ExerciseView: View {
                 // Фильтр по группам мышц
                 muscleGroupFilter
                 
-                List {
-                    // Проходим по всем категориям (Chest, Back...), сортируем по алфавиту
-                    ForEach(filteredCategories, id: \.self) { group in
-                        let exercises = filteredExercises(for: group)
-                        
-                        // Показываем секцию только если в ней есть упражнения
-                        if !exercises.isEmpty {
-                            Section(header: Text(LocalizedStringKey(group))) {
-                                
-                                ForEach(exercises, id: \.self) { exerciseName in
-                                NavigationLink(destination: ExerciseHistoryView(exerciseName: exerciseName, allWorkouts: viewModel.workouts)) {
-                                    exerciseRow(name: exerciseName)
+                if hasAnyFilteredExercises {
+                    List {
+                        // Проходим по всем категориям (Chest, Back...), сортируем по алфавиту
+                        ForEach(filteredCategories, id: \.self) { group in
+                            let exercises = filteredExercises(for: group)
+                            
+                            // Показываем секцию только если в ней есть упражнения
+                            if !exercises.isEmpty {
+                                Section(header: Text(LocalizedStringKey(group))) {
+                                    
+                                    ForEach(exercises, id: \.self) { exerciseName in
+                                    NavigationLink(destination: ExerciseHistoryView(exerciseName: exerciseName, allWorkouts: viewModel.workouts)) {
+                                        exerciseRow(name: exerciseName)
+                                    }
                                 }
-                            }
-                                // Подключаем удаление (свайп влево) - теперь работает для всех упражнений
-                                .onDelete { indexSet in
-                                    deleteExercise(at: indexSet, in: group, exercises: exercises)
+                                    // Подключаем удаление (свайп влево) - теперь работает для всех упражнений
+                                    .onDelete { indexSet in
+                                        let toDelete = indexSet.map { (name: exercises[$0], category: group) }
+                                        exercisesToDelete = toDelete
+                                        showDeleteAlert = true
+                                    }
                                 }
                             }
                         }
                     }
+                    .listStyle(.insetGrouped)
+                } else {
+                    // Пустое состояние когда нет упражнений после фильтрации
+                    VStack(spacing: 16) {
+                        Image(systemName: "magnifyingglass")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray.opacity(0.5))
+                        
+                        Text(LocalizedStringKey("No exercises found"))
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        if searchText.isEmpty {
+                            Text(LocalizedStringKey("No exercises match the selected filters. Try selecting different muscle groups."))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        } else {
+                            Text(LocalizedStringKey("No exercises match your search \"\(searchText)\". Try a different search term or clear the filters."))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 40)
                 }
-                .listStyle(.insetGrouped)
             }
-            .navigationTitle("Exercise Catalog")
+            .navigationTitle(LocalizedStringKey("Exercise Catalog"))
             .toolbar {
                 // 1. Кнопка ПЛЮС — СЛЕВА
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -76,25 +110,68 @@ struct ExerciseView: View {
             .sheet(isPresented: $showAddSheet) {
                 AddNewExerciseView()
             }
+            .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteAlert) {
+                Button(LocalizedStringKey("Delete"), role: .destructive) {
+                    deleteExercises()
+                }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) {
+                    exercisesToDelete = []
+                }
+            } message: {
+                if exercisesToDelete.count == 1 {
+                    Text(LocalizedStringKey("Are you sure you want to delete '\(exercisesToDelete.first?.name ?? "")'? This action cannot be undone."))
+                } else {
+                    Text(LocalizedStringKey("Are you sure you want to delete \(exercisesToDelete.count) exercises? This action cannot be undone."))
+                }
+            }
         }
     }
     
     // MARK: - View Components
     
     private func exerciseRow(name: String) -> some View {
-        HStack {
-            Text(LocalizedStringKey(name))
-                .foregroundColor(.primary)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(LocalizedStringKey(name))
+                    .foregroundColor(.primary)
+                    .font(.body)
+                
+                Spacer()
+                
+                // Если упражнение добавлено пользователем — показываем иконку
+                if isCustom(name: name) {
+                    Image(systemName: "person.crop.circle")
+                        .foregroundColor(.blue)
+                        .font(.caption)
+                }
+            }
             
-            Spacer()
-            
-            // Если упражнение добавлено пользователем — показываем иконку
-            if isCustom(name: name) {
-                Image(systemName: "person.crop.circle")
-                    .foregroundColor(.blue)
-                    .font(.caption)
+            // Таргетные мускулы
+            if let category = getCategory(for: name) {
+                let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: name, muscleGroup: category)
+                if !targetMuscles.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                        Text(targetMuscles.joined(separator: ", "))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
             }
         }
+    }
+    
+    /// Получить категорию упражнения
+    private func getCategory(for exerciseName: String) -> String? {
+        for (category, exercises) in viewModel.combinedCatalog {
+            if exercises.contains(exerciseName) {
+                return category
+            }
+        }
+        return nil
     }
     
     // MARK: - View Components
@@ -105,7 +182,7 @@ struct ExerciseView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
             
-            TextField("Search exercises", text: $searchText)
+            TextField(LocalizedStringKey("Search exercises"), text: $searchText)
                 .textFieldStyle(PlainTextFieldStyle())
             
             if !searchText.isEmpty {
@@ -132,7 +209,7 @@ struct ExerciseView: View {
             HStack(spacing: 12) {
                 // Кнопка "Все"
                 filterButton(
-                    title: "All",
+                    title: NSLocalizedString("All", comment: ""),
                     isSelected: selectedGroups.isEmpty,
                     action: {
                         selectedGroups.removeAll()
@@ -207,18 +284,28 @@ struct ExerciseView: View {
         }
     }
     
+    /// Проверяет, есть ли хотя бы одно упражнение после фильтрации
+    private var hasAnyFilteredExercises: Bool {
+        for group in filteredCategories {
+            if !filteredExercises(for: group).isEmpty {
+                return true
+            }
+        }
+        return false
+    }
+    
     /// Проверяет, является ли упражнение созданным пользователем
     private func isCustom(name: String) -> Bool {
         return viewModel.isCustomExercise(name: name)
     }
     
     /// Логика удаления (работает для всех упражнений - пользовательских и стандартных)
-    private func deleteExercise(at offsets: IndexSet, in group: String, exercises: [String]) {
+    private func deleteExercises() {
         withAnimation {
-            offsets.forEach { index in
-                let nameToDelete = exercises[index]
-                viewModel.deleteExercise(name: nameToDelete, category: group)
+            for item in exercisesToDelete {
+                viewModel.deleteExercise(name: item.name, category: item.category)
             }
+            exercisesToDelete = []
         }
     }
 }

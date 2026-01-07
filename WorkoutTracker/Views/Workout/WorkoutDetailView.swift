@@ -44,8 +44,20 @@ struct WorkoutDetailView: View {
     @State private var exerciseToSwap: Exercise?
     @State private var tempSwapList: [Exercise] = [] // Временный буфер для выбора замены
     
+    // Удаление с предупреждением
+    @State private var showDeleteExerciseAlert = false
+    @State private var exerciseIndexToDelete: Int?
+    @State private var showDeleteSupersetAlert = false
+    @State private var supersetIndexToDelete: Int?
+    
     // Sharing
     @State private var shareItems: [Any] = []
+    
+    // Управление раскрытостью упражнений
+    @State private var expandedExercises: [UUID: Bool] = [:]
+    
+    // ID упражнения, к которому нужно прокрутить
+    @State private var scrollToExerciseId: UUID?
     
     // MARK: - Computed Properties
     
@@ -86,8 +98,9 @@ struct WorkoutDetailView: View {
     // MARK: - Body
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
                 
                 // 1. Заголовок (Картинка, Таймер, Инфо)
                 headerSection
@@ -114,12 +127,53 @@ struct WorkoutDetailView: View {
                     FunFactView(workout: workout, showSettings: $showComparisonSettings)
                 }
                 
-                // Отступ снизу, чтобы глобальный таймер отдыха не перекрывал контент
-                Spacer(minLength: 80)
+                    // Отступ снизу, чтобы глобальный таймер отдыха не перекрывал контент
+                    Spacer(minLength: 80)
+                }
+                .padding()
             }
-            .padding()
+            .navigationTitle(workout.title)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        workout.isFavorite.toggle()
+                    } label: {
+                        Image(systemName: workout.isFavorite ? "star.fill" : "star")
+                            .foregroundColor(workout.isFavorite ? .yellow : .gray)
+                            .font(.title3)
+                    }
+                }
+            }
+            .onAppear {
+                // Инициализируем состояние раскрытости для всех упражнений
+                // Первое упражнение всегда раскрыто, остальные - по логике
+                for (index, exercise) in workout.exercises.enumerated() {
+                    if expandedExercises[exercise.id] == nil {
+                        expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
+                    }
+                }
+            }
+            .onChange(of: workout.exercises.count) { oldCount, newCount in
+                // При добавлении нового упражнения инициализируем его состояние
+                // Первое упражнение всегда раскрыто, остальные - свернуты
+                for (index, exercise) in workout.exercises.enumerated() {
+                    if expandedExercises[exercise.id] == nil {
+                        expandedExercises[exercise.id] = index == 0
+                    }
+                }
+            }
+            .onChange(of: scrollToExerciseId) { oldId, newId in
+                // Прокручиваем к упражнению когда изменяется scrollToExerciseId
+                if let exerciseId = newId {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        withAnimation {
+                            proxy.scrollTo(exerciseId, anchor: .top)
+                        }
+                        scrollToExerciseId = nil // Сбрасываем после прокрутки
+                    }
+                }
+            }
         }
-        .navigationTitle(workout.title)
         
         // --- Modals & Sheets ---
         
@@ -141,9 +195,9 @@ struct WorkoutDetailView: View {
                     EditExerciseView(exercise: $workout.exercises[index])
                         .toolbar {
                             ToolbarItem(placement: .destructiveAction) {
-                                Button("Delete", role: .destructive) {
-                                    workout.exercises.remove(at: index)
-                                    exerciseToEdit = nil
+                                Button(LocalizedStringKey("Delete"), role: .destructive) {
+                                    exerciseIndexToDelete = index
+                                    showDeleteExerciseAlert = true
                                 }
                             }
                         }
@@ -173,7 +227,8 @@ struct WorkoutDetailView: View {
                 supersetToEdit = nil
             }, onDelete: {
                 if let index = workout.exercises.firstIndex(where: { $0.id == superset.id }) {
-                    withAnimation { workout.exercises.remove(at: index) }
+                    supersetIndexToDelete = index
+                    showDeleteSupersetAlert = true
                 }
                 supersetToEdit = nil
             })
@@ -196,6 +251,44 @@ struct WorkoutDetailView: View {
             if workout.isActive { updateTimer() }
         }
         .onAppear(perform: updateTimer)
+        // Предупреждения при удалении
+        .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
+            Button(LocalizedStringKey("Delete"), role: .destructive) {
+                if let index = exerciseIndexToDelete {
+                    withAnimation { workout.exercises.remove(at: index) }
+                    exerciseIndexToDelete = nil
+                }
+                if exerciseToEdit != nil {
+                    exerciseToEdit = nil
+                }
+            }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) {
+                exerciseIndexToDelete = nil
+            }
+        } message: {
+            if let index = exerciseIndexToDelete, index < workout.exercises.count {
+                let exerciseName = workout.exercises[index].name
+                Text(LocalizedStringKey("Are you sure you want to delete '\(exerciseName)'? This action cannot be undone."))
+            } else {
+                Text(LocalizedStringKey("Are you sure you want to delete this exercise? This action cannot be undone."))
+            }
+        }
+        .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteSupersetAlert) {
+            Button(LocalizedStringKey("Delete"), role: .destructive) {
+                if let index = supersetIndexToDelete {
+                    withAnimation { workout.exercises.remove(at: index) }
+                    supersetIndexToDelete = nil
+                }
+                if supersetToEdit != nil {
+                    supersetToEdit = nil
+                }
+            }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) {
+                supersetIndexToDelete = nil
+            }
+        } message: {
+            Text(LocalizedStringKey("Are you sure you want to delete this superset? This action cannot be undone."))
+        }
     }
     
     // MARK: - View Sections
@@ -205,7 +298,7 @@ struct WorkoutDetailView: View {
                 // Статус бар
                 if workout.isActive {
                     HStack {
-                        Label("Live Workout", systemImage: "record.circle")
+                        Label(LocalizedStringKey("Live Workout"), systemImage: "record.circle")
                             .foregroundStyle(.red).bold().blinking()
                         Spacer()
                         Text(timeElapsed)
@@ -217,7 +310,7 @@ struct WorkoutDetailView: View {
                 } else {
                     HStack {
                         Image(systemName: "flag.checkered").foregroundColor(.green)
-                        Text("Completed").bold()
+                        Text(LocalizedStringKey("Completed")).bold()
                         Spacer()
                         Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                             .foregroundStyle(.secondary)
@@ -240,14 +333,14 @@ struct WorkoutDetailView: View {
                 // Статистика (Время, Усилие)
                 HStack {
                     VStack(alignment: .leading) {
-                        Text("Duration").font(.caption).foregroundColor(.secondary)
-                        Text(workout.isActive ? timeElapsed : "\(workout.duration) min").font(.title2).bold()
+                        Text(LocalizedStringKey("Duration")).font(.caption).foregroundColor(.secondary)
+                        Text(workout.isActive ? LocalizedStringKey(timeElapsed) : LocalizedStringKey("\(workout.duration) min")).font(.title2).bold()
                     }
                     Spacer()
                     
                     // БЛОК EFFORT
                     VStack(alignment: .trailing) {
-                        Text("Avg Effort").font(.caption).foregroundColor(.secondary)
+                        Text(LocalizedStringKey("Avg Effort")).font(.caption).foregroundColor(.secondary)
                         Text("\(workout.effortPercentage)%")
                             .font(.title2).bold()
                             .foregroundColor(effortColor(percentage: workout.effortPercentage))
@@ -273,7 +366,7 @@ struct WorkoutDetailView: View {
             Group {
                 if workout.isActive {
                     Button(action: finishWorkout) {
-                        Text("Finish Workout")
+                        Text(LocalizedStringKey("Finish Workout"))
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding()
@@ -294,7 +387,7 @@ struct WorkoutDetailView: View {
                     } label: {
                         HStack {
                             Image(systemName: "square.and.arrow.up")
-                            Text("Share Result")
+                            Text(LocalizedStringKey("Share Result"))
                         }
                         .font(.headline)
                         .frame(maxWidth: .infinity)
@@ -311,7 +404,7 @@ struct WorkoutDetailView: View {
     
     private var exercisesToolbarSection: some View {
             HStack {
-                Text("Exercises").font(.title2).bold()
+                Text(LocalizedStringKey("Exercises")).font(.title2).bold()
                 Spacer()
                 
                 // Кнопка ручного запуска таймера (только для активной)
@@ -332,7 +425,7 @@ struct WorkoutDetailView: View {
                 Button {
                     showSupersetBuilder = true
                 } label: {
-                    Label("Superset", systemImage: "plus")
+                    Label(LocalizedStringKey("Superset"), systemImage: "plus")
                         .font(.caption).bold()
                         .padding(8)
                         .background(Color.purple.opacity(0.1))
@@ -345,14 +438,13 @@ struct WorkoutDetailView: View {
                 Button {
                     showExerciseSelection = true
                 } label: {
-                    Label("Exercise", systemImage: "plus")
+                    Label(LocalizedStringKey("Exercise"), systemImage: "plus")
                         .font(.caption).bold()
                         .padding(8)
                         .background(Color.blue.opacity(0.1))
                         .cornerRadius(8)
                 }
                 .disabled(!workout.isActive)
-                // ДОБАВЛЯЕМ ПОДСКАЗКУ СЮДА
                 .spotlight(
                     step: .addExercise,
                     manager: tutorialManager,
@@ -369,8 +461,12 @@ struct WorkoutDetailView: View {
     private var exerciseListSection: some View {
         Group {
             if workout.exercises.isEmpty {
-                Text("No exercises added yet.")
-                    .italic().foregroundColor(.secondary).padding(.vertical)
+                EmptyStateView(
+                    icon: "plus.circle.fill",
+                    title: LocalizedStringKey("No exercises added yet"),
+                    message: LocalizedStringKey("Tap the + button above to add your first exercise to this workout.")
+                )
+                .padding(.vertical, 30)
             } else {
                 VStack(spacing: 16) {
                     ForEach(workout.exercises) { exercise in
@@ -380,12 +476,32 @@ struct WorkoutDetailView: View {
                             let exerciseBinding = $workout.exercises[index]
                             
                             let deleteAction = {
-                                withAnimation { _ = workout.exercises.remove(at: index) }
+                                exerciseIndexToDelete = index
+                                showDeleteExerciseAlert = true
                             }
                             
                             let swapAction = {
                                 self.exerciseToSwap = exercise
                                 self.showSwapSheet = true
+                            }
+                            
+                            // Binding для состояния раскрытости
+                            let isExpandedBinding = Binding(
+                                get: { expandedExercises[exercise.id] ?? false },
+                                set: { expandedExercises[exercise.id] = $0 }
+                            )
+                            
+                            // Определяем, является ли это упражнение текущим (активным)
+                            // Текущее упражнение - это первое незавершенное и раскрытое упражнение
+                            let isCurrentExercise = workout.isActive && 
+                                !exercise.isCompleted && 
+                                !exercise.isSuperset &&
+                                (expandedExercises[exercise.id] ?? false) &&
+                                workout.exercises.prefix(index).allSatisfy { $0.isCompleted || $0.isSuperset }
+                            
+                            // Callback при завершении упражнения
+                            let onExerciseFinished = {
+                                handleExerciseFinished(exerciseId: exercise.id, exerciseIndex: index)
                             }
                             
                             // Рендерим либо Супер-сет, либо обычную карточку
@@ -404,10 +520,13 @@ struct WorkoutDetailView: View {
                                         onDelete: deleteAction,
                                         onSwap: swapAction,
                                         isWorkoutCompleted: !workout.isActive,
-                                        initialExpanded: !isNewWorkout // Закрываем упражнения в новых тренировках (из шаблонов)
+                                        isExpanded: isExpandedBinding,
+                                        onExerciseFinished: onExerciseFinished,
+                                        isCurrentExercise: isCurrentExercise
                                     )
                                 }
                             }
+                            .id(exercise.id) // ID для ScrollViewReader
                             // Модификаторы Drag & Drop
                             .background(Color.white.opacity(0.01))
                             .onDrag {
@@ -432,8 +551,11 @@ struct WorkoutDetailView: View {
         return Group {
             if !strengthExercises.isEmpty {
                 VStack(alignment: .leading) {
-                    Text("Analysis (Max Weight)")
+                    Text(LocalizedStringKey("Analysis (Max Weight)"))
                         .font(.title2).bold().padding(.top)
+                    
+                    // Получаем список всех имен упражнений для явного указания на оси X
+                    let exerciseNames = strengthExercises.map { $0.name }
                     
                     Chart {
                         ForEach(strengthExercises) { exercise in
@@ -444,29 +566,40 @@ struct WorkoutDetailView: View {
                                 .max() ?? exercise.weight
                             
                             if maxWeight > 0 {
+                                // Конвертируем вес для отображения на графике
+                                let unitsManager = UnitsManager.shared
+                                let convertedWeight = unitsManager.convertFromKilograms(maxWeight)
                                 BarMark(
                                     x: .value("Exercise", exercise.name),
-                                    y: .value("Weight", maxWeight)
+                                    y: .value("Weight", convertedWeight)
                                 )
                                 .foregroundStyle(Color.blue.gradient)
                                 .cornerRadius(4)
                                 .annotation(position: .top) {
-                                    Text("\(Int(maxWeight))")
+                                    Text("\(Int(convertedWeight))")
                                         .font(.caption2)
                                         .foregroundColor(.secondary)
                                 }
                             }
                         }
                     }
-                    .frame(height: 200)
+                    .frame(height: 280)
+                    .padding(.bottom, 40)
                     .chartXAxis {
-                        AxisMarks { _ in
+                        // Явно указываем все значения для оси X, чтобы все подписи отображались
+                        AxisMarks(values: exerciseNames) { value in
                             AxisTick()
-                            AxisValueLabel(collisionResolution: .greedy)
+                            AxisValueLabel {
+                                if let exerciseName = value.as(String.self) {
+                                    Text(exerciseName)
+                                        .font(.caption2)
+                                        .rotationEffect(.degrees(-45))
+                                        .offset(x: 0, y: 5)
+                                }
+                            }
                         }
                     }
                 }
-                // ИСПРАВЛЕННАЯ ПОДСВЕТКА
                 .spotlight(
                                    step: .highlightChart,
                                    manager: tutorialManager,
@@ -484,7 +617,7 @@ struct WorkoutDetailView: View {
     
     private var muscleHeatmapSection: some View {
         VStack(alignment: .leading) {
-            Text("Body Status")
+            Text(LocalizedStringKey("Body Status"))
                 .font(.title2).bold().padding(.top)
             
             VStack {
@@ -494,7 +627,6 @@ struct WorkoutDetailView: View {
             .frame(maxWidth: .infinity)
             .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(16)
-            // ИСПРАВЛЕННАЯ ПОДСВЕТКА
             .spotlight(
                             step: .highlightBody,
                             manager: tutorialManager,
@@ -584,6 +716,9 @@ struct WorkoutDetailView: View {
         
         // 5. Останавливаем Live Activity
         stopLiveActivity()
+        
+        // 6. Обновляем виджеты сразу после завершения тренировки
+        viewModel.updateWidgetData()
     }
     
     private func checkAchievements() {
@@ -623,6 +758,33 @@ struct WorkoutDetailView: View {
         if percentage > 50 { return .orange }
         return .green
     }
+    
+    // Обработка завершения упражнения: сворачиваем текущее и раскрываем следующее
+    private func handleExerciseFinished(exerciseId: UUID, exerciseIndex: Int) {
+        // Сворачиваем текущее упражнение
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            expandedExercises[exerciseId] = false
+        }
+        
+        // Ищем следующее незавершенное упражнение
+        let nextIndex = workout.exercises.indices.first { index in
+            index > exerciseIndex && !workout.exercises[index].isCompleted && !workout.exercises[index].isSuperset
+        }
+        
+        if let nextIndex = nextIndex {
+            let nextExercise = workout.exercises[nextIndex]
+            
+            // Раскрываем следующее упражнение
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                expandedExercises[nextExercise.id] = true
+            }
+            
+            // Устанавливаем ID для прокрутки (onChange обработает прокрутку)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                scrollToExerciseId = nextExercise.id
+            }
+        }
+    }
 }
 
 // MARK: - Subviews & Helpers
@@ -633,6 +795,7 @@ struct FunFactView: View {
     
     @AppStorage("comparisonName") private var comparisonName = "Watermelons 🍉"
     @AppStorage("comparisonWeight") private var comparisonWeight = 8.0
+    @StateObject private var unitsManager = UnitsManager.shared
     
     var totalStrengthVolume: Double {
         var total = 0.0
@@ -653,28 +816,29 @@ struct FunFactView: View {
             let count = totalStrengthVolume / comparisonWeight
             
             VStack(alignment: .leading, spacing: 12) {
-                Text("🏋️ Total Lifted")
+                Text(LocalizedStringKey("🏋️ Total Lifted"))
                     .font(.caption).fontWeight(.bold)
                     .foregroundColor(.secondary).textCase(.uppercase)
                 
-                Text("You lifted \(Int(totalStrengthVolume)) kg!")
+                let convertedVolume = unitsManager.convertFromKilograms(totalStrengthVolume)
+                Text(LocalizedStringKey("You lifted \(Int(convertedVolume)) \(unitsManager.weightUnitString())!"))
                     .font(.title2).bold()
                 
                 Divider()
                 
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("That's approximately")
+                        Text(LocalizedStringKey("That's approximately"))
                             .foregroundColor(.secondary).font(.subheadline)
                         
                         HStack(alignment: .lastTextBaseline, spacing: 6) {
                             Text("\(count, format: .number.precision(.fractionLength(1)))")
                                 .font(.title3).fontWeight(.heavy).foregroundColor(.primary)
                             
-                            Text(comparisonName.isEmpty ? "Items" : comparisonName)
+                            Text(comparisonName.isEmpty ? LocalizedStringKey("Items") : LocalizedStringKey(comparisonName))
                                 .font(.headline).foregroundColor(.primary).lineLimit(1)
                         }
-                        Text("Way to go, champion! 🥇")
+                        Text(LocalizedStringKey("Way to go, champion! 🥇"))
                             .font(.caption).foregroundColor(.gray).padding(.top, 2)
                     }
                     Spacer()
@@ -700,6 +864,7 @@ struct ComparisonSettingsView: View {
     
     @AppStorage("comparisonName") private var comparisonName = "Watermelons 🍉"
     @AppStorage("comparisonWeight") private var comparisonWeight = 8.0
+    @StateObject private var unitsManager = UnitsManager.shared
     
     let presets: [(name: String, weight: Double, icon: String)] = [
         ("Watermelons 🍉", 8.0, "🍉"),
@@ -713,17 +878,17 @@ struct ComparisonSettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Custom Comparison")) {
-                    TextField("Object Name (e.g. Pizzas)", text: $comparisonName)
+                Section(header: Text(LocalizedStringKey("Custom Comparison"))) {
+                    TextField(LocalizedStringKey("Object Name (e.g. Pizzas)"), text: $comparisonName)
                     HStack {
-                        Text("Weight (kg)")
+                        Text(LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"))
                         Spacer()
-                        TextField("Weight", value: $comparisonWeight, format: .number)
+                        TextField(LocalizedStringKey("Weight"), value: $comparisonWeight, format: .number)
                             .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
                     }
                 }
                 
-                Section(header: Text("Quick Presets")) {
+                Section(header: Text(LocalizedStringKey("Quick Presets"))) {
                     ForEach(presets, id: \.name) { preset in
                         Button {
                             comparisonName = preset.name
@@ -734,7 +899,9 @@ struct ComparisonSettingsView: View {
                                 Text(preset.icon).font(.title2)
                                 VStack(alignment: .leading) {
                                     Text(LocalizedStringKey(preset.name)).foregroundColor(.primary)
-                                    Text("\(Int(preset.weight)) kg").font(.caption).foregroundColor(.secondary)
+                                    // Вес в пресетах хранится в кг, конвертируем для отображения
+                                    let convertedWeight = unitsManager.convertFromKilograms(preset.weight)
+                                    Text("\(Int(convertedWeight)) \(unitsManager.weightUnitString())").font(.caption).foregroundColor(.secondary)
                                 }
                                 Spacer()
                                 if comparisonName == preset.name {
@@ -745,14 +912,15 @@ struct ComparisonSettingsView: View {
                     }
                 }
             }
-            .navigationTitle("Compare With...")
-            .toolbar { Button("Done") { dismiss() } }
+            .navigationTitle(LocalizedStringKey("Compare With..."))
+            .toolbar { Button(LocalizedStringKey("Done")) { dismiss() } }
         }
     }
 }
 
 struct ExerciseRowView: View {
     let exercise: Exercise
+    @StateObject private var unitsManager = UnitsManager.shared
     
     var body: some View {
         HStack {
@@ -783,24 +951,25 @@ struct ExerciseRowView: View {
     private var detailText: some View {
         switch exercise.type {
         case .strength:
-            Text("\(exercise.sets)s x \(exercise.reps)r • \(String(format: "%.0f", exercise.weight))kg")
+            let convertedWeight = unitsManager.convertFromKilograms(exercise.weight)
+            Text("\(exercise.sets)s x \(exercise.reps)r • \(LocalizationHelper.shared.formatInteger(convertedWeight))\(unitsManager.weightUnitString())")
         case .cardio:
             if let dist = exercise.distance, let time = exercise.timeSeconds {
-                Text("\(String(format: "%.2f", dist)) km in \(formatTime(time))")
+                Text(LocalizedStringKey("\(LocalizationHelper.shared.formatTwoDecimals(dist)) km in \(formatTime(time))"))
             } else {
-                Text("Cardio")
+                Text(LocalizedStringKey("Cardio"))
             }
         case .duration:
             if let time = exercise.timeSeconds {
-                Text("\(exercise.sets) sets x \(formatTime(time))")
+                Text(LocalizedStringKey("\(exercise.sets) sets x \(formatTime(time))"))
             } else {
-                Text("Duration")
+                Text(LocalizedStringKey("Duration"))
             }
         }
     }
     
     private var rpeBadge: some View {
-        Text("RPE \(exercise.effort)")
+        Text(LocalizedStringKey("RPE \(exercise.effort)"))
             .font(.caption2).bold()
             .padding(4)
             .background(effortColor(value: exercise.effort).opacity(0.2))

@@ -155,27 +155,27 @@ struct StatsContentView: View {
                 
                 // Детальное сравнение с предыдущим периодом
                 if !detailedComparison.isEmpty {
-                    Section(header: Text("Detailed Comparison")) {
+                    Section(header: Text(LocalizedStringKey("Detailed Comparison"))) {
                         DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
                     }
                 }
                 
                 // Анализ слабых мест
                 if !weakPoints.isEmpty {
-                    Section(header: Text("Weak Points Analysis")) {
+                    Section(header: Text(LocalizedStringKey("Weak Points Analysis"))) {
                         WeakPointsView(weakPoints: weakPoints)
                     }
                 }
                 
                 // Рекомендации (всегда показываем секцию)
-                Section(header: Text("Recommendations")) {
+                Section(header: Text(LocalizedStringKey("Recommendations"))) {
                     RecommendationsView(recommendations: recommendations)
                 }
                 
                 prSection
                 bestStatsSection
             }
-            .navigationTitle("Progress")
+            .navigationTitle(LocalizedStringKey("Progress"))
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showProfile = true } label: {
@@ -200,9 +200,9 @@ struct StatsContentView: View {
                     .foregroundColor(.orange)
                 
                 VStack(alignment: .leading) {
-                    Text("\(streakCount) Day Streak")
+                    Text(LocalizedStringKey("\(streakCount) Day Streak"))
                         .font(.headline)
-                    Text(streakCount > 0 ? "Keep the fire burning!" : "Start your streak today!")
+                    Text(streakCount > 0 ? LocalizedStringKey("Keep the fire burning!") : LocalizedStringKey("Start your streak today!"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -222,7 +222,7 @@ struct StatsContentView: View {
     }
     
     private var highlightsSection: some View {
-        Section(header: Text("Highlights for this \(selectedPeriod.rawValue)")) {
+        Section(header: Text(LocalizedStringKey("Highlights for this \(selectedPeriod.rawValue)"))) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     // 1. Workouts
@@ -249,7 +249,7 @@ struct StatsContentView: View {
                     metricButton(
                         metric: .distance,
                         title: "Distance (km)",
-                        value: String(format: "%.1f", currentStats.totalDistance),
+                        value: LocalizationHelper.shared.formatDecimal(currentStats.totalDistance),
                         icon: "map.fill",
                         prevValue: previousStats.totalDistance,
                         currValue: currentStats.totalDistance
@@ -275,19 +275,54 @@ struct StatsContentView: View {
     private var chartSection: some View {
         Section(header: Text(selectedMetric.title)) {
             if chartData.isEmpty || chartData.reduce(0, { $0 + $1.value }) == 0 {
-                Text("No data for this period")
-                    .foregroundColor(.secondary)
-                    .frame(height: 180, alignment: .center)
-            } else {
-                Chart(chartData) { dataPoint in
-                    BarMark(
-                        x: .value("Label", dataPoint.label),
-                        y: .value("Value", dataPoint.value)
-                    )
-                    .foregroundStyle(Color.blue.gradient)
-                    .cornerRadius(6)
-                }
+                EmptyStateView(
+                    icon: "chart.bar.fill",
+                    title: LocalizedStringKey("No data for this period"),
+                    message: LocalizedStringKey("Complete some workouts to see your progress chart here. The more you train, the more insights you'll get!")
+                )
                 .frame(height: 180)
+            } else {
+                // Для дистанции на год используем линейный график для лучшей видимости
+                let useLineChart = selectedMetric == .distance && selectedPeriod == .year && chartData.count > 1
+                
+                // Вычисляем диапазон значений для правильного масштабирования
+                let maxValue = chartData.map { $0.value }.max() ?? 0
+                let minValue = chartData.map { $0.value }.min() ?? 0
+                let valueRange = maxValue - minValue
+                // Если значения очень маленькие или диапазон мал, используем масштаб без нуля
+                let shouldExcludeZero = valueRange > 0 && (maxValue / valueRange < 0.1 || maxValue < 1.0)
+                
+                if useLineChart {
+                    Chart(chartData) { dataPoint in
+                        LineMark(
+                            x: .value("Label", dataPoint.label),
+                            y: .value("Value", dataPoint.value)
+                        )
+                        .foregroundStyle(Color.blue)
+                        .interpolationMethod(.linear)
+                        .lineStyle(StrokeStyle(lineWidth: 3))
+                        
+                        PointMark(
+                            x: .value("Label", dataPoint.label),
+                            y: .value("Value", dataPoint.value)
+                        )
+                        .foregroundStyle(Color.blue)
+                        .symbolSize(30)
+                    }
+                    .frame(height: 180)
+                    .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
+                } else {
+                    Chart(chartData) { dataPoint in
+                        BarMark(
+                            x: .value("Label", dataPoint.label),
+                            y: .value("Value", dataPoint.value)
+                        )
+                        .foregroundStyle(Color.blue.gradient)
+                        .cornerRadius(6)
+                    }
+                    .frame(height: 180)
+                    .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
+                }
             }
         }
     }
@@ -295,7 +330,7 @@ struct StatsContentView: View {
     @ViewBuilder
     private var prSection: some View {
         if !recentPRs.isEmpty {
-            Section(header: Text("New Personal Records")) {
+            Section(header: Text(LocalizedStringKey("New Personal Records"))) {
                 ForEach(recentPRs) { pr in
                     HStack {
                         Image(systemName: "trophy.fill").foregroundColor(.orange)
@@ -305,7 +340,7 @@ struct StatsContentView: View {
                                 .font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()
-                        Text("\(Int(pr.weight)) kg")
+                        Text(LocalizedStringKey("\(Int(pr.weight)) kg"))
                             .font(.headline).foregroundColor(.blue)
                     }
                 }
@@ -314,19 +349,19 @@ struct StatsContentView: View {
     }
     
     private var bestStatsSection: some View {
-        Section(header: Text("All-Time Bests")) {
+        Section(header: Text(LocalizedStringKey("All-Time Bests"))) {
             HStack {
                 Image(systemName: "calendar.badge.exclamationmark").foregroundColor(.green)
-                Text("Best Week:")
+                Text(LocalizedStringKey("Best Week:"))
                 Spacer()
-                Text("\(bestWeek.workoutCount) workouts, \(Int(bestWeek.totalVolume)) kg").bold()
+                Text(LocalizedStringKey("\(bestWeek.workoutCount) workouts, \(Int(bestWeek.totalVolume)) kg")).bold()
             }
             
             HStack {
                 Image(systemName: "calendar").foregroundColor(.green)
-                Text("Best Month:")
+                Text(LocalizedStringKey("Best Month:"))
                 Spacer()
-                Text("\(bestMonth.workoutCount) workouts, \(Int(bestMonth.totalVolume)) kg").bold()
+                Text(LocalizedStringKey("\(bestMonth.workoutCount) workouts, \(Int(bestMonth.totalVolume)) kg")).bold()
             }
         }
     }

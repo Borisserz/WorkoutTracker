@@ -21,6 +21,7 @@ struct PresetEditorView: View {
     
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WorkoutViewModel
+    @StateObject private var unitsManager = UnitsManager.shared
     
     // Если nil - создаем новый, иначе - редактируем
     @State var preset: WorkoutPreset?
@@ -34,6 +35,8 @@ struct PresetEditorView: View {
     @State private var showExerciseSelector = false
     @State private var exerciseToEdit: Exercise?
     @State private var showDeleteAlert = false
+    @State private var showDeleteExerciseAlert = false
+    @State private var exercisesToDelete: IndexSet?
     
     // Доступные иконки
     private let availableIcons = [
@@ -58,29 +61,51 @@ struct PresetEditorView: View {
                     deleteButtonSection
                 }
             }
-            .navigationTitle(preset == nil ? "New Template" : "Edit Template")
+            .navigationTitle(preset == nil ? LocalizedStringKey("New Template") : LocalizedStringKey("Edit Template"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(LocalizedStringKey("Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(LocalizedStringKey("Save")) {
                         savePreset()
                     }
                     .disabled(name.isEmpty || exercises.isEmpty)
                 }
             }
             // Алерт удаления
-            .alert("Delete Template?", isPresented: $showDeleteAlert) {
-                Button("Delete", role: .destructive) {
+            .alert(LocalizedStringKey("Delete Template?"), isPresented: $showDeleteAlert) {
+                Button(LocalizedStringKey("Delete"), role: .destructive) {
                     if let p = preset {
                         viewModel.deletePreset(p)
                         dismiss()
                     }
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) { }
             } message: {
-                Text("Are you sure you want to delete '\(name)'? This action cannot be undone.")
+                Text(LocalizedStringKey("Are you sure you want to delete '\(name)'? This action cannot be undone."))
+            }
+            .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
+                Button(LocalizedStringKey("Delete"), role: .destructive) {
+                    if let indexSet = exercisesToDelete {
+                        exercises.remove(atOffsets: indexSet)
+                        exercisesToDelete = nil
+                    }
+                }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) {
+                    exercisesToDelete = nil
+                }
+            } message: {
+                if let indexSet = exercisesToDelete {
+                    let count = indexSet.count
+                    if count == 1, let firstIndex = indexSet.first, firstIndex < exercises.count {
+                        Text(LocalizedStringKey("Are you sure you want to delete '\(exercises[firstIndex].name)'? This action cannot be undone."))
+                    } else {
+                        Text(LocalizedStringKey("Are you sure you want to delete \(count) exercises? This action cannot be undone."))
+                    }
+                } else {
+                    Text(LocalizedStringKey("Are you sure you want to delete this exercise? This action cannot be undone."))
+                }
             }
             // Инициализация
             .onAppear {
@@ -110,8 +135,8 @@ struct PresetEditorView: View {
     // MARK: - View Components
     
     private var headerSection: some View {
-        Section(header: Text("Template Info")) {
-            TextField("Template Name", text: $name)
+        Section(header: Text(LocalizedStringKey("Template Info"))) {
+            TextField(LocalizedStringKey("Template Name"), text: $name)
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 15) {
@@ -137,11 +162,24 @@ struct PresetEditorView: View {
     }
     
     private var exerciseListSection: some View {
-        Section(header: Text("Exercises")) {
+        Section(header: Text(LocalizedStringKey("Exercises"))) {
             if exercises.isEmpty {
-                Text("No exercises yet. Tap + to add.")
-                    .italic()
-                    .foregroundColor(.secondary)
+                VStack(spacing: 12) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 50))
+                        .foregroundColor(.secondary)
+                    
+                    Text(LocalizedStringKey("No exercises yet"))
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    Text(LocalizedStringKey("Tap the button below to add your first exercise to this template"))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 30)
             }
             
             ForEach(exercises) { exercise in
@@ -152,14 +190,16 @@ struct PresetEditorView: View {
                         Group {
                             switch exercise.type {
                             case .strength:
-                                Text("\(exercise.sets) x \(exercise.reps) • \(Int(exercise.weight))kg")
+                                let unitsManager = UnitsManager.shared
+                                let convertedWeight = unitsManager.convertFromKilograms(exercise.weight)
+                                Text(LocalizedStringKey("\(exercise.sets) x \(exercise.reps) • \(Int(convertedWeight))\(unitsManager.weightUnitString())"))
                             case .cardio:
                                 let dist = exercise.distance ?? 0
                                 let time = exercise.timeSeconds ?? 0
-                                Text("\(String(format: "%.2f", dist)) km • \(formatTime(time))")
+                                Text(LocalizedStringKey("\(LocalizationHelper.shared.formatTwoDecimals(dist)) km • \(formatTime(time))"))
                             case .duration:
                                 let time = exercise.timeSeconds ?? 0
-                                Text("\(exercise.sets) sets • \(formatTime(time))")
+                                Text(LocalizedStringKey("\(exercise.sets) sets • \(formatTime(time))"))
                             }
                         }
                         .font(.caption).foregroundColor(.secondary)
@@ -170,19 +210,21 @@ struct PresetEditorView: View {
                         exerciseToEdit = exercise
                     } label: {
                         Image(systemName: "slider.horizontal.3")
-                            .foregroundColor(.blue)
+                            .foregroundColor(.secondary)
+                            .font(.body)
                     }
                     .buttonStyle(BorderlessButtonStyle())
                 }
             }
             .onDelete { indexSet in
-                exercises.remove(atOffsets: indexSet)
+                exercisesToDelete = indexSet
+                showDeleteExerciseAlert = true
             }
             
             Button {
                 showExerciseSelector = true
             } label: {
-                Label("Add Exercise", systemImage: "plus")
+                Label(LocalizedStringKey("Add Exercise"), systemImage: "plus")
             }
         }
     }
@@ -194,7 +236,7 @@ struct PresetEditorView: View {
             } label: {
                 HStack {
                     Spacer()
-                    Text("Delete Template")
+                    Text(LocalizedStringKey("Delete Template"))
                     Spacer()
                 }
             }
@@ -227,10 +269,37 @@ struct PresetExerciseEditor: View {
     @State var exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
+    @StateObject private var unitsManager = UnitsManager.shared
     
     // Локальное время
     @State private var minutes: Int = 0
     @State private var seconds: Int = 0
+    
+    // Validation alerts
+    @State private var showValidationAlert = false
+    @State private var validationErrorMessage = ""
+    
+    // Binding адаптер для веса
+    private var weightBindingAdapter: Binding<Double> {
+        Binding<Double>(
+            get: {
+                // Конвертируем из кг в выбранные единицы для отображения
+                return unitsManager.convertFromKilograms(exercise.weight)
+            },
+            set: { newValue in
+                // Конвертируем из выбранных единиц в кг для сохранения
+                let kgValue = unitsManager.convertToKilograms(newValue)
+                let validation = InputValidator.validateWeight(kgValue)
+                if !validation.isValid {
+                    exercise.weight = validation.clampedValue
+                    validationErrorMessage = validation.errorMessage ?? "Invalid weight value"
+                    showValidationAlert = true
+                } else {
+                    exercise.weight = kgValue
+                }
+            }
+        )
+    }
     
     var body: some View {
         NavigationStack {
@@ -243,22 +312,27 @@ struct PresetExerciseEditor: View {
                     }
                 }
                 
-                Button("Save Changes") {
+                Button(LocalizedStringKey("Save Changes")) {
                     save()
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
             }
-            .navigationTitle("Configure Preset")
+            .navigationTitle(LocalizedStringKey("Configure Preset"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(LocalizedStringKey("Cancel")) { dismiss() }
                 }
             }
             .onAppear {
                 let total = exercise.timeSeconds ?? 0
                 minutes = total / 60
                 seconds = total % 60
+            }
+            .alert(LocalizedStringKey("Invalid Input"), isPresented: $showValidationAlert) {
+                Button(LocalizedStringKey("OK"), role: .cancel) { }
+            } message: {
+                Text(validationErrorMessage)
             }
         }
     }
@@ -267,11 +341,19 @@ struct PresetExerciseEditor: View {
     
     @ViewBuilder
     private var strengthConfig: some View {
-        Stepper("Sets: \(exercise.sets)", value: $exercise.sets, in: 1...20)
-        Stepper("Reps: \(exercise.reps)", value: $exercise.reps, in: 1...100)
+        Stepper(LocalizedStringKey("Sets: \(exercise.sets)"), value: $exercise.sets, in: 1...20)
+        Stepper(LocalizedStringKey("Reps: \(exercise.reps)"), value: $exercise.reps, in: 0...100)
+            .onChange(of: exercise.reps) { oldValue, newValue in
+                let validation = InputValidator.validateReps(newValue)
+                if !validation.isValid {
+                    exercise.reps = validation.clampedValue
+                    validationErrorMessage = validation.errorMessage ?? "Invalid reps value"
+                    showValidationAlert = true
+                }
+            }
         HStack {
-            Text("Weight (kg):")
-            TextField("0", value: $exercise.weight, format: .number)
+            Text(LocalizedStringKey("Weight (\(unitsManager.weightUnitString())):"))
+            TextField(LocalizedStringKey("0"), value: weightBindingAdapter, format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
         }
@@ -280,41 +362,130 @@ struct PresetExerciseEditor: View {
     @ViewBuilder
     private var cardioConfig: some View {
         HStack {
-            Text("Distance (km):")
-            TextField("0", value: Binding(get: { exercise.distance ?? 0 }, set: { exercise.distance = $0 }), format: .number)
+            Text(LocalizedStringKey("Distance (km):"))
+            TextField(LocalizedStringKey("0"), value: Binding(get: { exercise.distance ?? 0 }, set: { newValue in
+                let validation = InputValidator.validateDistance(newValue)
+                if !validation.isValid {
+                    exercise.distance = validation.clampedValue
+                    validationErrorMessage = validation.errorMessage ?? "Invalid distance value"
+                    showValidationAlert = true
+                } else {
+                    exercise.distance = validation.clampedValue
+                }
+            }), format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
         }
-        timePickerRow(label: "Duration")
+        timePickerRow(label: LocalizedStringKey("Duration"))
     }
     
     @ViewBuilder
     private var durationConfig: some View {
-        Stepper("Sets: \(exercise.sets)", value: $exercise.sets, in: 1...10)
-        timePickerRow(label: "Time per set")
+        Stepper(LocalizedStringKey("Sets: \(exercise.sets)"), value: $exercise.sets, in: 1...10)
+        timePickerRow(label: LocalizedStringKey("Time per set"))
     }
     
-    private func timePickerRow(label: String) -> some View {
+    private func timePickerRow(label: LocalizedStringKey) -> some View {
         HStack {
             Text(label)
             Spacer()
-            TextField("0", value: $minutes, format: .number)
+            TextField(LocalizedStringKey("0"), value: $minutes, format: .number)
                 .frame(width: 40).multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
                 .background(Color.gray.opacity(0.1)).cornerRadius(5)
-            Text("min")
-            TextField("0", value: $seconds, format: .number)
+                .onChange(of: minutes) { oldValue, newValue in
+                    let totalSeconds = (newValue * 60) + seconds
+                    let validation = InputValidator.validateTime(totalSeconds)
+                    if !validation.isValid {
+                        let validSeconds = validation.clampedValue
+                        minutes = validSeconds / 60
+                        seconds = validSeconds % 60
+                        validationErrorMessage = validation.errorMessage ?? "Invalid time value"
+                        showValidationAlert = true
+                    }
+                }
+            Text(LocalizedStringKey("min"))
+            TextField(LocalizedStringKey("0"), value: $seconds, format: .number)
                 .frame(width: 40).multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
                 .background(Color.gray.opacity(0.1)).cornerRadius(5)
-            Text("sec")
+                .onChange(of: seconds) { oldValue, newValue in
+                    let clampedSeconds = max(0, min(newValue, 59))
+                    if clampedSeconds != newValue {
+                        seconds = clampedSeconds
+                    }
+                    let totalSeconds = (minutes * 60) + clampedSeconds
+                    let validation = InputValidator.validateTime(totalSeconds)
+                    if !validation.isValid {
+                        let validSeconds = validation.clampedValue
+                        minutes = validSeconds / 60
+                        seconds = validSeconds % 60
+                        validationErrorMessage = validation.errorMessage ?? "Invalid time value"
+                        showValidationAlert = true
+                    }
+                }
+            Text(LocalizedStringKey("sec"))
         }
     }
     
     // MARK: - Logic
     
     private func save() {
+        // Final validation before saving
+        var hasError = false
+        var errorMessages: [String] = []
+        
+        if exercise.type == .strength {
+            let weightValidation = InputValidator.validateWeight(exercise.weight)
+            if !weightValidation.isValid {
+                hasError = true
+                if let error = weightValidation.errorMessage {
+                    errorMessages.append(error)
+                }
+                exercise.weight = weightValidation.clampedValue
+            }
+            
+            let repsValidation = InputValidator.validateReps(exercise.reps)
+            if !repsValidation.isValid {
+                hasError = true
+                if let error = repsValidation.errorMessage {
+                    errorMessages.append(error)
+                }
+                exercise.reps = repsValidation.clampedValue
+            }
+        }
+        
+        if exercise.type == .cardio, let distance = exercise.distance {
+            let distanceValidation = InputValidator.validateDistance(distance)
+            if !distanceValidation.isValid {
+                hasError = true
+                if let error = distanceValidation.errorMessage {
+                    errorMessages.append(error)
+                }
+                exercise.distance = distanceValidation.clampedValue
+            }
+        }
+        
         let total = (minutes * 60) + seconds
+        if total > 0 {
+            let timeValidation = InputValidator.validateTime(total)
+            if !timeValidation.isValid {
+                hasError = true
+                if let error = timeValidation.errorMessage {
+                    errorMessages.append(error)
+                }
+                let validSeconds = timeValidation.clampedValue
+                minutes = validSeconds / 60
+                seconds = validSeconds % 60
+            }
+        }
+        
+        if hasError {
+            validationErrorMessage = errorMessages.joined(separator: "\n")
+            showValidationAlert = true
+            return
+        }
+        
         exercise.timeSeconds = total > 0 ? total : nil
         
         if exercise.type == .cardio { exercise.sets = 1 }

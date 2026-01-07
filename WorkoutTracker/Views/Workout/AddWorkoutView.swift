@@ -14,6 +14,7 @@ struct AddWorkoutView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WorkoutViewModel
+    @StateObject private var unitsManager = UnitsManager.shared
     
     @Binding var workouts: [Workout]
     var onWorkoutCreated: (() -> Void)?
@@ -23,7 +24,6 @@ struct AddWorkoutView: View {
     
     var body: some View {
         NavigationStack {
-            // 1. ZStack для наложения подсветки на тулбар
             ZStack(alignment: .topTrailing) {
                 
                 Form {
@@ -32,11 +32,10 @@ struct AddWorkoutView: View {
                     templateSelectionSection
                 }
                 
-                // 2. ФАНТОМНАЯ КНОПКА ПОДСВЕТКИ (Для кнопки Start Now)
                 if !title.isEmpty {
                     Color.clear
-                        .frame(width: 100, height: 45) // 1. Сначала задаем размер ТОЛЬКО под кнопку
-                        .spotlight(                   // 2. Сразу вешаем подсветку на этот маленький размер
+                        .frame(width: 100, height: 45)
+                        .spotlight(
                             step: .tapStartNow,
                             manager: tutorialManager,
                             text: "Great! Now tap here",
@@ -44,20 +43,19 @@ struct AddWorkoutView: View {
                             xOffset: -10,
                             yOffset: -20
                         )
-                        // 3. И только ТЕПЕРЬ двигаем эту подсвеченную коробочку в нужный угол
-                        .padding(.top, -105)           // Поднимаем вверх на уровень Toolbar
-                        .padding(.trailing, 25)       // Отступ от правого края
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing) // Прижимаем к углу
+                        .padding(.top, -105)
+                        .padding(.trailing, 25)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                         .allowsHitTesting(false)
                 }
             }
-            .navigationTitle("Start Workout")
+            .navigationTitle(LocalizedStringKey("Start Workout"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(LocalizedStringKey("Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Start Now") {
+                    Button(LocalizedStringKey("Start Now")) {
                         startWorkout()
                     }
                     .disabled(title.isEmpty)
@@ -72,15 +70,15 @@ struct AddWorkoutView: View {
     // MARK: - Components
     
     private var nameSection: some View {
-        Section(header: Text("Workout Name")) {
-            TextField("E.g. Evening Pump", text: $title)
+        Section(header: Text(LocalizedStringKey("Workout Name"))) {
+            TextField(LocalizedStringKey("E.g. Evening Pump"), text: $title)
         }
     }
     
     private var templateSelectionSection: some View {
         Section(
-            header: Text("Choose Template"),
-            footer: Text("You can change your prepared workouts in the settings..")
+            header: Text(LocalizedStringKey("Choose Template")),
+            footer: Text(LocalizedStringKey("You can change your prepared workouts in the settings.."))
         ) {
             // Кнопка "Пустая тренировка"
             Button {
@@ -88,8 +86,8 @@ struct AddWorkoutView: View {
             } label: {
                 templateRow(
                     iconName: "plus.square.dashed",
-                    title: "Empty Workout",
-                    subtitle: "Start from scratch",
+                    title: LocalizedStringKey("Empty Workout"),
+                    subtitle: LocalizedStringKey("Start from scratch"),
                     isSystemIcon: true,
                     isSelected: selectedPreset == nil
                 )
@@ -111,8 +109,8 @@ struct AddWorkoutView: View {
                     } label: {
                         templateRow(
                             iconName: preset.icon,
-                            title: preset.name,
-                            subtitle: "\(preset.exercises.count) exercises",
+                            title: LocalizedStringKey(preset.name),
+                            subtitle: LocalizedStringKey("\(preset.exercises.count) exercises"),
                             isSystemIcon: false,
                             isSelected: selectedPreset?.id == preset.id
                         )
@@ -156,13 +154,14 @@ struct AddWorkoutView: View {
         switch exercise.type {
         case .strength:
             if exercise.weight > 0 {
-                return "\(exercise.sets)/\(exercise.reps) \(Int(exercise.weight))kg"
+                let convertedWeight = unitsManager.convertFromKilograms(exercise.weight)
+                return "\(exercise.sets)/\(exercise.reps) \(Int(convertedWeight))\(unitsManager.weightUnitString())"
             } else {
                 return "\(exercise.sets)/\(exercise.reps)"
             }
         case .cardio:
             if let distance = exercise.distance, distance > 0 {
-                return "\(exercise.sets) x \(String(format: "%.1f", distance))km"
+                return "\(exercise.sets) x \(LocalizationHelper.shared.formatDecimal(distance))km"
             } else {
                 return "\(exercise.sets) sets"
             }
@@ -176,7 +175,7 @@ struct AddWorkoutView: View {
         }
     }
     
-    private func templateRow(iconName: String, title: String, subtitle: String, isSystemIcon: Bool, isSelected: Bool) -> some View {
+    private func templateRow(iconName: String, title: LocalizedStringKey, subtitle: LocalizedStringKey, isSystemIcon: Bool, isSelected: Bool) -> some View {
             HStack {
                 Group {
                     if isSystemIcon {
@@ -247,9 +246,7 @@ struct AddWorkoutView: View {
     }
     
     private func setFormattedDateName() {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE Workout"
-        title = formatter.string(from: Date())
+        title = LocalizationHelper.shared.formatWorkoutDateName()
     }
     
     private func startWorkout() {
@@ -305,7 +302,7 @@ struct AddWorkoutView: View {
                 pushType: nil
             )
         } catch {
-            print("❌ Error starting Live Activity: \(error.localizedDescription)")
+            // Error starting Live Activity
         }
     }
 }

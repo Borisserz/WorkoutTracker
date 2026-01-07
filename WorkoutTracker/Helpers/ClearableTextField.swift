@@ -12,15 +12,18 @@ struct ClearableTextField: View {
         Binding<Double>(
             get: { value ?? 0 },
             set: { newValue in
+                // Validate and clamp negative values
+                let validatedValue = max(0, newValue)
+                
                 // Если пользователь стер все, сохраняем nil, иначе - число
                 // Это нужно, чтобы placeholder снова появился, если поле пустое
-                if isFocused && newValue == 0 {
+                if isFocused && validatedValue == 0 {
                     // Пока пользователь печатает, 0 - это просто 0
                     value = 0
-                } else if newValue == 0 {
+                } else if validatedValue == 0 {
                     value = nil
                 } else {
-                    value = newValue
+                    value = validatedValue
                 }
             }
         )
