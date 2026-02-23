@@ -96,7 +96,6 @@ struct EffortInputView: View {
                 .frame(maxWidth: .infinity)
                 .controlSize(.large)
             }
-            // ТЕПЕРЬ ПОДСВЕТКА ОХВАТЫВАЕТ И СЛАЙДЕР, И КНОПКУ
             // Это значит, что "дырка" будет большой, и кнопка будет нажиматься
             .spotlight(
                 step: .explainEffort,

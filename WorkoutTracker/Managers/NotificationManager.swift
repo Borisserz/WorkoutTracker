@@ -39,12 +39,10 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     /// Запрос прав на отправку уведомлений
     func requestPermission() {
         var options: UNAuthorizationOptions = [.alert, .badge, .sound]
-        // Для iOS 15+ добавляем временно чувствительные уведомления
         if #available(iOS 15.0, *) {
             options.insert(.timeSensitive)
         }
         UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
-            // Permission requested
         }
     }
     
@@ -101,8 +99,8 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         cancelRestTimerNotification()
         
         let content = UNMutableNotificationContent()
-        content.title = "⏰ Таймер завершен!"
-        content.body = "Время отдыха истекло. Пора возвращаться к тренировке! 💪"
+        content.title = "Таймер завершен!"
+        content.body = "Время отдыха истекло. Пора возвращаться к тренировке!"
         // Используем системный звук по умолчанию (вызывает вибрацию на iPhone)
         content.sound = UNNotificationSound.default
         content.categoryIdentifier = restTimerCategoryId
@@ -205,17 +203,17 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private func getMotivationalText(for group: String) -> (String, String) {
         switch group {
         case "Chest":
-            return ("Chest Fully Recovered! 🦍", "Yo, your chest is ready. Time to push some heavy iron!")
+            return ("Chest Fully Recovered!", "Yo, your chest is ready. Time to push some heavy iron!")
         case "Back":
-            return ("Back is Ready! 🦅", "Your wings are recovered. Go do some pull-ups!")
+            return ("Back is Ready!", "Your wings are recovered. Go do some pull-ups!")
         case "Legs":
-            return ("Leg Day Awaits! 🦵", "Your legs are fully charged. Don't skip leg day!")
+            return ("Leg Day Awaits!", "Your legs are fully charged. Don't skip leg day!")
         case "Arms":
-            return ("Guns are Reloaded! 💪", "Biceps and Triceps are fresh. Time for a pump!")
+            return ("Guns are Reloaded!", "Biceps and Triceps are fresh. Time for a pump!")
         case "Shoulders":
-            return ("Shoulders Ready! 🥥", "Delts are recovered. Go lift something overhead!")
+            return ("Shoulders Ready!", "Delts are recovered. Go lift something overhead!")
         default:
-            return ("Fully Recovered! 🔋", "Your body is ready for the next challenge. Let's go!")
+            return ("Fully Recovered!", "Your body is ready for the next challenge. Let's go!")
         }
     }
 }

@@ -194,7 +194,6 @@ struct AddWorkoutView: View {
                                 .cornerRadius(8)
                                 .shadow(radius: 2)
                         } else {
-                            // ЗАПАСНОЙ ВАРИАНТ (Если иконки нет или старые данные)
                             Image(systemName: "dumbbell.fill")
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)

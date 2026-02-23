@@ -38,10 +38,6 @@ struct SimpleEntry: TimelineEntry {
     let data: WidgetData
 }
 
-// --------------------------------------------------------
-// ВИДЖЕТ 1: ГРАФИК (КАК НА КАРТИНКЕ)
-// --------------------------------------------------------
-
 struct ChartWidgetView : View {
     var entry: Provider.Entry
     
@@ -95,7 +91,7 @@ struct ChartWidgetView : View {
                                 Rectangle()
                                     .fill(Color.purple.opacity(0.5))
                                     .frame(height: 1)
-                                    .offset(y: -38) // Подбираем высоту под цель (3 тренировки * (12+2) ~= 42)
+                                    .offset(y: -38)
                             }
                         }
                         
@@ -128,10 +124,6 @@ struct WeeklyChartWidget: Widget {
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
-
-// --------------------------------------------------------
-// ВИДЖЕТ 2: ОГОНЕК (STREAK)
-// --------------------------------------------------------
 
 struct StreakWidgetView : View {
     var entry: Provider.Entry
@@ -177,10 +169,6 @@ struct StreakWidget: Widget {
         .supportedFamilies([.systemSmall])
     }
 }
-
-// --------------------------------------------------------
-// БАНДЛ (ЧТОБЫ БЫЛО 2 ВИДЖЕТА)
-// --------------------------------------------------------
 
 @main
 struct WorkoutTrackerWidgets: WidgetBundle {

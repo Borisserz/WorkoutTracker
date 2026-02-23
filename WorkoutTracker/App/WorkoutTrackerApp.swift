@@ -13,7 +13,7 @@ struct WorkoutTrackerApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = WorkoutViewModel()
     @StateObject private var notesManager = ExerciseNotesManager.shared
-    @StateObject private var tutorialManager = TutorialManager()    // Флаг: прошел ли пользователь анбординг?
+    @StateObject private var tutorialManager = TutorialManager()    // прошел ли пользователь анбординг?
     
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("appearanceMode") private var appearanceMode: String = "system"
@@ -28,7 +28,7 @@ struct WorkoutTrackerApp: App {
         case "dark":
             return .dark
         default:
-            return nil // nil означает системная тема
+            return nil
         }
     }
     
@@ -44,15 +44,14 @@ struct WorkoutTrackerApp: App {
                     ContentView()
                         .environmentObject(viewModel)
                         .environmentObject(notesManager)
-                        .environmentObject(tutorialManager) // <-- Передаем вниз
-                        .transition(.opacity) // Плавное появление
+                        .environmentObject(tutorialManager)
+                        .transition(.opacity)
                 } else {
                     // Анбординг
                     OnboardingFlowView(isOnboardingCompleted: $hasCompletedOnboarding)
                         .environmentObject(tutorialManager) 
                 }
             }
-            // --- ЛОВИМ ССЫЛКУ ИЛИ ФАЙЛ ---
             .onOpenURL { url in
                 if viewModel.importPreset(from: url) {
                     showImportAlert = true
@@ -67,12 +66,11 @@ struct WorkoutTrackerApp: App {
                 }
             }
             // Алерт для пользователя
-            .alert(Text(LocalizedStringKey("Template Imported! 🎉")), isPresented: $showImportAlert) {
+            .alert(Text(LocalizedStringKey("Template Imported!")), isPresented: $showImportAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: {
                 Text(LocalizedStringKey("A new workout template has been added to your collection."))
             }
-            // Анимация смены рутового экрана
             .animation(.default, value: hasCompletedOnboarding)
             // Применяем выбранную тему
             .preferredColorScheme(colorScheme)

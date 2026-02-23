@@ -251,11 +251,11 @@ class BackupManager: ObservableObject {
             // Удаляем старые бэкапы
             cleanupOldBackups()
             
-            print("✅ Backup created successfully: \(fileName)")
+            print("Backup created successfully: \(fileName)")
             return true
             
         } catch {
-            print("❌ Failed to create backup: \(error.localizedDescription)")
+            print("Failed to create backup: \(error.localizedDescription)")
             return false
         }
     }
@@ -269,7 +269,7 @@ class BackupManager: ObservableObject {
             let backupData = try decoder.decode(BackupData.self, from: data)
             return backupData
         } catch {
-            print("❌ Failed to restore backup: \(error.localizedDescription)")
+            print("Failed to restore backup: \(error.localizedDescription)")
             return nil
         }
     }
@@ -320,9 +320,9 @@ class BackupManager: ObservableObject {
         do {
             try FileManager.default.removeItem(at: backup.fileURL)
             loadBackupsList()
-            print("✅ Backup deleted: \(backup.fileURL.lastPathComponent)")
+            print("Backup deleted: \(backup.fileURL.lastPathComponent)")
         } catch {
-            print("❌ Failed to delete backup: \(error.localizedDescription)")
+            print("Failed to delete backup: \(error.localizedDescription)")
         }
     }
     
@@ -342,7 +342,7 @@ class BackupManager: ObservableObject {
             try FileManager.default.copyItem(at: backup.fileURL, to: tempURL)
             return tempURL
         } catch {
-            print("❌ Failed to export backup: \(error.localizedDescription)")
+            print("Failed to export backup: \(error.localizedDescription)")
             return nil
         }
     }
@@ -365,7 +365,7 @@ class BackupManager: ObservableObject {
             let backupData = try decoder.decode(BackupData.self, from: data)
             return backupData
         } catch {
-            print("❌ Failed to import backup: \(error.localizedDescription)")
+            print("Failed to import backup: \(error.localizedDescription)")
             return nil
         }
     }
@@ -416,7 +416,7 @@ class BackupManager: ObservableObject {
                 loadedBackups.append(backupInfo)
             }
         } catch {
-            print("❌ Failed to load backups list: \(error.localizedDescription)")
+            print("Failed to load backups list: \(error.localizedDescription)")
         }
         
         DispatchQueue.main.async {

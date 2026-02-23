@@ -138,7 +138,7 @@ struct SettingsView: View {
                         HStack {
                             Label(LocalizedStringKey("Generate 2 Years Test Data"), systemImage: "flask.fill")
                             Spacer()
-                            Text(LocalizedStringKey("⚠️ TEST"))
+                            Text(LocalizedStringKey("TEST"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -150,7 +150,7 @@ struct SettingsView: View {
                         HStack {
                             Label(LocalizedStringKey("Generate 2026 Year Test Data"), systemImage: "calendar")
                             Spacer()
-                            Text(LocalizedStringKey("⚠️ TEST"))
+                            Text(LocalizedStringKey("TEST"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -162,7 +162,7 @@ struct SettingsView: View {
                         HStack {
                             Label(LocalizedStringKey("Generate Weight Test Data"), systemImage: "chart.line.uptrend.xyaxis")
                             Spacer()
-                            Text(LocalizedStringKey("⚠️ TEST"))
+                            Text(LocalizedStringKey("TEST"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -174,13 +174,13 @@ struct SettingsView: View {
                         HStack {
                             Label(LocalizedStringKey("Clear All Workouts"), systemImage: "trash.fill")
                             Spacer()
-                            Text(LocalizedStringKey("⚠️ DANGER"))
+                            Text(LocalizedStringKey("DANGER"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
                 } header: {
-                    Text(LocalizedStringKey("🧪 TESTING (REMOVE AFTER TEST)"))
+                    Text(LocalizedStringKey("TESTING (REMOVE AFTER TEST)"))
                 } footer: {
                     Text(LocalizedStringKey("These buttons are for testing only. Remove TestDataGenerator.swift and this section after testing."))
                 }
@@ -328,7 +328,7 @@ struct SettingsView: View {
                         viewModel.workouts = []
                     }
                 }
-                testDataAlertMessage = "✅ Test data generated successfully!\n\nCreated 2 years of workout history (3 workouts per week)."
+                testDataAlertMessage = "Test data generated successfully!\n\nCreated 2 years of workout history (3 workouts per week)."
                 showTestDataAlert = true
             }
         }
@@ -348,7 +348,7 @@ struct SettingsView: View {
                         viewModel.workouts = []
                     }
                 }
-                testDataAlertMessage = "✅ 2026 test data generated successfully!\n\nCreated 1 year of future workout history for 2026 (3 workouts per week)."
+                testDataAlertMessage = "2026 test data generated successfully!\n\nCreated 1 year of future workout history for 2026 (3 workouts per week)."
                 showTestDataAlert = true
             }
         }
@@ -359,7 +359,7 @@ struct SettingsView: View {
             TestDataGenerator.generateWeightTestData()
             
             DispatchQueue.main.async {
-                testDataAlertMessage = "✅ Weight test data generated successfully!\n\nCreated 2 years of weight tracking data with realistic fluctuations."
+                testDataAlertMessage = "Weight test data generated successfully!\n\nCreated 2 years of weight tracking data with realistic fluctuations."
                 showTestDataAlert = true
             }
         }
@@ -373,7 +373,7 @@ struct SettingsView: View {
             )
         }
         viewModel.workouts = []
-        testDataAlertMessage = "✅ All workouts cleared."
+        testDataAlertMessage = "All workouts cleared."
         showTestDataAlert = true
     }
     
@@ -382,9 +382,9 @@ struct SettingsView: View {
     private func createManualBackup() {
         let success = backupManager.createBackup(workouts: viewModel.workouts, viewModel: viewModel)
         if success {
-            testDataAlertMessage = NSLocalizedString("✅ Backup created successfully!", comment: "Backup success message")
+            testDataAlertMessage = NSLocalizedString("Backup created successfully!", comment: "Backup success message")
         } else {
-            testDataAlertMessage = NSLocalizedString("❌ Failed to create backup. Please try again.", comment: "Backup failure message")
+            testDataAlertMessage = NSLocalizedString("Failed to create backup. Please try again.", comment: "Backup failure message")
         }
         showTestDataAlert = true
     }
@@ -409,7 +409,7 @@ struct SettingsView: View {
         if let fileURL = fileURL {
             fileToShare = fileURL
         } else {
-            testDataAlertMessage = "❌ Failed to export data. Please try again."
+            testDataAlertMessage = "Failed to export data. Please try again."
             showTestDataAlert = true
         }
     }
@@ -523,7 +523,7 @@ struct BackupListView: View {
         } message: {
             Text(LocalizedStringKey("This backup will be permanently deleted."))
         }
-        .alert(LocalizedStringKey("Restore Complete! 🎉"), isPresented: $showRestoreSuccess) {
+        .alert(LocalizedStringKey("Restore Complete!"), isPresented: $showRestoreSuccess) {
             Button(LocalizedStringKey("OK"), role: .cancel) { }
         } message: {
             Text(LocalizedStringKey("Your data has been successfully restored from the backup."))
@@ -533,7 +533,7 @@ struct BackupListView: View {
         } message: {
             Text(LocalizedStringKey("Could not restore data from this backup. The file may be corrupted."))
         }
-        .alert(LocalizedStringKey("Import Complete! 🎉"), isPresented: $showImportSuccess) {
+        .alert(LocalizedStringKey("Import Complete!"), isPresented: $showImportSuccess) {
             Button(LocalizedStringKey("OK"), role: .cancel) { }
         } message: {
             Text(LocalizedStringKey("Your data has been successfully imported from the backup file."))

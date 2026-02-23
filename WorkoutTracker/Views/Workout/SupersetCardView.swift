@@ -14,13 +14,10 @@ struct SupersetCardView: View {
         ZStack { // Обертка для оверлея рекорда
             VStack(alignment: .leading, spacing: 0) {
                 
-                // 1. ЗАГОЛОВОК
                 headerView
                 
-                // 2. СПИСОК УПРАЖНЕНИЙ
                 exerciseListView
                 
-                // 3. КНОПКА ЗАВЕРШЕНИЯ
                 finishButton
             }
             .padding()
@@ -46,7 +43,6 @@ struct SupersetCardView: View {
         }
     }
     
-    // --- ВЫНЕСЕННЫЕ ЧАСТИ ---
     
     var headerView: some View {
         HStack {
@@ -126,8 +122,6 @@ struct SupersetCardView: View {
         .transition(.opacity.combined(with: .scale))
         
     }
-    
-    // --- ЛОГИКА ---
     
     func finishSuperset() {
           // Запрещаем завершать, если суперсет или тренировка завершены

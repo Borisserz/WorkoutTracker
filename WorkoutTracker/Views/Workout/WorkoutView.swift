@@ -109,7 +109,6 @@ struct WorkoutView: View {
                         WorkoutDetailView(workout: $viewModel.workouts[0])
                     }
                 }
-                // --- ВЕРХНЯЯ ПАНЕЛЬ (TOOLBAR) ---
                 .toolbar {
                     // 1. Кнопка "Править" (справа)
                     if !viewModel.workouts.isEmpty {
@@ -132,7 +131,6 @@ struct WorkoutView: View {
                         }
                     }
                 }
-                // --- ВСПЛЫВАЮЩИЕ ШТОРКИ (SHEETS) ---
                 .sheet(isPresented: $showAddWorkout) {
                     AddWorkoutView(workouts: $viewModel.workouts, onWorkoutCreated: {
                         navigateToNewWorkout = true

@@ -428,7 +428,6 @@ struct Workout: Identifiable, Codable {
 
 // MARK: - Extensions (Data & Catalog)
 
-// КАТАЛОГ УПРАЖНЕНИЙ
 extension Exercise {
     static let catalog: [String: [String]] = [
         "Chest": [
@@ -488,7 +487,6 @@ extension Exercise {
     ]
 }
 
-// ПРИМЕРЫ ТРЕНИРОВОК
 extension Workout {
     static let examples = [
 

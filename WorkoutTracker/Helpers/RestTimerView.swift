@@ -19,7 +19,6 @@ struct RestTimerView: View {
         if viewModel.isRestTimerActive {
             HStack(spacing: 15) {
                 
-                // --- ЛЕВАЯ ЧАСТЬ: ВРЕМЯ ---
                 HStack(spacing: 8) {
                     Image(systemName: viewModel.restTimerFinished ? "checkmark.circle.fill" : "timer")
                         .foregroundColor(.white)
@@ -34,7 +33,6 @@ struct RestTimerView: View {
                 
                 Spacer()
                 
-                // --- ПРАВАЯ ЧАСТЬ: КНОПКИ ---
                 // Скрываем кнопки +/- когда таймер уже звонит (finished)
                 if !viewModel.restTimerFinished {
                     HStack(spacing: 12) {

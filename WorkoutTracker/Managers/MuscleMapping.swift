@@ -19,7 +19,7 @@ struct MuscleMapping {
     
     // MARK: - Standard Mappings
     
-    /// Словарь: Название упражнения -> Список слагов (slug) из BodyData (SVG путей)
+    /// Словарь: Название упражнения 
     static let exerciseToMuscles: [String: [String]] = [
         
         // --- Chest ---
@@ -160,7 +160,6 @@ struct MuscleMapping {
     ]
     
     /// Запасной вариант: если упражнения нет в списке выше,
-    /// красим мышцы по названию группы (Muscle Group)
     static let groupToMuscles: [String: [String]] = [
         "Chest":     ["chest"],
         "Back":      ["upper-back", "lower-back", "trapezius"],

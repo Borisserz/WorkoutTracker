@@ -12,7 +12,6 @@ struct WorkoutTimerWidget: Widget {
         
         } dynamicIsland: { context in
             DynamicIsland {
-                // РАСШИРЕННЫЙ ВИД
                 DynamicIslandExpandedRegion(.leading) {
                     Label("Workout", systemImage: "figure.strengthtraining.traditional")
                 }
@@ -25,14 +24,12 @@ struct WorkoutTimerWidget: Widget {
                     Text(context.attributes.workoutTitle).font(.headline).lineLimit(1)
                 }
             } compactLeading: {
-                // КОМПАКТНЫЙ ВИД (Слева)
                 Image(systemName: "figure.strengthtraining.traditional").foregroundColor(.red).font(.title3)
                 
             } compactTrailing: {
                 Text(timerInterval: context.state.startTime...Date.distantFuture, countsDown: false)
                     .monospacedDigit().frame(width: 50).font(.caption).foregroundColor(.red)
             } minimal: {
-                // МИНИМАЛЬНЫЙ ВИД
                 Image(systemName: "timer").foregroundColor(.red)
             }
             .widgetURL(nil)

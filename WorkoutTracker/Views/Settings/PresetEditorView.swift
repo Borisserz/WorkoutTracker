@@ -23,7 +23,6 @@ struct PresetEditorView: View {
     @EnvironmentObject private var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
     
-    // Если nil - создаем новый, иначе - редактируем
     @State var preset: WorkoutPreset?
     
     // Локальный стейт формы

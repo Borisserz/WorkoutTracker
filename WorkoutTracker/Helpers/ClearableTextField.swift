@@ -16,7 +16,6 @@ struct ClearableTextField: View {
                 let validatedValue = max(0, newValue)
                 
                 // Если пользователь стер все, сохраняем nil, иначе - число
-                // Это нужно, чтобы placeholder снова появился, если поле пустое
                 if isFocused && validatedValue == 0 {
                     // Пока пользователь печатает, 0 - это просто 0
                     value = 0

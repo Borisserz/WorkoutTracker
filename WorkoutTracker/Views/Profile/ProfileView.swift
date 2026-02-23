@@ -4,7 +4,6 @@ struct ProfileView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
     @Environment(\.dismiss) var dismiss
     
-    // --- ДАННЫЕ ПОЛЬЗОВАТЕЛЯ ---
     @AppStorage("userName") private var userName = "Fitness Enthusiast"
     @AppStorage("userBodyWeight") private var userBodyWeight = 75.0  // Хранится в кг
     @AppStorage("userGender") private var userGender = "male" // "male" or "female"
@@ -101,7 +100,7 @@ struct ProfileView: View {
                     }
                     .padding(.top, 20)
                     
-                    // 2. СЕТКА АЧИВОК
+                    // 2. ачивки
                     VStack(alignment: .leading) {
                         Text(LocalizedStringKey("Achievements")).font(.title3).bold().padding(.horizontal)
                         
@@ -120,7 +119,7 @@ struct ProfileView: View {
                     
                     Divider()
                     
-                    // 3. ЛИЧНЫЕ РЕКОРДЫ (НОВАЯ СЕКЦИЯ)
+                    // 3. рекорды
                     if !cachedPersonalRecords.isEmpty {
                         VStack(alignment: .leading, spacing: 15) {
                             Text(LocalizedStringKey("Personal Records")).font(.title3).bold().padding(.horizontal)
@@ -166,7 +165,7 @@ struct ProfileView: View {
                     Button(LocalizedStringKey("Close")) { dismiss() }
                 }
             }
-            // АЛЕРТЫ
+            // алерты
             .alert(LocalizedStringKey("Change Name"), isPresented: $isEditingName) {
                 TextField(LocalizedStringKey("Name"), text: $tempName)
                 Button(LocalizedStringKey("Save")) { if !tempName.isEmpty { userName = tempName } }

@@ -86,7 +86,7 @@ struct OnboardingIntroView: View {
         OnboardingItem(image: "figure.mind.and.body", title: "Muscle Recovery", description: "Smart heatmap tracks your muscle fatigue and suggests recovery times.", color: .red),
         OnboardingItem(image: "chart.xyaxis.line", title: "Analyze Progress", description: "Visualize your gains with detailed charts and personal records.", color: .purple)
     ]
-    
+  
     @State private var slideIndex = 0
     
     var body: some View {

@@ -1,7 +1,6 @@
 internal import SwiftUI
 
 struct BodyHeatmapView: View {
-    // ИЗМЕНЕНИЕ 1: Вместо Set принимаем Словарь (Мышца -> Количество повторений)
     var muscleIntensities: [String: Int]
     
     @AppStorage("userGender") private var userGender = "male"
@@ -11,8 +10,6 @@ struct BodyHeatmapView: View {
     let canvasWidth: CGFloat = 740
     let canvasHeight: CGFloat = 1450
     let backViewOffset: CGFloat = 740
-    
-    // ИЗМЕНЕНИЕ 2: Обновленный инициализатор
     init(muscleIntensities: [String: Int] = [:]) {
         self.muscleIntensities = muscleIntensities
     }
@@ -57,7 +54,7 @@ struct BodyHeatmapView: View {
                 // Плашка с именем
                 .overlay(alignment: .bottom) {
                     if let name = selectedMuscleName {
-                        // Показываем еще и интенсивность
+                        // Показываем интенсивность
                         let count = muscleIntensities[name.lowercased()] ?? muscleIntensities[findSlug(forName: name)] ?? 0
                         
                         VStack(spacing: 4) {
@@ -88,7 +85,7 @@ struct BodyHeatmapView: View {
         }
     }
     
-    // Вычисляет автоматическое смещение для центрирования тела
+    // Вычисляет смещение для центрирования тела
     func calculateCenteringOffset(for muscles: [MuscleGroup], isFront: Bool) -> CGFloat {
         var minX: CGFloat = .greatestFiniteMagnitude
         var maxX: CGFloat = -.greatestFiniteMagnitude
@@ -158,7 +155,6 @@ struct BodyHeatmapView: View {
     }
     
    
-    // --- ИЗМЕНЕНИЕ 3: ГРАДАЦИЯ ЦВЕТА ---
     func colorForMuscle(_ slug: String, isSelected: Bool) -> Color {
         if isSelected { return Color.blue.opacity(0.8) }
         if slug == "hair" { return .black.opacity(0.8) }
@@ -169,13 +165,13 @@ struct BodyHeatmapView: View {
         // Логика градации
         switch count {
         case 0:
-            return Color.gray.opacity(0.3) // Неактивна
+            return Color.gray.opacity(0.3)
         case 1:
-            return Color.red.opacity(0.35) // 1 упражнение (Слабо)
+            return Color.red.opacity(0.35)
         case 2:
-            return Color.red.opacity(0.65) // 2 упражнения (Средне)
+            return Color.red.opacity(0.65)
         default:
-            return Color.red.opacity(1.0)  // 3+ упражнений (Ярко/Максимум)
+            return Color.red.opacity(1.0)
         }
     }
     
@@ -187,7 +183,7 @@ struct BodyHeatmapView: View {
         return result
     }
     
-    // Вспомогательная для поиска слага по имени (для отображения текста)
+    // Вспомогательная для поиска слага по имени 
     func findSlug(forName name: String) -> String {
         let all: [MuscleGroup]
         if userGender == "female" {

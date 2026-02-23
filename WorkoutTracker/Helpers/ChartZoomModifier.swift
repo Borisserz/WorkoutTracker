@@ -44,7 +44,7 @@ struct ChartZoomModifier: ViewModifier {
     @State private var zoomState = ChartZoomState()
     @Binding var currentZoomScale: CGFloat
     
-    // Ограничения масштабирования - увеличен максимальный зум
+    // Ограничения масштабирования
     private let minZoom: CGFloat = 0.5
     private let maxZoom: CGFloat = 15.0
     
@@ -61,16 +61,13 @@ struct ChartZoomModifier: ViewModifier {
         let visibleRange = totalRange / Double(zoomState.zoomScale)
         
         // Улучшенное панорамирование - более чувствительное при большом зуме
-        // При зуме > 1.0 панорамирование работает, иначе смещение игнорируется
         let panSensitivity: Double
         let panTimeOffset: Double
         
         if zoomState.zoomScale > 1.0 {
-            // При зуме панорамирование более чувствительное
             panSensitivity = max(50.0, 300.0 / Double(zoomState.zoomScale))
             panTimeOffset = Double(zoomState.panOffset) * totalRange / panSensitivity
         } else {
-            // Без зума панорамирование не нужно
             panTimeOffset = 0.0
         }
         
@@ -91,7 +88,6 @@ struct ChartZoomModifier: ViewModifier {
             .chartXScale(domain: finalRange)
             .gesture(
                 SimultaneousGesture(
-                    // Жест масштабирования (pinch)
                     MagnificationGesture()
                         .onChanged { value in
                             zoomState.updateZoom(value, minZoom: minZoom, maxZoom: maxZoom)
@@ -101,10 +97,8 @@ struct ChartZoomModifier: ViewModifier {
                             zoomState.endZoom()
                             currentZoomScale = zoomState.zoomScale
                         },
-                    // Жест панорамирования (drag) - работает только при зуме
                     DragGesture()
                         .onChanged { value in
-                            // Панорамирование работает только если зум увеличен
                             if zoomState.zoomScale > 1.0 {
                                 zoomState.updatePan(value.translation.width)
                             }
@@ -113,7 +107,6 @@ struct ChartZoomModifier: ViewModifier {
                             if zoomState.zoomScale > 1.0 {
                                 zoomState.endPan()
                             } else {
-                                // Сбрасываем смещение если зум сброшен
                                 zoomState.panOffset = 0.0
                                 zoomState.lastPanOffset = 0.0
                             }
@@ -135,9 +128,6 @@ struct ChartZoomModifier: ViewModifier {
 
 extension View {
     /// Добавляет поддержку жестов масштабирования к графику с датами
-    /// - Parameters:
-    ///   - dateRange: Полный диапазон дат в данных графика
-    ///   - currentZoomScale: Binding для отслеживания текущего масштаба (опционально)
     func chartZoomable(dateRange: ClosedRange<Date>, currentZoomScale: Binding<CGFloat> = .constant(1.0)) -> some View {
         modifier(ChartZoomModifier(dateRange: dateRange, currentZoomScale: currentZoomScale))
     }

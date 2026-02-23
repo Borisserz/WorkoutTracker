@@ -22,7 +22,6 @@ struct ProgressCardView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // 1. ЗАГОЛОВОК
             HStack {
                 Image(systemName: icon)
                     .font(.title3)
@@ -37,7 +36,6 @@ struct ProgressCardView: View {
                 Spacer()
             }
             
-            // 2. ГЛАВНОЕ ЗНАЧЕНИЕ
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(value)
                     .font(.system(size: 36, weight: .bold, design: .rounded))
@@ -45,8 +43,6 @@ struct ProgressCardView: View {
                     .font(.headline)
                     .foregroundColor(.secondary)
             }
-            
-            // 3. СРАВНЕНИЕ С ПРОШЛЫМ ПЕРИОДОМ
             HStack(spacing: 5) {
                 Image(systemName: percentageChange >= 0 ? "arrow.up.right" : "arrow.down.right")
                     .font(.caption.bold())
@@ -60,7 +56,6 @@ struct ProgressCardView: View {
             }
             .foregroundColor(percentageChange >= 0 ? .green : .red)
             
-            // 4. МИНИ-ГРАФИК (Спарклайн)
             Chart {
                 // Линия прошлого значения
                 RuleMark(y: .value("Previous", previousValue))
