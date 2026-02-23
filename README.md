@@ -6,7 +6,7 @@
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-Framework-red.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-MVVM-green.svg)
 
-**WorkoutTracker** is a professional iOS application designed for physical activity monitoring, in-depth progress analytics, and muscle group recovery visualization. The project leverages modern Apple technologies (Live Activities, ActivityKit) combined with custom engineering solutions, such as a proprietary SVG parser.
+**WorkoutTracker** is a professional iOS application designed for physical activity monitoring, in-depth progress analytics, and muscle group recovery visualization. The project leverages modern Apple technologies (Live Activities, ActivityKit) combined with own engineering solutions, such as a own SVG parser.
 
 ---
 
