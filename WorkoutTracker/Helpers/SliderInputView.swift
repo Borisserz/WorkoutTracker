@@ -41,8 +41,6 @@ struct SliderSheetView: View {
     
     // Локальное состояние для слайдера - обновляется мгновенно без валидации
     @State private var localValue: Double = 0
-    @State private var updateTask: Task<Void, Never>?
-    @State private var isDragging: Bool = false
     
     // Кэшированные параметры слайдера (вычисляются один раз)
     @State private var params: (min: Double, max: Double, step: Double) = (0, 100, 1)
@@ -92,19 +90,19 @@ struct SliderSheetView: View {
                         .buttonStyle(BorderlessButtonStyle())
                     }
                     
-                    // Слайдер с оптимизированным обновлением
+                    // Слайдер с оптимизированным обновлением (onEditingChanged)
                     VStack(spacing: 8) {
                         Slider(
-                            value: Binding(
-                                get: { localValue },
-                                set: { newValue in
-                                    localValue = newValue
-                                    handleSliderValueChange(newValue)
-                                }
-                            ),
+                            value: $localValue,
                             in: params.min...params.max,
                             step: params.step
-                        )
+                        ) { editing in
+                            // Когда пользователь ОТПУСКАЕТ палец (editing == false),
+                            // мы передаем значение в модель (сохраняем)
+                            if !editing {
+                                updateBindingValue(localValue)
+                            }
+                        }
                         .tint(.blue)
                         
                         HStack {
@@ -128,8 +126,6 @@ struct SliderSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Done")) {
-                        // Отменяем любые ожидающие задачи
-                        updateTask?.cancel()
                         // При закрытии сохраняем финальное значение
                         updateBindingValue(localValue)
                         isPresented = false
@@ -156,38 +152,12 @@ struct SliderSheetView: View {
             }
         }
         .onDisappear {
-            // Отменяем задачу обновления при закрытии
-            updateTask?.cancel()
-            // Сохраняем финальное значение при закрытии
-            if isDragging {
-                updateBindingValue(localValue)
-            }
+            // На всякий случай сохраняем при скрытии шторки смахиванием вниз
+            updateBindingValue(localValue)
         }
     }
     
-    // Обрабатывает изменение значения слайдера с оптимизацией производительности
-    private func handleSliderValueChange(_ newValue: Double) {
-        // Отменяем предыдущую задачу обновления
-        updateTask?.cancel()
-        
-        // Отмечаем, что началось перетаскивание
-        if !isDragging {
-            isDragging = true
-        }
-        
-        // Сбрасываем флаг перетаскивания через небольшую задержку после последнего изменения
-        updateTask = Task {
-            try? await Task.sleep(nanoseconds: 200_000_000) // 200ms после последнего изменения
-            if !Task.isCancelled {
-                await MainActor.run {
-                    isDragging = false
-                    updateBindingValue(localValue)
-                }
-            }
-        }
-    }
-    
-    // Обновляет binding с валидацией (вызывается с debounce или при закрытии)
+    // Обновляет binding с валидацией
     private func updateBindingValue(_ newValue: Double) {
         let validated = max(params.min, min(newValue, params.max))
         value = validated >= 0 ? validated : nil
@@ -196,13 +166,13 @@ struct SliderSheetView: View {
     private func increment() {
         let newValue = min(localValue + params.step, params.max)
         localValue = newValue
-        updateBindingValue(newValue)
+        // Убрали updateBindingValue(newValue), чтобы не триггерить лаги
     }
     
     private func decrement() {
         let newValue = max(localValue - params.step, params.min)
         localValue = newValue
-        updateBindingValue(newValue)
+        // Убрали updateBindingValue(newValue), чтобы не триггерить лаги
     }
     
     private func formatValue(_ val: Double) -> String {
@@ -235,6 +205,10 @@ struct SliderInputView: View {
     @FocusState private var isFocused: Bool
     @State private var textValue: String = ""
     
+    // Локальное, быстрое состояние для UI
+    @State private var sliderDoubleValue: Double = 0
+    @State private var updateTask: Task<Void, Never>? = nil
+    
     init(
         fieldType: InputFieldType,
         value: Binding<Double?>,
@@ -247,41 +221,6 @@ struct SliderInputView: View {
         self.minValue = minValue
         self.maxValue = maxValue
         self.step = step
-    }
-    
-    // Кэшированное значение для слайдера (оптимизация производительности)
-    @State private var sliderDoubleValue: Double = 0
-    @State private var sliderUpdateTask: Task<Void, Never>?
-    @State private var isSliderDragging: Bool = false
-    
-    // Вычисляемое значение для слайдера (не может быть nil)
-    private var sliderValue: Binding<Double> {
-        Binding<Double>(
-            get: { sliderDoubleValue },
-            set: { newValue in
-                sliderDoubleValue = newValue
-                handleSliderValueChange(newValue)
-            }
-        )
-    }
-    
-    // Обрабатывает изменение значения слайдера с debounce
-    private func handleSliderValueChange(_ newValue: Double) {
-        sliderUpdateTask?.cancel()
-        
-        if !isSliderDragging {
-            isSliderDragging = true
-        }
-        
-        sliderUpdateTask = Task {
-            try? await Task.sleep(nanoseconds: 150_000_000) // 150ms debounce
-            if !Task.isCancelled {
-                await MainActor.run {
-                    isSliderDragging = false
-                    value = sliderDoubleValue > 0 ? sliderDoubleValue : nil
-                }
-            }
-        }
     }
     
     var body: some View {
@@ -303,20 +242,25 @@ struct SliderInputView: View {
                     .onChange(of: textValue) { oldValue, newValue in
                         if let num = Double(newValue) {
                             let validated = max(minValue, min(num, maxValue))
-                            
                             sliderDoubleValue = validated
-                            value = validated >= 0 ? validated : nil
+                            commitValueWithDebounce(validated)
                         } else if newValue.isEmpty {
                             sliderDoubleValue = 0
-                            value = nil
+                            commitValueWithDebounce(0)
                         }
                     }
                     .onChange(of: value) { oldValue, newValue in
+                        // Внешнее изменение (например, загрузка из модели)
                         if let newValue = newValue {
-                            textValue = formatValue(newValue)
+                            // Чтобы избежать зацикливания, обновляем только если текст не в фокусе
+                            if !isFocused {
+                                textValue = formatValue(newValue)
+                            }
                             sliderDoubleValue = newValue
                         } else {
-                            textValue = ""
+                            if !isFocused {
+                                textValue = ""
+                            }
                             sliderDoubleValue = 0
                         }
                     }
@@ -333,15 +277,24 @@ struct SliderInputView: View {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
                         .foregroundColor(.blue)
-                }
+                    }
                 .buttonStyle(BorderlessButtonStyle())
             }
             
             Slider(
-                value: sliderValue,
+                value: $sliderDoubleValue,
                 in: minValue...maxValue,
                 step: step
-            )
+            ) { editing in
+                // Когда пользователь ОТПУСКАЕТ палец, передаем данные наверх
+                if !editing {
+                    commitValueWithDebounce(sliderDoubleValue, immediate: true)
+                    updateTextValue()
+                } else {
+                    // Пока тянет, просто обновляем текст без сохранения
+                    textValue = formatValue(sliderDoubleValue)
+                }
+            }
             .tint(.blue)
         }
         .padding(.vertical, 6)
@@ -349,38 +302,49 @@ struct SliderInputView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(8)
         .onDisappear {
-            sliderUpdateTask?.cancel()
-            if isSliderDragging {
-                value = sliderDoubleValue > 0 ? sliderDoubleValue : nil
+            updateTask?.cancel()
+            value = sliderDoubleValue > 0 ? sliderDoubleValue : nil
+        }
+    }
+    
+    // Сохранение с задержкой, чтобы не лагало при быстром кликаньи "плюсов"
+    private func commitValueWithDebounce(_ newValue: Double, immediate: Bool = false) {
+        updateTask?.cancel()
+        
+        if immediate {
+            value = newValue > 0 ? newValue : nil
+            return
+        }
+        
+        updateTask = Task {
+            try? await Task.sleep(nanoseconds: 300_000_000) // Ждем 0.3 секунды
+            if !Task.isCancelled {
+                await MainActor.run {
+                    value = newValue > 0 ? newValue : nil
+                }
             }
         }
     }
     
     private func increment() {
-        sliderUpdateTask?.cancel()
-        isSliderDragging = false
-        
         let current = sliderDoubleValue
         let newValue = min(current + step, maxValue)
         sliderDoubleValue = newValue
-        value = newValue > 0 ? newValue : nil
         updateTextValue()
+        commitValueWithDebounce(newValue) // Сохраняем с задержкой
     }
     
     private func decrement() {
-        sliderUpdateTask?.cancel()
-        isSliderDragging = false
-        
         let current = sliderDoubleValue
         let newValue = max(current - step, minValue)
         sliderDoubleValue = newValue
-        value = newValue > 0 ? newValue : nil
         updateTextValue()
+        commitValueWithDebounce(newValue) // Сохраняем с задержкой
     }
     
     private func updateTextValue() {
-        if let val = value {
-            textValue = formatValue(val)
+        if sliderDoubleValue > 0 {
+            textValue = formatValue(sliderDoubleValue)
         } else {
             textValue = ""
         }

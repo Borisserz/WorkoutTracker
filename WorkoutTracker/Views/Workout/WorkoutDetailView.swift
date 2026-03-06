@@ -477,8 +477,13 @@ struct WorkoutDetailView: View {
                             let exerciseBinding = $workout.exercises[index]
                             
                             let deleteAction = {
-                                exerciseIndexToDelete = index
-                                showDeleteExerciseAlert = true
+                                // Карточка уже запросила подтверждение у пользователя,
+                                // поэтому здесь мы просто напрямую удаляем упражнение из массива.
+                                withAnimation {
+                                    if let currentIndex = workout.exercises.firstIndex(where: { $0.id == exercise.id }) {
+                                        workout.exercises.remove(at: currentIndex)
+                                    }
+                                }
                             }
                             
                             let swapAction = {
