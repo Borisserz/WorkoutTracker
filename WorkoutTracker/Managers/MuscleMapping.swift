@@ -14,8 +14,15 @@ struct MuscleMapping {
     
     // MARK: - Constants
     
-    /// Ключ для сохранения пользовательских маппингов в UserDefaults
+    /// Старый ключ для UserDefaults (используется только для миграции)
     private static let customMappingKey = "CustomExerciseMappings"
+    
+    private static var customMappingsFileURL: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("CustomExerciseMappings.json")
+    }
+    
+    // Кэш в оперативной памяти для быстрого доступа
+    private static var _cachedCustomMappings: [String: [String]]?
     
     // MARK: - Standard Mappings
     
@@ -172,11 +179,53 @@ struct MuscleMapping {
     
     // MARK: - Logic
     
+    /// Извлекает пользовательские маппинги из файла или кэша
+    private static func getCustomMappings() -> [String: [String]] {
+        if let cached = _cachedCustomMappings {
+            return cached
+        }
+        
+        // Пытаемся прочитать из файла
+        if let data = try? Data(contentsOf: customMappingsFileURL),
+           let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) {
+            _cachedCustomMappings = decoded
+            return decoded
+        }
+        
+        // Фоллбэк (миграция): если файла нет, пробуем прочитать из UserDefaults
+        if let dict = UserDefaults.standard.dictionary(forKey: customMappingKey) as? [String: [String]] {
+            _cachedCustomMappings = dict
+            
+            // Сразу сохраняем в файл и удаляем из UserDefaults
+            if let encoded = try? JSONEncoder().encode(dict) {
+                try? encoded.write(to: customMappingsFileURL)
+            }
+            UserDefaults.standard.removeObject(forKey: customMappingKey)
+            
+            return dict
+        }
+        
+        _cachedCustomMappings = [:]
+        return [:]
+    }
+    
+    /// Обновляет кэш и сохраняет изменения в файл. Вызывается из WorkoutViewModel.
+    static func updateCustomMapping(name: String, muscles: [String]?) {
+        var currentMap = getCustomMappings()
+        currentMap[name] = muscles
+        
+        _cachedCustomMappings = currentMap
+        
+        if let encoded = try? JSONEncoder().encode(currentMap) {
+            try? encoded.write(to: customMappingsFileURL)
+        }
+    }
+    
     /// Возвращает список задействованных мышц для конкретного упражнения.
     ///
     /// Поиск происходит в следующем порядке:
     /// 1. Стандартный словарь (`exerciseToMuscles`).
-    /// 2. Пользовательские упражнения (`UserDefaults`).
+    /// 2. Пользовательские упражнения (`FileManager` / `Cache`).
     /// 3. Дефолтный маппинг по группе мышц (`groupToMuscles`).
     static func getMuscles(for exerciseName: String, group: String) -> [String] {
         
@@ -185,9 +234,8 @@ struct MuscleMapping {
             return muscles
         }
         
-        // 2. Если не нашли, ищем в ПОЛЬЗОВАТЕЛЬСКИХ (из UserDefaults)
-        // Мы сохраняем карту "Имя -> [Мышцы]" в UserDefaults при создании CustomExercise
-        let customMap = UserDefaults.standard.dictionary(forKey: customMappingKey) as? [String: [String]] ?? [:]
+        // 2. Если не нашли, ищем в ПОЛЬЗОВАТЕЛЬСКИХ (из кэша/FileManager)
+        let customMap = getCustomMappings()
         
         if let customMuscles = customMap[exerciseName] {
             return customMuscles

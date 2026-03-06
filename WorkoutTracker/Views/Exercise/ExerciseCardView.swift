@@ -144,8 +144,8 @@ struct ExerciseCardView: View {
     
     @ViewBuilder
     private var setsSection: some View {
-        // Получаем данные о прошлой тренировке для "призрачного текста" (Ghost Text)
-        let lastExerciseData = viewModel.getLastPerformance(for: exercise.name, currentWorkoutId: currentWorkoutId)
+        // Берем данные за O(1) из кэша
+        let lastExerciseData = viewModel.lastPerformancesCache[exercise.name]
         
         ForEach(0..<exercise.setsList.count, id: \.self) { (index: Int) in
             let isLast = index == exercise.setsList.count - 1
@@ -359,8 +359,8 @@ struct ExerciseCardView: View {
             markAllSetsCompleted()
             exercise.isCompleted = true // Помечаем упражнение как завершенное
             
-            // Получаем данные о прошлой тренировке
-            let lastData = viewModel.getLastPerformance(for: exercise.name, currentWorkoutId: currentWorkoutId)
+            // Получаем данные из кэша O(1)
+            let lastData = viewModel.lastPerformancesCache[exercise.name]
             
             // Логика рекорда: Только если это силовое И (есть история ИЛИ вес > 0)
             // Но ты просил "если первый раз - не показывать".
@@ -374,7 +374,7 @@ struct ExerciseCardView: View {
                 
                 // Если история ЕСТЬ, сравниваем.
                 if let _ = lastData {
-                    let oldRecord = viewModel.getPersonalRecord(for: exercise.name, onlyCompleted: true)
+                    let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
                     if maxWeightInWorkout > oldRecord {
                         triggerRecordAnimation()
                     }
