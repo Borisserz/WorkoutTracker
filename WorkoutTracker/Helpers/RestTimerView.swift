@@ -7,24 +7,22 @@
 
 internal import SwiftUI
 
-
-
 struct RestTimerView: View {
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @EnvironmentObject var timerManager: RestTimerManager
     
     // Анимация пульсации для завершения
     @State private var isPulsing = false
     
     var body: some View {
-        if viewModel.isRestTimerActive {
+        if timerManager.isRestTimerActive {
             HStack(spacing: 15) {
                 
                 HStack(spacing: 8) {
-                    Image(systemName: viewModel.restTimerFinished ? "checkmark.circle.fill" : "timer")
+                    Image(systemName: timerManager.restTimerFinished ? "checkmark.circle.fill" : "timer")
                         .foregroundColor(.white)
-                        .symbolEffect(.bounce, value: viewModel.restTimerFinished) // Анимация иконки (iOS 17+)
+                        .symbolEffect(.bounce, value: timerManager.restTimerFinished) // Анимация иконки (iOS 17+)
                     
-                    Text(viewModel.restTimerFinished ? "DONE" : timeString(time: viewModel.restTimeRemaining))
+                    Text(timerManager.restTimerFinished ? "DONE" : timeString(time: timerManager.restTimeRemaining))
                         .font(.title3)
                         .bold()
                         .foregroundColor(.white)
@@ -34,12 +32,12 @@ struct RestTimerView: View {
                 Spacer()
                 
                 // Скрываем кнопки +/- когда таймер уже звонит (finished)
-                if !viewModel.restTimerFinished {
+                if !timerManager.restTimerFinished {
                     HStack(spacing: 12) {
                         
                         // Кнопка -30
                         Button {
-                            viewModel.subtractRestTime(30)
+                            timerManager.subtractRestTime(30)
                         } label: {
                             Text("-30")
                                 .font(.caption).bold()
@@ -51,7 +49,7 @@ struct RestTimerView: View {
                         
                         // Кнопка +30
                         Button {
-                            viewModel.addRestTime(30)
+                            timerManager.addRestTime(30)
                         } label: {
                             Text("+30")
                                 .font(.caption).bold()
@@ -69,7 +67,7 @@ struct RestTimerView: View {
                         // Кнопка Стоп
                         Button {
                             withAnimation {
-                                viewModel.stopRestTimer()
+                                timerManager.stopRestTimer()
                             }
                         } label: {
                             Image(systemName: "xmark")
@@ -81,7 +79,7 @@ struct RestTimerView: View {
             }
             .padding()
             // Меняем цвет фона: Синий (идет время) -> Зеленый (готово)
-            .background(viewModel.restTimerFinished ? Color.green.gradient : Color.blue.gradient)
+            .background(timerManager.restTimerFinished ? Color.green.gradient : Color.blue.gradient)
             .cornerRadius(16)
             .shadow(radius: 10)
             .padding(.horizontal)
@@ -92,7 +90,7 @@ struct RestTimerView: View {
             
             // Анимация пульсации при завершении
             .scaleEffect(isPulsing ? 1.05 : 1.0)
-            .onChange(of: viewModel.restTimerFinished) { finished in
+            .onChange(of: timerManager.restTimerFinished) { finished in
                 if finished {
                     withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
                         isPulsing = true

@@ -54,6 +54,12 @@ class LocalizationHelper {
         return formatter
     }()
     
+    // MARK: - Caches
+    
+    private var cachedDateFormatters: [String: DateFormatter] = [:]
+    private var cachedNumberFormatters: [Int: NumberFormatter] = [:]
+    private let cacheLock = NSLock()
+    
     // MARK: - Init
     
     private init() {}
@@ -68,11 +74,20 @@ class LocalizationHelper {
         return "\(dayName) Workout"
     }
     
-    /// Создает новый DateFormatter с указанным форматом и текущей локалью
+    /// Создает или возвращает закэшированный DateFormatter с указанным форматом и текущей локалью
     func createDateFormatter(format: String) -> DateFormatter {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        
+        if let formatter = cachedDateFormatters[format] {
+            return formatter
+        }
+        
         let formatter = DateFormatter()
         formatter.locale = Locale.current
         formatter.dateFormat = format
+        
+        cachedDateFormatters[format] = formatter
         return formatter
     }
     
@@ -93,13 +108,25 @@ class LocalizationHelper {
         return integerFormatter.string(from: NSNumber(value: value)) ?? "\(Int(value))"
     }
     
-    /// Форматирует число с указанным количеством знаков после запятой
+    /// Форматирует число с указанным количеством знаков после запятой, используя кэшированный NumberFormatter
     func formatNumber(_ value: Double, fractionDigits: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale.current
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = fractionDigits
-        formatter.maximumFractionDigits = fractionDigits
+        let formatter: NumberFormatter
+        
+        cacheLock.lock()
+        if let cached = cachedNumberFormatters[fractionDigits] {
+            formatter = cached
+            cacheLock.unlock()
+        } else {
+            formatter = NumberFormatter()
+            formatter.locale = Locale.current
+            formatter.numberStyle = .decimal
+            formatter.minimumFractionDigits = fractionDigits
+            formatter.maximumFractionDigits = fractionDigits
+            
+            cachedNumberFormatters[fractionDigits] = formatter
+            cacheLock.unlock()
+        }
+        
         return formatter.string(from: NSNumber(value: value)) ?? String(format: "%.\(fractionDigits)f", value)
     }
     
@@ -126,8 +153,4 @@ class LocalizationHelper {
         }
     }
 }
-
-
-
-
 

@@ -17,6 +17,7 @@ struct ExerciseCardView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     @Binding var exercise: Exercise
     @EnvironmentObject var viewModel: WorkoutViewModel
+    @EnvironmentObject var timerManager: RestTimerManager
     @StateObject private var unitsManager = UnitsManager.shared
     
     // MARK: - Properties
@@ -62,12 +63,15 @@ struct ExerciseCardView: View {
         self.isCurrentExercise = isCurrentExercise
     }
     
+    // MARK: - Computed
+    
+    private var isActiveExercise: Bool {
+        isCurrentExercise && !exercise.isCompleted
+    }
+    
     // MARK: - Body
     
     var body: some View {
-        // Получаем данные о прошлой тренировке для "призрачного текста" (Ghost Text)
-        let lastExerciseData = viewModel.getLastPerformance(for: exercise.name, currentWorkoutId: currentWorkoutId)
-        
         ZStack {
             // Основной контент
             VStack(alignment: .leading, spacing: 0) {
@@ -81,39 +85,7 @@ struct ExerciseCardView: View {
                     columnHeadersSection
                     
                     // 2.2. Список сетов
-                    // Оставляем цикл здесь, так как он зависит от lastExerciseData
-                    ForEach($exercise.setsList.indices, id: \.self) { index in
-                        let isLast = index == exercise.setsList.count - 1
-                        
-                        // Ищем данные этого же сета из прошлой тренировки
-                        let prevSet: WorkoutSet? = (lastExerciseData != nil && index < lastExerciseData!.setsList.count)
-                        ? lastExerciseData!.setsList[index]
-                        : nil
-                        
-                        SetRowView(
-                            set: $exercise.setsList[index],
-                            exerciseType: exercise.type,
-                            isLastSet: isLast,
-                            isExerciseCompleted: exercise.isCompleted,
-                            isWorkoutCompleted: isWorkoutCompleted,
-                            onCheck: { shouldStartTimer in
-                                if shouldStartTimer { viewModel.startRestTimer() }
-                            },
-                            prevWeight: prevSet?.weight,
-                            prevReps: prevSet?.reps,
-                            prevDist: prevSet?.distance,
-                            prevTime: prevSet?.time
-                        )
-                        .swipeActions(edge: .trailing) {
-                            if !exercise.isCompleted && !isWorkoutCompleted {
-                                Button(role: .destructive) {
-                                    removeSet(at: index)
-                                } label: {
-                                    Label(LocalizedStringKey("Delete"), systemImage: "trash")
-                                }
-                            }
-                        }
-                    }
+                    setsSection
                     
                     // 2.3. Кнопки (Add Set, Finish)
                     actionButtonsSection
@@ -124,7 +96,7 @@ struct ExerciseCardView: View {
             }
             .padding()
             .background(
-                isCurrentExercise && !exercise.isCompleted
+                isActiveExercise
                     ? Color.blue.opacity(0.08)
                     : Color(UIColor.secondarySystemBackground)
             )
@@ -132,17 +104,13 @@ struct ExerciseCardView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(
-                        isCurrentExercise && !exercise.isCompleted
-                            ? Color.blue.opacity(0.5)
-                            : Color.clear,
-                        lineWidth: isCurrentExercise && !exercise.isCompleted ? 2 : 0
+                        isActiveExercise ? Color.blue.opacity(0.5) : Color.clear,
+                        lineWidth: isActiveExercise ? 2 : 0
                     )
             )
             .shadow(
-                color: isCurrentExercise && !exercise.isCompleted
-                    ? Color.blue.opacity(0.2)
-                    : Color.clear,
-                radius: isCurrentExercise && !exercise.isCompleted ? 8 : 0,
+                color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear,
+                radius: isActiveExercise ? 8 : 0,
                 x: 0,
                 y: 2
             )
@@ -173,6 +141,51 @@ struct ExerciseCardView: View {
     }
     
     // MARK: - View Components
+    
+    @ViewBuilder
+    private var setsSection: some View {
+        // Берем данные за O(1) из кэша
+        let lastExerciseData = viewModel.lastPerformancesCache[exercise.name]
+        
+        ForEach($exercise.setsList) { $set in
+            // Безопасно вычисляем индекс для того, чтобы понимать, является ли сет последним, 
+            // и чтобы найти прошлые показатели.
+            let currentIndex = exercise.setsList.firstIndex(where: { $0.id == set.id }) ?? 0
+            let isLast = currentIndex == exercise.setsList.count - 1
+            
+            // Ищем данные этого же сета из прошлой тренировки
+            let prevSet: WorkoutSet? = {
+                if let lastData = lastExerciseData, currentIndex < lastData.setsList.count {
+                    return lastData.setsList[currentIndex]
+                }
+                return nil
+            }()
+            
+            SetRowView(
+                set: $set,
+                exerciseType: exercise.type,
+                isLastSet: isLast,
+                isExerciseCompleted: exercise.isCompleted,
+                isWorkoutCompleted: isWorkoutCompleted,
+                onCheck: { shouldStartTimer in
+                    if shouldStartTimer { timerManager.startRestTimer() }
+                },
+                prevWeight: prevSet?.weight,
+                prevReps: prevSet?.reps,
+                prevDist: prevSet?.distance,
+                prevTime: prevSet?.time
+            )
+            .swipeActions(edge: .trailing) {
+                if !exercise.isCompleted && !isWorkoutCompleted {
+                    Button(role: .destructive) {
+                        removeSet(withId: set.id)
+                    } label: {
+                        Label(LocalizedStringKey("Delete"), systemImage: "trash")
+                    }
+                }
+            }
+        }
+    }
     
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -261,7 +274,7 @@ struct ExerciseCardView: View {
                 Text(unitsManager.weightUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
                 Text(LocalizedStringKey("Reps")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
             case .cardio:
-                Text(LocalizedStringKey("km")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                Text(unitsManager.distanceUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
                 Spacer()
                 Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
             case .duration:
@@ -349,8 +362,8 @@ struct ExerciseCardView: View {
             markAllSetsCompleted()
             exercise.isCompleted = true // Помечаем упражнение как завершенное
             
-            // Получаем данные о прошлой тренировке
-            let lastData = viewModel.getLastPerformance(for: exercise.name, currentWorkoutId: currentWorkoutId)
+            // Получаем данные из кэша O(1)
+            let lastData = viewModel.lastPerformancesCache[exercise.name]
             
             // Логика рекорда: Только если это силовое И (есть история ИЛИ вес > 0)
             // Но ты просил "если первый раз - не показывать".
@@ -364,7 +377,7 @@ struct ExerciseCardView: View {
                 
                 // Если история ЕСТЬ, сравниваем.
                 if let _ = lastData {
-                    let oldRecord = viewModel.getPersonalRecord(for: exercise.name, onlyCompleted: true)
+                    let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
                     if maxWeightInWorkout > oldRecord {
                         triggerRecordAnimation()
                     }
@@ -419,12 +432,12 @@ struct ExerciseCardView: View {
         }
     }
     
-    private func removeSet(at index: Int) {
+    private func removeSet(withId id: UUID) {
         // Запрещаем удалять сеты, если упражнение или тренировка завершены
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
         withAnimation {
-            if index < exercise.setsList.count {
+            if let index = exercise.setsList.firstIndex(where: { $0.id == id }) {
                 exercise.setsList.remove(at: index)
                 // Пересчитываем индексы
                 for i in 0..<exercise.setsList.count {

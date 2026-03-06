@@ -102,10 +102,10 @@ struct ConfigureExerciseView: View {
         NavigationStack {
             Form {
                 // Основная секция настроек
-                Section(header: Text(LocalizedStringKey("Configuration"))) {
+                Section(header: Text("Configuration")) {
                     // Заголовок с именем упражнения
                     HStack {
-                        Text(LocalizedStringKey("Exercise"))
+                        Text("Exercise")
                         Spacer()
                         Text(exerciseName).bold()
                     }
@@ -122,15 +122,15 @@ struct ConfigureExerciseView: View {
                 }
                 
                 // Кнопка действия
-                Button(LocalizedStringKey("Add Exercise")) {
+                Button("Add Exercise") {
                     handleSave()
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
             }
-            .navigationTitle(LocalizedStringKey("Configure"))
-            .alert(LocalizedStringKey("Invalid Input"), isPresented: $showValidationAlert) {
-                Button(LocalizedStringKey("OK"), role: .cancel) { }
+            .navigationTitle("Configure")
+            .alert("Invalid Input", isPresented: $showValidationAlert) {
+                Button("OK", role: .cancel) { }
             } message: {
                 Text(validationErrorMessage)
             }
@@ -142,19 +142,19 @@ struct ConfigureExerciseView: View {
     // 1. Силовая конфигурация
     @ViewBuilder
     private var strengthConfig: some View {
-        Stepper(LocalizedStringKey("Sets: \(sets)"), value: $sets, in: 1...20)
-        Stepper(LocalizedStringKey("Reps: \(reps)"), value: $reps, in: 0...100)
+        Stepper("Sets: \(sets)", value: $sets, in: 1...20)
+        Stepper("Reps: \(reps)", value: $reps, in: 0...100)
             .onChange(of: reps) { oldValue, newValue in
                 let validation = InputValidator.validateReps(newValue)
                 if !validation.isValid {
                     reps = validation.clampedValue
-                    validationErrorMessage = validation.errorMessage ?? "Invalid reps value"
+                    validationErrorMessage = validation.errorMessage ?? String(localized: "Invalid reps value")
                     showValidationAlert = true
                 }
             }
         
         HStack {
-            Text(LocalizedStringKey("Weight (\(unitsManager.weightUnitString())):"))
+            Text("Weight (\(unitsManager.weightUnitString())):")
             Spacer()
             ClearableTextField(placeholder: unitsManager.weightUnitString(), value: weightBinding)
                 .frame(width: 80)
@@ -165,34 +165,34 @@ struct ConfigureExerciseView: View {
     @ViewBuilder
     private var cardioConfig: some View {
         HStack {
-            Text(LocalizedStringKey("Distance (km):"))
+            Text("Distance (km):")
             Spacer()
             ClearableTextField(placeholder: "km", value: distanceBinding)
                 .frame(width: 80)
         }
-        timePickerRow(label: LocalizedStringKey("Duration"))
+        timePickerRow(label: "Duration")
     }
     
     // 3. Конфигурация на время
     @ViewBuilder
     private var durationConfig: some View {
-        Stepper(LocalizedStringKey("Sets: \(sets)"), value: $sets, in: 1...10)
-        timePickerRow(label: LocalizedStringKey("Time per set"))
+        Stepper("Sets: \(sets)", value: $sets, in: 1...10)
+        timePickerRow(label: "Time per set")
     }
     
     // Вспомогательная строка для ввода времени (Мин : Сек)
-    private func timePickerRow(label: LocalizedStringKey) -> some View {
+    private func timePickerRow(label: String) -> some View {
         HStack {
-            Text(label)
+            Text(LocalizedStringKey(label))
             Spacer()
             HStack(spacing: 5) {
                 ClearableTextField(placeholder: "0", value: minutesBinding)
                     .frame(width: 50)
-                Text(LocalizedStringKey("min"))
+                Text("min")
                 
                 ClearableTextField(placeholder: "0", value: secondsBinding)
                     .frame(width: 50)
-                Text(LocalizedStringKey("sec"))
+                Text("sec")
             }
         }
     }

@@ -15,6 +15,9 @@ struct WorkoutTrackerApp: App {
     @StateObject private var notesManager = ExerciseNotesManager.shared
     @StateObject private var tutorialManager = TutorialManager()    // прошел ли пользователь анбординг?
     
+    // НОВЫЙ МЕНЕДЖЕР ТАЙМЕРА
+    @StateObject private var timerManager = RestTimerManager()
+    
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("appearanceMode") private var appearanceMode: String = "system"
     
@@ -45,6 +48,7 @@ struct WorkoutTrackerApp: App {
                         .environmentObject(viewModel)
                         .environmentObject(notesManager)
                         .environmentObject(tutorialManager)
+                        .environmentObject(timerManager) // <-- ПЕРЕДАЕМ В ОКРУЖЕНИЕ
                         .transition(.opacity)
                 } else {
                     // Анбординг

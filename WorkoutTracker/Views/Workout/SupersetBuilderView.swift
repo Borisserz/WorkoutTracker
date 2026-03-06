@@ -270,6 +270,24 @@ struct EditSupersetItemView: View {
         )
     }
     
+    private var distanceBindingAdapter: Binding<Double?> {
+        Binding<Double?>(
+            get: {
+                guard !exercise.setsList.isEmpty, let dist = exercise.setsList[0].distance else { return nil }
+                return unitsManager.convertFromKilometers(dist)
+            },
+            set: { newValue in
+                guard !exercise.setsList.isEmpty else { return }
+                if let value = newValue {
+                    let km = unitsManager.convertToKilometers(value)
+                    exercise.setsList[0].distance = km
+                } else {
+                    exercise.setsList[0].distance = nil
+                }
+            }
+        )
+    }
+    
     // MARK: - Body
     
     var body: some View {
@@ -287,7 +305,7 @@ struct EditSupersetItemView: View {
                             inputRow(label: LocalizedStringKey("Reps:"), placeholder: "reps", binding: repsBinding)
                             
                         case .cardio:
-                            inputRow(label: LocalizedStringKey("Distance (km):"), placeholder: "km", binding: $exercise.setsList[0].distance)
+                            inputRow(label: LocalizedStringKey("Distance (\(unitsManager.distanceUnitString())):"), placeholder: unitsManager.distanceUnitString(), binding: distanceBindingAdapter)
                             inputRow(label: LocalizedStringKey("Time (min):"), placeholder: "min", binding: timeBinding)
                             
                         case .duration:

@@ -21,6 +21,7 @@ struct WorkoutDetailView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     @Binding var workout: Workout
     @EnvironmentObject var viewModel: WorkoutViewModel
+    @EnvironmentObject var timerManager: RestTimerManager
     
     // MARK: - Local State (UI)
     
@@ -58,6 +59,9 @@ struct WorkoutDetailView: View {
     
     // ID упражнения, к которому нужно прокрутить
     @State private var scrollToExerciseId: UUID?
+    
+    // Выбранное упражнение на графике
+    @State private var selectedChartExerciseName: String?
     
     // MARK: - Computed Properties
     
@@ -410,7 +414,7 @@ struct WorkoutDetailView: View {
                 // Кнопка ручного запуска таймера (только для активной)
                 if workout.isActive {
                     Button {
-                        viewModel.startRestTimer()
+                        timerManager.startRestTimer()
                     } label: {
                         Image(systemName: "timer")
                             .font(.headline)
@@ -476,8 +480,13 @@ struct WorkoutDetailView: View {
                             let exerciseBinding = $workout.exercises[index]
                             
                             let deleteAction = {
-                                exerciseIndexToDelete = index
-                                showDeleteExerciseAlert = true
+                                // Карточка уже запросила подтверждение у пользователя,
+                                // поэтому здесь мы просто напрямую удаляем упражнение из массива.
+                                withAnimation {
+                                    if let currentIndex = workout.exercises.firstIndex(where: { $0.id == exercise.id }) {
+                                        workout.exercises.remove(at: currentIndex)
+                                    }
+                                }
                             }
                             
                             let swapAction = {
@@ -554,6 +563,21 @@ struct WorkoutDetailView: View {
                     Text(LocalizedStringKey("Analysis (Max Weight)"))
                         .font(.title2).bold().padding(.top)
                     
+                    // Показываем полное название выбранного упражнения
+                    if let selected = selectedChartExerciseName {
+                        Text(LocalizedStringKey(selected))
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                            .padding(.bottom, 4)
+                            .frame(minHeight: 20)
+                    } else {
+                        Text(LocalizedStringKey("Tap a bar to see full name"))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 4)
+                            .frame(minHeight: 20)
+                    }
+                    
                     // Получаем список всех имен упражнений для явного указания на оси X
                     let exerciseNames = strengthExercises.map { $0.name }
                     
@@ -573,28 +597,28 @@ struct WorkoutDetailView: View {
                                     x: .value("Exercise", exercise.name),
                                     y: .value("Weight", convertedWeight)
                                 )
-                                .foregroundStyle(Color.blue.gradient)
+                                // Изменяем цвет, если столбец выбран
+                                .foregroundStyle(selectedChartExerciseName == exercise.name ? Color.orange.gradient : Color.blue.gradient)
                                 .cornerRadius(4)
                                 .annotation(position: .top) {
                                     Text("\(Int(convertedWeight))")
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(selectedChartExerciseName == exercise.name ? .orange : .secondary)
                                 }
                             }
                         }
                     }
-                    .frame(height: 280)
-                    .padding(.bottom, 40)
+                    .frame(height: 250)
+                    .padding(.bottom, 10)
+                    .chartXSelection(value: $selectedChartExerciseName) // Обработка нажатий
                     .chartXAxis {
                         // Явно указываем все значения для оси X, чтобы все подписи отображались
                         AxisMarks(values: exerciseNames) { value in
                             AxisTick()
                             AxisValueLabel {
                                 if let exerciseName = value.as(String.self) {
-                                    Text(exerciseName)
+                                    Text(abbreviateName(exerciseName))
                                         .font(.caption2)
-                                        .rotationEffect(.degrees(-45))
-                                        .offset(x: 0, y: 5)
                                 }
                             }
                         }
@@ -642,6 +666,16 @@ struct WorkoutDetailView: View {
     }
     
     // MARK: - Logic & Actions
+    
+    // Сокращение имени для графика (например "Bench Press" -> "BP", "Squat" -> "Squ")
+    private func abbreviateName(_ name: String) -> String {
+        let words = name.split(separator: " ")
+        if words.count > 1 {
+            return words.prefix(2).compactMap { $0.first }.map { String($0) }.joined().uppercased()
+        } else {
+            return String(name.prefix(3)).capitalized
+        }
+    }
     
     // Генерация картинки на основе мышц
     private var workoutImage: Image {
@@ -955,7 +989,8 @@ struct ExerciseRowView: View {
             Text("\(exercise.sets)s x \(exercise.reps)r • \(LocalizationHelper.shared.formatInteger(convertedWeight))\(unitsManager.weightUnitString())")
         case .cardio:
             if let dist = exercise.distance, let time = exercise.timeSeconds {
-                Text(LocalizedStringKey("\(LocalizationHelper.shared.formatTwoDecimals(dist)) km in \(formatTime(time))"))
+                let convertedDist = unitsManager.convertFromKilometers(dist)
+                Text(LocalizedStringKey("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) in \(formatTime(time))"))
             } else {
                 Text(LocalizedStringKey("Cardio"))
             }
