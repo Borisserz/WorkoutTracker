@@ -73,7 +73,6 @@ struct ExerciseHistoryView: View {
     let exerciseName: String
     let allWorkouts: [Workout]
     
-    @EnvironmentObject var notesManager: ExerciseNotesManager
     @EnvironmentObject var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
     @FocusState private var isInputActive: Bool
@@ -82,10 +81,8 @@ struct ExerciseHistoryView: View {
     
     @State private var selectedTab: Tab = .summary
     @State private var selectedTimeRange: TimeRange = .all
-    @State private var exerciseNote: String = ""
     @State private var selectedMetric: GraphMetric = .none
     @State private var selectedTrendPeriod: TrendPeriod = .month
-    @State private var saveTask: Task<Void, Never>?
     
     // MARK: - Computed Properties (General)
     
@@ -139,10 +136,6 @@ struct ExerciseHistoryView: View {
         }
         .navigationTitle(exerciseName)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            // Загружаем заметку при открытии
-            exerciseNote = notesManager.getNote(for: exerciseName)
-        }
     }
     
     // MARK: - Tab Bar
@@ -305,58 +298,12 @@ struct ExerciseHistoryView: View {
     
     /// Секция заметок
     private var noteSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(LocalizedStringKey("My Notes")).font(.headline).foregroundColor(.secondary)
-            
-            TextEditor(text: $exerciseNote)
-                .frame(minHeight: 100, maxHeight: 200)
-                .padding(8)
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(8)
-                .focused($isInputActive)
-                .overlay(
-                    Text(exerciseNote.isEmpty ? LocalizedStringKey("Write notes...") : "")
-                        .foregroundColor(.gray.opacity(0.6))
-                        .padding(12)
-                        .allowsHitTesting(false),
-                    alignment: .topLeading
-                )
-                .onChange(of: exerciseNote) { oldValue, newValue in
-                    // Отменяем предыдущую задачу сохранения
-                    saveTask?.cancel()
-                    
-                    // Сохраняем с debounce (300ms) для плавности
-                    saveTask = Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 300_000_000) // 300ms
-                        if !Task.isCancelled {
-                            notesManager.setNote(newValue, for: exerciseName)
-                        }
-                    }
-                }
-                .toolbar {
-                    ToolbarItemGroup(placement: .keyboard) {
-                        Spacer()
-                        Button(LocalizedStringKey("Done")) {
-                            // При закрытии клавиатуры сохраняем сразу
-                            saveTask?.cancel()
-                            notesManager.setNote(exerciseNote, for: exerciseName)
-                            notesManager.saveImmediately()
-                            isInputActive = false
-                        }.bold()
-                    }
-                }
-                .onDisappear {
-                    // При закрытии view сохраняем финальное значение
-                    saveTask?.cancel()
-                    notesManager.setNote(exerciseNote, for: exerciseName)
-                    notesManager.saveImmediately()
-                }
-        }
-        .id("notesSection")
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
-        .shadow(radius: 5)
+        ExerciseNoteEditor(exerciseName: exerciseName, isInputActive: $isInputActive)
+            .id("notesSection")
+            .padding()
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
+            .shadow(radius: 5)
     }
     
     /// Контейнер для графика (Заголовок, График, Фильтры)
@@ -1006,3 +953,69 @@ struct ExerciseHistoryView: View {
         .shadow(radius: 5)
     }
 }
+// MARK: - Isolated Note Editor View
+
+/// Вынесенное представление для редактирования заметки.
+/// Это предотвращает перерисовку графиков и всего экрана ExerciseHistoryView
+/// при каждом нажатии клавиши во время ввода текста.
+struct ExerciseNoteEditor: View {
+    let exerciseName: String
+    var isInputActive: FocusState<Bool>.Binding
+    
+    @EnvironmentObject var notesManager: ExerciseNotesManager
+    
+    @State private var exerciseNote: String = ""
+    @State private var saveTask: Task<Void, Never>?
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(LocalizedStringKey("My Notes")).font(.headline).foregroundColor(.secondary)
+            
+            TextEditor(text: $exerciseNote)
+                .frame(minHeight: 100, maxHeight: 200)
+                .padding(8)
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(8)
+                .focused(isInputActive)
+                .overlay(
+                    Text(exerciseNote.isEmpty ? LocalizedStringKey("Write notes...") : "")
+                        .foregroundColor(.gray.opacity(0.6))
+                        .padding(12)
+                        .allowsHitTesting(false),
+                    alignment: .topLeading
+                )
+                .onChange(of: exerciseNote) { oldValue, newValue in
+                    // Отменяем предыдущую задачу сохранения
+                    saveTask?.cancel()
+                    
+                    // Сохраняем с debounce (300ms)
+                    saveTask = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        if !Task.isCancelled {
+                            notesManager.setNote(newValue, for: exerciseName)
+                        }
+                    }
+                }
+                .toolbar {
+                    ToolbarItemGroup(placement: .keyboard) {
+                        Spacer()
+                        Button(LocalizedStringKey("Done")) {
+                            saveTask?.cancel()
+                            notesManager.setNote(exerciseNote, for: exerciseName)
+                            notesManager.saveImmediately()
+                            isInputActive.wrappedValue = false
+                        }.bold()
+                    }
+                }
+                .onDisappear {
+                    saveTask?.cancel()
+                    notesManager.setNote(exerciseNote, for: exerciseName)
+                    notesManager.saveImmediately()
+                }
+        }
+        .onAppear {
+            exerciseNote = notesManager.getNote(for: exerciseName)
+        }
+    }
+}
+

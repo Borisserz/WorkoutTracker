@@ -60,6 +60,9 @@ struct WorkoutDetailView: View {
     // ID упражнения, к которому нужно прокрутить
     @State private var scrollToExerciseId: UUID?
     
+    // Выбранное упражнение на графике
+    @State private var selectedChartExerciseName: String?
+    
     // MARK: - Computed Properties
     
     /// Плоский список всех упражнений (разворачивает супер-сеты для графиков)
@@ -560,6 +563,21 @@ struct WorkoutDetailView: View {
                     Text(LocalizedStringKey("Analysis (Max Weight)"))
                         .font(.title2).bold().padding(.top)
                     
+                    // Показываем полное название выбранного упражнения
+                    if let selected = selectedChartExerciseName {
+                        Text(LocalizedStringKey(selected))
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                            .padding(.bottom, 4)
+                            .frame(minHeight: 20)
+                    } else {
+                        Text(LocalizedStringKey("Tap a bar to see full name"))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 4)
+                            .frame(minHeight: 20)
+                    }
+                    
                     // Получаем список всех имен упражнений для явного указания на оси X
                     let exerciseNames = strengthExercises.map { $0.name }
                     
@@ -579,28 +597,28 @@ struct WorkoutDetailView: View {
                                     x: .value("Exercise", exercise.name),
                                     y: .value("Weight", convertedWeight)
                                 )
-                                .foregroundStyle(Color.blue.gradient)
+                                // Изменяем цвет, если столбец выбран
+                                .foregroundStyle(selectedChartExerciseName == exercise.name ? Color.orange.gradient : Color.blue.gradient)
                                 .cornerRadius(4)
                                 .annotation(position: .top) {
                                     Text("\(Int(convertedWeight))")
                                         .font(.caption2)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(selectedChartExerciseName == exercise.name ? .orange : .secondary)
                                 }
                             }
                         }
                     }
-                    .frame(height: 280)
-                    .padding(.bottom, 40)
+                    .frame(height: 250)
+                    .padding(.bottom, 10)
+                    .chartXSelection(value: $selectedChartExerciseName) // Обработка нажатий
                     .chartXAxis {
                         // Явно указываем все значения для оси X, чтобы все подписи отображались
                         AxisMarks(values: exerciseNames) { value in
                             AxisTick()
                             AxisValueLabel {
                                 if let exerciseName = value.as(String.self) {
-                                    Text(exerciseName)
+                                    Text(abbreviateName(exerciseName))
                                         .font(.caption2)
-                                        .rotationEffect(.degrees(-45))
-                                        .offset(x: 0, y: 5)
                                 }
                             }
                         }
@@ -648,6 +666,16 @@ struct WorkoutDetailView: View {
     }
     
     // MARK: - Logic & Actions
+    
+    // Сокращение имени для графика (например "Bench Press" -> "BP", "Squat" -> "Squ")
+    private func abbreviateName(_ name: String) -> String {
+        let words = name.split(separator: " ")
+        if words.count > 1 {
+            return words.prefix(2).compactMap { $0.first }.map { String($0) }.joined().uppercased()
+        } else {
+            return String(name.prefix(3)).capitalized
+        }
+    }
     
     // Генерация картинки на основе мышц
     private var workoutImage: Image {
