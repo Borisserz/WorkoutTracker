@@ -8,10 +8,32 @@
 
 internal import SwiftUI
 
+// MARK: - Types
+
+/// Тип поля ввода для точной привязки логики без использования хардкод-строк (плейсхолдеров)
+enum InputFieldType: Equatable {
+    case weight
+    case reps
+    case distance
+    case timeMin
+    case timeSec
+    
+    /// Локализованный плейсхолдер для отображения в UI
+    func title(unitsManager: UnitsManager) -> String {
+        switch self {
+        case .weight: return unitsManager.weightUnitString()
+        case .reps: return String(localized: "reps")
+        case .distance: return unitsManager.distanceUnitString()
+        case .timeMin: return String(localized: "min")
+        case .timeSec: return String(localized: "sec")
+        }
+    }
+}
+
 // MARK: - Slider Sheet View (Модальное окно со слайдером)
 
 struct SliderSheetView: View {
-    let placeholder: String
+    let fieldType: InputFieldType
     @Binding var value: Double?
     @Binding var isPresented: Bool
     
@@ -25,12 +47,21 @@ struct SliderSheetView: View {
     // Кэшированные параметры слайдера (вычисляются один раз)
     @State private var params: (min: Double, max: Double, step: Double) = (0, 100, 1)
     
+    private var navigationTitleText: LocalizedStringKey {
+        switch fieldType {
+        case .weight: return "Adjust Weight"
+        case .reps: return "Adjust Reps"
+        case .distance: return "Adjust Distance"
+        case .timeMin, .timeSec: return "Adjust Time"
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             VStack(spacing: 30) {
                 // Текущее значение
                 VStack(spacing: 8) {
-                    Text(placeholder.uppercased())
+                    Text(fieldType.title(unitsManager: unitsManager).uppercased())
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
@@ -92,7 +123,7 @@ struct SliderSheetView: View {
                 Spacer()
             }
             .padding()
-            .navigationTitle(LocalizedStringKey("Adjust \(placeholder)"))
+            .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -111,22 +142,17 @@ struct SliderSheetView: View {
             // Инициализируем локальное значение при появлении
             localValue = value ?? 0
             
-            // Кэшируем параметры слайдера один раз при появлении
-            let weightUnitString = unitsManager.weightUnitString()
-            if placeholder == weightUnitString || placeholder == "kg" || placeholder == "lbs" {
+            // Кэшируем параметры слайдера один раз при появлении, основываясь на Enum
+            switch fieldType {
+            case .weight:
                 // Для фунтов увеличиваем максимальный вес до 440 (примерно 200 кг)
                 params = (0, unitsManager.weightUnit == .pounds ? 440 : 200, 0.5)
-            } else {
-                switch placeholder {
-                case "reps":
-                    params = (0, 50, 1)
-                case "km":
-                    params = (0, 50, 0.1)
-                case "min", "sec":
-                    params = (0, 300, 1)
-                default:
-                    params = (0, 100, 1)
-                }
+            case .reps:
+                params = (0, 50, 1)
+            case .distance:
+                params = (0, unitsManager.distanceUnit == .miles ? 30 : 50, 0.1)
+            case .timeMin, .timeSec:
+                params = (0, 300, 1)
             }
         }
         .onDisappear {
@@ -150,12 +176,10 @@ struct SliderSheetView: View {
         }
         
         // Сбрасываем флаг перетаскивания через небольшую задержку после последнего изменения
-        // Это позволяет определять, когда пользователь перестал активно перетаскивать
         updateTask = Task {
             try? await Task.sleep(nanoseconds: 200_000_000) // 200ms после последнего изменения
             if !Task.isCancelled {
                 await MainActor.run {
-                    // Используем актуальное значение localValue на момент выполнения задачи
                     isDragging = false
                     updateBindingValue(localValue)
                 }
@@ -165,19 +189,8 @@ struct SliderSheetView: View {
     
     // Обновляет binding с валидацией (вызывается с debounce или при закрытии)
     private func updateBindingValue(_ newValue: Double) {
-        // Быстрая валидация без лишних вычислений
         let validated = max(params.min, min(newValue, params.max))
-        
-        // Для km нужна дополнительная валидация через InputValidator
-        let finalValue: Double
-        if placeholder.lowercased() == "km" {
-            let validation = InputValidator.validateDistance(validated)
-            finalValue = validation.clampedValue
-        } else {
-            finalValue = validated
-        }
-        
-        value = finalValue >= 0 ? finalValue : nil
+        value = validated >= 0 ? validated : nil
     }
     
     private func increment() {
@@ -196,7 +209,6 @@ struct SliderSheetView: View {
         if val < 0 {
             return "—"
         }
-        // Используем кэшированный step из params
         let step = params.step
         if step < 1 {
             return LocalizationHelper.shared.formatDecimal(val)
@@ -209,7 +221,7 @@ struct SliderSheetView: View {
 // MARK: - Slider Input View (Компактный компонент для встроенного использования)
 
 struct SliderInputView: View {
-    let placeholder: String
+    let fieldType: InputFieldType
     @Binding var value: Double?
     
     @StateObject private var unitsManager = UnitsManager.shared
@@ -224,13 +236,13 @@ struct SliderInputView: View {
     @State private var textValue: String = ""
     
     init(
-        placeholder: String,
+        fieldType: InputFieldType,
         value: Binding<Double?>,
         minValue: Double = 0,
         maxValue: Double = 200,
         step: Double = 1
     ) {
-        self.placeholder = placeholder
+        self.fieldType = fieldType
         self._value = value
         self.minValue = minValue
         self.maxValue = maxValue
@@ -255,20 +267,16 @@ struct SliderInputView: View {
     
     // Обрабатывает изменение значения слайдера с debounce
     private func handleSliderValueChange(_ newValue: Double) {
-        // Отменяем предыдущую задачу
         sliderUpdateTask?.cancel()
         
-        // Отмечаем, что происходит перетаскивание
         if !isSliderDragging {
             isSliderDragging = true
         }
         
-        // Обновляем значение с задержкой после последнего изменения
         sliderUpdateTask = Task {
             try? await Task.sleep(nanoseconds: 150_000_000) // 150ms debounce
             if !Task.isCancelled {
                 await MainActor.run {
-                    // Используем актуальное значение sliderDoubleValue на момент выполнения
                     isSliderDragging = false
                     value = sliderDoubleValue > 0 ? sliderDoubleValue : nil
                 }
@@ -278,9 +286,7 @@ struct SliderInputView: View {
     
     var body: some View {
         VStack(spacing: 4) {
-            // Верхняя часть: кнопки +/- и значение
             HStack(spacing: 4) {
-                // Кнопка уменьшения
                 Button(action: decrement) {
                     Image(systemName: "minus.circle.fill")
                         .font(.title2)
@@ -288,8 +294,7 @@ struct SliderInputView: View {
                 }
                 .buttonStyle(BorderlessButtonStyle())
                 
-                // Текущее значение (можно тапнуть для ручного ввода)
-                TextField(placeholder, text: $textValue)
+                TextField(fieldType.title(unitsManager: unitsManager), text: $textValue)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.center)
                     .font(.headline)
@@ -297,18 +302,8 @@ struct SliderInputView: View {
                     .focused($isFocused)
                     .onChange(of: textValue) { oldValue, newValue in
                         if let num = Double(newValue) {
-                            // Validate based on placeholder type
-                            let validated: Double
-                            let weightUnitString = unitsManager.weightUnitString().lowercased()
-                            if placeholder.lowercased() == weightUnitString || placeholder.lowercased() == "kg" || placeholder.lowercased() == "lbs" {
-                                // Для веса валидация будет в weightBinding
-                                validated = max(minValue, min(num, maxValue))
-                            } else if placeholder.lowercased() == "km" {
-                                let validation = InputValidator.validateDistance(num)
-                                validated = validation.clampedValue
-                            } else {
-                                validated = max(minValue, min(num, maxValue))
-                            }
+                            let validated = max(minValue, min(num, maxValue))
+                            
                             sliderDoubleValue = validated
                             value = validated >= 0 ? validated : nil
                         } else if newValue.isEmpty {
@@ -334,7 +329,6 @@ struct SliderInputView: View {
                         }
                     }
                 
-                // Кнопка увеличения
                 Button(action: increment) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
@@ -343,7 +337,6 @@ struct SliderInputView: View {
                 .buttonStyle(BorderlessButtonStyle())
             }
             
-            // Компактный слайдер
             Slider(
                 value: sliderValue,
                 in: minValue...maxValue,
@@ -356,9 +349,7 @@ struct SliderInputView: View {
         .background(Color.gray.opacity(0.1))
         .cornerRadius(8)
         .onDisappear {
-            // Отменяем задачу обновления при исчезновении вида
             sliderUpdateTask?.cancel()
-            // Сохраняем финальное значение
             if isSliderDragging {
                 value = sliderDoubleValue > 0 ? sliderDoubleValue : nil
             }
@@ -366,7 +357,6 @@ struct SliderInputView: View {
     }
     
     private func increment() {
-        // Отменяем любые ожидающие задачи обновления слайдера
         sliderUpdateTask?.cancel()
         isSliderDragging = false
         
@@ -378,7 +368,6 @@ struct SliderInputView: View {
     }
     
     private func decrement() {
-        // Отменяем любые ожидающие задачи обновления слайдера
         sliderUpdateTask?.cancel()
         isSliderDragging = false
         

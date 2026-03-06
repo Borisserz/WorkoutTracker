@@ -956,7 +956,8 @@ struct ExerciseRowView: View {
             Text("\(exercise.sets)s x \(exercise.reps)r • \(LocalizationHelper.shared.formatInteger(convertedWeight))\(unitsManager.weightUnitString())")
         case .cardio:
             if let dist = exercise.distance, let time = exercise.timeSeconds {
-                Text(LocalizedStringKey("\(LocalizationHelper.shared.formatTwoDecimals(dist)) km in \(formatTime(time))"))
+                let convertedDist = unitsManager.convertFromKilometers(dist)
+                Text(LocalizedStringKey("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) in \(formatTime(time))"))
             } else {
                 Text(LocalizedStringKey("Cardio"))
             }

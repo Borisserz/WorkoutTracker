@@ -100,7 +100,7 @@ struct ExerciseHistoryView: View {
     var unitLabel: String {
         switch exerciseType {
         case .strength: return unitsManager.weightUnitString()
-        case .cardio: return "km"
+        case .cardio: return unitsManager.distanceUnitString()
         case .duration: return "min"
         }
     }
@@ -426,7 +426,8 @@ struct ExerciseHistoryView: View {
                         Text("\(Int(convertedWeight)) \(unitsManager.weightUnitString())").bold().foregroundColor(.blue)
                         Text("\(exercise.sets) x \(exercise.reps)").font(.caption).foregroundColor(.secondary)
                     case .cardio:
-                        Text("\(LocalizationHelper.shared.formatDecimal(exercise.distance ?? 0)) km").bold().foregroundColor(.orange)
+                        let convertedDist = unitsManager.convertFromKilometers(exercise.distance ?? 0)
+                        Text("\(LocalizationHelper.shared.formatDecimal(convertedDist)) \(unitsManager.distanceUnitString())").bold().foregroundColor(.orange)
                         Text(formatTime(exercise.timeSeconds ?? 0)).font(.caption).foregroundColor(.secondary)
                     case .duration:
                         Text(formatTime(exercise.timeSeconds ?? 0)).bold().foregroundColor(.purple)
@@ -605,7 +606,8 @@ struct ExerciseHistoryView: View {
                     .filter { $0.isCompleted }
                     .compactMap { $0.distance }
                     .reduce(0, +)
-                value = (totalDist > 0) ? totalDist : (exercise.distance ?? 0.0)
+                let finalDist = (totalDist > 0) ? totalDist : (exercise.distance ?? 0.0)
+                value = unitsManager.convertFromKilometers(finalDist)
                 
             case .duration:
                 // 3. ВРЕМЯ: Сумма времени (в минутах)

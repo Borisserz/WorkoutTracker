@@ -26,9 +26,20 @@ class RestTimerManager: ObservableObject {
     }
     
     // MARK: - Init / Deinit
-    init() {}
+    init() {
+        // Поддержка фона: при возвращении в приложение проверяем статус таймера, 
+        // чтобы мгновенно обновить UI, если таймер истек в фоне.
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.checkTimerStateOnForeground()
+        }
+    }
     
     deinit {
+        NotificationCenter.default.removeObserver(self)
         restTimer?.invalidate()
         restTimer = nil
     }
@@ -59,6 +70,18 @@ class RestTimerManager: ObservableObject {
             } else {
                 self.finishTimer()
             }
+        }
+    }
+    
+    private func checkTimerStateOnForeground() {
+        guard isRestTimerActive, let endTime = restEndTime else { return }
+        let timeLeft = Int(endTime.timeIntervalSinceNow)
+        
+        if timeLeft <= 0 {
+            finishTimer()
+        } else {
+            self.restTimeRemaining = timeLeft
+            startTicker()
         }
     }
     

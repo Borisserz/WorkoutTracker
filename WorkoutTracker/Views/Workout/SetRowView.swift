@@ -37,16 +37,7 @@ struct SetRowView: View {
     
     // Состояние для показа слайдера
     @State private var showSliderSheet: Bool = false
-    @State private var activePlaceholder: String = ""
-    @State private var activeValue: Double? = nil
-    @State private var activeBindingType: BindingType = .weight
-    
-    enum BindingType {
-        case weight
-        case reps
-        case distance
-        case time
-    }
+    @State private var activeBindingType: InputFieldType = .weight
     
     // MARK: - Computed Bindings (Type Adapters)
     
@@ -106,10 +97,14 @@ struct SetRowView: View {
     // Validated binding for distance
     private var distanceBinding: Binding<Double?> {
         Binding<Double?>(
-            get: { set.distance },
+            get: { 
+                guard let km = set.distance else { return nil }
+                return unitsManager.convertFromKilometers(km)
+            },
             set: { newValue in
                 if let value = newValue {
-                    let validation = InputValidator.validateDistance(value)
+                    let km = unitsManager.convertToKilometers(value)
+                    let validation = InputValidator.validateDistance(km)
                     set.distance = validation.clampedValue
                 } else {
                     set.distance = nil
@@ -147,7 +142,7 @@ struct SetRowView: View {
         .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted) // Блокируем ввод, если сет выполнен, упражнение завершено или тренировка завершена
         .sheet(isPresented: $showSliderSheet) {
             SliderSheetView(
-                placeholder: activePlaceholder,
+                fieldType: activeBindingType,
                 value: getActiveBinding(),
                 isPresented: $showSliderSheet
             )
@@ -170,7 +165,7 @@ struct SetRowView: View {
             // Вес + Повторы
             HStack(spacing: 4) {
                 inputColumn(
-                    placeholder: unitsManager.weightUnitString(),
+                    type: .weight,
                     binding: weightBinding,
                     ghostText: prevWeight.map { 
                         let converted = unitsManager.convertFromKilograms($0)
@@ -179,7 +174,7 @@ struct SetRowView: View {
                 )
                 
                 inputColumn(
-                    placeholder: "reps",
+                    type: .reps,
                     binding: repsBinding,
                     ghostText: prevReps.map { "\($0)" }
                 )
@@ -188,15 +183,18 @@ struct SetRowView: View {
         case .cardio:
             // Дистанция + Время
             inputColumn(
-                placeholder: "km",
+                type: .distance,
                 binding: distanceBinding,
-                ghostText: prevDist.map { LocalizationHelper.shared.formatDecimal($0) }
+                ghostText: prevDist.map { 
+                    let converted = unitsManager.convertFromKilometers($0)
+                    return LocalizationHelper.shared.formatDecimal(converted) 
+                }
             )
             
             Spacer()
             
             inputColumn(
-                placeholder: "min",
+                type: .timeMin,
                 binding: timeBinding,
                 ghostText: prevTime.map { formatTime($0) }
             )
@@ -204,26 +202,10 @@ struct SetRowView: View {
         case .duration:
             // Только время
             inputColumn(
-                placeholder: "sec",
+                type: .timeSec,
                 binding: timeBinding,
                 ghostText: prevTime.map { "\($0)s" }
             )
-        }
-    }
-    
-    /// Получает параметры слайдера в зависимости от типа поля
-    private func getSliderParams(for placeholder: String) -> (min: Double, max: Double, step: Double) {
-        switch placeholder {
-        case "kg":
-            return (0, 200, 0.5)
-        case "reps":
-            return (0, 50, 1)
-        case "km":
-            return (0, 50, 0.1)
-        case "min", "sec":
-            return (0, 300, 1)
-        default:
-            return (0, 100, 1)
         }
     }
     
@@ -236,56 +218,37 @@ struct SetRowView: View {
             return repsBinding
         case .distance:
             return distanceBinding
-        case .time:
+        case .timeMin, .timeSec:
             return timeBinding
         }
     }
     
     /// Форматирует значение для отображения
-    private func formatValue(_ value: Double?, placeholder: String) -> String {
+    private func formatValue(_ value: Double?, type: InputFieldType) -> String {
         guard let value = value, value >= 0 else {
-            return placeholder
+            return type.title(unitsManager: unitsManager)
         }
         
-        // Проверяем, является ли placeholder единицей веса
-        let weightUnitString = unitsManager.weightUnitString()
-        if placeholder == weightUnitString || placeholder == "kg" || placeholder == "lbs" {
+        switch type {
+        case .weight:
             return LocalizationHelper.shared.formatFlexible(value)
-        }
-        
-        switch placeholder {
-        case "reps":
+        case .reps:
             return LocalizationHelper.shared.formatInteger(value)
-        case "km":
+        case .distance:
             return LocalizationHelper.shared.formatDecimal(value)
-        case "min", "sec":
+        case .timeMin, .timeSec:
             return LocalizationHelper.shared.formatInteger(value)
-        default:
-            return LocalizationHelper.shared.formatFlexible(value)
         }
     }
     
     /// Универсальная колонка ввода с "призрачным" текстом снизу
-    private func inputColumn(placeholder: String, binding: Binding<Double?>, ghostText: String?) -> some View {
+    private func inputColumn(type: InputFieldType, binding: Binding<Double?>, ghostText: String?) -> some View {
         VStack(spacing: 2) {
             Button {
-                activePlaceholder = placeholder
-                // Определяем тип binding (проверяем и старые, и новые единицы)
-                let weightUnitString = unitsManager.weightUnitString()
-                if placeholder == weightUnitString || placeholder == "kg" || placeholder == "lbs" {
-                    activeBindingType = .weight
-                } else if placeholder == "reps" {
-                    activeBindingType = .reps
-                } else if placeholder == "km" {
-                    activeBindingType = .distance
-                } else if placeholder == "min" || placeholder == "sec" {
-                    activeBindingType = .time
-                } else {
-                    activeBindingType = .weight
-                }
+                activeBindingType = type
                 showSliderSheet = true
             } label: {
-                Text(formatValue(binding.wrappedValue, placeholder: placeholder))
+                Text(formatValue(binding.wrappedValue, type: type))
                     .font(.headline)
                     .foregroundColor(binding.wrappedValue != nil ? .primary : .secondary)
                     .frame(maxWidth: .infinity)

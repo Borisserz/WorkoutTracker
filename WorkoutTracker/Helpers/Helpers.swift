@@ -18,10 +18,10 @@ struct InputValidator {
     /// Validates and clamps weight value (can be 0)
     static func validateWeight(_ value: Double) -> (isValid: Bool, clampedValue: Double, errorMessage: String?) {
         if value < 0 {
-            return (false, minWeight, NSLocalizedString("Weight cannot be negative", comment: ""))
+            return (false, minWeight, String(localized: "Weight cannot be negative"))
         }
         if value > maxWeight {
-            return (false, maxWeight, String(format: NSLocalizedString("Weight cannot exceed %d kg", comment: ""), Int(maxWeight)))
+            return (false, maxWeight, String(localized: "Weight cannot exceed \(Int(maxWeight)) kg"))
         }
         return (true, value, nil)
     }
@@ -29,10 +29,10 @@ struct InputValidator {
     /// Validates and clamps reps value (can be 0)
     static func validateReps(_ value: Int) -> (isValid: Bool, clampedValue: Int, errorMessage: String?) {
         if value < 0 {
-            return (false, minReps, NSLocalizedString("Reps cannot be negative", comment: ""))
+            return (false, minReps, String(localized: "Reps cannot be negative"))
         }
         if value > maxReps {
-            return (false, maxReps, String(format: NSLocalizedString("Reps cannot exceed %d", comment: ""), maxReps))
+            return (false, maxReps, String(localized: "Reps cannot exceed \(maxReps)"))
         }
         return (true, value, nil)
     }
@@ -40,10 +40,10 @@ struct InputValidator {
     /// Validates and clamps distance value
     static func validateDistance(_ value: Double) -> (isValid: Bool, clampedValue: Double, errorMessage: String?) {
         if value < minDistance {
-            return (false, minDistance, NSLocalizedString("Distance cannot be negative", comment: ""))
+            return (false, minDistance, String(localized: "Distance cannot be negative"))
         }
         if value > maxDistance {
-            return (false, maxDistance, String(format: NSLocalizedString("Distance cannot exceed %d km", comment: ""), Int(maxDistance)))
+            return (false, maxDistance, String(localized: "Distance cannot exceed \(Int(maxDistance)) km"))
         }
         return (true, value, nil)
     }
@@ -51,10 +51,10 @@ struct InputValidator {
     /// Validates and clamps time value (in seconds)
     static func validateTime(_ value: Int) -> (isValid: Bool, clampedValue: Int, errorMessage: String?) {
         if value < minTime {
-            return (false, minTime, NSLocalizedString("Time cannot be negative", comment: ""))
+            return (false, minTime, String(localized: "Time cannot be negative"))
         }
         if value > maxTime {
-            return (false, maxTime, NSLocalizedString("Time cannot exceed 24 hours", comment: ""))
+            return (false, maxTime, String(localized: "Time cannot exceed 24 hours"))
         }
         return (true, value, nil)
     }

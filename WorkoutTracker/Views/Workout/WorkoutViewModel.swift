@@ -54,8 +54,13 @@ class WorkoutViewModel: ObservableObject {
     @Published var progressManager = ProgressManager()
     @Published var deletedDefaultExercises: Set<String> = [] {
         didSet {
+            let currentSet = deletedDefaultExercises
             let url = getDocumentURL(for: "DeletedDefaultExercises.json")
-            if let encoded = try? JSONEncoder().encode(deletedDefaultExercises) { try? encoded.write(to: url) }
+            Task.detached(priority: .background) {
+                if let encoded = try? JSONEncoder().encode(currentSet) { 
+                    try? encoded.write(to: url) 
+                }
+            }
         }
     }
     
@@ -127,10 +132,10 @@ class WorkoutViewModel: ObservableObject {
     }
     
     // MARK: - 4. Analysis & Recommendations (Delegated)
-    func getImbalanceRecommendation() -> (title: String, message: String)? { AnalyticsManager.getImbalanceRecommendation(workouts: workouts) }
+    func getImbalanceRecommendation() -> (title: String, message: String)? { AnalyticsManager.getImbalanceRecommendation(recentWorkouts: workouts) }
     func getExerciseTrends(period: StatsView.Period = .month) -> [ExerciseTrend] { AnalyticsManager.getExerciseTrends(workouts: workouts, period: period) }
     func getProgressForecast(daysAhead: Int = 30) -> [ProgressForecast] { AnalyticsManager.getProgressForecast(workouts: workouts, daysAhead: daysAhead) }
-    func getWeakPoints() -> [WeakPoint] { AnalyticsManager.getWeakPoints(workouts: workouts) }
+    func getWeakPoints() -> [WeakPoint] { AnalyticsManager.getWeakPoints(recentWorkouts: workouts) }
     func getRecommendations() -> [Recommendation] { AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: recoveryStatus) }
     func getDetailedComparison(period: StatsView.Period) -> [DetailedComparison] { AnalyticsManager.getDetailedComparison(workouts: workouts, period: period) }
     
@@ -141,23 +146,44 @@ class WorkoutViewModel: ObservableObject {
             if case .success(let w) = result { DispatchQueue.main.async { self?.workouts = w } }
         }
     }
+    
     private func saveWorkouts() {
-        let isExample = workouts.count == Workout.examples.count && workouts.map{$0.id} == Workout.examples.map{$0.id}
+        let currentWorkouts = workouts
+        let isExample = currentWorkouts.count == Workout.examples.count && currentWorkouts.map{$0.id} == Workout.examples.map{$0.id}
+        
         if !isExample {
-            DataManager.shared.saveWorkouts(workouts) { [weak self] error in self?.showError(title: "Save Failed", message: error.localizedDescription) }
-            DispatchQueue.global(qos: .utility).async { [weak self] in
-                guard let self = self else { return }
-                if BackupManager.shared.shouldCreateBackup() { BackupManager.shared.createBackup(workouts: self.workouts, viewModel: self) }
+            Task.detached(priority: .background) { [weak self] in
+                DataManager.shared.saveWorkouts(currentWorkouts) { error in 
+                    self?.showError(title: "Save Failed", message: error.localizedDescription) 
+                }
+                
+                if BackupManager.shared.shouldCreateBackup() {
+                    DispatchQueue.global(qos: .utility).async { 
+                        guard let self = self else { return }
+                        BackupManager.shared.createBackup(workouts: currentWorkouts, viewModel: self) 
+                    }
+                }
             }
         }
     }
+    
     func getLastPerformance(for exerciseName: String, currentWorkoutId: UUID) -> Exercise? { lastPerformancesCache[exerciseName] }
     
     // MARK: - 6. Data Management (Presets)
     func updatePreset(_ preset: WorkoutPreset) { if let idx = presets.firstIndex(where: { $0.id == preset.id }) { presets[idx] = preset } else { presets.append(preset) }; savePresets() }
     func deletePreset(_ preset: WorkoutPreset) { presets.removeAll(where: { $0.id == preset.id }); savePresets() }
     func deletePreset(at offsets: IndexSet) { presets.remove(atOffsets: offsets); savePresets() }
-    private func savePresets() { if let e = try? JSONEncoder().encode(presets) { try? e.write(to: getDocumentURL(for: "SavedWorkoutPresets.json")) } }
+    
+    private func savePresets() { 
+        let currentPresets = presets
+        let url = getDocumentURL(for: "SavedWorkoutPresets.json")
+        Task.detached(priority: .background) {
+            if let e = try? JSONEncoder().encode(currentPresets) { 
+                try? e.write(to: url) 
+            }
+        }
+    }
+    
     private func loadPresets() {
         if let data = try? Data(contentsOf: getDocumentURL(for: "SavedWorkoutPresets.json")), let dec = try? JSONDecoder().decode([WorkoutPreset].self, from: data) { self.presets = dec }
         if self.presets.isEmpty { self.presets = Workout.examples.map { WorkoutPreset(id: UUID(), name: $0.title, icon: $0.icon, exercises: $0.exercises) }; savePresets() }
@@ -183,7 +209,17 @@ class WorkoutViewModel: ObservableObject {
     }
     
     func isCustomExercise(name: String) -> Bool { customExercises.contains { $0.name == name } }
-    private func saveCustomExercises() { if let e = try? JSONEncoder().encode(customExercises) { try? e.write(to: getDocumentURL(for: "SavedCustomExercises.json")) } }
+    
+    private func saveCustomExercises() { 
+        let currentExercises = customExercises
+        let url = getDocumentURL(for: "SavedCustomExercises.json")
+        Task.detached(priority: .background) {
+            if let e = try? JSONEncoder().encode(currentExercises) { 
+                try? e.write(to: url) 
+            }
+        }
+    }
+    
     private func loadCustomExercises() { if let d = try? Data(contentsOf: getDocumentURL(for: "SavedCustomExercises.json")), let dec = try? JSONDecoder().decode([CustomExerciseDefinition].self, from: d) { customExercises = dec } }
     
     // MARK: - 8. Import / Export (Delegated)
@@ -208,18 +244,22 @@ class WorkoutViewModel: ObservableObject {
     
     // MARK: - 9. Widget
     func updateWidgetData() {
+        let currentWorkouts = workouts
         let currentStreak = calculateWorkoutStreak()
-        var points: [WidgetData.WeeklyPoint] = []
-        let cal = Calendar.current
-        for i in (0...5).reversed() {
-            if let date = cal.date(byAdding: .weekOfYear, value: -i, to: Date()) {
-                let interval = cal.dateInterval(of: .weekOfYear, for: date)!
-                let count = workouts.filter { interval.contains($0.date) }.count
-                let fmt = DateFormatter(); fmt.dateFormat = "M/d"
-                points.append(WidgetData.WeeklyPoint(label: fmt.string(from: interval.start), count: count))
+        
+        Task.detached(priority: .background) {
+            var points: [WidgetData.WeeklyPoint] = []
+            let cal = Calendar.current
+            for i in (0...5).reversed() {
+                if let date = cal.date(byAdding: .weekOfYear, value: -i, to: Date()) {
+                    let interval = cal.dateInterval(of: .weekOfYear, for: date)!
+                    let count = currentWorkouts.filter { interval.contains($0.date) }.count
+                    let fmt = DateFormatter(); fmt.dateFormat = "M/d"
+                    points.append(WidgetData.WeeklyPoint(label: fmt.string(from: interval.start), count: count))
+                }
             }
+            WidgetDataManager.save(streak: currentStreak, weeklyStats: points)
+            WidgetCenter.shared.reloadAllTimelines()
         }
-        WidgetDataManager.save(streak: currentStreak, weeklyStats: points)
-        WidgetCenter.shared.reloadAllTimelines()
     }
 }

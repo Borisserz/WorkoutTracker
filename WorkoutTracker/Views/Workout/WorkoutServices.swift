@@ -42,12 +42,13 @@ struct StatisticsManager {
         return bests.map { name, data in
             var valString = ""
             switch data.type {
-            case .strength: valString = "\(Int(data.result)) kg"
-            case .cardio:   valString = "\(LocalizationHelper.shared.formatTwoDecimals(data.result)) km"
+            case .strength: valString = String(localized: "\(Int(data.result)) kg")
+            case .cardio:   valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(data.result)) km")
             case .duration:
                 let m = Int(data.result) / 60
                 let s = Int(data.result) % 60
-                valString = String(format: "%d:%02d min", m, s)
+                let sStr = String(format: "%02d", s)
+                valString = String(localized: "\(m):\(sStr) min")
             }
             return WorkoutViewModel.BestResult(exerciseName: name, value: valString, date: data.date, type: data.type)
         }.sorted { $0.exerciseName < $1.exerciseName }
@@ -150,21 +151,27 @@ struct StatisticsManager {
         
         let workoutsBefore = workouts.filter { $0.date < interval.start }
         for workout in workoutsBefore {
-            for exercise in workout.exercises.flatMap({ $0.isSuperset ? $0.subExercises : [$0] }) {
-                let maxWeightInSets = exercise.setsList.filter { $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-                if maxWeightInSets > (bestWeights[exercise.name] ?? 0) { bestWeights[exercise.name] = maxWeightInSets }
+            for exercise in workout.exercises {
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for ex in targetExercises {
+                    let maxWeightInSets = ex.setsList.filter { $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                    if maxWeightInSets > (bestWeights[ex.name] ?? 0) { bestWeights[ex.name] = maxWeightInSets }
+                }
             }
         }
         
         let workoutsInPeriod = workouts.filter { interval.contains($0.date) }.sorted(by: { $0.date < $1.date })
         for workout in workoutsInPeriod {
-            for exercise in workout.exercises.flatMap({ $0.isSuperset ? $0.subExercises : [$0] }) where exercise.type == .strength {
-                let maxWeight = exercise.setsList.filter { $0.type != .warmup && $0.isCompleted }.compactMap { $0.weight }.max() ?? 0
-                if maxWeight > (bestWeights[exercise.name] ?? 0) {
-                    let newPR = WorkoutViewModel.PersonalRecord(exerciseName: exercise.name, weight: maxWeight, date: workout.date)
-                    records.removeAll { $0.exerciseName == newPR.exerciseName }
-                    records.append(newPR)
-                    bestWeights[exercise.name] = maxWeight
+            for exercise in workout.exercises {
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for ex in targetExercises where ex.type == .strength {
+                    let maxWeight = ex.setsList.filter { $0.type != .warmup && $0.isCompleted }.compactMap { $0.weight }.max() ?? 0
+                    if maxWeight > (bestWeights[ex.name] ?? 0) {
+                        let newPR = WorkoutViewModel.PersonalRecord(exerciseName: ex.name, weight: maxWeight, date: workout.date)
+                        records.removeAll { $0.exerciseName == newPR.exerciseName }
+                        records.append(newPR)
+                        bestWeights[ex.name] = maxWeight
+                    }
                 }
             }
         }
@@ -178,7 +185,15 @@ struct StatisticsManager {
         
         switch period {
         case .week:
-            let weekdays = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
+            let weekdays = [
+                String(localized: "Вс"),
+                String(localized: "Пн"),
+                String(localized: "Вт"),
+                String(localized: "Ср"),
+                String(localized: "Чт"),
+                String(localized: "Пт"),
+                String(localized: "Сб")
+            ]
             for i in (0...6).reversed() {
                 let date = calendar.date(byAdding: .day, value: -i, to: now)!
                 let dayWorkouts = workouts.filter { calendar.isDate($0.date, inSameDayAs: date) }
@@ -190,7 +205,8 @@ struct StatisticsManager {
                 let weekDate = calendar.date(byAdding: .weekOfYear, value: -i, to: now)!
                 let interval = calendar.dateInterval(of: .weekOfYear, for: weekDate)!
                 let wWorkouts = workouts.filter { interval.contains($0.date) }
-                data.append(WorkoutViewModel.ChartDataPoint(label: "W\(4-i)", value: calculateValue(for: wWorkouts, metric: metric)))
+                let labelText = String(localized: "W\(4-i)")
+                data.append(WorkoutViewModel.ChartDataPoint(label: labelText, value: calculateValue(for: wWorkouts, metric: metric)))
             }
         case .year:
             let symbols = calendar.shortMonthSymbols
@@ -226,9 +242,7 @@ struct StatisticsManager {
 
 struct AnalyticsManager {
     
-    static func getImbalanceRecommendation(workouts: [Workout]) -> (title: String, message: String)? {
-        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        let recentWorkouts = workouts.filter { $0.date >= thirtyDaysAgo }
+    static func getImbalanceRecommendation(recentWorkouts: [Workout]) -> (title: String, message: String)? {
         if recentWorkouts.isEmpty { return nil }
         
         var chestSets = 0, backSets = 0, legSets = 0, upperBodySets = 0
@@ -248,10 +262,10 @@ struct AnalyticsManager {
         
         if (chestSets + backSets) < 10 { return nil }
         if Double(chestSets) > Double(backSets) * 1.5 {
-            return ("⚠️ Imbalance Detected", "Last 30 days: \(chestSets) Chest sets vs \(backSets) Back sets.\nAdd more Rows or Pull-ups!")
+            return (String(localized: "⚠️ Imbalance Detected"), String(localized: "Last 30 days: \(chestSets) Chest sets vs \(backSets) Back sets.\nAdd more Rows or Pull-ups!"))
         }
         if legSets > 0 && Double(upperBodySets) > Double(legSets) * 3.0 {
-            return ("🦵 Don't skip Leg Day!", "Upper body: \(upperBodySets) sets vs Legs: \(legSets) sets.\nBalance your physique!")
+            return (String(localized: "🦵 Don't skip Leg Day!"), String(localized: "Upper body: \(upperBodySets) sets vs Legs: \(legSets) sets.\nBalance your physique!"))
         }
         return nil
     }
@@ -363,13 +377,11 @@ struct AnalyticsManager {
             let timeSpanBonus = min(10, Int((daysFromStart.first! - daysFromStart.last!) / 30))
             
             let confidence = min(100, max(30, dataScore + trendBonus + consistencyBonus + timeSpanBonus))
-            return WorkoutViewModel.ProgressForecast(exerciseName: name, currentMax: currentMax, predictedMax: predMax, confidence: confidence, timeframe: "\(daysAhead) days")
+            return WorkoutViewModel.ProgressForecast(exerciseName: name, currentMax: currentMax, predictedMax: predMax, confidence: confidence, timeframe: String(localized: "\(daysAhead) days"))
         }.sorted { $0.predictedMax > $1.predictedMax }
     }
     
-    static func getWeakPoints(workouts: [Workout]) -> [WorkoutViewModel.WeakPoint] {
-        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
-        let recentWorkouts = workouts.filter { $0.date >= thirtyDaysAgo }
+    static func getWeakPoints(recentWorkouts: [Workout]) -> [WorkoutViewModel.WeakPoint] {
         if recentWorkouts.isEmpty { return [] }
         
         var muscleData: [String: (frequency: Int, totalVolume: Double)] = [:]
@@ -396,14 +408,26 @@ struct AnalyticsManager {
         let avgFreq = muscleData.values.map { Double($0.frequency) }.reduce(0, +) / count
         let avgVol = muscleData.values.map { $0.totalVolume }.reduce(0, +) / count
         
-        let names: [String: String] = ["chest": "Chest", "upper-back": "Back", "lower-back": "Lower Back", "deltoids": "Shoulders", "biceps": "Biceps", "triceps": "Triceps", "abs": "Abs", "gluteal": "Glutes", "hamstring": "Hamstrings", "quadriceps": "Legs", "calves": "Calves"]
+        let names: [String: String] = [
+            "chest": String(localized: "Chest"),
+            "upper-back": String(localized: "Back"),
+            "lower-back": String(localized: "Lower Back"),
+            "deltoids": String(localized: "Shoulders"),
+            "biceps": String(localized: "Biceps"),
+            "triceps": String(localized: "Triceps"),
+            "abs": String(localized: "Abs"),
+            "gluteal": String(localized: "Glutes"),
+            "hamstring": String(localized: "Hamstrings"),
+            "quadriceps": String(localized: "Legs"),
+            "calves": String(localized: "Calves")
+        ]
         
         var weakPoints: [WorkoutViewModel.WeakPoint] = []
         for (slug, data) in muscleData {
             let freq = data.frequency
             let vol = data.totalVolume / Double(max(freq, 1))
             if Double(freq) < avgFreq * 0.7 || vol < avgVol * 0.7 {
-                let rec = freq == 0 ? "Start training this muscle group" : (Double(freq) < avgFreq * 0.5 ? "Increase training frequency" : "Increase training volume")
+                let rec = freq == 0 ? String(localized: "Start training this muscle group") : (Double(freq) < avgFreq * 0.5 ? String(localized: "Increase training frequency") : String(localized: "Increase training volume"))
                 weakPoints.append(WorkoutViewModel.WeakPoint(muscleGroup: names[slug] ?? slug.capitalized, frequency: freq, averageVolume: vol, recommendation: rec))
             }
         }
@@ -413,36 +437,39 @@ struct AnalyticsManager {
     static func getRecommendations(workouts: [Workout], recoveryStatus: [WorkoutViewModel.MuscleRecoveryStatus]) -> [WorkoutViewModel.Recommendation] {
         var recs: [WorkoutViewModel.Recommendation] = []
         let now = Date()
-        let recentWorkouts = workouts.filter { $0.date >= Calendar.current.date(byAdding: .day, value: -30, to: now)! }
+        
+        // Optimize: compute recent workouts exactly once
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now)!
+        let recentWorkouts = workouts.filter { $0.date >= thirtyDaysAgo }
         
         let daysSince = recentWorkouts.isEmpty ? 999 : Calendar.current.dateComponents([.day], from: recentWorkouts[0].date, to: now).day ?? 0
         if daysSince > 7 {
-            recs.append(WorkoutViewModel.Recommendation(type: .frequency, title: "Increase Training Frequency", message: "It's been \(daysSince) days since your last workout.", priority: 5))
+            recs.append(WorkoutViewModel.Recommendation(type: .frequency, title: String(localized: "Increase Training Frequency"), message: String(localized: "It's been \(daysSince) days since your last workout."), priority: 5))
         } else if recentWorkouts.count < 8 {
-            recs.append(WorkoutViewModel.Recommendation(type: .frequency, title: "Build Consistency", message: "You've trained \(recentWorkouts.count) times in 30 days. Aim for 3-4/week!", priority: 4))
+            recs.append(WorkoutViewModel.Recommendation(type: .frequency, title: String(localized: "Build Consistency"), message: String(localized: "You've trained \(recentWorkouts.count) times in 30 days. Aim for 3-4/week!"), priority: 4))
         }
         
-        if let imbalance = getImbalanceRecommendation(workouts: workouts) {
+        if let imbalance = getImbalanceRecommendation(recentWorkouts: recentWorkouts) {
             recs.append(WorkoutViewModel.Recommendation(type: .balance, title: imbalance.title, message: imbalance.message, priority: 4))
         }
         
-        let weak = getWeakPoints(workouts: workouts)
+        let weak = getWeakPoints(recentWorkouts: recentWorkouts)
         if !weak.isEmpty {
-            recs.append(WorkoutViewModel.Recommendation(type: .volume, title: "Focus on \(weak[0].muscleGroup)", message: weak[0].recommendation, priority: 3))
+            recs.append(WorkoutViewModel.Recommendation(type: .volume, title: String(localized: "Focus on \(weak[0].muscleGroup)"), message: weak[0].recommendation, priority: 3))
         }
         
         let declining = getExerciseTrends(workouts: workouts).filter { $0.trend == .declining && abs($0.changePercentage) > 10 }
         if let ex = declining.first {
-            recs.append(WorkoutViewModel.Recommendation(type: .progression, title: "Review \(ex.exerciseName)", message: "Performance decreased by \(Int(abs(ex.changePercentage)))%.", priority: 3))
+            recs.append(WorkoutViewModel.Recommendation(type: .progression, title: String(localized: "Review \(ex.exerciseName)"), message: String(localized: "Performance decreased by \(Int(abs(ex.changePercentage)))%."), priority: 3))
         }
         
         let lowRecovery = recoveryStatus.filter { $0.recoveryPercentage < 50 }
         if !lowRecovery.isEmpty {
-            recs.append(WorkoutViewModel.Recommendation(type: .recovery, title: "Allow More Recovery", message: "\(lowRecovery.count) muscle groups need rest.", priority: 2))
+            recs.append(WorkoutViewModel.Recommendation(type: .recovery, title: String(localized: "Allow More Recovery"), message: String(localized: "\(lowRecovery.count) muscle groups need rest."), priority: 2))
         }
         
         if recs.isEmpty && !recentWorkouts.isEmpty {
-            recs.append(WorkoutViewModel.Recommendation(type: .positive, title: "Great Progress! 💪", message: "Keep up the good work!", priority: 5))
+            recs.append(WorkoutViewModel.Recommendation(type: .positive, title: String(localized: "Great Progress! 💪"), message: String(localized: "Keep up the good work!"), priority: 5))
         }
         return recs.sorted { $0.priority > $1.priority }
     }
@@ -468,10 +495,10 @@ struct AnalyticsManager {
         
         var comp: [WorkoutViewModel.DetailedComparison] = []
         let (wcC, wcP, wcT) = calc(Double(cur.workoutCount), Double(prev.workoutCount))
-        comp.append(.init(metric: "Workouts", currentValue: Double(cur.workoutCount), previousValue: Double(prev.workoutCount), change: wcC, changePercentage: wcP, trend: wcT))
+        comp.append(.init(metric: String(localized: "Workouts"), currentValue: Double(cur.workoutCount), previousValue: Double(prev.workoutCount), change: wcC, changePercentage: wcP, trend: wcT))
         
         let (volC, volP, volT) = calc(cur.totalVolume, prev.totalVolume)
-        comp.append(.init(metric: "Total Volume", currentValue: cur.totalVolume, previousValue: prev.totalVolume, change: volC, changePercentage: volP, trend: volT))
+        comp.append(.init(metric: String(localized: "Total Volume"), currentValue: cur.totalVolume, previousValue: prev.totalVolume, change: volC, changePercentage: volP, trend: volT))
         
         return comp
     }
@@ -490,14 +517,30 @@ struct RecoveryCalculator {
             if hoursSince >= fullRecoveryHours { continue }
             let fatigueFactor = max(0.0, min(1.0, 1.0 - (hoursSince / fullRecoveryHours)))
             
-            for exercise in workout.exercises.flatMap({ $0.isSuperset ? $0.subExercises : [$0] }) where exercise.type == .strength {
-                for slug in MuscleMapping.getMuscles(for: exercise.name, group: exercise.muscleGroup) {
-                    rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, fatigueFactor)
+            for exercise in workout.exercises {
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for ex in targetExercises where ex.type == .strength {
+                    for slug in MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup) {
+                        rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, fatigueFactor)
+                    }
                 }
             }
         }
         
-        let names: [String: String] = ["chest": "Chest", "upper-back": "Back", "lower-back": "Lower Back", "deltoids": "Shoulders", "biceps": "Biceps", "triceps": "Triceps", "abs": "Abs", "gluteal": "Glutes", "hamstring": "Hamstrings", "quadriceps": "Legs", "calves": "Calves"]
+        let names: [String: String] = [
+            "chest": String(localized: "Chest"),
+            "upper-back": String(localized: "Back"),
+            "lower-back": String(localized: "Lower Back"),
+            "deltoids": String(localized: "Shoulders"),
+            "biceps": String(localized: "Biceps"),
+            "triceps": String(localized: "Triceps"),
+            "abs": String(localized: "Abs"),
+            "gluteal": String(localized: "Glutes"),
+            "hamstring": String(localized: "Hamstrings"),
+            "quadriceps": String(localized: "Legs"),
+            "calves": String(localized: "Calves")
+        ]
+        
         var displayFatigueMap: [String: Double] = [:]
         for (slug, fatigue) in rawFatigueMap {
             if let name = names[slug] { displayFatigueMap[name] = max(displayFatigueMap[name] ?? 0.0, fatigue) }
@@ -515,7 +558,7 @@ struct RecoveryCalculator {
 struct ImportExportService {
     enum ExportError: LocalizedError {
         case noInternet, invalidData, encodingFailed
-        var errorDescription: String? { self == .noInternet ? "Internet connection required." : "Data processing failed." }
+        var errorDescription: String? { self == .noInternet ? String(localized: "Internet connection required.") : String(localized: "Data processing failed.") }
     }
     
     private static func escapeCSV(_ string: String) -> String {
@@ -600,3 +643,4 @@ struct ImportExportService {
         }
     }
 }
+

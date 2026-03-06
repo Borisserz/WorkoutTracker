@@ -191,7 +191,6 @@ struct Exercise: Identifiable, Codable, Hashable {
             }
         } else if !setsList.isEmpty {
             // Если setsList не пустой, обновляем количество сетов (добавляем/удаляем)
-            // и обновляем значения только если они действительно изменились
             let currentCount = setsList.count
             let targetCount = _sets
             
@@ -201,10 +200,11 @@ struct Exercise: Identifiable, Codable, Hashable {
                     let lastSet = setsList.last
                     setsList.append(WorkoutSet(
                         index: i,
-                        weight: type == .strength ? (_weight >= 0 ? _weight : lastSet?.weight) : nil,
-                        reps: type == .strength ? (_reps >= 0 ? _reps : lastSet?.reps) : nil,
-                        distance: type == .cardio ? (_distance ?? lastSet?.distance) : nil,
-                        time: type == .cardio || type == .duration ? (_timeSeconds ?? lastSet?.time) : nil,
+                        // Используем значения предыдущего сета, а если их нет — глобальные fallback
+                        weight: type == .strength ? (lastSet?.weight ?? (_weight >= 0 ? _weight : nil)) : nil,
+                        reps: type == .strength ? (lastSet?.reps ?? (_reps >= 0 ? _reps : nil)) : nil,
+                        distance: type == .cardio ? (lastSet?.distance ?? _distance) : nil,
+                        time: type == .cardio || type == .duration ? (lastSet?.time ?? _timeSeconds) : nil,
                         isCompleted: false,
                         type: .normal
                     ))
@@ -218,20 +218,9 @@ struct Exercise: Identifiable, Codable, Hashable {
                 }
             }
             
-            // Обновляем значения в существующих сетах только если они действительно изменились
-            // Это нужно для обратной совместимости при редактировании через старые поля
-            // (например, в PresetEditorView или EditExerciseView)
-            for i in 0..<setsList.count {
-                if type == .strength {
-                    if _weight >= 0 { setsList[i].weight = _weight }
-                    if _reps >= 0 { setsList[i].reps = _reps }
-                } else if type == .cardio {
-                    if let dist = _distance { setsList[i].distance = dist }
-                    if let time = _timeSeconds { setsList[i].time = time }
-                } else if type == .duration {
-                    if let time = _timeSeconds { setsList[i].time = time }
-                }
-            }
+            // ВНИМАНИЕ: Мы БОЛЬШЕ НЕ ПЕРЕЗАПИСЫВАЕМ значения (weight, reps, etc.) в существующих сетах.
+            // Экземпляр упражнения на тренировке использует setsList как основной источник истины (Source of Truth).
+            // Любое редактирование значений в конкретных сетах делается построчно в SetRowView.
         }
     }
     
@@ -239,8 +228,9 @@ struct Exercise: Identifiable, Codable, Hashable {
         return !subExercises.isEmpty
     }
     
-    /// Расчет объема (тоннажа/дистанции/времени).
+    /// Расчет объема (тоннажа).
     /// Считаем только завершенные сеты, исключая разминку.
+    /// Кардио и статика не имеют "тоннажа", поэтому для них объем равен 0.
     var computedVolume: Double {
         if isSuperset {
             return subExercises.reduce(0.0) { $0 + $1.computedVolume }
@@ -254,12 +244,9 @@ struct Exercise: Identifiable, Codable, Hashable {
             switch type {
             case .strength:
                 return partialResult + ((set.weight ?? 0) * Double(set.reps ?? 0))
-            case .cardio:
-                // Условный объем: 1 км = 1000 единиц
-                return partialResult + ((set.distance ?? 0) * 1000)
-            case .duration:
-                // Условный объем: 1 минута = 10 единиц
-                return partialResult + (Double(set.time ?? 0) / 6.0)
+            case .cardio, .duration:
+                // Тоннаж не считается для кардио и статики
+                return partialResult
             }
         }
     }
@@ -367,22 +354,15 @@ struct Exercise: Identifiable, Codable, Hashable {
         try container.encode(subExercises, forKey: .subExercises)
         try container.encode(isCompleted, forKey: .isCompleted)
         
-        // 1. Сохраняем актуальный список сетов (основной источник истины)
+        // 1. Сохраняем актуальный список сетов
         try container.encode(setsList, forKey: .setsList)
         
-        // 2. Синхронизируем и сохраняем старые поля для обратной совместимости.
-        // Берем данные из setsList (или используем fallback значения).
-        let syncSets = setsList.isEmpty ? _sets : setsList.count
-        let syncReps = setsList.first?.reps ?? _reps
-        let syncWeight = setsList.first?.weight ?? _weight
-        let syncDistance = setsList.first?.distance ?? _distance
-        let syncTimeSeconds = setsList.first?.time ?? _timeSeconds
-        
-        try container.encode(syncSets, forKey: .sets)
-        try container.encode(syncReps, forKey: .reps)
-        try container.encode(syncWeight, forKey: .weight)
-        try container.encode(syncDistance, forKey: .distance)
-        try container.encode(syncTimeSeconds, forKey: .timeSeconds)
+        // 2. Для обратной совместимости со старыми парсерами экспортируем данные из первого сета.
+        try container.encode(setsList.count, forKey: .sets)
+        try container.encode(setsList.first?.reps ?? 0, forKey: .reps)
+        try container.encode(setsList.first?.weight ?? 0.0, forKey: .weight)
+        try container.encodeIfPresent(setsList.first?.distance, forKey: .distance)
+        try container.encodeIfPresent(setsList.first?.time, forKey: .timeSeconds)
     }
 }
 

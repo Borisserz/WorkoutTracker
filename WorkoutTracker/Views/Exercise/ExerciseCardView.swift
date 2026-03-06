@@ -147,19 +147,22 @@ struct ExerciseCardView: View {
         // Берем данные за O(1) из кэша
         let lastExerciseData = viewModel.lastPerformancesCache[exercise.name]
         
-        ForEach(0..<exercise.setsList.count, id: \.self) { (index: Int) in
-            let isLast = index == exercise.setsList.count - 1
+        ForEach($exercise.setsList) { $set in
+            // Безопасно вычисляем индекс для того, чтобы понимать, является ли сет последним, 
+            // и чтобы найти прошлые показатели.
+            let currentIndex = exercise.setsList.firstIndex(where: { $0.id == set.id }) ?? 0
+            let isLast = currentIndex == exercise.setsList.count - 1
             
             // Ищем данные этого же сета из прошлой тренировки
             let prevSet: WorkoutSet? = {
-                if let lastData = lastExerciseData, index < lastData.setsList.count {
-                    return lastData.setsList[index]
+                if let lastData = lastExerciseData, currentIndex < lastData.setsList.count {
+                    return lastData.setsList[currentIndex]
                 }
                 return nil
             }()
             
             SetRowView(
-                set: $exercise.setsList[index],
+                set: $set,
                 exerciseType: exercise.type,
                 isLastSet: isLast,
                 isExerciseCompleted: exercise.isCompleted,
@@ -175,7 +178,7 @@ struct ExerciseCardView: View {
             .swipeActions(edge: .trailing) {
                 if !exercise.isCompleted && !isWorkoutCompleted {
                     Button(role: .destructive) {
-                        removeSet(at: index)
+                        removeSet(withId: set.id)
                     } label: {
                         Label(LocalizedStringKey("Delete"), systemImage: "trash")
                     }
@@ -271,7 +274,7 @@ struct ExerciseCardView: View {
                 Text(unitsManager.weightUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
                 Text(LocalizedStringKey("Reps")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
             case .cardio:
-                Text(LocalizedStringKey("km")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                Text(unitsManager.distanceUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
                 Spacer()
                 Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
             case .duration:
@@ -429,12 +432,12 @@ struct ExerciseCardView: View {
         }
     }
     
-    private func removeSet(at index: Int) {
+    private func removeSet(withId id: UUID) {
         // Запрещаем удалять сеты, если упражнение или тренировка завершены
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
         withAnimation {
-            if index < exercise.setsList.count {
+            if let index = exercise.setsList.firstIndex(where: { $0.id == id }) {
                 exercise.setsList.remove(at: index)
                 // Пересчитываем индексы
                 for i in 0..<exercise.setsList.count {
