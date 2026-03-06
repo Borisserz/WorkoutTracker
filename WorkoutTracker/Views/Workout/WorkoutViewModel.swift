@@ -541,21 +541,21 @@ class WorkoutViewModel: ObservableObject {
                 fullRecoveryHours = savedHours > 0 ? savedHours : 48.0
             }
             
-            // ОПТИМИЗАЦИЯ: Фильтруем тренировки ДО сортировки
-            // Тренировки старше fullRecoveryHours не влияют на восстановление
             let cutoffDate = Date().addingTimeInterval(-fullRecoveryHours * 3600)
-            let relevantWorkouts = workouts.filter { $0.date >= cutoffDate }
+            let relevantWorkouts = workouts.filter { $0.date >= cutoffDate && !$0.isActive }
             
-            // Сортируем только релевантные тренировки
             let sortedWorkouts = relevantWorkouts.sorted(by: { $0.date < $1.date })
             
             let now = Date()
             for workout in sortedWorkouts {
-                let hoursSince = now.timeIntervalSince(workout.date) / 3600
+                let rawHoursSince = now.timeIntervalSince(workout.date) / 3600
+                let hoursSince = max(0, rawHoursSince)
+                
                 // Дополнительная проверка (на случай если фильтрация не сработала)
                 if hoursSince >= fullRecoveryHours { continue }
                 
-                let fatigueFactor = 1.0 - (hoursSince / fullRecoveryHours)
+                // Ограничиваем фактор усталости от 0 до 1
+                let fatigueFactor = max(0.0, min(1.0, 1.0 - (hoursSince / fullRecoveryHours)))
                 
                 for exercise in workout.exercises {
                     let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
