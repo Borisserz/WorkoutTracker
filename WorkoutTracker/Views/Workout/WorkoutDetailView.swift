@@ -21,6 +21,7 @@ struct WorkoutDetailView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     @Binding var workout: Workout
     @EnvironmentObject var viewModel: WorkoutViewModel
+    @EnvironmentObject var timerManager: RestTimerManager
     
     // MARK: - Local State (UI)
     
@@ -410,7 +411,7 @@ struct WorkoutDetailView: View {
                 // Кнопка ручного запуска таймера (только для активной)
                 if workout.isActive {
                     Button {
-                        viewModel.startRestTimer()
+                        timerManager.startRestTimer()
                     } label: {
                         Image(systemName: "timer")
                             .font(.headline)

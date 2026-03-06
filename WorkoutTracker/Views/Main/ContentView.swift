@@ -1,7 +1,13 @@
+//
+//  ContentView.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
+    @EnvironmentObject var timerManager: RestTimerManager
     @EnvironmentObject var tutorialManager: TutorialManager
     @State private var selectedTab = 1 // Начинаем с вкладки тренировок (Workout)
 
@@ -19,10 +25,10 @@ struct ContentView: View {
                 StatsView()
                     .tabItem { Image(systemName: "trophy"); Text(LocalizedStringKey("Progress")) }
                     .tag(2)
-                    .spotlight(step: .progressTab, manager: tutorialManager, text: "Check your Progress", alignment: .bottom, xOffset: -20) // Сдвинул чуть левее
+                    .spotlight(step: .progressTab, manager: tutorialManager, text: "Check your Progress", alignment: .bottom, xOffset: -20)
             }
             
-            if viewModel.isRestTimerActive {
+            if timerManager.isRestTimerActive {
                 RestTimerView()
                     .padding(.bottom, 60)
                     .transition(.move(edge: .bottom))

@@ -9,9 +9,8 @@
 //  Отвечает за:
 //  1. Хранение и сохранение тренировок, пресетов и пользовательских упражнений.
 //  2. Расчет статистики, рекордов (PR), стриков и уровней (через ProgressManager).
-//  3. Логику таймера отдыха (Rest Timer).
-//  4. Расчет восстановления мышц (Recovery).
-//  5. Импорт/Экспорт шаблонов.
+//  3. Расчет восстановления мышц (Recovery).
+//  4. Импорт/Экспорт шаблонов.
 //
 
 internal import SwiftUI
@@ -94,11 +93,6 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
-    // --- Timer State ---
-    @Published var restTimeRemaining: Int = 0
-    @Published var isRestTimerActive: Bool = false
-    @Published var restTimerFinished: Bool = false
-    
     // MARK: - Error Handling
     
     /// Модель ошибки для отображения пользователю
@@ -120,9 +114,6 @@ class WorkoutViewModel: ObservableObject {
     
     // MARK: - Private Properties
     
-    private var restEndTime: Date?
-    private var restTimer: Timer?
-    
     // Для оптимизации расчета восстановления
     private var recoveryCalculationTask: Task<Void, Never>?
     private var recoveryCalculationCancellable: AnyCancellable?
@@ -138,10 +129,6 @@ class WorkoutViewModel: ObservableObject {
     }
     
     deinit {
-        // Критично: инвалидируем таймер при деинициализации, чтобы избежать утечки памяти
-        restTimer?.invalidate()
-        restTimer = nil
-        
         // Отменяем фоновые задачи расчета восстановления
         recoveryCalculationTask?.cancel()
         recoveryCalculationCancellable?.cancel()
@@ -417,88 +404,7 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 3. Timer Logic
-    
-    private var defaultRestTime: Int {
-        let saved = UserDefaults.standard.integer(forKey: "defaultRestTime")
-        return saved > 0 ? saved : 60
-    }
-    
-    func startRestTimer(duration: Int? = nil) {
-        let seconds = duration ?? defaultRestTime
-        self.restEndTime = Date().addingTimeInterval(Double(seconds))
-        self.restTimeRemaining = seconds
-        self.isRestTimerActive = true
-        self.restTimerFinished = false
-        
-        NotificationManager.shared.scheduleRestTimerNotification(seconds: Double(seconds))
-        startTicker()
-    }
-    
-    private func startTicker() {
-        restTimer?.invalidate()
-        restTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self, let endTime = self.restEndTime else { return }
-            let timeLeft = Int(endTime.timeIntervalSinceNow)
-            
-            if timeLeft >= 0 {
-                if self.restTimeRemaining != timeLeft + 1 {
-                    self.restTimeRemaining = timeLeft + 1
-                }
-            } else {
-                self.finishTimer()
-            }
-        }
-    }
-    
-    func addRestTime(_ seconds: Int) {
-        if isRestTimerActive, let currentEnd = restEndTime {
-            let newEnd = currentEnd.addingTimeInterval(Double(seconds))
-            self.restEndTime = newEnd
-            NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
-            self.restTimeRemaining += seconds
-        }
-    }
-    
-    func subtractRestTime(_ seconds: Int) {
-        if isRestTimerActive, let currentEnd = restEndTime {
-            let newEnd = currentEnd.addingTimeInterval(Double(-seconds))
-            if newEnd.timeIntervalSinceNow <= 0 {
-                finishTimer()
-            } else {
-                self.restEndTime = newEnd
-                NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
-                self.restTimeRemaining = max(0, restTimeRemaining - seconds)
-            }
-        }
-    }
-    
-    func finishTimer() {
-        restTimer?.invalidate()
-        restTimer = nil
-        restTimerFinished = true
-        restEndTime = nil
-        
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
-        generator.notificationOccurred(.success)
-        AudioServicesPlaySystemSound(1005)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation { self.stopRestTimer() }
-        }
-    }
-    
-    func stopRestTimer() {
-        isRestTimerActive = false
-        restTimerFinished = false
-        restEndTime = nil
-        restTimer?.invalidate()
-        restTimer = nil
-        NotificationManager.shared.cancelRestTimerNotification()
-    }
-    
-    // MARK: - 4. Recovery Logic
+    // MARK: - 3. Recovery Logic
     
     /// Оптимизированный расчет восстановления с дебаунсом и фоновым потоком
     func calculateRecovery(hours: Double? = nil, debounce: Bool = false) {
@@ -604,7 +510,7 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 5. Analysis & Recommendations
+    // MARK: - 4. Analysis & Recommendations
     
     func getImbalanceRecommendation() -> (title: String, message: String)? {
         let calendar = Calendar.current
@@ -645,7 +551,7 @@ class WorkoutViewModel: ObservableObject {
         return nil
     }
     
-    // MARK: - 6. Data Management (Workouts)
+    // MARK: - 5. Data Management (Workouts)
     
     func addWorkout(_ workout: Workout) {
         workouts.insert(workout, at: 0)
@@ -716,7 +622,7 @@ class WorkoutViewModel: ObservableObject {
         return nil
     }
     
-    // MARK: - 7. Data Management (Presets)
+    // MARK: - 6. Data Management (Presets)
     
     func updatePreset(_ preset: WorkoutPreset) {
         if let index = presets.firstIndex(where: { $0.id == preset.id }) {
@@ -773,7 +679,7 @@ class WorkoutViewModel: ObservableObject {
            }
        }
     
-    // MARK: - 8. Data Management (Custom Exercises)
+    // MARK: - 7. Data Management (Custom Exercises)
     
     private func loadDeletedDefaultExercises() {
         if let data = UserDefaults.standard.data(forKey: "DeletedDefaultExercises"),
@@ -846,7 +752,7 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 9. Import / Export
+    // MARK: - 8. Import / Export
     
     func generateShareLink(for preset: WorkoutPreset) -> URL? {
         // Проверка интернет-соединения перед экспортом через URL
@@ -1060,7 +966,7 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 10. Advanced Analytics
+    // MARK: - 9. Advanced Analytics
     
     // MARK: - Exercise Trends
     
@@ -1752,7 +1658,7 @@ class WorkoutViewModel: ObservableObject {
         return comparisons
     }
     
-    // MARK: - 11. Widget
+    // MARK: - 10. Widget
     
     func updateWidgetData() {
         let currentStreak = calculateWorkoutStreak()
