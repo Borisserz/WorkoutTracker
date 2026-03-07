@@ -1,5 +1,6 @@
 internal import SwiftUI
 import Foundation
+import SwiftData
 
 // Расширение для использования URL в sheet(item:)
 extension URL: Identifiable {
@@ -9,7 +10,12 @@ extension URL: Identifiable {
 }
 
 struct PresetListView: View {
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
+    
+    // Получаем шаблоны напрямую из базы
+    @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
+    
     @State private var showCreatePreset = false
     @State private var presetToEdit: WorkoutPreset?
     @State private var fileToShare: URL?
@@ -18,7 +24,7 @@ struct PresetListView: View {
     
     var body: some View {
         List {
-            ForEach(viewModel.presets) { preset in
+            ForEach(presets) { preset in
                 Button {
                     presetToEdit = preset
                 } label: {
@@ -115,7 +121,9 @@ struct PresetListView: View {
         .alert(LocalizedStringKey("Delete Template?"), isPresented: $showDeleteAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
                 if let indexSet = presetsToDelete {
-                    viewModel.deletePreset(at: indexSet)
+                    for index in indexSet {
+                        context.delete(presets[index])
+                    }
                     presetsToDelete = nil
                 }
             }
@@ -126,8 +134,8 @@ struct PresetListView: View {
             if let indexSet = presetsToDelete {
                 let count = indexSet.count
                 if count == 1 {
-                    if let firstIndex = indexSet.first, firstIndex < viewModel.presets.count {
-                        Text(LocalizedStringKey("Are you sure you want to delete '\(viewModel.presets[firstIndex].name)'? This action cannot be undone."))
+                    if let firstIndex = indexSet.first, firstIndex < presets.count {
+                        Text(LocalizedStringKey("Are you sure you want to delete '\(presets[firstIndex].name)'? This action cannot be undone."))
                     } else {
                         Text(LocalizedStringKey("Are you sure you want to delete this template? This action cannot be undone."))
                     }

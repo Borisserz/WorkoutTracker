@@ -6,11 +6,12 @@
 //
 //  Экран "Прогресс" (Статистика).
 //  Реализован по паттерну Container/View:
-//  1. StatsView (Container) — отвечает за вычисление дат, интервалов и подготовку данных.
+//  1. StatsView (Container) — отвечает за вычисление дат, интервалов и подготовку данных асинхронно.
 //  2. StatsContentView (View) — отвечает только за верстку и отображение.
 //
 
 internal import SwiftUI
+import SwiftData
 import Charts
 
 // MARK: - 1. Smart Container View
@@ -45,46 +46,130 @@ struct StatsView: View {
     
     @EnvironmentObject var viewModel: WorkoutViewModel
     
+    // Прямой реактивный запрос к SwiftData с автоматическим обновлением UI
+    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    
     @State private var selectedPeriod: Period = .week
     @State private var selectedMetric: GraphMetric = .count
+    
+    // Кэшированные данные для предотвращения зависаний UI
+    @State private var isDataLoaded = false
+    
+    @State private var streakCount: Int = 0
+    @State private var bestWeek: WorkoutViewModel.PeriodStats?
+    @State private var bestMonth: WorkoutViewModel.PeriodStats?
+    @State private var weakPoints: [WorkoutViewModel.WeakPoint] = []
+    @State private var recommendations: [WorkoutViewModel.Recommendation] = []
+    
+    @State private var currentStats: WorkoutViewModel.PeriodStats?
+    @State private var previousStats: WorkoutViewModel.PeriodStats?
+    @State private var chartData: [WorkoutViewModel.ChartDataPoint] = []
+    @State private var recentPRs: [WorkoutViewModel.PersonalRecord] = []
+    @State private var detailedComparison: [WorkoutViewModel.DetailedComparison] = []
     
     // MARK: - Body
     
     var body: some View {
-        // 1. Вычисляем интервалы времени
+        NavigationStack {
+            Group {
+                if isDataLoaded,
+                   let currentStats = currentStats,
+                   let previousStats = previousStats,
+                   let bestWeek = bestWeek,
+                   let bestMonth = bestMonth {
+                    
+                    StatsContentView(
+                        selectedPeriod: $selectedPeriod,
+                        selectedMetric: $selectedMetric,
+                        streakCount: streakCount,
+                        currentStats: currentStats,
+                        previousStats: previousStats,
+                        chartData: chartData,
+                        recentPRs: recentPRs,
+                        bestWeek: bestWeek,
+                        bestMonth: bestMonth,
+                        weakPoints: weakPoints,
+                        recommendations: recommendations,
+                        detailedComparison: detailedComparison
+                    )
+                    
+                } else {
+                    VStack {
+                        Spacer()
+                        ProgressView(LocalizedStringKey("Loading stats..."))
+                            .controlSize(.large)
+                        Spacer()
+                    }
+                    .navigationTitle(LocalizedStringKey("Progress"))
+                }
+            }
+        }
+        .task {
+            if !isDataLoaded {
+                await loadAllData()
+            }
+        }
+        .onChange(of: selectedPeriod) { _, _ in
+            Task {
+                // Небольшая задержка, чтобы UI кнопки успел отреагировать на нажатие
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                await loadPeriodData()
+            }
+        }
+        .onChange(of: selectedMetric) { _, _ in
+            Task {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                let newChartData = StatisticsManager.getChartData(for: selectedPeriod, metric: selectedMetric, workouts: workouts)
+                withAnimation {
+                    self.chartData = newChartData
+                }
+            }
+        }
+        .onChange(of: workouts) { _, _ in
+            // SwiftData сама просигнализирует, когда workouts изменились
+            Task {
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                await loadAllData()
+            }
+        }
+    }
+    
+    // MARK: - Data Loading Logic
+    
+    @MainActor
+    private func loadAllData() async {
+        // Теперь мы напрямую передаем workouts в Manager'ы
+        streakCount = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
+        bestWeek = StatisticsManager.getBestStats(for: Period.week, workouts: workouts)
+        bestMonth = StatisticsManager.getBestStats(for: Period.month, workouts: workouts)
+        weakPoints = AnalyticsManager.getWeakPoints(recentWorkouts: workouts)
+        recommendations = AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: viewModel.recoveryStatus)
+        
+        await loadPeriodData()
+        
+        withAnimation {
+            isDataLoaded = true
+        }
+    }
+    
+    @MainActor
+    private func loadPeriodData() async {
         let currentInterval = calculateCurrentInterval()
         let previousInterval = calculatePreviousInterval()
         
-        // 2. Запрашиваем данные у ViewModel
-        let currentStats = viewModel.getStats(for: currentInterval)
-        let previousStats = viewModel.getStats(for: previousInterval)
-        let chartData = viewModel.getChartData(for: selectedPeriod, metric: selectedMetric)
-        let recentPRs = viewModel.getRecentPRs(in: currentInterval)
-        let streakCount = viewModel.calculateWorkoutStreak()
+        let newCurrentStats = StatisticsManager.getStats(for: currentInterval, workouts: workouts)
+        let newPreviousStats = StatisticsManager.getStats(for: previousInterval, workouts: workouts)
+        let newRecentPRs = StatisticsManager.getRecentPRs(in: currentInterval, workouts: workouts)
+        let newDetailedComparison = AnalyticsManager.getDetailedComparison(workouts: workouts, period: selectedPeriod)
+        let newChartData = StatisticsManager.getChartData(for: selectedPeriod, metric: selectedMetric, workouts: workouts)
         
-        let bestWeek = viewModel.getBestStats(for: Period.week)
-        let bestMonth = viewModel.getBestStats(for: Period.month)
-        
-        // 3. Новые данные аналитики
-        let weakPoints = viewModel.getWeakPoints()
-        let recommendations = viewModel.getRecommendations()
-        let detailedComparison = viewModel.getDetailedComparison(period: selectedPeriod)
-        
-        // 4. Передаем готовые данные в View
-        return StatsContentView(
-            selectedPeriod: $selectedPeriod,
-            selectedMetric: $selectedMetric,
-            streakCount: streakCount,
-            currentStats: currentStats,
-            previousStats: previousStats,
-            chartData: chartData,
-            recentPRs: recentPRs,
-            bestWeek: bestWeek,
-            bestMonth: bestMonth,
-            weakPoints: weakPoints,
-            recommendations: recommendations,
-            detailedComparison: detailedComparison
-        )
+        withAnimation {
+            currentStats = newCurrentStats
+            previousStats = newPreviousStats
+            recentPRs = newRecentPRs
+            detailedComparison = newDetailedComparison
+            chartData = newChartData
+        }
     }
     
     // MARK: - Date Logic
@@ -146,47 +231,45 @@ struct StatsContentView: View {
     // MARK: - Body
     
     var body: some View {
-        NavigationStack {
-            List {
-                streakSection
-                periodPicker
-                highlightsSection
-                chartSection
-                
-                // Детальное сравнение с предыдущим периодом
-                if !detailedComparison.isEmpty {
-                    Section(header: Text(LocalizedStringKey("Detailed Comparison"))) {
-                        DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
-                    }
-                }
-                
-                // Анализ слабых мест
-                if !weakPoints.isEmpty {
-                    Section(header: Text(LocalizedStringKey("Weak Points Analysis"))) {
-                        WeakPointsView(weakPoints: weakPoints)
-                    }
-                }
-                
-                // Рекомендации (всегда показываем секцию)
-                Section(header: Text(LocalizedStringKey("Recommendations"))) {
-                    RecommendationsView(recommendations: recommendations)
-                }
-                
-                prSection
-                bestStatsSection
-            }
-            .navigationTitle(LocalizedStringKey("Progress"))
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showProfile = true } label: {
-                        Image(systemName: "person.circle").font(.title3)
-                    }
+        List {
+            streakSection
+            periodPicker
+            highlightsSection
+            chartSection
+            
+            // Детальное сравнение с предыдущим периодом
+            if !detailedComparison.isEmpty {
+                Section(header: Text(LocalizedStringKey("Detailed Comparison"))) {
+                    DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
                 }
             }
-            .sheet(isPresented: $showProfile) {
-                ProfileView()
-                    .environmentObject(viewModel.progressManager)
+            
+            // Анализ слабых мест
+            if !weakPoints.isEmpty {
+                Section(header: Text(LocalizedStringKey("Weak Points Analysis"))) {
+                    WeakPointsView(weakPoints: weakPoints)
+                }
             }
+            
+            // Рекомендации (всегда показываем секцию)
+            Section(header: Text(LocalizedStringKey("Recommendations"))) {
+                RecommendationsView(recommendations: recommendations)
+            }
+            
+            prSection
+            bestStatsSection
+        }
+        .navigationTitle(LocalizedStringKey("Progress"))
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showProfile = true } label: {
+                    Image(systemName: "person.circle").font(.title3)
+                }
+            }
+        }
+        .sheet(isPresented: $showProfile) {
+            ProfileView()
+                .environmentObject(viewModel.progressManager)
         }
     }
     

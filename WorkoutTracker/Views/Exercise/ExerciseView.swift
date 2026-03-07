@@ -46,10 +46,11 @@ struct ExerciseView: View {
                                 Section(header: Text(LocalizedStringKey(group))) {
                                     
                                     ForEach(exercises, id: \.self) { exerciseName in
-                                    NavigationLink(destination: ExerciseHistoryView(exerciseName: exerciseName, allWorkouts: viewModel.workouts)) {
-                                        exerciseRow(name: exerciseName)
+                                        // Убрали передачу массива
+                                        NavigationLink(destination: ExerciseHistoryView(exerciseName: exerciseName)) {
+                                            exerciseRow(name: exerciseName)
+                                        }
                                     }
-                                }
                                     // Подключаем удаление (свайп влево) - теперь работает для всех упражнений
                                     .onDelete { indexSet in
                                         let toDelete = indexSet.map { (name: exercises[$0], category: group) }
@@ -310,9 +311,3 @@ struct ExerciseView: View {
     }
 }
 
-// MARK: - Preview
-
-#Preview {
-    ExerciseView()
-        .environmentObject(WorkoutViewModel())
-}

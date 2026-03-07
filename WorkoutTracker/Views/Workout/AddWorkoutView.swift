@@ -12,10 +12,15 @@ import ActivityKit
 struct AddWorkoutView: View {
     
     // MARK: - Environment & Bindings
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    
+    @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject private var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
+    
+    // Шаблоны из базы
+    @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
     
     var onWorkoutCreated: (() -> Void)?
     
@@ -102,7 +107,7 @@ struct AddWorkoutView: View {
             )
             
             // Список шаблонов
-            ForEach(viewModel.presets) { preset in
+            ForEach(presets) { preset in
                 VStack(alignment: .leading, spacing: 0) {
                     Button {
                         selectPreset(preset)
@@ -260,8 +265,8 @@ struct AddWorkoutView: View {
             exercises: exercisesToAdd
         )
         
-        // Сохраняем в базу данных через ViewModel
-        viewModel.addWorkout(newWorkout)
+        // Вставляем прямо в SwiftData context
+        context.insert(newWorkout)
         
         startLiveActivity()
         dismiss()

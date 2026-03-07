@@ -25,6 +25,9 @@ struct WorkoutDetailView: View {
     @EnvironmentObject var timerManager: RestTimerManager
     @Environment(\.modelContext) private var context // ДОБАВЛЕНО: для удаления
     
+    // Новый @Query для получения списка всех тренировок и подсчета статистики
+    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    
     // MARK: - Local State (UI)
     
     @State private var timeElapsed: String = "0:00"
@@ -729,15 +732,15 @@ struct WorkoutDetailView: View {
         stopLiveActivity()
         
         // 6. Обновляем виджеты сразу после завершения тренировки
-        viewModel.updateWidgetData()
+        viewModel.updateWidgetData(workouts: workouts)
     }
     
     private func checkAchievements() {
-        let oldAchievements = AchievementCalculator.calculateAchievements(workouts: viewModel.workouts, streak: 0).filter { $0.isUnlocked }.count
+        let oldAchievements = AchievementCalculator.calculateAchievements(workouts: workouts, streak: 0).filter { $0.isUnlocked }.count
         
         // Поскольку endTime уже установлен, тренировка считается завершенной
         // Пересчитываем ачивки с учетом нового стрика
-        let newAchievements = AchievementCalculator.calculateAchievements(workouts: viewModel.workouts, streak: viewModel.calculateWorkoutStreak()).filter { $0.isUnlocked }.count
+        let newAchievements = AchievementCalculator.calculateAchievements(workouts: workouts, streak: StatisticsManager.calculateWorkoutStreak(workouts: workouts)).filter { $0.isUnlocked }.count
         
         if newAchievements > oldAchievements {
             let generator = UINotificationFeedbackGenerator()

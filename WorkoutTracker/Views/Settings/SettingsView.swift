@@ -22,6 +22,8 @@ struct SettingsView: View {
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
     @AppStorage("appearanceMode") private var appearanceMode: String = "system" // "light", "dark", "system"
     @StateObject private var unitsManager = UnitsManager.shared
+    
+    @State private var isProcessing = false
     @State private var showTestDataAlert = false
     @State private var testDataAlertMessage = ""
     @State private var showClearAllAlert = false
@@ -139,49 +141,35 @@ struct SettingsView: View {
                         generateTestData()
                     } label: {
                         HStack {
-                            Label(LocalizedStringKey("Generate 2 Years Test Data"), systemImage: "flask.fill")
+                            Label(LocalizedStringKey("Generate All Test Data"), systemImage: "flask.fill")
                             Spacer()
-                            Text(LocalizedStringKey("TEST"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            if isProcessing {
+                                ProgressView()
+                            } else {
+                                Text(LocalizedStringKey("TEST"))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
-                    
-                    Button(role: .destructive) {
-                        generate2026TestData()
-                    } label: {
-                        HStack {
-                            Label(LocalizedStringKey("Generate 2026 Year Test Data"), systemImage: "calendar")
-                            Spacer()
-                            Text(LocalizedStringKey("TEST"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    
-                    Button(role: .destructive) {
-                        generateWeightTestData()
-                    } label: {
-                        HStack {
-                            Label(LocalizedStringKey("Generate Weight Test Data"), systemImage: "chart.line.uptrend.xyaxis")
-                            Spacer()
-                            Text(LocalizedStringKey("TEST"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
+                    .disabled(isProcessing)
                     
                     Button(role: .destructive) {
                         showClearAllAlert = true
                     } label: {
                         HStack {
-                            Label(LocalizedStringKey("Clear All Workouts"), systemImage: "trash.fill")
+                            Label(LocalizedStringKey("Clear All Data"), systemImage: "trash.fill")
                             Spacer()
-                            Text(LocalizedStringKey("DANGER"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            if isProcessing {
+                                ProgressView()
+                            } else {
+                                Text(LocalizedStringKey("DANGER"))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
+                    .disabled(isProcessing)
                 } header: {
                     Text(LocalizedStringKey("TESTING (REMOVE AFTER TEST)"))
                 } footer: {
@@ -229,13 +217,13 @@ struct SettingsView: View {
             } message: {
                 Text(testDataAlertMessage)
             }
-            .alert(LocalizedStringKey("Clear All Workouts?"), isPresented: $showClearAllAlert) {
+            .alert(LocalizedStringKey("Clear All Data?"), isPresented: $showClearAllAlert) {
                 Button(LocalizedStringKey("Clear All"), role: .destructive) {
                     clearAllWorkouts()
                 }
                 Button(LocalizedStringKey("Cancel"), role: .cancel) { }
             } message: {
-                Text(LocalizedStringKey("Are you sure you want to delete all workouts? This action cannot be undone."))
+                Text(LocalizedStringKey("Are you sure you want to delete all data? This action cannot be undone."))
             }
             .sheet(item: $fileToShare) { url in
                 ActivityViewController(activityItems: [url])
@@ -247,63 +235,36 @@ struct SettingsView: View {
     // MARK: - Test Data Functions
     
     private func generateTestData() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            TestDataGenerator.generateAndSaveTestData()
+        isProcessing = true
+        let container = modelContext.container
+        
+        Task.detached {
+            await TestDataGenerator.generateAllData(container: container)
             
-            DispatchQueue.main.async {
-                // Синхронизируем старую ViewModel, пока она не удалена полностью
-                viewModel.fetchData()
-                testDataAlertMessage = "Test data generated successfully!\n\nCreated 2 years of workout history (3 workouts per week)."
-                showTestDataAlert = true
-            }
-        }
-    }
-    
-    private func generate2026TestData() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            TestDataGenerator.generate2026TestData()
-            
-            DispatchQueue.main.async {
-                // Синхронизируем старую ViewModel
-                viewModel.fetchData()
-                testDataAlertMessage = "2026 test data generated successfully!\n\nCreated 1 year of future workout history for 2026 (3 workouts per week)."
-                showTestDataAlert = true
-            }
-        }
-    }
-    
-    private func generateWeightTestData() {
-        DispatchQueue.global(qos: .userInitiated).async {
-            TestDataGenerator.generateWeightTestData()
-            
-            DispatchQueue.main.async {
-                viewModel.fetchData()
-                testDataAlertMessage = "Weight test data generated successfully!\n\nCreated 2 years of weight tracking data with realistic fluctuations."
+            await MainActor.run {
+                // viewModel.fetchData() — Убрано. SwiftData и @Query обновят UI сами.
+                isProcessing = false
+                testDataAlertMessage = "Test data generated successfully!\n\nCreated workouts and weight tracking history from 2021 to 2026."
                 showTestDataAlert = true
             }
         }
     }
     
     private func clearAllWorkouts() {
-        do {
-            for workout in workouts {
-                modelContext.delete(workout)
+        isProcessing = true
+        let container = modelContext.container
+        
+        Task.detached {
+            await TestDataGenerator.clearAllDataAsync(container: container)
+            
+            await MainActor.run {
+                // viewModel.fetchData() — Убрано.
+                isProcessing = false
+                testDataAlertMessage = "All workouts and weight history cleared."
+                showTestDataAlert = true
             }
-            try modelContext.save()
-            
-            // Сообщаем ViewModel, чтобы она обновила свои кэши
-            viewModel.fetchData()
-            
-            testDataAlertMessage = "All workouts cleared."
-            showTestDataAlert = true
-        } catch {
-            viewModel.showError(
-                title: NSLocalizedString("Failed to Clear Workouts", comment: "Error title when clearing workouts fails"),
-                message: String(format: NSLocalizedString("Failed to clear all workouts. Please try again.\n\nError: %@", comment: "Error message when clearing workouts fails"), error.localizedDescription)
-            )
         }
     }
-    
     
     // MARK: - Export Functions
     

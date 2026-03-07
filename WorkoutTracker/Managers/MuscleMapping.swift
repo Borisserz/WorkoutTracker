@@ -21,6 +21,9 @@ struct MuscleMapping {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("CustomExerciseMappings.json")
     }
     
+    // Блокировка для потокобезопасного доступа к кэшу
+    private static let cacheLock = NSLock()
+    
     // Кэш в оперативной памяти для быстрого доступа
     private static var _cachedCustomMappings: [String: [String]]?
     
@@ -179,45 +182,63 @@ struct MuscleMapping {
     
     // MARK: - Logic
     
+    /// Запускает асинхронную загрузку маппингов для избежания зависания на старте
+    static func preload() {
+        Task.detached(priority: .background) {
+            _ = getCustomMappings()
+        }
+    }
+    
     /// Извлекает пользовательские маппинги из файла или кэша
     private static func getCustomMappings() -> [String: [String]] {
+        cacheLock.lock()
         if let cached = _cachedCustomMappings {
+            cacheLock.unlock()
             return cached
         }
+        cacheLock.unlock()
+        
+        var loaded: [String: [String]] = [:]
         
         // Пытаемся прочитать из файла
         if let data = try? Data(contentsOf: customMappingsFileURL),
            let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) {
-            _cachedCustomMappings = decoded
-            return decoded
-        }
-        
+            loaded = decoded
+        } 
         // Фоллбэк (миграция): если файла нет, пробуем прочитать из UserDefaults
-        if let dict = UserDefaults.standard.dictionary(forKey: customMappingKey) as? [String: [String]] {
-            _cachedCustomMappings = dict
+        else if let dict = UserDefaults.standard.dictionary(forKey: customMappingKey) as? [String: [String]] {
+            loaded = dict
             
-            // Сразу сохраняем в файл и удаляем из UserDefaults
-            if let encoded = try? JSONEncoder().encode(dict) {
-                try? encoded.write(to: customMappingsFileURL)
+            // Сразу сохраняем в файл асинхронно
+            Task.detached(priority: .background) {
+                if let encoded = try? JSONEncoder().encode(dict) {
+                    try? encoded.write(to: customMappingsFileURL)
+                }
             }
             UserDefaults.standard.removeObject(forKey: customMappingKey)
-            
-            return dict
         }
         
-        _cachedCustomMappings = [:]
-        return [:]
+        cacheLock.lock()
+        _cachedCustomMappings = loaded
+        cacheLock.unlock()
+        
+        return loaded
     }
     
-    /// Обновляет кэш и сохраняет изменения в файл. Вызывается из WorkoutViewModel.
+    /// Обновляет кэш и сохраняет изменения в файл асинхронно. Вызывается из WorkoutViewModel.
     static func updateCustomMapping(name: String, muscles: [String]?) {
         var currentMap = getCustomMappings()
         currentMap[name] = muscles
         
+        cacheLock.lock()
         _cachedCustomMappings = currentMap
+        cacheLock.unlock()
         
-        if let encoded = try? JSONEncoder().encode(currentMap) {
-            try? encoded.write(to: customMappingsFileURL)
+        let mapToSave = currentMap
+        Task.detached(priority: .background) {
+            if let encoded = try? JSONEncoder().encode(mapToSave) {
+                try? encoded.write(to: customMappingsFileURL)
+            }
         }
     }
     

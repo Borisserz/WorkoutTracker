@@ -12,6 +12,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 // MARK: - Main Editor View
 
@@ -20,6 +21,7 @@ struct PresetEditorView: View {
     // MARK: - Environment & State
     
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
     @EnvironmentObject private var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
     
@@ -76,7 +78,7 @@ struct PresetEditorView: View {
             .alert("Delete Template?", isPresented: $showDeleteAlert) {
                 Button("Delete", role: .destructive) {
                     if let p = preset {
-                        viewModel.deletePreset(p)
+                        context.delete(p)
                         dismiss()
                     }
                 }
@@ -245,13 +247,21 @@ struct PresetEditorView: View {
     // MARK: - Logic Helpers
     
     private func savePreset() {
-        let newPreset = WorkoutPreset(
-            id: preset?.id ?? UUID(),
-            name: name,
-            icon: selectedIcon,
-            exercises: exercises
-        )
-        viewModel.updatePreset(newPreset)
+        if let existingPreset = preset {
+            // Обновляем существующий
+            existingPreset.name = name
+            existingPreset.icon = selectedIcon
+            existingPreset.exercises = exercises
+        } else {
+            // Создаем новый
+            let newPreset = WorkoutPreset(
+                id: UUID(),
+                name: name,
+                icon: selectedIcon,
+                exercises: exercises
+            )
+            context.insert(newPreset)
+        }
         dismiss()
     }
     

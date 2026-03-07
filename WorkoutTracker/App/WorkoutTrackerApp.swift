@@ -23,6 +23,9 @@ struct WorkoutTrackerApp: App {
     
     @State private var showImportAlert = false
     
+    // Создаем контейнер вручную, чтобы иметь доступ к context прямо в App
+    let sharedModelContainer: ModelContainer
+    
     // Вычисляемое свойство для цветовой схемы
     private var colorScheme: ColorScheme? {
         switch appearanceMode {
@@ -36,7 +39,15 @@ struct WorkoutTrackerApp: App {
     }
     
     init() {
-
+        // Инициализируем SwiftData
+        do {
+            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self)
+        } catch {
+            fatalError("Could not create ModelContainer: \(error)")
+        }
+        
+        // Проверяем и создаем дефолтные шаблоны при первом запуске
+        viewModel.checkAndGenerateDefaultPresets(context: sharedModelContainer.mainContext)
     }
 
     var body: some Scene {
@@ -56,14 +67,15 @@ struct WorkoutTrackerApp: App {
                 }
             }
             .onOpenURL { url in
-                if viewModel.importPreset(from: url) {
+                // Передаем контекст в метод импорта
+                if viewModel.importPreset(from: url, context: sharedModelContainer.mainContext) {
                     showImportAlert = true
                 }
             }
             // Обработка открытия файлов через систему
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                 if let url = userActivity.webpageURL {
-                    if viewModel.importPreset(from: url) {
+                    if viewModel.importPreset(from: url, context: sharedModelContainer.mainContext) {
                         showImportAlert = true
                     }
                 }
@@ -85,7 +97,7 @@ struct WorkoutTrackerApp: App {
                 }
             }
         }
-        // Подключаем SwiftData для всех моделей
-        .modelContainer(for: [Workout.self, WorkoutPreset.self, ExerciseNote.self])
+        // Подключаем наш созданный контейнер
+        .modelContainer(sharedModelContainer)
     }
 }

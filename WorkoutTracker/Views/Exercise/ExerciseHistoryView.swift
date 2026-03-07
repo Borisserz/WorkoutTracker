@@ -72,7 +72,8 @@ struct ExerciseHistoryView: View {
     // MARK: - Properties
     
     let exerciseName: String
-    let allWorkouts: [Workout]
+    
+    @Query(sort: \Workout.date, order: .reverse) private var allWorkouts: [Workout]
     
     @EnvironmentObject var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
@@ -85,22 +86,26 @@ struct ExerciseHistoryView: View {
     @State private var selectedMetric: GraphMetric = .none
     @State private var selectedTrendPeriod: TrendPeriod = .month
     
+    // MARK: - Cached State for Performance Optimization
+    
+    @State private var isDataLoaded: Bool = false
+    @State private var exerciseType: ExerciseType = .strength
+    @State private var exerciseCategory: ExerciseCategory? = nil
+    @State private var muscleGroup: String? = nil
+    @State private var filteredWorkoutsData: [(workout: Workout, exercise: Exercise)] = []
+    
+    @State private var exerciseTrend: WorkoutViewModel.ExerciseTrend?
+    @State private var exerciseForecast: WorkoutViewModel.ProgressForecast?
+    
+    // Кэш для быстрого рендеринга графика
+    @State private var allDataPoints: [DataPoint] = []
+    @State private var displayedGraphData: [DataPoint] = []
+    @State private var currentMetricValue: Double? = nil
+    
     // MARK: - Computed Properties (General)
     
-    /// Определяет тип упражнения, просматривая историю тренировок
-    var exerciseType: ExerciseType {
-        for workout in allWorkouts {
-            if let ex = findExerciseInWorkout(workout) { return ex.type }
-        }
-        return .strength
-    }
-    
-    /// Определяет категорию упражнения для техники
-    var exerciseCategory: ExerciseCategory {
-        for workout in allWorkouts {
-            if let ex = findExerciseInWorkout(workout) { return ex.category }
-        }
-        return ExerciseCategory.determine(from: exerciseName)
+    private var safeCategory: ExerciseCategory {
+        exerciseCategory ?? ExerciseCategory.determine(from: exerciseName)
     }
     
     var unitLabel: String {
@@ -118,26 +123,33 @@ struct ExerciseHistoryView: View {
             // Вкладки навигации
             tabBar
             
-            // Контент выбранной вкладки
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(spacing: 30) {
-                        switch selectedTab {
-                        case .summary:
-                            summaryContent
-                        case .technique:
-                            techniqueContent
-                        case .history:
-                            historyContent
+            if !isDataLoaded {
+                Spacer()
+                ProgressView(LocalizedStringKey("Loading data..."))
+                    .controlSize(.large)
+                Spacer()
+            } else {
+                // Контент выбранной вкладки
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 30) {
+                            switch selectedTab {
+                            case .summary:
+                                summaryContent
+                            case .technique:
+                                techniqueContent
+                            case .history:
+                                historyContent
+                            }
                         }
+                        .padding()
                     }
-                    .padding()
-                }
-                .onChange(of: isInputActive) { oldValue, newValue in
-                    if newValue {
-                        // Прокручиваем к секции заметок когда начинается ввод
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            proxy.scrollTo("notesSection", anchor: .center)
+                    .onChange(of: isInputActive) { oldValue, newValue in
+                        if newValue {
+                            // Прокручиваем к секции заметок когда начинается ввод
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo("notesSection", anchor: .center)
+                            }
                         }
                     }
                 }
@@ -145,6 +157,269 @@ struct ExerciseHistoryView: View {
         }
         .navigationTitle(exerciseName)
         .navigationBarTitleDisplayMode(.inline)
+        .task {
+            if !isDataLoaded {
+                // Небольшая задержка, чтобы анимация перехода успела отработать плавно
+                try? await Task.sleep(nanoseconds: 100_000_000)
+                loadInitialData()
+            }
+        }
+        .onChange(of: selectedTrendPeriod) { _, _ in
+            if isDataLoaded {
+                exerciseTrend = calculateTrend(for: selectedTrendPeriod)
+            }
+        }
+        .onChange(of: selectedTimeRange) { _, _ in
+            if isDataLoaded {
+                updateGraphData()
+            }
+        }
+        .onChange(of: selectedMetric) { _, _ in
+            if isDataLoaded {
+                updateGraphData()
+            }
+        }
+        .onChange(of: allWorkouts) { _, _ in
+            loadInitialData()
+        }
+    }
+    
+    // MARK: - Data Loading & Processing (Optimized)
+    
+    private func loadInitialData() {
+        var foundType: ExerciseType = .strength
+        var foundCategory: ExerciseCategory? = nil
+        var foundMuscle: String? = nil
+        var filtered: [(workout: Workout, exercise: Exercise)] = []
+        
+        // Перебираем все тренировки ТОЛЬКО ОДИН РАЗ
+        for workout in allWorkouts {
+            if let ex = findExerciseInWorkout(workout) {
+                filtered.append((workout, ex))
+                if foundCategory == nil {
+                    foundType = ex.type
+                    foundCategory = ex.category
+                    foundMuscle = ex.muscleGroup
+                }
+            }
+        }
+        
+        filtered.sort { $0.workout.date > $1.workout.date }
+        
+        // Вычисляем базовые точки графика ОДИН РАЗ
+        let dataPoints = filtered.reversed().compactMap { item -> DataPoint? in
+            let exercise = item.exercise
+            var value: Double = 0.0
+            
+            switch foundType {
+            case .strength:
+                let maxSetWeight = exercise.setsList
+                    .filter { $0.isCompleted && $0.type != .warmup }
+                    .compactMap { $0.weight }
+                    .max()
+                let kgValue = maxSetWeight ?? exercise.weight
+                value = unitsManager.convertFromKilograms(kgValue)
+                
+            case .cardio:
+                let totalDist = exercise.setsList
+                    .filter { $0.isCompleted }
+                    .compactMap { $0.distance }
+                    .reduce(0, +)
+                let finalDist = (totalDist > 0) ? totalDist : (exercise.distance ?? 0.0)
+                value = unitsManager.convertFromKilometers(finalDist)
+                
+            case .duration:
+                let totalSeconds = exercise.setsList
+                    .filter { $0.isCompleted }
+                    .compactMap { $0.time }
+                    .reduce(0, +)
+                let finalSeconds = (totalSeconds > 0) ? totalSeconds : (exercise.timeSeconds ?? 0)
+                value = Double(finalSeconds) / 60.0
+            }
+            
+            if value == 0 { return nil }
+            return DataPoint(date: item.workout.date, value: value)
+        }
+        
+        self.allDataPoints = dataPoints
+        self.filteredWorkoutsData = filtered
+        self.exerciseType = foundType
+        self.exerciseCategory = foundCategory
+        self.muscleGroup = foundMuscle
+        
+        self.exerciseForecast = calculateForecast()
+        self.exerciseTrend = calculateTrend(for: selectedTrendPeriod)
+        
+        self.updateGraphData()
+        
+        withAnimation {
+            self.isDataLoaded = true
+        }
+    }
+    
+    /// Быстро обновляет отображаемые данные графика без глубокого пересчета истории
+    private func updateGraphData() {
+        let calendar = Calendar.current
+        let filteredByDate: [DataPoint]
+        
+        if selectedTimeRange == .all {
+            filteredByDate = allDataPoints
+        } else {
+            let days: Int
+            switch selectedTimeRange {
+            case .month: days = 30
+            case .threeMonths: days = 90
+            case .sixMonths: days = 180
+            case .year: days = 365
+            case .all: days = 0
+            }
+            if let cutoff = calendar.date(byAdding: .day, value: -days, to: Date()) {
+                filteredByDate = allDataPoints.filter { $0.date >= cutoff }
+            } else {
+                filteredByDate = allDataPoints
+            }
+        }
+        
+        var newMetric: Double? = nil
+        if selectedMetric != .none && !filteredByDate.isEmpty {
+            let values = filteredByDate.map { $0.value }
+            if selectedMetric == .max {
+                newMetric = values.max()
+            } else if selectedMetric == .average {
+                newMetric = values.reduce(0, +) / Double(values.count)
+            }
+        }
+        
+        withAnimation(.easeInOut(duration: 0.2)) {
+            self.displayedGraphData = filteredByDate
+            self.currentMetricValue = newMetric
+        }
+    }
+    
+    private func calculateTrend(for period: TrendPeriod) -> WorkoutViewModel.ExerciseTrend? {
+        if exerciseType != .strength { return nil }
+        
+        let months: Int
+        switch period {
+        case .month: months = 1
+        case .threeMonths: months = 3
+        case .year: months = 12
+        }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        
+        let currentStart = calendar.date(byAdding: .month, value: -months, to: now)!
+        let currentInterval = DateInterval(start: currentStart, end: now)
+        
+        let previousStart = calendar.date(byAdding: .month, value: -(months * 2), to: now)!
+        let previousInterval = DateInterval(start: previousStart, end: currentStart)
+        
+        // ИСПОЛЬЗУЕМ УЖЕ ОТФИЛЬТРОВАННЫЙ КЭШ, а не все тренировки!
+        let currentWorkouts = filteredWorkoutsData.filter { currentInterval.contains($0.workout.date) }
+        let previousWorkouts = filteredWorkoutsData.filter { previousInterval.contains($0.workout.date) }
+        
+        var currentMax: Double = 0
+        var previousMax: Double = 0
+        
+        for item in currentWorkouts {
+            let maxWeightKg = item.exercise.setsList
+                .filter { $0.isCompleted && $0.type != .warmup }
+                .compactMap { $0.weight }
+                .max() ?? 0
+            if maxWeightKg > currentMax { currentMax = maxWeightKg }
+        }
+        
+        for item in previousWorkouts {
+            let maxWeightKg = item.exercise.setsList
+                .filter { $0.isCompleted && $0.type != .warmup }
+                .compactMap { $0.weight }
+                .max() ?? 0
+            if maxWeightKg > previousMax { previousMax = maxWeightKg }
+        }
+        
+        if currentMax == 0 && previousMax == 0 { return nil }
+        
+        let change: Double
+        let direction: WorkoutViewModel.TrendDirection
+        
+        if previousMax == 0 {
+            change = 100.0
+            direction = .growing
+        } else if currentMax == 0 {
+            change = -100.0
+            direction = .declining
+        } else {
+            change = ((currentMax - previousMax) / previousMax) * 100.0
+            if abs(change) < 2.0 {
+                direction = .stable
+            } else {
+                direction = change > 0 ? .growing : .declining
+            }
+        }
+        
+        return WorkoutViewModel.ExerciseTrend(
+            exerciseName: exerciseName,
+            trend: direction,
+            changePercentage: change,
+            currentValue: currentMax,
+            previousValue: previousMax,
+            period: period.displayName
+        )
+    }
+    
+    private func calculateForecast() -> WorkoutViewModel.ProgressForecast? {
+        if exerciseType != .strength { return nil }
+        
+        let now = Date()
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -90, to: now)!
+        let recentData = filteredWorkoutsData.filter { $0.workout.date >= cutoffDate }
+        
+        var history: [(date: Date, maxWeight: Double)] = []
+        for item in recentData {
+            let maxWeight = item.exercise.setsList
+                .filter { $0.isCompleted && $0.type != .warmup }
+                .compactMap { $0.weight }
+                .max() ?? 0
+            if maxWeight > 0 { history.append((date: item.workout.date, maxWeight: maxWeight)) }
+        }
+        
+        guard history.count >= 3 else { return nil }
+        let sorted = history.sorted { $0.date < $1.date }
+        let currentMax = sorted.last!.maxWeight
+        
+        let daysFromStart = sorted.map { now.timeIntervalSince($0.date) / 86400 }
+        let weights = sorted.map { $0.maxWeight }
+        
+        var totalInc = 0.0, totalDays = 0.0, posChanges = 0, negChanges = 0
+        for i in 1..<sorted.count {
+            let daysDiff = abs(daysFromStart[i] - daysFromStart[i-1])
+            if daysDiff > 0 {
+                let wDiff = weights[i] - weights[i-1]
+                totalInc += wDiff; totalDays += daysDiff
+                if wDiff > 0 { posChanges += 1 } else if wDiff < 0 { negChanges += 1 }
+            }
+        }
+        
+        let avgInc = totalDays > 0 ? totalInc / totalDays : 0
+        let daysAhead = 30
+        let predMax = max(currentMax, currentMax + (avgInc * Double(daysAhead)))
+        
+        let dataScore = min(70, max(30, sorted.count * 8))
+        let trendBonus = avgInc > 0 ? 15 : 0
+        let totalChanges = posChanges + negChanges
+        let consistencyBonus = totalChanges > 0 ? (Double(posChanges)/Double(totalChanges) >= 0.7 ? 15 : (Double(posChanges)/Double(totalChanges) >= 0.5 ? 5 : -10)) : 0
+        let timeSpanBonus = min(10, Int((daysFromStart.first! - daysFromStart.last!) / 30))
+        
+        let confidence = min(100, max(30, dataScore + trendBonus + consistencyBonus + timeSpanBonus))
+        
+        return WorkoutViewModel.ProgressForecast(
+            exerciseName: exerciseName,
+            currentMax: currentMax,
+            predictedMax: predMax,
+            confidence: confidence,
+            timeframe: String(localized: "30 days")
+        )
     }
     
     // MARK: - Tab Bar
@@ -257,8 +532,8 @@ struct ExerciseHistoryView: View {
             .shadow(radius: 5)
             
             // Мышцы, которые работают
-            let muscleGroup = getMuscleGroup() ?? NSLocalizedString("Unknown", comment: "")
-            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exerciseName, muscleGroup: muscleGroup)
+            let muscleGroupToUse = muscleGroup ?? NSLocalizedString("Unknown", comment: "")
+            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exerciseName, muscleGroup: muscleGroupToUse)
             
             if !targetMuscles.isEmpty {
                 VStack(alignment: .leading, spacing: 15) {
@@ -331,7 +606,7 @@ struct ExerciseHistoryView: View {
                 .frame(width: 200)
             }
             
-            if graphData.isEmpty {
+            if displayedGraphData.isEmpty {
                 Text(LocalizedStringKey("Not enough data"))
                     .padding()
                     .frame(maxWidth: .infinity)
@@ -344,7 +619,7 @@ struct ExerciseHistoryView: View {
                 Divider()
                 
                 // Выбор метрики (Среднее / Макс), если данных достаточно
-                if graphData.count > 1 {
+                if displayedGraphData.count > 1 {
                     HStack {
                         Text(LocalizedStringKey("Show line:"))
                             .font(.caption).foregroundColor(.secondary)
@@ -400,7 +675,7 @@ struct ExerciseHistoryView: View {
         VStack(alignment: .leading) {
             Text(LocalizedStringKey("History")).font(.title2).bold()
             
-            if filteredWorkouts.isEmpty {
+            if filteredWorkoutsData.isEmpty {
                 EmptyStateView(
                     icon: "clock.fill",
                     title: LocalizedStringKey("No history yet"),
@@ -408,9 +683,8 @@ struct ExerciseHistoryView: View {
                 )
                 .padding(.top, 20)
             } else {
-                ForEach(filteredWorkouts) { workout in
-                    // filteredWorkouts гарантирует, что упражнение существует
-                    workoutRowContent(workout: workout, exercise: findExerciseInWorkout(workout)!)
+                ForEach(filteredWorkoutsData, id: \.workout.id) { item in
+                    workoutRowContent(workout: item.workout, exercise: item.exercise)
                 }
             }
         }
@@ -427,7 +701,7 @@ struct ExerciseHistoryView: View {
             chartContent
             
             // Рисуем линию метрики (среднее/макс), если выбрано
-            if let val = metricValue, graphData.count > 1 {
+            if let val = currentMetricValue, displayedGraphData.count > 1 {
                 RuleMark(y: .value("Metric", val))
                     .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
                     .foregroundStyle(.secondary)
@@ -473,9 +747,9 @@ struct ExerciseHistoryView: View {
     /// Содержимое графика (Точки и Линии)
     @ChartContentBuilder
     var chartContent: some ChartContent {
-        ForEach(graphData) { dataPoint in
+        ForEach(displayedGraphData) { dataPoint in
             // ЛИНИЯ (если больше 1 точки)
-            if graphData.count > 1 {
+            if displayedGraphData.count > 1 {
                 LineMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
                     .interpolationMethod(.linear)
                     .foregroundStyle(chartColor)
@@ -485,9 +759,9 @@ struct ExerciseHistoryView: View {
             // ТОЧКА
             PointMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
                 .foregroundStyle(chartColor)
-                .symbolSize(graphData.count == 1 ? 50 : 30)
+                .symbolSize(displayedGraphData.count == 1 ? 50 : 30)
                 .annotation(position: .top) {
-                    if graphData.count < 10 {
+                    if displayedGraphData.count < 10 {
                         Text(LocalizationHelper.shared.formatInteger(dataPoint.value))
                             .font(.caption2)
                             .foregroundColor(.secondary)
@@ -516,7 +790,7 @@ struct ExerciseHistoryView: View {
     
     // Масштаб по X (если одна точка - показываем день до и после)
     var customXDomain: ClosedRange<Date>? {
-        guard graphData.count == 1, let point = graphData.first else { return nil }
+        guard displayedGraphData.count == 1, let point = displayedGraphData.first else { return nil }
         let start = Calendar.current.date(byAdding: .day, value: -1, to: point.date)!
         let end = Calendar.current.date(byAdding: .day, value: 1, to: point.date)!
         return start...end
@@ -524,8 +798,8 @@ struct ExerciseHistoryView: View {
     
     // Масштаб по Y (добавляем отступы сверху и снизу)
     var customYDomain: ClosedRange<Double>? {
-        guard !graphData.isEmpty else { return nil }
-        let values = graphData.map { $0.value }
+        guard !displayedGraphData.isEmpty else { return nil }
+        let values = displayedGraphData.map { $0.value }
         let minVal = values.min() ?? 0
         let maxVal = values.max() ?? 0
         
@@ -534,184 +808,6 @@ struct ExerciseHistoryView: View {
             return (minVal - buffer)...(maxVal + buffer)
         }
         return nil
-    }
-    
-    // MARK: - Data Processing
-    
-    /// Подготовка данных для графика
-    var graphData: [DataPoint] {
-        let allData = filteredWorkouts.reversed().compactMap { workout -> DataPoint? in
-            guard let exercise = findExerciseInWorkout(workout) else { return nil }
-            
-            var value: Double = 0.0
-            
-            switch exercise.type {
-            case .strength:
-                // 1. СИЛОВЫЕ: Максимальный вес в сетах (исключая разминку)
-                let maxSetWeight = exercise.setsList
-                    .filter { $0.isCompleted && $0.type != .warmup }
-                    .compactMap { $0.weight }
-                    .max()
-                let kgValue = maxSetWeight ?? exercise.weight
-                // Конвертируем в выбранные единицы для графика
-                value = unitsManager.convertFromKilograms(kgValue)
-                
-            case .cardio:
-                // 2. КАРДИО: Сумма дистанции
-                let totalDist = exercise.setsList
-                    .filter { $0.isCompleted }
-                    .compactMap { $0.distance }
-                    .reduce(0, +)
-                let finalDist = (totalDist > 0) ? totalDist : (exercise.distance ?? 0.0)
-                value = unitsManager.convertFromKilometers(finalDist)
-                
-            case .duration:
-                // 3. ВРЕМЯ: Сумма времени (в минутах)
-                let totalSeconds = exercise.setsList
-                    .filter { $0.isCompleted }
-                    .compactMap { $0.time }
-                    .reduce(0, +)
-                let finalSeconds = (totalSeconds > 0) ? totalSeconds : (exercise.timeSeconds ?? 0)
-                value = Double(finalSeconds) / 60.0
-            }
-            
-            if value == 0 { return nil }
-            return DataPoint(date: workout.date, value: value)
-        }
-        
-        // Фильтрация по времени
-        if selectedTimeRange == .all { return allData }
-        
-        let calendar = Calendar.current
-        let days: Int
-        switch selectedTimeRange {
-        case .month: days = 30
-        case .threeMonths: days = 90
-        case .sixMonths: days = 180
-        case .year: days = 365
-        case .all: days = 0
-        }
-        
-        guard let cutoff = calendar.date(byAdding: .day, value: -days, to: Date()) else { return allData }
-        return allData.filter { $0.date >= cutoff }
-    }
-    
-    /// Значение для линии метрики (Average / Max)
-    var metricValue: Double? {
-        let values = graphData.map { $0.value }
-        guard !values.isEmpty else { return nil }
-        switch selectedMetric {
-        case .none: return nil
-        case .max: return values.max()
-        case .average: return values.reduce(0, +) / Double(values.count)
-        }
-    }
-    
-    /// Все тренировки, где встречалось это упражнение
-    var filteredWorkouts: [Workout] {
-        return allWorkouts.filter { workout in
-            findExerciseInWorkout(workout) != nil
-        }.sorted(by: { $0.date > $1.date })
-    }
-    
-    /// Тренд для текущего упражнения
-    var exerciseTrend: WorkoutViewModel.ExerciseTrend? {
-        let period: StatsView.Period
-        switch selectedTrendPeriod {
-        case .month:
-            period = .month
-        case .threeMonths:
-            // Для 3 месяцев используем кастомную логику
-            return getCustomTrendPeriod(months: 3)
-        case .year:
-            period = .year
-        }
-        let trends = viewModel.getExerciseTrends(period: period)
-        return trends.first { $0.exerciseName == exerciseName }
-    }
-    
-    /// Кастомный расчет тренда для периода в месяцах
-    private func getCustomTrendPeriod(months: Int) -> WorkoutViewModel.ExerciseTrend? {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // Текущий период
-        let currentStart = calendar.date(byAdding: .month, value: -months, to: now)!
-        let currentInterval = DateInterval(start: currentStart, end: now)
-        
-        // Предыдущий период
-        let previousEnd = currentStart
-        let previousStart = calendar.date(byAdding: .month, value: -months, to: previousEnd)!
-        let previousInterval = DateInterval(start: previousStart, end: previousEnd)
-        
-        let currentWorkouts = allWorkouts.filter { currentInterval.contains($0.date) }
-        let previousWorkouts = allWorkouts.filter { previousInterval.contains($0.date) }
-        
-        // Находим максимальный вес в каждом периоде для этого упражнения
-        var currentMax: Double = 0
-        var previousMax: Double = 0
-        
-        for workout in currentWorkouts {
-            if let exercise = findExerciseInWorkout(workout), exercise.type == .strength {
-                let maxWeightKg = exercise.setsList
-                    .filter { $0.isCompleted && $0.type != .warmup }
-                    .compactMap { $0.weight }
-                    .max() ?? 0
-                let maxWeight = unitsManager.convertFromKilograms(maxWeightKg)
-                if maxWeight > currentMax {
-                    currentMax = maxWeight
-                }
-            }
-        }
-        
-        for workout in previousWorkouts {
-            if let exercise = findExerciseInWorkout(workout), exercise.type == .strength {
-                let maxWeightKg = exercise.setsList
-                    .filter { $0.isCompleted && $0.type != .warmup }
-                    .compactMap { $0.weight }
-                    .max() ?? 0
-                let maxWeight = unitsManager.convertFromKilograms(maxWeightKg)
-                if maxWeight > previousMax {
-                    previousMax = maxWeight
-                }
-            }
-        }
-        
-        guard currentMax > 0 || previousMax > 0 else { return nil }
-        
-        let change: Double
-        let direction: WorkoutViewModel.TrendDirection
-        
-        if previousMax == 0 {
-            change = 100.0
-            direction = .growing
-        } else if currentMax == 0 {
-            change = -100.0
-            direction = .declining
-        } else {
-            change = ((currentMax - previousMax) / previousMax) * 100.0
-            if abs(change) < 2.0 {
-                direction = .stable
-            } else {
-                direction = change > 0 ? .growing : .declining
-            }
-        }
-        
-        // Возвращаем значения в кг для внутреннего использования
-        return WorkoutViewModel.ExerciseTrend(
-            exerciseName: exerciseName,
-            trend: direction,
-            changePercentage: change,
-            currentValue: unitsManager.convertToKilograms(currentMax),
-            previousValue: unitsManager.convertToKilograms(previousMax),
-            period: "\(months)M"
-        )
-    }
-    
-    /// Прогноз для текущего упражнения
-    var exerciseForecast: WorkoutViewModel.ProgressForecast? {
-        let forecasts = viewModel.getProgressForecast(daysAhead: 30)
-        return forecasts.first { $0.exerciseName == exerciseName }
     }
     
     // MARK: - Helpers
@@ -741,7 +837,7 @@ struct ExerciseHistoryView: View {
     
     /// Получить описание техники упражнения
     func getTechniqueDescription() -> String {
-        switch exerciseCategory {
+        switch safeCategory {
         case .squat:
             return NSLocalizedString("Stand with your feet shoulder-width apart. Lower your body by bending your knees and pushing your hips back, as if sitting into a chair. Keep your chest up and core engaged. Lower until your thighs are parallel to the ground, then push through your heels to return to the starting position.", comment: "")
         case .press:
@@ -759,7 +855,7 @@ struct ExerciseHistoryView: View {
     
     /// Получить советы по технике
     func getTechniqueTips() -> [String] {
-        switch exerciseCategory {
+        switch safeCategory {
         case .squat:
             return [
                 NSLocalizedString("Keep your knees in line with your toes, never let them cave inward", comment: ""),
@@ -793,17 +889,6 @@ struct ExerciseHistoryView: View {
                 NSLocalizedString("If you feel sharp pain, stop immediately and consult a professional", comment: "")
             ]
         }
-    }
-    
-    /// Получить группу мышц
-    func getMuscleGroup() -> String? {
-        // Попытка найти группу мышц из истории тренировок
-        for workout in allWorkouts {
-            if let ex = findExerciseInWorkout(workout) {
-                return ex.muscleGroup
-            }
-        }
-        return nil
     }
     
     // MARK: - Exercise Trends & Forecast Views

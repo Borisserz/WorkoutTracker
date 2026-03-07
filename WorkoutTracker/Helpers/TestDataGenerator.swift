@@ -4,18 +4,11 @@
 //
 
 import Foundation
+import SwiftData
 
 class TestDataGenerator {
     
     // MARK: - Configuration
-    
-    private static let workoutsPerWeek = 3
-    private static let yearsToGenerate = 2
-    private static let weeksInYear = 52
-    private static let totalWorkouts = workoutsPerWeek * yearsToGenerate * weeksInYear // 312 тренировок
-    
-    // Группы мышц для чередования
-    private static let muscleGroups = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio"]
     
     // Каталог упражнений по группам мышц
     private static let exerciseCatalog: [String: [String]] = Exercise.catalog
@@ -23,544 +16,343 @@ class TestDataGenerator {
     // Иконки для разных типов тренировок
     private static let workoutIcons = [
         "img_chest", "img_chest2", "img_back", "img_back2",
-        "img_legs", "img_legs2", "img_arms", "img_default", "figure.run"
+        "img_legs", "img_legs2", "img_arms", "img_shoulders", "img_default", "figure.run"
     ]
     
-    // MARK: - Main Generation Method
+    // MARK: - Main Generation Methods
     
-    /// Генерирует тестовые данные за 2 года и сохраняет их
-    /// - Parameter startDate: Дата начала генерации (по умолчанию 2 года назад)
-    static func generateAndSaveTestData(startDate: Date? = nil) {
-        let start = startDate ?? Calendar.current.date(byAdding: .year, value: -yearsToGenerate, to: Date()) ?? Date()
+    /// Генерирует разнообразные тренировки и взвешивания с 1 января 2021 по 1 марта 2026 года.
+    static func generateAllData(container: ModelContainer) async {
+        await clearAllDataAsync(container: container)
         
-        var allWorkouts: [Workout] = []
-        var currentDate = start
-        
-        // Генерируем тренировки на протяжении 2 лет
-        var workoutNumber = 0
-        
-        while workoutNumber < totalWorkouts {
-            // 3 тренировки в неделю (например: понедельник, среда, пятница)
-            let dayOffset = (workoutNumber % workoutsPerWeek) * 2 // 0, 2, 4 (пн, ср, пт)
-            let weekOffset = workoutNumber / workoutsPerWeek
-            let daysToAdd = weekOffset * 7 + dayOffset
-            
-            if let workoutDate = Calendar.current.date(byAdding: .day, value: daysToAdd, to: start) {
-                // Проверяем, что не вышли за пределы сегодня
-                if workoutDate > Date() {
-                    break
-                }
-                
-                let workout = generateWorkout(for: workoutDate, workoutIndex: workoutNumber)
-                allWorkouts.append(workout)
-                currentDate = workoutDate
-            }
-            
-            workoutNumber += 1
-        }
-        
-        // Сохраняем данные
-        DataManager.shared.saveWorkouts(allWorkouts)
-    }
-    
-    /// Генерирует тестовые данные за 2026 год (будущий год)
-    static func generate2026TestData() {
-        // Создаем дату начала 2026 года
         var components = DateComponents()
-        components.year = 2026
-        components.month = 1
-        components.day = 1
-        guard let start2026 = Calendar.current.date(from: components) else {
-            return
+        components.year = 2021; components.month = 1; components.day = 1
+        guard let startDate = Calendar.current.date(from: components) else { return }
+        
+        components.year = 2026; components.month = 3; components.day = 1
+        guard let endDate = Calendar.current.date(from: components) else { return }
+        
+        await generateWorkouts(from: startDate, to: endDate, container: container)
+        await generateWeights(from: startDate, to: endDate)
+    }
+    
+    /// Удаляет все тренировки и историю веса
+    static func clearAllDataAsync(container: ModelContainer) async {
+        let context = ModelContext(container)
+        do {
+            try context.delete(model: Workout.self)
+            try context.save()
+        } catch {
+            print("Ошибка массового удаления: \(error)")
+            if let workouts = try? context.fetch(FetchDescriptor<Workout>()) {
+                for workout in workouts { context.delete(workout) }
+                try? context.save()
+            }
         }
         
-        // Генерируем тренировки на весь 2026 год
-        var allWorkouts: [Workout] = []
-        let workoutsFor2026 = workoutsPerWeek * weeksInYear // 156 тренировок за год
-        
+        await MainActor.run {
+            WeightTrackingManager.shared.weightHistory.removeAll()
+        }
+    }
+    
+    // MARK: - Workouts Generation
+    
+    private static func generateWorkouts(from startDate: Date, to endDate: Date, container: ModelContainer) async {
+        var currentDate = startDate
         var workoutNumber = 0
-        var baseWorkoutIndex = totalWorkouts // Продолжаем нумерацию с конца прошлых данных
+        let calendar = Calendar.current
         
-        while workoutNumber < workoutsFor2026 {
-            // 3 тренировки в неделю (например: понедельник, среда, пятница)
-            let dayOffset = (workoutNumber % workoutsPerWeek) * 2 // 0, 2, 4 (пн, ср, пт)
-            let weekOffset = workoutNumber / workoutsPerWeek
-            let daysToAdd = weekOffset * 7 + dayOffset
+        var context = ModelContext(container)
+        
+        while currentDate <= endDate {
+            // Тренируемся 3-4 раза в неделю (Пн, Ср, Пт + иногда Сб)
+            let weekday = calendar.component(.weekday, from: currentDate)
+            let isWorkoutDay = (weekday == 2 || weekday == 4 || weekday == 6 || (weekday == 7 && workoutNumber % 4 == 0))
             
-            if let workoutDate = Calendar.current.date(byAdding: .day, value: daysToAdd, to: start2026) {
-                // Проверяем, что не вышли за пределы 2026 года
-                let calendar = Calendar.current
-                if calendar.component(.year, from: workoutDate) > 2026 {
-                    break
+            if isWorkoutDay {
+                let workout = generateWorkout(for: currentDate, workoutIndex: workoutNumber)
+                context.insert(workout)
+                workoutNumber += 1
+                
+                // Периодически сохраняем и пересоздаем контекст, чтобы очистить память от тысяч объектов
+                if workoutNumber % 50 == 0 {
+                    try? context.save()
+                    context = ModelContext(container)
+                    await Task.yield()
                 }
-                
-                let workout = generateWorkout(for: workoutDate, workoutIndex: baseWorkoutIndex + workoutNumber)
-                allWorkouts.append(workout)
             }
             
-            workoutNumber += 1
+            if let nextDate = calendar.date(byAdding: .day, value: 1, to: currentDate) {
+                currentDate = nextDate
+            } else { break }
         }
         
-        // Используем семафор для синхронизации асинхронной загрузки
-        let semaphore = DispatchSemaphore(value: 0)
-        var existingWorkouts: [Workout] = []
-        
-        // Загружаем существующие тренировки
-        DataManager.shared.loadWorkouts { result in
-            switch result {
-            case .success(let workouts):
-                existingWorkouts = workouts
-            case .failure:
-                existingWorkouts = []
-            }
-            semaphore.signal()
-        }
-        
-        // Ждем завершения загрузки
-        semaphore.wait()
-        
-        // Объединяем существующие и новые тренировки
-        var combinedWorkouts = existingWorkouts
-        combinedWorkouts.append(contentsOf: allWorkouts)
-        // Сортируем по дате
-        combinedWorkouts.sort { $0.date < $1.date }
-        
-        // Сохраняем объединенные данные
-        DataManager.shared.saveWorkouts(combinedWorkouts)
+        try? context.save()
+        print("✅ Сгенерировано \(workoutNumber) разнообразных тренировок.")
     }
     
-    /// Генерирует тестовые данные веса для графика
-    /// Генерирует данные за последние 2 года с реалистичными колебаниями
-    static func generateWeightTestData() {
-        let weightManager = WeightTrackingManager.shared
-        
-        // Начальный вес (в кг)
-        let startWeight = 75.0
-        
-        // Генерируем данные за последние 2 года (730 дней)
-        let daysToGenerate = 730
-        var currentDate = Calendar.current.date(byAdding: .day, value: -daysToGenerate, to: Date()) ?? Date()
-        
-        var weightEntries: [WeightEntry] = []
-        var currentWeight = startWeight
-        
-        // Генерируем записи примерно раз в 3-7 дней (не каждый день)
+    // MARK: - Weights Generation
+    
+    private static func generateWeights(from startDate: Date, to endDate: Date) async {
+        let startWeight = 95.0, targetWeight = 78.0
+        let totalDays = Calendar.current.dateComponents([.day], from: startDate, to: endDate).day ?? 1
+        var currentDate = startDate
         var dayOffset = 0
+        var weightEntries: [WeightEntry] = []
         
-        while dayOffset < daysToGenerate {
-            if let entryDate = Calendar.current.date(byAdding: .day, value: dayOffset, to: currentDate) {
-                // Добавляем реалистичные колебания веса
-                // Общий тренд: медленное снижение веса (похудение)
-                let progressFactor = Double(dayOffset) / Double(daysToGenerate) // 0.0 до 1.0
-                let targetWeight = startWeight - 5.0 * progressFactor // Потеря 5 кг за 2 года
-                
-                // Ежедневные колебания: ±0.3 кг
-                let dailyVariation = Double.random(in: -0.3...0.3)
-                
-                // Недельные колебания: ±0.5 кг
-                let weeklyVariation = sin(Double(dayOffset) / 7.0 * 2 * .pi) * 0.5
-                
-                // Случайные скачки: иногда ±1 кг
-                let randomSpike = Bool.random() && Int.random(in: 1...20) == 1 ? Double.random(in: -1.0...1.0) : 0.0
-                
-                currentWeight = targetWeight + dailyVariation + weeklyVariation + randomSpike
-                
-                // Ограничиваем разумными значениями
-                currentWeight = max(65.0, min(85.0, currentWeight))
-                
-                weightEntries.append(WeightEntry(date: entryDate, weight: currentWeight))
-            }
+        while currentDate <= endDate {
+            // Волнообразный прогресс с плато
+            let rawProgress = Double(dayOffset) / Double(max(totalDays, 1))
+            let plateauEffect = sin(rawProgress * .pi * 4) * 0.1 // Замедления и ускорения прогресса
+            let progressFactor = min(1.0, max(0.0, rawProgress + plateauEffect))
             
-            // Следующая запись через 3-7 дней
-            dayOffset += Int.random(in: 3...7)
+            let expectedWeight = startWeight - (startWeight - targetWeight) * progressFactor
+            let dailyVariation = Double.random(in: -0.4...0.4)
+            let weeklyVariation = sin(Double(dayOffset) / 7.0 * 2 * .pi) * 0.6
+            
+            let currentWeight = max(60.0, min(120.0, expectedWeight + dailyVariation + weeklyVariation))
+            weightEntries.append(WeightEntry(date: currentDate, weight: currentWeight))
+            
+            let jump = Int.random(in: 2...5) // Взвешиваемся раз в 2-5 дней
+            dayOffset += jump
+            if let nextDate = Calendar.current.date(byAdding: .day, value: jump, to: currentDate) {
+                currentDate = nextDate
+            } else { break }
         }
         
-        // Добавляем записи в менеджер веса
-        for entry in weightEntries {
-            weightManager.addWeightEntry(weight: entry.weight, date: entry.date)
+        await MainActor.run {
+            WeightTrackingManager.shared.weightHistory = weightEntries
         }
+        print("✅ Сгенерировано \(weightEntries.count) записей о весе.")
     }
     
-    // MARK: - Workout Generation
+    // MARK: - Workout Generation Details
     
-    /// Генерирует одну тренировку для указанной даты
-    private static func generateWorkout(for date: Date, workoutIndex: Int) -> Workout {
-        // Определяем тип тренировки (Push, Pull, Legs, Full Body, Cardio)
-        let workoutType = determineWorkoutType(index: workoutIndex)
-        
-        // Генерируем упражнения в зависимости от типа тренировки
-        let exercises = generateExercises(for: workoutType, workoutIndex: workoutIndex, date: date)
-        
-        // Время тренировки: 45-90 минут
-        let duration = Int.random(in: 45...90) * 60 // в секундах
-        let endTime = date.addingTimeInterval(TimeInterval(duration))
-        
-        // Выбираем иконку
-        let icon = workoutIcons[workoutIndex % workoutIcons.count]
-        
-        return Workout(
-            title: workoutType.title,
-            date: date,
-            endTime: endTime,
-            icon: icon,
-            exercises: exercises
-        )
-    }
-    
-    // MARK: - Workout Type Logic
-    
-    private enum WorkoutType {
-        case push      // Грудь, Плечи, Трицепс
-        case pull      // Спина, Бицепс
-        case legs      // Ноги
-        case fullBody  // Полное тело
-        case cardio    // Кардио
-        
-        var title: String {
-            switch self {
-            case .push: return "Push Day"
-            case .pull: return "Pull Day"
-            case .legs: return "Legs Day"
-            case .fullBody: return "Full Body"
-            case .cardio: return "Cardio Session"
-            }
-        }
+    private enum WorkoutType: String, CaseIterable {
+        case push = "Push Day"
+        case pull = "Pull Day"
+        case legs = "Legs Day"
+        case upper = "Upper Body"
+        case lower = "Lower Body"
+        case fullBody = "Full Body"
+        case chestAndTri = "Chest & Triceps"
+        case backAndBi = "Back & Biceps"
+        case shouldersArms = "Shoulders & Arms"
+        case cardio = "Cardio & Core"
+        case hiit = "HIIT Blast"
     }
     
     private static func determineWorkoutType(index: Int) -> WorkoutType {
-        // Каждую 10-ю тренировку делаем Full Body или Cardio
-        if index % 10 == 0 {
-            return index % 20 == 0 ? .cardio : .fullBody
-        }
-        
-        // Чередуем типы тренировок: Push, Pull, Legs
-        let cycle = index % 3
-        switch cycle {
-        case 0: return .push
-        case 1: return .pull
-        case 2: return .legs
-        default: return .fullBody
-        }
+        // Большой 11-дневный цикл для максимального разнообразия
+        let cycle: [WorkoutType] = [
+            .push, .pull, .legs,
+            .upper, .lower, .cardio,
+            .chestAndTri, .backAndBi, .shouldersArms,
+            .fullBody, .hiit
+        ]
+        return cycle[index % cycle.count]
     }
     
-    // MARK: - Exercise Generation
+    private static func generateWorkout(for date: Date, workoutIndex: Int) -> Workout {
+        let type = determineWorkoutType(index: workoutIndex)
+        var exercises = generateExercises(for: type, workoutIndex: workoutIndex)
+        
+        // С вероятностью 25% объединяем 2 подходящих упражнения в Суперсет
+        if Bool.random() && Bool.random() && exercises.count >= 3 {
+            exercises = createRandomSuperset(from: exercises)
+        }
+        
+        let duration = Int.random(in: 40...100) * 60
+        let endTime = date.addingTimeInterval(TimeInterval(duration))
+        let icon = workoutIcons[workoutIndex % workoutIcons.count]
+        
+        return Workout(title: type.rawValue, date: date, endTime: endTime, icon: icon, exercises: exercises)
+    }
     
-    /// Генерирует список упражнений для тренировки
-    private static func generateExercises(for type: WorkoutType, workoutIndex: Int, date: Date) -> [Exercise] {
-        var exercises: [Exercise] = []
+    // MARK: - Exercise Composers
+    
+    private static func generateExercises(for type: WorkoutType, workoutIndex: Int) -> [Exercise] {
+        var ex: [Exercise] = []
         
         switch type {
         case .push:
-            exercises.append(contentsOf: generatePushExercises(workoutIndex: workoutIndex, date: date))
-            
+            ex += fetchStrength(group: "Chest", count: Int.random(in: 2...3), index: workoutIndex)
+            ex += fetchStrength(group: "Shoulders", count: 2, index: workoutIndex)
+            ex += fetchStrength(group: "Arms", count: 1, subFilter: "Tricep", index: workoutIndex)
         case .pull:
-            exercises.append(contentsOf: generatePullExercises(workoutIndex: workoutIndex, date: date))
-            
+            ex += fetchStrength(group: "Back", count: Int.random(in: 3...4), index: workoutIndex)
+            ex += fetchStrength(group: "Arms", count: 2, subFilter: "Bicep", index: workoutIndex)
         case .legs:
-            exercises.append(contentsOf: generateLegsExercises(workoutIndex: workoutIndex, date: date))
-            
+            ex += fetchStrength(group: "Legs", count: Int.random(in: 4...5), index: workoutIndex)
+            ex += fetchDuration(group: "Core", count: 1, index: workoutIndex)
+        case .upper:
+            ex += fetchStrength(group: "Chest", count: 2, index: workoutIndex)
+            ex += fetchStrength(group: "Back", count: 2, index: workoutIndex)
+            ex += fetchStrength(group: "Shoulders", count: 1, index: workoutIndex)
+            ex += fetchStrength(group: "Arms", count: 1, index: workoutIndex)
+        case .lower:
+            ex += fetchStrength(group: "Legs", count: 4, index: workoutIndex)
+            ex += fetchDuration(group: "Core", count: 2, index: workoutIndex)
         case .fullBody:
-            exercises.append(contentsOf: generateFullBodyExercises(workoutIndex: workoutIndex, date: date))
-            
+            for g in ["Legs", "Back", "Chest", "Shoulders", "Arms"] {
+                ex += fetchStrength(group: g, count: 1, index: workoutIndex)
+            }
+        case .chestAndTri:
+            ex += fetchStrength(group: "Chest", count: 4, index: workoutIndex)
+            ex += fetchStrength(group: "Arms", count: 3, subFilter: "Tricep", index: workoutIndex)
+        case .backAndBi:
+            ex += fetchStrength(group: "Back", count: 4, index: workoutIndex)
+            ex += fetchStrength(group: "Arms", count: 3, subFilter: "Bicep", index: workoutIndex)
+        case .shouldersArms:
+            ex += fetchStrength(group: "Shoulders", count: 3, index: workoutIndex)
+            ex += fetchStrength(group: "Arms", count: 2, subFilter: "Bicep", index: workoutIndex)
+            ex += fetchStrength(group: "Arms", count: 2, subFilter: "Tricep", index: workoutIndex)
         case .cardio:
-            exercises.append(contentsOf: generateCardioExercises(workoutIndex: workoutIndex, date: date))
+            ex += fetchCardio(count: 2, index: workoutIndex)
+            ex += fetchDuration(group: "Core", count: 2, index: workoutIndex)
+        case .hiit:
+            ex += fetchCardio(count: 1, index: workoutIndex)
+            ex += fetchDuration(group: "Core", count: 1, index: workoutIndex)
+            ex += fetchDuration(group: "Legs", count: 1, index: workoutIndex) // e.g. Box Jumps represented as duration
         }
         
-        return exercises
+        return ex
     }
     
-    // MARK: - Specific Exercise Generators
+    // MARK: - Fetchers & Builders
     
-    private static func generatePushExercises(workoutIndex: Int, date: Date) -> [Exercise] {
-        let chestExercises = exerciseCatalog["Chest"] ?? []
-        let shoulderExercises = exerciseCatalog["Shoulders"] ?? []
-        let armExercises = exerciseCatalog["Arms"] ?? []
-        
-        var exercises: [Exercise] = []
-        
-        // 2-3 упражнения на грудь
-        let chestCount = Int.random(in: 2...3)
-        for i in 0..<chestCount {
-            if let exerciseName = chestExercises.randomElement() {
-                exercises.append(createStrengthExercise(
-                    name: exerciseName,
-                    muscleGroup: "Chest",
-                    workoutIndex: workoutIndex,
-                    baseWeight: 60.0 + Double(workoutIndex) * 0.3,
-                    baseReps: 8 + (workoutIndex % 5)
-                ))
-            }
+    private static func fetchStrength(group: String, count: Int, subFilter: String? = nil, index: Int) -> [Exercise] {
+        var pool = exerciseCatalog[group] ?? []
+        if let filter = subFilter {
+            let filtered = pool.filter { $0.localizedCaseInsensitiveContains(filter) || $0.localizedCaseInsensitiveContains(filter.replacingOccurrences(of: "p", with: "ps")) || $0.localizedCaseInsensitiveContains("extension") }
+            if !filtered.isEmpty { pool = filtered }
         }
         
-        // 2 упражнения на плечи
-        for i in 0..<2 {
-            if let exerciseName = shoulderExercises.randomElement() {
-                exercises.append(createStrengthExercise(
-                    name: exerciseName,
-                    muscleGroup: "Shoulders",
-                    workoutIndex: workoutIndex,
-                    baseWeight: 25.0 + Double(workoutIndex) * 0.2,
-                    baseReps: 10 + (workoutIndex % 5)
-                ))
-            }
+        var result: [Exercise] = []
+        let shuffled = pool.shuffled()
+        for i in 0..<min(count, shuffled.count) {
+            result.append(buildStrength(name: shuffled[i], group: group, index: index))
         }
-        
-        // 2 упражнения на трицепс (фильтруем упражнения на трицепс)
-        let tricepExercises = armExercises.filter { $0.contains("Triceps") || $0.contains("triceps") || $0.contains("Extension") || $0.contains("Dips") || $0.contains("Pushdown") }
-        for i in 0..<min(2, tricepExercises.count) {
-            if let exerciseName = tricepExercises.randomElement() {
-                exercises.append(createStrengthExercise(
-                    name: exerciseName,
-                    muscleGroup: "Arms",
-                    workoutIndex: workoutIndex,
-                    baseWeight: 20.0 + Double(workoutIndex) * 0.15,
-                    baseReps: 12 + (workoutIndex % 5)
-                ))
-            }
-        }
-        
-        return exercises
+        return result
     }
     
-    private static func generatePullExercises(workoutIndex: Int, date: Date) -> [Exercise] {
-        let backExercises = exerciseCatalog["Back"] ?? []
-        let armExercises = exerciseCatalog["Arms"] ?? []
-        
-        var exercises: [Exercise] = []
-        
-        // 3-4 упражнения на спину
-        let backCount = Int.random(in: 3...4)
-        for i in 0..<backCount {
-            if let exerciseName = backExercises.randomElement() {
-                exercises.append(createStrengthExercise(
-                    name: exerciseName,
-                    muscleGroup: "Back",
-                    workoutIndex: workoutIndex,
-                    baseWeight: 70.0 + Double(workoutIndex) * 0.4,
-                    baseReps: 8 + (workoutIndex % 5)
-                ))
-            }
+    private static func fetchCardio(count: Int, index: Int) -> [Exercise] {
+        let pool = (exerciseCatalog["Cardio"] ?? []).shuffled()
+        var result: [Exercise] = []
+        for i in 0..<min(count, pool.count) {
+            result.append(buildCardio(name: pool[i], index: index))
         }
-        
-        // 2 упражнения на бицепс
-        let bicepExercises = armExercises.filter { $0.contains("Curl") || $0.contains("Bicep") || $0.contains("Biceps") }
-        for i in 0..<min(2, bicepExercises.count) {
-            if let exerciseName = bicepExercises.randomElement() {
-                exercises.append(createStrengthExercise(
-                    name: exerciseName,
-                    muscleGroup: "Arms",
-                    workoutIndex: workoutIndex,
-                    baseWeight: 15.0 + Double(workoutIndex) * 0.1,
-                    baseReps: 10 + (workoutIndex % 5)
-                ))
-            }
-        }
-        
-        return exercises
+        return result
     }
     
-    private static func generateLegsExercises(workoutIndex: Int, date: Date) -> [Exercise] {
-        let legExercises = exerciseCatalog["Legs"] ?? []
-        
-        var exercises: [Exercise] = []
-        
-        // 4-6 упражнений на ноги
-        let legCount = Int.random(in: 4...6)
-        for i in 0..<legCount {
-            if let exerciseName = legExercises.randomElement() {
-                exercises.append(createStrengthExercise(
-                    name: exerciseName,
-                    muscleGroup: "Legs",
-                    workoutIndex: workoutIndex,
-                    baseWeight: 80.0 + Double(workoutIndex) * 0.5,
-                    baseReps: 10 + (workoutIndex % 5)
-                ))
-            }
+    private static func fetchDuration(group: String, count: Int, index: Int) -> [Exercise] {
+        let pool = (exerciseCatalog[group] ?? []).shuffled()
+        var result: [Exercise] = []
+        for i in 0..<min(count, pool.count) {
+            result.append(buildDuration(name: pool[i], group: group, index: index))
         }
-        
-        return exercises
+        return result
     }
     
-    private static func generateFullBodyExercises(workoutIndex: Int, date: Date) -> [Exercise] {
-        var exercises: [Exercise] = []
-        
-        // По одному упражнению на каждую группу мышц
-        let groups = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
-        for group in groups {
-            if let groupExercises = exerciseCatalog[group], !groupExercises.isEmpty {
-                if let exerciseName = groupExercises.randomElement() {
-                    let exerciseType: ExerciseType = group == "Core" ? (Bool.random() ? .duration : .strength) : .strength
-                    
-                    if exerciseType == .duration {
-                        exercises.append(createDurationExercise(
-                            name: exerciseName,
-                            muscleGroup: group,
-                            workoutIndex: workoutIndex
-                        ))
-                    } else {
-                        exercises.append(createStrengthExercise(
-                            name: exerciseName,
-                            muscleGroup: group,
-                            workoutIndex: workoutIndex,
-                            baseWeight: 50.0 + Double(workoutIndex) * 0.25,
-                            baseReps: 10 + (workoutIndex % 5)
-                        ))
-                    }
-                }
-            }
+    // MARK: - Logic & Progression
+    
+    private static func buildStrength(name: String, group: String, index: Int) -> Exercise {
+        // Базовый вес в зависимости от группы мышц
+        let baseGroupWeight: Double
+        switch group {
+        case "Legs": baseGroupWeight = 70.0
+        case "Back": baseGroupWeight = 55.0
+        case "Chest": baseGroupWeight = 50.0
+        case "Shoulders": baseGroupWeight = 25.0
+        case "Arms": baseGroupWeight = 15.0
+        default: baseGroupWeight = 20.0
         }
         
-        return exercises
-    }
-    
-    private static func generateCardioExercises(workoutIndex: Int, date: Date) -> [Exercise] {
-        let cardioExercises = exerciseCatalog["Cardio"] ?? []
+        // Корректировка для тяжелых базовых vs легких изоляционных упражнений
+        var actualWeight = baseGroupWeight
+        var actualReps = 10
+        let n = name.lowercased()
         
-        var exercises: [Exercise] = []
-        
-        // 2-3 кардио упражнения
-        let cardioCount = Int.random(in: 2...3)
-        for i in 0..<cardioCount {
-            if let exerciseName = cardioExercises.randomElement() {
-                // Чередуем типы кардио
-                if Bool.random() {
-                    exercises.append(createCardioExercise(
-                        name: exerciseName,
-                        workoutIndex: workoutIndex
-                    ))
-                } else {
-                    exercises.append(createDurationExercise(
-                        name: exerciseName,
-                        muscleGroup: "Cardio",
-                        workoutIndex: workoutIndex
-                    ))
-                }
-            }
+        if n.contains("squat") || n.contains("deadlift") || n.contains("press") {
+            actualWeight *= 1.4 // Базовые упражнения тяжелее
+            actualReps = Int.random(in: 5...8)
+        } else if n.contains("curl") || n.contains("raise") || n.contains("fly") || n.contains("extension") {
+            actualWeight *= 0.6 // Изоляция легче
+            actualReps = Int.random(in: 10...15)
         }
         
-        return exercises
-    }
-    
-    // MARK: - Exercise Creation Helpers
-    
-    /// Создает силовое упражнение с прогрессией
-    private static func createStrengthExercise(
-        name: String,
-        muscleGroup: String,
-        workoutIndex: Int,
-        baseWeight: Double,
-        baseReps: Int
-    ) -> Exercise {
-        // Прогрессия: вес постепенно увеличивается, повторы могут варьироваться
-        let progressFactor = 1.0 + Double(workoutIndex) / 500.0 // Медленная прогрессия
-        let weight = baseWeight * progressFactor + Double.random(in: -5...5)
-        let reps = baseReps + Int.random(in: -2...2)
-        let sets = Int.random(in: 3...5)
+        // Прогрессия (растянута на 5 лет, с волнами усталости)
+        let cappedIndex = min(Double(index), 600.0)
+        let fatigueWave = sin(cappedIndex / 15.0) * 0.1 // Волна ±10%
+        let progressFactor = 1.0 + (cappedIndex / 600.0) + fatigueWave
         
-        // Создаем сеты с небольшими вариациями
+        let finalWeight = actualWeight * progressFactor + Double.random(in: -2...4)
+        let setsCount = Int.random(in: 3...5)
         var setsList: [WorkoutSet] = []
-        for i in 1...sets {
-            // Первый сет может быть разминкой с меньшим весом
-            let isWarmup = i == 1 && Bool.random() && sets > 3
-            let setWeight = isWarmup ? weight * 0.7 : weight + Double.random(in: -2...2)
-            let setReps = isWarmup ? reps + 2 : reps + Int.random(in: -1...1)
+        
+        for i in 1...setsCount {
+            let isWarmup = (i == 1 && setsCount > 3)
+            let isFailure = (i == setsCount && Bool.random())
             
-            // Последний сет может быть до отказа
-            let isFailure = i == sets && Bool.random() && !isWarmup
             let setType: SetType = isWarmup ? .warmup : (isFailure ? .failure : .normal)
+            let setW = isWarmup ? finalWeight * 0.6 : finalWeight + Double.random(in: -2...2)
+            let setR = isWarmup ? actualReps + 4 : actualReps + Int.random(in: -2...1)
             
-            setsList.append(WorkoutSet(
-                index: i,
-                weight: max(0, setWeight),
-                reps: max(1, setReps),
-                isCompleted: true,
-                type: setType
-            ))
+            setsList.append(WorkoutSet(index: i, weight: max(2.5, setW), reps: max(1, setR), isCompleted: true, type: setType))
         }
         
-        // Effort: 6-10 с небольшой вариацией
-        let effort = 6 + (workoutIndex % 5)
+        // Усилие от 6 до 10 в зависимости от дня
+        let effort = Int.random(in: 6...10)
         
-        return Exercise(
-            name: name,
-            muscleGroup: muscleGroup,
+        return Exercise(name: name, muscleGroup: group, type: .strength, sets: setsCount, reps: actualReps, weight: finalWeight, effort: effort, setsList: setsList, isCompleted: true)
+    }
+    
+    private static func buildCardio(name: String, index: Int) -> Exercise {
+        let distance = 3.0 + (Double(index) / 200.0) + Double.random(in: -1...2)
+        let timeMinutes = Int(15 + (distance * 5) + Double.random(in: -5...5))
+        
+        let set = WorkoutSet(index: 1, distance: max(1.0, distance), time: timeMinutes * 60, isCompleted: true, type: .normal)
+        return Exercise(name: name, muscleGroup: "Cardio", type: .cardio, sets: 1, reps: 0, weight: 0, distance: max(1.0, distance), timeSeconds: timeMinutes * 60, effort: Int.random(in: 5...9), setsList: [set], isCompleted: true)
+    }
+    
+    private static func buildDuration(name: String, group: String, index: Int) -> Exercise {
+        let time = 45 + Int.random(in: -15...45)
+        let setsCount = Int.random(in: 2...4)
+        var setsList: [WorkoutSet] = []
+        
+        for i in 1...setsCount {
+            setsList.append(WorkoutSet(index: i, time: time + Int.random(in: -5...10), isCompleted: true, type: .normal))
+        }
+        
+        return Exercise(name: name, muscleGroup: group, type: .duration, sets: setsCount, reps: 0, weight: 0, timeSeconds: time, effort: Int.random(in: 6...9), setsList: setsList, isCompleted: true)
+    }
+    
+    // MARK: - Superset Helper
+    
+    private static func createRandomSuperset(from exercises: [Exercise]) -> [Exercise] {
+        guard exercises.count >= 2 else { return exercises }
+        var result = exercises
+        
+        // Берем случайные соседние индексы
+        let idx = Int.random(in: 0..<(result.count - 1))
+        let ex1 = result[idx]
+        let ex2 = result[idx + 1]
+        
+        // Создаем Суперсет
+        let superset = Exercise(
+            name: "Superset",
+            muscleGroup: "Multiple",
             type: .strength,
-            sets: sets,
-            reps: reps,
-            weight: weight,
-            effort: effort,
-            setsList: setsList,
+            effort: max(ex1.effort, ex2.effort),
+            subExercises: [ex1, ex2],
             isCompleted: true
         )
-    }
-    
-    /// Создает кардио упражнение
-    private static func createCardioExercise(name: String, workoutIndex: Int) -> Exercise {
-        // Дистанция: 3-10 км с прогрессией
-        let baseDistance = 5.0 + Double(workoutIndex) / 100.0
-        let distance = baseDistance + Double.random(in: -2...2)
-        let timeMinutes = Int(20 + workoutIndex / 20 + Int.random(in: -5...10))
-        let sets = Int.random(in: 1...3)
         
-        var setsList: [WorkoutSet] = []
-        for i in 1...sets {
-            setsList.append(WorkoutSet(
-                index: i,
-                distance: max(1.0, distance / Double(sets) + Double.random(in: -0.5...0.5)),
-                time: timeMinutes * 60 / sets + Int.random(in: -60...60),
-                isCompleted: true,
-                type: .normal
-            ))
-        }
+        result.remove(at: idx + 1)
+        result.remove(at: idx)
+        result.insert(superset, at: idx)
         
-        let effort = 5 + (workoutIndex % 6)
-        
-        return Exercise(
-            name: name,
-            muscleGroup: "Cardio",
-            type: .cardio,
-            sets: sets,
-            reps: 0,
-            weight: 0,
-            distance: distance,
-            timeSeconds: timeMinutes * 60,
-            effort: effort,
-            setsList: setsList,
-            isCompleted: true
-        )
-    }
-    
-    /// Создает упражнение на время (duration)
-    private static func createDurationExercise(name: String, muscleGroup: String, workoutIndex: Int) -> Exercise {
-        // Время: 30-120 секунд с прогрессией
-        let baseTime = 60 + workoutIndex / 10
-        let time = baseTime + Int.random(in: -10...30)
-        let sets = Int.random(in: 2...4)
-        
-        var setsList: [WorkoutSet] = []
-        for i in 1...sets {
-            setsList.append(WorkoutSet(
-                index: i,
-                time: max(20, time + Int.random(in: -5...10)),
-                isCompleted: true,
-                type: .normal
-            ))
-        }
-        
-        let effort = 5 + (workoutIndex % 5)
-        
-        return Exercise(
-            name: name,
-            muscleGroup: muscleGroup,
-            type: .duration,
-            sets: sets,
-            reps: 0,
-            weight: 0,
-            timeSeconds: time,
-            effort: effort,
-            setsList: setsList,
-            isCompleted: true
-        )
+        return result
     }
 }
 

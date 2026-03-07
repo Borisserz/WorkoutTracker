@@ -7,10 +7,13 @@ internal import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext // ДОБАВЛЕНО: Достаем контекст БД
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
     @EnvironmentObject var tutorialManager: TutorialManager
+    
+    // Загружаем тренировки, чтобы кэшировать перфоманс и рекавери
+    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    
     @State private var selectedTab = 1 // Начинаем с вкладки тренировок (Workout)
 
     var body: some View {
@@ -37,9 +40,15 @@ struct ContentView: View {
                     .zIndex(100)
             }
         }
+        .onChange(of: workouts) { oldValue, newValue in
+            // Глобально обновляем кеши при изменении БД
+            viewModel.updatePerformanceCaches(workouts: newValue, oldWorkouts: oldValue)
+            viewModel.calculateRecovery(workouts: newValue)
+        }
         .onAppear {
-            // Передаем контекст БД в ViewModel при загрузке приложения
-            viewModel.setContext(modelContext)
+            // При первом запуске загружаем кеши
+            viewModel.updatePerformanceCaches(workouts: workouts)
+            viewModel.calculateRecovery(workouts: workouts)
         }
         .alert(item: $viewModel.currentError) { error in
             Alert(

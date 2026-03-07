@@ -6,6 +6,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 import Charts
 
 struct OverviewView: View {
@@ -21,6 +22,9 @@ struct OverviewView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject var viewModel: WorkoutViewModel
     
+    // Подписываемся на тренировки напрямую
+    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    
     // Навигация и модальные окна
     @State private var showAddWorkout = false
     @State private var showSettings = false
@@ -34,6 +38,11 @@ struct OverviewView: View {
     // Менеджер цветов
     @StateObject private var colorManager = MuscleColorManager.shared
     
+    // Кэшированные данные для оптимизации производительности
+    @State private var cachedMuscleData: [(muscle: String, count: Int)] = []
+    @State private var cachedTotalExercisesCount: Int = 0
+    @State private var cachedTopExercises: [(name: String, count: Int)] = []
+    
     // MARK: - Body
     
     var body: some View {
@@ -45,7 +54,7 @@ struct OverviewView: View {
                     VStack(spacing: 20) {
                         
                         // 1. ПУСТОЕ СОСТОЯНИЕ (БОЛЬШАЯ КНОПКА)
-                        if viewModel.workouts.isEmpty {
+                        if workouts.isEmpty {
                             VStack(spacing: 15) {
                                 Image(systemName: "figure.strengthtraining.traditional")
                                     .font(.system(size: 60))
@@ -93,12 +102,12 @@ struct OverviewView: View {
                         recoverySection
                         
                         // 3. График мышц (Скрываем если пусто)
-                        if !viewModel.workouts.isEmpty {
+                        if !workouts.isEmpty {
                             chartSection
                         }
                         
                         // 4. Топ упражнений
-                        if !viewModel.workouts.isEmpty {
+                        if !workouts.isEmpty {
                             topExercisesSection
                         }
                     }
@@ -107,7 +116,7 @@ struct OverviewView: View {
                 
                 // --- СЛОЙ 2: ФАНТОМНАЯ КНОПКА ДЛЯ ТУЛБАРА ---
                 // Показываем её ТОЛЬКО если есть тренировки
-                if !viewModel.workouts.isEmpty {
+                if !workouts.isEmpty {
                     Color.white.opacity(0.01) // Почти прозрачный
                         .frame(width: 50, height: 50)
                         .contentShape(Rectangle())
@@ -122,11 +131,15 @@ struct OverviewView: View {
                 }
             }
             .navigationTitle(LocalizedStringKey("Overview"))
-            
+            .onAppear {
+                updateDashboardData()
+            }
+            .onChange(of: workouts) { _, _ in
+                updateDashboardData()
+            }
             // --- НАВИГАЦИЯ ---
             .navigationDestination(isPresented: $navigateToNewWorkout) {
-                if let firstWorkout = viewModel.workouts.first {
-                    // ИЗМЕНЕНИЕ: Передаем ссылку на объект, а не Binding ($)
+                if let firstWorkout = workouts.first {
                     WorkoutDetailView(workout: firstWorkout)
                 }
             }
@@ -157,7 +170,6 @@ struct OverviewView: View {
                     .environmentObject(viewModel)
             }
             .sheet(isPresented: $showAddWorkout) {
-                // ИЗМЕНЕНИЕ: Убран Binding workouts: $viewModel.workouts
                 AddWorkoutView(onWorkoutCreated: {
                     navigateToNewWorkout = true
                 })
@@ -183,6 +195,7 @@ struct OverviewView: View {
         
         for category in order {
             let subMuscles = mapping[category] ?? []
+            // recoveryStatus всё еще считается глобально и хранится в viewModel
             let statuses = viewModel.recoveryStatus.filter { subMuscles.contains($0.muscleGroup) }
             
             if statuses.isEmpty {
@@ -196,10 +209,11 @@ struct OverviewView: View {
         return result
     }
 
-    private var muscleData: [(muscle: String, count: Int)] {
+    private func updateDashboardData() {
         var stats: [String: Int] = [:]
+        var exerciseCounts: [String: Int] = [:]
         
-        for workout in viewModel.workouts {
+        for workout in workouts {
             for exercise in workout.exercises {
                 func shouldSkip(_ ex: Exercise) -> Bool {
                     return ex.type == .cardio || ex.type == .duration || ex.muscleGroup == "Cardio"
@@ -207,29 +221,47 @@ struct OverviewView: View {
                 
                 if exercise.isSuperset {
                     for sub in exercise.subExercises {
-                        if shouldSkip(sub) { continue }
-                        stats[sub.muscleGroup, default: 0] += 1
+                        if !shouldSkip(sub) {
+                            stats[sub.muscleGroup, default: 0] += 1
+                        }
+                        exerciseCounts[sub.name, default: 0] += 1
                     }
                 } else {
-                    if shouldSkip(exercise) { continue }
-                    stats[exercise.muscleGroup, default: 0] += 1
+                    if !shouldSkip(exercise) {
+                        stats[exercise.muscleGroup, default: 0] += 1
+                    }
+                    exerciseCounts[exercise.name, default: 0] += 1
                 }
             }
         }
-        // Фильтруем элементы с count = 0, чтобы они не попадали в легенду, но не отображались на диаграмме
-        return stats.map { ($0.key, $0.value) }
+        
+        // Кэшируем данные для круговой диаграммы
+        let sortedMuscleData = stats.map { (muscle: $0.key, count: $0.value) }
             .filter { $0.count > 0 }
-            .sorted { $0.1 > $1.1 }
-    }
-    
-    private var totalExercisesCount: Int {
-        muscleData.reduce(0) { $0 + $1.count }
+            .sorted { $0.count > $1.count }
+            
+        self.cachedMuscleData = sortedMuscleData
+        self.cachedTotalExercisesCount = sortedMuscleData.reduce(0) { $0 + $1.count }
+        
+        // Кэшируем ТОП-упражнений
+        self.cachedTopExercises = Array(
+            exerciseCounts
+                .sorted { (first, second) -> Bool in
+                    if first.value != second.value {
+                        return first.value > second.value
+                    }
+                    return first.key < second.key
+                }
+                .prefix(5)
+                .map { (name: $0.key, count: $0.value) }
+        )
     }
     
     private var selectedMuscleInfo: (muscle: String, count: Int)? {
         guard let selectedAngle else { return nil }
         var currentSum = 0
-        for item in muscleData {
+        // Итерируемся по закэшированному массиву из ~10 элементов, а не 5000+!
+        for item in cachedMuscleData {
             currentSum += item.count
             if selectedAngle <= currentSum {
                 return item
@@ -237,30 +269,6 @@ struct OverviewView: View {
         }
         return nil
     }
-    
-    var topExercises: [(name: String, count: Int)] {
-          var counts: [String: Int] = [:]
-          for workout in viewModel.workouts {
-              for exercise in workout.exercises {
-                  if exercise.isSuperset {
-                      for sub in exercise.subExercises {
-                          counts[sub.name, default: 0] += 1
-                      }
-                  } else {
-                      counts[exercise.name, default: 0] += 1
-                  }
-              }
-          }
-          return counts
-              .sorted { (first, second) -> Bool in
-                  if first.value != second.value {
-                      return first.value > second.value
-                  }
-                  return first.key < second.key
-              }
-              .prefix(5)
-              .map { (name: $0.key, count: $0.value) }
-      }
     
     // --- Subviews ---
     
@@ -274,7 +282,7 @@ struct OverviewView: View {
                         Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
                     }
                     Divider()
-                    if viewModel.workouts.isEmpty {
+                    if workouts.isEmpty {
                         Text(LocalizedStringKey("Complete a workout to see data")).font(.caption).foregroundColor(.secondary)
                     } else {
                         ForEach(aggregatedRecovery, id: \.name) { group in
@@ -320,16 +328,16 @@ struct OverviewView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            if muscleData.isEmpty {
+            if cachedMuscleData.isEmpty {
                 Text(LocalizedStringKey("No workouts yet")).padding().frame(maxWidth: .infinity).foregroundColor(.secondary)
             } else {
-                Chart(muscleData, id: \.muscle) { item in
+                Chart(cachedMuscleData, id: \.muscle) { item in
                     SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.6), angularInset: 2)
                         .cornerRadius(5)
                         .foregroundStyle(by: .value("Muscle", item.muscle))
                         .opacity(selectedMuscleInfo == nil || selectedMuscleInfo?.muscle == item.muscle ? 1.0 : 0.3)
                 }
-                .chartForegroundStyleScale(domain: muscleData.map { $0.muscle }, range: muscleData.map { colorManager.getColor(for: $0.muscle) })
+                .chartForegroundStyleScale(domain: cachedMuscleData.map { $0.muscle }, range: cachedMuscleData.map { colorManager.getColor(for: $0.muscle) })
                 .frame(height: 250)
                 .chartAngleSelection(value: $selectedAngle)
                 .chartBackground { proxy in
@@ -340,7 +348,7 @@ struct OverviewView: View {
                                 Text(LocalizedStringKey("\(selected.count) sets")).font(.title2).bold().foregroundColor(.blue)
                             } else {
                                 Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(.secondary)
-                                Text("\(totalExercisesCount)").font(.title).bold().foregroundColor(.primary)
+                                Text("\(cachedTotalExercisesCount)").font(.title).bold().foregroundColor(.primary)
                             }
                         }
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
@@ -366,7 +374,7 @@ struct OverviewView: View {
     
     private var topExercisesSection: some View {
          VStack(alignment: .leading, spacing: 10) {
-             if !topExercises.isEmpty {
+             if !cachedTopExercises.isEmpty {
                  HStack {
                      Text(LocalizedStringKey("Exercises")).font(.title2).bold()
                      Spacer()
@@ -378,8 +386,9 @@ struct OverviewView: View {
                  }
                  .padding(.top, 10)
                  
-                 ForEach(Array(topExercises.enumerated()), id: \.element.name) { index, item in
-                     NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name, allWorkouts: viewModel.workouts)) {
+                 ForEach(Array(cachedTopExercises.enumerated()), id: \.element.name) { index, item in
+                     // Убрали передачу массива
+                     NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
                          HStack {
                              rankIcon(rank: index + 1)
                              Text(LocalizedStringKey(item.name)).font(.headline).foregroundColor(.primary)
