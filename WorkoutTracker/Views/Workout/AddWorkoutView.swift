@@ -6,17 +6,22 @@
 //
 
 internal import SwiftUI
+import SwiftData
 import ActivityKit
 
 struct AddWorkoutView: View {
     
     // MARK: - Environment & Bindings
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    
+    @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject private var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
     
-    @Binding var workouts: [Workout]
+    // Шаблоны из базы
+    @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
+    
     var onWorkoutCreated: (() -> Void)?
     
     @State private var title = ""
@@ -102,7 +107,7 @@ struct AddWorkoutView: View {
             )
             
             // Список шаблонов
-            ForEach(viewModel.presets) { preset in
+            ForEach(presets) { preset in
                 VStack(alignment: .leading, spacing: 0) {
                     Button {
                         selectPreset(preset)
@@ -185,7 +190,6 @@ struct AddWorkoutView: View {
                             .foregroundColor(.gray)
                     } else {
                         // Иконка из Assets (для шаблонов)
-                        // Проверяем, существует ли картинка с таким именем
                         if UIImage(named: iconName) != nil {
                             Image(iconName)
                                 .resizable()
@@ -198,7 +202,7 @@ struct AddWorkoutView: View {
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
                                 .frame(width: 24, height: 24)
-                                .padding(13) // Отступы, чтобы фон был 50x50
+                                .padding(13)
                                 .background(Color.gray.opacity(0.1))
                                 .cornerRadius(8)
                                 .foregroundColor(.blue)
@@ -237,7 +241,6 @@ struct AddWorkoutView: View {
             }
             
             // ЛОГИКА ТУТОРИАЛА:
-            // Если мы были на шаге выбора шаблона -> переходим к шагу "Нажми Старт"
             if tutorialManager.currentStep == .createEmpty {
                 tutorialManager.setStep(.tapStartNow)
             }
@@ -251,20 +254,9 @@ struct AddWorkoutView: View {
     private func startWorkout() {
         var exercisesToAdd: [Exercise] = []
         
+        // ВАЖНО: Делаем глубокое копирование (duplicate), чтобы не изменять сам пресет
         if let preset = selectedPreset {
-            exercisesToAdd = preset.exercises.map { ex in
-                return Exercise(
-                    name: ex.name,
-                    muscleGroup: ex.muscleGroup,
-                    type: ex.type,
-                    sets: ex.sets,
-                    reps: ex.reps,
-                    weight: ex.weight,
-                    distance: ex.distance,
-                    timeSeconds: ex.timeSeconds,
-                    effort: ex.effort
-                )
-            }
+            exercisesToAdd = preset.exercises.map { $0.duplicate() }
         }
         
         let newWorkout = Workout(
@@ -273,14 +265,14 @@ struct AddWorkoutView: View {
             exercises: exercisesToAdd
         )
         
-        workouts.insert(newWorkout, at: 0)
+        // Вставляем прямо в SwiftData context
+        context.insert(newWorkout)
+        
         startLiveActivity()
         dismiss()
         
         // ЛОГИКА ТУТОРИАЛА:
-        // После нажатия Старт -> переходим к шагу "Добавь упражнение"
         if tutorialManager.currentStep == .tapStartNow {
-            // Делаем небольшую задержку, чтобы экран успел смениться
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 tutorialManager.setStep(.addExercise)
             }

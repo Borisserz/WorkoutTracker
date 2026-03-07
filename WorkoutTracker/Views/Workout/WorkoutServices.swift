@@ -20,9 +20,11 @@ struct StatisticsManager {
         
         for workout in workouts {
             for exercise in workout.exercises {
+                // ИСПРАВЛЕНИЕ: Используем subExercises
                 let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 
                 for ex in targetExercises {
+                    // ИСПРАВЛЕНИЕ: Используем setsList
                     for set in ex.setsList where set.isCompleted {
                         var currentValue: Double = 0
                         switch ex.type {
@@ -145,32 +147,22 @@ struct StatisticsManager {
         return maxWeight
     }
     
-    static func getRecentPRs(in interval: DateInterval, workouts: [Workout]) -> [WorkoutViewModel.PersonalRecord] {
+    static func getRecentPRs(in interval: DateInterval, workouts: [Workout], allTimePRs: [String: Double]) -> [WorkoutViewModel.PersonalRecord] {
         var records: [WorkoutViewModel.PersonalRecord] = []
-        var bestWeights: [String: Double] = [:]
-        
-        let workoutsBefore = workouts.filter { $0.date < interval.start }
-        for workout in workoutsBefore {
-            for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targetExercises {
-                    let maxWeightInSets = ex.setsList.filter { $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-                    if maxWeightInSets > (bestWeights[ex.name] ?? 0) { bestWeights[ex.name] = maxWeightInSets }
-                }
-            }
-        }
-        
         let workoutsInPeriod = workouts.filter { interval.contains($0.date) }.sorted(by: { $0.date < $1.date })
+        
         for workout in workoutsInPeriod {
             for exercise in workout.exercises {
                 let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in targetExercises where ex.type == .strength {
                     let maxWeight = ex.setsList.filter { $0.type != .warmup && $0.isCompleted }.compactMap { $0.weight }.max() ?? 0
-                    if maxWeight > (bestWeights[ex.name] ?? 0) {
-                        let newPR = WorkoutViewModel.PersonalRecord(exerciseName: ex.name, weight: maxWeight, date: workout.date)
-                        records.removeAll { $0.exerciseName == newPR.exerciseName }
-                        records.append(newPR)
-                        bestWeights[ex.name] = maxWeight
+                    if maxWeight > 0 {
+                        let currentPR = allTimePRs[ex.name] ?? 0
+                        if maxWeight >= currentPR {
+                            let newPR = WorkoutViewModel.PersonalRecord(exerciseName: ex.name, weight: maxWeight, date: workout.date)
+                            records.removeAll { $0.exerciseName == newPR.exerciseName }
+                            records.append(newPR)
+                        }
                     }
                 }
             }
@@ -185,6 +177,7 @@ struct StatisticsManager {
         
         switch period {
         case .week:
+            guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now) else { return [] }
             let weekdays = [
                 String(localized: "Вс"),
                 String(localized: "Пн"),
@@ -194,27 +187,49 @@ struct StatisticsManager {
                 String(localized: "Пт"),
                 String(localized: "Сб")
             ]
-            for i in (0...6).reversed() {
-                let date = calendar.date(byAdding: .day, value: -i, to: now)!
+            for i in 0..<7 {
+                guard let date = calendar.date(byAdding: .day, value: i, to: weekInterval.start) else { continue }
                 let dayWorkouts = workouts.filter { calendar.isDate($0.date, inSameDayAs: date) }
-                let label = weekdays[calendar.component(.weekday, from: date) - 1]
+                let weekdayIndex = calendar.component(.weekday, from: date) - 1
+                let safeIndex = max(0, min(6, weekdayIndex))
+                let label = weekdays[safeIndex]
                 data.append(WorkoutViewModel.ChartDataPoint(label: label, value: calculateValue(for: dayWorkouts, metric: metric)))
             }
+            
         case .month:
-            for i in (0...3).reversed() {
-                let weekDate = calendar.date(byAdding: .weekOfYear, value: -i, to: now)!
-                let interval = calendar.dateInterval(of: .weekOfYear, for: weekDate)!
-                let wWorkouts = workouts.filter { interval.contains($0.date) }
-                let labelText = String(localized: "W\(4-i)")
+            guard let monthInterval = calendar.dateInterval(of: .month, for: now) else { return [] }
+            let daysInMonth = calendar.range(of: .day, in: .month, for: monthInterval.start)?.count ?? 30
+            var weeksData: [Int: [Workout]] = [:]
+            
+            for i in 0..<daysInMonth {
+                guard let date = calendar.date(byAdding: .day, value: i, to: monthInterval.start) else { continue }
+                let weekOfMonth = calendar.component(.weekOfMonth, from: date)
+                let dayWorkouts = workouts.filter { calendar.isDate($0.date, inSameDayAs: date) }
+                weeksData[weekOfMonth, default: []].append(contentsOf: dayWorkouts)
+            }
+            
+            let sortedWeeks = weeksData.keys.sorted()
+            for week in sortedWeeks {
+                let wWorkouts = weeksData[week] ?? []
+                let labelText = String(localized: "W\(week)")
                 data.append(WorkoutViewModel.ChartDataPoint(label: labelText, value: calculateValue(for: wWorkouts, metric: metric)))
             }
+            
+            if data.isEmpty {
+                for week in 1...4 {
+                    data.append(WorkoutViewModel.ChartDataPoint(label: String(localized: "W\(week)"), value: 0))
+                }
+            }
+            
         case .year:
+            guard let yearInterval = calendar.dateInterval(of: .year, for: now) else { return [] }
             let symbols = calendar.shortMonthSymbols
-            for i in (0...11).reversed() {
-                let mDate = calendar.date(byAdding: .month, value: -i, to: now)!
-                let interval = calendar.dateInterval(of: .month, for: mDate)!
-                let mWorkouts = workouts.filter { interval.contains($0.date) }
-                let label = symbols[calendar.component(.month, from: mDate) - 1]
+            for month in 1...12 {
+                let mWorkouts = workouts.filter { 
+                    yearInterval.contains($0.date) && 
+                    calendar.component(.month, from: $0.date) == month
+                }
+                let label = symbols[month - 1]
                 data.append(WorkoutViewModel.ChartDataPoint(label: label, value: calculateValue(for: mWorkouts, metric: metric)))
             }
         }
@@ -278,7 +293,7 @@ struct AnalyticsManager {
         switch period {
         case .week:
             currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
-            previousInterval = calendar.dateInterval(of: .weekOfYear, for: calendar.date(byAdding: .weekOfYear, value: -1, to: now)!)!
+            previousInterval = calendar.dateInterval(of: .weekOfYear, for: calendar.date(byAdding: .day, value: -7, to: now)!)!
         case .month:
             currentInterval = calendar.dateInterval(of: .month, for: now)!
             previousInterval = calendar.dateInterval(of: .month, for: calendar.date(byAdding: .month, value: -1, to: now)!)!
@@ -438,7 +453,6 @@ struct AnalyticsManager {
         var recs: [WorkoutViewModel.Recommendation] = []
         let now = Date()
         
-        // Optimize: compute recent workouts exactly once
         let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: now)!
         let recentWorkouts = workouts.filter { $0.date >= thirtyDaysAgo }
         
@@ -480,9 +494,15 @@ struct AnalyticsManager {
         var curInt: DateInterval, prevInt: DateInterval
         
         switch period {
-        case .week: curInt = cal.dateInterval(of: .weekOfYear, for: now)!; prevInt = cal.dateInterval(of: .weekOfYear, for: cal.date(byAdding: .weekOfYear, value: -1, to: now)!)!
-        case .month: curInt = cal.dateInterval(of: .month, for: now)!; prevInt = cal.dateInterval(of: .month, for: cal.date(byAdding: .month, value: -1, to: now)!)!
-        case .year: curInt = cal.dateInterval(of: .year, for: now)!; prevInt = cal.dateInterval(of: .year, for: cal.date(byAdding: .year, value: -1, to: now)!)!
+        case .week: 
+            curInt = cal.dateInterval(of: .weekOfYear, for: now)!
+            prevInt = cal.dateInterval(of: .weekOfYear, for: cal.date(byAdding: .day, value: -7, to: now)!)!
+        case .month: 
+            curInt = cal.dateInterval(of: .month, for: now)!
+            prevInt = cal.dateInterval(of: .month, for: cal.date(byAdding: .month, value: -1, to: now)!)!
+        case .year: 
+            curInt = cal.dateInterval(of: .year, for: now)!
+            prevInt = cal.dateInterval(of: .year, for: cal.date(byAdding: .year, value: -1, to: now)!)!
         }
         
         let cur = StatisticsManager.getStats(for: curInt, workouts: workouts)
@@ -566,7 +586,8 @@ struct ImportExportService {
     }
     
     static func generateShareLink(for preset: WorkoutPreset) throws -> URL {
-        let jsonData = try JSONEncoder().encode(preset)
+        let dto = preset.toDTO()
+        let jsonData = try JSONEncoder().encode(dto)
         let compressedData = try (jsonData as NSData).compressed(using: .zlib) as Data
         var comp = URLComponents(string: "https://borisserz.github.io/workout-share/")!
         comp.queryItems = [URLQueryItem(name: "data", value: compressedData.base64EncodedString())]
@@ -574,7 +595,8 @@ struct ImportExportService {
     }
     
     static func exportPresetToFile(_ preset: WorkoutPreset) throws -> URL {
-        let jsonData = try JSONEncoder().encode(preset)
+        let dto = preset.toDTO()
+        let jsonData = try JSONEncoder().encode(dto)
         let name = preset.name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).workouttemplate")
         try jsonData.write(to: tempURL)
@@ -622,13 +644,9 @@ struct ImportExportService {
     }
     
     static func processImportedData(_ jsonData: Data) throws -> WorkoutPreset {
-        var preset = try JSONDecoder().decode(WorkoutPreset.self, from: jsonData)
-        preset.id = UUID(); preset.name += " (Imported)"
-        preset.exercises = preset.exercises.map { ex in
-            var newEx = ex; newEx.id = UUID()
-            newEx.setsList = newEx.setsList.map { var s = $0; s.id = UUID(); return s }
-            return newEx
-        }
+        let dto = try JSONDecoder().decode(WorkoutPresetDTO.self, from: jsonData)
+        let preset = WorkoutPreset(from: dto)
+        preset.name += " (Imported)"
         return preset
     }
     

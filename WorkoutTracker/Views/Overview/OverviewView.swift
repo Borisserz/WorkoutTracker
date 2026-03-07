@@ -6,6 +6,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 import Charts
 
 struct OverviewView: View {
@@ -18,8 +19,13 @@ struct OverviewView: View {
     }
     
     // MARK: - Environment & State
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject var viewModel: WorkoutViewModel
+    
+    // ОПТИМИЗАЦИЯ: Загружаем строго ОДНУ тренировку для проверки на пустоту.
+    // Это полностью устраняет лаги при переходе на этот экран.
+    @Query private var recentWorkouts: [Workout]
     
     // Навигация и модальные окна
     @State private var showAddWorkout = false
@@ -34,6 +40,12 @@ struct OverviewView: View {
     // Менеджер цветов
     @StateObject private var colorManager = MuscleColorManager.shared
     
+    init() {
+        var desc = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        desc.fetchLimit = 1
+        _recentWorkouts = Query(desc)
+    }
+    
     // MARK: - Body
     
     var body: some View {
@@ -44,8 +56,8 @@ struct OverviewView: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         
-                        // 1. ПУСТОЕ СОСТОЯНИЕ (БОЛЬШАЯ КНОПКА)
-                        if viewModel.workouts.isEmpty {
+                        // 1. ПУСТОЕ СОСТОЯНИЕ
+                        if recentWorkouts.isEmpty {
                             VStack(spacing: 15) {
                                 Image(systemName: "figure.strengthtraining.traditional")
                                     .font(.system(size: 60))
@@ -62,7 +74,6 @@ struct OverviewView: View {
                                 
                                 Button {
                                     showAddWorkout = true
-                                    // Логика перехода на следующий шаг туториала
                                     if tutorialManager.currentStep == .tapPlus {
                                         tutorialManager.nextStep()
                                     }
@@ -76,10 +87,10 @@ struct OverviewView: View {
                                         .cornerRadius(12)
                                 }
                                 .spotlight(
-                                    step: .tapPlus, // Это самый первый шаг (0)
+                                    step: .tapPlus,
                                     manager: tutorialManager,
                                     text: "Tap here to create your first workout!",
-                                    alignment: .top, // Текст СВЕРХУ кнопки
+                                    alignment: .top,
                                     yOffset: -10
                                 )
                             }
@@ -92,13 +103,13 @@ struct OverviewView: View {
                         // 2. Блок восстановления
                         recoverySection
                         
-                        // 3. График мышц (Скрываем если пусто)
-                        if !viewModel.workouts.isEmpty {
+                        // 3. График мышц
+                        if !recentWorkouts.isEmpty {
                             chartSection
                         }
                         
                         // 4. Топ упражнений
-                        if !viewModel.workouts.isEmpty {
+                        if !recentWorkouts.isEmpty {
                             topExercisesSection
                         }
                     }
@@ -106,9 +117,8 @@ struct OverviewView: View {
                 }
                 
                 // --- СЛОЙ 2: ФАНТОМНАЯ КНОПКА ДЛЯ ТУЛБАРА ---
-                // Показываем её ТОЛЬКО если есть тренировки
-                if !viewModel.workouts.isEmpty {
-                    Color.white.opacity(0.01) // Почти прозрачный
+                if !recentWorkouts.isEmpty {
+                    Color.white.opacity(0.01)
                         .frame(width: 50, height: 50)
                         .contentShape(Rectangle())
                         .offset(x: -10, y: 0)
@@ -122,18 +132,20 @@ struct OverviewView: View {
                 }
             }
             .navigationTitle(LocalizedStringKey("Overview"))
-            
+            .onAppear {
+                // Инициируем обновление кэша (выполняется в фоне)
+                viewModel.refreshAllCaches(container: context.container)
+            }
             // --- НАВИГАЦИЯ ---
             .navigationDestination(isPresented: $navigateToNewWorkout) {
-                if !viewModel.workouts.isEmpty {
-                    WorkoutDetailView(workout: $viewModel.workouts[0])
+                if let firstWorkout = recentWorkouts.first {
+                    WorkoutDetailView(workout: firstWorkout)
                 }
             }
             .navigationDestination(isPresented: $navigateToExercises) {
                 ExerciseView()
             }
             .toolbar {
-                // Левая кнопка (Настройки)
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         showSettings = true
@@ -143,20 +155,18 @@ struct OverviewView: View {
                     }
                 }
                 
-                // Правые кнопки (Календарь)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink(destination: WorkoutCalendarView()) {
                         Image(systemName: "calendar")
                     }
                 }
             }
-            // Модальные окна
             .sheet(isPresented: $showSettings) {
                 SettingsView()
                     .environmentObject(viewModel)
             }
             .sheet(isPresented: $showAddWorkout) {
-                AddWorkoutView(workouts: $viewModel.workouts, onWorkoutCreated: {
+                AddWorkoutView(onWorkoutCreated: {
                     navigateToNewWorkout = true
                 })
             }
@@ -193,41 +203,11 @@ struct OverviewView: View {
         }
         return result
     }
-
-    private var muscleData: [(muscle: String, count: Int)] {
-        var stats: [String: Int] = [:]
-        
-        for workout in viewModel.workouts {
-            for exercise in workout.exercises {
-                func shouldSkip(_ ex: Exercise) -> Bool {
-                    return ex.type == .cardio || ex.type == .duration || ex.muscleGroup == "Cardio"
-                }
-                
-                if exercise.isSuperset {
-                    for sub in exercise.subExercises {
-                        if shouldSkip(sub) { continue }
-                        stats[sub.muscleGroup, default: 0] += 1
-                    }
-                } else {
-                    if shouldSkip(exercise) { continue }
-                    stats[exercise.muscleGroup, default: 0] += 1
-                }
-            }
-        }
-        // Фильтруем элементы с count = 0, чтобы они не попадали в легенду, но не отображались на диаграмме
-        return stats.map { ($0.key, $0.value) }
-            .filter { $0.count > 0 }
-            .sorted { $0.1 > $1.1 }
-    }
-    
-    private var totalExercisesCount: Int {
-        muscleData.reduce(0) { $0 + $1.count }
-    }
     
     private var selectedMuscleInfo: (muscle: String, count: Int)? {
         guard let selectedAngle else { return nil }
         var currentSum = 0
-        for item in muscleData {
+        for item in viewModel.dashboardMuscleData {
             currentSum += item.count
             if selectedAngle <= currentSum {
                 return item
@@ -235,30 +215,6 @@ struct OverviewView: View {
         }
         return nil
     }
-    
-    var topExercises: [(name: String, count: Int)] {
-          var counts: [String: Int] = [:]
-          for workout in viewModel.workouts {
-              for exercise in workout.exercises {
-                  if exercise.isSuperset {
-                      for sub in exercise.subExercises {
-                          counts[sub.name, default: 0] += 1
-                      }
-                  } else {
-                      counts[exercise.name, default: 0] += 1
-                  }
-              }
-          }
-          return counts
-              .sorted { (first, second) -> Bool in
-                  if first.value != second.value {
-                      return first.value > second.value
-                  }
-                  return first.key < second.key
-              }
-              .prefix(5)
-              .map { (name: $0.key, count: $0.value) }
-      }
     
     // --- Subviews ---
     
@@ -272,7 +228,7 @@ struct OverviewView: View {
                         Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
                     }
                     Divider()
-                    if viewModel.workouts.isEmpty {
+                    if recentWorkouts.isEmpty {
                         Text(LocalizedStringKey("Complete a workout to see data")).font(.caption).foregroundColor(.secondary)
                     } else {
                         ForEach(aggregatedRecovery, id: \.name) { group in
@@ -318,16 +274,16 @@ struct OverviewView: View {
                         .foregroundColor(.secondary)
                 }
             }
-            if muscleData.isEmpty {
+            if viewModel.dashboardMuscleData.isEmpty {
                 Text(LocalizedStringKey("No workouts yet")).padding().frame(maxWidth: .infinity).foregroundColor(.secondary)
             } else {
-                Chart(muscleData, id: \.muscle) { item in
+                Chart(viewModel.dashboardMuscleData, id: \.muscle) { item in
                     SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.6), angularInset: 2)
                         .cornerRadius(5)
                         .foregroundStyle(by: .value("Muscle", item.muscle))
                         .opacity(selectedMuscleInfo == nil || selectedMuscleInfo?.muscle == item.muscle ? 1.0 : 0.3)
                 }
-                .chartForegroundStyleScale(domain: muscleData.map { $0.muscle }, range: muscleData.map { colorManager.getColor(for: $0.muscle) })
+                .chartForegroundStyleScale(domain: viewModel.dashboardMuscleData.map { $0.muscle }, range: viewModel.dashboardMuscleData.map { colorManager.getColor(for: $0.muscle) })
                 .frame(height: 250)
                 .chartAngleSelection(value: $selectedAngle)
                 .chartBackground { proxy in
@@ -338,7 +294,7 @@ struct OverviewView: View {
                                 Text(LocalizedStringKey("\(selected.count) sets")).font(.title2).bold().foregroundColor(.blue)
                             } else {
                                 Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(.secondary)
-                                Text("\(totalExercisesCount)").font(.title).bold().foregroundColor(.primary)
+                                Text("\(viewModel.dashboardTotalExercises)").font(.title).bold().foregroundColor(.primary)
                             }
                         }
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
@@ -354,17 +310,11 @@ struct OverviewView: View {
             alignment: .top,
             yOffset: -10
         )
-        .onTapGesture {
-            if tutorialManager.currentStep == .highlightChart {
-                // Если нужно пропустить шаг Chart -> Body
-                // tutorialManager.nextStep()
-            }
-        }
     }
     
     private var topExercisesSection: some View {
          VStack(alignment: .leading, spacing: 10) {
-             if !topExercises.isEmpty {
+             if !viewModel.dashboardTopExercises.isEmpty {
                  HStack {
                      Text(LocalizedStringKey("Exercises")).font(.title2).bold()
                      Spacer()
@@ -376,8 +326,8 @@ struct OverviewView: View {
                  }
                  .padding(.top, 10)
                  
-                 ForEach(Array(topExercises.enumerated()), id: \.element.name) { index, item in
-                     NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name, allWorkouts: viewModel.workouts)) {
+                 ForEach(Array(viewModel.dashboardTopExercises.enumerated()), id: \.element.name) { index, item in
+                     NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
                          HStack {
                              rankIcon(rank: index + 1)
                              Text(LocalizedStringKey(item.name)).font(.headline).foregroundColor(.primary)
@@ -407,6 +357,3 @@ struct OverviewView: View {
     }
 }
 
-#Preview {
-    OverviewView().environmentObject(WorkoutViewModel())
-}

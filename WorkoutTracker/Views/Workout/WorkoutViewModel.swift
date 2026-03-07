@@ -5,16 +5,35 @@
 //  Created by Boris Serzhanovich on 24.12.25.
 //
 //  Главная ViewModel приложения.
-//  Является "мозгом", связывающим данные (Workouts, Exercises) с UI.
-//  Вся бизнес логика делегирована в StatisticsManager, AnalyticsManager, RecoveryCalculator и ImportExportService
+//  Является "мозгом", управляющим локальным стейтом и ошибками.
+//  Вся работа со SwiftData переведена на фоновые потоки.
 //
 
 internal import SwiftUI
+import SwiftData
 import Combine
 import AudioToolbox
 import WidgetKit
 internal import UniformTypeIdentifiers
 
+// MARK: - File Storage Actor
+actor FileStorageActor {
+    static let shared = FileStorageActor()
+    
+    func save<T: Encodable>(_ data: T, to url: URL) {
+        if let encoded = try? JSONEncoder().encode(data) {
+            try? encoded.write(to: url, options: .atomic)
+        }
+    }
+    
+    func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+}
+
+// MARK: - Main ViewModel
+@MainActor
 class WorkoutViewModel: ObservableObject {
     
     // MARK: - Nested Models
@@ -38,18 +57,8 @@ class WorkoutViewModel: ObservableObject {
     struct DetailedComparison { let metric: String; let currentValue: Double; let previousValue: Double; let change: Double; let changePercentage: Double; let trend: TrendDirection }
     
     // MARK: - Published Properties
-    @Published var workouts: [Workout] = [] {
-        didSet {
-            let oldWorkouts = oldValue
-            saveWorkouts()
-            calculateRecovery()
-            updateWidgetData()
-            updatePerformanceCaches(oldWorkouts: oldWorkouts)
-        }
-    }
     @Published var lastPerformancesCache: [String: Exercise] = [:]
     @Published var personalRecordsCache: [String: Double] = [:]
-    @Published var presets: [WorkoutPreset] = []
     @Published var customExercises: [CustomExerciseDefinition] = [] { didSet { saveCustomExercises() } }
     @Published var recoveryStatus: [MuscleRecoveryStatus] = []
     @Published var progressManager = ProgressManager()
@@ -57,229 +66,161 @@ class WorkoutViewModel: ObservableObject {
         didSet {
             let currentSet = deletedDefaultExercises
             let url = getDocumentURL(for: "DeletedDefaultExercises.json")
-            Task.detached(priority: .background) {
-                if let encoded = try? JSONEncoder().encode(currentSet) { 
-                    try? encoded.write(to: url) 
-                }
-            }
+            Task { await FileStorageActor.shared.save(currentSet, to: url) }
         }
     }
+    
+    // Кэш для дашборда
+    @Published var dashboardMuscleData: [(muscle: String, count: Int)] = []
+    @Published var dashboardTotalExercises: Int = 0
+    @Published var dashboardTopExercises: [(name: String, count: Int)] = []
+    
+    // ОПТИМИЗАЦИЯ: Кэш для глобальной аналитики
+    @Published var streakCount: Int = 0
+    @Published var bestWeekStats: PeriodStats = PeriodStats()
+    @Published var bestMonthStats: PeriodStats = PeriodStats()
+    @Published var weakPoints: [WeakPoint] = []
+    @Published var recommendations: [Recommendation] = []
     
     // MARK: - Error Handling
     struct AppError: Identifiable { let id = UUID(); let title: String; let message: String }
     @Published var currentError: AppError?
-    func showError(title: String, message: String) {
-        DispatchQueue.main.async { self.currentError = AppError(title: title, message: message) }
-    }
     
-    // MARK: - Private Properties
-    private var recoveryCalculationTask: Task<Void, Never>?
+    func showError(title: String, message: String) {
+        self.currentError = AppError(title: title, message: message)
+    }
     
     init() {
-        loadWorkouts(); loadPresets(); loadCustomExercises(); loadDeletedDefaultExercises(); calculateRecovery()
+        MuscleMapping.preload()
+        loadCustomExercises()
+        loadDeletedDefaultExercises()
     }
-    deinit { recoveryCalculationTask?.cancel() }
     
     // MARK: - File System Helpers
     private func getDocumentURL(for filename: String) -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(filename)
+        URL.documentsDirectory.appendingPathComponent(filename)
     }
     
-    private func updatePerformanceCaches(oldWorkouts: [Workout]? = nil) {
-        let workoutsCopy = self.workouts
-        
-        Task.detached(priority: .utility) {
-            var exercisesToUpdate: Set<String>? = nil
+    // MARK: - BACKGROUND CACHE REFRESH
+    
+    func refreshAllCaches(container: ModelContainer) {
+        Task.detached(priority: .userInitiated) {
+            let context = ModelContext(container)
             
-            // 1. Вычисляем только изменившиеся упражнения
-            if let oldWorkouts = oldWorkouts {
-                var changedNames = Set<String>()
-                let newWorkoutsDict = Dictionary(uniqueKeysWithValues: workoutsCopy.map { ($0.id, $0) })
-                let oldWorkoutsDict = Dictionary(uniqueKeysWithValues: oldWorkouts.map { ($0.id, $0) })
-                
-                // Проходимся по новым (в поиске измененных или добавленных)
-                for workout in workoutsCopy {
-                    if let oldWorkout = oldWorkoutsDict[workout.id] {
-                        if oldWorkout != workout {
-                            Self.extractExerciseNames(from: workout, into: &changedNames)
-                            Self.extractExerciseNames(from: oldWorkout, into: &changedNames)
-                        }
-                    } else {
-                        // Совершенно новая тренировка
-                        Self.extractExerciseNames(from: workout, into: &changedNames)
-                    }
-                }
-                
-                // Ищем удаленные тренировки
-                for oldWorkout in oldWorkouts {
-                    if newWorkoutsDict[oldWorkout.id] == nil {
-                        Self.extractExerciseNames(from: oldWorkout, into: &changedNames)
-                    }
-                }
-                
-                // Ничего не изменилось
-                if changedNames.isEmpty { return }
-                exercisesToUpdate = changedNames
-            }
+            let descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
             
-            var partialLastPerformances: [String: Exercise] = [:]
+            guard let workouts = try? context.fetch(descriptor) else { return }
+            
+            var partialLastPerformancesDTO: [String: ExerciseDTO] = [:]
             var partialPRs: [String: Double] = [:]
+            var stats: [String: Int] = [:]
+            var exerciseCounts: [String: Int] = [:]
             
-            // 2. Ищем данные только для измененных упражнений, пропуская все остальные (O(N*M) вместо O(N*M*K))
-            for workout in workoutsCopy.sorted(by: { $0.date > $1.date }) {
-                guard !workout.isActive else { continue }
+            for workout in workouts {
                 for exercise in workout.exercises {
-                    for ex in (exercise.isSuperset ? exercise.subExercises : [exercise]) {
+                    // ИСПРАВЛЕНИЕ 2А: Используем чистые массивы без костылей
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    
+                    for ex in targets {
                         let name = ex.name
                         
-                        // Пропускаем, если упражнение нас не интересует в этом инкременте
-                        if let targets = exercisesToUpdate, !targets.contains(name) {
-                            continue
+                        if partialLastPerformancesDTO[name] == nil {
+                            partialLastPerformancesDTO[name] = ex.toDTO()
                         }
                         
-                        // Запоминаем последний результат
-                        if partialLastPerformances[name] == nil { 
-                            partialLastPerformances[name] = ex 
-                        }
-                        
-                        // Проверяем рекорды
                         if ex.type == .strength {
-                            let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                            // ИСПРАВЛЕНИЕ 2А: Используем чистые массивы
+                            let maxWeight = ex.setsList
+                                .filter { $0.isCompleted && $0.type != .warmup }
+                                .compactMap { $0.weight }
+                                .max() ?? 0
+                                
                             let currentMax = partialPRs[name] ?? 0.0
-                            if maxWeight > currentMax { 
-                                partialPRs[name] = maxWeight 
-                            }
+                            if maxWeight > currentMax { partialPRs[name] = maxWeight }
                         }
+                        
+                        let isCardio = ex.type == .cardio || ex.type == .duration || ex.muscleGroup == "Cardio"
+                        if !isCardio {
+                            stats[ex.muscleGroup, default: 0] += 1
+                        }
+                        exerciseCounts[name, default: 0] += 1
                     }
                 }
             }
             
-            // 3. Сохраняем и патчим основной кэш на главном потоке
-            await MainActor.run { 
-                if let targets = exercisesToUpdate {
-                    // Инкрементальное обновление
-                    for name in targets {
-                        if let pr = partialPRs[name] {
-                            self.personalRecordsCache[name] = pr
-                        } else {
-                            self.personalRecordsCache.removeValue(forKey: name)
-                        }
-                        
-                        if let lp = partialLastPerformances[name] {
-                            self.lastPerformancesCache[name] = lp
-                        } else {
-                            self.lastPerformancesCache.removeValue(forKey: name)
-                        }
-                    }
-                } else {
-                    // Полная перезапись (например, при инициализации)
-                    self.lastPerformancesCache = partialLastPerformances
-                    self.personalRecordsCache = partialPRs
-                }
-            }
-        }
-    }
-    
-    private static func extractExerciseNames(from workout: Workout, into set: inout Set<String>) {
-        for exercise in workout.exercises {
-            for ex in (exercise.isSuperset ? exercise.subExercises : [exercise]) {
-                set.insert(ex.name)
-            }
-        }
-    }
-    
-    // MARK: - 1. Statistics & Records Logic (Delegated)
-    func getAllPersonalRecords() -> [BestResult] { StatisticsManager.getAllPersonalRecords(workouts: workouts) }
-    func calculateWorkoutStreak() -> Int { StatisticsManager.calculateWorkoutStreak(workouts: workouts) }
-    func getStats(for dateInterval: DateInterval) -> PeriodStats { StatisticsManager.getStats(for: dateInterval, workouts: workouts) }
-    func getBestStats(for periodType: StatsView.Period) -> PeriodStats { StatisticsManager.getBestStats(for: periodType, workouts: workouts) }
-    func getPersonalRecord(for exerciseName: String, onlyCompleted: Bool = false) -> Double {
-        StatisticsManager.getPersonalRecord(for: exerciseName, onlyCompleted: onlyCompleted, cachedPR: personalRecordsCache[exerciseName] ?? 0.0, workouts: workouts)
-    }
-    func getRecentPRs(in interval: DateInterval) -> [PersonalRecord] { StatisticsManager.getRecentPRs(in: interval, workouts: workouts) }
-    
-    // MARK: - 2. Charts Data Logic (Delegated)
-    func getChartData(for period: StatsView.Period, metric: StatsView.GraphMetric) -> [ChartDataPoint] { StatisticsManager.getChartData(for: period, metric: metric, workouts: workouts) }
-    
-    // MARK: - 3. Recovery Logic (Delegated)
-    func calculateRecovery(hours: Double? = nil, debounce: Bool = false) {
-        recoveryCalculationTask?.cancel()
-        let workoutsCopy = self.workouts
-        recoveryCalculationTask = Task {
-            if debounce { try? await Task.sleep(nanoseconds: 150_000_000) }
-            guard !Task.isCancelled else { return }
-            let result = RecoveryCalculator.calculate(hours: hours, workouts: workoutsCopy)
-            await MainActor.run { self.recoveryStatus = result }
-        }
-    }
-    
-    // MARK: - 4. Analysis & Recommendations (Delegated)
-    func getImbalanceRecommendation() -> (title: String, message: String)? { AnalyticsManager.getImbalanceRecommendation(recentWorkouts: workouts) }
-    func getExerciseTrends(period: StatsView.Period = .month) -> [ExerciseTrend] { AnalyticsManager.getExerciseTrends(workouts: workouts, period: period) }
-    func getProgressForecast(daysAhead: Int = 30) -> [ProgressForecast] { AnalyticsManager.getProgressForecast(workouts: workouts, daysAhead: daysAhead) }
-    func getWeakPoints() -> [WeakPoint] { AnalyticsManager.getWeakPoints(recentWorkouts: workouts) }
-    func getRecommendations() -> [Recommendation] { AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: recoveryStatus) }
-    func getDetailedComparison(period: StatsView.Period) -> [DetailedComparison] { AnalyticsManager.getDetailedComparison(workouts: workouts, period: period) }
-    
-    // MARK: - 5. Data Management (Workouts)
-    func addWorkout(_ workout: Workout) { workouts.insert(workout, at: 0) }
-    private func loadWorkouts() {
-        DataManager.shared.loadWorkouts { [weak self] result in
-            if case .success(let w) = result { DispatchQueue.main.async { self?.workouts = w } }
-        }
-    }
-    
-    private func saveWorkouts() {
-        let currentWorkouts = workouts
-        let isExample = currentWorkouts.count == Workout.examples.count && currentWorkouts.map{$0.id} == Workout.examples.map{$0.id}
-        
-        if !isExample {
-            Task.detached(priority: .background) { [weak self] in
-                DataManager.shared.saveWorkouts(currentWorkouts) { error in 
-                    self?.showError(title: "Save Failed", message: error.localizedDescription) 
+            let recovery = RecoveryCalculator.calculate(hours: nil, workouts: workouts)
+            let sortedMuscleData = stats.map { (muscle: $0.key, count: $0.value) }.filter { $0.count > 0 }.sorted { $0.count > $1.count }
+            let totalExCount = sortedMuscleData.reduce(0) { $0 + $1.count }
+            let topExercises = Array(exerciseCounts.sorted { $0.value > $1.value || ($0.value == $1.value && $0.key < $1.key) }.prefix(5)).map { (name: $0.key, count: $0.value) }
+            
+            let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
+            let bWeek = StatisticsManager.getBestStats(for: .week, workouts: workouts)
+            let bMonth = StatisticsManager.getBestStats(for: .month, workouts: workouts)
+            let weakPts = AnalyticsManager.getWeakPoints(recentWorkouts: workouts)
+            let recs = AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: recovery)
+            
+            await MainActor.run {
+                var newPerformancesCache: [String: Exercise] = [:]
+                for (name, dto) in partialLastPerformancesDTO {
+                    newPerformancesCache[name] = Exercise(from: dto)
                 }
                 
-                if BackupManager.shared.shouldCreateBackup() {
-                    DispatchQueue.global(qos: .utility).async { 
-                        guard let self = self else { return }
-                        BackupManager.shared.createBackup(workouts: currentWorkouts, viewModel: self) 
-                    }
-                }
+                self.lastPerformancesCache = newPerformancesCache
+                self.personalRecordsCache = partialPRs
+                self.recoveryStatus = recovery
+                self.dashboardMuscleData = sortedMuscleData
+                self.dashboardTotalExercises = totalExCount
+                self.dashboardTopExercises = topExercises
+                
+                self.streakCount = streak
+                self.bestWeekStats = bWeek
+                self.bestMonthStats = bMonth
+                self.weakPoints = weakPts
+                self.recommendations = recs
             }
         }
     }
     
-    func getLastPerformance(for exerciseName: String, currentWorkoutId: UUID) -> Exercise? { lastPerformancesCache[exerciseName] }
+    func getLastPerformance(for exerciseName: String) -> Exercise? { lastPerformancesCache[exerciseName] }
     
-    // MARK: - 6. Data Management (Presets)
-    func updatePreset(_ preset: WorkoutPreset) { if let idx = presets.firstIndex(where: { $0.id == preset.id }) { presets[idx] = preset } else { presets.append(preset) }; savePresets() }
-    func deletePreset(_ preset: WorkoutPreset) { presets.removeAll(where: { $0.id == preset.id }); savePresets() }
-    func deletePreset(at offsets: IndexSet) { presets.remove(atOffsets: offsets); savePresets() }
+    // MARK: - Default Initialization (SwiftData)
     
-    private func savePresets() { 
-        let currentPresets = presets
-        let url = getDocumentURL(for: "SavedWorkoutPresets.json")
-        Task.detached(priority: .background) {
-            if let e = try? JSONEncoder().encode(currentPresets) { 
-                try? e.write(to: url) 
+    func checkAndGenerateDefaultPresets(context: ModelContext) {
+        let descriptor = FetchDescriptor<WorkoutPreset>()
+        let count = (try? context.fetchCount(descriptor)) ?? 0
+        
+        if count == 0 {
+            let defaultPresets = Workout.examples.map { WorkoutPreset(id: UUID(), name: $0.title, icon: $0.icon, exercises: $0.exercises.map { $0.duplicate() }) }
+            for preset in defaultPresets {
+                context.insert(preset)
+            }
+            try? context.save()
+        }
+    }
+    
+    // MARK: - Data Management (Custom Exercises)
+    
+    private func loadDeletedDefaultExercises() {
+        let url = getDocumentURL(for: "DeletedDefaultExercises.json")
+        Task {
+            if let dec = await FileStorageActor.shared.load(Set<String>.self, from: url) {
+                self.deletedDefaultExercises = dec
             }
         }
     }
     
-    private func loadPresets() {
-        if let data = try? Data(contentsOf: getDocumentURL(for: "SavedWorkoutPresets.json")), let dec = try? JSONDecoder().decode([WorkoutPreset].self, from: data) { self.presets = dec }
-        if self.presets.isEmpty { self.presets = Workout.examples.map { WorkoutPreset(id: UUID(), name: $0.title, icon: $0.icon, exercises: $0.exercises) }; savePresets() }
-    }
-    
-    // MARK: - 7. Data Management (Custom Exercises)
-    private func loadDeletedDefaultExercises() { if let d = try? Data(contentsOf: getDocumentURL(for: "DeletedDefaultExercises.json")), let dec = try? JSONDecoder().decode(Set<String>.self, from: d) { deletedDefaultExercises = dec } }
     var combinedCatalog: [String: [String]] {
         var catalog = Exercise.catalog
         for (category, exercises) in catalog { catalog[category] = exercises.filter { !deletedDefaultExercises.contains($0) } }
         for custom in customExercises { var list = catalog[custom.category] ?? []; if !list.contains(custom.name) { list.append(custom.name) }; catalog[custom.category] = list }
         return catalog
     }
+    
     func addCustomExercise(name: String, category: String, muscles: [String], type: ExerciseType = .strength) { customExercises.append(.init(name: name, category: category, targetedMuscles: muscles, type: type)); MuscleMapping.updateCustomMapping(name: name, muscles: muscles) }
+    
     func deleteCustomExercise(name: String, category: String) { customExercises.removeAll { $0.name == name }; MuscleMapping.updateCustomMapping(name: name, muscles: nil) }
     
     func deleteExercise(name: String, category: String) {
@@ -295,51 +236,81 @@ class WorkoutViewModel: ObservableObject {
     private func saveCustomExercises() { 
         let currentExercises = customExercises
         let url = getDocumentURL(for: "SavedCustomExercises.json")
-        Task.detached(priority: .background) {
-            if let e = try? JSONEncoder().encode(currentExercises) { 
-                try? e.write(to: url) 
+        Task {
+            await FileStorageActor.shared.save(currentExercises, to: url)
+        }
+    }
+    
+    private func loadCustomExercises() {
+        let url = getDocumentURL(for: "SavedCustomExercises.json")
+        Task {
+            if let dec = await FileStorageActor.shared.load([CustomExerciseDefinition].self, from: url) {
+                self.customExercises = dec
             }
         }
     }
     
-    private func loadCustomExercises() { if let d = try? Data(contentsOf: getDocumentURL(for: "SavedCustomExercises.json")), let dec = try? JSONDecoder().decode([CustomExerciseDefinition].self, from: d) { customExercises = dec } }
+    // MARK: - Import / Export
     
-    // MARK: - 8. Import / Export (Delegated)
     func generateShareLink(for preset: WorkoutPreset) -> URL? {
-        do { return try ImportExportService.generateShareLink(for: preset) } catch { showError(title: "Export Failed", message: error.localizedDescription); return nil }
+        do {
+            return try ImportExportService.generateShareLink(for: preset)
+        } catch {
+            showError(title: "Export Failed", message: error.localizedDescription)
+            return nil
+        }
     }
+    
     func exportPresetToFile(_ preset: WorkoutPreset) -> URL? {
-        do { return try ImportExportService.exportPresetToFile(preset) } catch { showError(title: "Export Failed", message: error.localizedDescription); return nil }
+        do {
+            return try ImportExportService.exportPresetToFile(preset)
+        } catch {
+            showError(title: "Export Failed", message: error.localizedDescription)
+            return nil
+        }
     }
     
     func exportPresetToCSV(_ preset: WorkoutPreset) -> URL? {
         do { return try ImportExportService.exportPresetToCSV(preset) } catch { showError(title: "Export Failed", message: error.localizedDescription); return nil }
     }
     
-    func importPreset(from url: URL) -> Bool {
+    func importPreset(from url: URL, context: ModelContext) -> Bool {
         do {
-            let imported = try ImportExportService.importPreset(from: url)
-            DispatchQueue.main.async { self.presets.insert(imported, at: 0); self.savePresets() }
+            let preset = try ImportExportService.importPreset(from: url)
+            context.insert(preset)
             return true
-        } catch { showError(title: "Import Failed", message: error.localizedDescription); return false }
+        } catch {
+            showError(title: "Import Failed", message: error.localizedDescription)
+            return false
+        }
     }
     
-    // MARK: - 9. Widget
-    func updateWidgetData() {
-        let currentWorkouts = workouts
-        let currentStreak = calculateWorkoutStreak()
-        
+    // MARK: - Widget
+    
+    func updateWidgetData(container: ModelContainer) {
         Task.detached(priority: .background) {
+            let context = ModelContext(container)
+            let descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            
+            guard let workouts = try? context.fetch(descriptor) else { return }
+            
+            let currentStreak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
             var points: [WidgetData.WeeklyPoint] = []
             let cal = Calendar.current
+            
             for i in (0...5).reversed() {
                 if let date = cal.date(byAdding: .weekOfYear, value: -i, to: Date()) {
                     let interval = cal.dateInterval(of: .weekOfYear, for: date)!
-                    let count = currentWorkouts.filter { interval.contains($0.date) }.count
-                    let fmt = DateFormatter(); fmt.dateFormat = "M/d"
+                    let count = workouts.filter { interval.contains($0.date) }.count
+                    let fmt = DateFormatter()
+                    fmt.dateFormat = "M/d"
                     points.append(WidgetData.WeeklyPoint(label: fmt.string(from: interval.start), count: count))
                 }
             }
+            
             WidgetDataManager.save(streak: currentStreak, weeklyStats: points)
             WidgetCenter.shared.reloadAllTimelines()
         }

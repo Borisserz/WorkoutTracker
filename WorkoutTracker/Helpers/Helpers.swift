@@ -61,7 +61,20 @@ struct InputValidator {
 }
 
 struct SVGParser {
+    
+    // Кэш и блокировка для потокобезопасности
+    private static let cacheLock = NSLock()
+    private static var pathCache: [String: Path] = [:]
+    
     static func path(from string: String) -> Path {
+        // 1. Проверяем кэш. Если путь уже распарсен, мгновенно его возвращаем
+        cacheLock.lock()
+        if let cachedPath = pathCache[string] {
+            cacheLock.unlock()
+            return cachedPath
+        }
+        cacheLock.unlock()
+        
         var path = Path()
         
         // Подготовка строки
@@ -197,6 +210,12 @@ struct SVGParser {
                 _ = scanner.scanDouble()
             }
         }
+        
+        // 2. Сохраняем распарсенный путь в кэш
+        cacheLock.lock()
+        pathCache[string] = path
+        cacheLock.unlock()
+        
         return path
     }
 }

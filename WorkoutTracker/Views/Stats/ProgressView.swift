@@ -5,12 +5,11 @@
 //  Created by Boris Serzhanovich on 24.12.25.
 //
 //  Экран "Прогресс" (Статистика).
-//  Реализован по паттерну Container/View:
-//  1. StatsView (Container) — отвечает за вычисление дат, интервалов и подготовку данных.
-//  2. StatsContentView (View) — отвечает только за верстку и отображение.
+//  ОПТИМИЗИРОВАНО: Математика вынесена в фон, устранены проблемы N+1 запросов.
 //
 
 internal import SwiftUI
+import SwiftData
 import Charts
 
 // MARK: - 1. Smart Container View
@@ -43,48 +42,137 @@ struct StatsView: View {
     
     // MARK: - Environment & State
     
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
+    
+    // ИСПРАВЛЕНИЕ: Грузим только одну тренировку, чтобы SwiftUI перерисовывал при изменениях
+    @Query private var dbTrigger: [Workout]
     
     @State private var selectedPeriod: Period = .week
     @State private var selectedMetric: GraphMetric = .count
     
+    @State private var isDataLoaded = false
+    
+    @State private var currentStats: WorkoutViewModel.PeriodStats?
+    @State private var previousStats: WorkoutViewModel.PeriodStats?
+    @State private var chartData: [WorkoutViewModel.ChartDataPoint] = []
+    @State private var recentPRs: [WorkoutViewModel.PersonalRecord] = []
+    @State private var detailedComparison: [WorkoutViewModel.DetailedComparison] = []
+    
+    private var dbTriggerHash: String {
+        guard let latest = dbTrigger.first else { return "empty" }
+        return "\(latest.id.uuidString)-\(latest.endTime?.timeIntervalSince1970 ?? 0)-\(latest.exercises.count)"
+    }
+    
+    init() {
+        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 1
+        _dbTrigger = Query(descriptor)
+    }
+    
     // MARK: - Body
     
     var body: some View {
-        // 1. Вычисляем интервалы времени
+        NavigationStack {
+            Group {
+                if isDataLoaded,
+                   let currentStats = currentStats,
+                   let previousStats = previousStats {
+                    
+                    StatsContentView(
+                        selectedPeriod: $selectedPeriod,
+                        selectedMetric: $selectedMetric,
+                        streakCount: viewModel.streakCount,
+                        currentStats: currentStats,
+                        previousStats: previousStats,
+                        chartData: chartData,
+                        recentPRs: recentPRs,
+                        bestWeek: viewModel.bestWeekStats,
+                        bestMonth: viewModel.bestMonthStats,
+                        weakPoints: viewModel.weakPoints,
+                        recommendations: viewModel.recommendations,
+                        detailedComparison: detailedComparison
+                    )
+                    
+                } else {
+                    VStack {
+                        Spacer()
+                        ProgressView(LocalizedStringKey("Loading stats..."))
+                            .controlSize(.large)
+                        Spacer()
+                    }
+                    .navigationTitle(LocalizedStringKey("Progress"))
+                }
+            }
+        }
+        .task {
+            if !isDataLoaded {
+                await loadPeriodData()
+            }
+        }
+        .onChange(of: selectedPeriod) { _, _ in
+            Task {
+                // Моментальная перерисовка при смене периода
+                await loadPeriodData()
+            }
+        }
+        .onChange(of: selectedMetric) { _, _ in
+            Task {
+                await loadPeriodData()
+            }
+        }
+        .onChange(of: dbTriggerHash) { _, _ in
+            Task {
+                await loadPeriodData()
+            }
+        }
+    }
+    
+    // MARK: - Data Loading Logic
+    
+    @MainActor
+    private func loadPeriodData() async {
+        let container = context.container
+        let period = selectedPeriod
+        let metric = selectedMetric
+        
+        // Мы берем из ViewModel уже подсчитанные рекордные веса, чтобы не сканировать всю историю
+        let prCache = viewModel.personalRecordsCache
+        
         let currentInterval = calculateCurrentInterval()
         let previousInterval = calculatePreviousInterval()
         
-        // 2. Запрашиваем данные у ViewModel
-        let currentStats = viewModel.getStats(for: currentInterval)
-        let previousStats = viewModel.getStats(for: previousInterval)
-        let chartData = viewModel.getChartData(for: selectedPeriod, metric: selectedMetric)
-        let recentPRs = viewModel.getRecentPRs(in: currentInterval)
-        let streakCount = viewModel.calculateWorkoutStreak()
+        // ОПТИМИЗАЦИЯ: Мы скачиваем тренировки ТОЛЬКО за выбранный период и предыдущий
+        let minDate = previousInterval.start
+        let maxDate = currentInterval.end
         
-        let bestWeek = viewModel.getBestStats(for: Period.week)
-        let bestMonth = viewModel.getBestStats(for: Period.month)
+        let result = await Task.detached(priority: .userInitiated) {
+            let bgContext = ModelContext(container)
+            var descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.date >= minDate && $0.date <= maxDate },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            descriptor.relationshipKeyPathsForPrefetching = [\.exercises]
+            // Вместо 1000 мы скачиваем только ~30 тренировок, если выбран месяц!
+            let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
+            
+            let currentStats = StatisticsManager.getStats(for: currentInterval, workouts: bgWorkouts)
+            let previousStats = StatisticsManager.getStats(for: previousInterval, workouts: bgWorkouts)
+            let recentPRs = StatisticsManager.getRecentPRs(in: currentInterval, workouts: bgWorkouts, allTimePRs: prCache)
+            let detailedComparison = AnalyticsManager.getDetailedComparison(workouts: bgWorkouts, period: period)
+            let chartData = StatisticsManager.getChartData(for: period, metric: metric, workouts: bgWorkouts)
+            
+            return (currentStats, previousStats, recentPRs, detailedComparison, chartData)
+        }.value
         
-        // 3. Новые данные аналитики
-        let weakPoints = viewModel.getWeakPoints()
-        let recommendations = viewModel.getRecommendations()
-        let detailedComparison = viewModel.getDetailedComparison(period: selectedPeriod)
-        
-        // 4. Передаем готовые данные в View
-        return StatsContentView(
-            selectedPeriod: $selectedPeriod,
-            selectedMetric: $selectedMetric,
-            streakCount: streakCount,
-            currentStats: currentStats,
-            previousStats: previousStats,
-            chartData: chartData,
-            recentPRs: recentPRs,
-            bestWeek: bestWeek,
-            bestMonth: bestMonth,
-            weakPoints: weakPoints,
-            recommendations: recommendations,
-            detailedComparison: detailedComparison
-        )
+        withAnimation {
+            self.currentStats = result.0
+            self.previousStats = result.1
+            self.recentPRs = result.2
+            self.detailedComparison = result.3
+            self.chartData = result.4
+            self.isDataLoaded = true
+        }
     }
     
     // MARK: - Date Logic
@@ -104,7 +192,7 @@ struct StatsView: View {
         let calendar = Calendar.current
         switch selectedPeriod {
         case .week:
-            let lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: now)!
+            let lastWeek = calendar.date(byAdding: .day, value: -7, to: now)!
             return calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
         case .month:
             let lastMonth = calendar.date(byAdding: .month, value: -1, to: now)!
@@ -146,47 +234,45 @@ struct StatsContentView: View {
     // MARK: - Body
     
     var body: some View {
-        NavigationStack {
-            List {
-                streakSection
-                periodPicker
-                highlightsSection
-                chartSection
-                
-                // Детальное сравнение с предыдущим периодом
-                if !detailedComparison.isEmpty {
-                    Section(header: Text(LocalizedStringKey("Detailed Comparison"))) {
-                        DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
-                    }
-                }
-                
-                // Анализ слабых мест
-                if !weakPoints.isEmpty {
-                    Section(header: Text(LocalizedStringKey("Weak Points Analysis"))) {
-                        WeakPointsView(weakPoints: weakPoints)
-                    }
-                }
-                
-                // Рекомендации (всегда показываем секцию)
-                Section(header: Text(LocalizedStringKey("Recommendations"))) {
-                    RecommendationsView(recommendations: recommendations)
-                }
-                
-                prSection
-                bestStatsSection
-            }
-            .navigationTitle(LocalizedStringKey("Progress"))
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showProfile = true } label: {
-                        Image(systemName: "person.circle").font(.title3)
-                    }
+        List {
+            streakSection
+            periodPicker
+            highlightsSection
+            chartSection
+            
+            // Детальное сравнение с предыдущим периодом
+            if !detailedComparison.isEmpty {
+                Section(header: Text(LocalizedStringKey("Detailed Comparison"))) {
+                    DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
                 }
             }
-            .sheet(isPresented: $showProfile) {
-                ProfileView()
-                    .environmentObject(viewModel.progressManager)
+            
+            // Анализ слабых мест
+            if !weakPoints.isEmpty {
+                Section(header: Text(LocalizedStringKey("Weak Points Analysis"))) {
+                    WeakPointsView(weakPoints: weakPoints)
+                }
             }
+            
+            // Рекомендации (всегда показываем секцию)
+            Section(header: Text(LocalizedStringKey("Recommendations"))) {
+                RecommendationsView(recommendations: recommendations)
+            }
+            
+            prSection
+            bestStatsSection
+        }
+        .navigationTitle(LocalizedStringKey("Progress"))
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { showProfile = true } label: {
+                    Image(systemName: "person.circle").font(.title3)
+                }
+            }
+        }
+        .sheet(isPresented: $showProfile) {
+            ProfileView()
+                .environmentObject(viewModel.progressManager)
         }
     }
     

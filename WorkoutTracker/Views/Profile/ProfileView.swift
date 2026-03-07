@@ -1,8 +1,12 @@
 internal import SwiftUI
+import SwiftData
 
 struct ProfileView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
     @Environment(\.dismiss) var dismiss
+    
+    // Данные базы напрямую из SwiftData
+    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     
     @AppStorage("userName") private var userName = "Fitness Enthusiast"
     @AppStorage("userBodyWeight") private var userBodyWeight = 75.0  // Хранится в кг
@@ -28,9 +32,9 @@ struct ProfileView: View {
     
     // Функция для обновления кеша
     private func updateCache() {
-        let streak = viewModel.calculateWorkoutStreak()
-        cachedAchievements = AchievementCalculator.calculateAchievements(workouts: viewModel.workouts, streak: streak)
-        cachedPersonalRecords = viewModel.getAllPersonalRecords()
+        let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
+        cachedAchievements = AchievementCalculator.calculateAchievements(workouts: workouts, streak: streak)
+        cachedPersonalRecords = StatisticsManager.getAllPersonalRecords(workouts: workouts)
     }
     
     var body: some View {
@@ -194,7 +198,7 @@ struct ProfileView: View {
                 // Обновляем кеш при появлении view
                 updateCache()
             }
-            .onChange(of: viewModel.workouts.count) { _, _ in
+            .onChange(of: workouts.count) { _, _ in
                 // Обновляем кеш когда изменяется количество тренировок
                 updateCache()
             }

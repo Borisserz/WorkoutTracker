@@ -6,10 +6,16 @@
 //
 
 internal import SwiftUI
+import SwiftData
+import UIKit // Добавлено для проверки системных иконок
 
 struct WorkoutView: View {
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
+    
+    // Подписываемся на тренировки напрямую из SwiftData
+    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     
     // Состояние для открытия шторки с советом
     @State private var showImbalanceInfo = false
@@ -26,6 +32,10 @@ struct WorkoutView: View {
     // Удаление с предупреждением
     @State private var showDeleteAlert = false
     @State private var workoutsToDelete: [Workout] = []
+    
+    // ОПТИМИЗАЦИЯ: Локальный стейт для расчётов, чтобы не тормозить UI
+    @State private var calculatedAvgDuration: Int = 0
+    @State private var calculatedAvgVolume: Int = 0
     
     enum FilterPeriod: String, CaseIterable {
         case all = "All"
@@ -47,7 +57,7 @@ struct WorkoutView: View {
     
     // Отфильтрованные и отсортированные тренировки
     var filteredWorkouts: [Workout] {
-        var workouts = viewModel.workouts
+        var filtered = workouts
         
         // Фильтр по периоду
         let calendar = Calendar.current
@@ -56,47 +66,52 @@ struct WorkoutView: View {
         case .all:
             break
         case .favorites:
-            workouts = workouts.filter { $0.isFavorite }
+            filtered = filtered.filter { $0.isFavorite }
         case .week:
             if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) {
-                workouts = workouts.filter { $0.date >= weekAgo }
+                filtered = filtered.filter { $0.date >= weekAgo }
             }
         case .month:
             if let monthAgo = calendar.date(byAdding: .month, value: -1, to: now) {
-                workouts = workouts.filter { $0.date >= monthAgo }
+                filtered = filtered.filter { $0.date >= monthAgo }
             }
         case .threeMonths:
             if let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: now) {
-                workouts = workouts.filter { $0.date >= threeMonthsAgo }
+                filtered = filtered.filter { $0.date >= threeMonthsAgo }
             }
         case .year:
             if let yearAgo = calendar.date(byAdding: .year, value: -1, to: now) {
-                workouts = workouts.filter { $0.date >= yearAgo }
+                filtered = filtered.filter { $0.date >= yearAgo }
             }
         }
         
         // Поиск по названию
         if !searchText.isEmpty {
-            workouts = workouts.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+            filtered = filtered.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
         }
         
         // Сортировка
         switch sortOption {
         case .dateDescending:
-            workouts.sort { $0.date > $1.date }
+            filtered.sort { $0.date > $1.date }
         case .dateAscending:
-            workouts.sort { $0.date < $1.date }
+            filtered.sort { $0.date < $1.date }
         case .durationDescending:
-            workouts.sort { $0.duration > $1.duration }
+            filtered.sort { $0.duration > $1.duration }
         case .durationAscending:
-            workouts.sort { $0.duration < $1.duration }
+            filtered.sort { $0.duration < $1.duration }
         case .effortDescending:
-            workouts.sort { $0.effortPercentage > $1.effortPercentage }
+            filtered.sort { $0.effortPercentage > $1.effortPercentage }
         case .effortAscending:
-            workouts.sort { $0.effortPercentage < $1.effortPercentage }
+            filtered.sort { $0.effortPercentage < $1.effortPercentage }
         }
         
-        return workouts
+        return filtered
+    }
+    
+    // ИСПРАВЛЕНИЕ: Триггер для обновления расчетов при изменении любого параметра фильтрации
+    private var filterTrigger: String {
+        "\(workouts.count)-\(selectedFilter.rawValue)-\(searchText)-\(sortOption.rawValue)"
     }
     
     var body: some View {
@@ -105,39 +120,38 @@ struct WorkoutView: View {
                 .navigationTitle(LocalizedStringKey("History"))
                 // --- НАВИГАЦИЯ ---
                 .navigationDestination(isPresented: $navigateToNewWorkout) {
-                    if !viewModel.workouts.isEmpty {
-                        WorkoutDetailView(workout: $viewModel.workouts[0])
+                    if let first = workouts.first {
+                        WorkoutDetailView(workout: first)
                     }
                 }
                 .toolbar {
                     // 1. Кнопка "Править" (справа)
-                    if !viewModel.workouts.isEmpty {
+                    if !workouts.isEmpty {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             EditButton()
                         }
                     }
                     
                     // 2. КНОПКА ДИСБАЛАНСА
-                    // Показываем ТОЛЬКО если есть рекомендация (не nil)
-                    if viewModel.getImbalanceRecommendation() != nil {
+                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: workouts) {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
                                 showImbalanceInfo = true
                             } label: {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .symbolRenderingMode(.multicolor) // Желтый треугольник с восклицательным знаком
+                                    .symbolRenderingMode(.multicolor)
                                     .font(.title3)
                             }
                         }
                     }
                 }
                 .sheet(isPresented: $showAddWorkout) {
-                    AddWorkoutView(workouts: $viewModel.workouts, onWorkoutCreated: {
+                    AddWorkoutView(onWorkoutCreated: {
                         navigateToNewWorkout = true
                     })
                 }
                 .sheet(isPresented: $showImbalanceInfo) {
-                    if let advice = viewModel.getImbalanceRecommendation() {
+                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: workouts) {
                         ImbalanceDetailSheet(advice: advice)
                             .presentationDetents([.fraction(0.35)]) // Шторка занимает 35% экрана снизу
                             .presentationDragIndicator(.visible)
@@ -157,13 +171,17 @@ struct WorkoutView: View {
                         Text(LocalizedStringKey("Are you sure you want to delete \(workoutsToDelete.count) workouts? This action cannot be undone."))
                     }
                 }
+                // ИСПРАВЛЕНИЕ: Используем onChange(initial: true) для синхронного подсчета
+                .onChange(of: filterTrigger, initial: true) { _, _ in
+                    calculateStats(for: filteredWorkouts)
+                }
         }
     }
     
     // Выносим содержимое в отдельную переменную
     @ViewBuilder
     var content: some View {
-        if viewModel.workouts.isEmpty {
+        if workouts.isEmpty {
             emptyState
         } else {
             List {
@@ -219,14 +237,7 @@ struct WorkoutView: View {
                     } else {
                         ForEach(filteredWorkouts) { workout in
                             ZStack {
-                                NavigationLink(destination: WorkoutDetailView(workout: Binding(
-                                    get: { workout },
-                                    set: { newValue in
-                                        if let index = viewModel.workouts.firstIndex(where: { $0.id == workout.id }) {
-                                            viewModel.workouts[index] = newValue
-                                        }
-                                    }
-                                ))) {
+                                NavigationLink(destination: WorkoutDetailView(workout: workout)) {
                                     EmptyView()
                                 }
                                 .opacity(0)
@@ -252,23 +263,18 @@ struct WorkoutView: View {
     
     // Секция статистики
     private var statsSection: some View {
-        let totalWorkouts = viewModel.workouts.count
-        let avgDuration = viewModel.workouts.isEmpty ? 0 : viewModel.workouts.reduce(0) { $0 + $1.duration } / viewModel.workouts.count
-        let totalVolume = viewModel.workouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.computedVolume } }
-        let avgVolume = totalWorkouts > 0 ? Int(totalVolume / Double(totalWorkouts)) : 0
-        
         return VStack(spacing: 12) {
             HStack(spacing: 12) {
                 StatCard(
                     title: LocalizedStringKey("Avg Duration"),
-                    value: "\(avgDuration)",
+                    value: "\(calculatedAvgDuration)",
                     subtitle: LocalizedStringKey("min"),
                     icon: "stopwatch"
                 )
                 
                 StatCard(
                     title: LocalizedStringKey("Avg Volume"),
-                    value: "\(Int(unitsManager.convertFromKilograms(Double(avgVolume))))",
+                    value: "\(Int(unitsManager.convertFromKilograms(Double(calculatedAvgVolume))))",
                     subtitle: LocalizedStringKey(unitsManager.weightUnitString()),
                     icon: "scalemass"
                 )
@@ -279,20 +285,34 @@ struct WorkoutView: View {
         }
     }
     
+    // ИСПРАВЛЕНИЕ: Мы убрали Task.detached!
+    // Модели из @Query привязаны к главному потоку, их передача в фон вызывала жесткий краш
+    private func calculateStats(for currentWorkouts: [Workout]) {
+        let totalWorkouts = currentWorkouts.count
+        
+        guard totalWorkouts > 0 else {
+            self.calculatedAvgDuration = 0
+            self.calculatedAvgVolume = 0
+            return
+        }
+        
+        let avgDur = currentWorkouts.reduce(0) { $0 + $1.duration } / totalWorkouts
+        let totalVol = currentWorkouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.computedVolume } }
+        let avgVol = Int(totalVol / Double(totalWorkouts))
+        
+        self.calculatedAvgDuration = avgDur
+        self.calculatedAvgVolume = avgVol
+    }
+    
     // Секция поиска и фильтров
     private var searchAndFiltersSection: some View {
         VStack(spacing: 12) {
-            // Поиск
-            HStack {
-                Image(systemName: "magnifyingglass")
-                    .foregroundColor(.secondary)
-                TextField(LocalizedStringKey("Search workouts..."), text: $searchText)
-                    .textFieldStyle(.plain)
-            }
-            .padding()
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(12)
-            .padding(.horizontal)
+            // Поиск с использованием Debounced компонента
+            DebouncedSearchBar(text: $searchText)
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(12)
+                .padding(.horizontal)
             
             // Фильтры и сортировка
             HStack(spacing: 12) {
@@ -353,15 +373,63 @@ struct WorkoutView: View {
         }
     }
     
-    
     func deleteWorkouts() {
         withAnimation {
             for workout in workoutsToDelete {
-                if let index = viewModel.workouts.firstIndex(where: { $0.id == workout.id }) {
-                    viewModel.workouts.remove(at: index)
-                }
+                context.delete(workout)
             }
             workoutsToDelete = []
+        }
+    }
+}
+
+// --- DEBOUNCED SEARCH BAR (Оптимизация поиска) ---
+struct DebouncedSearchBar: View {
+    @Binding var text: String
+    @State private var localText: String
+    @State private var debounceTask: Task<Void, Never>? = nil
+    
+    init(text: Binding<String>) {
+        self._text = text
+        self._localText = State(initialValue: text.wrappedValue)
+    }
+    
+    var body: some View {
+        HStack {
+            Image(systemName: "magnifyingglass")
+                .foregroundColor(.secondary)
+            
+            TextField(LocalizedStringKey("Search workouts..."), text: $localText)
+                .textFieldStyle(.plain)
+                .onChange(of: localText) { oldValue, newValue in
+                    // Отменяем предыдущую задачу, если пользователь продолжает вводить
+                    debounceTask?.cancel()
+                    
+                    // Создаем новую задачу с задержкой 300мс
+                    debounceTask = Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        // Если задача не была отменена следующим нажатием, обновляем основной текст
+                        if !Task.isCancelled {
+                            text = newValue
+                        }
+                    }
+                }
+                .onChange(of: text) { oldValue, newValue in
+                    // Синхронизация, если текст изменился извне (например очистился)
+                    if localText != newValue {
+                        localText = newValue
+                    }
+                }
+            
+            if !localText.isEmpty {
+                Button(action: {
+                    localText = ""
+                    text = ""
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
         }
     }
 }
@@ -414,9 +482,17 @@ struct WorkoutRow: View {
         return .green
     }
     
+    // ИСПРАВЛЕНИЕ: Защита от несуществующих системных иконок
+    var safeIcon: String {
+        if UIImage(systemName: workout.icon) != nil {
+            return workout.icon
+        }
+        return "figure.run" // Базовая иконка, если в тестовых данных указано то, чего нет
+    }
+    
     var body: some View {
         HStack {
-            Image(systemName: workout.icon)
+            Image(systemName: safeIcon)
                 .font(.title2)
                 .foregroundColor(.blue)
                 .frame(width: 50, height: 50)
