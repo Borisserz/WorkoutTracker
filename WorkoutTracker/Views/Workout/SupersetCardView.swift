@@ -68,9 +68,9 @@ struct SupersetCardView: View {
     }
     
     var exerciseListView: some View {
-        // ИСПРАВЛЕНИЕ: Используем safeSubExercises
-        ForEach(Array(superset.safeSubExercises.enumerated()), id: \.element.id) { index, exercise in
-            let isLast = index == superset.safeSubExercises.count - 1
+        // ИСПРАВЛЕНИЕ: Используем родной массив subExercises вместо safeSubExercises
+        ForEach(Array(superset.subExercises.enumerated()), id: \.element.id) { index, exercise in
+            let isLast = index == superset.subExercises.count - 1
             VStack(spacing: 0) {
                 // Для вложенных упражнений в суперсете передаем сам объект (reference type)
                 ExerciseCardView(
@@ -139,14 +139,14 @@ struct SupersetCardView: View {
         
         var newRecordWasSet = false
         
-        for subExercise in superset.safeSubExercises {
+        for subExercise in superset.subExercises {
             if subExercise.type == .strength {
                 let lastData = viewModel.lastPerformancesCache[subExercise.name]
                 
                 if let _ = lastData {
                     let oldRecord = viewModel.personalRecordsCache[subExercise.name] ?? 0.0
-                    // ИСПРАВЛЕНИЕ: Используем safeSetsList
-                    let maxWeight = subExercise.safeSetsList.compactMap { $0.weight }.max() ?? 0.0
+                    // ИСПРАВЛЕНИЕ: Используем setsList
+                    let maxWeight = subExercise.setsList.compactMap { $0.weight }.max() ?? 0.0
                     if maxWeight > oldRecord {
                         newRecordWasSet = true
                     }
@@ -167,9 +167,9 @@ struct SupersetCardView: View {
     }
     
     func markAllSetsInSupersetCompleted() {
-        // ИСПРАВЛЕНИЕ: Используем безопасные массивы для прохода по элементам
-        for sub in superset.safeSubExercises {
-            for set in sub.safeSetsList {
+        // ИСПРАВЛЕНИЕ: Используем родные массивы
+        for sub in superset.subExercises {
+            for set in sub.setsList {
                 set.isCompleted = true
             }
         }

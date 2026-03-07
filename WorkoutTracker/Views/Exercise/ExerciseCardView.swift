@@ -150,11 +150,11 @@ struct ExerciseCardView: View {
     private var setsSection: some View {
         let lastExerciseData = viewModel.lastPerformancesCache[exercise.name]
         
-        // ИСПРАВЛЕНИЕ: Используем safeSetsList, чтобы избежать дубликатов ID от SwiftData
-        let sortedSets = exercise.safeSetsList
+        // ИСПРАВЛЕНИЕ: Используем sortedSets для правильного отображения по порядку
+        let sortedSets = exercise.sortedSets
         
         // То же самое делаем для прошлой тренировки
-        let sortedPrevSets: [WorkoutSet] = lastExerciseData?.safeSetsList ?? []
+        let sortedPrevSets: [WorkoutSet] = lastExerciseData?.sortedSets ?? []
         
         ForEach(Array(sortedSets.enumerated()), id: \.element.id) { currentIndex, set in
             let isLast = currentIndex == sortedSets.count - 1
@@ -217,8 +217,8 @@ struct ExerciseCardView: View {
                 
                 Spacer()
                 
-                // Информация о количестве сетов (ИСПРАВЛЕНИЕ: safeSetsList)
-                Text(LocalizedStringKey("\(exercise.safeSetsList.count) sets"))
+                // Информация о количестве сетов (ИСПРАВЛЕНИЕ: setsList.count)
+                Text(LocalizedStringKey("\(exercise.setsList.count) sets"))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
@@ -373,7 +373,8 @@ struct ExerciseCardView: View {
             
             // Логика рекорда
             if exercise.type == .strength {
-                let maxWeightInWorkout = exercise.safeSetsList
+                // ИСПРАВЛЕНИЕ: Используем setsList
+                let maxWeightInWorkout = exercise.setsList
                     .filter { $0.isCompleted }
                     .compactMap { $0.weight }
                     .max() ?? 0
@@ -407,7 +408,8 @@ struct ExerciseCardView: View {
     }
     
     private func markAllSetsCompleted() {
-        for set in exercise.safeSetsList {
+        // ИСПРАВЛЕНИЕ: Используем setsList
+        for set in exercise.setsList {
             set.isCompleted = true
         }
     }
@@ -416,7 +418,8 @@ struct ExerciseCardView: View {
         // Запрещаем добавлять сеты, если упражнение или тренировка завершены
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
-        let sortedSets = exercise.safeSetsList
+        // ИСПРАВЛЕНИЕ: Используем sortedSets
+        let sortedSets = exercise.sortedSets
         let lastSet = sortedSets.last
         let newIndex = (lastSet?.index ?? 0) + 1
         
@@ -428,6 +431,9 @@ struct ExerciseCardView: View {
             distance: lastSet?.distance,
             time: lastSet?.time
         )
+        
+        // ИСПРАВЛЕНИЕ SwiftData: Вставляем в контекст ДО добавления в массив для избежания дублирования
+        context.insert(newSet)
         
         withAnimation {
             // Мы по-прежнему модифицируем оригинальный массив базы данных!
@@ -450,7 +456,8 @@ struct ExerciseCardView: View {
                 exercise.setsList.remove(at: index)
                 
                 // Пересчитываем индексы
-                let sortedSets = exercise.safeSetsList
+                // ИСПРАВЛЕНИЕ: Используем sortedSets
+                let sortedSets = exercise.sortedSets
                 for (i, set) in sortedSets.enumerated() {
                     set.index = i + 1
                 }

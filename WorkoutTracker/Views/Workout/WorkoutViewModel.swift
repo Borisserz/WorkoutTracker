@@ -16,6 +16,24 @@ import AudioToolbox
 import WidgetKit
 internal import UniformTypeIdentifiers
 
+// MARK: - File Storage Actor
+actor FileStorageActor {
+    static let shared = FileStorageActor()
+    
+    func save<T: Encodable>(_ data: T, to url: URL) {
+        if let encoded = try? JSONEncoder().encode(data) {
+            try? encoded.write(to: url, options: .atomic)
+        }
+    }
+    
+    func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
+    }
+}
+
+// MARK: - Main ViewModel
+@MainActor
 class WorkoutViewModel: ObservableObject {
     
     // MARK: - Nested Models
@@ -48,11 +66,7 @@ class WorkoutViewModel: ObservableObject {
         didSet {
             let currentSet = deletedDefaultExercises
             let url = getDocumentURL(for: "DeletedDefaultExercises.json")
-            Task.detached(priority: .background) {
-                if let encoded = try? JSONEncoder().encode(currentSet) { 
-                    try? encoded.write(to: url) 
-                }
-            }
+            Task { await FileStorageActor.shared.save(currentSet, to: url) }
         }
     }
     
@@ -61,7 +75,7 @@ class WorkoutViewModel: ObservableObject {
     @Published var dashboardTotalExercises: Int = 0
     @Published var dashboardTopExercises: [(name: String, count: Int)] = []
     
-    // ОПТИМИЗАЦИЯ: Кэш для глобальной аналитики, чтобы не тормозить ProgressView
+    // ОПТИМИЗАЦИЯ: Кэш для глобальной аналитики
     @Published var streakCount: Int = 0
     @Published var bestWeekStats: PeriodStats = PeriodStats()
     @Published var bestMonthStats: PeriodStats = PeriodStats()
@@ -71,8 +85,9 @@ class WorkoutViewModel: ObservableObject {
     // MARK: - Error Handling
     struct AppError: Identifiable { let id = UUID(); let title: String; let message: String }
     @Published var currentError: AppError?
+    
     func showError(title: String, message: String) {
-        DispatchQueue.main.async { self.currentError = AppError(title: title, message: message) }
+        self.currentError = AppError(title: title, message: message)
     }
     
     init() {
@@ -83,7 +98,7 @@ class WorkoutViewModel: ObservableObject {
     
     // MARK: - File System Helpers
     private func getDocumentURL(for filename: String) -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(filename)
+        URL.documentsDirectory.appendingPathComponent(filename)
     }
     
     // MARK: - BACKGROUND CACHE REFRESH
@@ -99,24 +114,26 @@ class WorkoutViewModel: ObservableObject {
             
             guard let workouts = try? context.fetch(descriptor) else { return }
             
-            var partialLastPerformances: [String: Exercise] = [:]
+            var partialLastPerformancesDTO: [String: ExerciseDTO] = [:]
             var partialPRs: [String: Double] = [:]
             var stats: [String: Int] = [:]
             var exerciseCounts: [String: Int] = [:]
             
             for workout in workouts {
                 for exercise in workout.exercises {
-                    let targets = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                    // ИСПРАВЛЕНИЕ 2А: Используем чистые массивы без костылей
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
                     
                     for ex in targets {
                         let name = ex.name
                         
-                        if partialLastPerformances[name] == nil {
-                            partialLastPerformances[name] = ex.duplicate()
+                        if partialLastPerformancesDTO[name] == nil {
+                            partialLastPerformancesDTO[name] = ex.toDTO()
                         }
                         
                         if ex.type == .strength {
-                            let maxWeight = ex.safeSetsList
+                            // ИСПРАВЛЕНИЕ 2А: Используем чистые массивы
+                            let maxWeight = ex.setsList
                                 .filter { $0.isCompleted && $0.type != .warmup }
                                 .compactMap { $0.weight }
                                 .max() ?? 0
@@ -139,7 +156,6 @@ class WorkoutViewModel: ObservableObject {
             let totalExCount = sortedMuscleData.reduce(0) { $0 + $1.count }
             let topExercises = Array(exerciseCounts.sorted { $0.value > $1.value || ($0.value == $1.value && $0.key < $1.key) }.prefix(5)).map { (name: $0.key, count: $0.value) }
             
-            // Расчет глобальной статистики один раз в фоне
             let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
             let bWeek = StatisticsManager.getBestStats(for: .week, workouts: workouts)
             let bMonth = StatisticsManager.getBestStats(for: .month, workouts: workouts)
@@ -147,7 +163,12 @@ class WorkoutViewModel: ObservableObject {
             let recs = AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: recovery)
             
             await MainActor.run {
-                self.lastPerformancesCache = partialLastPerformances
+                var newPerformancesCache: [String: Exercise] = [:]
+                for (name, dto) in partialLastPerformancesDTO {
+                    newPerformancesCache[name] = Exercise(from: dto)
+                }
+                
+                self.lastPerformancesCache = newPerformancesCache
                 self.personalRecordsCache = partialPRs
                 self.recoveryStatus = recovery
                 self.dashboardMuscleData = sortedMuscleData
@@ -167,7 +188,6 @@ class WorkoutViewModel: ObservableObject {
     
     // MARK: - Default Initialization (SwiftData)
     
-    @MainActor
     func checkAndGenerateDefaultPresets(context: ModelContext) {
         let descriptor = FetchDescriptor<WorkoutPreset>()
         let count = (try? context.fetchCount(descriptor)) ?? 0
@@ -185,12 +205,9 @@ class WorkoutViewModel: ObservableObject {
     
     private func loadDeletedDefaultExercises() {
         let url = getDocumentURL(for: "DeletedDefaultExercises.json")
-        Task.detached(priority: .background) { [weak self] in
-            if let d = try? Data(contentsOf: url),
-               let dec = try? JSONDecoder().decode(Set<String>.self, from: d) {
-                await MainActor.run {
-                    self?.deletedDefaultExercises = dec
-                }
+        Task {
+            if let dec = await FileStorageActor.shared.load(Set<String>.self, from: url) {
+                self.deletedDefaultExercises = dec
             }
         }
     }
@@ -219,21 +236,16 @@ class WorkoutViewModel: ObservableObject {
     private func saveCustomExercises() { 
         let currentExercises = customExercises
         let url = getDocumentURL(for: "SavedCustomExercises.json")
-        Task.detached(priority: .background) {
-            if let e = try? JSONEncoder().encode(currentExercises) { 
-                try? e.write(to: url) 
-            }
+        Task {
+            await FileStorageActor.shared.save(currentExercises, to: url)
         }
     }
     
     private func loadCustomExercises() {
         let url = getDocumentURL(for: "SavedCustomExercises.json")
-        Task.detached(priority: .background) { [weak self] in
-            if let d = try? Data(contentsOf: url),
-               let dec = try? JSONDecoder().decode([CustomExerciseDefinition].self, from: d) {
-                await MainActor.run {
-                    self?.customExercises = dec
-                }
+        Task {
+            if let dec = await FileStorageActor.shared.load([CustomExerciseDefinition].self, from: url) {
+                self.customExercises = dec
             }
         }
     }

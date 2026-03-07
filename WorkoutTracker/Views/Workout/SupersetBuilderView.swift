@@ -348,12 +348,25 @@ struct EditSupersetItemView: View {
         let lastSet = sortedSets.last
         let newIndex = (lastSet?.index ?? 0) + 1
         let newSet = WorkoutSet(index: newIndex, weight: lastSet?.weight, reps: lastSet?.reps)
+        
+        // ИСПРАВЛЕНИЕ SwiftData: Вставляем в контекст ДО добавления в массив для избежания дублирования
+        if let context = exercise.modelContext {
+            context.insert(newSet)
+        }
+        
         exercise.setsList.append(newSet)
     }
     
     private func removeSet() {
         if exercise.setsList.count > 1, let last = sortedSets.last {
             if let index = exercise.setsList.firstIndex(where: { $0.id == last.id }) {
+                let setToDelete = exercise.setsList[index]
+                
+                // ИСПРАВЛЕНИЕ SwiftData: Явно удаляем объект
+                if let context = exercise.modelContext {
+                    context.delete(setToDelete)
+                }
+                
                 exercise.setsList.remove(at: index)
             }
         }

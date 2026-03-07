@@ -66,7 +66,8 @@ enum ExerciseCategory: String, Codable, CaseIterable {
 
 @Model
 class WorkoutSet: Identifiable, Hashable {
-    @Attribute(.unique) var id: UUID
+    // ИСПРАВЛЕНИЕ 2А: Убран @Attribute(.unique)
+    var id: UUID
     var index: Int
     var weight: Double?
     var reps: Int?
@@ -75,7 +76,6 @@ class WorkoutSet: Identifiable, Hashable {
     var isCompleted: Bool
     var type: SetType
     
-    // ДОБАВЛЕНО: Обратная ссылка на родительское упражнение
     var exercise: Exercise?
     
     init(id: UUID = UUID(), index: Int, weight: Double? = nil, reps: Int? = nil, distance: Double? = nil, time: Int? = nil, isCompleted: Bool = false, type: SetType = .normal) {
@@ -89,19 +89,18 @@ class WorkoutSet: Identifiable, Hashable {
         self.type = type
     }
     
-    // Глубокое копирование (нужно при создании тренировки из шаблона)
     func duplicate() -> WorkoutSet {
         return WorkoutSet(id: UUID(), index: index, weight: weight, reps: reps, distance: distance, time: time, isCompleted: isCompleted, type: type)
     }
     
-    // Реализация Hashable
     static func == (lhs: WorkoutSet, rhs: WorkoutSet) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 @Model
 class Exercise: Identifiable, Hashable {
-    @Attribute(.unique) var id: UUID
+    // ИСПРАВЛЕНИЕ 2А: Убран @Attribute(.unique)
+    var id: UUID
     var name: String
     var muscleGroup: String
     var type: ExerciseType
@@ -109,18 +108,15 @@ class Exercise: Identifiable, Hashable {
     var effort: Int
     var isCompleted: Bool
     
-    // ИЗМЕНЕНО: Добавлен параметр inverse для автоматической связки
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise) 
     var setsList: [WorkoutSet]
     
-    // ИЗМЕНЕНО: Добавлен параметр inverse для связи суперсета с вложенными упражнениями
     @Relationship(deleteRule: .cascade, inverse: \Exercise.parentExercise) 
     var subExercises: [Exercise]
     
-    // ДОБАВЛЕНО: Обратные ссылки для SwiftData
-    var parentExercise: Exercise? // Если это упражнение внутри суперсета
-    var workout: Workout?         // Если упражнение находится внутри реальной тренировки
-    var preset: WorkoutPreset?    // Если упражнение находится внутри шаблона
+    var parentExercise: Exercise?
+    var workout: Workout?
+    var preset: WorkoutPreset?
     
     init(id: UUID = UUID(), name: String, muscleGroup: String, type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
         self.id = id
@@ -133,9 +129,8 @@ class Exercise: Identifiable, Hashable {
         self.subExercises = subExercises
         self.setsList = setsList
         
-        // Автогенерация сетов при инициализации
+        // Теперь это абсолютно безопасно работает, так как нет конфликта Unique ID
         if self.setsList.isEmpty && self.subExercises.isEmpty && sets > 0 {
-            // ИСПРАВЛЕНИЕ: Формируем массив локально, вместо постоянного .append в Relationship до Insert
             var generatedSets: [WorkoutSet] = []
             for i in 1...sets {
                 generatedSets.append(WorkoutSet(
@@ -152,31 +147,25 @@ class Exercise: Identifiable, Hashable {
         }
     }
     
-    // MARK: - Safe Accessors (Prevents SwiftData duplication bugs)
-    var safeSetsList: [WorkoutSet] {
-        var seen = Set<UUID>()
-        return setsList.filter { seen.insert($0.id).inserted }.sorted(by: { $0.index < $1.index })
-    }
-    
-    var safeSubExercises: [Exercise] {
-        var seen = Set<UUID>()
-        return subExercises.filter { seen.insert($0.id).inserted }
+    // ИСПРАВЛЕНИЕ 2А: SwiftData не гарантирует порядок. Сортируем сеты по индексу
+    var sortedSets: [WorkoutSet] {
+        setsList.sorted(by: { $0.index < $1.index })
     }
     
     // MARK: - Computed Properties (Read-Only)
-    var sets: Int { safeSetsList.count }
-    var reps: Int { safeSetsList.first?.reps ?? 0 }
-    var weight: Double { safeSetsList.first?.weight ?? 0.0 }
-    var distance: Double? { safeSetsList.first?.distance }
-    var timeSeconds: Int? { safeSetsList.first?.time }
+    var sets: Int { setsList.count }
+    var reps: Int { sortedSets.first?.reps ?? 0 }
+    var weight: Double { sortedSets.first?.weight ?? 0.0 }
+    var distance: Double? { sortedSets.first?.distance }
+    var timeSeconds: Int? { sortedSets.first?.time }
     
-    var isSuperset: Bool { !safeSubExercises.isEmpty }
+    var isSuperset: Bool { !subExercises.isEmpty }
     
     var computedVolume: Double {
         if isSuperset {
-            return safeSubExercises.reduce(0.0) { $0 + $1.computedVolume }
+            return subExercises.reduce(0.0) { $0 + $1.computedVolume }
         }
-        return safeSetsList.reduce(0.0) { partialResult, set in
+        return setsList.reduce(0.0) { partialResult, set in
             if set.type == .warmup || !set.isCompleted { return partialResult }
             switch type {
             case .strength: return partialResult + ((set.weight ?? 0) * Double(set.reps ?? 0))
@@ -185,25 +174,24 @@ class Exercise: Identifiable, Hashable {
         }
     }
     
-    // Глубокое копирование
     func duplicate() -> Exercise {
-        let copiedSets = safeSetsList.map { $0.duplicate() }
-        let copiedSubs = safeSubExercises.map { $0.duplicate() }
+        // Убрали safe-методы
+        let copiedSets = setsList.map { $0.duplicate() }
+        let copiedSubs = subExercises.map { $0.duplicate() }
         return Exercise(id: UUID(), name: name, muscleGroup: muscleGroup, type: type, category: category, effort: effort, subExercises: copiedSubs, setsList: copiedSets, isCompleted: isCompleted)
     }
     
-    // Реализация Hashable
     static func == (lhs: Exercise, rhs: Exercise) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 @Model
 class WorkoutPreset: Identifiable, Hashable {
-    @Attribute(.unique) var id: UUID
+    // ИСПРАВЛЕНИЕ 2А: Убран @Attribute(.unique)
+    var id: UUID
     var name: String
     var icon: String
     
-    // ИЗМЕНЕНО: Добавлен параметр inverse
     @Relationship(deleteRule: .cascade, inverse: \Exercise.preset) 
     var exercises: [Exercise]
     
@@ -214,25 +202,20 @@ class WorkoutPreset: Identifiable, Hashable {
         self.exercises = exercises
     }
     
-    var safeExercises: [Exercise] {
-        var seen = Set<UUID>()
-        return exercises.filter { seen.insert($0.id).inserted }
-    }
-    
     static func == (lhs: WorkoutPreset, rhs: WorkoutPreset) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 @Model
 class Workout: Identifiable, Equatable {
-    @Attribute(.unique) var id: UUID
+    // ИСПРАВЛЕНИЕ 2А: Убран @Attribute(.unique)
+    var id: UUID
     var title: String
     var date: Date
     var endTime: Date?
     var icon: String
     var isFavorite: Bool
     
-    // ИЗМЕНЕНО: Добавлен параметр inverse
     @Relationship(deleteRule: .cascade, inverse: \Exercise.workout) 
     var exercises: [Exercise]
     
@@ -246,12 +229,6 @@ class Workout: Identifiable, Equatable {
         self.exercises = exercises
     }
     
-    // MARK: - Safe Accessors
-    var safeExercises: [Exercise] {
-        var seen = Set<UUID>()
-        return exercises.filter { seen.insert($0.id).inserted }
-    }
-    
     var isActive: Bool { endTime == nil }
     
     var duration: Int {
@@ -261,9 +238,9 @@ class Workout: Identifiable, Equatable {
     }
     
     var effortPercentage: Int {
-        if safeExercises.isEmpty { return 0 }
-        let totalEffort = safeExercises.reduce(0) { $0 + $1.effort }
-        let average = Double(totalEffort) / Double(safeExercises.count)
+        if exercises.isEmpty { return 0 }
+        let totalEffort = exercises.reduce(0) { $0 + $1.effort }
+        let average = Double(totalEffort) / Double(exercises.count)
         return Int(average * 10)
     }
     
@@ -346,8 +323,9 @@ extension Exercise {
             category: category,
             effort: effort,
             isCompleted: isCompleted,
-            setsList: safeSetsList.map { $0.toDTO() },
-            subExercises: safeSubExercises.map { $0.toDTO() }
+            // ИСПРАВЛЕНИЕ 2А: Используем стандартные свойства
+            setsList: sortedSets.map { $0.toDTO() },
+            subExercises: subExercises.map { $0.toDTO() }
         )
     }
     
@@ -358,7 +336,7 @@ extension Exercise {
             muscleGroup: dto.muscleGroup,
             type: dto.type,
             category: dto.category,
-            sets: 0, // Устанавливаем 0, чтобы предотвратить автогенерацию
+            sets: 0,
             effort: dto.effort,
             subExercises: dto.subExercises.map { Exercise(from: $0) },
             setsList: dto.setsList.map { WorkoutSet(from: $0) },
@@ -372,7 +350,7 @@ extension WorkoutPreset {
         WorkoutPresetDTO(
             name: name,
             icon: icon,
-            exercises: safeExercises.map { $0.toDTO() }
+            exercises: exercises.map { $0.toDTO() }
         )
     }
     
@@ -387,7 +365,6 @@ extension WorkoutPreset {
 }
 
 // MARK: - Extensions (Data & Catalog)
-
 extension Exercise {
     static let catalog: [String: [String]] = [
         "Chest": [

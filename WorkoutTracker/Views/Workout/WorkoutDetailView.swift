@@ -25,8 +25,6 @@ struct WorkoutDetailView: View {
     @EnvironmentObject var timerManager: RestTimerManager
     @Environment(\.modelContext) private var context 
     
-    // ИСПРАВЛЕНИЕ: Убрали @Query всех тренировок. Нам не нужно грузить БД в UI-поток.
-    
     // MARK: - Local State (UI)
     
     // Управление модальными окнами
@@ -69,8 +67,9 @@ struct WorkoutDetailView: View {
     
     /// Плоский список всех упражнений (разворачивает супер-сеты для графиков)
     var flattenedExercises: [Exercise] {
-        workout.safeExercises.flatMap { exercise in
-            exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+        // ИСПРАВЛЕНИЕ: Используем exercises и subExercises
+        workout.exercises.flatMap { exercise in
+            exercise.isSuperset ? exercise.subExercises : [exercise]
         }
     }
     
@@ -78,11 +77,10 @@ struct WorkoutDetailView: View {
     var muscleIntensityMap: [String: Int] {
         var counts = [String: Int]()
         
-        for exercise in workout.safeExercises {
-            // Кардио не учитываем на тепловой карте
+        for exercise in workout.exercises {
             if exercise.type == .cardio { continue }
             
-            let targets = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
             
             for sub in targets {
                 let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
@@ -97,7 +95,7 @@ struct WorkoutDetailView: View {
     /// Определяет, является ли тренировка новой (созданной недавно, например, из шаблона)
     var isNewWorkout: Bool {
         let timeSinceCreation = Date().timeIntervalSince(workout.date)
-        return timeSinceCreation < 60 && !workout.safeExercises.isEmpty
+        return timeSinceCreation < 60 && !workout.exercises.isEmpty
     }
     
     // MARK: - Body
@@ -128,7 +126,7 @@ struct WorkoutDetailView: View {
                 muscleHeatmapSection
                 
                 // 7. Интересный факт (Сравнение веса)
-                if !workout.safeExercises.isEmpty {
+                if !workout.exercises.isEmpty {
                     FunFactView(workout: workout, showSettings: $showComparisonSettings)
                 }
                 
@@ -150,14 +148,14 @@ struct WorkoutDetailView: View {
                 }
             }
             .onAppear {
-                for (index, exercise) in workout.safeExercises.enumerated() {
+                for (index, exercise) in workout.exercises.enumerated() {
                     if expandedExercises[exercise.id] == nil {
                         expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
                     }
                 }
             }
             .onChange(of: workout.exercises.count) { oldCount, newCount in
-                for (index, exercise) in workout.safeExercises.enumerated() {
+                for (index, exercise) in workout.exercises.enumerated() {
                     if expandedExercises[exercise.id] == nil {
                         expandedExercises[exercise.id] = index == 0
                     }
@@ -213,8 +211,6 @@ struct WorkoutDetailView: View {
                 }
         }
         
-        // ИСПРАВЛЕНИЕ: Убрали глобальный таймер. Он теперь локализован в WorkoutTimerView.
-        
         .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
                 if let ex = exerciseToDelete {
@@ -268,7 +264,6 @@ struct WorkoutDetailView: View {
                             .foregroundStyle(.red).bold().blinking()
                         Spacer()
                         
-                        // ИСПРАВЛЕНИЕ: Изолированный таймер
                         WorkoutTimerView(startDate: workout.date)
                     }
                     .padding()
@@ -428,7 +423,7 @@ struct WorkoutDetailView: View {
     
     private var exerciseListSection: some View {
         Group {
-            if workout.safeExercises.isEmpty {
+            if workout.exercises.isEmpty {
                 EmptyStateView(
                     icon: "plus.circle.fill",
                     title: LocalizedStringKey("No exercises added yet"),
@@ -437,7 +432,7 @@ struct WorkoutDetailView: View {
                 .padding(.vertical, 30)
             } else {
                 VStack(spacing: 16) {
-                    ForEach(Array(workout.safeExercises.enumerated()), id: \.element.id) { index, exercise in
+                    ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
                         
                         let deleteAction = {
                             self.exerciseToDelete = exercise
@@ -458,7 +453,7 @@ struct WorkoutDetailView: View {
                             !exercise.isCompleted && 
                             !exercise.isSuperset &&
                             (expandedExercises[exercise.id] ?? false) &&
-                            workout.safeExercises.prefix(index).allSatisfy { $0.isCompleted || $0.isSuperset }
+                            workout.exercises.prefix(index).allSatisfy { $0.isCompleted || $0.isSuperset }
                         
                         let onExerciseFinished = {
                             handleExerciseFinished(exerciseId: exercise.id, exerciseIndex: index)
@@ -529,7 +524,7 @@ struct WorkoutDetailView: View {
                     
                     Chart {
                         ForEach(strengthExercises) { exercise in
-                            let maxWeight = exercise.safeSetsList
+                            let maxWeight = exercise.setsList
                                 .filter { $0.isCompleted && $0.type != .warmup }
                                 .compactMap { $0.weight }
                                 .max() ?? exercise.weight
@@ -619,11 +614,11 @@ struct WorkoutDetailView: View {
     }
     
     private var workoutImage: Image {
-        if workout.safeExercises.isEmpty { return Image("img_default") }
+        if workout.exercises.isEmpty { return Image("img_default") }
         
         var counts: [String: Int] = [:]
-        for exercise in workout.safeExercises {
-            let targets = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
             for t in targets { counts[t.muscleGroup, default: 0] += 1 }
         }
         
@@ -736,12 +731,12 @@ struct WorkoutDetailView: View {
             expandedExercises[exerciseId] = false
         }
         
-        let nextIndex = workout.safeExercises.indices.first { index in
-            index > exerciseIndex && !workout.safeExercises[index].isCompleted && !workout.safeExercises[index].isSuperset
+        let nextIndex = workout.exercises.indices.first { index in
+            index > exerciseIndex && !workout.exercises[index].isCompleted && !workout.exercises[index].isSuperset
         }
         
         if let nextIndex = nextIndex {
-            let nextExercise = workout.safeExercises[nextIndex]
+            let nextExercise = workout.exercises[nextIndex]
             
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 expandedExercises[nextExercise.id] = true
@@ -756,7 +751,6 @@ struct WorkoutDetailView: View {
 
 // MARK: - Subviews & Helpers
 
-// ИСПРАВЛЕНИЕ: Вынесенный локальный таймер. Больше не перерисовывает весь экран!
 struct WorkoutTimerView: View {
     let startDate: Date
     @State private var timeElapsed: String = "0:00"
@@ -791,9 +785,9 @@ struct FunFactView: View {
     
     var totalStrengthVolume: Double {
         var total = 0.0
-        for exercise in workout.safeExercises {
+        for exercise in workout.exercises {
             if exercise.isSuperset {
-                for sub in exercise.safeSubExercises where sub.type == .strength {
+                for sub in exercise.subExercises where sub.type == .strength {
                     total += sub.computedVolume
                 }
             } else if exercise.type == .strength {

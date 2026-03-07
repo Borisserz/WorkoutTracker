@@ -20,10 +20,12 @@ struct StatisticsManager {
         
         for workout in workouts {
             for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                // ИСПРАВЛЕНИЕ: Используем subExercises
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 
                 for ex in targetExercises {
-                    for set in ex.safeSetsList where set.isCompleted {
+                    // ИСПРАВЛЕНИЕ: Используем setsList
+                    for set in ex.setsList where set.isCompleted {
                         var currentValue: Double = 0
                         switch ex.type {
                         case .strength: currentValue = set.weight ?? 0
@@ -98,11 +100,11 @@ struct StatisticsManager {
             stats.totalDuration += workout.duration
             for exercise in workout.exercises {
                 stats.totalVolume += exercise.computedVolume
-                let targetExercises = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in targetExercises {
-                    let reps = ex.safeSetsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.reps }.reduce(0, +)
+                    let reps = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.reps }.reduce(0, +)
                     stats.totalReps += reps
-                    let dist = ex.safeSetsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
+                    let dist = ex.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
                     stats.totalDistance += dist
                 }
             }
@@ -134,9 +136,9 @@ struct StatisticsManager {
         var maxWeight = cachedPR
         for workout in workouts where workout.isActive {
             for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in targetExercises where ex.name == exerciseName && ex.type == .strength {
-                    if let maxSetWeight = ex.safeSetsList.compactMap({ $0.weight }).max(), maxSetWeight > maxWeight {
+                    if let maxSetWeight = ex.setsList.compactMap({ $0.weight }).max(), maxSetWeight > maxWeight {
                         maxWeight = maxSetWeight
                     }
                 }
@@ -145,19 +147,18 @@ struct StatisticsManager {
         return maxWeight
     }
     
-    // ОПТИМИЗАЦИЯ: Теперь берет allTimePRs из кэша, а не сканирует всю историю
     static func getRecentPRs(in interval: DateInterval, workouts: [Workout], allTimePRs: [String: Double]) -> [WorkoutViewModel.PersonalRecord] {
         var records: [WorkoutViewModel.PersonalRecord] = []
         let workoutsInPeriod = workouts.filter { interval.contains($0.date) }.sorted(by: { $0.date < $1.date })
         
         for workout in workoutsInPeriod {
             for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in targetExercises where ex.type == .strength {
-                    let maxWeight = ex.safeSetsList.filter { $0.type != .warmup && $0.isCompleted }.compactMap { $0.weight }.max() ?? 0
+                    let maxWeight = ex.setsList.filter { $0.type != .warmup && $0.isCompleted }.compactMap { $0.weight }.max() ?? 0
                     if maxWeight > 0 {
                         let currentPR = allTimePRs[ex.name] ?? 0
-                        if maxWeight >= currentPR { // Если вес равен или больше абсолютного рекорда
+                        if maxWeight >= currentPR {
                             let newPR = WorkoutViewModel.PersonalRecord(exerciseName: ex.name, weight: maxWeight, date: workout.date)
                             records.removeAll { $0.exerciseName == newPR.exerciseName }
                             records.append(newPR)
@@ -243,8 +244,8 @@ struct StatisticsManager {
         case .distance:
             return workouts.reduce(0.0) { wSum, w in
                 wSum + w.exercises.reduce(0.0) { eSum, e in
-                    let subExs = e.isSuperset ? e.safeSubExercises : [e]
-                    let dist = subExs.reduce(0.0) { s, sub in s + sub.safeSetsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +) }
+                    let subExs = e.isSuperset ? e.subExercises : [e]
+                    let dist = subExs.reduce(0.0) { s, sub in s + sub.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +) }
                     return eSum + dist
                 }
             }
@@ -262,10 +263,10 @@ struct AnalyticsManager {
         var chestSets = 0, backSets = 0, legSets = 0, upperBodySets = 0
         for workout in recentWorkouts {
             for exercise in workout.exercises where exercise.type == .strength {
-                let list = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                let list = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in list {
-                    let completedSets = ex.safeSetsList.filter { $0.isCompleted && $0.type != .warmup }.count
-                    let count = ex.safeSetsList.isEmpty ? ex.sets : completedSets
+                    let completedSets = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
+                    let count = ex.setsList.isEmpty ? ex.sets : completedSets
                     if ex.muscleGroup == "Chest" { chestSets += count }
                     if ex.muscleGroup == "Back" { backSets += count }
                     if ex.muscleGroup == "Legs" { legSets += count }
@@ -308,9 +309,9 @@ struct AnalyticsManager {
         let processWorkouts = { (works: [Workout], isCurrent: Bool) in
             for workout in works {
                 for exercise in workout.exercises {
-                    let targetExercises = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                    let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                     for ex in targetExercises where ex.type == .strength {
-                        let maxWeight = ex.safeSetsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                        let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
                         if maxWeight > 0 {
                             let existing = exerciseData[ex.name] ?? (0, 0, 0)
                             if isCurrent {
@@ -355,9 +356,9 @@ struct AnalyticsManager {
         
         for workout in recentWorkouts {
             for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in targetExercises where ex.type == .strength {
-                    let maxWeight = ex.safeSetsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                    let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
                     if maxWeight > 0 { history[ex.name, default: []].append((date: workout.date, maxWeight: maxWeight)) }
                 }
             }
@@ -402,7 +403,7 @@ struct AnalyticsManager {
         for workout in recentWorkouts {
             var uniqueMuscles = Set<String>()
             for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in targetExercises where ex.type == .strength {
                     let muscles = MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup)
                     for muscle in muscles {
@@ -537,7 +538,7 @@ struct RecoveryCalculator {
             let fatigueFactor = max(0.0, min(1.0, 1.0 - (hoursSince / fullRecoveryHours)))
             
             for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in targetExercises where ex.type == .strength {
                     for slug in MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup) {
                         rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, fatigueFactor)

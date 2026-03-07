@@ -462,12 +462,19 @@ struct PresetExerciseEditor: View {
             return
         }
         
+        // ИСПРАВЛЕНИЕ SwiftData: Удаляем старые сеты из контекста, чтобы не создавать сиротские объекты
+        if let context = exercise.modelContext {
+            for set in exercise.setsList {
+                context.delete(set)
+            }
+        }
+        
         // Генерация нового setsList
         var newSets: [WorkoutSet] = []
         let finalSetsCount = exercise.type == .cardio ? 1 : max(1, setsCount)
         
         for i in 1...finalSetsCount {
-            newSets.append(WorkoutSet(
+            let newSet = WorkoutSet(
                 index: i,
                 weight: exercise.type == .strength ? weightValue : nil,
                 reps: exercise.type == .strength ? repsCount : nil,
@@ -475,7 +482,14 @@ struct PresetExerciseEditor: View {
                 time: total > 0 ? total : nil,
                 isCompleted: false,
                 type: .normal
-            ))
+            )
+            
+            // ИСПРАВЛЕНИЕ SwiftData: Сначала вставляем в контекст (если он доступен)
+            if let context = exercise.modelContext {
+                context.insert(newSet)
+            }
+            
+            newSets.append(newSet)
         }
         
         exercise.setsList = newSets
