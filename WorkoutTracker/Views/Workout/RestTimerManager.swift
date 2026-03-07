@@ -9,6 +9,7 @@ internal import SwiftUI
 import Combine
 import AudioToolbox
 
+@MainActor // Гарантирует, что обновления UI всегда происходят в главном потоке
 class RestTimerManager: ObservableObject {
     
     // MARK: - Published Properties
@@ -19,6 +20,7 @@ class RestTimerManager: ObservableObject {
     // MARK: - Private Properties
     private var restEndTime: Date?
     private var restTimer: Timer?
+    private var cancellables = Set<AnyCancellable>() // Хранилище подписок для Combine
     
     private var defaultRestTime: Int {
         let saved = UserDefaults.standard.integer(forKey: "defaultRestTime")
@@ -27,21 +29,19 @@ class RestTimerManager: ObservableObject {
     
     // MARK: - Init / Deinit
     init() {
-        // Поддержка фона: при возвращении в приложение проверяем статус таймера, 
-        // чтобы мгновенно обновить UI, если таймер истек в фоне.
-        NotificationCenter.default.addObserver(
-            forName: UIApplication.willEnterForegroundNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.checkTimerStateOnForeground()
-        }
+        // Поддержка фона: безопасно подписываемся через Combine.
+        // Это полностью решает проблему утечки памяти обсервера.
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .sink { [weak self] _ in
+                self?.checkTimerStateOnForeground()
+            }
+            .store(in: &cancellables)
     }
     
     deinit {
-        NotificationCenter.default.removeObserver(self)
         restTimer?.invalidate()
         restTimer = nil
+        // Отписка от нотификаций через Combine (cancellables) произойдет автоматически.
     }
     
     // MARK: - Timer Logic
@@ -59,28 +59,38 @@ class RestTimerManager: ObservableObject {
     
     private func startTicker() {
         restTimer?.invalidate()
-        restTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+        
+        // РЕШЕНИЕ: Создаем таймер через инициализатор (чтобы не дублировать в .default RunLoop)
+        // и добавляем в .common RunLoop
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self, let endTime = self.restEndTime else { return }
-            let timeLeft = Int(endTime.timeIntervalSinceNow)
+            let timeRemaining = endTime.timeIntervalSinceNow
             
-            if timeLeft >= 0 {
-                if self.restTimeRemaining != timeLeft + 1 {
-                    self.restTimeRemaining = timeLeft + 1
+            // Используем ceil() для правильного округления до верхнего целого.
+            // Это решает проблему зависания таймера на "1" и опоздания завершения.
+            if timeRemaining > 0 {
+                let secondsLeft = Int(ceil(timeRemaining))
+                if self.restTimeRemaining != secondsLeft {
+                    self.restTimeRemaining = secondsLeft
                 }
             } else {
+                self.restTimeRemaining = 0
                 self.finishTimer()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        restTimer = timer
     }
     
     private func checkTimerStateOnForeground() {
         guard isRestTimerActive, let endTime = restEndTime else { return }
-        let timeLeft = Int(endTime.timeIntervalSinceNow)
+        let timeRemaining = endTime.timeIntervalSinceNow
         
-        if timeLeft <= 0 {
+        if timeRemaining <= 0 {
+            self.restTimeRemaining = 0
             finishTimer()
         } else {
-            self.restTimeRemaining = timeLeft
+            self.restTimeRemaining = Int(ceil(timeRemaining))
             startTicker()
         }
     }
@@ -98,6 +108,7 @@ class RestTimerManager: ObservableObject {
         if isRestTimerActive, let currentEnd = restEndTime {
             let newEnd = currentEnd.addingTimeInterval(Double(-seconds))
             if newEnd.timeIntervalSinceNow <= 0 {
+                self.restTimeRemaining = 0
                 finishTimer()
             } else {
                 self.restEndTime = newEnd
@@ -116,10 +127,16 @@ class RestTimerManager: ObservableObject {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.success)
-        AudioServicesPlaySystemSound(1005)
+        AudioServicesPlaySystemSound(1005) // ID звукового оповещения системы
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation { self.stopRestTimer() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self = self else { return }
+            
+            // Решаем Race condition: закрываем таймер только если за эти 3 секунды 
+            // пользователь не запустил новый (если запустил, restTimerFinished будет равен false)
+            if self.restTimerFinished {
+                withAnimation { self.stopRestTimer() }
+            }
         }
     }
     

@@ -14,8 +14,8 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var viewModel: WorkoutViewModel
     
-    // Постепенный отказ от ViewModel: используем @Query для прямой работы с данными
-    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    // ИСПРАВЛЕНИЕ: Убрали @Query! Нам не нужно грузить 5 лет тренировок в память
+    // только ради того, чтобы показать меню настроек. Экспорт будет брать их из базы сам.
     
     @AppStorage("streakRestDays") private var streakRestDays: Int = 2
     @AppStorage("defaultRestTime") private var defaultRestTime: Int = 60
@@ -242,7 +242,6 @@ struct SettingsView: View {
             await TestDataGenerator.generateAllData(container: container)
             
             await MainActor.run {
-                // viewModel.fetchData() — Убрано. SwiftData и @Query обновят UI сами.
                 isProcessing = false
                 testDataAlertMessage = "Test data generated successfully!\n\nCreated workouts and weight tracking history from 2021 to 2026."
                 showTestDataAlert = true
@@ -258,7 +257,6 @@ struct SettingsView: View {
             await TestDataGenerator.clearAllDataAsync(container: container)
             
             await MainActor.run {
-                // viewModel.fetchData() — Убрано.
                 isProcessing = false
                 testDataAlertMessage = "All workouts and weight history cleared."
                 showTestDataAlert = true
@@ -274,20 +272,32 @@ struct SettingsView: View {
     }
     
     private func exportAllData(format: ExportFormat) {
-        let fileURL: URL?
+        isProcessing = true
+        let container = modelContext.container
         
-        switch format {
-        case .json:
-            fileURL = DataManager.shared.exportAllDataAsJSON(workouts: workouts)
-        case .csv:
-            fileURL = DataManager.shared.exportAllDataToCSV(workouts: workouts)
-        }
-        
-        if let fileURL = fileURL {
-            fileToShare = fileURL
-        } else {
-            testDataAlertMessage = "Failed to export data. Please try again."
-            showTestDataAlert = true
+        // ИСПРАВЛЕНИЕ: Выполняем загрузку данных для экспорта в фоне
+        Task.detached(priority: .userInitiated) {
+            let bgContext = ModelContext(container)
+            let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+            let workouts = (try? bgContext.fetch(descriptor)) ?? []
+            
+            let fileURL: URL?
+            switch format {
+            case .json:
+                fileURL = DataManager.shared.exportAllDataAsJSON(workouts: workouts)
+            case .csv:
+                fileURL = DataManager.shared.exportAllDataToCSV(workouts: workouts)
+            }
+            
+            await MainActor.run {
+                self.isProcessing = false
+                if let fileURL = fileURL {
+                    self.fileToShare = fileURL
+                } else {
+                    self.testDataAlertMessage = "Failed to export data. Please try again."
+                    self.showTestDataAlert = true
+                }
+            }
         }
     }
 }

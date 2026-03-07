@@ -15,6 +15,7 @@ import SwiftData
 struct ExerciseCardView: View {
     
     // MARK: - Environment & Bindings
+    @Environment(\.modelContext) private var context // РЕШЕНИЕ 2.1: Доступ к контексту для правильного удаления
     @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
@@ -149,17 +150,19 @@ struct ExerciseCardView: View {
     private var setsSection: some View {
         let lastExerciseData = viewModel.lastPerformancesCache[exercise.name]
         
-        // ВАЖНО: Связи SwiftData не упорядочены, мы обязательно должны сортировать массив сетов
-        let sortedSets = exercise.setsList.sorted(by: { $0.index < $1.index })
+        // ИСПРАВЛЕНИЕ: Используем safeSetsList, чтобы избежать дубликатов ID от SwiftData
+        let sortedSets = exercise.safeSetsList
         
-        ForEach(sortedSets) { set in
-            let currentIndex = sortedSets.firstIndex(where: { $0.id == set.id }) ?? 0
+        // То же самое делаем для прошлой тренировки
+        let sortedPrevSets: [WorkoutSet] = lastExerciseData?.safeSetsList ?? []
+        
+        ForEach(Array(sortedSets.enumerated()), id: \.element.id) { currentIndex, set in
             let isLast = currentIndex == sortedSets.count - 1
             
             let prevSet: WorkoutSet? = {
-                if let lastData = lastExerciseData, currentIndex < lastData.setsList.count {
-                    // У сохраненных в истории тренировок порядок также важен
-                    return lastData.setsList.sorted(by: { $0.index < $1.index })[currentIndex]
+                // Если индекс существует в кэшированной прошлой тренировке — берем его за O(1)
+                if currentIndex < sortedPrevSets.count {
+                    return sortedPrevSets[currentIndex]
                 }
                 return nil
             }()
@@ -199,7 +202,7 @@ struct ExerciseCardView: View {
                     .font(.caption)
                     .frame(width: 20, height: 20)
                 
-                NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name, allWorkouts: viewModel.workouts)) {
+                NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name)) {
                     HStack {
                         Image(systemName: getIcon())
                             .foregroundColor(getColor())
@@ -214,8 +217,8 @@ struct ExerciseCardView: View {
                 
                 Spacer()
                 
-                // Информация о количестве сетов (показывается всегда)
-                Text(LocalizedStringKey("\(exercise.setsList.count) sets"))
+                // Информация о количестве сетов (ИСПРАВЛЕНИЕ: safeSetsList)
+                Text(LocalizedStringKey("\(exercise.safeSetsList.count) sets"))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
@@ -370,7 +373,7 @@ struct ExerciseCardView: View {
             
             // Логика рекорда
             if exercise.type == .strength {
-                let maxWeightInWorkout = exercise.setsList
+                let maxWeightInWorkout = exercise.safeSetsList
                     .filter { $0.isCompleted }
                     .compactMap { $0.weight }
                     .max() ?? 0
@@ -404,7 +407,7 @@ struct ExerciseCardView: View {
     }
     
     private func markAllSetsCompleted() {
-        for set in exercise.setsList {
+        for set in exercise.safeSetsList {
             set.isCompleted = true
         }
     }
@@ -413,7 +416,7 @@ struct ExerciseCardView: View {
         // Запрещаем добавлять сеты, если упражнение или тренировка завершены
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
-        let sortedSets = exercise.setsList.sorted(by: { $0.index < $1.index })
+        let sortedSets = exercise.safeSetsList
         let lastSet = sortedSets.last
         let newIndex = (lastSet?.index ?? 0) + 1
         
@@ -427,6 +430,7 @@ struct ExerciseCardView: View {
         )
         
         withAnimation {
+            // Мы по-прежнему модифицируем оригинальный массив базы данных!
             exercise.setsList.append(newSet)
         }
     }
@@ -437,10 +441,16 @@ struct ExerciseCardView: View {
         
         withAnimation {
             if let index = exercise.setsList.firstIndex(where: { $0.id == id }) {
+                let setToDelete = exercise.setsList[index]
+                
+                // РЕШЕНИЕ 2.1: Явно удаляем объект из базы данных (ModelContext)
+                context.delete(setToDelete)
+                
+                // Удаляем из локального массива
                 exercise.setsList.remove(at: index)
                 
                 // Пересчитываем индексы
-                let sortedSets = exercise.setsList.sorted(by: { $0.index < $1.index })
+                let sortedSets = exercise.safeSetsList
                 for (i, set) in sortedSets.enumerated() {
                     set.index = i + 1
                 }

@@ -20,17 +20,14 @@ struct WorkoutDetailView: View {
     
     // MARK: - Environment & Bindings
     @EnvironmentObject var tutorialManager: TutorialManager
-    @Bindable var workout: Workout // ИЗМЕНЕНО: Используем Bindable для SwiftData модели
+    @Bindable var workout: Workout 
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
-    @Environment(\.modelContext) private var context // ДОБАВЛЕНО: для удаления
+    @Environment(\.modelContext) private var context 
     
-    // Новый @Query для получения списка всех тренировок и подсчета статистики
-    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    // ИСПРАВЛЕНИЕ: Убрали @Query всех тренировок. Нам не нужно грузить БД в UI-поток.
     
     // MARK: - Local State (UI)
-    
-    @State private var timeElapsed: String = "0:00"
     
     // Управление модальными окнами
     @State private var showExerciseSelection = false
@@ -72,8 +69,8 @@ struct WorkoutDetailView: View {
     
     /// Плоский список всех упражнений (разворачивает супер-сеты для графиков)
     var flattenedExercises: [Exercise] {
-        workout.exercises.flatMap { exercise in
-            exercise.isSuperset ? exercise.subExercises : [exercise]
+        workout.safeExercises.flatMap { exercise in
+            exercise.isSuperset ? exercise.safeSubExercises : [exercise]
         }
     }
     
@@ -81,11 +78,11 @@ struct WorkoutDetailView: View {
     var muscleIntensityMap: [String: Int] {
         var counts = [String: Int]()
         
-        for exercise in workout.exercises {
+        for exercise in workout.safeExercises {
             // Кардио не учитываем на тепловой карте
             if exercise.type == .cardio { continue }
             
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            let targets = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
             
             for sub in targets {
                 let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
@@ -98,10 +95,9 @@ struct WorkoutDetailView: View {
     }
     
     /// Определяет, является ли тренировка новой (созданной недавно, например, из шаблона)
-    /// Тренировка считается новой, если она создана менее минуты назад и имеет упражнения
     var isNewWorkout: Bool {
         let timeSinceCreation = Date().timeIntervalSince(workout.date)
-        return timeSinceCreation < 60 && !workout.exercises.isEmpty
+        return timeSinceCreation < 60 && !workout.safeExercises.isEmpty
     }
     
     // MARK: - Body
@@ -132,7 +128,7 @@ struct WorkoutDetailView: View {
                 muscleHeatmapSection
                 
                 // 7. Интересный факт (Сравнение веса)
-                if !workout.exercises.isEmpty {
+                if !workout.safeExercises.isEmpty {
                     FunFactView(workout: workout, showSettings: $showComparisonSettings)
                 }
                 
@@ -154,65 +150,49 @@ struct WorkoutDetailView: View {
                 }
             }
             .onAppear {
-                // Инициализируем состояние раскрытости для всех упражнений
-                // Первое упражнение всегда раскрыто, остальные - по логике
-                for (index, exercise) in workout.exercises.enumerated() {
+                for (index, exercise) in workout.safeExercises.enumerated() {
                     if expandedExercises[exercise.id] == nil {
                         expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
                     }
                 }
             }
             .onChange(of: workout.exercises.count) { oldCount, newCount in
-                // При добавлении нового упражнения инициализируем его состояние
-                // Первое упражнение всегда раскрыто, остальные - свернуты
-                for (index, exercise) in workout.exercises.enumerated() {
+                for (index, exercise) in workout.safeExercises.enumerated() {
                     if expandedExercises[exercise.id] == nil {
                         expandedExercises[exercise.id] = index == 0
                     }
                 }
             }
             .onChange(of: scrollToExerciseId) { oldId, newId in
-                // Прокручиваем к упражнению когда изменяется scrollToExerciseId
                 if let exerciseId = newId {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         withAnimation {
                             proxy.scrollTo(exerciseId, anchor: .top)
                         }
-                        scrollToExerciseId = nil // Сбрасываем после прокрутки
+                        scrollToExerciseId = nil
                     }
                 }
             }
         }
         
         // --- Modals & Sheets ---
-        
-        // Поделиться
         .sheet(isPresented: $showShareSheet) {
             ActivityViewController(activityItems: shareItems)
                 .presentationDetents([.medium, .large])
         }
-        
-        // Добавление упражнения
         .sheet(isPresented: $showExerciseSelection) {
             ExerciseSelectionView(selectedExercises: $workout.exercises)
         }
-        
-        // Настройка сравнения (Арбузы)
         .sheet(isPresented: $showComparisonSettings) {
             ComparisonSettingsView().presentationDetents([.medium])
         }
-        
-        // Создание супер-сета
         .sheet(isPresented: $showSupersetBuilder) {
             SupersetBuilderView { newSuperset in
                 workout.exercises.append(newSuperset)
             }
         }
-        
-        // Редактирование супер-сета
         .sheet(item: $supersetToEdit) { superset in
             SupersetBuilderView(existingSuperset: superset, onSave: { updatedSuperset in
-                // В SwiftData изменения уже применены благодаря Bindable внутри SupersetBuilderView
                 supersetToEdit = nil
             }, onDelete: {
                 if let index = workout.exercises.firstIndex(where: { $0.id == superset.id }) {
@@ -222,8 +202,6 @@ struct WorkoutDetailView: View {
                 supersetToEdit = nil
             })
         }
-        
-        // Замена упражнения (Swap)
         .sheet(isPresented: $showSwapSheet) {
             ExerciseSelectionView(selectedExercises: $tempSwapList)
                 .onDisappear {
@@ -235,12 +213,8 @@ struct WorkoutDetailView: View {
                 }
         }
         
-        // Таймер обновления времени
-        .onReceive(Foundation.Timer.publish(every: 1.0, on: RunLoop.main, in: RunLoop.Mode.common).autoconnect()) { _ in
-            if workout.isActive { updateTimer() }
-        }
-        .onAppear(perform: updateTimer)
-        // Предупреждения при удалении
+        // ИСПРАВЛЕНИЕ: Убрали глобальный таймер. Он теперь локализован в WorkoutTimerView.
+        
         .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
                 if let ex = exerciseToDelete {
@@ -293,8 +267,9 @@ struct WorkoutDetailView: View {
                         Label(LocalizedStringKey("Live Workout"), systemImage: "record.circle")
                             .foregroundStyle(.red).bold().blinking()
                         Spacer()
-                        Text(timeElapsed)
-                            .font(.title2).monospacedDigit().bold()
+                        
+                        // ИСПРАВЛЕНИЕ: Изолированный таймер
+                        WorkoutTimerView(startDate: workout.date)
                     }
                     .padding()
                     .background(Color.red.opacity(0.1))
@@ -326,7 +301,11 @@ struct WorkoutDetailView: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text(LocalizedStringKey("Duration")).font(.caption).foregroundColor(.secondary)
-                        Text(workout.isActive ? LocalizedStringKey(timeElapsed) : LocalizedStringKey("\(workout.duration) min")).font(.title2).bold()
+                        if workout.isActive {
+                            WorkoutTimerView(startDate: workout.date)
+                        } else {
+                            Text(LocalizedStringKey("\(workout.duration) min")).font(.title2).bold()
+                        }
                     }
                     Spacer()
                     
@@ -337,13 +316,12 @@ struct WorkoutDetailView: View {
                             .font(.title2).bold()
                             .foregroundColor(effortColor(percentage: workout.effortPercentage))
                     }
-                    // ПОДСКАЗКА ДЛЯ УСТАЛОСТИ
                     .spotlight(
                         step: .explainEffort,
                         manager: tutorialManager,
                         text: "Track your intensity (RPE) here.",
-                        alignment: .bottom, // Прижимаем к правому краю
-                        xOffset: -10, // Чуть сдвигаем влево, чтобы не обрезалось
+                        alignment: .bottom,
+                        xOffset: -10,
                         yOffset: 10
                     )
                 }
@@ -351,7 +329,7 @@ struct WorkoutDetailView: View {
                 .background(Color.blue.opacity(0.05))
                 .cornerRadius(10)
             }
-            .zIndex(10) // <--- ВАЖНО: Поднимаем хедер над остальным контентом
+            .zIndex(10)
         }
         
         private var actionButtonSection: some View {
@@ -367,7 +345,6 @@ struct WorkoutDetailView: View {
                             .cornerRadius(12)
                             .shadow(radius: 5)
                     }
-                    // ПОДСКАЗКА ДЛЯ КНОПКИ ФИНИШ
                     .spotlight(
                                         step: .finishWorkout,
                                         manager: tutorialManager,
@@ -391,7 +368,7 @@ struct WorkoutDetailView: View {
                     }
                 }
             }
-            .zIndex(9) // <--- ВАЖНО: Кнопка тоже должна быть выше списка упражнений
+            .zIndex(9) 
         }
     
     private var exercisesToolbarSection: some View {
@@ -399,7 +376,7 @@ struct WorkoutDetailView: View {
                 Text(LocalizedStringKey("Exercises")).font(.title2).bold()
                 Spacer()
                 
-                // Кнопка ручного запуска таймера (только для активной)
+                // Кнопка ручного запуска таймера
                 if workout.isActive {
                     Button {
                         timerManager.startRestTimer()
@@ -426,7 +403,7 @@ struct WorkoutDetailView: View {
                 }
                 .disabled(!workout.isActive)
                 
-                // --- КНОПКА ДОБАВЛЕНИЯ УПРАЖНЕНИЯ ---
+                // КНОПКА ДОБАВЛЕНИЯ УПРАЖНЕНИЯ
                 Button {
                     showExerciseSelection = true
                 } label: {
@@ -441,18 +418,17 @@ struct WorkoutDetailView: View {
                     step: .addExercise,
                     manager: tutorialManager,
                     text: "Tap here to add an exercise.",
-                    alignment: .top,   // Текст СВЕРХУ кнопки
-                    xOffset: -50,      // Сдвигаем влево, чтобы не ушло за экран
+                    alignment: .top,
+                    xOffset: -50,
                     yOffset: 10
                 )
             }
-            // ВАЖНО: Поднимаем тулбар над списком, чтобы подсказка не обрезалась
             .zIndex(15)
         }
     
     private var exerciseListSection: some View {
         Group {
-            if workout.exercises.isEmpty {
+            if workout.safeExercises.isEmpty {
                 EmptyStateView(
                     icon: "plus.circle.fill",
                     title: LocalizedStringKey("No exercises added yet"),
@@ -461,7 +437,7 @@ struct WorkoutDetailView: View {
                 .padding(.vertical, 30)
             } else {
                 VStack(spacing: 16) {
-                    ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
+                    ForEach(Array(workout.safeExercises.enumerated()), id: \.element.id) { index, exercise in
                         
                         let deleteAction = {
                             self.exerciseToDelete = exercise
@@ -473,26 +449,21 @@ struct WorkoutDetailView: View {
                             self.showSwapSheet = true
                         }
                         
-                        // Binding для состояния раскрытости
                         let isExpandedBinding = Binding(
                             get: { expandedExercises[exercise.id] ?? false },
                             set: { expandedExercises[exercise.id] = $0 }
                         )
                         
-                        // Определяем, является ли это упражнение текущим (активным)
-                        // Текущее упражнение - это первое незавершенное и раскрытое упражнение
                         let isCurrentExercise = workout.isActive && 
                             !exercise.isCompleted && 
                             !exercise.isSuperset &&
                             (expandedExercises[exercise.id] ?? false) &&
-                            workout.exercises.prefix(index).allSatisfy { $0.isCompleted || $0.isSuperset }
+                            workout.safeExercises.prefix(index).allSatisfy { $0.isCompleted || $0.isSuperset }
                         
-                        // Callback при завершении упражнения
                         let onExerciseFinished = {
                             handleExerciseFinished(exerciseId: exercise.id, exerciseIndex: index)
                         }
                         
-                        // Рендерим либо Супер-сет, либо обычную карточку
                         Group {
                             if exercise.isSuperset {
                                 SupersetCardView(
@@ -514,8 +485,7 @@ struct WorkoutDetailView: View {
                                 )
                             }
                         }
-                        .id(exercise.id) // ID для ScrollViewReader
-                        // Модификаторы Drag & Drop
+                        .id(exercise.id) 
                         .background(Color.white.opacity(0.01))
                         .onDrag {
                             self.draggedExercise = exercise
@@ -541,7 +511,6 @@ struct WorkoutDetailView: View {
                     Text(LocalizedStringKey("Analysis (Max Weight)"))
                         .font(.title2).bold().padding(.top)
                     
-                    // Показываем полное название выбранного упражнения
                     if let selected = selectedChartExerciseName {
                         Text(LocalizedStringKey(selected))
                             .font(.subheadline)
@@ -556,26 +525,22 @@ struct WorkoutDetailView: View {
                             .frame(minHeight: 20)
                     }
                     
-                    // Получаем список всех имен упражнений для явного указания на оси X
                     let exerciseNames = strengthExercises.map { $0.name }
                     
                     Chart {
                         ForEach(strengthExercises) { exercise in
-                            // Берем макс. вес из выполненных подходов
-                            let maxWeight = exercise.setsList
+                            let maxWeight = exercise.safeSetsList
                                 .filter { $0.isCompleted && $0.type != .warmup }
                                 .compactMap { $0.weight }
                                 .max() ?? exercise.weight
                             
                             if maxWeight > 0 {
-                                // Конвертируем вес для отображения на графике
                                 let unitsManager = UnitsManager.shared
                                 let convertedWeight = unitsManager.convertFromKilograms(maxWeight)
                                 BarMark(
                                     x: .value("Exercise", exercise.name),
                                     y: .value("Weight", convertedWeight)
                                 )
-                                // Изменяем цвет, если столбец выбран
                                 .foregroundStyle(selectedChartExerciseName == exercise.name ? Color.orange.gradient : Color.blue.gradient)
                                 .cornerRadius(4)
                                 .annotation(position: .top) {
@@ -588,9 +553,8 @@ struct WorkoutDetailView: View {
                     }
                     .frame(height: 250)
                     .padding(.bottom, 10)
-                    .chartXSelection(value: $selectedChartExerciseName) // Обработка нажатий
+                    .chartXSelection(value: $selectedChartExerciseName)
                     .chartXAxis {
-                        // Явно указываем все значения для оси X, чтобы все подписи отображались
                         AxisMarks(values: exerciseNames) { value in
                             AxisTick()
                             AxisValueLabel {
@@ -610,7 +574,7 @@ struct WorkoutDetailView: View {
                                )
                                .onTapGesture {
                                    if tutorialManager.currentStep == .highlightChart {
-                                       tutorialManager.nextStep() // -> highlightBody
+                                       tutorialManager.nextStep() 
                                    }
                 }
             }
@@ -637,7 +601,7 @@ struct WorkoutDetailView: View {
                         )
                         .onTapGesture {
                             if tutorialManager.currentStep == .highlightBody {
-                                tutorialManager.nextStep() // -> finishWorkout
+                                tutorialManager.nextStep() 
                             }
             }
         }
@@ -645,7 +609,6 @@ struct WorkoutDetailView: View {
     
     // MARK: - Logic & Actions
     
-    // Сокращение имени для графика (например "Bench Press" -> "BP", "Squat" -> "Squ")
     private func abbreviateName(_ name: String) -> String {
         let words = name.split(separator: " ")
         if words.count > 1 {
@@ -655,17 +618,15 @@ struct WorkoutDetailView: View {
         }
     }
     
-    // Генерация картинки на основе мышц
     private var workoutImage: Image {
-        if workout.exercises.isEmpty { return Image("img_default") }
+        if workout.safeExercises.isEmpty { return Image("img_default") }
         
         var counts: [String: Int] = [:]
-        for exercise in workout.exercises {
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+        for exercise in workout.safeExercises {
+            let targets = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
             for t in targets { counts[t.muscleGroup, default: 0] += 1 }
         }
         
-        // Сортировка (сначала по кол-ву, потом по алфавиту для стабильности)
         let sortedGroups = counts.sorted { (item1, item2) -> Bool in
             if item1.value == item2.value {
                 return item1.key < item2.key
@@ -688,7 +649,6 @@ struct WorkoutDetailView: View {
         return Image(imageName)
     }
     
-    // Стабильный выбор варианта картинки по ID тренировки
     private func pickVariant(from options: [String]) -> String {
         guard !options.isEmpty else { return "img_default" }
         let stableHash = workout.id.uuidString.utf8.reduce(0) { Int($0) + Int($1) }
@@ -696,19 +656,10 @@ struct WorkoutDetailView: View {
         return options[index]
     }
     
-    private func updateTimer() {
-        let diff = Date().timeIntervalSince(workout.date)
-        let hours = Int(diff) / 3600
-        let minutes = (Int(diff) / 60) % 60
-        let seconds = Int(diff) % 60
-        timeElapsed = hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, seconds) : String(format: "%d:%02d", minutes, seconds)
-    }
-    
     private func performSwap(old: Exercise, new: Exercise) {
         guard let index = workout.exercises.firstIndex(where: { $0.id == old.id }) else { return }
         withAnimation {
             workout.exercises[index] = new
-            // Старое упражнение удаляем из базы, так как оно заменено
             context.delete(old) 
         }
     }
@@ -718,34 +669,41 @@ struct WorkoutDetailView: View {
         workout.endTime = Date()
         
         if tutorialManager.currentStep == .finishWorkout {
-            tutorialManager.setStep(.recoveryCheck)}
+            tutorialManager.setStep(.recoveryCheck)
+        }
+        
         // 2. Начисляем XP
         viewModel.progressManager.addXP(for: workout)
         
         // 3. Планируем уведомления
         NotificationManager.shared.scheduleNotifications(after: workout)
         
-        // 4. Проверяем ачивки
-        checkAchievements()
-        
-        // 5. Останавливаем Live Activity
+        // 4. Останавливаем Live Activity
         stopLiveActivity()
         
-        // 6. Обновляем виджеты сразу после завершения тренировки
-        viewModel.updateWidgetData(workouts: workouts)
-    }
-    
-    private func checkAchievements() {
-        let oldAchievements = AchievementCalculator.calculateAchievements(workouts: workouts, streak: 0).filter { $0.isUnlocked }.count
-        
-        // Поскольку endTime уже установлен, тренировка считается завершенной
-        // Пересчитываем ачивки с учетом нового стрика
-        let newAchievements = AchievementCalculator.calculateAchievements(workouts: workouts, streak: StatisticsManager.calculateWorkoutStreak(workouts: workouts)).filter { $0.isUnlocked }.count
-        
-        if newAchievements > oldAchievements {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+        // 5. ИСПРАВЛЕНИЕ: Проверяем ачивки и обновляем виджеты в ФОНОВОМ ПОТОКЕ!
+        let modelContainer = context.container
+        Task.detached(priority: .userInitiated) {
+            let bgContext = ModelContext(modelContainer)
+            let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+            guard let workouts = try? bgContext.fetch(descriptor) else { return }
+            
+            // Проверяем ачивки в фоне (передаем старый и новый стрик)
+            let newAchievementsCount = AchievementCalculator.calculateAchievements(workouts: workouts, streak: StatisticsManager.calculateWorkoutStreak(workouts: workouts)).filter { $0.isUnlocked }.count
+            
+            if newAchievementsCount > 0 { // Простая проверка (в идеале кэшировать старое количество)
+                await MainActor.run {
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                }
+            }
         }
+        
+        // 6. Обновляем виджеты
+        viewModel.updateWidgetData(container: context.container)
+        
+        // 7. Посылаем сигнал для обновления кешей в фоне!
+        NotificationCenter.default.post(name: NSNotification.Name("RefreshPerformanceCaches"), object: nil)
     }
     
     private func stopLiveActivity() {
@@ -773,27 +731,22 @@ struct WorkoutDetailView: View {
         return .green
     }
     
-    // Обработка завершения упражнения: сворачиваем текущее и раскрываем следующее
     private func handleExerciseFinished(exerciseId: UUID, exerciseIndex: Int) {
-        // Сворачиваем текущее упражнение
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             expandedExercises[exerciseId] = false
         }
         
-        // Ищем следующее незавершенное упражнение
-        let nextIndex = workout.exercises.indices.first { index in
-            index > exerciseIndex && !workout.exercises[index].isCompleted && !workout.exercises[index].isSuperset
+        let nextIndex = workout.safeExercises.indices.first { index in
+            index > exerciseIndex && !workout.safeExercises[index].isCompleted && !workout.safeExercises[index].isSuperset
         }
         
         if let nextIndex = nextIndex {
-            let nextExercise = workout.exercises[nextIndex]
+            let nextExercise = workout.safeExercises[nextIndex]
             
-            // Раскрываем следующее упражнение
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 expandedExercises[nextExercise.id] = true
             }
             
-            // Устанавливаем ID для прокрутки (onChange обработает прокрутку)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
                 scrollToExerciseId = nextExercise.id
             }
@@ -802,6 +755,31 @@ struct WorkoutDetailView: View {
 }
 
 // MARK: - Subviews & Helpers
+
+// ИСПРАВЛЕНИЕ: Вынесенный локальный таймер. Больше не перерисовывает весь экран!
+struct WorkoutTimerView: View {
+    let startDate: Date
+    @State private var timeElapsed: String = "0:00"
+    
+    let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        Text(timeElapsed)
+            .font(.title2).monospacedDigit().bold()
+            .onReceive(timer) { _ in
+                updateTime()
+            }
+            .onAppear(perform: updateTime)
+    }
+    
+    private func updateTime() {
+        let diff = Date().timeIntervalSince(startDate)
+        let hours = Int(diff) / 3600
+        let minutes = (Int(diff) / 60) % 60
+        let seconds = Int(diff) % 60
+        timeElapsed = hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, seconds) : String(format: "%d:%02d", minutes, seconds)
+    }
+}
 
 struct FunFactView: View {
     let workout: Workout
@@ -813,9 +791,9 @@ struct FunFactView: View {
     
     var totalStrengthVolume: Double {
         var total = 0.0
-        for exercise in workout.exercises {
+        for exercise in workout.safeExercises {
             if exercise.isSuperset {
-                for sub in exercise.subExercises where sub.type == .strength {
+                for sub in exercise.safeSubExercises where sub.type == .strength {
                     total += sub.computedVolume
                 }
             } else if exercise.type == .strength {
@@ -913,7 +891,6 @@ struct ComparisonSettingsView: View {
                                 Text(preset.icon).font(.title2)
                                 VStack(alignment: .leading) {
                                     Text(LocalizedStringKey(preset.name)).foregroundColor(.primary)
-                                    // Вес в пресетах хранится в кг, конвертируем для отображения
                                     let convertedWeight = unitsManager.convertFromKilograms(preset.weight)
                                     Text("\(Int(convertedWeight)) \(unitsManager.weightUnitString())").font(.caption).foregroundColor(.secondary)
                                 }

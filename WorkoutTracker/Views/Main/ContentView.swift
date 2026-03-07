@@ -7,12 +7,15 @@ internal import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    // ДОБАВЛЕНО: Получаем доступ к контексту для передачи контейнера в фон
+    @Environment(\.modelContext) private var modelContext 
+    
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
     @EnvironmentObject var tutorialManager: TutorialManager
     
-    // Загружаем тренировки, чтобы кэшировать перфоманс и рекавери
-    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    // УДАЛЕН: @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    // Нам больше не нужно загружать все тренировки в UI-поток!
     
     @State private var selectedTab = 1 // Начинаем с вкладки тренировок (Workout)
 
@@ -40,15 +43,13 @@ struct ContentView: View {
                     .zIndex(100)
             }
         }
-        .onChange(of: workouts) { oldValue, newValue in
-            // Глобально обновляем кеши при изменении БД
-            viewModel.updatePerformanceCaches(workouts: newValue, oldWorkouts: oldValue)
-            viewModel.calculateRecovery(workouts: newValue)
-        }
+        // ДОБАВЛЕНО: Инициализируем кеши при запуске в фоне
         .onAppear {
-            // При первом запуске загружаем кеши
-            viewModel.updatePerformanceCaches(workouts: workouts)
-            viewModel.calculateRecovery(workouts: workouts)
+            viewModel.refreshAllCaches(container: modelContext.container)
+        }
+        // ДОБАВЛЕНО: Слушаем явные события (например, завершение или удаление тренировки)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshPerformanceCaches"))) { _ in
+            viewModel.refreshAllCaches(container: modelContext.container)
         }
         .alert(item: $viewModel.currentError) { error in
             Alert(

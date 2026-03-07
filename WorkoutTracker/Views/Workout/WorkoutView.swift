@@ -7,6 +7,7 @@
 
 internal import SwiftUI
 import SwiftData
+import UIKit // Добавлено для проверки системных иконок
 
 struct WorkoutView: View {
     @Environment(\.modelContext) private var context
@@ -31,6 +32,10 @@ struct WorkoutView: View {
     // Удаление с предупреждением
     @State private var showDeleteAlert = false
     @State private var workoutsToDelete: [Workout] = []
+    
+    // ОПТИМИЗАЦИЯ: Локальный стейт для расчётов, чтобы не тормозить UI
+    @State private var calculatedAvgDuration: Int = 0
+    @State private var calculatedAvgVolume: Int = 0
     
     enum FilterPeriod: String, CaseIterable {
         case all = "All"
@@ -104,6 +109,11 @@ struct WorkoutView: View {
         return filtered
     }
     
+    // ИСПРАВЛЕНИЕ: Триггер для обновления расчетов при изменении любого параметра фильтрации
+    private var filterTrigger: String {
+        "\(workouts.count)-\(selectedFilter.rawValue)-\(searchText)-\(sortOption.rawValue)"
+    }
+    
     var body: some View {
         NavigationStack {
             content
@@ -160,6 +170,10 @@ struct WorkoutView: View {
                     } else {
                         Text(LocalizedStringKey("Are you sure you want to delete \(workoutsToDelete.count) workouts? This action cannot be undone."))
                     }
+                }
+                // ИСПРАВЛЕНИЕ: Используем onChange(initial: true) для синхронного подсчета
+                .onChange(of: filterTrigger, initial: true) { _, _ in
+                    calculateStats(for: filteredWorkouts)
                 }
         }
     }
@@ -249,23 +263,18 @@ struct WorkoutView: View {
     
     // Секция статистики
     private var statsSection: some View {
-        let totalWorkouts = workouts.count
-        let avgDuration = workouts.isEmpty ? 0 : workouts.reduce(0) { $0 + $1.duration } / workouts.count
-        let totalVolume = workouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.computedVolume } }
-        let avgVolume = totalWorkouts > 0 ? Int(totalVolume / Double(totalWorkouts)) : 0
-        
         return VStack(spacing: 12) {
             HStack(spacing: 12) {
                 StatCard(
                     title: LocalizedStringKey("Avg Duration"),
-                    value: "\(avgDuration)",
+                    value: "\(calculatedAvgDuration)",
                     subtitle: LocalizedStringKey("min"),
                     icon: "stopwatch"
                 )
                 
                 StatCard(
                     title: LocalizedStringKey("Avg Volume"),
-                    value: "\(Int(unitsManager.convertFromKilograms(Double(avgVolume))))",
+                    value: "\(Int(unitsManager.convertFromKilograms(Double(calculatedAvgVolume))))",
                     subtitle: LocalizedStringKey(unitsManager.weightUnitString()),
                     icon: "scalemass"
                 )
@@ -274,6 +283,25 @@ struct WorkoutView: View {
             .padding(.top, 8)
             .padding(.bottom, 8)
         }
+    }
+    
+    // ИСПРАВЛЕНИЕ: Мы убрали Task.detached!
+    // Модели из @Query привязаны к главному потоку, их передача в фон вызывала жесткий краш
+    private func calculateStats(for currentWorkouts: [Workout]) {
+        let totalWorkouts = currentWorkouts.count
+        
+        guard totalWorkouts > 0 else {
+            self.calculatedAvgDuration = 0
+            self.calculatedAvgVolume = 0
+            return
+        }
+        
+        let avgDur = currentWorkouts.reduce(0) { $0 + $1.duration } / totalWorkouts
+        let totalVol = currentWorkouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.computedVolume } }
+        let avgVol = Int(totalVol / Double(totalWorkouts))
+        
+        self.calculatedAvgDuration = avgDur
+        self.calculatedAvgVolume = avgVol
     }
     
     // Секция поиска и фильтров
@@ -454,9 +482,17 @@ struct WorkoutRow: View {
         return .green
     }
     
+    // ИСПРАВЛЕНИЕ: Защита от несуществующих системных иконок
+    var safeIcon: String {
+        if UIImage(systemName: workout.icon) != nil {
+            return workout.icon
+        }
+        return "figure.run" // Базовая иконка, если в тестовых данных указано то, чего нет
+    }
+    
     var body: some View {
         HStack {
-            Image(systemName: workout.icon)
+            Image(systemName: safeIcon)
                 .font(.title2)
                 .foregroundColor(.blue)
                 .frame(width: 50, height: 50)

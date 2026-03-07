@@ -68,8 +68,9 @@ struct SupersetCardView: View {
     }
     
     var exerciseListView: some View {
-        ForEach(Array(superset.subExercises.enumerated()), id: \.element.id) { index, exercise in
-            let isLast = index == superset.subExercises.count - 1
+        // ИСПРАВЛЕНИЕ: Используем safeSubExercises
+        ForEach(Array(superset.safeSubExercises.enumerated()), id: \.element.id) { index, exercise in
+            let isLast = index == superset.safeSubExercises.count - 1
             VStack(spacing: 0) {
                 // Для вложенных упражнений в суперсете передаем сам объект (reference type)
                 ExerciseCardView(
@@ -79,7 +80,7 @@ struct SupersetCardView: View {
                         withAnimation {
                             if let removeIndex = superset.subExercises.firstIndex(where: { $0.id == exercise.id }) {
                                 let removedExercise = superset.subExercises.remove(at: removeIndex)
-                                // ИЗМЕНЕНО: Явно удаляем из контекста базы данных, чтобы не плодить "сирот"
+                                // Явно удаляем из контекста базы данных, чтобы не плодить "сирот"
                                 modelContext.delete(removedExercise)
                             }
                         }
@@ -133,17 +134,22 @@ struct SupersetCardView: View {
         markAllSetsInSupersetCompleted()
         superset.isCompleted = true
         
-        // ДОБАВЛЕНО: Явно сохраняем состояние в базу перед проверкой рекордов
+        // Явно сохраняем состояние в базу перед проверкой рекордов
         try? modelContext.save()
         
         var newRecordWasSet = false
         
-        for subExercise in superset.subExercises {
+        for subExercise in superset.safeSubExercises {
             if subExercise.type == .strength {
-                let oldRecord = viewModel.getPersonalRecord(for: subExercise.name, onlyCompleted: true)
-                let maxWeight = subExercise.setsList.compactMap { $0.weight }.max() ?? 0
-                if maxWeight > oldRecord {
-                    newRecordWasSet = true
+                let lastData = viewModel.lastPerformancesCache[subExercise.name]
+                
+                if let _ = lastData {
+                    let oldRecord = viewModel.personalRecordsCache[subExercise.name] ?? 0.0
+                    // ИСПРАВЛЕНИЕ: Используем safeSetsList
+                    let maxWeight = subExercise.safeSetsList.compactMap { $0.weight }.max() ?? 0.0
+                    if maxWeight > oldRecord {
+                        newRecordWasSet = true
+                    }
                 }
             }
         }
@@ -161,8 +167,9 @@ struct SupersetCardView: View {
     }
     
     func markAllSetsInSupersetCompleted() {
-        for sub in superset.subExercises {
-            for set in sub.setsList {
+        // ИСПРАВЛЕНИЕ: Используем безопасные массивы для прохода по элементам
+        for sub in superset.safeSubExercises {
+            for set in sub.safeSetsList {
                 set.isCompleted = true
             }
         }

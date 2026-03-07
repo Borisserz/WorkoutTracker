@@ -75,6 +75,9 @@ class WorkoutSet: Identifiable, Hashable {
     var isCompleted: Bool
     var type: SetType
     
+    // ДОБАВЛЕНО: Обратная ссылка на родительское упражнение
+    var exercise: Exercise?
+    
     init(id: UUID = UUID(), index: Int, weight: Double? = nil, reps: Int? = nil, distance: Double? = nil, time: Int? = nil, isCompleted: Bool = false, type: SetType = .normal) {
         self.id = id
         self.index = index
@@ -106,11 +109,18 @@ class Exercise: Identifiable, Hashable {
     var effort: Int
     var isCompleted: Bool
     
-    @Relationship(deleteRule: .cascade) 
+    // ИЗМЕНЕНО: Добавлен параметр inverse для автоматической связки
+    @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise) 
     var setsList: [WorkoutSet]
     
-    @Relationship(deleteRule: .cascade) 
+    // ИЗМЕНЕНО: Добавлен параметр inverse для связи суперсета с вложенными упражнениями
+    @Relationship(deleteRule: .cascade, inverse: \Exercise.parentExercise) 
     var subExercises: [Exercise]
+    
+    // ДОБАВЛЕНО: Обратные ссылки для SwiftData
+    var parentExercise: Exercise? // Если это упражнение внутри суперсета
+    var workout: Workout?         // Если упражнение находится внутри реальной тренировки
+    var preset: WorkoutPreset?    // Если упражнение находится внутри шаблона
     
     init(id: UUID = UUID(), name: String, muscleGroup: String, type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
         self.id = id
@@ -142,20 +152,31 @@ class Exercise: Identifiable, Hashable {
         }
     }
     
-    // MARK: - Computed Properties (Read-Only)
-    var sets: Int { setsList.count }
-    var reps: Int { setsList.first?.reps ?? 0 }
-    var weight: Double { setsList.first?.weight ?? 0.0 }
-    var distance: Double? { setsList.first?.distance }
-    var timeSeconds: Int? { setsList.first?.time }
+    // MARK: - Safe Accessors (Prevents SwiftData duplication bugs)
+    var safeSetsList: [WorkoutSet] {
+        var seen = Set<UUID>()
+        return setsList.filter { seen.insert($0.id).inserted }.sorted(by: { $0.index < $1.index })
+    }
     
-    var isSuperset: Bool { !subExercises.isEmpty }
+    var safeSubExercises: [Exercise] {
+        var seen = Set<UUID>()
+        return subExercises.filter { seen.insert($0.id).inserted }
+    }
+    
+    // MARK: - Computed Properties (Read-Only)
+    var sets: Int { safeSetsList.count }
+    var reps: Int { safeSetsList.first?.reps ?? 0 }
+    var weight: Double { safeSetsList.first?.weight ?? 0.0 }
+    var distance: Double? { safeSetsList.first?.distance }
+    var timeSeconds: Int? { safeSetsList.first?.time }
+    
+    var isSuperset: Bool { !safeSubExercises.isEmpty }
     
     var computedVolume: Double {
         if isSuperset {
-            return subExercises.reduce(0.0) { $0 + $1.computedVolume }
+            return safeSubExercises.reduce(0.0) { $0 + $1.computedVolume }
         }
-        return setsList.reduce(0.0) { partialResult, set in
+        return safeSetsList.reduce(0.0) { partialResult, set in
             if set.type == .warmup || !set.isCompleted { return partialResult }
             switch type {
             case .strength: return partialResult + ((set.weight ?? 0) * Double(set.reps ?? 0))
@@ -166,8 +187,8 @@ class Exercise: Identifiable, Hashable {
     
     // Глубокое копирование
     func duplicate() -> Exercise {
-        let copiedSets = setsList.map { $0.duplicate() }
-        let copiedSubs = subExercises.map { $0.duplicate() }
+        let copiedSets = safeSetsList.map { $0.duplicate() }
+        let copiedSubs = safeSubExercises.map { $0.duplicate() }
         return Exercise(id: UUID(), name: name, muscleGroup: muscleGroup, type: type, category: category, effort: effort, subExercises: copiedSubs, setsList: copiedSets, isCompleted: isCompleted)
     }
     
@@ -182,7 +203,8 @@ class WorkoutPreset: Identifiable, Hashable {
     var name: String
     var icon: String
     
-    @Relationship(deleteRule: .cascade) 
+    // ИЗМЕНЕНО: Добавлен параметр inverse
+    @Relationship(deleteRule: .cascade, inverse: \Exercise.preset) 
     var exercises: [Exercise]
     
     init(id: UUID = UUID(), name: String, icon: String, exercises: [Exercise]) {
@@ -190,6 +212,11 @@ class WorkoutPreset: Identifiable, Hashable {
         self.name = name
         self.icon = icon
         self.exercises = exercises
+    }
+    
+    var safeExercises: [Exercise] {
+        var seen = Set<UUID>()
+        return exercises.filter { seen.insert($0.id).inserted }
     }
     
     static func == (lhs: WorkoutPreset, rhs: WorkoutPreset) -> Bool { lhs.id == rhs.id }
@@ -205,7 +232,8 @@ class Workout: Identifiable, Equatable {
     var icon: String
     var isFavorite: Bool
     
-    @Relationship(deleteRule: .cascade) 
+    // ИЗМЕНЕНО: Добавлен параметр inverse
+    @Relationship(deleteRule: .cascade, inverse: \Exercise.workout) 
     var exercises: [Exercise]
     
     init(id: UUID = UUID(), title: String, date: Date, endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false) {
@@ -218,6 +246,12 @@ class Workout: Identifiable, Equatable {
         self.exercises = exercises
     }
     
+    // MARK: - Safe Accessors
+    var safeExercises: [Exercise] {
+        var seen = Set<UUID>()
+        return exercises.filter { seen.insert($0.id).inserted }
+    }
+    
     var isActive: Bool { endTime == nil }
     
     var duration: Int {
@@ -227,9 +261,9 @@ class Workout: Identifiable, Equatable {
     }
     
     var effortPercentage: Int {
-        if exercises.isEmpty { return 0 }
-        let totalEffort = exercises.reduce(0) { $0 + $1.effort }
-        let average = Double(totalEffort) / Double(exercises.count)
+        if safeExercises.isEmpty { return 0 }
+        let totalEffort = safeExercises.reduce(0) { $0 + $1.effort }
+        let average = Double(totalEffort) / Double(safeExercises.count)
         return Int(average * 10)
     }
     
@@ -312,8 +346,8 @@ extension Exercise {
             category: category,
             effort: effort,
             isCompleted: isCompleted,
-            setsList: setsList.map { $0.toDTO() },
-            subExercises: subExercises.map { $0.toDTO() }
+            setsList: safeSetsList.map { $0.toDTO() },
+            subExercises: safeSubExercises.map { $0.toDTO() }
         )
     }
     
@@ -338,7 +372,7 @@ extension WorkoutPreset {
         WorkoutPresetDTO(
             name: name,
             icon: icon,
-            exercises: exercises.map { $0.toDTO() }
+            exercises: safeExercises.map { $0.toDTO() }
         )
     }
     

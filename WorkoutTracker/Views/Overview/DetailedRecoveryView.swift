@@ -6,6 +6,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 // MARK: - Helper Model
 struct MuscleStatusItem: Identifiable {
@@ -18,14 +19,20 @@ struct MuscleStatusItem: Identifiable {
 struct DetailedRecoveryView: View {
     
     // MARK: - Environment & Storage
+    @Environment(\.modelContext) private var context // ДОБАВЛЕНО: Для доступа к базе в фоне
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var tutorialManager: TutorialManager
     
-    // 1. Переименовали для ясности: это "Долгосрочное хранилище"
+    // ИСПРАВЛЕНИЕ: Убрали @Query! Нам не нужно грузить 5 лет тренировок в оперативную память UI-потока.
+    
+    // 1. Долгосрочное хранилище
     @AppStorage("userRecoveryHours") private var storedRecoveryHours: Double = 48.0
     
     // 2. Локальное состояние для плавности интерфейса
     @State private var localRecoveryHours: Double = 48.0
+    
+    // 3. Задача для фонового пересчета
+    @State private var calculationTask: Task<Void, Never>?
     
     // MARK: - Data Source
     private var musclesData: [MuscleStatusItem] {
@@ -52,14 +59,52 @@ struct DetailedRecoveryView: View {
         // Инициализация при открытии экрана
         .onAppear {
             localRecoveryHours = storedRecoveryHours
-            // Принудительно обновляем данные при входе, чтобы цифры были актуальны
-            viewModel.calculateRecovery(hours: localRecoveryHours)
+            recalculateRecoveryInBackground(hours: localRecoveryHours, debounce: false)
         }
         
         // СЛЕЖЕНИЕ ЗА ИЗМЕНЕНИЯМИ (Live Update)
-        // Используем дебаунс для оптимизации производительности при движении слайдера
         .onChange(of: localRecoveryHours) { _, newValue in
-            viewModel.calculateRecovery(hours: newValue, debounce: true)
+            recalculateRecoveryInBackground(hours: newValue, debounce: true)
+        }
+    }
+    
+    // MARK: - Background Calculation
+    
+    private func recalculateRecoveryInBackground(hours: Double, debounce: Bool) {
+        // Отменяем предыдущую задачу, если слайдер все еще двигается
+        calculationTask?.cancel()
+        
+        let container = context.container // Берем контейнер для фона
+        
+        calculationTask = Task.detached(priority: .userInitiated) {
+            // Дебаунс: ждем 150мс, чтобы не спамить базу данных при каждом пикселе движения слайдера
+            if debounce {
+                try? await Task.sleep(nanoseconds: 150_000_000)
+            }
+            guard !Task.isCancelled else { return }
+            
+            // Создаем фоновый контекст
+            let bgContext = ModelContext(container)
+            
+            // ОПТИМИЗАЦИЯ: Отсекаем старые тренировки. 
+            // Добавляем запас в 24 часа на длительность самой тренировки.
+            let cutoffDate = Date.now.addingTimeInterval(-((hours + 24) * 3600))
+            
+            let descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= cutoffDate },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            
+            guard let fetchedWorkouts = try? bgContext.fetch(descriptor) else { return }
+            guard !Task.isCancelled else { return }
+            
+            // Вычисляем восстановление на основе фоновых данных
+            let newRecoveryStatus = RecoveryCalculator.calculate(hours: hours, workouts: fetchedWorkouts)
+            
+            // Возвращаем результат на главный поток
+            await MainActor.run {
+                viewModel.recoveryStatus = newRecoveryStatus
+            }
         }
     }
     

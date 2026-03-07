@@ -45,9 +45,6 @@ struct WorkoutTrackerApp: App {
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-        
-        // Проверяем и создаем дефолтные шаблоны при первом запуске
-        viewModel.checkAndGenerateDefaultPresets(context: sharedModelContainer.mainContext)
     }
 
     var body: some Scene {
@@ -65,6 +62,10 @@ struct WorkoutTrackerApp: App {
                     OnboardingFlowView(isOnboardingCompleted: $hasCompletedOnboarding)
                         .environmentObject(tutorialManager) 
                 }
+            }
+            .onAppear {
+                // Проверяем и создаем дефолтные шаблоны при первом запуске
+                viewModel.checkAndGenerateDefaultPresets(context: sharedModelContainer.mainContext)
             }
             .onOpenURL { url in
                 // Передаем контекст в метод импорта

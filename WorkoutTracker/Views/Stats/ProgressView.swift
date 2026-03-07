@@ -5,9 +5,7 @@
 //  Created by Boris Serzhanovich on 24.12.25.
 //
 //  Экран "Прогресс" (Статистика).
-//  Реализован по паттерну Container/View:
-//  1. StatsView (Container) — отвечает за вычисление дат, интервалов и подготовку данных асинхронно.
-//  2. StatsContentView (View) — отвечает только за верстку и отображение.
+//  ОПТИМИЗИРОВАНО: Математика вынесена в фон, устранены проблемы N+1 запросов.
 //
 
 internal import SwiftUI
@@ -44,28 +42,33 @@ struct StatsView: View {
     
     // MARK: - Environment & State
     
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
     
-    // Прямой реактивный запрос к SwiftData с автоматическим обновлением UI
-    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    // ИСПРАВЛЕНИЕ: Грузим только одну тренировку, чтобы SwiftUI перерисовывал при изменениях
+    @Query private var dbTrigger: [Workout]
     
     @State private var selectedPeriod: Period = .week
     @State private var selectedMetric: GraphMetric = .count
     
-    // Кэшированные данные для предотвращения зависаний UI
     @State private var isDataLoaded = false
-    
-    @State private var streakCount: Int = 0
-    @State private var bestWeek: WorkoutViewModel.PeriodStats?
-    @State private var bestMonth: WorkoutViewModel.PeriodStats?
-    @State private var weakPoints: [WorkoutViewModel.WeakPoint] = []
-    @State private var recommendations: [WorkoutViewModel.Recommendation] = []
     
     @State private var currentStats: WorkoutViewModel.PeriodStats?
     @State private var previousStats: WorkoutViewModel.PeriodStats?
     @State private var chartData: [WorkoutViewModel.ChartDataPoint] = []
     @State private var recentPRs: [WorkoutViewModel.PersonalRecord] = []
     @State private var detailedComparison: [WorkoutViewModel.DetailedComparison] = []
+    
+    private var dbTriggerHash: String {
+        guard let latest = dbTrigger.first else { return "empty" }
+        return "\(latest.id.uuidString)-\(latest.endTime?.timeIntervalSince1970 ?? 0)-\(latest.exercises.count)"
+    }
+    
+    init() {
+        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 1
+        _dbTrigger = Query(descriptor)
+    }
     
     // MARK: - Body
     
@@ -74,22 +77,20 @@ struct StatsView: View {
             Group {
                 if isDataLoaded,
                    let currentStats = currentStats,
-                   let previousStats = previousStats,
-                   let bestWeek = bestWeek,
-                   let bestMonth = bestMonth {
+                   let previousStats = previousStats {
                     
                     StatsContentView(
                         selectedPeriod: $selectedPeriod,
                         selectedMetric: $selectedMetric,
-                        streakCount: streakCount,
+                        streakCount: viewModel.streakCount,
                         currentStats: currentStats,
                         previousStats: previousStats,
                         chartData: chartData,
                         recentPRs: recentPRs,
-                        bestWeek: bestWeek,
-                        bestMonth: bestMonth,
-                        weakPoints: weakPoints,
-                        recommendations: recommendations,
+                        bestWeek: viewModel.bestWeekStats,
+                        bestMonth: viewModel.bestMonthStats,
+                        weakPoints: viewModel.weakPoints,
+                        recommendations: viewModel.recommendations,
                         detailedComparison: detailedComparison
                     )
                     
@@ -106,30 +107,23 @@ struct StatsView: View {
         }
         .task {
             if !isDataLoaded {
-                await loadAllData()
+                await loadPeriodData()
             }
         }
         .onChange(of: selectedPeriod) { _, _ in
             Task {
-                // Небольшая задержка, чтобы UI кнопки успел отреагировать на нажатие
-                try? await Task.sleep(nanoseconds: 50_000_000)
+                // Моментальная перерисовка при смене периода
                 await loadPeriodData()
             }
         }
         .onChange(of: selectedMetric) { _, _ in
             Task {
-                try? await Task.sleep(nanoseconds: 50_000_000)
-                let newChartData = StatisticsManager.getChartData(for: selectedPeriod, metric: selectedMetric, workouts: workouts)
-                withAnimation {
-                    self.chartData = newChartData
-                }
+                await loadPeriodData()
             }
         }
-        .onChange(of: workouts) { _, _ in
-            // SwiftData сама просигнализирует, когда workouts изменились
+        .onChange(of: dbTriggerHash) { _, _ in
             Task {
-                try? await Task.sleep(nanoseconds: 50_000_000)
-                await loadAllData()
+                await loadPeriodData()
             }
         }
     }
@@ -137,38 +131,47 @@ struct StatsView: View {
     // MARK: - Data Loading Logic
     
     @MainActor
-    private func loadAllData() async {
-        // Теперь мы напрямую передаем workouts в Manager'ы
-        streakCount = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
-        bestWeek = StatisticsManager.getBestStats(for: Period.week, workouts: workouts)
-        bestMonth = StatisticsManager.getBestStats(for: Period.month, workouts: workouts)
-        weakPoints = AnalyticsManager.getWeakPoints(recentWorkouts: workouts)
-        recommendations = AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: viewModel.recoveryStatus)
-        
-        await loadPeriodData()
-        
-        withAnimation {
-            isDataLoaded = true
-        }
-    }
-    
-    @MainActor
     private func loadPeriodData() async {
+        let container = context.container
+        let period = selectedPeriod
+        let metric = selectedMetric
+        
+        // Мы берем из ViewModel уже подсчитанные рекордные веса, чтобы не сканировать всю историю
+        let prCache = viewModel.personalRecordsCache
+        
         let currentInterval = calculateCurrentInterval()
         let previousInterval = calculatePreviousInterval()
         
-        let newCurrentStats = StatisticsManager.getStats(for: currentInterval, workouts: workouts)
-        let newPreviousStats = StatisticsManager.getStats(for: previousInterval, workouts: workouts)
-        let newRecentPRs = StatisticsManager.getRecentPRs(in: currentInterval, workouts: workouts)
-        let newDetailedComparison = AnalyticsManager.getDetailedComparison(workouts: workouts, period: selectedPeriod)
-        let newChartData = StatisticsManager.getChartData(for: selectedPeriod, metric: selectedMetric, workouts: workouts)
+        // ОПТИМИЗАЦИЯ: Мы скачиваем тренировки ТОЛЬКО за выбранный период и предыдущий
+        let minDate = previousInterval.start
+        let maxDate = currentInterval.end
+        
+        let result = await Task.detached(priority: .userInitiated) {
+            let bgContext = ModelContext(container)
+            var descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.date >= minDate && $0.date <= maxDate },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            descriptor.relationshipKeyPathsForPrefetching = [\.exercises]
+            // Вместо 1000 мы скачиваем только ~30 тренировок, если выбран месяц!
+            let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
+            
+            let currentStats = StatisticsManager.getStats(for: currentInterval, workouts: bgWorkouts)
+            let previousStats = StatisticsManager.getStats(for: previousInterval, workouts: bgWorkouts)
+            let recentPRs = StatisticsManager.getRecentPRs(in: currentInterval, workouts: bgWorkouts, allTimePRs: prCache)
+            let detailedComparison = AnalyticsManager.getDetailedComparison(workouts: bgWorkouts, period: period)
+            let chartData = StatisticsManager.getChartData(for: period, metric: metric, workouts: bgWorkouts)
+            
+            return (currentStats, previousStats, recentPRs, detailedComparison, chartData)
+        }.value
         
         withAnimation {
-            currentStats = newCurrentStats
-            previousStats = newPreviousStats
-            recentPRs = newRecentPRs
-            detailedComparison = newDetailedComparison
-            chartData = newChartData
+            self.currentStats = result.0
+            self.previousStats = result.1
+            self.recentPRs = result.2
+            self.detailedComparison = result.3
+            self.chartData = result.4
+            self.isDataLoaded = true
         }
     }
     
@@ -189,7 +192,7 @@ struct StatsView: View {
         let calendar = Calendar.current
         switch selectedPeriod {
         case .week:
-            let lastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: now)!
+            let lastWeek = calendar.date(byAdding: .day, value: -7, to: now)!
             return calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
         case .month:
             let lastMonth = calendar.date(byAdding: .month, value: -1, to: now)!

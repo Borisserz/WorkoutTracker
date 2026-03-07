@@ -6,7 +6,7 @@
 //
 //  Главная ViewModel приложения.
 //  Является "мозгом", управляющим локальным стейтом и ошибками.
-//  Вся работа со SwiftData (Workouts, Presets) перенесена во View через @Query.
+//  Вся работа со SwiftData переведена на фоновые потоки.
 //
 
 internal import SwiftUI
@@ -56,6 +56,18 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
+    // Кэш для дашборда
+    @Published var dashboardMuscleData: [(muscle: String, count: Int)] = []
+    @Published var dashboardTotalExercises: Int = 0
+    @Published var dashboardTopExercises: [(name: String, count: Int)] = []
+    
+    // ОПТИМИЗАЦИЯ: Кэш для глобальной аналитики, чтобы не тормозить ProgressView
+    @Published var streakCount: Int = 0
+    @Published var bestWeekStats: PeriodStats = PeriodStats()
+    @Published var bestMonthStats: PeriodStats = PeriodStats()
+    @Published var weakPoints: [WeakPoint] = []
+    @Published var recommendations: [Recommendation] = []
+    
     // MARK: - Error Handling
     struct AppError: Identifiable { let id = UUID(); let title: String; let message: String }
     @Published var currentError: AppError?
@@ -63,124 +75,99 @@ class WorkoutViewModel: ObservableObject {
         DispatchQueue.main.async { self.currentError = AppError(title: title, message: message) }
     }
     
-    // MARK: - Private Properties
-    private var recoveryCalculationTask: Task<Void, Never>?
-    
     init() {
         MuscleMapping.preload()
         loadCustomExercises()
         loadDeletedDefaultExercises()
     }
     
-    deinit { recoveryCalculationTask?.cancel() }
-    
     // MARK: - File System Helpers
     private func getDocumentURL(for filename: String) -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(filename)
     }
     
-    // MARK: - App State Updaters
+    // MARK: - BACKGROUND CACHE REFRESH
     
-    /// Этот метод должен вызываться из корневой View приложения через `.onChange(of: workouts)`
-    func updatePerformanceCaches(workouts: [Workout], oldWorkouts: [Workout]? = nil) {
-        Task { @MainActor in
-            var exercisesToUpdate: Set<String>? = nil
+    func refreshAllCaches(container: ModelContainer) {
+        Task.detached(priority: .userInitiated) {
+            let context = ModelContext(container)
             
-            if let oldWorkouts = oldWorkouts {
-                var changedNames = Set<String>()
-                let newWorkoutsDict = Dictionary(uniqueKeysWithValues: workouts.map { ($0.id, $0) })
-                let oldWorkoutsDict = Dictionary(uniqueKeysWithValues: oldWorkouts.map { ($0.id, $0) })
-                
-                var needsFullRebuild = false
-                
-                for workout in workouts {
-                    if let oldWorkout = oldWorkoutsDict[workout.id] {
-                        if oldWorkout !== workout {
-                            Self.extractExerciseNames(from: workout, into: &changedNames)
-                            if !oldWorkout.isDeleted {
-                                Self.extractExerciseNames(from: oldWorkout, into: &changedNames)
-                            }
-                        }
-                    } else {
-                        Self.extractExerciseNames(from: workout, into: &changedNames)
-                    }
-                }
-                
-                for oldWorkout in oldWorkouts {
-                    if newWorkoutsDict[oldWorkout.id] == nil {
-                        needsFullRebuild = true
-                        break
-                    }
-                }
-                
-                if needsFullRebuild {
-                    exercisesToUpdate = nil
-                } else {
-                    if changedNames.isEmpty { return }
-                    exercisesToUpdate = changedNames
-                }
-            }
+            let descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            
+            guard let workouts = try? context.fetch(descriptor) else { return }
             
             var partialLastPerformances: [String: Exercise] = [:]
             var partialPRs: [String: Double] = [:]
+            var stats: [String: Int] = [:]
+            var exerciseCounts: [String: Int] = [:]
             
-            for workout in workouts.sorted(by: { $0.date > $1.date }) {
-                guard !workout.isActive else { continue }
+            for workout in workouts {
                 for exercise in workout.exercises {
-                    for ex in (exercise.isSuperset ? exercise.subExercises : [exercise]) {
+                    let targets = exercise.isSuperset ? exercise.safeSubExercises : [exercise]
+                    
+                    for ex in targets {
                         let name = ex.name
                         
-                        if let targets = exercisesToUpdate, !targets.contains(name) { continue }
-                        
-                        if partialLastPerformances[name] == nil { partialLastPerformances[name] = ex }
+                        if partialLastPerformances[name] == nil {
+                            partialLastPerformances[name] = ex.duplicate()
+                        }
                         
                         if ex.type == .strength {
-                            let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                            let maxWeight = ex.safeSetsList
+                                .filter { $0.isCompleted && $0.type != .warmup }
+                                .compactMap { $0.weight }
+                                .max() ?? 0
+                                
                             let currentMax = partialPRs[name] ?? 0.0
                             if maxWeight > currentMax { partialPRs[name] = maxWeight }
                         }
+                        
+                        let isCardio = ex.type == .cardio || ex.type == .duration || ex.muscleGroup == "Cardio"
+                        if !isCardio {
+                            stats[ex.muscleGroup, default: 0] += 1
+                        }
+                        exerciseCounts[name, default: 0] += 1
                     }
                 }
             }
             
-            if let targets = exercisesToUpdate {
-                for name in targets {
-                    if let pr = partialPRs[name] { self.personalRecordsCache[name] = pr }
-                    else { self.personalRecordsCache.removeValue(forKey: name) }
-                    
-                    if let lp = partialLastPerformances[name] { self.lastPerformancesCache[name] = lp }
-                    else { self.lastPerformancesCache.removeValue(forKey: name) }
-                }
-            } else {
+            let recovery = RecoveryCalculator.calculate(hours: nil, workouts: workouts)
+            let sortedMuscleData = stats.map { (muscle: $0.key, count: $0.value) }.filter { $0.count > 0 }.sorted { $0.count > $1.count }
+            let totalExCount = sortedMuscleData.reduce(0) { $0 + $1.count }
+            let topExercises = Array(exerciseCounts.sorted { $0.value > $1.value || ($0.value == $1.value && $0.key < $1.key) }.prefix(5)).map { (name: $0.key, count: $0.value) }
+            
+            // Расчет глобальной статистики один раз в фоне
+            let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
+            let bWeek = StatisticsManager.getBestStats(for: .week, workouts: workouts)
+            let bMonth = StatisticsManager.getBestStats(for: .month, workouts: workouts)
+            let weakPts = AnalyticsManager.getWeakPoints(recentWorkouts: workouts)
+            let recs = AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: recovery)
+            
+            await MainActor.run {
                 self.lastPerformancesCache = partialLastPerformances
                 self.personalRecordsCache = partialPRs
-            }
-        }
-    }
-    
-    private static func extractExerciseNames(from workout: Workout, into set: inout Set<String>) {
-        for exercise in workout.exercises {
-            for ex in (exercise.isSuperset ? exercise.subExercises : [exercise]) {
-                set.insert(ex.name)
+                self.recoveryStatus = recovery
+                self.dashboardMuscleData = sortedMuscleData
+                self.dashboardTotalExercises = totalExCount
+                self.dashboardTopExercises = topExercises
+                
+                self.streakCount = streak
+                self.bestWeekStats = bWeek
+                self.bestMonthStats = bMonth
+                self.weakPoints = weakPts
+                self.recommendations = recs
             }
         }
     }
     
     func getLastPerformance(for exerciseName: String) -> Exercise? { lastPerformancesCache[exerciseName] }
     
-    // MARK: - Recovery Logic
-    
-    func calculateRecovery(workouts: [Workout], hours: Double? = nil, debounce: Bool = false) {
-        recoveryCalculationTask?.cancel()
-        recoveryCalculationTask = Task { @MainActor in
-            if debounce { try? await Task.sleep(nanoseconds: 150_000_000) }
-            guard !Task.isCancelled else { return }
-            self.recoveryStatus = RecoveryCalculator.calculate(hours: hours, workouts: workouts)
-        }
-    }
-    
     // MARK: - Default Initialization (SwiftData)
     
+    @MainActor
     func checkAndGenerateDefaultPresets(context: ModelContext) {
         let descriptor = FetchDescriptor<WorkoutPreset>()
         let count = (try? context.fetchCount(descriptor)) ?? 0
@@ -190,6 +177,7 @@ class WorkoutViewModel: ObservableObject {
             for preset in defaultPresets {
                 context.insert(preset)
             }
+            try? context.save()
         }
     }
     
@@ -287,8 +275,16 @@ class WorkoutViewModel: ObservableObject {
     
     // MARK: - Widget
     
-    func updateWidgetData(workouts: [Workout]) {
-        Task { @MainActor in
+    func updateWidgetData(container: ModelContainer) {
+        Task.detached(priority: .background) {
+            let context = ModelContext(container)
+            let descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            
+            guard let workouts = try? context.fetch(descriptor) else { return }
+            
             let currentStreak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
             var points: [WidgetData.WeeklyPoint] = []
             let cal = Calendar.current
@@ -303,10 +299,8 @@ class WorkoutViewModel: ObservableObject {
                 }
             }
             
-            Task.detached(priority: .background) {
-                WidgetDataManager.save(streak: currentStreak, weeklyStats: points)
-                WidgetCenter.shared.reloadAllTimelines()
-            }
+            WidgetDataManager.save(streak: currentStreak, weeklyStats: points)
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 }

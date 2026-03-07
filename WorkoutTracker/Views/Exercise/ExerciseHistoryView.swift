@@ -73,7 +73,8 @@ struct ExerciseHistoryView: View {
     
     let exerciseName: String
     
-    @Query(sort: \Workout.date, order: .reverse) private var allWorkouts: [Workout]
+    // ИСПРАВЛЕНИЕ: Мгновенный запрос ТОЛЬКО нужных упражнений, а не всех тренировок в БД!
+    @Query private var matchingExercises: [Exercise]
     
     @EnvironmentObject var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
@@ -101,6 +102,25 @@ struct ExerciseHistoryView: View {
     @State private var allDataPoints: [DataPoint] = []
     @State private var displayedGraphData: [DataPoint] = []
     @State private var currentMetricValue: Double? = nil
+    
+    // ИСПРАВЛЕНИЕ: Хэш для отслеживания изменений в @Query, чтобы избежать зацикливания onChange
+    private var exercisesHash: String {
+        "\(matchingExercises.count)-\(matchingExercises.map { "\($0.id.uuidString)-\($0.setsList.count)" }.joined())"
+    }
+    
+    // MARK: - Initialization
+    
+    init(exerciseName: String) {
+        self.exerciseName = exerciseName
+        
+        // Настраиваем предикат: ищем только упражнения с этим именем, 
+        // которые не принадлежат шаблонам (preset == nil).
+        let filter = #Predicate<Exercise> { ex in
+            ex.name == exerciseName && ex.preset == nil
+        }
+        // Запрашиваем без сортировки, отсортируем сами в памяти по дате тренировки
+        _matchingExercises = Query(filter: filter)
+    }
     
     // MARK: - Computed Properties (General)
     
@@ -159,7 +179,6 @@ struct ExerciseHistoryView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if !isDataLoaded {
-                // Небольшая задержка, чтобы анимация перехода успела отработать плавно
                 try? await Task.sleep(nanoseconds: 100_000_000)
                 loadInitialData()
             }
@@ -179,7 +198,8 @@ struct ExerciseHistoryView: View {
                 updateGraphData()
             }
         }
-        .onChange(of: allWorkouts) { _, _ in
+        // ИСПРАВЛЕНИЕ: Используем вычисляемый hash вместо всего массива
+        .onChange(of: exercisesHash) { _, _ in
             loadInitialData()
         }
     }
@@ -192,18 +212,24 @@ struct ExerciseHistoryView: View {
         var foundMuscle: String? = nil
         var filtered: [(workout: Workout, exercise: Exercise)] = []
         
-        // Перебираем все тренировки ТОЛЬКО ОДИН РАЗ
-        for workout in allWorkouts {
-            if let ex = findExerciseInWorkout(workout) {
-                filtered.append((workout, ex))
-                if foundCategory == nil {
-                    foundType = ex.type
-                    foundCategory = ex.category
-                    foundMuscle = ex.muscleGroup
-                }
+        // ИСПРАВЛЕНИЕ: Перебираем ТОЛЬКО упражнения, полученные из запроса. Это O(1) относительно всей БД!
+        for ex in matchingExercises {
+            // Упражнение может быть напрямую в тренировке, либо внутри суперсета
+            if let w = ex.workout, w.endTime != nil {
+                filtered.append((w, ex))
+            } else if let parent = ex.parentExercise, let w = parent.workout, w.endTime != nil {
+                filtered.append((w, ex))
+            }
+            
+            // Запоминаем мета-данные
+            if foundCategory == nil {
+                foundType = ex.type
+                foundCategory = ex.category
+                foundMuscle = ex.muscleGroup
             }
         }
         
+        // Сортируем по дате завершения
         filtered.sort { $0.workout.date > $1.workout.date }
         
         // Вычисляем базовые точки графика ОДИН РАЗ
@@ -315,7 +341,7 @@ struct ExerciseHistoryView: View {
         let previousStart = calendar.date(byAdding: .month, value: -(months * 2), to: now)!
         let previousInterval = DateInterval(start: previousStart, end: currentStart)
         
-        // ИСПОЛЬЗУЕМ УЖЕ ОТФИЛЬТРОВАННЫЙ КЭШ, а не все тренировки!
+        // ИСПОЛЬЗУЕМ УЖЕ ОТФИЛЬТРОВАННЫЙ КЭШ
         let currentWorkouts = filteredWorkoutsData.filter { currentInterval.contains($0.workout.date) }
         let previousWorkouts = filteredWorkoutsData.filter { previousInterval.contains($0.workout.date) }
         
@@ -816,21 +842,6 @@ struct ExerciseHistoryView: View {
         let m = seconds / 60
         let s = seconds % 60
         return String(format: "%d:%02d", m, s)
-    }
-    
-    /// Ищет упражнение внутри тренировки (включая вложенные в супер-сеты)
-    func findExerciseInWorkout(_ workout: Workout) -> Exercise? {
-        // Прямой поиск
-        if let direct = workout.exercises.first(where: { $0.name == exerciseName && !$0.isSuperset }) {
-            return direct
-        }
-        // Поиск внутри супер-сетов
-        for ex in workout.exercises where ex.isSuperset {
-            if let sub = ex.subExercises.first(where: { $0.name == exerciseName }) {
-                return sub
-            }
-        }
-        return nil
     }
     
     // MARK: - Technique Helpers

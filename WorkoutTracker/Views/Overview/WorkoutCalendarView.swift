@@ -12,6 +12,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 // MARK: - Main View
 
@@ -23,36 +24,47 @@ struct WorkoutCalendarView: View {
         case month = "Month"
         case threeMonths = "3 Months"
         case year = "Year"
+        case all = "All Time" // ДОБАВЛЕНО: Опция за все время
         
         var days: Int {
             switch self {
             case .month: return 30
             case .threeMonths: return 90
             case .year: return 365
+            case .all: return Int.max
             }
         }
     }
     
     // MARK: - Environment & State
-    
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
+    
+    // ОПТИМИЗАЦИЯ: Мы больше не грузим всю базу. Только 2 крайние тренировки,
+    // чтобы знать, есть ли что-то в базе и с какого месяца начинать.
+    @Query private var recentWorkoutsTrigger: [Workout]
+    @Query private var oldestWorkoutQuery: [Workout]
+    
     @State private var selectedTimeRange: TimeRange = .month
+    @State private var totalWorkoutCount: Int = 0
+    
+    init() {
+        var descTrigger = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descTrigger.fetchLimit = 1
+        _recentWorkoutsTrigger = Query(descTrigger)
+        
+        var descOldest = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .forward)])
+        descOldest.fetchLimit = 1
+        _oldestWorkoutQuery = Query(descOldest)
+    }
     
     // MARK: - Computed Properties
     
-    /// Количество тренировок за выбранный период (фильтрация по дате)
-    private var workoutCount: Int {
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -selectedTimeRange.days, to: Date()) ?? Date()
-        return viewModel.workouts.filter { $0.date >= cutoffDate }.count
-    }
-    
     /// Список дат (первые числа месяцев) для отображения в календаре
-    /// Генерирует месяцы назад от текущего месяца в зависимости от выбранного диапазона
     private var monthsToDisplay: [Date] {
         let calendar = Calendar.current
         let today = Date()
         
-        // Нормализуем текущую дату к первому дню текущего месяца
         guard let startOfCurrentMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) else {
             return []
         }
@@ -60,19 +72,20 @@ struct WorkoutCalendarView: View {
         let monthsToShow: Int
         switch selectedTimeRange {
         case .month:
-            // Только текущий месяц (1 месяц)
             monthsToShow = 1
         case .threeMonths:
-            // Текущий месяц и 2 предыдущих (3 месяца)
             monthsToShow = 3
         case .year:
-            // Текущий месяц и 11 предыдущих (12 месяцев)
             monthsToShow = 12
+        case .all:
+            if let oldestWorkout = oldestWorkoutQuery.first {
+                let components = calendar.dateComponents([.month], from: oldestWorkout.date, to: today)
+                monthsToShow = max(1, (components.month ?? 0) + 1)
+            } else {
+                monthsToShow = 1
+            }
         }
         
-        // Генерируем месяцы назад: от текущего месяца к самому старому
-        // Порядок: сначала текущий месяц (i=0), затем месяц назад (i=1), и так далее
-        // Текущий месяц будет сверху в списке
         var months: [Date] = []
         for i in 0..<monthsToShow {
             if let date = calendar.date(byAdding: .month, value: -i, to: startOfCurrentMonth) {
@@ -87,16 +100,15 @@ struct WorkoutCalendarView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 1. Блок статистики сверху
             statsHeader
-            
             Divider()
-            
-            // 2. Скролл календаря
             calendarList
         }
         .navigationTitle(LocalizedStringKey("Calendar"))
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            updateWorkoutCount()
+        }
     }
     
     // MARK: - View Components
@@ -109,9 +121,12 @@ struct WorkoutCalendarView: View {
                 }
             }
             .pickerStyle(.segmented)
+            .onChange(of: selectedTimeRange) { _, _ in
+                updateWorkoutCount()
+            }
             
             HStack(alignment: .lastTextBaseline) {
-                Text("\(workoutCount)")
+                Text("\(totalWorkoutCount)")
                     .font(.system(size: 50, weight: .bold, design: .rounded))
                     .contentTransition(.numericText())
                 
@@ -120,7 +135,7 @@ struct WorkoutCalendarView: View {
                     .foregroundColor(.secondary)
                     .padding(.bottom, 6)
             }
-            .animation(.default, value: workoutCount)
+            .animation(.default, value: totalWorkoutCount)
         }
         .padding()
         .background(Color(UIColor.systemBackground))
@@ -129,7 +144,7 @@ struct WorkoutCalendarView: View {
     private var calendarList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                if viewModel.workouts.isEmpty {
+                if recentWorkoutsTrigger.isEmpty {
                     EmptyStateView(
                         icon: "calendar.badge.exclamationmark",
                         title: LocalizedStringKey("No workouts yet"),
@@ -139,7 +154,7 @@ struct WorkoutCalendarView: View {
                 } else {
                     VStack(spacing: 25) {
                         ForEach(monthsToDisplay.indices, id: \.self) { index in
-                            // ViewModel передается через Environment, поэтому MonthView найдет его сам
+                            // Передаем дату начала месяца. Запрос в базу делает сам MonthView!
                             MonthView(monthDate: monthsToDisplay[index])
                                 .id(index)
                         }
@@ -148,12 +163,25 @@ struct WorkoutCalendarView: View {
                 }
             }
             .onChange(of: selectedTimeRange) { _ in
-                // При изменении диапазона прокручиваем к началу (к текущему месяцу)
                 if !monthsToDisplay.isEmpty {
                     proxy.scrollTo(0, anchor: .top)
                 }
             }
         }
+    }
+    
+    private func updateWorkoutCount() {
+        let calendar = Calendar.current
+        let cutoff: Date
+        if selectedTimeRange == .all {
+            cutoff = Date.distantPast
+        } else {
+            cutoff = calendar.date(byAdding: .day, value: -selectedTimeRange.days, to: Date()) ?? Date()
+        }
+        
+        let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.date >= cutoff })
+        // fetchCount работает за долю секунды, в отличие от fetch
+        totalWorkoutCount = (try? context.fetchCount(desc)) ?? 0
     }
 }
 
@@ -161,22 +189,32 @@ struct WorkoutCalendarView: View {
 
 struct MonthView: View {
     
-    // MARK: - Properties
-    
     let monthDate: Date
     
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    // ОПТИМИЗАЦИЯ: Каждый месяц запрашивает ТОЛЬКО свои собственные тренировки (максимум ~30 штук).
+    @Query private var monthWorkouts: [Workout]
     
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
     
-    // MARK: - Computed Properties (Date Logic)
+    init(monthDate: Date) {
+        self.monthDate = monthDate
+        
+        let cal = Calendar.current
+        let start = cal.date(from: cal.dateComponents([.year, .month], from: monthDate))!
+        let end = cal.date(byAdding: .month, value: 1, to: start)!
+        
+        var desc = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.date >= start && $0.date < end }
+        )
+        // Нам нужны только даты, поэтому исключаем тяжелые вложенные объекты для календаря
+        _monthWorkouts = Query(desc)
+    }
     
     var monthTitle: String {
         monthDate.formatted(.dateTime.month(.wide).year())
     }
     
-    /// Массив всех дней в месяце
     var daysInMonth: [Date] {
         guard let range = calendar.range(of: .day, in: .month, for: monthDate),
               let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthDate))
@@ -187,37 +225,27 @@ struct MonthView: View {
         }
     }
     
-    /// Смещение первого дня месяца относительно начала недели (пустые ячейки)
     var firstDayOffset: Int {
         let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthDate))!
         let weekday = calendar.component(.weekday, from: startOfMonth)
         let firstWeekdaySystem = calendar.firstWeekday
-        // Математика для корректного смещения с учетом настроек календаря (Пн/Вс)
         return (weekday - firstWeekdaySystem + 7) % 7
     }
 
-    // MARK: - Body
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Название месяца
             Text(monthTitle)
                 .font(.title3)
                 .bold()
                 .foregroundColor(.blue)
             
-            // Дни недели (Пн, Вт...)
             weekDaysHeader
-            
-            // Сетка дней
             daysGrid
         }
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
     }
-    
-    // MARK: - Subviews
     
     private var weekDaysHeader: some View {
         HStack {
@@ -234,12 +262,10 @@ struct MonthView: View {
     
     private var daysGrid: some View {
         LazyVGrid(columns: columns, spacing: 6) {
-            // Пустые ячейки (смещение начала месяца)
             ForEach(0..<firstDayOffset, id: \.self) { _ in
                 Color.clear.frame(height: 30)
             }
             
-            // Дни месяца
             ForEach(daysInMonth, id: \.self) { date in
                 dayView(for: date)
             }
@@ -248,17 +274,13 @@ struct MonthView: View {
     
     @ViewBuilder
     private func dayView(for date: Date) -> some View {
-        // Ищем, есть ли тренировка в этот день
-        if let workoutIndex = viewModel.workouts.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: date) }) {
-            
-            // Если ЕСТЬ -> Ссылка на детали (Передаем саму ссылку на класс Workout, без Binding)
-            NavigationLink(destination: WorkoutDetailView(workout: viewModel.workouts[workoutIndex])) {
+        if let workoutIndex = monthWorkouts.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: date) }) {
+            NavigationLink(destination: WorkoutDetailView(workout: monthWorkouts[workoutIndex])) {
                 DayCell(date: date, isWorkout: true)
             }
             .buttonStyle(PlainButtonStyle())
             
         } else {
-            // Если НЕТ -> Просто ячейка
             DayCell(date: date, isWorkout: false)
         }
     }
@@ -270,28 +292,20 @@ struct DayCell: View {
     let date: Date
     let isWorkout: Bool
     
-    private var dayNumber: String {
-        "\(Calendar.current.component(.day, from: date))"
-    }
-    
-    private var isToday: Bool {
-        Calendar.current.isDateInToday(date)
-    }
+    private var dayNumber: String { "\(Calendar.current.component(.day, from: date))" }
+    private var isToday: Bool { Calendar.current.isDateInToday(date) }
     
     var body: some View {
         ZStack {
-            // Фон
             RoundedRectangle(cornerRadius: 6)
                 .fill(backgroundColor)
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
                     if isToday {
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(Color.blue, lineWidth: 2)
+                        RoundedRectangle(cornerRadius: 6).stroke(Color.blue, lineWidth: 2)
                     }
                 }
             
-            // Число
             Text(dayNumber)
                 .font(.caption2)
                 .fontWeight(isToday ? .bold : .regular)
@@ -299,25 +313,7 @@ struct DayCell: View {
         }
     }
     
-    // MARK: - Style Helpers
-    
-    private var backgroundColor: Color {
-        if isWorkout { return Color.green }
-        return Color.gray.opacity(0.1)
-    }
-    
-    private var textColor: Color {
-        if isWorkout { return .white }
-        if isToday { return .blue }
-        return .primary
-    }
+    private var backgroundColor: Color { isWorkout ? Color.green : Color.gray.opacity(0.1) }
+    private var textColor: Color { isWorkout ? .white : (isToday ? .blue : .primary) }
 }
 
-// MARK: - Preview
-
-#Preview {
-    NavigationStack {
-        WorkoutCalendarView()
-            .environmentObject(WorkoutViewModel())
-    }
-}
