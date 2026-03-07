@@ -4,8 +4,10 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext // ДОБАВЛЕНО: Достаем контекст БД
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
     @EnvironmentObject var tutorialManager: TutorialManager
@@ -34,6 +36,10 @@ struct ContentView: View {
                     .transition(.move(edge: .bottom))
                     .zIndex(100)
             }
+        }
+        .onAppear {
+            // Передаем контекст БД в ViewModel при загрузке приложения
+            viewModel.setContext(modelContext)
         }
         .alert(item: $viewModel.currentError) { error in
             Alert(

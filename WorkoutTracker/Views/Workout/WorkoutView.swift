@@ -6,6 +6,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 struct WorkoutView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
@@ -105,8 +106,8 @@ struct WorkoutView: View {
                 .navigationTitle(LocalizedStringKey("History"))
                 // --- НАВИГАЦИЯ ---
                 .navigationDestination(isPresented: $navigateToNewWorkout) {
-                    if !viewModel.workouts.isEmpty {
-                        WorkoutDetailView(workout: $viewModel.workouts[0])
+                    if let first = viewModel.workouts.first {
+                        WorkoutDetailView(workout: first)
                     }
                 }
                 .toolbar {
@@ -118,21 +119,20 @@ struct WorkoutView: View {
                     }
                     
                     // 2. КНОПКА ДИСБАЛАНСА
-                    // Показываем ТОЛЬКО если есть рекомендация (не nil)
                     if viewModel.getImbalanceRecommendation() != nil {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
                                 showImbalanceInfo = true
                             } label: {
                                 Image(systemName: "exclamationmark.triangle.fill")
-                                    .symbolRenderingMode(.multicolor) // Желтый треугольник с восклицательным знаком
+                                    .symbolRenderingMode(.multicolor)
                                     .font(.title3)
                             }
                         }
                     }
                 }
                 .sheet(isPresented: $showAddWorkout) {
-                    AddWorkoutView(workouts: $viewModel.workouts, onWorkoutCreated: {
+                    AddWorkoutView(onWorkoutCreated: {
                         navigateToNewWorkout = true
                     })
                 }
@@ -219,14 +219,7 @@ struct WorkoutView: View {
                     } else {
                         ForEach(filteredWorkouts) { workout in
                             ZStack {
-                                NavigationLink(destination: WorkoutDetailView(workout: Binding(
-                                    get: { workout },
-                                    set: { newValue in
-                                        if let index = viewModel.workouts.firstIndex(where: { $0.id == workout.id }) {
-                                            viewModel.workouts[index] = newValue
-                                        }
-                                    }
-                                ))) {
+                                NavigationLink(destination: WorkoutDetailView(workout: workout)) {
                                     EmptyView()
                                 }
                                 .opacity(0)
@@ -356,11 +349,8 @@ struct WorkoutView: View {
     
     func deleteWorkouts() {
         withAnimation {
-            for workout in workoutsToDelete {
-                if let index = viewModel.workouts.firstIndex(where: { $0.id == workout.id }) {
-                    viewModel.workouts.remove(at: index)
-                }
-            }
+            // ИСПРАВЛЕНИЕ: Передаем удаление сразу массивом
+            viewModel.deleteWorkouts(workoutsToDelete)
             workoutsToDelete = []
         }
     }

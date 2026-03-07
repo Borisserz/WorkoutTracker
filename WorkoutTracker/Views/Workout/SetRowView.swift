@@ -13,12 +13,13 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 struct SetRowView: View {
     
     // MARK: - Bindings & Properties
     
-    @Binding var set: WorkoutSet
+    @Bindable var set: WorkoutSet // ДОБАВЛЕНО: SwiftData модель вместо Binding
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
     @StateObject private var unitsManager = UnitsManager.shared
     let exerciseType: ExerciseType
@@ -296,7 +297,7 @@ struct SetRowView: View {
         .disabled(isExerciseCompleted || isWorkoutCompleted) // Отключаем кнопку, если упражнение или тренировка завершены
     }
     
-    // MARK: - Logic & Actions
+    // MARK: - Logic
     
     func toggleComplete() {
         // Запрещаем отмечать сеты, если упражнение или тренировка завершены

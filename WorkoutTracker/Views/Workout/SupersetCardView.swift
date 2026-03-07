@@ -1,11 +1,15 @@
 internal import SwiftUI
+import SwiftData
 
 struct SupersetCardView: View {
-    @Binding var superset: Exercise
+    @Bindable var superset: Exercise // SwiftData модель
+    @Environment(\.modelContext) private var modelContext // ДОБАВЛЕНО: Контекст для удаления
     @EnvironmentObject var viewModel: WorkoutViewModel
-    var currentWorkoutId: UUID     // Callbacks & States
+    
+    var currentWorkoutId: UUID
     var onDelete: () -> Void
-    var isWorkoutCompleted: Bool = false // Флаг завершения тренировки
+    var isWorkoutCompleted: Bool = false
+    
     @State private var showEffortSheet = false
     @State private var showPRCelebration = false
     @State private var showDeleteAlert = false
@@ -43,7 +47,6 @@ struct SupersetCardView: View {
         }
     }
     
-    
     var headerView: some View {
         HStack {
             HStack {
@@ -65,17 +68,19 @@ struct SupersetCardView: View {
     }
     
     var exerciseListView: some View {
-        ForEach($superset.subExercises.indices, id: \.self) { index in
+        ForEach(Array(superset.subExercises.enumerated()), id: \.element.id) { index, exercise in
             let isLast = index == superset.subExercises.count - 1
             VStack(spacing: 0) {
-                // Для вложенных упражнений в суперсете всегда раскрыты
+                // Для вложенных упражнений в суперсете передаем сам объект (reference type)
                 ExerciseCardView(
-                    exercise: $superset.subExercises[index],
+                    exercise: exercise,
                     currentWorkoutId: currentWorkoutId,
                     onDelete: {
                         withAnimation {
-                            if index < superset.subExercises.count {
-                                superset.subExercises.remove(at: index)
+                            if let removeIndex = superset.subExercises.firstIndex(where: { $0.id == exercise.id }) {
+                                let removedExercise = superset.subExercises.remove(at: removeIndex)
+                                // ИЗМЕНЕНО: Явно удаляем из контекста базы данных, чтобы не плодить "сирот"
+                                modelContext.delete(removedExercise)
                             }
                         }
                     },
@@ -97,7 +102,7 @@ struct SupersetCardView: View {
     }
     
     var finishButton: some View {
-        Button(action: finishSuperset) { // <--- ИЗМЕНЕНО
+        Button(action: finishSuperset) {
             Text(LocalizedStringKey("Finish Superset"))
                 .font(.subheadline).bold()
                 .frame(maxWidth: .infinity)
@@ -108,7 +113,7 @@ struct SupersetCardView: View {
         }
         .padding(.top, 12)
         .buttonStyle(BorderlessButtonStyle())
-        .disabled(superset.isCompleted || isWorkoutCompleted) // Запрещаем завершать, если суперсет или тренировка завершены
+        .disabled(superset.isCompleted || isWorkoutCompleted)
     }
     
     var recordOverlay: some View {
@@ -120,46 +125,45 @@ struct SupersetCardView: View {
         .background(Color.black.opacity(0.4))
         .cornerRadius(12)
         .transition(.opacity.combined(with: .scale))
-        
     }
     
     func finishSuperset() {
-          // Запрещаем завершать, если суперсет или тренировка завершены
-          guard !superset.isCompleted && !isWorkoutCompleted else { return }
-          
-          markAllSetsInSupersetCompleted()
-          superset.isCompleted = true // Помечаем суперсет как завершенный
-          
-          var newRecordWasSet = false
-          
-          for subExercise in superset.subExercises {
-              if subExercise.type == .strength {
-                  // ВАЖНО: onlyCompleted: true
-                  let oldRecord = viewModel.getPersonalRecord(for: subExercise.name, onlyCompleted: true)
-                  
-                  let maxWeight = subExercise.setsList.compactMap { $0.weight }.max() ?? 0
-                  if maxWeight > oldRecord {
-                      newRecordWasSet = true
-                  }
-              }
-          }
-          
-          if newRecordWasSet {
-              withAnimation { showPRCelebration = true }
-              DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                  withAnimation { showPRCelebration = false }
-              }
-              let generator = UINotificationFeedbackGenerator()
-              generator.notificationOccurred(.success)
-          }
-          
-          showEffortSheet = true
-      }
+        guard !superset.isCompleted && !isWorkoutCompleted else { return }
+        
+        markAllSetsInSupersetCompleted()
+        superset.isCompleted = true
+        
+        // ДОБАВЛЕНО: Явно сохраняем состояние в базу перед проверкой рекордов
+        try? modelContext.save()
+        
+        var newRecordWasSet = false
+        
+        for subExercise in superset.subExercises {
+            if subExercise.type == .strength {
+                let oldRecord = viewModel.getPersonalRecord(for: subExercise.name, onlyCompleted: true)
+                let maxWeight = subExercise.setsList.compactMap { $0.weight }.max() ?? 0
+                if maxWeight > oldRecord {
+                    newRecordWasSet = true
+                }
+            }
+        }
+        
+        if newRecordWasSet {
+            withAnimation { showPRCelebration = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                withAnimation { showPRCelebration = false }
+            }
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+        }
+        
+        showEffortSheet = true
+    }
     
     func markAllSetsInSupersetCompleted() {
-        for i in 0..<superset.subExercises.count {
-            for j in 0..<superset.subExercises[i].setsList.count {
-                superset.subExercises[i].setsList[j].isCompleted = true
+        for sub in superset.subExercises {
+            for set in sub.setsList {
+                set.isCompleted = true
             }
         }
     }

@@ -10,6 +10,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 struct EditExerciseView: View {
     
@@ -18,19 +19,12 @@ struct EditExerciseView: View {
     @Environment(\.dismiss) var dismiss
     
     /// Ссылка на упражнение в родительском списке (основной источник истины)
-    @Binding var exercise: Exercise
-    
-    // MARK: - Local State (Edit Buffer)
-    
-    @State private var effort: Int
+    @Bindable var exercise: Exercise // ДОБАВЛЕНО: @Bindable вместо @Binding
     
     // MARK: - Init
     
-    init(exercise: Binding<Exercise>) {
-        self._exercise = exercise
-        
-        // Инициализируем локальные State значениями из переданного упражнения.
-        _effort = State(initialValue: exercise.wrappedValue.effort)
+    init(exercise: Exercise) {
+        self.exercise = exercise
     }
     
     // MARK: - Body
@@ -65,12 +59,13 @@ struct EditExerciseView: View {
     private var effortSection: some View {
         Section(header: Text("Effort (RPE)")) {
             HStack {
-                Text("\(effort)/10")
+                Text("\(exercise.effort)/10")
                     .bold()
-                    .foregroundColor(effortColor(effort))
+                    .foregroundColor(effortColor(exercise.effort))
                 
-                Slider(value: Binding(get: { Double(effort) }, set: { effort = Int($0) }), in: 1...10, step: 1)
-                    .tint(effortColor(effort))
+                // Привязываем слайдер напрямую к свойству effort модели
+                Slider(value: Binding(get: { Double(exercise.effort) }, set: { exercise.effort = Int($0) }), in: 1...10, step: 1)
+                    .tint(effortColor(exercise.effort))
             }
             Text("1 = Easy, 10 = Failure")
                 .font(.caption)
@@ -80,20 +75,13 @@ struct EditExerciseView: View {
     
     private var saveButton: some View {
         Button("Save Changes") {
-            save()
+            dismiss() // Изменения в @Bindable сохраняются автоматически
         }
         .frame(maxWidth: .infinity)
         .buttonStyle(.borderedProminent)
     }
     
     // MARK: - Logic / Helpers
-    
-    private func save() {
-        // Применяем локальные изменения к основной модели
-        exercise.effort = effort
-        
-        dismiss()
-    }
     
     private func effortColor(_ value: Int) -> Color {
         switch value {

@@ -251,8 +251,8 @@ struct MonthView: View {
         // Ищем, есть ли тренировка в этот день
         if let workoutIndex = viewModel.workouts.firstIndex(where: { calendar.isDate($0.date, inSameDayAs: date) }) {
             
-            // Если ЕСТЬ -> Ссылка на детали
-            NavigationLink(destination: WorkoutDetailView(workout: $viewModel.workouts[workoutIndex])) {
+            // Если ЕСТЬ -> Ссылка на детали (Передаем саму ссылку на класс Workout, без Binding)
+            NavigationLink(destination: WorkoutDetailView(workout: viewModel.workouts[workoutIndex])) {
                 DayCell(date: date, isWorkout: true)
             }
             .buttonStyle(PlainButtonStyle())

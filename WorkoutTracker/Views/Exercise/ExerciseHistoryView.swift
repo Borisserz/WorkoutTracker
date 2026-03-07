@@ -12,6 +12,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 import Charts
 
 struct ExerciseHistoryView: View {
@@ -366,7 +367,7 @@ struct ExerciseHistoryView: View {
     /// Контент строки тренировки
     @ViewBuilder
     private func workoutRowContent(workout: Workout, exercise: Exercise) -> some View {
-        NavigationLink(destination: WorkoutDetailView(workout: .constant(workout))) {
+        NavigationLink(destination: WorkoutDetailView(workout: workout)) {
             HStack {
                 VStack(alignment: .leading) {
                     Text(workout.title).font(.headline).foregroundColor(.primary)
@@ -958,19 +959,29 @@ struct ExerciseHistoryView: View {
         .shadow(radius: 5)
     }
 }
-// MARK: - Isolated Note Editor View
+
+// MARK: - Isolated Note Editor View (SWIFT DATA)
 
 /// Вынесенное представление для редактирования заметки.
-/// Это предотвращает перерисовку графиков и всего экрана ExerciseHistoryView
-/// при каждом нажатии клавиши во время ввода текста.
+/// Интегрировано с SwiftData с помощью @Query
 struct ExerciseNoteEditor: View {
     let exerciseName: String
     var isInputActive: FocusState<Bool>.Binding
     
-    @EnvironmentObject var notesManager: ExerciseNotesManager
+    @Environment(\.modelContext) private var context
+    @Query private var notes: [ExerciseNote]
     
     @State private var exerciseNote: String = ""
     @State private var saveTask: Task<Void, Never>?
+    
+    init(exerciseName: String, isInputActive: FocusState<Bool>.Binding) {
+        self.exerciseName = exerciseName
+        self.isInputActive = isInputActive
+        
+        // Фильтруем данные прямо из базы SwiftData
+        let filter = #Predicate<ExerciseNote> { $0.exerciseName == exerciseName }
+        _notes = Query(filter: filter)
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -997,7 +1008,7 @@ struct ExerciseNoteEditor: View {
                     saveTask = Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 300_000_000)
                         if !Task.isCancelled {
-                            notesManager.setNote(newValue, for: exerciseName)
+                            saveNote(newValue)
                         }
                     }
                 }
@@ -1006,21 +1017,30 @@ struct ExerciseNoteEditor: View {
                         Spacer()
                         Button(LocalizedStringKey("Done")) {
                             saveTask?.cancel()
-                            notesManager.setNote(exerciseNote, for: exerciseName)
-                            notesManager.saveImmediately()
+                            saveNote(exerciseNote)
                             isInputActive.wrappedValue = false
                         }.bold()
                     }
                 }
                 .onDisappear {
                     saveTask?.cancel()
-                    notesManager.setNote(exerciseNote, for: exerciseName)
-                    notesManager.saveImmediately()
+                    saveNote(exerciseNote)
                 }
         }
         .onAppear {
-            exerciseNote = notesManager.getNote(for: exerciseName)
+            exerciseNote = notes.first?.text ?? ""
         }
+    }
+    
+    // Прямое сохранение в SwiftData ModelContext
+    private func saveNote(_ text: String) {
+        if let existingNote = notes.first {
+            existingNote.text = text
+        } else if !text.isEmpty {
+            let newNote = ExerciseNote(exerciseName: exerciseName, text: text)
+            context.insert(newNote)
+        }
+        // Автоматическое сохранение SwiftData обработает эту операцию.
     }
 }
 

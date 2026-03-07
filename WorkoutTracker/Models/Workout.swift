@@ -4,23 +4,24 @@
 //
 //  Created by Boris Serzhanovich on 24.12.25.
 //
-//  Основные модели данных приложения:
+//  Основные модели данных приложения (SwiftData):
 //  - Workout (Тренировка)
 //  - Exercise (Упражнение)
 //  - WorkoutSet (Подход/Сет)
 //  - WorkoutPreset (Шаблон тренировки)
+//  - ExerciseNote (Заметки)
 //
 
 import Foundation
+import SwiftData
 internal import SwiftUI // Нужно для Color в SetType
 
-// MARK: - Enums
+// MARK: - Enums (Codable для SwiftData)
 
-// --- 1. Типы сетов ---
 enum SetType: String, Codable, CaseIterable {
     case normal = "N"
-    case warmup = "W"     // Разминка (желтый)
-    case failure = "F"    // Отказ (красный)
+    case warmup = "W"
+    case failure = "F"
     
     var color: Color {
         switch self {
@@ -31,16 +32,14 @@ enum SetType: String, Codable, CaseIterable {
     }
 }
 
-// --- 2. Типы упражнений ---
 enum ExerciseType: String, Codable, CaseIterable, Identifiable {
-    case strength = "Strength"   // Вес x Повторы
-    case cardio = "Cardio"       // Дистанция + Время
-    case duration = "Duration"   // Только Время
+    case strength = "Strength"
+    case cardio = "Cardio"
+    case duration = "Duration"
     
     var id: String { self.rawValue }
 }
 
-// --- 2.1 Категории упражнений (для техники и подсказок) ---
 enum ExerciseCategory: String, Codable, CaseIterable {
     case squat = "Squat"
     case press = "Press"
@@ -51,7 +50,6 @@ enum ExerciseCategory: String, Codable, CaseIterable {
     case cardio = "Cardio"
     case other = "Other"
     
-    /// Автоматическое определение категории по английскому названию из каталога
     static func determine(from name: String) -> ExerciseCategory {
         let lower = name.lowercased()
         if lower.contains("squat") { return .squat }
@@ -64,227 +62,56 @@ enum ExerciseCategory: String, Codable, CaseIterable {
     }
 }
 
-// MARK: - Models
+// MARK: - SwiftData Models
 
-// --- 3. Структура одного Сета ---
-struct WorkoutSet: Identifiable, Codable, Hashable {
-    var id = UUID()
+@Model
+class WorkoutSet: Identifiable, Hashable {
+    @Attribute(.unique) var id: UUID
     var index: Int
-    
-    // Данные (опциональные, т.к. зависят от типа упражнения)
     var weight: Double?
     var reps: Int?
-    var distance: Double? // Для кардио (км)
-    var time: Int?        // Для статики/кардио (секунды)
+    var distance: Double?
+    var time: Int?
+    var isCompleted: Bool
+    var type: SetType
     
-    var isCompleted: Bool = false
-    var type: SetType = .normal
+    init(id: UUID = UUID(), index: Int, weight: Double? = nil, reps: Int? = nil, distance: Double? = nil, time: Int? = nil, isCompleted: Bool = false, type: SetType = .normal) {
+        self.id = id
+        self.index = index
+        self.weight = weight
+        self.reps = reps
+        self.distance = distance
+        self.time = time
+        self.isCompleted = isCompleted
+        self.type = type
+    }
+    
+    // Глубокое копирование (нужно при создании тренировки из шаблона)
+    func duplicate() -> WorkoutSet {
+        return WorkoutSet(id: UUID(), index: index, weight: weight, reps: reps, distance: distance, time: time, isCompleted: isCompleted, type: type)
+    }
+    
+    // Реализация Hashable
+    static func == (lhs: WorkoutSet, rhs: WorkoutSet) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-// --- 4. Основная структура Exercise ---
-struct Exercise: Identifiable, Codable, Hashable {
-    
-    // MARK: - Properties
-    var id = UUID()
+@Model
+class Exercise: Identifiable, Hashable {
+    @Attribute(.unique) var id: UUID
     var name: String
     var muscleGroup: String
-    var type: ExerciseType = .strength
-    var category: ExerciseCategory // НОВОЕ ПОЛЕ: Категория для подсказок
-    var effort: Int = 5
-    var isCompleted: Bool = false // Флаг завершения упражнения
+    var type: ExerciseType
+    var category: ExerciseCategory
+    var effort: Int
+    var isCompleted: Bool
     
-    // НОВОЕ ПОЛЕ: Список сетов (Основной источник истины)
-    var setsList: [WorkoutSet] = []
+    @Relationship(deleteRule: .cascade) 
+    var setsList: [WorkoutSet]
     
-    // Для супер-сетов
-    var subExercises: [Exercise] = []
+    @Relationship(deleteRule: .cascade) 
+    var subExercises: [Exercise]
     
-    // MARK: - Private Stored Properties (только для Codable)
-    // Эти поля используются только для декодирования старых JSON файлов
-    private var _sets: Int = 0
-    private var _reps: Int = 0
-    private var _weight: Double = 0
-    private var _distance: Double? = nil
-    private var _timeSeconds: Int? = nil
-    
-    // MARK: - Computed Properties (синхронизированы с setsList)
-    
-    /// Количество сетов (синхронизировано с setsList)
-    var sets: Int {
-        get {
-            // Если setsList не пустой, берем количество из него
-            if !setsList.isEmpty {
-                return setsList.count
-            }
-            // Fallback для старых данных (только при загрузке)
-            return _sets
-        }
-        set {
-            // При записи обновляем setsList
-            _sets = newValue
-            syncSetsListFromLegacyFields()
-        }
-    }
-    
-    /// Количество повторов (берется из первого сета или fallback)
-    var reps: Int {
-        get {
-            // Если setsList не пустой, берем из первого сета
-            if let firstSet = setsList.first, let firstReps = firstSet.reps {
-                return firstReps
-            }
-            // Fallback для старых данных
-            return _reps
-        }
-        set {
-            // При записи обновляем все сеты в setsList
-            _reps = newValue
-            syncSetsListFromLegacyFields()
-        }
-    }
-    
-    /// Вес (берется из первого сета или fallback)
-    var weight: Double {
-        get {
-            // Если setsList не пустой, берем из первого сета
-            if let firstSet = setsList.first, let firstWeight = firstSet.weight {
-                return firstWeight
-            }
-            // Fallback для старых данных
-            return _weight
-        }
-        set {
-            // При записи обновляем все сеты в setsList
-            _weight = newValue
-            syncSetsListFromLegacyFields()
-        }
-    }
-    
-    /// Дистанция (берется из первого сета или fallback)
-    var distance: Double? {
-        get {
-            // Если setsList не пустой, берем из первого сета
-            if let firstSet = setsList.first, let firstDistance = firstSet.distance {
-                return firstDistance
-            }
-            // Fallback для старых данных
-            return _distance
-        }
-        set {
-            // При записи обновляем все сеты в setsList
-            _distance = newValue
-            syncSetsListFromLegacyFields()
-        }
-    }
-    
-    /// Время в секундах (берется из первого сета или fallback)
-    var timeSeconds: Int? {
-        get {
-            // Если setsList не пустой, берем из первого сета
-            if let firstSet = setsList.first, let firstTime = firstSet.time {
-                return firstTime
-            }
-            // Fallback для старых данных
-            return _timeSeconds
-        }
-        set {
-            // При записи обновляем все сеты в setsList
-            _timeSeconds = newValue
-            syncSetsListFromLegacyFields()
-        }
-    }
-    
-    // MARK: - Helper Methods
-    
-    /// Синхронизирует setsList на основе старых полей (вызывается при записи в старые поля)
-    /// ВАЖНО: Этот метод используется только для обратной совместимости при редактировании через старые поля.
-    /// В новом коде следует работать напрямую с setsList.
-    private mutating func syncSetsListFromLegacyFields() {
-        // Если setsList пустой, создаем сеты на основе старых полей
-        if setsList.isEmpty && _sets > 0 {
-            setsList = []
-            for i in 1..._sets {
-                setsList.append(WorkoutSet(
-                    index: i,
-                    weight: _weight >= 0 ? _weight : nil,
-                    reps: _reps >= 0 ? _reps : nil,
-                    distance: _distance,
-                    time: _timeSeconds,
-                    isCompleted: false,
-                    type: .normal
-                ))
-            }
-        } else if !setsList.isEmpty {
-            // Если setsList не пустой, обновляем количество сетов (добавляем/удаляем)
-            let currentCount = setsList.count
-            let targetCount = _sets
-            
-            if targetCount > currentCount {
-                // Добавляем новые сеты
-                for i in (currentCount + 1)...targetCount {
-                    let lastSet = setsList.last
-                    setsList.append(WorkoutSet(
-                        index: i,
-                        // Используем значения предыдущего сета, а если их нет — глобальные fallback
-                        weight: type == .strength ? (lastSet?.weight ?? (_weight >= 0 ? _weight : nil)) : nil,
-                        reps: type == .strength ? (lastSet?.reps ?? (_reps >= 0 ? _reps : nil)) : nil,
-                        distance: type == .cardio ? (lastSet?.distance ?? _distance) : nil,
-                        time: type == .cardio || type == .duration ? (lastSet?.time ?? _timeSeconds) : nil,
-                        isCompleted: false,
-                        type: .normal
-                    ))
-                }
-            } else if targetCount < currentCount {
-                // Удаляем лишние сеты (с конца)
-                setsList.removeLast(currentCount - targetCount)
-                // Обновляем индексы
-                for i in 0..<setsList.count {
-                    setsList[i].index = i + 1
-                }
-            }
-            
-            // ВНИМАНИЕ: Мы БОЛЬШЕ НЕ ПЕРЕЗАПИСЫВАЕМ значения (weight, reps, etc.) в существующих сетах.
-            // Экземпляр упражнения на тренировке использует setsList как основной источник истины (Source of Truth).
-            // Любое редактирование значений в конкретных сетах делается построчно в SetRowView.
-        }
-    }
-    
-    var isSuperset: Bool {
-        return !subExercises.isEmpty
-    }
-    
-    /// Расчет объема (тоннажа).
-    /// Считаем только завершенные сеты, исключая разминку.
-    /// Кардио и статика не имеют "тоннажа", поэтому для них объем равен 0.
-    var computedVolume: Double {
-        if isSuperset {
-            return subExercises.reduce(0.0) { $0 + $1.computedVolume }
-        }
-        
-        // Суммируем объем каждого сета
-        return setsList.reduce(0.0) { partialResult, set in
-            // Разминку и незавершенные не считаем
-            if set.type == .warmup || !set.isCompleted { return partialResult }
-            
-            switch type {
-            case .strength:
-                return partialResult + ((set.weight ?? 0) * Double(set.reps ?? 0))
-            case .cardio, .duration:
-                // Тоннаж не считается для кардио и статики
-                return partialResult
-            }
-        }
-    }
-    
-    // MARK: - Codable Implementation
-    
-    enum CodingKeys: String, CodingKey {
-        case id, name, muscleGroup, type, category, sets, reps, weight, effort, subExercises, distance, timeSeconds
-        case setsList // Добавили новый ключ
-        case isCompleted // Флаг завершения упражнения
-    }
-    
-    // Инициализатор
     init(id: UUID = UUID(), name: String, muscleGroup: String, type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
         self.id = id
         self.name = name
@@ -292,133 +119,106 @@ struct Exercise: Identifiable, Codable, Hashable {
         self.type = type
         self.category = category ?? ExerciseCategory.determine(from: name)
         self.effort = effort
-        self.subExercises = subExercises
         self.isCompleted = isCompleted
+        self.subExercises = subExercises
+        self.setsList = setsList
         
-        // Сохраняем в private stored properties для обратной совместимости
-        self._sets = sets
-        self._reps = reps
-        self._weight = weight
-        self._distance = distance
-        self._timeSeconds = timeSeconds
-        
-        // Если передан setsList, используем его, иначе создаем на основе старых полей
-        if !setsList.isEmpty {
-            self.setsList = setsList
-        } else if subExercises.isEmpty && sets > 0 {
-            // Если при создании список сетов пустой, создаем их на основе переданных простых параметров.
-            // Это нужно, чтобы при добавлении упражнения в UI сразу появлялись строчки.
+        // Автогенерация сетов при инициализации
+        if self.setsList.isEmpty && self.subExercises.isEmpty && sets > 0 {
+            // ИСПРАВЛЕНИЕ: Формируем массив локально, вместо постоянного .append в Relationship до Insert
+            var generatedSets: [WorkoutSet] = []
             for i in 1...sets {
-                self.setsList.append(WorkoutSet(
+                generatedSets.append(WorkoutSet(
                     index: i,
-                    weight: weight,
-                    reps: reps,
+                    weight: weight > 0 ? weight : nil,
+                    reps: reps > 0 ? reps : nil,
                     distance: distance,
                     time: timeSeconds,
-                    isCompleted: false, // При создании сеты не выполнены
+                    isCompleted: false,
                     type: .normal
                 ))
             }
-        } else {
-            self.setsList = []
-        }
-    }
-
-    // Decoder (Загрузка из JSON)
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        id = try container.decode(UUID.self, forKey: .id)
-        name = try container.decode(String.self, forKey: .name)
-        muscleGroup = try container.decode(String.self, forKey: .muscleGroup)
-        
-        // Декодируем в private stored properties
-        _sets = try container.decode(Int.self, forKey: .sets)
-        _reps = try container.decode(Int.self, forKey: .reps)
-        _weight = try container.decode(Double.self, forKey: .weight)
-        _distance = try container.decodeIfPresent(Double.self, forKey: .distance)
-        _timeSeconds = try container.decodeIfPresent(Int.self, forKey: .timeSeconds)
-        
-        effort = try container.decode(Int.self, forKey: .effort)
-        subExercises = try container.decodeIfPresent([Exercise].self, forKey: .subExercises) ?? []
-        
-        type = try container.decodeIfPresent(ExerciseType.self, forKey: .type) ?? .strength
-        category = try container.decodeIfPresent(ExerciseCategory.self, forKey: .category) ?? ExerciseCategory.determine(from: name)
-        isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
-        
-        // ВАЖНО: Пробуем загрузить новый список сетов (setsList)
-        if let loadedSets = try container.decodeIfPresent([WorkoutSet].self, forKey: .setsList) {
-            setsList = loadedSets
-        } else {
-            // МИГРАЦИЯ: Если в файле нет setsList (старая версия приложения),
-            // создаем сеты на основе старых полей (_sets, _reps, _weight).
-            var newSets: [WorkoutSet] = []
-            if _sets > 0 {
-                for i in 1..._sets {
-                    // Считаем старые упражнения выполненными (isCompleted: true), так как это история
-                    newSets.append(WorkoutSet(
-                        index: i,
-                        weight: _weight,
-                        reps: _reps,
-                        distance: _distance,
-                        time: _timeSeconds,
-                        isCompleted: true,
-                        type: .normal
-                    ))
-                }
-            }
-            setsList = newSets
+            self.setsList = generatedSets
         }
     }
     
-    // Encoder (Сохранение в JSON)
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(name, forKey: .name)
-        try container.encode(muscleGroup, forKey: .muscleGroup)
-        try container.encode(type, forKey: .type)
-        try container.encode(category, forKey: .category)
-        try container.encode(effort, forKey: .effort)
-        try container.encode(subExercises, forKey: .subExercises)
-        try container.encode(isCompleted, forKey: .isCompleted)
-        
-        // 1. Сохраняем актуальный список сетов
-        try container.encode(setsList, forKey: .setsList)
-        
-        // 2. Для обратной совместимости со старыми парсерами экспортируем данные из первого сета.
-        try container.encode(setsList.count, forKey: .sets)
-        try container.encode(setsList.first?.reps ?? 0, forKey: .reps)
-        try container.encode(setsList.first?.weight ?? 0.0, forKey: .weight)
-        try container.encodeIfPresent(setsList.first?.distance, forKey: .distance)
-        try container.encodeIfPresent(setsList.first?.time, forKey: .timeSeconds)
+    // MARK: - Computed Properties (Read-Only)
+    var sets: Int { setsList.count }
+    var reps: Int { setsList.first?.reps ?? 0 }
+    var weight: Double { setsList.first?.weight ?? 0.0 }
+    var distance: Double? { setsList.first?.distance }
+    var timeSeconds: Int? { setsList.first?.time }
+    
+    var isSuperset: Bool { !subExercises.isEmpty }
+    
+    var computedVolume: Double {
+        if isSuperset {
+            return subExercises.reduce(0.0) { $0 + $1.computedVolume }
+        }
+        return setsList.reduce(0.0) { partialResult, set in
+            if set.type == .warmup || !set.isCompleted { return partialResult }
+            switch type {
+            case .strength: return partialResult + ((set.weight ?? 0) * Double(set.reps ?? 0))
+            case .cardio, .duration: return partialResult
+            }
+        }
     }
+    
+    // Глубокое копирование
+    func duplicate() -> Exercise {
+        let copiedSets = setsList.map { $0.duplicate() }
+        let copiedSubs = subExercises.map { $0.duplicate() }
+        return Exercise(id: UUID(), name: name, muscleGroup: muscleGroup, type: type, category: category, effort: effort, subExercises: copiedSubs, setsList: copiedSets, isCompleted: isCompleted)
+    }
+    
+    // Реализация Hashable
+    static func == (lhs: Exercise, rhs: Exercise) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-// --- 5. Шаблон тренировки (Preset) ---
-struct WorkoutPreset: Identifiable, Codable, Hashable {
-    var id = UUID()
+@Model
+class WorkoutPreset: Identifiable, Hashable {
+    @Attribute(.unique) var id: UUID
     var name: String
     var icon: String
+    
+    @Relationship(deleteRule: .cascade) 
     var exercises: [Exercise]
+    
+    init(id: UUID = UUID(), name: String, icon: String, exercises: [Exercise]) {
+        self.id = id
+        self.name = name
+        self.icon = icon
+        self.exercises = exercises
+    }
+    
+    static func == (lhs: WorkoutPreset, rhs: WorkoutPreset) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
-// --- 6. Тренировка (Workout) ---
-struct Workout: Identifiable, Codable, Equatable {
-    var id = UUID()
+@Model
+class Workout: Identifiable, Equatable {
+    @Attribute(.unique) var id: UUID
     var title: String
     var date: Date
-    var endTime: Date? = nil
-    var icon: String = "figure.run"
+    var endTime: Date?
+    var icon: String
+    var isFavorite: Bool
+    
+    @Relationship(deleteRule: .cascade) 
     var exercises: [Exercise]
-    var isFavorite: Bool = false
     
-    // MARK: - Computed Properties
-    
-    
-    
-    var isActive: Bool {
-        return endTime == nil
+    init(id: UUID = UUID(), title: String, date: Date, endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false) {
+        self.id = id
+        self.title = title
+        self.date = date
+        self.endTime = endTime
+        self.icon = icon
+        self.isFavorite = isFavorite
+        self.exercises = exercises
     }
+    
+    var isActive: Bool { endTime == nil }
     
     var duration: Int {
         let end = endTime ?? Date()
@@ -431,6 +231,124 @@ struct Workout: Identifiable, Codable, Equatable {
         let totalEffort = exercises.reduce(0) { $0 + $1.effort }
         let average = Double(totalEffort) / Double(exercises.count)
         return Int(average * 10)
+    }
+    
+    static func == (lhs: Workout, rhs: Workout) -> Bool { lhs.id == rhs.id }
+}
+
+@Model
+class ExerciseNote {
+    @Attribute(.unique) var exerciseName: String
+    var text: String
+    
+    init(exerciseName: String, text: String) {
+        self.exerciseName = exerciseName
+        self.text = text
+    }
+}
+
+// MARK: - DTOs for Export/Import (Codable Support)
+
+struct WorkoutSetDTO: Codable {
+    let index: Int
+    let weight: Double?
+    let reps: Int?
+    let distance: Double?
+    let time: Int?
+    let isCompleted: Bool
+    let type: SetType
+}
+
+struct ExerciseDTO: Codable {
+    let name: String
+    let muscleGroup: String
+    let type: ExerciseType
+    let category: ExerciseCategory
+    let effort: Int
+    let isCompleted: Bool
+    let setsList: [WorkoutSetDTO]
+    let subExercises: [ExerciseDTO]
+}
+
+struct WorkoutPresetDTO: Codable {
+    let name: String
+    let icon: String
+    let exercises: [ExerciseDTO]
+}
+
+extension WorkoutSet {
+    func toDTO() -> WorkoutSetDTO {
+        WorkoutSetDTO(
+            index: index,
+            weight: weight,
+            reps: reps,
+            distance: distance,
+            time: time,
+            isCompleted: isCompleted,
+            type: type
+        )
+    }
+    
+    convenience init(from dto: WorkoutSetDTO) {
+        self.init(
+            id: UUID(),
+            index: dto.index,
+            weight: dto.weight,
+            reps: dto.reps,
+            distance: dto.distance,
+            time: dto.time,
+            isCompleted: dto.isCompleted,
+            type: dto.type
+        )
+    }
+}
+
+extension Exercise {
+    func toDTO() -> ExerciseDTO {
+        ExerciseDTO(
+            name: name,
+            muscleGroup: muscleGroup,
+            type: type,
+            category: category,
+            effort: effort,
+            isCompleted: isCompleted,
+            setsList: setsList.map { $0.toDTO() },
+            subExercises: subExercises.map { $0.toDTO() }
+        )
+    }
+    
+    convenience init(from dto: ExerciseDTO) {
+        self.init(
+            id: UUID(),
+            name: dto.name,
+            muscleGroup: dto.muscleGroup,
+            type: dto.type,
+            category: dto.category,
+            sets: 0, // Устанавливаем 0, чтобы предотвратить автогенерацию
+            effort: dto.effort,
+            subExercises: dto.subExercises.map { Exercise(from: $0) },
+            setsList: dto.setsList.map { WorkoutSet(from: $0) },
+            isCompleted: dto.isCompleted
+        )
+    }
+}
+
+extension WorkoutPreset {
+    func toDTO() -> WorkoutPresetDTO {
+        WorkoutPresetDTO(
+            name: name,
+            icon: icon,
+            exercises: exercises.map { $0.toDTO() }
+        )
+    }
+    
+    convenience init(from dto: WorkoutPresetDTO) {
+        self.init(
+            id: UUID(),
+            name: dto.name,
+            icon: dto.icon,
+            exercises: dto.exercises.map { Exercise(from: $0) }
+        )
     }
 }
 
@@ -496,67 +414,67 @@ extension Exercise {
 }
 
 extension Workout {
-    static let examples = [
-
-        // Новые шаблоны
-        Workout(
-            title: "Full Body",
-            date: Date(),
-            endTime: Date().addingTimeInterval(3600),
-            icon: "img_default",
-            exercises: [
-                Exercise(name: "Squat", muscleGroup: "Legs", sets: 4, reps: 8, weight: 90, effort: 9),
-                Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 4, reps: 8, weight: 75, effort: 9),
-                Exercise(name: "Barbell Rows", muscleGroup: "Back", sets: 4, reps: 8, weight: 70, effort: 8),
-                Exercise(name: "Overhead Press", muscleGroup: "Shoulders", sets: 3, reps: 10, weight: 35, effort: 8),
-                Exercise(name: "Barbell Curl", muscleGroup: "Arms", sets: 3, reps: 10, weight: 25, effort: 7),
-                Exercise(name: "Plank", muscleGroup: "Core", type: .duration, sets: 3, reps: 0, weight: 0, timeSeconds: 60, effort: 6)
-            ]
-        ),
-        Workout(
-            title: "Push",
-            date: Date(),
-            endTime: Date().addingTimeInterval(3600),
-            icon: "img_chest2",
-            exercises: [
-                Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 4, reps: 6, weight: 85, effort: 10),
-                Exercise(name: "Incline Dumbbell Press", muscleGroup: "Chest", sets: 3, reps: 10, weight: 32, effort: 8),
-                Exercise(name: "Dips", muscleGroup: "Chest", sets: 3, reps: 12, weight: 0, effort: 8),
-                Exercise(name: "Overhead Press", muscleGroup: "Shoulders", sets: 4, reps: 8, weight: 42, effort: 9),
-                Exercise(name: "Lateral Raises", muscleGroup: "Shoulders", sets: 3, reps: 15, weight: 12, effort: 7),
-                Exercise(name: "Triceps Extension", muscleGroup: "Arms", sets: 3, reps: 12, weight: 22, effort: 7),
-                Exercise(name: "Close Grip Bench Press", muscleGroup: "Arms", sets: 3, reps: 10, weight: 65, effort: 8)
-            ]
-        ),
-        Workout(
-            title: "Pull",
-            date: Date(),
-            endTime: Date().addingTimeInterval(3600),
-            icon: "img_back2",
-            exercises: [
-                Exercise(name: "Deadlift", muscleGroup: "Back", sets: 4, reps: 5, weight: 120, effort: 10),
-                Exercise(name: "Pull-ups", muscleGroup: "Back", sets: 4, reps: 8, weight: 0, effort: 9),
-                Exercise(name: "Barbell Rows", muscleGroup: "Back", sets: 4, reps: 8, weight: 75, effort: 8),
-                Exercise(name: "Lat Pulldown", muscleGroup: "Back", sets: 3, reps: 10, weight: 60, effort: 7),
-                Exercise(name: "Face Pulls", muscleGroup: "Shoulders", sets: 3, reps: 15, weight: 25, effort: 6),
-                Exercise(name: "Barbell Curl", muscleGroup: "Arms", sets: 4, reps: 10, weight: 28, effort: 8),
-                Exercise(name: "Hammer Curls", muscleGroup: "Arms", sets: 3, reps: 12, weight: 22, effort: 7)
-            ]
-        ),
-        Workout(
-            title: "Legs",
-            date: Date(),
-            endTime: Date().addingTimeInterval(3600),
-            icon: "img_legs",
-            exercises: [
-                Exercise(name: "Squat", muscleGroup: "Legs", sets: 5, reps: 5, weight: 110, effort: 10),
-                Exercise(name: "Romanian Deadlift", muscleGroup: "Legs", sets: 4, reps: 8, weight: 85, effort: 9),
-                Exercise(name: "Leg Press", muscleGroup: "Legs", sets: 4, reps: 12, weight: 130, effort: 8),
-                Exercise(name: "Bulgarian Split Squat", muscleGroup: "Legs", sets: 3, reps: 10, weight: 30, effort: 8),
-                Exercise(name: "Leg Curls", muscleGroup: "Legs", sets: 3, reps: 12, weight: 45, effort: 7),
-                Exercise(name: "Leg Extensions", muscleGroup: "Legs", sets: 3, reps: 15, weight: 55, effort: 7),
-                Exercise(name: "Standing Calf Raise", muscleGroup: "Legs", sets: 4, reps: 15, weight: 55, effort: 6)
-            ]
-        )
-    ]
+    static var examples: [Workout] {
+        [
+            Workout(
+                title: "Full Body",
+                date: Date(),
+                endTime: Date().addingTimeInterval(3600),
+                icon: "img_default",
+                exercises: [
+                    Exercise(name: "Squat", muscleGroup: "Legs", sets: 4, reps: 8, weight: 90, effort: 9),
+                    Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 4, reps: 8, weight: 75, effort: 9),
+                    Exercise(name: "Barbell Rows", muscleGroup: "Back", sets: 4, reps: 8, weight: 70, effort: 8),
+                    Exercise(name: "Overhead Press", muscleGroup: "Shoulders", sets: 3, reps: 10, weight: 35, effort: 8),
+                    Exercise(name: "Barbell Curl", muscleGroup: "Arms", sets: 3, reps: 10, weight: 25, effort: 7),
+                    Exercise(name: "Plank", muscleGroup: "Core", type: .duration, sets: 3, reps: 0, weight: 0, timeSeconds: 60, effort: 6)
+                ]
+            ),
+            Workout(
+                title: "Push",
+                date: Date(),
+                endTime: Date().addingTimeInterval(3600),
+                icon: "img_chest2",
+                exercises: [
+                    Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 4, reps: 6, weight: 85, effort: 10),
+                    Exercise(name: "Incline Dumbbell Press", muscleGroup: "Chest", sets: 3, reps: 10, weight: 32, effort: 8),
+                    Exercise(name: "Dips", muscleGroup: "Chest", sets: 3, reps: 12, weight: 0, effort: 8),
+                    Exercise(name: "Overhead Press", muscleGroup: "Shoulders", sets: 4, reps: 8, weight: 42, effort: 9),
+                    Exercise(name: "Lateral Raises", muscleGroup: "Shoulders", sets: 3, reps: 15, weight: 12, effort: 7),
+                    Exercise(name: "Triceps Extension", muscleGroup: "Arms", sets: 3, reps: 12, weight: 22, effort: 7),
+                    Exercise(name: "Close Grip Bench Press", muscleGroup: "Arms", sets: 3, reps: 10, weight: 65, effort: 8)
+                ]
+            ),
+            Workout(
+                title: "Pull",
+                date: Date(),
+                endTime: Date().addingTimeInterval(3600),
+                icon: "img_back2",
+                exercises: [
+                    Exercise(name: "Deadlift", muscleGroup: "Back", sets: 4, reps: 5, weight: 120, effort: 10),
+                    Exercise(name: "Pull-ups", muscleGroup: "Back", sets: 4, reps: 8, weight: 0, effort: 9),
+                    Exercise(name: "Barbell Rows", muscleGroup: "Back", sets: 4, reps: 8, weight: 75, effort: 8),
+                    Exercise(name: "Lat Pulldown", muscleGroup: "Back", sets: 3, reps: 10, weight: 60, effort: 7),
+                    Exercise(name: "Face Pulls", muscleGroup: "Shoulders", sets: 3, reps: 15, weight: 25, effort: 6),
+                    Exercise(name: "Barbell Curl", muscleGroup: "Arms", sets: 4, reps: 10, weight: 28, effort: 8),
+                    Exercise(name: "Hammer Curls", muscleGroup: "Arms", sets: 3, reps: 12, weight: 22, effort: 7)
+                ]
+            ),
+            Workout(
+                title: "Legs",
+                date: Date(),
+                endTime: Date().addingTimeInterval(3600),
+                icon: "img_legs",
+                exercises: [
+                    Exercise(name: "Squat", muscleGroup: "Legs", sets: 5, reps: 5, weight: 110, effort: 10),
+                    Exercise(name: "Romanian Deadlift", muscleGroup: "Legs", sets: 4, reps: 8, weight: 85, effort: 9),
+                    Exercise(name: "Leg Press", muscleGroup: "Legs", sets: 4, reps: 12, weight: 130, effort: 8),
+                    Exercise(name: "Bulgarian Split Squat", muscleGroup: "Legs", sets: 3, reps: 10, weight: 30, effort: 8),
+                    Exercise(name: "Leg Curls", muscleGroup: "Legs", sets: 3, reps: 12, weight: 45, effort: 7),
+                    Exercise(name: "Leg Extensions", muscleGroup: "Legs", sets: 3, reps: 15, weight: 55, effort: 7),
+                    Exercise(name: "Standing Calf Raise", muscleGroup: "Legs", sets: 4, reps: 15, weight: 55, effort: 6)
+                ]
+            )
+        ]
+    }
 }

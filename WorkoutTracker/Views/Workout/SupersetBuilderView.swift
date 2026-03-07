@@ -12,6 +12,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 // MARK: - Main Builder View
 
@@ -126,7 +127,7 @@ struct SupersetBuilderView: View {
                     VStack(alignment: .leading) {
                         Text(ex.name).bold()
                         // Превью параметров (берем из первого сета)
-                        if let firstSet = ex.setsList.first, let weight = firstSet.weight {
+                        if let firstSet = ex.setsList.sorted(by: { $0.index < $1.index }).first, let weight = firstSet.weight {
                             let convertedWeight = unitsManager.convertFromKilograms(weight)
                             Text(LocalizedStringKey("\(ex.setsList.count) sets • \(Int(convertedWeight))\(unitsManager.weightUnitString()) x \(firstSet.reps ?? 0) reps"))
                                 .font(.caption)
@@ -178,7 +179,7 @@ struct SupersetBuilderView: View {
     
     private func saveSuperset() {
         // Создаем "контейнер"
-        var superset = Exercise(
+        let superset = Exercise(
             name: "Superset",
             muscleGroup: "Mixed",
             effort: 5
@@ -205,27 +206,32 @@ struct SupersetBuilderView: View {
 
 struct EditSupersetItemView: View {
     
-    @State var exercise: Exercise
+    @Bindable var exercise: Exercise // ДОБАВЛЕНО: SwiftData Bindable
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
     @StateObject private var unitsManager = UnitsManager.shared
+    
+    // Сортированные сеты
+    private var sortedSets: [WorkoutSet] {
+        exercise.setsList.sorted(by: { $0.index < $1.index })
+    }
     
     // MARK: - Bindings Adapters
     
     private var repsBinding: Binding<Double?> {
         Binding<Double?>(
             get: {
-                guard !exercise.setsList.isEmpty, let reps = exercise.setsList[0].reps else { return nil }
+                guard let first = sortedSets.first, let reps = first.reps else { return nil }
                 return Double(reps)
             },
             set: { newValue in
-                guard !exercise.setsList.isEmpty else { return }
+                guard let first = sortedSets.first else { return }
                 if let value = newValue {
                     let intValue = Int(value)
                     let validation = InputValidator.validateReps(intValue)
-                    exercise.setsList[0].reps = validation.clampedValue
+                    first.reps = validation.clampedValue
                 } else {
-                    exercise.setsList[0].reps = nil
+                    first.reps = nil
                 }
             }
         )
@@ -234,12 +240,12 @@ struct EditSupersetItemView: View {
     private var timeBinding: Binding<Double?> {
         Binding<Double?>(
             get: {
-                guard !exercise.setsList.isEmpty, let time = exercise.setsList[0].time else { return nil }
+                guard let first = sortedSets.first, let time = first.time else { return nil }
                 return Double(time)
             },
             set: {
-                guard !exercise.setsList.isEmpty else { return }
-                exercise.setsList[0].time = $0.map { Int($0) }
+                guard let first = sortedSets.first else { return }
+                first.time = $0.map { Int($0) }
             }
         )
     }
@@ -247,24 +253,17 @@ struct EditSupersetItemView: View {
     private var weightBindingAdapter: Binding<Double?> {
         Binding<Double?>(
             get: {
-                guard !exercise.setsList.isEmpty, let weight = exercise.setsList[0].weight else { return nil }
-                // Конвертируем из кг в выбранные единицы для отображения
+                guard let first = sortedSets.first, let weight = first.weight else { return nil }
                 return unitsManager.convertFromKilograms(weight)
             },
             set: { newValue in
-                guard !exercise.setsList.isEmpty else { return }
+                guard let first = sortedSets.first else { return }
                 if let value = newValue {
-                    // Конвертируем из выбранных единиц в кг для сохранения
                     let kgValue = unitsManager.convertToKilograms(value)
                     let validation = InputValidator.validateWeight(kgValue)
-                    if validation.isValid {
-                        exercise.setsList[0].weight = kgValue
-                    } else {
-                        // Clamp to valid value
-                        exercise.setsList[0].weight = validation.clampedValue
-                    }
+                    first.weight = validation.isValid ? kgValue : validation.clampedValue
                 } else {
-                    exercise.setsList[0].weight = nil
+                    first.weight = nil
                 }
             }
         )
@@ -273,16 +272,15 @@ struct EditSupersetItemView: View {
     private var distanceBindingAdapter: Binding<Double?> {
         Binding<Double?>(
             get: {
-                guard !exercise.setsList.isEmpty, let dist = exercise.setsList[0].distance else { return nil }
+                guard let first = sortedSets.first, let dist = first.distance else { return nil }
                 return unitsManager.convertFromKilometers(dist)
             },
             set: { newValue in
-                guard !exercise.setsList.isEmpty else { return }
+                guard let first = sortedSets.first else { return }
                 if let value = newValue {
-                    let km = unitsManager.convertToKilometers(value)
-                    exercise.setsList[0].distance = km
+                    first.distance = unitsManager.convertToKilometers(value)
                 } else {
-                    exercise.setsList[0].distance = nil
+                    first.distance = nil
                 }
             }
         )
@@ -347,26 +345,28 @@ struct EditSupersetItemView: View {
     // MARK: - Logic
     
     private func addSet() {
-        let newIndex = exercise.setsList.count + 1
-        let lastSet = exercise.setsList.last
+        let lastSet = sortedSets.last
+        let newIndex = (lastSet?.index ?? 0) + 1
         let newSet = WorkoutSet(index: newIndex, weight: lastSet?.weight, reps: lastSet?.reps)
         exercise.setsList.append(newSet)
     }
     
     private func removeSet() {
-        if exercise.setsList.count > 1 {
-            exercise.setsList.removeLast()
+        if exercise.setsList.count > 1, let last = sortedSets.last {
+            if let index = exercise.setsList.firstIndex(where: { $0.id == last.id }) {
+                exercise.setsList.remove(at: index)
+            }
         }
     }
     
     /// Копирует данные из первого сета во все остальные (для удобства)
     private func propagateFirstSetData() {
-        guard exercise.setsList.count > 1, let firstSet = exercise.setsList.first else { return }
-        for i in 1..<exercise.setsList.count {
-            exercise.setsList[i].weight = firstSet.weight
-            exercise.setsList[i].reps = firstSet.reps
-            exercise.setsList[i].distance = firstSet.distance
-            exercise.setsList[i].time = firstSet.time
+        guard let firstSet = sortedSets.first else { return }
+        for set in exercise.setsList where set.id != firstSet.id {
+            set.weight = firstSet.weight
+            set.reps = firstSet.reps
+            set.distance = firstSet.distance
+            set.time = firstSet.time
         }
     }
 }

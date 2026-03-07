@@ -5,6 +5,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 import UserNotifications
 import UIKit
 
@@ -12,7 +13,6 @@ import UIKit
 struct WorkoutTrackerApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = WorkoutViewModel()
-    @StateObject private var notesManager = ExerciseNotesManager.shared
     @StateObject private var tutorialManager = TutorialManager()    // прошел ли пользователь анбординг?
     
     // НОВЫЙ МЕНЕДЖЕР ТАЙМЕРА
@@ -46,7 +46,6 @@ struct WorkoutTrackerApp: App {
                     // Основное приложение
                     ContentView()
                         .environmentObject(viewModel)
-                        .environmentObject(notesManager)
                         .environmentObject(tutorialManager)
                         .environmentObject(timerManager) // <-- ПЕРЕДАЕМ В ОКРУЖЕНИЕ
                         .transition(.opacity)
@@ -86,5 +85,7 @@ struct WorkoutTrackerApp: App {
                 }
             }
         }
+        // Подключаем SwiftData для всех моделей
+        .modelContainer(for: [Workout.self, WorkoutPreset.self, ExerciseNote.self])
     }
 }

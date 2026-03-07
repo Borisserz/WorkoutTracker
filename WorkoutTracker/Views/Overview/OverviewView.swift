@@ -125,8 +125,9 @@ struct OverviewView: View {
             
             // --- НАВИГАЦИЯ ---
             .navigationDestination(isPresented: $navigateToNewWorkout) {
-                if !viewModel.workouts.isEmpty {
-                    WorkoutDetailView(workout: $viewModel.workouts[0])
+                if let firstWorkout = viewModel.workouts.first {
+                    // ИЗМЕНЕНИЕ: Передаем ссылку на объект, а не Binding ($)
+                    WorkoutDetailView(workout: firstWorkout)
                 }
             }
             .navigationDestination(isPresented: $navigateToExercises) {
@@ -156,7 +157,8 @@ struct OverviewView: View {
                     .environmentObject(viewModel)
             }
             .sheet(isPresented: $showAddWorkout) {
-                AddWorkoutView(workouts: $viewModel.workouts, onWorkoutCreated: {
+                // ИЗМЕНЕНИЕ: Убран Binding workouts: $viewModel.workouts
+                AddWorkoutView(onWorkoutCreated: {
                     navigateToNewWorkout = true
                 })
             }
@@ -407,6 +409,3 @@ struct OverviewView: View {
     }
 }
 
-#Preview {
-    OverviewView().environmentObject(WorkoutViewModel())
-}

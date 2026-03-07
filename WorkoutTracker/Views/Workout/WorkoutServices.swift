@@ -566,7 +566,8 @@ struct ImportExportService {
     }
     
     static func generateShareLink(for preset: WorkoutPreset) throws -> URL {
-        let jsonData = try JSONEncoder().encode(preset)
+        let dto = preset.toDTO()
+        let jsonData = try JSONEncoder().encode(dto)
         let compressedData = try (jsonData as NSData).compressed(using: .zlib) as Data
         var comp = URLComponents(string: "https://borisserz.github.io/workout-share/")!
         comp.queryItems = [URLQueryItem(name: "data", value: compressedData.base64EncodedString())]
@@ -574,7 +575,8 @@ struct ImportExportService {
     }
     
     static func exportPresetToFile(_ preset: WorkoutPreset) throws -> URL {
-        let jsonData = try JSONEncoder().encode(preset)
+        let dto = preset.toDTO()
+        let jsonData = try JSONEncoder().encode(dto)
         let name = preset.name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).workouttemplate")
         try jsonData.write(to: tempURL)
@@ -622,13 +624,9 @@ struct ImportExportService {
     }
     
     static func processImportedData(_ jsonData: Data) throws -> WorkoutPreset {
-        var preset = try JSONDecoder().decode(WorkoutPreset.self, from: jsonData)
-        preset.id = UUID(); preset.name += " (Imported)"
-        preset.exercises = preset.exercises.map { ex in
-            var newEx = ex; newEx.id = UUID()
-            newEx.setsList = newEx.setsList.map { var s = $0; s.id = UUID(); return s }
-            return newEx
-        }
+        let dto = try JSONDecoder().decode(WorkoutPresetDTO.self, from: jsonData)
+        let preset = WorkoutPreset(from: dto)
+        preset.name += " (Imported)"
         return preset
     }
     

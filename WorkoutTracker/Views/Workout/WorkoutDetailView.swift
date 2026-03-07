@@ -8,6 +8,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 import Charts
 import Combine
 import ActivityKit
@@ -19,9 +20,10 @@ struct WorkoutDetailView: View {
     
     // MARK: - Environment & Bindings
     @EnvironmentObject var tutorialManager: TutorialManager
-    @Binding var workout: Workout
+    @Bindable var workout: Workout // ИЗМЕНЕНО: Используем Bindable для SwiftData модели
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
+    @Environment(\.modelContext) private var context // ДОБАВЛЕНО: для удаления
     
     // MARK: - Local State (UI)
     
@@ -47,9 +49,9 @@ struct WorkoutDetailView: View {
     
     // Удаление с предупреждением
     @State private var showDeleteExerciseAlert = false
-    @State private var exerciseIndexToDelete: Int?
+    @State private var exerciseToDelete: Exercise?
     @State private var showDeleteSupersetAlert = false
-    @State private var supersetIndexToDelete: Int?
+    @State private var supersetToDelete: Exercise?
     
     // Sharing
     @State private var shareItems: [Any] = []
@@ -192,24 +194,6 @@ struct WorkoutDetailView: View {
             ExerciseSelectionView(selectedExercises: $workout.exercises)
         }
         
-        // Редактирование упражнения
-        .sheet(item: $exerciseToEdit) { exerciseToSave in
-            if let index = workout.exercises.firstIndex(where: { $0.id == exerciseToSave.id }) {
-                NavigationStack {
-                    EditExerciseView(exercise: $workout.exercises[index])
-                        .toolbar {
-                            ToolbarItem(placement: .destructiveAction) {
-                                Button(LocalizedStringKey("Delete"), role: .destructive) {
-                                    exerciseIndexToDelete = index
-                                    showDeleteExerciseAlert = true
-                                }
-                            }
-                        }
-                }
-                .presentationDetents([.medium, .large])
-            }
-        }
-        
         // Настройка сравнения (Арбузы)
         .sheet(isPresented: $showComparisonSettings) {
             ComparisonSettingsView().presentationDetents([.medium])
@@ -225,13 +209,11 @@ struct WorkoutDetailView: View {
         // Редактирование супер-сета
         .sheet(item: $supersetToEdit) { superset in
             SupersetBuilderView(existingSuperset: superset, onSave: { updatedSuperset in
-                if let index = workout.exercises.firstIndex(where: { $0.id == superset.id }) {
-                    workout.exercises[index] = updatedSuperset
-                }
+                // В SwiftData изменения уже применены благодаря Bindable внутри SupersetBuilderView
                 supersetToEdit = nil
             }, onDelete: {
                 if let index = workout.exercises.firstIndex(where: { $0.id == superset.id }) {
-                    supersetIndexToDelete = index
+                    supersetToDelete = workout.exercises[index]
                     showDeleteSupersetAlert = true
                 }
                 supersetToEdit = nil
@@ -258,37 +240,40 @@ struct WorkoutDetailView: View {
         // Предупреждения при удалении
         .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
-                if let index = exerciseIndexToDelete {
-                    withAnimation { workout.exercises.remove(at: index) }
-                    exerciseIndexToDelete = nil
-                }
-                if exerciseToEdit != nil {
-                    exerciseToEdit = nil
+                if let ex = exerciseToDelete {
+                    withAnimation {
+                        if let index = workout.exercises.firstIndex(where: { $0.id == ex.id }) {
+                            workout.exercises.remove(at: index)
+                        }
+                        context.delete(ex)
+                    }
+                    exerciseToDelete = nil
                 }
             }
             Button(LocalizedStringKey("Cancel"), role: .cancel) {
-                exerciseIndexToDelete = nil
+                exerciseToDelete = nil
             }
         } message: {
-            if let index = exerciseIndexToDelete, index < workout.exercises.count {
-                let exerciseName = workout.exercises[index].name
-                Text(LocalizedStringKey("Are you sure you want to delete '\(exerciseName)'? This action cannot be undone."))
+            if let ex = exerciseToDelete {
+                Text(LocalizedStringKey("Are you sure you want to delete '\(ex.name)'? This action cannot be undone."))
             } else {
                 Text(LocalizedStringKey("Are you sure you want to delete this exercise? This action cannot be undone."))
             }
         }
         .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteSupersetAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
-                if let index = supersetIndexToDelete {
-                    withAnimation { workout.exercises.remove(at: index) }
-                    supersetIndexToDelete = nil
-                }
-                if supersetToEdit != nil {
-                    supersetToEdit = nil
+                if let ex = supersetToDelete {
+                    withAnimation {
+                        if let index = workout.exercises.firstIndex(where: { $0.id == ex.id }) {
+                            workout.exercises.remove(at: index)
+                        }
+                        context.delete(ex)
+                    }
+                    supersetToDelete = nil
                 }
             }
             Button(LocalizedStringKey("Cancel"), role: .cancel) {
-                supersetIndexToDelete = nil
+                supersetToDelete = nil
             }
         } message: {
             Text(LocalizedStringKey("Are you sure you want to delete this superset? This action cannot be undone."))
@@ -473,81 +458,71 @@ struct WorkoutDetailView: View {
                 .padding(.vertical, 30)
             } else {
                 VStack(spacing: 16) {
-                    ForEach(workout.exercises) { exercise in
+                    ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
                         
-                        if let index = workout.exercises.firstIndex(where: { $0.id == exercise.id }) {
-                            
-                            let exerciseBinding = $workout.exercises[index]
-                            
-                            let deleteAction = {
-                                // Карточка уже запросила подтверждение у пользователя,
-                                // поэтому здесь мы просто напрямую удаляем упражнение из массива.
-                                withAnimation {
-                                    if let currentIndex = workout.exercises.firstIndex(where: { $0.id == exercise.id }) {
-                                        workout.exercises.remove(at: currentIndex)
-                                    }
-                                }
-                            }
-                            
-                            let swapAction = {
-                                self.exerciseToSwap = exercise
-                                self.showSwapSheet = true
-                            }
-                            
-                            // Binding для состояния раскрытости
-                            let isExpandedBinding = Binding(
-                                get: { expandedExercises[exercise.id] ?? false },
-                                set: { expandedExercises[exercise.id] = $0 }
-                            )
-                            
-                            // Определяем, является ли это упражнение текущим (активным)
-                            // Текущее упражнение - это первое незавершенное и раскрытое упражнение
-                            let isCurrentExercise = workout.isActive && 
-                                !exercise.isCompleted && 
-                                !exercise.isSuperset &&
-                                (expandedExercises[exercise.id] ?? false) &&
-                                workout.exercises.prefix(index).allSatisfy { $0.isCompleted || $0.isSuperset }
-                            
-                            // Callback при завершении упражнения
-                            let onExerciseFinished = {
-                                handleExerciseFinished(exerciseId: exercise.id, exerciseIndex: index)
-                            }
-                            
-                            // Рендерим либо Супер-сет, либо обычную карточку
-                            Group {
-                                if exercise.isSuperset {
-                                    SupersetCardView(
-                                        superset: exerciseBinding,
-                                        currentWorkoutId: workout.id,
-                                        onDelete: deleteAction,
-                                        isWorkoutCompleted: !workout.isActive
-                                    )
-                                } else {
-                                    ExerciseCardView(
-                                        exercise: exerciseBinding,
-                                        currentWorkoutId: workout.id,
-                                        onDelete: deleteAction,
-                                        onSwap: swapAction,
-                                        isWorkoutCompleted: !workout.isActive,
-                                        isExpanded: isExpandedBinding,
-                                        onExerciseFinished: onExerciseFinished,
-                                        isCurrentExercise: isCurrentExercise
-                                    )
-                                }
-                            }
-                            .id(exercise.id) // ID для ScrollViewReader
-                            // Модификаторы Drag & Drop
-                            .background(Color.white.opacity(0.01))
-                            .onDrag {
-                                self.draggedExercise = exercise
-                                return NSItemProvider(object: exercise.id.uuidString as NSString)
-                            }
-                            .onDrop(of: [UTType.text], delegate: ExerciseDropDelegate(
-                                item: exercise,
-                                items: $workout.exercises,
-                                draggedItem: $draggedExercise
-                            ))
+                        let deleteAction = {
+                            self.exerciseToDelete = exercise
+                            self.showDeleteExerciseAlert = true
                         }
+                        
+                        let swapAction = {
+                            self.exerciseToSwap = exercise
+                            self.showSwapSheet = true
+                        }
+                        
+                        // Binding для состояния раскрытости
+                        let isExpandedBinding = Binding(
+                            get: { expandedExercises[exercise.id] ?? false },
+                            set: { expandedExercises[exercise.id] = $0 }
+                        )
+                        
+                        // Определяем, является ли это упражнение текущим (активным)
+                        // Текущее упражнение - это первое незавершенное и раскрытое упражнение
+                        let isCurrentExercise = workout.isActive && 
+                            !exercise.isCompleted && 
+                            !exercise.isSuperset &&
+                            (expandedExercises[exercise.id] ?? false) &&
+                            workout.exercises.prefix(index).allSatisfy { $0.isCompleted || $0.isSuperset }
+                        
+                        // Callback при завершении упражнения
+                        let onExerciseFinished = {
+                            handleExerciseFinished(exerciseId: exercise.id, exerciseIndex: index)
+                        }
+                        
+                        // Рендерим либо Супер-сет, либо обычную карточку
+                        Group {
+                            if exercise.isSuperset {
+                                SupersetCardView(
+                                    superset: exercise,
+                                    currentWorkoutId: workout.id,
+                                    onDelete: deleteAction,
+                                    isWorkoutCompleted: !workout.isActive
+                                )
+                            } else {
+                                ExerciseCardView(
+                                    exercise: exercise,
+                                    currentWorkoutId: workout.id,
+                                    onDelete: deleteAction,
+                                    onSwap: swapAction,
+                                    isWorkoutCompleted: !workout.isActive,
+                                    isExpanded: isExpandedBinding,
+                                    onExerciseFinished: onExerciseFinished,
+                                    isCurrentExercise: isCurrentExercise
+                                )
+                            }
+                        }
+                        .id(exercise.id) // ID для ScrollViewReader
+                        // Модификаторы Drag & Drop
+                        .background(Color.white.opacity(0.01))
+                        .onDrag {
+                            self.draggedExercise = exercise
+                            return NSItemProvider(object: exercise.id.uuidString as NSString)
+                        }
+                        .onDrop(of: [UTType.text], delegate: ExerciseDropDelegate(
+                            item: exercise,
+                            items: $workout.exercises,
+                            draggedItem: $draggedExercise
+                        ))
                     }
                 }
             }
@@ -730,6 +705,8 @@ struct WorkoutDetailView: View {
         guard let index = workout.exercises.firstIndex(where: { $0.id == old.id }) else { return }
         withAnimation {
             workout.exercises[index] = new
+            // Старое упражнение удаляем из базы, так как оно заменено
+            context.delete(old) 
         }
     }
     
@@ -1039,14 +1016,3 @@ struct Blinking: ViewModifier {
 }
 extension View { func blinking() -> some View { modifier(Blinking()) } }
 
-// MARK: - Preview
-
-#Preview {
-    NavigationStack {
-        WorkoutDetailView(workout: .constant(
-            Workout(title: "Live Test", date: Date(), exercises: [
-                Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 3, reps: 10, weight: 80, effort: 9)
-            ])
-        )).environmentObject(WorkoutViewModel())
-    }
-}
