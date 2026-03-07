@@ -86,12 +86,15 @@ class ExerciseNotesManager: ObservableObject {
     // MARK: - Persistence (UserDefaults)
     
     private func performSave() {
+        // Делаем локальную копию словаря на текущем потоке во избежание Data Race
+        let notesCopy = self.notes
+        
         // Выполняем сохранение асинхронно в фоновой очереди
         DispatchQueue.global(qos: .utility).async { [weak self] in
             guard let self = self else { return }
             
             do {
-                let encoded = try JSONEncoder().encode(self.notes)
+                let encoded = try JSONEncoder().encode(notesCopy)
                 UserDefaults.standard.set(encoded, forKey: self.userDefaultsKey)
             } catch {
                 // Error saving notes

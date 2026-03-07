@@ -94,6 +94,14 @@ struct ExerciseHistoryView: View {
         return .strength
     }
     
+    /// Определяет категорию упражнения для техники
+    var exerciseCategory: ExerciseCategory {
+        for workout in allWorkouts {
+            if let ex = findExerciseInWorkout(workout) { return ex.category }
+        }
+        return ExerciseCategory.determine(from: exerciseName)
+    }
+    
     var unitLabel: String {
         switch exerciseType {
         case .strength: return unitsManager.weightUnitString()
@@ -732,29 +740,26 @@ struct ExerciseHistoryView: View {
     
     /// Получить описание техники упражнения
     func getTechniqueDescription() -> String {
-        // Базовая информация о технике в зависимости от названия упражнения
-        let lowercased = exerciseName.lowercased()
-        
-        if lowercased.contains("squat") {
+        switch exerciseCategory {
+        case .squat:
             return NSLocalizedString("Stand with your feet shoulder-width apart. Lower your body by bending your knees and pushing your hips back, as if sitting into a chair. Keep your chest up and core engaged. Lower until your thighs are parallel to the ground, then push through your heels to return to the starting position.", comment: "")
-        } else if lowercased.contains("bench") || lowercased.contains("press") {
+        case .press:
             return NSLocalizedString("Lie on a flat bench with your feet flat on the floor. Grip the bar with hands slightly wider than shoulder-width. Lower the bar to your chest with control, then press it back up explosively. Keep your shoulders retracted and core tight throughout the movement.", comment: "")
-        } else if lowercased.contains("deadlift") {
+        case .deadlift:
             return NSLocalizedString("Stand with feet hip-width apart, bar over mid-foot. Hinge at the hips and bend your knees to grip the bar. Keep your back straight and chest up. Drive through your heels and extend your hips and knees simultaneously to lift the bar. Keep the bar close to your body throughout the movement.", comment: "")
-        } else if lowercased.contains("pull") || lowercased.contains("row") {
+        case .pull:
             return NSLocalizedString("Grasp the bar or handles with an overhand or underhand grip. Pull the weight toward your torso, squeezing your shoulder blades together at the end of the movement. Keep your core engaged and avoid swinging. Lower the weight with control to complete the repetition.", comment: "")
-        } else if lowercased.contains("curl") {
+        case .curl:
             return NSLocalizedString("Stand or sit with a dumbbell in each hand, arms fully extended. Keeping your elbows close to your body, curl the weights up by contracting your biceps. Squeeze at the top of the movement, then lower the weights slowly with control.", comment: "")
-        } else {
+        default:
             return NSLocalizedString("Perform this exercise with proper form, focusing on controlled movements and full range of motion. Engage your core throughout the exercise and avoid using momentum. Consult with a fitness professional for specific technique guidance.", comment: "")
         }
     }
     
     /// Получить советы по технике
     func getTechniqueTips() -> [String] {
-        let lowercased = exerciseName.lowercased()
-        
-        if lowercased.contains("squat") {
+        switch exerciseCategory {
+        case .squat:
             return [
                 NSLocalizedString("Keep your knees in line with your toes, never let them cave inward", comment: ""),
                 NSLocalizedString("Maintain a neutral spine throughout the entire movement", comment: ""),
@@ -762,7 +767,7 @@ struct ExerciseHistoryView: View {
                 NSLocalizedString("Don't let your knees go past your toes when descending", comment: ""),
                 NSLocalizedString("Keep your chest up and gaze forward to maintain proper posture", comment: "")
             ]
-        } else if lowercased.contains("bench") || lowercased.contains("press") {
+        case .press:
             return [
                 NSLocalizedString("Keep your shoulder blades retracted and pressed into the bench", comment: ""),
                 NSLocalizedString("Lower the bar with control - don't let it drop onto your chest", comment: ""),
@@ -770,7 +775,7 @@ struct ExerciseHistoryView: View {
                 NSLocalizedString("Maintain a slight arch in your lower back (not excessive)", comment: ""),
                 NSLocalizedString("Press the bar in a straight line up and slightly back", comment: "")
             ]
-        } else if lowercased.contains("deadlift") {
+        case .deadlift:
             return [
                 NSLocalizedString("Keep the bar close to your body - it should almost scrape your shins", comment: ""),
                 NSLocalizedString("Start with your hips higher than your knees", comment: ""),
@@ -778,7 +783,7 @@ struct ExerciseHistoryView: View {
                 NSLocalizedString("Never round your back - keep it neutral throughout", comment: ""),
                 NSLocalizedString("Breathe out as you lift and breathe in as you lower", comment: "")
             ]
-        } else {
+        default:
             return [
                 NSLocalizedString("Focus on proper form over the amount of weight", comment: ""),
                 NSLocalizedString("Control the negative (lowering) portion of the movement", comment: ""),

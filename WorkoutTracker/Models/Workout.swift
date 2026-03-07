@@ -40,6 +40,30 @@ enum ExerciseType: String, Codable, CaseIterable, Identifiable {
     var id: String { self.rawValue }
 }
 
+// --- 2.1 Категории упражнений (для техники и подсказок) ---
+enum ExerciseCategory: String, Codable, CaseIterable {
+    case squat = "Squat"
+    case press = "Press"
+    case deadlift = "Deadlift"
+    case pull = "Pull"
+    case curl = "Curl"
+    case core = "Core"
+    case cardio = "Cardio"
+    case other = "Other"
+    
+    /// Автоматическое определение категории по английскому названию из каталога
+    static func determine(from name: String) -> ExerciseCategory {
+        let lower = name.lowercased()
+        if lower.contains("squat") { return .squat }
+        if lower.contains("bench") || lower.contains("press") { return .press }
+        if lower.contains("deadlift") { return .deadlift }
+        if lower.contains("pull") || lower.contains("row") { return .pull }
+        if lower.contains("curl") { return .curl }
+        if lower.contains("plank") || lower.contains("crunch") { return .core }
+        return .other
+    }
+}
+
 // MARK: - Models
 
 // --- 3. Структура одного Сета ---
@@ -65,6 +89,7 @@ struct Exercise: Identifiable, Codable, Hashable {
     var name: String
     var muscleGroup: String
     var type: ExerciseType = .strength
+    var category: ExerciseCategory // НОВОЕ ПОЛЕ: Категория для подсказок
     var effort: Int = 5
     var isCompleted: Bool = false // Флаг завершения упражнения
     
@@ -254,17 +279,18 @@ struct Exercise: Identifiable, Codable, Hashable {
     // MARK: - Codable Implementation
     
     enum CodingKeys: String, CodingKey {
-        case id, name, muscleGroup, type, sets, reps, weight, effort, subExercises, distance, timeSeconds
+        case id, name, muscleGroup, type, category, sets, reps, weight, effort, subExercises, distance, timeSeconds
         case setsList // Добавили новый ключ
         case isCompleted // Флаг завершения упражнения
     }
     
     // Инициализатор
-    init(id: UUID = UUID(), name: String, muscleGroup: String, type: ExerciseType = .strength, sets: Int = 1, reps: Int = 0, weight: Double = 0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
+    init(id: UUID = UUID(), name: String, muscleGroup: String, type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
         self.id = id
         self.name = name
         self.muscleGroup = muscleGroup
         self.type = type
+        self.category = category ?? ExerciseCategory.determine(from: name)
         self.effort = effort
         self.subExercises = subExercises
         self.isCompleted = isCompleted
@@ -316,6 +342,7 @@ struct Exercise: Identifiable, Codable, Hashable {
         subExercises = try container.decodeIfPresent([Exercise].self, forKey: .subExercises) ?? []
         
         type = try container.decodeIfPresent(ExerciseType.self, forKey: .type) ?? .strength
+        category = try container.decodeIfPresent(ExerciseCategory.self, forKey: .category) ?? ExerciseCategory.determine(from: name)
         isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
         
         // ВАЖНО: Пробуем загрузить новый список сетов (setsList)
@@ -350,6 +377,7 @@ struct Exercise: Identifiable, Codable, Hashable {
         try container.encode(name, forKey: .name)
         try container.encode(muscleGroup, forKey: .muscleGroup)
         try container.encode(type, forKey: .type)
+        try container.encode(category, forKey: .category)
         try container.encode(effort, forKey: .effort)
         try container.encode(subExercises, forKey: .subExercises)
         try container.encode(isCompleted, forKey: .isCompleted)
@@ -375,7 +403,7 @@ struct WorkoutPreset: Identifiable, Codable, Hashable {
 }
 
 // --- 6. Тренировка (Workout) ---
-struct Workout: Identifiable, Codable {
+struct Workout: Identifiable, Codable, Equatable {
     var id = UUID()
     var title: String
     var date: Date
