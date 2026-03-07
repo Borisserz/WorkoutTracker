@@ -40,10 +40,11 @@ class WorkoutViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var workouts: [Workout] = [] {
         didSet {
+            let oldWorkouts = oldValue
             saveWorkouts()
             calculateRecovery()
             updateWidgetData()
-            updatePerformanceCaches()
+            updatePerformanceCaches(oldWorkouts: oldWorkouts)
         }
     }
     @Published var lastPerformancesCache: [String: Exercise] = [:]
@@ -84,25 +85,106 @@ class WorkoutViewModel: ObservableObject {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent(filename)
     }
     
-    private func updatePerformanceCaches() {
+    private func updatePerformanceCaches(oldWorkouts: [Workout]? = nil) {
         let workoutsCopy = self.workouts
+        
         Task.detached(priority: .utility) {
-            var newLastPerformances: [String: Exercise] = [:]
-            var newPRs: [String: Double] = [:]
+            var exercisesToUpdate: Set<String>? = nil
             
+            // 1. Вычисляем только изменившиеся упражнения
+            if let oldWorkouts = oldWorkouts {
+                var changedNames = Set<String>()
+                let newWorkoutsDict = Dictionary(uniqueKeysWithValues: workoutsCopy.map { ($0.id, $0) })
+                let oldWorkoutsDict = Dictionary(uniqueKeysWithValues: oldWorkouts.map { ($0.id, $0) })
+                
+                // Проходимся по новым (в поиске измененных или добавленных)
+                for workout in workoutsCopy {
+                    if let oldWorkout = oldWorkoutsDict[workout.id] {
+                        if oldWorkout != workout {
+                            Self.extractExerciseNames(from: workout, into: &changedNames)
+                            Self.extractExerciseNames(from: oldWorkout, into: &changedNames)
+                        }
+                    } else {
+                        // Совершенно новая тренировка
+                        Self.extractExerciseNames(from: workout, into: &changedNames)
+                    }
+                }
+                
+                // Ищем удаленные тренировки
+                for oldWorkout in oldWorkouts {
+                    if newWorkoutsDict[oldWorkout.id] == nil {
+                        Self.extractExerciseNames(from: oldWorkout, into: &changedNames)
+                    }
+                }
+                
+                // Ничего не изменилось
+                if changedNames.isEmpty { return }
+                exercisesToUpdate = changedNames
+            }
+            
+            var partialLastPerformances: [String: Exercise] = [:]
+            var partialPRs: [String: Double] = [:]
+            
+            // 2. Ищем данные только для измененных упражнений, пропуская все остальные (O(N*M) вместо O(N*M*K))
             for workout in workoutsCopy.sorted(by: { $0.date > $1.date }) {
+                guard !workout.isActive else { continue }
                 for exercise in workout.exercises {
                     for ex in (exercise.isSuperset ? exercise.subExercises : [exercise]) {
-                        guard !workout.isActive else { continue }
-                        if newLastPerformances[ex.name] == nil { newLastPerformances[ex.name] = ex }
+                        let name = ex.name
+                        
+                        // Пропускаем, если упражнение нас не интересует в этом инкременте
+                        if let targets = exercisesToUpdate, !targets.contains(name) {
+                            continue
+                        }
+                        
+                        // Запоминаем последний результат
+                        if partialLastPerformances[name] == nil { 
+                            partialLastPerformances[name] = ex 
+                        }
+                        
+                        // Проверяем рекорды
                         if ex.type == .strength {
                             let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-                            if maxWeight > (newPRs[ex.name] ?? 0.0) { newPRs[ex.name] = maxWeight }
+                            let currentMax = partialPRs[name] ?? 0.0
+                            if maxWeight > currentMax { 
+                                partialPRs[name] = maxWeight 
+                            }
                         }
                     }
                 }
             }
-            await MainActor.run { self.lastPerformancesCache = newLastPerformances; self.personalRecordsCache = newPRs }
+            
+            // 3. Сохраняем и патчим основной кэш на главном потоке
+            await MainActor.run { 
+                if let targets = exercisesToUpdate {
+                    // Инкрементальное обновление
+                    for name in targets {
+                        if let pr = partialPRs[name] {
+                            self.personalRecordsCache[name] = pr
+                        } else {
+                            self.personalRecordsCache.removeValue(forKey: name)
+                        }
+                        
+                        if let lp = partialLastPerformances[name] {
+                            self.lastPerformancesCache[name] = lp
+                        } else {
+                            self.lastPerformancesCache.removeValue(forKey: name)
+                        }
+                    }
+                } else {
+                    // Полная перезапись (например, при инициализации)
+                    self.lastPerformancesCache = partialLastPerformances
+                    self.personalRecordsCache = partialPRs
+                }
+            }
+        }
+    }
+    
+    private static func extractExerciseNames(from workout: Workout, into set: inout Set<String>) {
+        for exercise in workout.exercises {
+            for ex in (exercise.isSuperset ? exercise.subExercises : [exercise]) {
+                set.insert(ex.name)
+            }
         }
     }
     
