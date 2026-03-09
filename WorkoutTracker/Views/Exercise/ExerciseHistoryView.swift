@@ -577,17 +577,20 @@ struct ExerciseHistoryView: View {
                         GridItem(.adaptive(minimum: 100), spacing: 8)
                     ], spacing: 8) {
                         ForEach(targetMuscles, id: \.self) { muscle in
-                            HStack(spacing: 4) {
-                                Image(systemName: "figure.strengthtraining.traditional")
-                                    .font(.caption2)
-                                Text(muscle)
-                                    .font(.subheadline)
+                            // Обернули каждый тег в NavigationLink для перехода в каталог упражнений
+                            NavigationLink(destination: ExerciseView(preselectedCategory: muscleGroup)) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "figure.strengthtraining.traditional")
+                                        .font(.caption2)
+                                    Text(muscle)
+                                        .font(.subheadline)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .foregroundColor(.blue)
+                                .cornerRadius(8)
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
-                            .cornerRadius(8)
                         }
                     }
                 }

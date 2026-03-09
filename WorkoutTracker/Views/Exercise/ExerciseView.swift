@@ -18,11 +18,21 @@ struct ExerciseView: View {
     
     @EnvironmentObject var viewModel: WorkoutViewModel
     @State private var showAddSheet = false
-    @State private var selectedGroups: Set<String> = []
-    @State private var searchText: String = ""
+    @State private var selectedGroups: Set<String>
+    @State private var searchText: String
     @State private var showDeleteAlert = false
     @State private var exerciseToDelete: (name: String, category: String)?
     @State private var exercisesToDelete: [(name: String, category: String)] = []
+    
+    // Инициализатор, который позволяет задать заранее выбранную группу (фильтр)
+    init(preselectedCategory: String? = nil) {
+        if let category = preselectedCategory {
+            _selectedGroups = State(initialValue: [category])
+        } else {
+            _selectedGroups = State(initialValue: [])
+        }
+        _searchText = State(initialValue: "")
+    }
     
     // MARK: - Body
     

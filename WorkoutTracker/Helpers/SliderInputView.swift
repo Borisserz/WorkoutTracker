@@ -41,6 +41,8 @@ struct SliderSheetView: View {
     
     // Локальное состояние для слайдера - обновляется мгновенно без валидации
     @State private var localValue: Double = 0
+    @State private var textValue: String = ""
+    @FocusState private var isBigTextFocused: Bool
     
     // Кэшированные параметры слайдера (вычисляются один раз)
     @State private var params: (min: Double, max: Double, step: Double) = (0, 100, 1)
@@ -63,9 +65,37 @@ struct SliderSheetView: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                     
-                    Text(formatValue(localValue))
+                    // Заменили Text на TextField для быстрого ручного ввода
+                    TextField("0", text: $textValue)
                         .font(.system(size: 48, weight: .bold))
                         .foregroundColor(.primary)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.center)
+                        .focused($isBigTextFocused)
+                        .onChange(of: isBigTextFocused) { _, focused in
+                            if focused && localValue == 0 {
+                                textValue = ""
+                            } else if !focused {
+                                textValue = formatValue(localValue)
+                            }
+                        }
+                        .onChange(of: textValue) { _, newText in
+                            if isBigTextFocused {
+                                // Защита от запятых (в некоторых локалях они ломают конвертацию)
+                                let cleanStr = newText.replacingOccurrences(of: ",", with: ".")
+                                if let val = Double(cleanStr) {
+                                    let validated = min(max(val, params.min), params.max)
+                                    localValue = validated
+                                } else if newText.isEmpty {
+                                    localValue = 0
+                                }
+                            }
+                        }
+                        .onChange(of: localValue) { _, newVal in
+                            if !isBigTextFocused {
+                                textValue = formatValue(newVal)
+                            }
+                        }
                 }
                 .padding(.top, 40)
                 
@@ -126,6 +156,7 @@ struct SliderSheetView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Done")) {
+                        isBigTextFocused = false
                         // При закрытии сохраняем финальное значение
                         updateBindingValue(localValue)
                         isPresented = false
@@ -150,6 +181,8 @@ struct SliderSheetView: View {
             case .timeMin, .timeSec:
                 params = (0, 300, 1)
             }
+            
+            textValue = formatValue(localValue)
         }
         .onDisappear {
             // На всякий случай сохраняем при скрытии шторки смахиванием вниз
@@ -160,19 +193,17 @@ struct SliderSheetView: View {
     // Обновляет binding с валидацией
     private func updateBindingValue(_ newValue: Double) {
         let validated = max(params.min, min(newValue, params.max))
-        value = validated >= 0 ? validated : nil
+        value = validated > 0 ? validated : nil
     }
     
     private func increment() {
         let newValue = min(localValue + params.step, params.max)
         localValue = newValue
-        // Убрали updateBindingValue(newValue), чтобы не триггерить лаги
     }
     
     private func decrement() {
         let newValue = max(localValue - params.step, params.min)
         localValue = newValue
-        // Убрали updateBindingValue(newValue), чтобы не триггерить лаги
     }
     
     private func formatValue(_ val: Double) -> String {
@@ -239,8 +270,16 @@ struct SliderInputView: View {
                     .font(.headline)
                     .frame(width: 50)
                     .focused($isFocused)
+                    .onChange(of: isFocused) { _, focused in
+                        if focused && sliderDoubleValue == 0 {
+                            textValue = "" // Очищаем 0 при фокусе
+                        } else if !focused {
+                            updateTextValue() // Возвращаем форматированное значение при потере фокуса
+                        }
+                    }
                     .onChange(of: textValue) { oldValue, newValue in
-                        if let num = Double(newValue) {
+                        let cleanStr = newValue.replacingOccurrences(of: ",", with: ".")
+                        if let num = Double(cleanStr) {
                             let validated = max(minValue, min(num, maxValue))
                             sliderDoubleValue = validated
                             commitValueWithDebounce(validated)
