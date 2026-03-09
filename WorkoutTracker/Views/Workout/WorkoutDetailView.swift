@@ -18,20 +18,34 @@ internal import UniformTypeIdentifiers
 
 struct WorkoutDetailView: View {
     
+    // MARK: - Nested Types
+    enum Tab: String, CaseIterable {
+        case workout = "Workout"
+        case analytics = "Analytics"
+        
+        var localizedName: LocalizedStringKey {
+            LocalizedStringKey(self.rawValue)
+        }
+    }
+    
     // MARK: - Environment & Bindings
     @EnvironmentObject var tutorialManager: TutorialManager
     @Bindable var workout: Workout 
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
     @Environment(\.modelContext) private var context 
+    @Environment(\.dismiss) private var dismiss
     
     // MARK: - Local State (UI)
+    
+    // Вкладка по умолчанию
+    @State private var selectedTab: Tab = .workout
     
     // Управление модальными окнами
     @State private var showExerciseSelection = false
     @State private var showSupersetBuilder = false
     @State private var showShareSheet = false
-    @State private var showComparisonSettings = false
+    @State private var showEmptyWorkoutAlert = false
     
     // Редактирование
     @State private var exerciseToEdit: Exercise?
@@ -87,33 +101,46 @@ struct WorkoutDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                     
-                    // 1. Заголовок (Таймер, Инфо)
-                    headerSection
-                    
-                    // 2. Основная кнопка (Share - для завершенных)
-                    actionButtonSection
-                    
-                    Divider().padding(.vertical, 5)
-                    
-                    // 3. Заголовок списка упражнений + Кнопки добавления
-                    exercisesToolbarSection
-                    
-                    // 4. Список карточек упражнений
-                    exerciseListSection
-                    
-                    // 5. График (Максимальный вес)
-                    chartSection
-                    
-                    // 6. Тепловая карта тела
-                    muscleHeatmapSection
-                    
-                    // 7. Интересный факт (Сравнение веса)
-                    if !workout.exercises.isEmpty {
-                        FunFactView(workout: workout, showSettings: $showComparisonSettings, totalStrengthVolume: totalStrengthVolume)
-                    }
-                    
+                        // 1. Заголовок (Таймер, Инфо)
+                        headerSection
+                        
+                        // 2. Основная кнопка (Share - для завершенных)
+                        actionButtonSection
+                        
+                        if !workout.isActive {
+                            Divider().padding(.vertical, 5)
+                        }
+                        
+                        // ТАБЫ: Устранение когнитивного перегруза
+                        Picker(LocalizedStringKey("View Mode"), selection: $selectedTab) {
+                            ForEach(Tab.allCases, id: \.self) { tab in
+                                Text(tab.localizedName).tag(tab)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.bottom, 8)
+                        
+                        if selectedTab == .workout {
+                            // 3. Заголовок списка упражнений + Кнопки добавления
+                            exercisesToolbarSection
+                            
+                            // 4. Список карточек упражнений
+                            exerciseListSection
+                        } else {
+                            // 5. График (Максимальный вес)
+                            chartSection
+                            
+                            // 6. Тепловая карта тела
+                            muscleHeatmapSection
+                            
+                            // 7. Интересный факт (Сравнение веса)
+                            if !workout.exercises.isEmpty {
+                                FunFactView(totalStrengthVolume: totalStrengthVolume)
+                            }
+                        }
+                        
                         // Отступ снизу, чтобы глобальный таймер отдыха и кнопка завершения не перекрывали контент
-                        Spacer(minLength: 100)
+                        Spacer(minLength: timerManager.isRestTimerActive ? 180 : 100)
                     }
                     .padding()
                 }
@@ -125,13 +152,14 @@ struct WorkoutDetailView: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.red)
+                            .background(Color.accentColor)
                             .foregroundColor(.white)
                             .cornerRadius(12)
                             .shadow(radius: 8)
                     }
                     .padding(.horizontal)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, timerManager.isRestTimerActive ? 100 : 16)
+                    .animation(.default, value: timerManager.isRestTimerActive)
                     .spotlight(
                         step: .finishWorkout,
                         manager: tutorialManager,
@@ -178,6 +206,14 @@ struct WorkoutDetailView: View {
                     }
                 }
             }
+            .onChange(of: tutorialManager.currentStep) { _, newStep in
+                // Автоматическое переключение вкладки для туториала, если необходимо
+                if newStep == .highlightChart || newStep == .highlightBody {
+                    selectedTab = .analytics
+                } else if newStep == .addExercise {
+                    selectedTab = .workout
+                }
+            }
         }
         
         // --- Modals & Sheets ---
@@ -187,9 +223,6 @@ struct WorkoutDetailView: View {
         }
         .sheet(isPresented: $showExerciseSelection) {
             ExerciseSelectionView(selectedExercises: $workout.exercises)
-        }
-        .sheet(isPresented: $showComparisonSettings) {
-            ComparisonSettingsView().presentationDetents([.medium])
         }
         .sheet(isPresented: $showSupersetBuilder) {
             SupersetBuilderView { newSuperset in
@@ -258,6 +291,24 @@ struct WorkoutDetailView: View {
         } message: {
             Text(LocalizedStringKey("Are you sure you want to delete this superset? This action cannot be undone."))
         }
+        .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyWorkoutAlert) {
+            Button(LocalizedStringKey("Delete"), role: .destructive) {
+                context.delete(workout)
+                
+                // Фикс: сохраняем изменения и обновляем кэш, чтобы Overview не пытался прочесть удаленный объект
+                try? context.save()
+                viewModel.updateWidgetData(container: context.container)
+                viewModel.refreshAllCaches(container: context.container)
+                
+                // Останавливаем таймер при удалении пустой тренировки
+                timerManager.stopRestTimer()
+                
+                dismiss()
+            }
+            Button(LocalizedStringKey("Continue"), role: .cancel) { }
+        } message: {
+            Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
+        }
     }
     
     // MARK: - View Sections
@@ -268,24 +319,24 @@ struct WorkoutDetailView: View {
                 if workout.isActive {
                     HStack {
                         Label(LocalizedStringKey("Live Workout"), systemImage: "record.circle")
-                            .foregroundStyle(.red).bold().blinking()
+                            .foregroundStyle(Color.accentColor).bold().blinking()
                         Spacer()
                         
                         WorkoutTimerView(startDate: workout.date)
                     }
                     .padding()
-                    .background(Color.red.opacity(0.1))
+                    .background(Color.accentColor.opacity(0.1))
                     .cornerRadius(12)
                 } else {
                     HStack {
-                        Image(systemName: "flag.checkered").foregroundColor(.green)
+                        Image(systemName: "flag.checkered").foregroundColor(.accentColor)
                         Text(LocalizedStringKey("Completed")).bold()
                         Spacer()
                         Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                             .foregroundStyle(.secondary)
                     }
                     .padding()
-                    .background(Color.green.opacity(0.1))
+                    .background(Color.accentColor.opacity(0.1))
                     .cornerRadius(12)
                 }
                 
@@ -318,7 +369,7 @@ struct WorkoutDetailView: View {
                     )
                 }
                 .padding()
-                .background(Color.blue.opacity(0.05))
+                .background(Color.accentColor.opacity(0.05))
                 .cornerRadius(10)
             }
             .zIndex(10)
@@ -337,7 +388,7 @@ struct WorkoutDetailView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(Color.accentColor)
                         .foregroundColor(.white)
                         .cornerRadius(12)
                         .shadow(radius: 5)
@@ -360,8 +411,8 @@ struct WorkoutDetailView: View {
                         Image(systemName: "timer")
                             .font(.headline)
                             .padding(8)
-                            .background(Color.orange.opacity(0.1))
-                            .foregroundColor(.orange)
+                            .background(Color.accentColor.opacity(0.1))
+                            .foregroundColor(.accentColor)
                             .cornerRadius(8)
                     }
                 }
@@ -373,8 +424,8 @@ struct WorkoutDetailView: View {
                     Label(LocalizedStringKey("Superset"), systemImage: "plus")
                         .font(.caption).bold()
                         .padding(8)
-                        .background(Color.purple.opacity(0.1))
-                        .foregroundColor(.purple)
+                        .background(Color.accentColor.opacity(0.1))
+                        .foregroundColor(.accentColor)
                         .cornerRadius(8)
                 }
                 .disabled(!workout.isActive)
@@ -386,7 +437,8 @@ struct WorkoutDetailView: View {
                     Label(LocalizedStringKey("Exercise"), systemImage: "plus")
                         .font(.caption).bold()
                         .padding(8)
-                        .background(Color.blue.opacity(0.1))
+                        .background(Color.accentColor.opacity(0.1))
+                        .foregroundColor(.accentColor)
                         .cornerRadius(8)
                 }
                 .disabled(!workout.isActive)
@@ -491,7 +543,7 @@ struct WorkoutDetailView: View {
                     if let selected = selectedChartExerciseName {
                         Text(LocalizedStringKey(selected))
                             .font(.subheadline)
-                            .foregroundColor(.blue)
+                            .foregroundColor(.accentColor)
                             .padding(.bottom, 4)
                             .frame(minHeight: 20)
                     } else {
@@ -519,7 +571,7 @@ struct WorkoutDetailView: View {
                                     x: .value("Exercise", exercise.name),
                                     y: .value("Weight", convertedWeight)
                                 )
-                                .foregroundStyle(selectedChartExerciseName == exercise.name ? Color.orange.gradient : Color.blue.gradient)
+                                .foregroundStyle(selectedChartExerciseName == exercise.name ? Color.orange.gradient : Color.accentColor.gradient)
                                 .cornerRadius(4)
                                 .annotation(position: .top) {
                                     Text("\(Int(convertedWeight))")
@@ -649,6 +701,22 @@ struct WorkoutDetailView: View {
     }
     
     private func finishWorkout() {
+        // Проверяем, есть ли хотя бы один завершенный подход
+        var hasAnyCompletedSet = false
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            if targets.contains(where: { $0.setsList.contains(where: { $0.isCompleted }) }) {
+                hasAnyCompletedSet = true
+                break
+            }
+        }
+        
+        // Защита от пустых тренировок (если нет ни одного выполненного подхода)
+        guard hasAnyCompletedSet else {
+            showEmptyWorkoutAlert = true
+            return
+        }
+
         // 1. Фиксируем время
         workout.endTime = Date()
         
@@ -665,30 +733,76 @@ struct WorkoutDetailView: View {
         // 4. Останавливаем Live Activity
         stopLiveActivity()
         
-        // 5. ИСПРАВЛЕНИЕ: Безопасная проверка "Новых" ачивок с полным функционалом.
+        // Останавливаем глобальный таймер отдыха
+        timerManager.stopRestTimer()
+        
+        // 5. Инкрементальное обновление глобальной статистики (Агрегация: Предотвращение N+1 Faulting Bomb)
+        let statsDescriptor = FetchDescriptor<UserStats>()
+        let stats = (try? context.fetch(statsDescriptor))?.first ?? {
+            let newStats = UserStats()
+            context.insert(newStats)
+            return newStats
+        }()
+        
+        // Считаем дистанцию (Cardio) только для текущей тренировки
+        var currentWorkoutDistance = 0.0
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            for ex in targets where ex.type == .cardio {
+                currentWorkoutDistance += ex.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
+            }
+        }
+        
+        // Инкремент
+        stats.totalWorkouts += 1
+        stats.totalVolume += self.totalStrengthVolume // Уже посчитано во View!
+        stats.totalDistance += currentWorkoutDistance
+        
+        let hour = Calendar.current.component(.hour, from: workout.date)
+        if hour >= 4 && hour < 8 { stats.earlyWorkouts += 1 }
+        if hour >= 22 || hour < 4 { stats.nightWorkouts += 1 }
+        
+        // Сохраняем агрегированную модель на главном потоке
+        try? context.save()
+        
+        // Копируем скалярные значения для безопасной передачи в фоновую задачу
+        let tWorkouts = stats.totalWorkouts
+        let tVolume = stats.totalVolume
+        let tDistance = stats.totalDistance
+        let eWorkouts = stats.earlyWorkouts
+        let nWorkouts = stats.nightWorkouts
+        
         let modelContainer = context.container
         let cachedUnlockedCount = self.unlockedAchievementsCount
         
         Task.detached(priority: .background) {
             let bgContext = ModelContext(modelContainer)
             
-            var descriptor = FetchDescriptor<Workout>(
+            // Запрашиваем тренировки ТОЛЬКО для расчета streak. 
+            // Prefetching удален, чтобы не грузить упражнения и сеты (предотвращение N+1).
+            let descriptor = FetchDescriptor<Workout>(
                 predicate: #Predicate<Workout> { $0.endTime != nil },
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
             )
-            // Оптимизация против N+1 (SwiftData попытается подгрузить связи сразу)
-            descriptor.relationshipKeyPathsForPrefetching = [\.exercises]
             
             guard let workouts = try? bgContext.fetch(descriptor) else { return }
             
-            // Внимание: Передача массива workouts в статические функции полностью безопасна,
-            // так как модели не покидают текущий поток (Task.detached) и контекст (bgContext).
+            // Расчет стрик-статуса безопасен: он читает только свойство .date у Workout.
             let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
-            let calculatedAchievements = AchievementCalculator.calculateAchievements(workouts: workouts, streak: streak)
+            
+            // Передаем O(1) статистику вместо прохода по вложенным массивам сотен тренировок
+            let calculatedAchievements = AchievementCalculator.calculateAchievements(
+                totalWorkouts: tWorkouts,
+                totalVolume: tVolume,
+                totalDistance: tDistance,
+                earlyWorkouts: eWorkouts,
+                nightWorkouts: nWorkouts,
+                streak: streak
+            )
             
             let currentUnlockedCount = calculatedAchievements.filter { $0.isUnlocked }.count
             
-            // Проверяем, появились ли *новые* ачивки (сравниваем с AppStorage)
+            // Проверяем, появились ли *новые* ачивки
             if currentUnlockedCount > cachedUnlockedCount {
                 await MainActor.run {
                     self.unlockedAchievementsCount = currentUnlockedCount
@@ -782,117 +896,90 @@ struct WorkoutTimerView: View {
     }
 }
 
-struct FunFactView: View {
-    let workout: Workout
-    @Binding var showSettings: Bool
-    let totalStrengthVolume: Double
-    
-    @AppStorage("comparisonName") private var comparisonName = "Watermelons 🍉"
-    @AppStorage("comparisonWeight") private var comparisonWeight = 8.0
-    @StateObject private var unitsManager = UnitsManager.shared
-    
-    var body: some View {
-        if totalStrengthVolume > 0 && comparisonWeight > 0 {
-            let count = totalStrengthVolume / comparisonWeight
-            
-            VStack(alignment: .leading, spacing: 12) {
-                Text(LocalizedStringKey("🏋️ Total Lifted"))
-                    .font(.caption).fontWeight(.bold)
-                    .foregroundColor(.secondary).textCase(.uppercase)
-                
-                let convertedVolume = unitsManager.convertFromKilograms(totalStrengthVolume)
-                Text(LocalizedStringKey("You lifted \(Int(convertedVolume)) \(unitsManager.weightUnitString())!"))
-                    .font(.title2).bold()
-                
-                Divider()
-                
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStringKey("That's approximately"))
-                            .foregroundColor(.secondary).font(.subheadline)
-                        
-                        HStack(alignment: .lastTextBaseline, spacing: 6) {
-                            Text("\(count, format: .number.precision(.fractionLength(1)))")
-                                .font(.title3).fontWeight(.heavy).foregroundColor(.primary)
-                            
-                            Text(comparisonName.isEmpty ? LocalizedStringKey("Items") : LocalizedStringKey(comparisonName))
-                                .font(.headline).foregroundColor(.primary).lineLimit(1)
-                        }
-                        Text(LocalizedStringKey("Way to go, champion! 🥇"))
-                            .font(.caption).foregroundColor(.gray).padding(.top, 2)
-                    }
-                    Spacer()
-                    Button { showSettings = true } label: {
-                        Image(systemName: "slider.horizontal.3")
-                            .font(.title2).foregroundColor(.blue)
-                            .padding(8).background(Color.blue.opacity(0.1)).clipShape(Circle())
-                    }
-                }
-            }
-            .padding()
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(16)
-            .padding(.top, 10)
-        } else {
-            EmptyView()
-        }
-    }
+struct ComparisonItem {
+    let name: String
+    let weight: Double
+    let icon: String
 }
 
-struct ComparisonSettingsView: View {
-    @Environment(\.dismiss) var dismiss
-    
-    @AppStorage("comparisonName") private var comparisonName = "Watermelons 🍉"
-    @AppStorage("comparisonWeight") private var comparisonWeight = 8.0
+struct FunFactView: View {
+    let totalStrengthVolume: Double
     @StateObject private var unitsManager = UnitsManager.shared
+    @State private var selectedComparison: ComparisonItem?
     
-    let presets: [(name: String, weight: Double, icon: String)] = [
-        ("Watermelons 🍉", 8.0, "🍉"),
-        ("African Elephants 🐘", 6000.0, "🐘"),
-        ("Toyota Camrys 🚗", 1500.0, "🚗"),
-        ("Adult Pandas 🐼", 100.0, "🐼"),
-        ("Gold Bars 🧈", 12.4, "🧈"),
-        ("SpaceX Starships 🚀", 5000000.0, "🚀")
+    private let allComparisons: [ComparisonItem] = [
+        ComparisonItem(name: "Pizzas", weight: 0.5, icon: "🍕"),
+        ComparisonItem(name: "Chihuahuas", weight: 2.5, icon: "🐕"),
+        ComparisonItem(name: "Watermelons", weight: 8.0, icon: "🍉"),
+        ComparisonItem(name: "Microwaves", weight: 15.0, icon: "🍲"),
+        ComparisonItem(name: "Adult Pandas", weight: 100.0, icon: "🐼"),
+        ComparisonItem(name: "Grand Pianos", weight: 400.0, icon: "🎹"),
+        ComparisonItem(name: "Toyota Camrys", weight: 1500.0, icon: "🚗"),
+        ComparisonItem(name: "African Elephants", weight: 6000.0, icon: "🐘")
     ]
     
     var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text(LocalizedStringKey("Custom Comparison"))) {
-                    TextField(LocalizedStringKey("Object Name (e.g. Pizzas)"), text: $comparisonName)
-                    HStack {
-                        Text(LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"))
-                        Spacer()
-                        TextField(LocalizedStringKey("Weight"), value: $comparisonWeight, format: .number)
-                            .keyboardType(.decimalPad).multilineTextAlignment(.trailing)
-                    }
-                }
+        // Оборачиваем содержимое в постоянный контейнер (VStack), 
+        // чтобы SwiftUI гарантированно запустил .onAppear, когда вкладка монтируется.
+        VStack {
+            if totalStrengthVolume > 0, let comparison = selectedComparison {
+                let count = totalStrengthVolume / comparison.weight
                 
-                Section(header: Text(LocalizedStringKey("Quick Presets"))) {
-                    ForEach(presets, id: \.name) { preset in
-                        Button {
-                            comparisonName = preset.name
-                            comparisonWeight = preset.weight
-                            dismiss()
-                        } label: {
-                            HStack {
-                                Text(preset.icon).font(.title2)
-                                VStack(alignment: .leading) {
-                                    Text(LocalizedStringKey(preset.name)).foregroundColor(.primary)
-                                    let convertedWeight = unitsManager.convertFromKilograms(preset.weight)
-                                    Text("\(Int(convertedWeight)) \(unitsManager.weightUnitString())").font(.caption).foregroundColor(.secondary)
-                                }
-                                Spacer()
-                                if comparisonName == preset.name {
-                                    Image(systemName: "checkmark").foregroundColor(.blue)
-                                }
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(LocalizedStringKey("🏋️ Total Lifted"))
+                        .font(.caption).fontWeight(.bold)
+                        .foregroundColor(.secondary).textCase(.uppercase)
+                    
+                    let convertedVolume = unitsManager.convertFromKilograms(totalStrengthVolume)
+                    Text(LocalizedStringKey("You lifted \(Int(convertedVolume)) \(unitsManager.weightUnitString())!"))
+                        .font(.title2).bold()
+                    
+                    Divider()
+                    
+                    HStack(alignment: .top) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(LocalizedStringKey("That's approximately"))
+                                .foregroundColor(.secondary).font(.subheadline)
+                            
+                            HStack(alignment: .lastTextBaseline, spacing: 6) {
+                                Text("\(count, format: .number.precision(.fractionLength(1)))")
+                                    .font(.title3).fontWeight(.heavy).foregroundColor(.primary)
+                                
+                                Text("\(LocalizedStringKey(comparison.name)) \(comparison.icon)")
+                                    .font(.headline).foregroundColor(.primary).lineLimit(1)
                             }
+                            Text(LocalizedStringKey("Way to go, champion! 🥇"))
+                                .font(.caption).foregroundColor(.gray).padding(.top, 2)
                         }
+                        Spacer()
                     }
                 }
+                .padding()
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(16)
+                .padding(.top, 10)
             }
-            .navigationTitle(LocalizedStringKey("Compare With..."))
-            .toolbar { Button(LocalizedStringKey("Done")) { dismiss() } }
+        }
+        .onAppear {
+            pickRandomComparison()
+        }
+        .onChange(of: totalStrengthVolume) { _, _ in
+            pickRandomComparison()
+        }
+    }
+    
+    private func pickRandomComparison() {
+        guard totalStrengthVolume > 0 else { return }
+        
+        // Filter out items that are heavier than the user's lifted volume
+        // Ensures the count is always >= 1.0
+        let validComparisons = allComparisons.filter { totalStrengthVolume / $0.weight >= 1.0 }
+        
+        if let random = validComparisons.randomElement() {
+            selectedComparison = random
+        } else {
+            // If the user lifted very little, pick the lightest possible option
+            selectedComparison = allComparisons.min(by: { $0.weight < $1.weight })
         }
     }
 }

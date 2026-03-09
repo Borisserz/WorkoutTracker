@@ -364,45 +364,50 @@ struct ExerciseCardView: View {
     // MARK: - Logic
     
     private func finishExercise() {
-            // Запрещаем завершать, если упражнение или тренировка завершены
-            guard !exercise.isCompleted && !isWorkoutCompleted else { return }
+        // Запрещаем завершать, если упражнение или тренировка завершены
+        guard !exercise.isCompleted && !isWorkoutCompleted else { return }
+        
+        markAllSetsCompleted()
+        exercise.isCompleted = true // Помечаем упражнение как завершенное
+        
+        // Получаем данные из кэша O(1)
+        let lastData = viewModel.lastPerformancesCache[exercise.name]
+        var newRecordWasSet = false
+        
+        // Логика рекорда
+        if exercise.type == .strength {
+            // ИСПРАВЛЕНИЕ: Используем setsList
+            let maxWeightInWorkout = exercise.setsList
+                .filter { $0.isCompleted }
+                .compactMap { $0.weight }
+                .max() ?? 0
             
-            markAllSetsCompleted()
-            exercise.isCompleted = true // Помечаем упражнение как завершенное
-            
-            // Получаем данные из кэша O(1)
-            let lastData = viewModel.lastPerformancesCache[exercise.name]
-            
-            // Логика рекорда
-            if exercise.type == .strength {
-                // ИСПРАВЛЕНИЕ: Используем setsList
-                let maxWeightInWorkout = exercise.setsList
-                    .filter { $0.isCompleted }
-                    .compactMap { $0.weight }
-                    .max() ?? 0
-                
-                if let _ = lastData {
-                    let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
-                    if maxWeightInWorkout > oldRecord {
-                        triggerRecordAnimation()
-                    }
+            if let _ = lastData {
+                let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
+                if maxWeightInWorkout > oldRecord {
+                    newRecordWasSet = true
+                    triggerRecordAnimation()
                 }
             }
-            
-            // ТУТОРИАЛ
-            if tutorialManager.currentStep == .finishExercise {
-                tutorialManager.setStep(.explainEffort)
-            }
-            
+        }
+        
+        // ТУТОРИАЛ
+        if tutorialManager.currentStep == .finishExercise {
+            tutorialManager.setStep(.explainEffort)
+        }
+        
+        if !newRecordWasSet {
             showEffortSheet = true
         }
+    }
     
     private func triggerRecordAnimation() {
         withAnimation { showPRCelebration = true }
         
-        // Скрываем через 3 секунды
+        // Скрываем через 3 секунды, а затем показываем Effort Slider
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
             withAnimation { showPRCelebration = false }
+            showEffortSheet = true
         }
         
         let generator = UINotificationFeedbackGenerator()

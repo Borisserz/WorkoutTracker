@@ -50,61 +50,57 @@ struct SupersetCardView: View {
     }
     
     var body: some View {
-        ZStack { // Обертка для оверлея рекорда
-            VStack(alignment: .leading, spacing: 0) {
-                
-                headerView
-                
-                if isExpanded {
-                    exerciseListView
-                    
-                    finishButton
-                } else {
-                    collapsedInfoSection
-                }
-            }
-            .padding()
-            .background(
-                isActiveExercise
-                    ? Color.blue.opacity(0.08)
-                    : Color(UIColor.secondarySystemBackground)
-            )
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(
-                        isActiveExercise ? Color.blue.opacity(0.5) : Color.clear,
-                        lineWidth: isActiveExercise ? 2 : 0
-                    )
-            )
-            .shadow(
-                color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear,
-                radius: isActiveExercise ? 8 : 0,
-                x: 0,
-                y: 2
-            )
-            .sheet(isPresented: $showEffortSheet, onDismiss: {
-                if superset.isCompleted {
-                    onExerciseFinished?()
-                }
-            }) {
-                EffortInputView(effort: $superset.effort)
-            }
-            .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteAlert) {
-                Button(LocalizedStringKey("Delete"), role: .destructive) {
-                    onDelete()
-                }
-                Button(LocalizedStringKey("Cancel"), role: .cancel) { }
-            } message: {
-                Text(LocalizedStringKey("Are you sure you want to delete this superset? This action cannot be undone."))
-            }
-            .blur(radius: showPRCelebration ? 5 : 0)
+        VStack(alignment: .leading, spacing: 0) {
             
-            // Оверлей рекорда
-            if showPRCelebration {
-                recordOverlay
-                    .zIndex(1) // Гарантируем, что анимация будет поверх всего
+            headerView
+            
+            if isExpanded {
+                exerciseListView
+                
+                finishButton
+            } else {
+                collapsedInfoSection
             }
+        }
+        .padding()
+        .background(
+            isActiveExercise
+                ? Color.blue.opacity(0.08)
+                : Color(UIColor.secondarySystemBackground)
+        )
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(
+                    isActiveExercise ? Color.blue.opacity(0.5) : Color.clear,
+                    lineWidth: isActiveExercise ? 2 : 0
+                )
+        )
+        .shadow(
+            color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear,
+            radius: isActiveExercise ? 8 : 0,
+            x: 0,
+            y: 2
+        )
+        .sheet(isPresented: $showEffortSheet, onDismiss: {
+            if superset.isCompleted {
+                onExerciseFinished?()
+            }
+        }) {
+            EffortInputView(effort: $superset.effort)
+        }
+        .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteAlert) {
+            Button(LocalizedStringKey("Delete"), role: .destructive) {
+                onDelete()
+            }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
+        } message: {
+            Text(LocalizedStringKey("Are you sure you want to delete this superset? This action cannot be undone."))
+        }
+        // Используем fullScreenCover с прозрачным фоном для полноценного оверлея
+        .fullScreenCover(isPresented: $showPRCelebration) {
+            recordOverlay
+                .presentationBackground(.clear)
         }
     }
     
@@ -205,67 +201,68 @@ struct SupersetCardView: View {
     }
     
     var recordOverlay: some View {
-        VStack(spacing: 24) {
-            ZStack {
-                // Внутреннее легкое свечение
-                Circle()
-                    .fill(
-                        RadialGradient(gradient: Gradient(colors: [Color.white.opacity(0.2), Color.clear]), center: .center, startRadius: 10, endRadius: 60)
-                    )
-                    .frame(width: 140, height: 140)
-                
-                // Светящаяся переливающаяся рамка уровня (Apple Fitness Style)
-                Circle()
-                    .strokeBorder(
-                        AngularGradient(gradient: Gradient(colors: prLevel.angularColors), center: .center),
-                        lineWidth: 12
-                    )
-                    .frame(width: 120, height: 120)
-                    .shadow(color: prLevel.angularColors.first!.opacity(0.8), radius: isAnimatingPR ? 15 : 5)
-                
-                // Иконка
-                Image(systemName: prLevel == .diamond ? "sparkles" : "trophy.fill")
-                    .font(.system(size: 50))
-                    .foregroundStyle(
-                        LinearGradient(colors: prLevel.angularColors, startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
-                    .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
-            }
-            .scaleEffect(isAnimatingPR ? 1.05 : 0.95)
-            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isAnimatingPR)
+        ZStack {
+            // Черный полупрозрачный фон на весь экран
+            Color.black.opacity(0.7).ignoresSafeArea()
             
-            // Плашка с текстом уровня
-            VStack(spacing: 4) {
-                Text(prLevel.title)
-                    .font(.title2)
-                    .bold()
-                    .foregroundColor(.white)
+            VStack(spacing: 24) {
+                ZStack {
+                    // Внутреннее легкое свечение
+                    Circle()
+                        .fill(
+                            RadialGradient(gradient: Gradient(colors: [Color.white.opacity(0.2), Color.clear]), center: .center, startRadius: 10, endRadius: 60)
+                        )
+                        .frame(width: 140, height: 140)
+                    
+                    // Светящаяся переливающаяся рамка уровня (Apple Fitness Style)
+                    Circle()
+                        .strokeBorder(
+                            AngularGradient(gradient: Gradient(colors: prLevel.angularColors), center: .center),
+                            lineWidth: 12
+                        )
+                        .frame(width: 120, height: 120)
+                        .shadow(color: prLevel.angularColors.first!.opacity(0.8), radius: isAnimatingPR ? 15 : 5)
+                    
+                    // Иконка
+                    Image(systemName: prLevel == .diamond ? "sparkles" : "trophy.fill")
+                        .font(.system(size: 50))
+                        .foregroundStyle(
+                            LinearGradient(colors: prLevel.angularColors, startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .shadow(color: .black.opacity(0.3), radius: 3, x: 0, y: 2)
+                }
+                .scaleEffect(isAnimatingPR ? 1.05 : 0.95)
+                .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isAnimatingPR)
                 
-                Text(LocalizedStringKey("New Personal Best!"))
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.8))
+                // Плашка с текстом уровня
+                VStack(spacing: 4) {
+                    Text(prLevel.title)
+                        .font(.title2)
+                        .bold()
+                        .foregroundColor(.white)
+                    
+                    Text(LocalizedStringKey("New Personal Best!"))
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+                .background(
+                    Capsule()
+                        .fill(Color.black.opacity(0.6))
+                        .overlay(
+                            Capsule().stroke(LinearGradient(colors: prLevel.angularColors, startPoint: .leading, endPoint: .trailing), lineWidth: 1.5)
+                        )
+                )
+                .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 5)
             }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 12)
-            .background(
-                Capsule()
-                    .fill(Color.black.opacity(0.6))
-                    .overlay(
-                        Capsule().stroke(LinearGradient(colors: prLevel.angularColors, startPoint: .leading, endPoint: .trailing), lineWidth: 1.5)
-                    )
-            )
-            .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 5)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.ultraThinMaterial) // Эффект матового стекла
-        .cornerRadius(12)
         .onAppear {
             isAnimatingPR = true
         }
         .onDisappear {
             isAnimatingPR = false
         }
-        .transition(.opacity.combined(with: .scale))
     }
     
     func finishSuperset() {
@@ -314,15 +311,21 @@ struct SupersetCardView: View {
                 prLevel = .bronze
             }
             
-            withAnimation { showPRCelebration = true }
+            showPRCelebration = true
+            
+            // Скрываем окно рекорда через 3 секунды, а затем показываем Effort Slider с микро-задержкой
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
-                withAnimation { showPRCelebration = false }
+                showPRCelebration = false
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    showEffortSheet = true
+                }
             }
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
+        } else {
+            showEffortSheet = true
         }
-        
-        showEffortSheet = true
     }
     
     func markAllSetsInSupersetCompleted() {

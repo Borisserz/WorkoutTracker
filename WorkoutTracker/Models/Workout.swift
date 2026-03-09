@@ -10,6 +10,7 @@
 //  - WorkoutSet (Подход/Сет)
 //  - WorkoutPreset (Шаблон тренировки)
 //  - ExerciseNote (Заметки)
+//  - UserStats (Агрегированная статистика для защиты от OOM/N+1)
 //
 
 import Foundation
@@ -237,6 +238,25 @@ class ExerciseNote {
     init(exerciseName: String, text: String) {
         self.exerciseName = exerciseName
         self.text = text
+    }
+}
+
+// MARK: - Агрегированная статистика (Защита от OOM)
+
+@Model
+class UserStats {
+    var totalWorkouts: Int = 0
+    var totalVolume: Double = 0.0
+    var totalDistance: Double = 0.0
+    var earlyWorkouts: Int = 0
+    var nightWorkouts: Int = 0
+    
+    init(totalWorkouts: Int = 0, totalVolume: Double = 0.0, totalDistance: Double = 0.0, earlyWorkouts: Int = 0, nightWorkouts: Int = 0) {
+        self.totalWorkouts = totalWorkouts
+        self.totalVolume = totalVolume
+        self.totalDistance = totalDistance
+        self.earlyWorkouts = earlyWorkouts
+        self.nightWorkouts = nightWorkouts
     }
 }
 
