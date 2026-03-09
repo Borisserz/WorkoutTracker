@@ -102,38 +102,62 @@ struct WorkoutDetailView: View {
     
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                
-                // 1. Заголовок (Картинка, Таймер, Инфо)
-                headerSection
-                
-                // 2. Основная кнопка (Finish / Share)
-                actionButtonSection
-                
-                Divider().padding(.vertical, 5)
-                
-                // 3. Заголовок списка упражнений + Кнопки добавления
-                exercisesToolbarSection
-                
-                // 4. Список карточек упражнений
-                exerciseListSection
-                
-                // 5. График (Максимальный вес)
-                chartSection
-                
-                // 6. Тепловая карта тела
-                muscleHeatmapSection
-                
-                // 7. Интересный факт (Сравнение веса)
-                if !workout.exercises.isEmpty {
-                    FunFactView(workout: workout, showSettings: $showComparisonSettings)
+            ZStack(alignment: .bottom) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                    
+                    // 1. Заголовок (Таймер, Инфо)
+                    headerSection
+                    
+                    // 2. Основная кнопка (Share - для завершенных)
+                    actionButtonSection
+                    
+                    Divider().padding(.vertical, 5)
+                    
+                    // 3. Заголовок списка упражнений + Кнопки добавления
+                    exercisesToolbarSection
+                    
+                    // 4. Список карточек упражнений
+                    exerciseListSection
+                    
+                    // 5. График (Максимальный вес)
+                    chartSection
+                    
+                    // 6. Тепловая карта тела
+                    muscleHeatmapSection
+                    
+                    // 7. Интересный факт (Сравнение веса)
+                    if !workout.exercises.isEmpty {
+                        FunFactView(workout: workout, showSettings: $showComparisonSettings)
+                    }
+                    
+                        // Отступ снизу, чтобы глобальный таймер отдыха и кнопка завершения не перекрывали контент
+                        Spacer(minLength: 100)
+                    }
+                    .padding()
                 }
                 
-                    // Отступ снизу, чтобы глобальный таймер отдыха не перекрывал контент
-                    Spacer(minLength: 80)
+                // Floating Action Button для завершения тренировки
+                if workout.isActive {
+                    Button(action: finishWorkout) {
+                        Text(LocalizedStringKey("Finish Workout"))
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
+                            .shadow(radius: 8)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 16)
+                    .spotlight(
+                        step: .finishWorkout,
+                        manager: tutorialManager,
+                        text: "Tap here to save and finish.",
+                        alignment: .top
+                    )
                 }
-                .padding()
             }
             .navigationTitle(workout.title)
             .toolbar {
@@ -282,16 +306,6 @@ struct WorkoutDetailView: View {
                     .cornerRadius(12)
                 }
                 
-                // Картинка
-                workoutImage
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 200)
-                    .frame(maxWidth: .infinity)
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(12)
-                    .shadow(radius: 5)
-                
                 // Статистика (Время, Усилие)
                 HStack {
                     VStack(alignment: .leading) {
@@ -329,23 +343,7 @@ struct WorkoutDetailView: View {
         
         private var actionButtonSection: some View {
             Group {
-                if workout.isActive {
-                    Button(action: finishWorkout) {
-                        Text(LocalizedStringKey("Finish Workout"))
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(12)
-                            .shadow(radius: 5)
-                    }
-                    .spotlight(
-                                        step: .finishWorkout,
-                                        manager: tutorialManager,
-                                        text: "Tap here to save and finish.",
-                                        alignment: .top)
-                } else {
+                if !workout.isActive {
                     Button {
                         generateAndShare()
                     } label: {
@@ -611,44 +609,6 @@ struct WorkoutDetailView: View {
         } else {
             return String(name.prefix(3)).capitalized
         }
-    }
-    
-    private var workoutImage: Image {
-        if workout.exercises.isEmpty { return Image("img_default") }
-        
-        var counts: [String: Int] = [:]
-        for exercise in workout.exercises {
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-            for t in targets { counts[t.muscleGroup, default: 0] += 1 }
-        }
-        
-        let sortedGroups = counts.sorted { (item1, item2) -> Bool in
-            if item1.value == item2.value {
-                return item1.key < item2.key
-            }
-            return item1.value > item2.value
-        }
-        
-        let dominantGroup = sortedGroups.first?.key ?? "Default"
-        
-        let imageName: String
-        switch dominantGroup {
-        case "Chest": imageName = pickVariant(from: ["img_chest", "img_chest2"])
-        case "Back": imageName = pickVariant(from: ["img_back", "img_back2"])
-        case "Legs": imageName = pickVariant(from: ["img_legs", "img_legs2"])
-        case "Arms": imageName = "img_arms"
-        case "Shoulders": imageName = "img_shoulders"
-        default: imageName = "img_default"
-        }
-        
-        return Image(imageName)
-    }
-    
-    private func pickVariant(from options: [String]) -> String {
-        guard !options.isEmpty else { return "img_default" }
-        let stableHash = workout.id.uuidString.utf8.reduce(0) { Int($0) + Int($1) }
-        let index = abs(stableHash) % options.count
-        return options[index]
     }
     
     private func performSwap(old: Exercise, new: Exercise) {

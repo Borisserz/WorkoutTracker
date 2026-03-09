@@ -62,12 +62,22 @@ class WeightTrackingManager: ObservableObject {
         
         // Сортируем по дате (от старых к новым)
         weightHistory.sort { $0.date < $1.date }
+        
+        // ИСПРАВЛЕНИЕ: Синхронизируем вес в профиле (@AppStorage) с последним актуальным весом
+        if let latestWeight = weightHistory.last?.weight {
+            UserDefaults.standard.set(latestWeight, forKey: "userBodyWeight")
+        }
     }
     
     /// Удаляет запись веса
     /// - Parameter entry: Запись для удаления
     func deleteWeightEntry(_ entry: WeightEntry) {
         weightHistory.removeAll { $0.id == entry.id }
+        
+        // ИСПРАВЛЕНИЕ: Обновляем вес в профиле после удаления записи
+        if let latestWeight = weightHistory.last?.weight {
+            UserDefaults.standard.set(latestWeight, forKey: "userBodyWeight")
+        }
     }
     
     /// Получает последний записанный вес

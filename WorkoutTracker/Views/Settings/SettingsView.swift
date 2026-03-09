@@ -101,7 +101,7 @@ struct SettingsView: View {
                         .pickerStyle(.menu)
                     }
                     
-                    // Единицы измерения
+                    // Единицы измерения веса
                     HStack {
                         Label(LocalizedStringKey("Weight Units"), systemImage: "scalemass")
                         Spacer()
@@ -110,6 +110,21 @@ struct SettingsView: View {
                             set: { unitsManager.setWeightUnit($0) }
                         )) {
                             ForEach(WeightUnit.allCases, id: \.self) { unit in
+                                Text(unit.displayName).tag(unit)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    
+                    // Единицы измерения расстояния
+                    HStack {
+                        Label(LocalizedStringKey("Distance Units"), systemImage: "ruler")
+                        Spacer()
+                        Picker("", selection: Binding(
+                            get: { unitsManager.distanceUnit },
+                            set: { unitsManager.setDistanceUnit($0) }
+                        )) {
+                            ForEach(DistanceUnit.allCases, id: \.self) { unit in
                                 Text(unit.displayName).tag(unit)
                             }
                         }

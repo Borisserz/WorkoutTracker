@@ -39,6 +39,7 @@ struct ExerciseCardView: View {
     @State private var showPRCelebration = false
     @Binding var isExpanded: Bool // Состояние раскрытия/сворачивания упражнения (значение bool, поэтому Binding остается)
     @State private var showDeleteAlert = false
+    @State private var newlyAddedSetId: UUID? = nil // ДОБАВЛЕНО: Для автофокуса нового сета
     
     // Callback при завершении упражнения (вызывается после закрытия EffortSheet)
     var onExerciseFinished: (() -> Void)? = nil
@@ -179,7 +180,8 @@ struct ExerciseCardView: View {
                 prevWeight: prevSet?.weight,
                 prevReps: prevSet?.reps,
                 prevDist: prevSet?.distance,
-                prevTime: prevSet?.time
+                prevTime: prevSet?.time,
+                autoFocus: set.id == newlyAddedSetId // ДОБАВЛЕНО: Передаем флаг автофокуса
             )
             .swipeActions(edge: .trailing) {
                 if !exercise.isCompleted && !isWorkoutCompleted {
@@ -438,6 +440,7 @@ struct ExerciseCardView: View {
         withAnimation {
             // Мы по-прежнему модифицируем оригинальный массив базы данных!
             exercise.setsList.append(newSet)
+            newlyAddedSetId = newSet.id // ДОБАВЛЕНО: Запоминаем ID нового сета
         }
     }
     
@@ -446,19 +449,15 @@ struct ExerciseCardView: View {
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
         withAnimation {
-            if let index = exercise.setsList.firstIndex(where: { $0.id == id }) {
-                let setToDelete = exercise.setsList[index]
-                
-                // РЕШЕНИЕ 2.1: Явно удаляем объект из базы данных (ModelContext)
+            if let setToDelete = exercise.setsList.first(where: { $0.id == id }) {
+                // ИСПРАВЛЕНИЕ: Не удаляем сет вручную из relationships массива, чтобы избежать "Index out of range".
+                // Просто удаляем объект из контекста. SwiftData сама уберет его из `exercise.setsList`.
                 context.delete(setToDelete)
                 
-                // Удаляем из локального массива
-                exercise.setsList.remove(at: index)
-                
-                // Пересчитываем индексы
-                // ИСПРАВЛЕНИЕ: Используем sortedSets
-                let sortedSets = exercise.sortedSets
-                for (i, set) in sortedSets.enumerated() {
+                // Пересчитываем индексы для остальных сетов
+                // Важно: отфильтровываем удаляемый сет, так как до сохранения контекста он еще может присутствовать в массиве
+                let remainingSets = exercise.sortedSets.filter { $0.id != id }
+                for (i, set) in remainingSets.enumerated() {
                     set.index = i + 1
                 }
             }

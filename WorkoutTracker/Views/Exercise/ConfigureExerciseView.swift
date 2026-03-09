@@ -33,66 +33,87 @@ struct ConfigureExerciseView: View {
     // Значения по умолчанию
     @State private var sets = 3
     @State private var reps = 10
-    @State private var weight = 0.0
-    @State private var distance = 0.0
+    @State private var weight: Double? = 0.0
+    @State private var distance: Double? = 0.0
     
     // Время разбито на минуты и секунды для удобства ввода
-    @State private var minutes = 0
-    @State private var seconds = 0
+    @State private var minutes: Int? = 0
+    @State private var seconds: Int? = 0
     
     // Validation alerts
     @State private var showValidationAlert = false
     @State private var validationErrorMessage = ""
     
     // MARK: - Binding Adapters
-    // Эти вычисляемые свойства нужны для адаптации @State (non-optional)
-    // к Binding<Double?>, который требуется компонентом ClearableTextField.
+    // Эти вычисляемые свойства нужны для адаптации @State к Binding<Double?>, 
+    // который требуется компонентом ClearableTextField.
     
     private var weightBinding: Binding<Double?> {
         Binding<Double?>(get: { 
-            // Конвертируем из кг в выбранные единицы для отображения
-            return unitsManager.convertFromKilograms(weight)
+            if let w = weight {
+                return unitsManager.convertFromKilograms(w)
+            }
+            return nil
         }, set: { newValue in
-            let value = newValue ?? 0
-            // Конвертируем из выбранных единиц в кг для сохранения
-            let kgValue = unitsManager.convertToKilograms(value)
-            let validation = InputValidator.validateWeight(kgValue)
-            weight = validation.clampedValue
-            if !validation.isValid, let error = validation.errorMessage {
-                validationErrorMessage = error
-                showValidationAlert = true
+            if let value = newValue {
+                let kgValue = unitsManager.convertToKilograms(value)
+                let validation = InputValidator.validateWeight(kgValue)
+                weight = validation.clampedValue
+                if !validation.isValid, let error = validation.errorMessage {
+                    validationErrorMessage = error
+                    showValidationAlert = true
+                }
+            } else {
+                weight = nil
             }
         })
     }
     
     private var distanceBinding: Binding<Double?> {
         Binding<Double?>(get: { distance }, set: { newValue in
-            let value = newValue ?? 0
-            let validation = InputValidator.validateDistance(value)
-            distance = validation.clampedValue
-            if !validation.isValid, let error = validation.errorMessage {
-                validationErrorMessage = error
-                showValidationAlert = true
+            if let value = newValue {
+                let validation = InputValidator.validateDistance(value)
+                distance = validation.clampedValue
+                if !validation.isValid, let error = validation.errorMessage {
+                    validationErrorMessage = error
+                    showValidationAlert = true
+                }
+            } else {
+                distance = nil
             }
         })
     }
     
     private var minutesBinding: Binding<Double?> {
-        Binding<Double?>(get: { Double(minutes) }, set: { newValue in
-            let value = Int(newValue ?? 0)
-            let validation = InputValidator.validateTime(value * 60)
-            minutes = max(0, min(value, validation.clampedValue / 60))
-            if !validation.isValid, let error = validation.errorMessage {
-                validationErrorMessage = error
-                showValidationAlert = true
+        Binding<Double?>(get: { 
+            if let m = minutes { return Double(m) }
+            return nil
+        }, set: { newValue in
+            if let val = newValue {
+                let value = Int(val)
+                let validation = InputValidator.validateTime(value * 60)
+                minutes = max(0, min(value, validation.clampedValue / 60))
+                if !validation.isValid, let error = validation.errorMessage {
+                    validationErrorMessage = error
+                    showValidationAlert = true
+                }
+            } else {
+                minutes = nil
             }
         })
     }
     
     private var secondsBinding: Binding<Double?> {
-        Binding<Double?>(get: { Double(seconds) }, set: { newValue in
-            let value = Int(newValue ?? 0)
-            seconds = max(0, min(value, 59))
+        Binding<Double?>(get: { 
+            if let s = seconds { return Double(s) }
+            return nil
+        }, set: { newValue in
+            if let val = newValue {
+                let value = Int(val)
+                seconds = max(0, min(value, 59))
+            } else {
+                seconds = nil
+            }
         })
     }
 
@@ -204,8 +225,13 @@ struct ConfigureExerciseView: View {
         var hasError = false
         var errorMessages: [String] = []
         
+        let actualWeight = weight ?? 0.0
+        let actualDistance = distance ?? 0.0
+        let actualMinutes = minutes ?? 0
+        let actualSeconds = seconds ?? 0
+        
         if exerciseType == .strength {
-            let weightValidation = InputValidator.validateWeight(weight)
+            let weightValidation = InputValidator.validateWeight(actualWeight)
             if !weightValidation.isValid {
                 hasError = true
                 if let error = weightValidation.errorMessage {
@@ -225,7 +251,7 @@ struct ConfigureExerciseView: View {
         }
         
         if exerciseType == .cardio {
-            let distanceValidation = InputValidator.validateDistance(distance)
+            let distanceValidation = InputValidator.validateDistance(actualDistance)
             if !distanceValidation.isValid {
                 hasError = true
                 if let error = distanceValidation.errorMessage {
@@ -235,7 +261,7 @@ struct ConfigureExerciseView: View {
             }
         }
         
-        let totalSeconds = (minutes * 60) + seconds
+        let totalSeconds = (actualMinutes * 60) + actualSeconds
         if totalSeconds > 0 {
             let timeValidation = InputValidator.validateTime(totalSeconds)
             if !timeValidation.isValid {
@@ -264,9 +290,9 @@ struct ConfigureExerciseView: View {
         for i in 1...setsCount {
             generatedSets.append(WorkoutSet(
                 index: i,
-                weight: (exerciseType == .strength) ? weight : nil,
+                weight: (exerciseType == .strength) ? actualWeight : nil,
                 reps: (exerciseType == .strength) ? reps : nil,
-                distance: (exerciseType == .cardio) ? distance : nil,
+                distance: (exerciseType == .cardio) ? actualDistance : nil,
                 time: (totalSeconds > 0) ? totalSeconds : nil,
                 isCompleted: false,
                 type: .normal
@@ -280,8 +306,8 @@ struct ConfigureExerciseView: View {
             type: exerciseType,
             sets: setsCount,
             reps: reps,
-            weight: weight,
-            distance: (exerciseType == .cardio) ? distance : nil,
+            weight: actualWeight,
+            distance: (exerciseType == .cardio) ? actualDistance : nil,
             timeSeconds: (totalSeconds > 0) ? totalSeconds : nil,
             effort: 5,
             setsList: generatedSets // <-- Передаем сгенерированный список

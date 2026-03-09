@@ -211,6 +211,10 @@ struct EditSupersetItemView: View {
     @Environment(\.dismiss) var dismiss
     @StateObject private var unitsManager = UnitsManager.shared
     
+    // Валидация
+    @State private var showValidationAlert = false
+    @State private var validationErrorMessage = ""
+    
     // Сортированные сеты
     private var sortedSets: [WorkoutSet] {
         exercise.setsList.sorted(by: { $0.index < $1.index })
@@ -230,6 +234,10 @@ struct EditSupersetItemView: View {
                     let intValue = Int(value)
                     let validation = InputValidator.validateReps(intValue)
                     first.reps = validation.clampedValue
+                    if !validation.isValid, let error = validation.errorMessage {
+                        validationErrorMessage = error
+                        showValidationAlert = true
+                    }
                 } else {
                     first.reps = nil
                 }
@@ -243,9 +251,19 @@ struct EditSupersetItemView: View {
                 guard let first = sortedSets.first, let time = first.time else { return nil }
                 return Double(time)
             },
-            set: {
+            set: { newValue in
                 guard let first = sortedSets.first else { return }
-                first.time = $0.map { Int($0) }
+                if let value = newValue {
+                    let intValue = Int(value)
+                    let validation = InputValidator.validateTime(intValue)
+                    first.time = validation.clampedValue
+                    if !validation.isValid, let error = validation.errorMessage {
+                        validationErrorMessage = error
+                        showValidationAlert = true
+                    }
+                } else {
+                    first.time = nil
+                }
             }
         )
     }
@@ -261,7 +279,11 @@ struct EditSupersetItemView: View {
                 if let value = newValue {
                     let kgValue = unitsManager.convertToKilograms(value)
                     let validation = InputValidator.validateWeight(kgValue)
-                    first.weight = validation.isValid ? kgValue : validation.clampedValue
+                    first.weight = validation.clampedValue
+                    if !validation.isValid, let error = validation.errorMessage {
+                        validationErrorMessage = error
+                        showValidationAlert = true
+                    }
                 } else {
                     first.weight = nil
                 }
@@ -278,7 +300,13 @@ struct EditSupersetItemView: View {
             set: { newValue in
                 guard let first = sortedSets.first else { return }
                 if let value = newValue {
-                    first.distance = unitsManager.convertToKilometers(value)
+                    let kmValue = unitsManager.convertToKilometers(value)
+                    let validation = InputValidator.validateDistance(kmValue)
+                    first.distance = validation.clampedValue
+                    if !validation.isValid, let error = validation.errorMessage {
+                        validationErrorMessage = error
+                        showValidationAlert = true
+                    }
                 } else {
                     first.distance = nil
                 }
@@ -327,6 +355,11 @@ struct EditSupersetItemView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Cancel")) { dismiss() }
                 }
+            }
+            .alert(LocalizedStringKey("Invalid Input"), isPresented: $showValidationAlert) {
+                Button(LocalizedStringKey("OK"), role: .cancel) { }
+            } message: {
+                Text(validationErrorMessage)
             }
         }
     }

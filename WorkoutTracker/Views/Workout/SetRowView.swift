@@ -36,9 +36,13 @@ struct SetRowView: View {
     var prevDist: Double? = nil
     var prevTime: Int? = nil
     
+    // ДОБАВЛЕНО: Автофокус при создании
+    var autoFocus: Bool = false
+    
     // Состояние для показа слайдера
     @State private var showSliderSheet: Bool = false
     @State private var activeBindingType: InputFieldType = .weight
+    @State private var hasAutoFocused: Bool = false // Флаг, чтобы открывать только один раз
     
     // MARK: - Computed Bindings (Type Adapters)
     
@@ -147,6 +151,26 @@ struct SetRowView: View {
                 value: getActiveBinding(),
                 isPresented: $showSliderSheet
             )
+        }
+        .onAppear {
+            if autoFocus && !hasAutoFocused {
+                hasAutoFocused = true
+                
+                // Устанавливаем правильный тип поля для фокусировки в зависимости от типа упражнения
+                switch exerciseType {
+                case .strength:
+                    activeBindingType = .weight
+                case .cardio:
+                    activeBindingType = .distance
+                case .duration:
+                    activeBindingType = .timeSec
+                }
+                
+                // Небольшая задержка, чтобы UI обновился и анимация добавления строки завершилась
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    showSliderSheet = true
+                }
+            }
         }
     }
     
