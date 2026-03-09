@@ -7,29 +7,9 @@ struct ClearableTextField: View {
     // Состояние для отслеживания фокуса
     @FocusState private var isFocused: Bool
     
-    // Вспомогательный Binding для преобразования nil <-> 0
-    private var textBinding: Binding<Double> {
-        Binding<Double>(
-            get: { value ?? 0 },
-            set: { newValue in
-                // Validate and clamp negative values
-                let validatedValue = max(0, newValue)
-                
-                // Если пользователь стер все, сохраняем nil, иначе - число
-                if isFocused && validatedValue == 0 {
-                    // Пока пользователь печатает, 0 - это просто 0
-                    value = 0
-                } else if validatedValue == 0 {
-                    value = nil
-                } else {
-                    value = validatedValue
-                }
-            }
-        )
-    }
-    
     var body: some View {
-        TextField(placeholder, value: textBinding, format: .number)
+        // Напрямую привязываем опциональное значение. Если nil — поле будет пустым.
+        TextField(placeholder, value: $value, format: .number)
             .keyboardType(.decimalPad)
             .multilineTextAlignment(.center)
             .padding(.vertical, 8)
@@ -38,7 +18,7 @@ struct ClearableTextField: View {
             .focused($isFocused) // Привязываем фокус
             .onChange(of: isFocused) { oldValue, newValue in
                 if newValue { // Поле получило фокус
-                    // Если текущее значение 0, очищаем его
+                    // Если текущее значение 0, очищаем его, чтобы можно было сразу вводить новое
                     if value == 0 {
                         value = nil
                     }
