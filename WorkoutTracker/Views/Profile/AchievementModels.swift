@@ -1,199 +1,137 @@
 import Foundation
 internal import SwiftUI
 
+// Уровни достижений
+enum AchievementTier: Int, Comparable {
+    case none = 0
+    case bronze = 1
+    case silver = 2
+    case gold = 3
+    case diamond = 4
+    
+    static func < (lhs: AchievementTier, rhs: AchievementTier) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+    
+    var name: LocalizedStringKey {
+        switch self {
+        case .none: return LocalizedStringKey("Locked")
+        case .bronze: return LocalizedStringKey("Bronze")
+        case .silver: return LocalizedStringKey("Silver")
+        case .gold: return LocalizedStringKey("Gold")
+        case .diamond: return LocalizedStringKey("Diamond")
+        }
+    }
+}
+
 struct Achievement: Identifiable {
     let id = UUID()
     let title: String
     let description: String
     let icon: String // Имя SF Symbol
-    let color: Color
     
     // Статус
-    var isUnlocked: Bool = false
-    var progress: String = "" // Например "5/10"
+    var tier: AchievementTier = .none
+    var progress: String = "" // "5/10"
+    
+    var isUnlocked: Bool { tier != .none }
 }
 
 class AchievementCalculator {
     
-    // Главная функция: берет все тренировки и выдает список ачивок со статусами
+    // Вспомогательная функция для определения уровня и следующей цели
+    private static func getTierAndTarget(current: Double, thresholds: [Double]) -> (AchievementTier, Double) {
+        if current >= thresholds[3] { return (.diamond, thresholds[3]) } // Максимальный уровень
+        if current >= thresholds[2] { return (.gold, thresholds[3]) }
+        if current >= thresholds[1] { return (.silver, thresholds[2]) }
+        if current >= thresholds[0] { return (.bronze, thresholds[1]) }
+        return (.none, thresholds[0])
+    }
+    
     static func calculateAchievements(workouts: [Workout], streak: Int) -> [Achievement] {
         var list: [Achievement] = []
         
-        // --- 1. АЧИВКИ НА КОЛИЧЕСТВО ---
-        let count = workouts.count
+        // --- 1. Consistency (Количество тренировок) ---
+        let wCount = Double(workouts.count)
+        let wTierData = getTierAndTarget(current: wCount, thresholds: [1, 10, 50, 100])
         list.append(Achievement(
-            title: "First Step",
-            description: "Complete your first workout.",
-            icon: "figure.walk",
-            color: .green,
-            isUnlocked: count >= 1,
-            progress: "\(count)/1"
+            title: "Consistency",
+            description: "Complete workouts to level up.",
+            icon: "calendar.circle.fill",
+            tier: wTierData.0,
+            progress: wTierData.0 == .diamond ? "Max Level!" : "\(Int(wCount)) / \(Int(wTierData.1)) workouts"
         ))
         
-        list.append(Achievement(
-            title: "Consistent",
-            description: "Complete 10 workouts.",
-            icon: "figure.run",
-            color: .blue,
-            isUnlocked: count >= 10,
-            progress: "\(min(count, 10))/10"
-        ))
-        
-        list.append(Achievement(
-            title: "Gym Rat",
-            description: "Complete 50 workouts.",
-            icon: "dumbbell.fill",
-            color: .purple,
-            isUnlocked: count >= 50,
-            progress: "\(min(count, 50))/50"
-        ))
-        
-        // --- 2. СТРИКИ ---
+        // --- 2. Streaks (Дней подряд) ---
+        let sCount = Double(streak)
+        let sTierData = getTierAndTarget(current: sCount, thresholds: [3, 7, 14, 30])
         list.append(Achievement(
             title: "On Fire",
-            description: "Maintain a 3-day streak.",
+            description: "Maintain a daily workout streak.",
             icon: "flame.fill",
-            color: .orange,
-            isUnlocked: streak >= 3,
-            progress: "\(min(streak, 3))/3 days"
+            tier: sTierData.0,
+            progress: sTierData.0 == .diamond ? "Max Level!" : "\(Int(sCount)) / \(Int(sTierData.1)) days"
         ))
         
-        list.append(Achievement(
-            title: "Unstoppable",
-            description: "Maintain a 7-day streak.",
-            icon: "bolt.fill",
-            color: .yellow,
-            isUnlocked: streak >= 7,
-            progress: "\(min(streak, 7))/7 days"
-        ))
-        
-        // --- 3. ОБЪЕМ (ТОННАЖ) ---
-        // Считаем общий поднятый вес за все время (только силовые)
+        // --- 3. Volume (Суммарный вес) ---
         let totalVolume = workouts.reduce(0.0) { wSum, w in
             wSum + w.exercises.reduce(0.0) { eSum, e in
-                if e.type == .strength {
-                    return eSum + e.computedVolume
-                }
-                return eSum
+                e.type == .strength ? eSum + e.computedVolume : eSum
             }
         }
-        
+        let vTierData = getTierAndTarget(current: totalVolume, thresholds: [1000, 10_000, 50_000, 100_000])
         list.append(Achievement(
-            title: "Moving Furniture",
-            description: "Lift a total of 500 kg.",
-            icon: "sofa.fill",
-            color: .brown,
-            isUnlocked: totalVolume >= 500,
-            progress: "\(Int(totalVolume))/500 kg"
+            title: "Heavy Lifter",
+            description: "Lift a massive amount of total weight.",
+            icon: "scalemass.fill",
+            tier: vTierData.0,
+            progress: vTierData.0 == .diamond ? "Max Level!" : "\(Int(totalVolume)) / \(Int(vTierData.1)) kg"
         ))
         
-        list.append(Achievement(
-            title: "Lift a Car",
-            description: "Lift a total of 1,500 kg (Toyota Camry).",
-            icon: "car.fill",
-            color: .red,
-            isUnlocked: totalVolume >= 1500,
-            progress: "\(Int(totalVolume))/1500 kg"
-        ))
-        
-        list.append(Achievement(
-            title: "Lift an Elephant",
-            description: "Lift a total of 6,000 kg.",
-            icon: "tortoise.fill", // Слона нет в SF Symbols, черепаха тоже тяжелая :) Или используем circle.grid.3x3.fill
-            color: .gray,
-            isUnlocked: totalVolume >= 6000,
-            progress: "\(Int(totalVolume))/6000 kg"
-        ))
-        
-        // --- 4. ВРЕМЯ СУТОК ---
-        // "Ранняя пташка" (тренировка между 4 и 8 утра)
-        let hasEarlyWorkout = workouts.contains {
-            let hour = Calendar.current.component(.hour, from: $0.date)
-            return hour >= 4 && hour < 8
-        }
-        list.append(Achievement(
-            title: "Early Bird",
-            description: "Complete a workout before 8 AM.",
-            icon: "sunrise.fill",
-            color: .yellow,
-            isUnlocked: hasEarlyWorkout
-        ))
-        
-        // "Ночной качок" (тренировка после 22:00)
-        let hasNightWorkout = workouts.contains {
-            let hour = Calendar.current.component(.hour, from: $0.date)
-            return hour >= 22 || hour < 4
-        }
-        list.append(Achievement(
-            title: "Night Owl",
-            description: "Complete a workout after 10 PM.",
-            icon: "moon.stars.fill",
-            color: .indigo,
-            isUnlocked: hasNightWorkout
-        ))
-        
-        // --- 5. СПЕЦИФИЧЕСКИЕ ---
-        // "Марафонец" (Общая дистанция кардио > 42 км)
+        // --- 4. Cardio (Марафонец) ---
         let totalDistance = workouts.reduce(0.0) { wSum, w in
             wSum + w.exercises.reduce(0.0) { eSum, e in
                 e.type == .cardio ? eSum + (e.distance ?? 0) : eSum
             }
         }
+        let dTierData = getTierAndTarget(current: totalDistance, thresholds: [10, 42, 100, 500])
         list.append(Achievement(
             title: "Marathoner",
-            description: "Run/Cycle a total of 42 km.",
+            description: "Accumulate total cardio distance.",
             icon: "figure.run.circle.fill",
-            color: .green,
-            isUnlocked: totalDistance >= 42.0,
-            progress: "\(LocalizationHelper.shared.formatDecimal(totalDistance))/42 km"
+            tier: dTierData.0,
+            progress: dTierData.0 == .diamond ? "Max Level!" : "\(LocalizationHelper.shared.formatDecimal(totalDistance)) / \(Int(dTierData.1)) km"
         ))
         
-        // "Жим 100" (Поднять 100кг в жиме лежа хотя бы 1 раз)
-        let bench100 = workouts.contains { w in
-            w.exercises.contains { e in
-                // Ищем Bench Press c весом >= 100
-                (e.name.contains("Bench Press") && e.weight >= 100)
-            }
-        }
+        // --- 5. Early Bird (Тренировки утром) ---
+        let earlyWorkouts = workouts.filter {
+            let hour = Calendar.current.component(.hour, from: $0.date)
+            return hour >= 4 && hour < 8
+        }.count
+        let earlyTierData = getTierAndTarget(current: Double(earlyWorkouts), thresholds: [1, 5, 20, 50])
         list.append(Achievement(
-            title: "100kg Club",
-            description: "Bench Press 100kg in a single set.",
-            icon: "trophy.circle.fill",
-            color: .gold, // Сделаем расширение ниже или используем .yellow
-            isUnlocked: bench100
+            title: "Early Bird",
+            description: "Work out between 4 AM and 8 AM.",
+            icon: "sunrise.fill",
+            tier: earlyTierData.0,
+            progress: earlyTierData.0 == .diamond ? "Max Level!" : "\(earlyWorkouts) / \(Int(earlyTierData.1)) times"
         ))
         
-        // "Не пропускай день ног" (Тренировка где > 50% упражнений на ноги)
-        let legDayMaster = workouts.contains { w in
-            let legs = w.exercises.filter { $0.muscleGroup == "Legs" }.count
-            return legs > 0 && Double(legs) / Double(w.exercises.count) > 0.5
-        }
+        // --- 6. Night Owl (Тренировки ночью) ---
+        let nightWorkouts = workouts.filter {
+            let hour = Calendar.current.component(.hour, from: $0.date)
+            return hour >= 22 || hour < 4
+        }.count
+        let nightTierData = getTierAndTarget(current: Double(nightWorkouts), thresholds: [1, 5, 20, 50])
         list.append(Achievement(
-            title: "Leg Day Lover",
-            description: "Complete a workout focused mostly on legs.",
-            icon: "figure.walk.motion",
-            color: .orange,
-            isUnlocked: legDayMaster
-        ))
-        
-        // "Выходной воин" (Тренировка в Субботу или Воскресенье)
-        let weekendWarrior = workouts.contains {
-            let weekday = Calendar.current.component(.weekday, from: $0.date)
-            return weekday == 1 || weekday == 7 // 1-Sun, 7-Sat
-        }
-        list.append(Achievement(
-            title: "Weekend Warrior",
-            description: "Complete a workout on a weekend.",
-            icon: "calendar.badge.clock",
-            color: .teal,
-            isUnlocked: weekendWarrior
+            title: "Night Owl",
+            description: "Work out between 10 PM and 4 AM.",
+            icon: "moon.stars.fill",
+            tier: nightTierData.0,
+            progress: nightTierData.0 == .diamond ? "Max Level!" : "\(nightWorkouts) / \(Int(nightTierData.1)) times"
         ))
         
         return list
     }
 }
 
-// Добавляем золотой цвет для красоты
-extension Color {
-    static let gold = Color(red: 1.0, green: 0.84, blue: 0.0)
-}

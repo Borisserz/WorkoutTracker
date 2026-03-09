@@ -104,26 +104,26 @@ struct ProfileView: View {
                     }
                     .padding(.top, 20)
                     
-                    // 2. ачивки
+                    // 2. АЧИВКИ С ГРАДАЦИЕЙ УРОВНЕЙ
                     VStack(alignment: .leading) {
                         Text(LocalizedStringKey("Achievements")).font(.title3).bold().padding(.horizontal)
                         
                         LazyVGrid(columns: columns, spacing: 20) {
                             ForEach(cachedAchievements) { achievement in
-                                AchievementBadge(achievement: achievement).onTapGesture {
-                                   selectedAchievement = achievement
-                                    
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred()
-                                }
+                                AchievementBadge(achievement: achievement)
+                                    .onTapGesture {
+                                        selectedAchievement = achievement
+                                        let generator = UIImpactFeedbackGenerator(style: .light)
+                                        generator.impactOccurred()
+                                    }
+                            }
                         }
-                    }
-                    .padding(.horizontal)
+                        .padding(.horizontal)
                     }
                     
                     Divider()
                     
-                    // 3. рекорды
+                    // 3. РЕКОРДЫ
                     if !cachedPersonalRecords.isEmpty {
                         VStack(alignment: .leading, spacing: 15) {
                             Text(LocalizedStringKey("Personal Records")).font(.title3).bold().padding(.horizontal)
@@ -169,7 +169,7 @@ struct ProfileView: View {
                     Button(LocalizedStringKey("Close")) { dismiss() }
                 }
             }
-            // алерты
+            // Алерты
             .alert(LocalizedStringKey("Change Name"), isPresented: $isEditingName) {
                 TextField(LocalizedStringKey("Name"), text: $tempName)
                 Button(LocalizedStringKey("Save")) { if !tempName.isEmpty { userName = tempName } }
@@ -193,19 +193,21 @@ struct ProfileView: View {
                 WeightHistoryView()
             }
             .onAppear {
-                // Инициализируем первый вес из профиля, если истории еще нет
                 weightManager.initializeFirstWeightIfNeeded(from: userBodyWeight)
-                // Обновляем кеш при появлении view
                 updateCache()
             }
             .onChange(of: workouts.count) { _, _ in
-                // Обновляем кеш когда изменяется количество тренировок
                 updateCache()
             }
             .alert(item: $selectedAchievement) { achievement in
-                Alert(
-                    title: Text(achievement.title),
-                    message: Text(achievement.description + "\n\n" + (achievement.isUnlocked ? "✅ Unlocked" : "🔒 Locked")),
+                // Кастомный текст алерта в зависимости от статуса ачивки
+                let titleStr = NSLocalizedString(achievement.title, comment: "")
+                let descStr = NSLocalizedString(achievement.description, comment: "")
+                let statusMsg = achievement.isUnlocked ? "🏆 \(NSLocalizedString(achievement.tier.name.stringKey ?? "", comment: "")) Level" : "🔒 Locked"
+                
+                return Alert(
+                    title: Text(titleStr),
+                    message: Text("\(descStr)\n\n\(statusMsg)\n\(achievement.progress)"),
                     dismissButton: .default(Text(LocalizedStringKey("Cool!")))
                 )
             }
@@ -230,29 +232,88 @@ struct ProfileView: View {
     }
 }
 
-// AchievementBadge без изменений (но должен быть в проекте)
+// Извлечение ключа для локализации
+extension LocalizedStringKey {
+    var stringKey: String? {
+        Mirror(reflecting: self).children.first(where: { $0.label == "key" })?.value as? String
+    }
+}
+
+// MARK: - Медаль-Ачивка с Градацией (Матовый дизайн)
 struct AchievementBadge: View {
     let achievement: Achievement
+    
+    // Более спокойные, "настоящие" металлические цвета для градиента
+    var angularColors: [Color] {
+        switch achievement.tier {
+        case .none:
+            return [.gray.opacity(0.3), .gray.opacity(0.2), .gray.opacity(0.3)]
+        case .bronze:
+            return [Color(red: 0.7, green: 0.4, blue: 0.2), Color(red: 0.9, green: 0.6, blue: 0.3), Color(red: 0.5, green: 0.25, blue: 0.1), Color(red: 0.7, green: 0.4, blue: 0.2)]
+        case .silver:
+            return [Color(white: 0.6), Color(white: 0.9), Color(white: 0.5), Color(white: 0.6)]
+        case .gold:
+            return [Color(red: 0.9, green: 0.7, blue: 0.0), Color(red: 1.0, green: 0.9, blue: 0.3), Color(red: 0.7, green: 0.5, blue: 0.0), Color(red: 0.9, green: 0.7, blue: 0.0)]
+        case .diamond:
+            return [.cyan, .blue, .purple, .cyan]
+        }
+    }
+    
     var body: some View {
-        VStack {
+        VStack(spacing: 8) {
             ZStack {
+                // Базовый темный фон круга
                 Circle()
-                    .fill(achievement.isUnlocked ? achievement.color.opacity(0.15) : Color.gray.opacity(0.1))
-                    .frame(width: 75, height: 75)
-                Image(systemName: achievement.icon)
-                    .font(.largeTitle)
-                    .foregroundColor(achievement.isUnlocked ? achievement.color : .gray)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                if !achievement.isUnlocked {
+                    .fill(Color(UIColor.secondarySystemBackground))
+                    .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
+                
+                if achievement.isUnlocked {
+                    // Кольцо с металлическим градиентом
+                    Circle()
+                        .strokeBorder(
+                            AngularGradient(gradient: Gradient(colors: angularColors), center: .center),
+                            lineWidth: 8
+                        )
+                        // Аккуратная тень под кольцом вместо вырвиглазного свечения
+                        .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 2)
+                    
+                    // Объемная иконка
+                    Image(systemName: achievement.icon)
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: Array(angularColors.prefix(2)),
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
+                    
+                } else {
+                    // Состояние "Заблокировано"
+                    Circle()
+                        .strokeBorder(Color.gray.opacity(0.2), lineWidth: 8)
+                    
+                    Image(systemName: achievement.icon)
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundColor(.gray.opacity(0.3))
+                    
+                    // Замок
                     Image(systemName: "lock.fill")
-                        .font(.caption).foregroundColor(.white)
-                        .padding(5).background(Circle().fill(Color.gray))
-                        .offset(x: 0, y: 5)
+                        .font(.caption2)
+                        .foregroundColor(.white)
+                        .padding(5)
+                        .background(Circle().fill(Color.gray.opacity(0.8)))
+                        .overlay(Circle().stroke(Color(UIColor.systemBackground), lineWidth: 2))
+                        .offset(x: 20, y: 20)
                 }
             }
-            Text(achievement.title)
-                .font(.caption).fontWeight(.medium)
+            .frame(width: 80, height: 80)
+            
+            // Текст ачивки
+            Text(LocalizedStringKey(achievement.title))
+                .font(.caption)
+                .fontWeight(achievement.isUnlocked ? .bold : .medium)
                 .multilineTextAlignment(.center)
                 .foregroundColor(achievement.isUnlocked ? .primary : .secondary)
                 .lineLimit(2)
@@ -261,3 +322,4 @@ struct AchievementBadge: View {
         .contentShape(Rectangle())
     }
 }
+

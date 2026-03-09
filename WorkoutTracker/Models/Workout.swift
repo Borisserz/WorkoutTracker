@@ -65,18 +65,17 @@ enum ExerciseCategory: String, Codable, CaseIterable {
 // MARK: - SwiftData Models
 
 @Model
-class WorkoutSet: Identifiable, Hashable {
-    // ИСПРАВЛЕНИЕ 2А: Убран @Attribute(.unique)
-    var id: UUID
-    var index: Int
-    var weight: Double?
-    var reps: Int?
-    var distance: Double?
-    var time: Int?
-    var isCompleted: Bool
-    var type: SetType
+class WorkoutSet: Identifiable {
+    var id: UUID = UUID()
+    var index: Int = 0
+    var weight: Double? = nil
+    var reps: Int? = nil
+    var distance: Double? = nil
+    var time: Int? = nil
+    var isCompleted: Bool = false
+    var type: SetType = SetType.normal
     
-    var exercise: Exercise?
+    var exercise: Exercise? = nil
     
     init(id: UUID = UUID(), index: Int, weight: Double? = nil, reps: Int? = nil, distance: Double? = nil, time: Int? = nil, isCompleted: Bool = false, type: SetType = .normal) {
         self.id = id
@@ -92,31 +91,27 @@ class WorkoutSet: Identifiable, Hashable {
     func duplicate() -> WorkoutSet {
         return WorkoutSet(id: UUID(), index: index, weight: weight, reps: reps, distance: distance, time: time, isCompleted: isCompleted, type: type)
     }
-    
-    static func == (lhs: WorkoutSet, rhs: WorkoutSet) -> Bool { lhs.id == rhs.id }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 @Model
-class Exercise: Identifiable, Hashable {
-    // ИСПРАВЛЕНИЕ 2А: Убран @Attribute(.unique)
-    var id: UUID
-    var name: String
-    var muscleGroup: String
-    var type: ExerciseType
-    var category: ExerciseCategory
-    var effort: Int
-    var isCompleted: Bool
+class Exercise: Identifiable {
+    var id: UUID = UUID()
+    var name: String = ""
+    var muscleGroup: String = ""
+    var type: ExerciseType = ExerciseType.strength
+    var category: ExerciseCategory = ExerciseCategory.other
+    var effort: Int = 5
+    var isCompleted: Bool = false
     
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise) 
-    var setsList: [WorkoutSet]
+    var setsList: [WorkoutSet] = []
     
     @Relationship(deleteRule: .cascade, inverse: \Exercise.parentExercise) 
-    var subExercises: [Exercise]
+    var subExercises: [Exercise] = []
     
-    var parentExercise: Exercise?
-    var workout: Workout?
-    var preset: WorkoutPreset?
+    var parentExercise: Exercise? = nil
+    var workout: Workout? = nil
+    var preset: WorkoutPreset? = nil
     
     init(id: UUID = UUID(), name: String, muscleGroup: String, type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
         self.id = id
@@ -129,7 +124,6 @@ class Exercise: Identifiable, Hashable {
         self.subExercises = subExercises
         self.setsList = setsList
         
-        // Теперь это абсолютно безопасно работает, так как нет конфликта Unique ID
         if self.setsList.isEmpty && self.subExercises.isEmpty && sets > 0 {
             var generatedSets: [WorkoutSet] = []
             for i in 1...sets {
@@ -147,7 +141,6 @@ class Exercise: Identifiable, Hashable {
         }
     }
     
-    // ИСПРАВЛЕНИЕ 2А: SwiftData не гарантирует порядок. Сортируем сеты по индексу
     var sortedSets: [WorkoutSet] {
         setsList.sorted(by: { $0.index < $1.index })
     }
@@ -175,25 +168,20 @@ class Exercise: Identifiable, Hashable {
     }
     
     func duplicate() -> Exercise {
-        // Убрали safe-методы
         let copiedSets = setsList.map { $0.duplicate() }
         let copiedSubs = subExercises.map { $0.duplicate() }
         return Exercise(id: UUID(), name: name, muscleGroup: muscleGroup, type: type, category: category, effort: effort, subExercises: copiedSubs, setsList: copiedSets, isCompleted: isCompleted)
     }
-    
-    static func == (lhs: Exercise, rhs: Exercise) -> Bool { lhs.id == rhs.id }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 @Model
-class WorkoutPreset: Identifiable, Hashable {
-    // ИСПРАВЛЕНИЕ 2А: Убран @Attribute(.unique)
-    var id: UUID
-    var name: String
-    var icon: String
+class WorkoutPreset: Identifiable {
+    var id: UUID = UUID()
+    var name: String = ""
+    var icon: String = ""
     
     @Relationship(deleteRule: .cascade, inverse: \Exercise.preset) 
-    var exercises: [Exercise]
+    var exercises: [Exercise] = []
     
     init(id: UUID = UUID(), name: String, icon: String, exercises: [Exercise]) {
         self.id = id
@@ -201,23 +189,19 @@ class WorkoutPreset: Identifiable, Hashable {
         self.icon = icon
         self.exercises = exercises
     }
-    
-    static func == (lhs: WorkoutPreset, rhs: WorkoutPreset) -> Bool { lhs.id == rhs.id }
-    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 @Model
-class Workout: Identifiable, Equatable {
-    // ИСПРАВЛЕНИЕ 2А: Убран @Attribute(.unique)
-    var id: UUID
-    var title: String
-    var date: Date
-    var endTime: Date?
-    var icon: String
-    var isFavorite: Bool
+class Workout: Identifiable {
+    var id: UUID = UUID()
+    var title: String = ""
+    var date: Date = Date()
+    var endTime: Date? = nil
+    var icon: String = "figure.run"
+    var isFavorite: Bool = false
     
     @Relationship(deleteRule: .cascade, inverse: \Exercise.workout) 
-    var exercises: [Exercise]
+    var exercises: [Exercise] = []
     
     init(id: UUID = UUID(), title: String, date: Date, endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false) {
         self.id = id
@@ -243,14 +227,12 @@ class Workout: Identifiable, Equatable {
         let average = Double(totalEffort) / Double(exercises.count)
         return Int(average * 10)
     }
-    
-    static func == (lhs: Workout, rhs: Workout) -> Bool { lhs.id == rhs.id }
 }
 
 @Model
 class ExerciseNote {
-    @Attribute(.unique) var exerciseName: String
-    var text: String
+    @Attribute(.unique) var exerciseName: String = ""
+    var text: String = ""
     
     init(exerciseName: String, text: String) {
         self.exerciseName = exerciseName
@@ -323,7 +305,6 @@ extension Exercise {
             category: category,
             effort: effort,
             isCompleted: isCompleted,
-            // ИСПРАВЛЕНИЕ 2А: Используем стандартные свойства
             setsList: sortedSets.map { $0.toDTO() },
             subExercises: subExercises.map { $0.toDTO() }
         )

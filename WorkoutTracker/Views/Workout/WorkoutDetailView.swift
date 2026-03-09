@@ -73,7 +73,7 @@ struct WorkoutDetailView: View {
     @State private var muscleIntensityMap: [String: Int] = [:]
     @State private var totalStrengthVolume: Double = 0.0
     
-    /// Определяет, является ли тренировка новой (созданной недавно, например, из шаблона)
+    /// Определяет, ли тренировка новой (созданной недавно, например, из шаблона)
     var isNewWorkout: Bool {
         let timeSinceCreation = Date().timeIntervalSince(workout.date)
         return timeSinceCreation < 60 && !workout.exercises.isEmpty
@@ -430,11 +430,11 @@ struct WorkoutDetailView: View {
                             set: { expandedExercises[exercise.id] = $0 }
                         )
                         
+                        // ИСПРАВЛЕНИЕ: Суперсеты теперь тоже могут быть Current, а условие стало проще
                         let isCurrentExercise = workout.isActive && 
                             !exercise.isCompleted && 
-                            !exercise.isSuperset &&
                             (expandedExercises[exercise.id] ?? false) &&
-                            workout.exercises.prefix(index).allSatisfy { $0.isCompleted || $0.isSuperset }
+                            workout.exercises.prefix(index).allSatisfy { $0.isCompleted }
                         
                         let onExerciseFinished = {
                             handleExerciseFinished(exerciseId: exercise.id, exerciseIndex: index)
@@ -446,7 +446,10 @@ struct WorkoutDetailView: View {
                                     superset: exercise,
                                     currentWorkoutId: workout.id,
                                     onDelete: deleteAction,
-                                    isWorkoutCompleted: !workout.isActive
+                                    isWorkoutCompleted: !workout.isActive,
+                                    isExpanded: isExpandedBinding,
+                                    onExerciseFinished: onExerciseFinished,
+                                    isCurrentExercise: isCurrentExercise
                                 )
                             } else {
                                 ExerciseCardView(
@@ -503,10 +506,11 @@ struct WorkoutDetailView: View {
                     
                     Chart {
                         ForEach(strengthExercises) { exercise in
+                            // ИСПРАВЛЕНИЕ: Берем вес только из завершенных подходов
                             let maxWeight = exercise.setsList
                                 .filter { $0.isCompleted && $0.type != .warmup }
                                 .compactMap { $0.weight }
-                                .max() ?? exercise.weight
+                                .max() ?? 0
                             
                             if maxWeight > 0 {
                                 let unitsManager = UnitsManager.shared
@@ -592,9 +596,13 @@ struct WorkoutDetailView: View {
         var volume = 0.0
         
         for exercise in workout.exercises {
-            if exercise.type != .cardio {
-                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for sub in targets {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            
+            for sub in targets {
+                // ИСПРАВЛЕНИЕ: Проверяем, есть ли хотя бы один завершенный подход
+                let hasCompletedSets = sub.setsList.contains(where: { $0.isCompleted })
+                
+                if sub.type != .cardio && hasCompletedSets {
                     let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
                     for muscleSlug in muscles {
                         counts[muscleSlug, default: 0] += 1
@@ -612,7 +620,12 @@ struct WorkoutDetailView: View {
         }
         
         self.flattenedExercises = newFlattened
-        self.strengthExercises = newFlattened.filter { $0.type == .strength }
+        
+        // ИСПРАВЛЕНИЕ: Фильтруем для графика, оставляя только упражнения, в которых есть завершенные силовые сеты с весом > 0
+        self.strengthExercises = newFlattened.filter { exercise in
+            exercise.type == .strength && exercise.setsList.contains(where: { $0.isCompleted && $0.type != .warmup && ($0.weight ?? 0) > 0 })
+        }
+        
         self.muscleIntensityMap = counts
         self.totalStrengthVolume = volume
     }
@@ -724,8 +737,9 @@ struct WorkoutDetailView: View {
             expandedExercises[exerciseId] = false
         }
         
+        // ИСПРАВЛЕНИЕ: Теперь мы ищем и Суперсеты тоже, чтобы развернуть их
         let nextIndex = workout.exercises.indices.first { index in
-            index > exerciseIndex && !workout.exercises[index].isCompleted && !workout.exercises[index].isSuperset
+            index > exerciseIndex && !workout.exercises[index].isCompleted
         }
         
         if let nextIndex = nextIndex {

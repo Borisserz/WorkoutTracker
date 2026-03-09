@@ -268,6 +268,10 @@ struct AddWorkoutView: View {
         // Вставляем прямо в SwiftData context
         context.insert(newWorkout)
         
+        // РЕШЕНИЕ КРАША: Обязательно сохраняем контекст СРАЗУ, чтобы Workout получил
+        // постоянный ID (PersistentIdentifier) перед тем, как откроется WorkoutDetailView.
+        try? context.save()
+        
         startLiveActivity()
         dismiss()
         
