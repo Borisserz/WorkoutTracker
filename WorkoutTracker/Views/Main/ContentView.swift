@@ -47,10 +47,6 @@ struct ContentView: View {
         .onAppear {
             viewModel.refreshAllCaches(container: modelContext.container)
         }
-        // ДОБАВЛЕНО: Слушаем явные события (например, завершение или удаление тренировки)
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshPerformanceCaches"))) { _ in
-            viewModel.refreshAllCaches(container: modelContext.container)
-        }
         .alert(item: $viewModel.currentError) { error in
             Alert(
                 title: Text(error.title),

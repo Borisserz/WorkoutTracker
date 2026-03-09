@@ -63,34 +63,15 @@ struct WorkoutDetailView: View {
     // Выбранное упражнение на графике
     @State private var selectedChartExerciseName: String?
     
-    // MARK: - Computed Properties
+    // Хранение предыдущего количества ачивок для отслеживания новых
+    @AppStorage("unlockedAchievementsCount") private var unlockedAchievementsCount = 0
     
-    /// Плоский список всех упражнений (разворачивает супер-сеты для графиков)
-    var flattenedExercises: [Exercise] {
-        // ИСПРАВЛЕНИЕ: Используем exercises и subExercises
-        workout.exercises.flatMap { exercise in
-            exercise.isSuperset ? exercise.subExercises : [exercise]
-        }
-    }
+    // MARK: - Computed Properties (Оптимизированные State-кэши)
     
-    /// Карта интенсивности нагрузки на мышцы для Heatmap
-    var muscleIntensityMap: [String: Int] {
-        var counts = [String: Int]()
-        
-        for exercise in workout.exercises {
-            if exercise.type == .cardio { continue }
-            
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-            
-            for sub in targets {
-                let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
-                for muscleSlug in muscles {
-                    counts[muscleSlug, default: 0] += 1
-                }
-            }
-        }
-        return counts
-    }
+    @State private var flattenedExercises: [Exercise] = []
+    @State private var strengthExercises: [Exercise] = []
+    @State private var muscleIntensityMap: [String: Int] = [:]
+    @State private var totalStrengthVolume: Double = 0.0
     
     /// Определяет, является ли тренировка новой (созданной недавно, например, из шаблона)
     var isNewWorkout: Bool {
@@ -128,7 +109,7 @@ struct WorkoutDetailView: View {
                     
                     // 7. Интересный факт (Сравнение веса)
                     if !workout.exercises.isEmpty {
-                        FunFactView(workout: workout, showSettings: $showComparisonSettings)
+                        FunFactView(workout: workout, showSettings: $showComparisonSettings, totalStrengthVolume: totalStrengthVolume)
                     }
                     
                         // Отступ снизу, чтобы глобальный таймер отдыха и кнопка завершения не перекрывали контент
@@ -172,6 +153,7 @@ struct WorkoutDetailView: View {
                 }
             }
             .onAppear {
+                updateComputedData()
                 for (index, exercise) in workout.exercises.enumerated() {
                     if expandedExercises[exercise.id] == nil {
                         expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
@@ -179,6 +161,7 @@ struct WorkoutDetailView: View {
                 }
             }
             .onChange(of: workout.exercises.count) { oldCount, newCount in
+                updateComputedData()
                 for (index, exercise) in workout.exercises.enumerated() {
                     if expandedExercises[exercise.id] == nil {
                         expandedExercises[exercise.id] = index == 0
@@ -496,8 +479,6 @@ struct WorkoutDetailView: View {
     }
     
     private var chartSection: some View {
-        let strengthExercises = flattenedExercises.filter { $0.type == .strength }
-        
         return Group {
             if !strengthExercises.isEmpty {
                 VStack(alignment: .leading) {
@@ -602,6 +583,40 @@ struct WorkoutDetailView: View {
     
     // MARK: - Logic & Actions
     
+    private func updateComputedData() {
+        let newFlattened = workout.exercises.flatMap { exercise in
+            exercise.isSuperset ? exercise.subExercises : [exercise]
+        }
+        
+        var counts = [String: Int]()
+        var volume = 0.0
+        
+        for exercise in workout.exercises {
+            if exercise.type != .cardio {
+                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for sub in targets {
+                    let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
+                    for muscleSlug in muscles {
+                        counts[muscleSlug, default: 0] += 1
+                    }
+                }
+            }
+            
+            if exercise.isSuperset {
+                for sub in exercise.subExercises where sub.type == .strength {
+                    volume += sub.computedVolume
+                }
+            } else if exercise.type == .strength {
+                volume += exercise.computedVolume
+            }
+        }
+        
+        self.flattenedExercises = newFlattened
+        self.strengthExercises = newFlattened.filter { $0.type == .strength }
+        self.muscleIntensityMap = counts
+        self.totalStrengthVolume = volume
+    }
+    
     private func abbreviateName(_ name: String) -> String {
         let words = name.split(separator: " ")
         if words.count > 1 {
@@ -617,6 +632,7 @@ struct WorkoutDetailView: View {
             workout.exercises[index] = new
             context.delete(old) 
         }
+        updateComputedData()
     }
     
     private func finishWorkout() {
@@ -636,18 +652,33 @@ struct WorkoutDetailView: View {
         // 4. Останавливаем Live Activity
         stopLiveActivity()
         
-        // 5. ИСПРАВЛЕНИЕ: Проверяем ачивки и обновляем виджеты в ФОНОВОМ ПОТОКЕ!
+        // 5. ИСПРАВЛЕНИЕ: Безопасная проверка "Новых" ачивок с полным функционалом.
         let modelContainer = context.container
-        Task.detached(priority: .userInitiated) {
+        let cachedUnlockedCount = self.unlockedAchievementsCount
+        
+        Task.detached(priority: .background) {
             let bgContext = ModelContext(modelContainer)
-            let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+            
+            var descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            // Оптимизация против N+1 (SwiftData попытается подгрузить связи сразу)
+            descriptor.relationshipKeyPathsForPrefetching = [\.exercises]
+            
             guard let workouts = try? bgContext.fetch(descriptor) else { return }
             
-            // Проверяем ачивки в фоне (передаем старый и новый стрик)
-            let newAchievementsCount = AchievementCalculator.calculateAchievements(workouts: workouts, streak: StatisticsManager.calculateWorkoutStreak(workouts: workouts)).filter { $0.isUnlocked }.count
+            // Внимание: Передача массива workouts в статические функции полностью безопасна,
+            // так как модели не покидают текущий поток (Task.detached) и контекст (bgContext).
+            let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
+            let calculatedAchievements = AchievementCalculator.calculateAchievements(workouts: workouts, streak: streak)
             
-            if newAchievementsCount > 0 { // Простая проверка (в идеале кэшировать старое количество)
+            let currentUnlockedCount = calculatedAchievements.filter { $0.isUnlocked }.count
+            
+            // Проверяем, появились ли *новые* ачивки (сравниваем с AppStorage)
+            if currentUnlockedCount > cachedUnlockedCount {
                 await MainActor.run {
+                    self.unlockedAchievementsCount = currentUnlockedCount
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
                 }
@@ -657,8 +688,8 @@ struct WorkoutDetailView: View {
         // 6. Обновляем виджеты
         viewModel.updateWidgetData(container: context.container)
         
-        // 7. Посылаем сигнал для обновления кешей в фоне!
-        NotificationCenter.default.post(name: NSNotification.Name("RefreshPerformanceCaches"), object: nil)
+        // 7. Обновляем кеши напрямую через ViewModel
+        viewModel.refreshAllCaches(container: context.container)
     }
     
     private func stopLiveActivity() {
@@ -687,6 +718,8 @@ struct WorkoutDetailView: View {
     }
     
     private func handleExerciseFinished(exerciseId: UUID, exerciseIndex: Int) {
+        updateComputedData() // Пересчитываем объем после завершения упражнения
+        
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             expandedExercises[exerciseId] = false
         }
@@ -738,24 +771,11 @@ struct WorkoutTimerView: View {
 struct FunFactView: View {
     let workout: Workout
     @Binding var showSettings: Bool
+    let totalStrengthVolume: Double
     
     @AppStorage("comparisonName") private var comparisonName = "Watermelons 🍉"
     @AppStorage("comparisonWeight") private var comparisonWeight = 8.0
     @StateObject private var unitsManager = UnitsManager.shared
-    
-    var totalStrengthVolume: Double {
-        var total = 0.0
-        for exercise in workout.exercises {
-            if exercise.isSuperset {
-                for sub in exercise.subExercises where sub.type == .strength {
-                    total += sub.computedVolume
-                }
-            } else if exercise.type == .strength {
-                total += exercise.computedVolume
-            }
-        }
-        return total
-    }
     
     var body: some View {
         if totalStrengthVolume > 0 && comparisonWeight > 0 {

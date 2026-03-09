@@ -7,7 +7,7 @@
 
 internal import SwiftUI
 import SwiftData
-import UIKit // Добавлено для проверки системных иконок
+import UIKit
 
 struct WorkoutView: View {
     @Environment(\.modelContext) private var context
@@ -28,10 +28,6 @@ struct WorkoutView: View {
     @State private var searchText = ""
     @State private var selectedFilter: FilterPeriod = .all
     @State private var sortOption: SortOption = .dateDescending
-    
-    // Удаление с предупреждением
-    @State private var showDeleteAlert = false
-    @State private var workoutsToDelete: [Workout] = []
     
     // ОПТИМИЗАЦИЯ: Локальный стейт для расчётов, чтобы не тормозить UI
     @State private var calculatedAvgDuration: Int = 0
@@ -109,7 +105,7 @@ struct WorkoutView: View {
         return filtered
     }
     
-    // ИСПРАВЛЕНИЕ: Триггер для обновления расчетов при изменении любого параметра фильтрации
+    // Триггер для обновления расчетов при изменении любого параметра фильтрации
     private var filterTrigger: String {
         "\(workouts.count)-\(selectedFilter.rawValue)-\(searchText)-\(sortOption.rawValue)"
     }
@@ -157,23 +153,10 @@ struct WorkoutView: View {
                             .presentationDragIndicator(.visible)
                     }
                 }
-                .alert(LocalizedStringKey("Delete Workout?"), isPresented: $showDeleteAlert) {
-                    Button(LocalizedStringKey("Delete"), role: .destructive) {
-                        deleteWorkouts()
-                    }
-                    Button(LocalizedStringKey("Cancel"), role: .cancel) {
-                        workoutsToDelete = []
-                    }
-                } message: {
-                    if workoutsToDelete.count == 1 {
-                        Text(LocalizedStringKey("Are you sure you want to delete '\(workoutsToDelete.first?.title ?? "")'? This action cannot be undone."))
-                    } else {
-                        Text(LocalizedStringKey("Are you sure you want to delete \(workoutsToDelete.count) workouts? This action cannot be undone."))
-                    }
-                }
-                // ИСПРАВЛЕНИЕ: Используем onChange(initial: true) для синхронного подсчета
+                // ИСПРАВЛЕНИЕ: Безопасный фоновый расчет через потокобезопасные ID
                 .onChange(of: filterTrigger, initial: true) { _, _ in
-                    calculateStats(for: filteredWorkouts)
+                    let identifiers = filteredWorkouts.map { $0.persistentModelID }
+                    calculateStatsAsync(identifiers: identifiers)
                 }
         }
     }
@@ -248,9 +231,12 @@ struct WorkoutView: View {
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         }
                         .onDelete { indexSet in
-                            let toDelete = indexSet.map { filteredWorkouts[$0] }
-                            workoutsToDelete = toDelete
-                            showDeleteAlert = true
+                            // ИСПРАВЛЕНИЕ: Прямое удаление без алерта восстанавливает нормальную работу EditMode
+                            withAnimation {
+                                for index in indexSet {
+                                    context.delete(filteredWorkouts[index])
+                                }
+                            }
                         }
                     }
                 }
@@ -285,10 +271,10 @@ struct WorkoutView: View {
         }
     }
     
-    // ИСПРАВЛЕНИЕ: Мы убрали Task.detached!
-    // Модели из @Query привязаны к главному потоку, их передача в фон вызывала жесткий краш
-    private func calculateStats(for currentWorkouts: [Workout]) {
-        let totalWorkouts = currentWorkouts.count
+    // ИСПРАВЛЕНИЕ: Вычисляем статистику в фоновом потоке, используя ModelContext
+    private func calculateStatsAsync(identifiers: [PersistentIdentifier]) {
+        let container = context.container
+        let totalWorkouts = identifiers.count
         
         guard totalWorkouts > 0 else {
             self.calculatedAvgDuration = 0
@@ -296,12 +282,28 @@ struct WorkoutView: View {
             return
         }
         
-        let avgDur = currentWorkouts.reduce(0) { $0 + $1.duration } / totalWorkouts
-        let totalVol = currentWorkouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.computedVolume } }
-        let avgVol = Int(totalVol / Double(totalWorkouts))
-        
-        self.calculatedAvgDuration = avgDur
-        self.calculatedAvgVolume = avgVol
+        Task.detached(priority: .userInitiated) {
+            let bgContext = ModelContext(container)
+            
+            var totalDur = 0
+            var totalVol = 0.0
+            
+            for id in identifiers {
+                // Безопасно загружаем модель в фоновом потоке для расчетов
+                if let workout = bgContext.model(for: id) as? Workout {
+                    totalDur += workout.duration
+                    totalVol += workout.exercises.reduce(0.0) { $0 + $1.computedVolume }
+                }
+            }
+            
+            let avgDur = totalDur / totalWorkouts
+            let avgVol = Int(totalVol / Double(totalWorkouts))
+            
+            await MainActor.run {
+                self.calculatedAvgDuration = avgDur
+                self.calculatedAvgVolume = avgVol
+            }
+        }
     }
     
     // Секция поиска и фильтров
@@ -370,15 +372,6 @@ struct WorkoutView: View {
             Text(LocalizedStringKey("Start your first workout from the Overview tab!"))
                 .font(.caption)
                 .foregroundColor(.gray)
-        }
-    }
-    
-    func deleteWorkouts() {
-        withAnimation {
-            for workout in workoutsToDelete {
-                context.delete(workout)
-            }
-            workoutsToDelete = []
         }
     }
 }
