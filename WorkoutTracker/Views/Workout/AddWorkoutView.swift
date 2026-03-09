@@ -27,6 +27,9 @@ struct AddWorkoutView: View {
     @State private var title = ""
     @State private var selectedPreset: WorkoutPreset?
     
+    // Состояние для алерта активной тренировки
+    @State private var showActiveWorkoutAlert = false
+    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topTrailing) {
@@ -61,13 +64,18 @@ struct AddWorkoutView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Start Now")) {
-                        startWorkout()
+                        checkAndStartWorkout()
                     }
                     .disabled(title.isEmpty)
                 }
             }
             .onAppear {
                 if title.isEmpty { setFormattedDateName() }
+            }
+            .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
+                Button(LocalizedStringKey("OK"), role: .cancel) { dismiss() }
+            } message: {
+                Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one."))
             }
         }
     }
@@ -251,6 +259,22 @@ struct AddWorkoutView: View {
         title = LocalizationHelper.shared.formatWorkoutDateName()
     }
     
+    // 1. Проверяем наличие активных тренировок
+    private func checkAndStartWorkout() {
+        let descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime == nil }
+        )
+        
+        if let activeWorkouts = try? context.fetch(descriptor), !activeWorkouts.isEmpty {
+            // Найдена активная тренировка - показываем алерт
+            showActiveWorkoutAlert = true
+        } else {
+            // Если всё чисто, запускаем новую
+            startWorkout()
+        }
+    }
+    
+    // 2. Логика запуска перенесена сюда
     private func startWorkout() {
         var exercisesToAdd: [Exercise] = []
         

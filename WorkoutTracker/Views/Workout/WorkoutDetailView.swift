@@ -46,6 +46,7 @@ struct WorkoutDetailView: View {
     @State private var showSupersetBuilder = false
     @State private var showShareSheet = false
     @State private var showEmptyWorkoutAlert = false
+    @State private var showFinishWorkoutConfirmation = false
     
     // Редактирование
     @State private var exerciseToEdit: Exercise?
@@ -64,6 +65,10 @@ struct WorkoutDetailView: View {
     @State private var exerciseToDelete: Exercise?
     @State private var showDeleteSupersetAlert = false
     @State private var supersetToDelete: Exercise?
+    
+    // НОВОЕ: Состояние для рекорда на уровне всего экрана тренировки
+    @State private var showPRCelebration = false
+    @State private var prLevel: PRLevel = .bronze
     
     // Sharing
     @State private var shareItems: [Any] = []
@@ -309,6 +314,24 @@ struct WorkoutDetailView: View {
         } message: {
             Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
         }
+        .alert(LocalizedStringKey("Finish Workout?"), isPresented: $showFinishWorkoutConfirmation) {
+            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
+            Button(LocalizedStringKey("Finish Workout")) {
+                executeFinishWorkout()
+            }
+        } message: {
+            Text(LocalizedStringKey("Are you sure you want to finish and save this workout?"))
+        }
+        // ДОБАВЛЕНО: Полноэкранное отображение рекорда
+        .fullScreenCover(isPresented: $showPRCelebration) {
+            PRCelebrationView(prLevel: prLevel)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showPRCelebration = false
+                }
+                .presentationBackground(.clear)
+        }
     }
     
     // MARK: - View Sections
@@ -482,7 +505,6 @@ struct WorkoutDetailView: View {
                             set: { expandedExercises[exercise.id] = $0 }
                         )
                         
-                        // ИСПРАВЛЕНИЕ: Суперсеты теперь тоже могут быть Current, а условие стало проще
                         let isCurrentExercise = workout.isActive && 
                             !exercise.isCompleted && 
                             (expandedExercises[exercise.id] ?? false) &&
@@ -501,7 +523,15 @@ struct WorkoutDetailView: View {
                                     isWorkoutCompleted: !workout.isActive,
                                     isExpanded: isExpandedBinding,
                                     onExerciseFinished: onExerciseFinished,
-                                    isCurrentExercise: isCurrentExercise
+                                    isCurrentExercise: isCurrentExercise,
+                                    onPRSet: { level in
+                                        // ДОБАВЛЕНО: Управляем рекордом с уровня экрана
+                                        self.prLevel = level
+                                        self.showPRCelebration = true
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                                            self.showPRCelebration = false
+                                        }
+                                    }
                                 )
                             } else {
                                 ExerciseCardView(
@@ -512,7 +542,14 @@ struct WorkoutDetailView: View {
                                     isWorkoutCompleted: !workout.isActive,
                                     isExpanded: isExpandedBinding,
                                     onExerciseFinished: onExerciseFinished,
-                                    isCurrentExercise: isCurrentExercise
+                                    isCurrentExercise: isCurrentExercise,
+                                    onPRSet: { level in
+                                        self.prLevel = level
+                                        self.showPRCelebration = true
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                                            self.showPRCelebration = false
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -716,7 +753,12 @@ struct WorkoutDetailView: View {
             showEmptyWorkoutAlert = true
             return
         }
+        
+        // Если есть выполненные подходы - вызываем подтверждение
+        showFinishWorkoutConfirmation = true
+    }
 
+    private func executeFinishWorkout() {
         // 1. Фиксируем время
         workout.endTime = Date()
         
@@ -945,7 +987,7 @@ struct FunFactView: View {
                                 Text("\(count, format: .number.precision(.fractionLength(1)))")
                                     .font(.title3).fontWeight(.heavy).foregroundColor(.primary)
                                 
-                                Text("\(LocalizedStringKey(comparison.name)) \(comparison.icon)")
+                                (Text(LocalizedStringKey(comparison.name)) + Text(" \(comparison.icon)"))
                                     .font(.headline).foregroundColor(.primary).lineLimit(1)
                             }
                             Text(LocalizedStringKey("Way to go, champion! 🥇"))

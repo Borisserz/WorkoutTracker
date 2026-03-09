@@ -150,7 +150,12 @@ struct UserDataInputView: View {
     @Binding var weight: Double
     var onNext: () -> Void
     
-    @FocusState private var isNameFocused: Bool
+    private enum Field {
+        case name
+        case weight
+    }
+    
+    @FocusState private var focusedField: Field?
     @State private var weightString: String = ""
     
     var body: some View {
@@ -173,8 +178,11 @@ struct UserDataInputView: View {
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
                         .cornerRadius(12)
-                        .focused($isNameFocused)
+                        .focused($focusedField, equals: .name)
                         .submitLabel(.next)
+                        .onSubmit {
+                            focusedField = .weight
+                        }
                 }
                 
                 VStack(alignment: .leading) {
@@ -186,8 +194,10 @@ struct UserDataInputView: View {
                         .padding()
                         .background(Color(UIColor.secondarySystemBackground))
                         .cornerRadius(12)
+                        .focused($focusedField, equals: .weight)
                         .onChange(of: weightString) { _, newValue in
-                            if let val = Double(newValue) {
+                            let formattedValue = newValue.replacingOccurrences(of: ",", with: ".")
+                            if let val = Double(formattedValue) {
                                 weight = val
                             }
                         }
@@ -212,12 +222,13 @@ struct UserDataInputView: View {
         }
         .onAppear {
             weightString = LocalizationHelper.shared.formatInteger(weight)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                isNameFocused = true
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                focusedField = .name
             }
         }
         .onTapGesture {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            focusedField = nil
         }
     }
 }

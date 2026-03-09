@@ -2,6 +2,7 @@ internal import SwiftUI
 
 struct BodyHeatmapView: View {
     var muscleIntensities: [String: Int]
+    var isRecoveryMode: Bool // Режим отображения восстановления
     
     @AppStorage("userGender") private var userGender = "male"
     @State private var isFrontView = true
@@ -10,8 +11,13 @@ struct BodyHeatmapView: View {
     let canvasWidth: CGFloat = 740
     let canvasHeight: CGFloat = 1450
     let backViewOffset: CGFloat = 740
-    init(muscleIntensities: [String: Int] = [:]) {
+    
+    init(
+        muscleIntensities: [String: Int] = [:],
+        isRecoveryMode: Bool = false
+    ) {
         self.muscleIntensities = muscleIntensities
+        self.isRecoveryMode = isRecoveryMode
     }
     
     var body: some View {
@@ -21,7 +27,7 @@ struct BodyHeatmapView: View {
                 Text(LocalizedStringKey("Back")).tag(false)
             }
             .pickerStyle(.segmented)
-            .padding()
+            .padding([.horizontal, .top])
             .onChange(of: isFrontView) { _ in
                 withAnimation { selectedMuscleName = nil }
             }
@@ -54,34 +60,54 @@ struct BodyHeatmapView: View {
                 // Плашка с именем
                 .overlay(alignment: .bottom) {
                     if let name = selectedMuscleName {
-                        // Показываем интенсивность
-                        let count = muscleIntensities[name.lowercased()] ?? muscleIntensities[findSlug(forName: name)] ?? 0
+                        let slug = findSlug(forName: name)
+                        let count = muscleIntensities[name.lowercased()] ?? muscleIntensities[slug]
                         
                         VStack(spacing: 4) {
                             Text(LocalizedStringKey(name))
                                 .font(.headline)
-                            if count > 0 {
-                                Text(LocalizedStringKey("\(count) exercises"))
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.8))
+                                .foregroundColor(.white)
+                            
+                            // Не показываем проценты или количество для исключений (голова, кисти, стопы и т.д.)
+                            if !isExceptionPart(slug) {
+                                if isRecoveryMode {
+                                    // Режим восстановления
+                                    let rec = count ?? 100
+                                    Text(LocalizedStringKey("\(rec)% recovered"))
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.8))
+                                } else {
+                                    // Режим интенсивности тренировки
+                                    if let c = count, c > 0 {
+                                        Text(LocalizedStringKey("\(c) exercises"))
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.8))
+                                    }
+                                }
                             }
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
                         .background(.ultraThinMaterial)
-                        .background(Color.black.opacity(0.4))
+                        .background(Color.black.opacity(0.6))
                         .cornerRadius(20)
                         .padding(.bottom, 20)
                         .transition(.scale.combined(with: .opacity))
-                        
                     }
                 }
             }
             .frame(height: 500)
-            .background(Color(UIColor.secondarySystemBackground))
+            // Обрабатываем нажатие на фон для сброса выделения
+            .background(
+                Color(UIColor.secondarySystemBackground)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        withAnimation(.spring()) {
+                            selectedMuscleName = nil
+                        }
+                    }
+            )
             .cornerRadius(12)
-
         }
     }
     
@@ -154,24 +180,39 @@ struct BodyHeatmapView: View {
             }
     }
     
-   
     func colorForMuscle(_ slug: String, isSelected: Bool) -> Color {
         if isSelected { return Color.blue.opacity(0.8) }
         if slug == "hair" { return .black.opacity(0.8) }
         
-        // Получаем количество упражнений на эту мышцу
-        let count = muscleIntensities[slug] ?? 0
-        
-        // Логика градации
-        switch count {
-        case 0:
+        if isExceptionPart(slug) {
+            // Для лица, кистей и т.п. используем базовый цвет без нагрузки
             return Color.gray.opacity(0.3)
-        case 1:
-            return Color.red.opacity(0.35)
-        case 2:
-            return Color.red.opacity(0.65)
-        default:
-            return Color.red.opacity(1.0)
+        }
+        
+        if isRecoveryMode {
+            let value = muscleIntensities[slug]
+            // Если нет данных, считаем что мышца свежая (100%)
+            let recovery = value ?? 100
+            
+            // Используем ту же цветовую гамму, что и в тренировках (градации красного)
+            if recovery >= 100 {
+                return Color.gray.opacity(0.3)
+            } else if recovery > 66 {
+                return Color.red.opacity(0.35)
+            } else if recovery > 33 {
+                return Color.red.opacity(0.65)
+            } else {
+                return Color.red.opacity(1.0)
+            }
+            
+        } else {
+            let count = muscleIntensities[slug] ?? 0
+            switch count {
+            case 0: return Color.gray.opacity(0.3)
+            case 1: return Color.red.opacity(0.35)
+            case 2: return Color.red.opacity(0.65)
+            default: return Color.red.opacity(1.0)
+            }
         }
     }
     
@@ -192,5 +233,14 @@ struct BodyHeatmapView: View {
             all = BodyData.frontMuscles + BodyData.backMuscles
         }
         return all.first(where: { $0.name == name })?.slug ?? ""
+    }
+    
+    // Определяем части тела, для которых не нужно показывать данные восстановления/нагрузки
+    func isExceptionPart(_ slug: String) -> Bool {
+        let exceptions: Set<String> = [
+            "head", "face", "hands", "hand", "feet", "foot",
+            "left-hand", "right-hand", "left-foot", "right-foot", "neck"
+        ]
+        return exceptions.contains(slug)
     }
 }

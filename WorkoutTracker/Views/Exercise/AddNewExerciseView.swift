@@ -15,6 +15,7 @@ struct AddNewExerciseView: View {
     // MARK: - Environment & State
     
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
     @EnvironmentObject private var viewModel: WorkoutViewModel
     
     // Данные формы
@@ -123,7 +124,8 @@ struct AddNewExerciseView: View {
             name: name,
             category: selectedCategory,
             muscles: Array(selectedMuscles),
-            type: selectedType
+            type: selectedType,
+            context: context
         )
         dismiss()
     }

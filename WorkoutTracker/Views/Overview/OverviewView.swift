@@ -11,13 +11,6 @@ import Charts
 
 struct OverviewView: View {
     
-    // MARK: - Models
-    
-    struct MuscleGroupSummary {
-        let name: String
-        let percentage: Int
-    }
-    
     // MARK: - Environment & State
     @Environment(\.modelContext) private var context
     @EnvironmentObject var tutorialManager: TutorialManager
@@ -33,9 +26,11 @@ struct OverviewView: View {
     @State private var showMuscleColorSettings = false
     @State private var navigateToNewWorkout = false
     @State private var navigateToExercises = false
+    @State private var navigateToDetailedRecovery = false // Программная навигация к восстановлению
     
-    // Интерактивность графика
+    // Интерактивность графика и анимации
     @State private var selectedAngle: Int?
+    @State private var isPulsing = false // Добавлено для пульсирующей кнопки
     
     // Менеджер цветов
     @StateObject private var colorManager = MuscleColorManager.shared
@@ -58,13 +53,13 @@ struct OverviewView: View {
                         
                         // 1. ПУСТОЕ СОСТОЯНИЕ
                         if recentWorkouts.isEmpty {
-                            VStack(spacing: 15) {
+                            VStack(spacing: 20) {
                                 Image(systemName: "figure.strengthtraining.traditional")
-                                    .font(.system(size: 60))
+                                    .font(.system(size: 80))
                                     .foregroundColor(.blue.opacity(0.8))
                                 
                                 Text(LocalizedStringKey("Welcome to WorkoutTracker!"))
-                                    .font(.title3).bold()
+                                    .font(.title2).bold()
                                 
                                 Text(LocalizedStringKey("Your journey starts here. Create your first workout to begin tracking."))
                                     .font(.body)
@@ -78,14 +73,22 @@ struct OverviewView: View {
                                         tutorialManager.nextStep()
                                     }
                                 } label: {
-                                    Text(LocalizedStringKey("Start First Workout"))
-                                        .font(.headline)
+                                    Text(LocalizedStringKey("Start Your First Workout"))
+                                        .font(.title3)
+                                        .bold()
                                         .foregroundColor(.white)
-                                        .padding()
+                                        .padding(.vertical, 20)
                                         .frame(maxWidth: .infinity)
                                         .background(Color.blue)
-                                        .cornerRadius(12)
+                                        .cornerRadius(16)
+                                        .shadow(color: .blue.opacity(0.6), radius: isPulsing ? 15 : 5, x: 0, y: isPulsing ? 8 : 2)
+                                        .scaleEffect(isPulsing ? 1.03 : 0.97)
                                 }
+                                .padding(.top, 10)
+                                .onAppear {
+                                    isPulsing = true
+                                }
+                                .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isPulsing)
                                 .spotlight(
                                     step: .tapPlus,
                                     manager: tutorialManager,
@@ -94,19 +97,19 @@ struct OverviewView: View {
                                     yOffset: -10
                                 )
                             }
-                            .padding()
+                            .padding(24)
                             .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(16)
+                            .cornerRadius(20)
                             .padding(.top, 10)
                         }
                         
-                        // 2. Блок восстановления
-                        recoverySection
-                        
-                        // 3. График мышц
+                        // 2. График мышц (перенесен выше)
                         if !recentWorkouts.isEmpty {
                             chartSection
                         }
+                        
+                        // 3. Блок восстановления
+                        recoverySection
                         
                         // 4. Топ упражнений
                         if !recentWorkouts.isEmpty {
@@ -145,6 +148,9 @@ struct OverviewView: View {
             .navigationDestination(isPresented: $navigateToExercises) {
                 ExerciseView()
             }
+            .navigationDestination(isPresented: $navigateToDetailedRecovery) {
+                DetailedRecoveryView()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -178,30 +184,35 @@ struct OverviewView: View {
     
     // MARK: - Logic & Components
     
-    private var aggregatedRecovery: [MuscleGroupSummary] {
-        let mapping: [String: [String]] = [
-            "Chest": ["Chest"],
-            "Back": ["Back", "Lower Back", "Trapezius"],
-            "Arms": ["Biceps", "Triceps", "Forearms", "Shoulders"],
-            "Legs": ["Legs", "Hamstrings", "Calves", "Glutes"]
-        ]
-        
-        var result: [MuscleGroupSummary] = []
-        let order = ["Chest", "Back", "Legs", "Arms"]
-        
-        for category in order {
-            let subMuscles = mapping[category] ?? []
-            let statuses = viewModel.recoveryStatus.filter { subMuscles.contains($0.muscleGroup) }
-            
-            if statuses.isEmpty {
-                result.append(MuscleGroupSummary(name: category, percentage: 100))
-            } else {
-                let total = statuses.reduce(0) { $0 + $1.recoveryPercentage }
-                let average = total / statuses.count
-                result.append(MuscleGroupSummary(name: category, percentage: average))
-            }
+    private var recoveryDict: [String: Int] {
+        var dict = [String: Int]()
+        for status in viewModel.recoveryStatus {
+            let slug = mapToSlug(status.muscleGroup)
+            dict[slug] = status.recoveryPercentage
         }
-        return result
+        return dict
+    }
+    
+    // Преобразуем названия из ViewModel в технические slugs, которые понимает BodyHeatmapView
+    private func mapToSlug(_ name: String) -> String {
+        switch name {
+        case "Chest": return "chest"
+        case "Back", "Upper Back": return "upper-back"
+        case "Lats": return "lats"
+        case "Traps", "Trapezius": return "trapezius"
+        case "Lower Back": return "lower-back"
+        case "Shoulders", "Shoulders (Delts)": return "deltoids"
+        case "Biceps": return "biceps"
+        case "Triceps": return "triceps"
+        case "Forearms": return "forearm"
+        case "Abs", "Core": return "abs"
+        case "Obliques": return "obliques"
+        case "Legs", "Quads", "Quadriceps": return "quadriceps"
+        case "Hamstrings": return "hamstring"
+        case "Glutes", "Gluteal": return "gluteal"
+        case "Calves": return "calves"
+        default: return name.lowercased().replacingOccurrences(of: " ", with: "-")
+        }
     }
     
     private var selectedMuscleInfo: (muscle: String, count: Int)? {
@@ -219,32 +230,23 @@ struct OverviewView: View {
     // --- Subviews ---
     
     private var recoverySection: some View {
-            NavigationLink(destination: DetailedRecoveryView()) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text(LocalizedStringKey("Muscle Recovery")).font(.headline).foregroundColor(.primary)
-                        Spacer()
-                        Text(LocalizedStringKey("See details")).font(.caption).foregroundColor(.blue)
-                        Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
-                    }
-                    Divider()
-                    if recentWorkouts.isEmpty {
-                        Text(LocalizedStringKey("Complete a workout to see data")).font(.caption).foregroundColor(.secondary)
-                    } else {
-                        ForEach(aggregatedRecovery, id: \.name) { group in
-                            VStack(spacing: 5) {
-                                HStack {
-                                    Text(LocalizedStringKey(group.name)).fontWeight(.medium).foregroundColor(.primary)
-                                    Spacer()
-                                    Text("\(group.percentage)%").font(.subheadline).bold().foregroundColor(recoveryColor(group.percentage))
-                                }
-                                ProgressView(value: Double(group.percentage), total: 100)
-                                    .tint(recoveryColor(group.percentage))
-                            }
-                        }
-                    }
+        VStack(alignment: .leading, spacing: 10) {
+            // Заголовок работает как кнопка "Перейти"
+            Button {
+                navigateToDetailedRecovery = true
+            } label: {
+                HStack {
+                    Text(LocalizedStringKey("Muscle Recovery"))
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Text(LocalizedStringKey("See details"))
+                        .font(.caption)
+                        .foregroundColor(.blue)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.gray)
                 }
-                .padding().background(Color.gray.opacity(0.1)).cornerRadius(12)
             }
             .buttonStyle(PlainButtonStyle())
             .simultaneousGesture(TapGesture().onEnded {
@@ -252,14 +254,28 @@ struct OverviewView: View {
                     tutorialManager.nextStep()
                 }
             })
-            .spotlight(
-                step: .recoveryCheck,
-                manager: tutorialManager,
-                text: "Check your Muscle Recovery status here.",
-                alignment: .top,
-                yOffset: -10
-            )
+            
+            Divider()
+            
+            if recentWorkouts.isEmpty {
+                Text(LocalizedStringKey("Complete a workout to see data"))
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else {
+                BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
+            }
         }
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(12)
+        .spotlight(
+            step: .recoveryCheck,
+            manager: tutorialManager,
+            text: "Check your Muscle Recovery status here.",
+            alignment: .top,
+            yOffset: -10
+        )
+    }
     
     private var chartSection: some View {
         VStack(alignment: .leading) {
@@ -348,12 +364,6 @@ struct OverviewView: View {
             Circle().fill(rank == 1 ? Color.yellow : rank == 2 ? Color.gray : rank == 3 ? Color.brown : Color.blue.opacity(0.1)).frame(width: 30, height: 30)
             Text("\(rank)").font(.caption).bold().foregroundColor(rank <= 3 ? .white : .blue)
         }.padding(.trailing, 5)
-    }
-    
-    private func recoveryColor(_ percentage: Int) -> Color {
-        if percentage < 50 { return .red }
-        if percentage < 80 { return .orange }
-        return .green
     }
 }
 

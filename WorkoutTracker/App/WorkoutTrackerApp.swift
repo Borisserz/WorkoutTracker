@@ -37,9 +37,31 @@ struct WorkoutTrackerApp: App {
         do {
             sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self)
         } catch {
-            // ИСПРАВЛЕНИЕ: Вместо fatalError лучше удалять поврежденную базу в случае фатального сбоя миграции,
-            // но для простоты оставим как есть, однако в проде fatalError нежелателен.
-            fatalError("Could not create ModelContainer: \(error)")
+            print("Could not create ModelContainer, attempting to delete corrupted database: \(error)")
+            
+            // Удаляем поврежденные файлы базы данных
+            let fileManager = FileManager.default
+            let storeURL = URL.applicationSupportDirectory.appending(path: "default.store")
+            let shmURL = URL.applicationSupportDirectory.appending(path: "default.store-shm")
+            let walURL = URL.applicationSupportDirectory.appending(path: "default.store-wal")
+            
+            try? fileManager.removeItem(at: storeURL)
+            try? fileManager.removeItem(at: shmURL)
+            try? fileManager.removeItem(at: walURL)
+            
+            do {
+                // Пробуем создать чистую базу данных
+                sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self)
+            } catch {
+                print("Failed to recreate ModelContainer, falling back to in-memory store: \(error)")
+                // Запасной вариант (Fallback): база в оперативной памяти, чтобы избежать 100% крэшей
+                let fallbackConfig = ModelConfiguration(isStoredInMemoryOnly: true)
+                do {
+                    sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, configurations: fallbackConfig)
+                } catch {
+                    fatalError("Critical failure: Could not create even an in-memory ModelContainer: \(error)")
+                }
+            }
         }
     }
 

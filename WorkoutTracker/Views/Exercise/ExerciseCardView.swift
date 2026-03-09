@@ -36,13 +36,14 @@ struct ExerciseCardView: View {
     // MARK: - Local State
     
     @State private var showEffortSheet = false
-    @State private var showPRCelebration = false
     @Binding var isExpanded: Bool // Состояние раскрытия/сворачивания упражнения (значение bool, поэтому Binding остается)
     @State private var showDeleteAlert = false
     @State private var newlyAddedSetId: UUID? = nil // ДОБАВЛЕНО: Для автофокуса нового сета
     
     // Callback при завершении упражнения (вызывается после закрытия EffortSheet)
     var onExerciseFinished: (() -> Void)? = nil
+    // ДОБАВЛЕНО: Замыкание для передачи события о рекорде наверх к WorkoutDetailView
+    var onPRSet: ((PRLevel) -> Void)? = nil
     
     // MARK: - Initializer
     
@@ -55,7 +56,8 @@ struct ExerciseCardView: View {
         isWorkoutCompleted: Bool = false,
         isExpanded: Binding<Bool>,
         onExerciseFinished: (() -> Void)? = nil,
-        isCurrentExercise: Bool = false
+        isCurrentExercise: Bool = false,
+        onPRSet: ((PRLevel) -> Void)? = nil
     ) {
         self.exercise = exercise
         self.currentWorkoutId = currentWorkoutId
@@ -66,6 +68,7 @@ struct ExerciseCardView: View {
         self._isExpanded = isExpanded
         self.onExerciseFinished = onExerciseFinished
         self.isCurrentExercise = isCurrentExercise
+        self.onPRSet = onPRSet
     }
     
     // MARK: - Computed
@@ -119,11 +122,6 @@ struct ExerciseCardView: View {
                 x: 0,
                 y: 2
             )
-            
-            // Оверлей рекорда (PR)
-            if showPRCelebration {
-                recordOverlay
-            }
         }
         // Модификаторы
         .sheet(isPresented: $showEffortSheet, onDismiss: {
@@ -142,7 +140,6 @@ struct ExerciseCardView: View {
         } message: {
             Text(LocalizedStringKey("Are you sure you want to delete '\(exercise.name)'? This action cannot be undone."))
         }
-        .blur(radius: showPRCelebration ? 5 : 0)
     }
     
     // MARK: - View Components
@@ -347,20 +344,6 @@ struct ExerciseCardView: View {
         .padding(.top, 12)
     }
     
-    private var recordOverlay: some View {
-        VStack {
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 50))
-                .foregroundColor(.yellow)
-            Text(LocalizedStringKey("New Record!"))
-                .font(.title).bold()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.4))
-        .cornerRadius(12)
-        .transition(.opacity.combined(with: .scale))
-    }
-    
     // MARK: - Logic
     
     private func finishExercise() {
@@ -369,10 +352,12 @@ struct ExerciseCardView: View {
         
         markAllSetsCompleted()
         exercise.isCompleted = true // Помечаем упражнение как завершенное
+        try? context.save()
         
         // Получаем данные из кэша O(1)
         let lastData = viewModel.lastPerformancesCache[exercise.name]
         var newRecordWasSet = false
+        var maxIncreasePercent: Double = 0.0
         
         // Логика рекорда
         if exercise.type == .strength {
@@ -386,7 +371,11 @@ struct ExerciseCardView: View {
                 let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
                 if maxWeightInWorkout > oldRecord {
                     newRecordWasSet = true
-                    triggerRecordAnimation()
+                    
+                    let increase = oldRecord > 0 ? (maxWeightInWorkout - oldRecord) / oldRecord : 0.0
+                    if increase > maxIncreasePercent {
+                        maxIncreasePercent = increase
+                    }
                 }
             }
         }
@@ -396,22 +385,30 @@ struct ExerciseCardView: View {
             tutorialManager.setStep(.explainEffort)
         }
         
-        if !newRecordWasSet {
+        if newRecordWasSet {
+            let calculatedPRLevel: PRLevel
+            
+            if maxIncreasePercent >= 0.20 {
+                calculatedPRLevel = .diamond
+            } else if maxIncreasePercent >= 0.10 {
+                calculatedPRLevel = .gold
+            } else if maxIncreasePercent >= 0.05 {
+                calculatedPRLevel = .silver
+            } else {
+                calculatedPRLevel = .bronze
+            }
+            
+            // Запускаем красивый глобальный экран нового рекорда!
+            onPRSet?(calculatedPRLevel)
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                showEffortSheet = true
+            }
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+        } else {
             showEffortSheet = true
         }
-    }
-    
-    private func triggerRecordAnimation() {
-        withAnimation { showPRCelebration = true }
-        
-        // Скрываем через 3 секунды, а затем показываем Effort Slider
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation { showPRCelebration = false }
-            showEffortSheet = true
-        }
-        
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
     }
     
     private func markAllSetsCompleted() {

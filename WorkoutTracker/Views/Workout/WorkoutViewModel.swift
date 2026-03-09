@@ -16,22 +16,6 @@ import AudioToolbox
 import WidgetKit
 internal import UniformTypeIdentifiers
 
-// MARK: - File Storage Actor
-actor FileStorageActor {
-    static let shared = FileStorageActor()
-    
-    func save<T: Encodable>(_ data: T, to url: URL) {
-        if let encoded = try? JSONEncoder().encode(data) {
-            try? encoded.write(to: url, options: .atomic)
-        }
-    }
-    
-    func load<T: Decodable>(_ type: T.Type, from url: URL) -> T? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        return try? JSONDecoder().decode(T.self, from: data)
-    }
-}
-
 // MARK: - Main ViewModel
 @MainActor
 class WorkoutViewModel: ObservableObject {
@@ -59,16 +43,13 @@ class WorkoutViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var lastPerformancesCache: [String: Exercise] = [:]
     @Published var personalRecordsCache: [String: Double] = [:]
-    @Published var customExercises: [CustomExerciseDefinition] = [] { didSet { saveCustomExercises() } }
+    
+    // Кэш для UI (обновляется из SwiftData)
+    @Published var customExercises: [CustomExerciseDefinition] = []
+    @Published var deletedDefaultExercises: Set<String> = []
+    
     @Published var recoveryStatus: [MuscleRecoveryStatus] = []
     @Published var progressManager = ProgressManager()
-    @Published var deletedDefaultExercises: Set<String> = [] {
-        didSet {
-            let currentSet = deletedDefaultExercises
-            let url = getDocumentURL(for: "DeletedDefaultExercises.json")
-            Task { await FileStorageActor.shared.save(currentSet, to: url) }
-        }
-    }
     
     // Кэш для дашборда
     @Published var dashboardMuscleData: [(muscle: String, count: Int)] = []
@@ -92,13 +73,6 @@ class WorkoutViewModel: ObservableObject {
     
     init() {
         MuscleMapping.preload()
-        loadCustomExercises()
-        loadDeletedDefaultExercises()
-    }
-    
-    // MARK: - File System Helpers
-    private func getDocumentURL(for filename: String) -> URL {
-        URL.documentsDirectory.appendingPathComponent(filename)
     }
     
     // MARK: - BACKGROUND CACHE REFRESH
@@ -121,7 +95,6 @@ class WorkoutViewModel: ObservableObject {
             
             for workout in workouts {
                 for exercise in workout.exercises {
-                    // ИСПРАВЛЕНИЕ 2А: Используем чистые массивы без костылей
                     let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
                     
                     for ex in targets {
@@ -132,7 +105,6 @@ class WorkoutViewModel: ObservableObject {
                         }
                         
                         if ex.type == .strength {
-                            // ИСПРАВЛЕНИЕ 2А: Используем чистые массивы
                             let maxWeight = ex.setsList
                                 .filter { $0.isCompleted && $0.type != .warmup }
                                 .compactMap { $0.weight }
@@ -163,6 +135,9 @@ class WorkoutViewModel: ObservableObject {
             let recs = AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: recovery)
             
             await MainActor.run {
+                // Загружаем словарь в главный кэш
+                self.loadDictionary(context: ModelContext(container))
+                
                 var newPerformancesCache: [String: Exercise] = [:]
                 for (name, dto) in partialLastPerformancesDTO {
                     newPerformancesCache[name] = Exercise(from: dto)
@@ -201,14 +176,55 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Data Management (Custom Exercises)
+    // MARK: - Data Management (Dictionary / Custom Exercises)
     
-    private func loadDeletedDefaultExercises() {
-        let url = getDocumentURL(for: "DeletedDefaultExercises.json")
-        Task {
-            if let dec = await FileStorageActor.shared.load(Set<String>.self, from: url) {
-                self.deletedDefaultExercises = dec
+    func loadDictionary(context: ModelContext) {
+        let descriptor = FetchDescriptor<ExerciseDictionaryItem>()
+        let count = (try? context.fetchCount(descriptor)) ?? 0
+        
+        // Автоматическая миграция из старых JSON
+        if count == 0 {
+            migrateJSONToSwiftData(context: context)
+        }
+        
+        if let items = try? context.fetch(descriptor) {
+            self.customExercises = items.filter { $0.isCustom }.map {
+                CustomExerciseDefinition(id: UUID(), name: $0.name, category: $0.category, targetedMuscles: $0.targetedMuscles, type: $0.type)
             }
+            self.deletedDefaultExercises = Set(items.filter { $0.isHidden }.map { $0.name })
+        }
+    }
+    
+    private func migrateJSONToSwiftData(context: ModelContext) {
+        let fm = FileManager.default
+        let customUrl = URL.documentsDirectory.appendingPathComponent("SavedCustomExercises.json")
+        let deletedUrl = URL.documentsDirectory.appendingPathComponent("DeletedDefaultExercises.json")
+        
+        var didMigrate = false
+        
+        if let data = try? Data(contentsOf: customUrl),
+           let customEx = try? JSONDecoder().decode([CustomExerciseDefinition].self, from: data) {
+            for ex in customEx {
+                let item = ExerciseDictionaryItem(name: ex.name, category: ex.category, targetedMuscles: ex.targetedMuscles, type: ex.type, isCustom: true, isHidden: false)
+                context.insert(item)
+            }
+            try? fm.removeItem(at: customUrl)
+            didMigrate = true
+        }
+        
+        if let data = try? Data(contentsOf: deletedUrl),
+           let deletedEx = try? JSONDecoder().decode(Set<String>.self, from: data) {
+            for exName in deletedEx {
+                let category = Exercise.catalog.first(where: { $0.value.contains(exName) })?.key ?? "Other"
+                let item = ExerciseDictionaryItem(name: exName, category: category, targetedMuscles: [], type: .strength, isCustom: false, isHidden: true)
+                context.insert(item)
+            }
+            try? fm.removeItem(at: deletedUrl)
+            didMigrate = true
+        }
+        
+        if didMigrate {
+            try? context.save()
         }
     }
     
@@ -219,34 +235,36 @@ class WorkoutViewModel: ObservableObject {
         return catalog
     }
     
-    func addCustomExercise(name: String, category: String, muscles: [String], type: ExerciseType = .strength) { customExercises.append(.init(name: name, category: category, targetedMuscles: muscles, type: type)); MuscleMapping.updateCustomMapping(name: name, muscles: muscles) }
-    
-    func deleteCustomExercise(name: String, category: String) { customExercises.removeAll { $0.name == name }; MuscleMapping.updateCustomMapping(name: name, muscles: nil) }
-    
-    func deleteExercise(name: String, category: String) {
-        if isCustomExercise(name: name) {
-            deleteCustomExercise(name: name, category: category)
-        } else {
-            deletedDefaultExercises.insert(name)
-        }
-    }
-    
     func isCustomExercise(name: String) -> Bool { customExercises.contains { $0.name == name } }
     
-    private func saveCustomExercises() { 
-        let currentExercises = customExercises
-        let url = getDocumentURL(for: "SavedCustomExercises.json")
-        Task {
-            await FileStorageActor.shared.save(currentExercises, to: url)
-        }
+    func addCustomExercise(name: String, category: String, muscles: [String], type: ExerciseType = .strength, context: ModelContext) {
+        let item = ExerciseDictionaryItem(name: name, category: category, targetedMuscles: muscles, type: type, isCustom: true, isHidden: false)
+        context.insert(item)
+        try? context.save()
+        
+        loadDictionary(context: context)
+        MuscleMapping.updateCustomMapping(name: name, muscles: muscles)
     }
     
-    private func loadCustomExercises() {
-        let url = getDocumentURL(for: "SavedCustomExercises.json")
-        Task {
-            if let dec = await FileStorageActor.shared.load([CustomExerciseDefinition].self, from: url) {
-                self.customExercises = dec
-            }
+    private func deleteCustomExercise(name: String, category: String, context: ModelContext) {
+        let descriptor = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.name == name && $0.isCustom })
+        if let items = try? context.fetch(descriptor), let item = items.first {
+            context.delete(item)
+            try? context.save()
+        }
+        
+        loadDictionary(context: context)
+        MuscleMapping.updateCustomMapping(name: name, muscles: nil)
+    }
+    
+    func deleteExercise(name: String, category: String, context: ModelContext) {
+        if isCustomExercise(name: name) {
+            deleteCustomExercise(name: name, category: category, context: context)
+        } else {
+            let item = ExerciseDictionaryItem(name: name, category: category, targetedMuscles: [], type: .strength, isCustom: false, isHidden: true)
+            context.insert(item)
+            try? context.save()
+            loadDictionary(context: context)
         }
     }
     
