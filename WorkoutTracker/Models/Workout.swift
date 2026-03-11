@@ -260,6 +260,32 @@ class UserStats {
     }
 }
 
+@Model
+class ExerciseStat {
+    @Attribute(.unique) var exerciseName: String = ""
+    var maxWeight: Double = 0.0
+    var totalCount: Int = 0
+    var lastPerformanceDTO: Data? = nil
+    
+    init(exerciseName: String, maxWeight: Double = 0.0, totalCount: Int = 0, lastPerformanceDTO: Data? = nil) {
+        self.exerciseName = exerciseName
+        self.maxWeight = maxWeight
+        self.totalCount = totalCount
+        self.lastPerformanceDTO = lastPerformanceDTO
+    }
+}
+
+@Model
+class MuscleStat {
+    @Attribute(.unique) var muscleName: String = ""
+    var totalCount: Int = 0
+    
+    init(muscleName: String, totalCount: Int = 0) {
+        self.muscleName = muscleName
+        self.totalCount = totalCount
+    }
+}
+
 // MARK: - DTOs for Export/Import (Codable Support)
 
 struct WorkoutSetDTO: Codable {

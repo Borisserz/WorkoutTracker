@@ -159,17 +159,12 @@ struct UserDataInputView: View {
     @FocusState private var focusedField: Field?
     @State private var weightString: String = ""
     
-    // ИСПРАВЛЕНИЕ: Вычисляемое свойство для проверки корректности формы
-    private var isFormValid: Bool {
-        let formattedValue = weightString.replacingOccurrences(of: ",", with: ".")
-        guard let parsedWeight = Double(formattedValue), parsedWeight > 0 else {
-            return false
-        }
-        return !name.trimmingCharacters(in: .whitespaces).isEmpty
-    }
+    // ИСПРАВЛЕНИЕ: Состояния для показа ошибок
+    @State private var isNameInvalid = false
+    @State private var isWeightInvalid = false
+    @State private var shakeTrigger = 0
     
     var body: some View {
-        // ИСПРАВЛЕНИЕ: Обернули контент в GeometryReader и ScrollView для предотвращения перекрытия клавиатурой
         GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 25) {
@@ -185,68 +180,125 @@ struct UserDataInputView: View {
                     
                     VStack(spacing: 20) {
                         VStack(alignment: .leading) {
-                            Text("Your Name").font(.caption).foregroundColor(.gray)
+                            Text("Your Name")
+                                .font(.caption)
+                                .foregroundColor(isNameInvalid ? .red : .gray)
+                            
                             TextField("Name", text: $name)
                                 .font(.title3)
                                 .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(isNameInvalid ? Color.red.opacity(0.1) : Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(isNameInvalid ? Color.red : Color.clear, lineWidth: 1)
+                                )
                                 .focused($focusedField, equals: .name)
                                 .submitLabel(.next)
+                                .onChange(of: name) { _, _ in isNameInvalid = false }
                                 .onSubmit {
                                     focusedField = .weight
                                 }
                         }
+                        // ИСПРАВЛЕНИЕ: Shake animation
+                        .keyframeAnimator(initialValue: 0.0, trigger: shakeTrigger) { content, xOffset in
+                            content.offset(x: isNameInvalid ? xOffset : 0)
+                        } keyframes: { _ in
+                            KeyframeTrack {
+                                CubicKeyframe(10, duration: 0.05)
+                                CubicKeyframe(-10, duration: 0.05)
+                                CubicKeyframe(10, duration: 0.05)
+                                CubicKeyframe(-10, duration: 0.05)
+                                CubicKeyframe(0, duration: 0.05)
+                            }
+                        }
                         
                         VStack(alignment: .leading) {
                             let unitsManager = UnitsManager.shared
-                            Text("Body Weight (\(unitsManager.weightUnitString()))").font(.caption).foregroundColor(.gray)
+                            Text("Body Weight (\(unitsManager.weightUnitString()))")
+                                .font(.caption)
+                                .foregroundColor(isWeightInvalid ? .red : .gray)
+                            
                             TextField("75", text: $weightString)
                                 .font(.title3)
                                 .keyboardType(.decimalPad)
                                 .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(isWeightInvalid ? Color.red.opacity(0.1) : Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(isWeightInvalid ? Color.red : Color.clear, lineWidth: 1)
+                                )
                                 .focused($focusedField, equals: .weight)
                                 .onChange(of: weightString) { _, newValue in
+                                    isWeightInvalid = false
                                     let formattedValue = newValue.replacingOccurrences(of: ",", with: ".")
                                     if let val = Double(formattedValue) {
                                         weight = val
                                     }
                                 }
                         }
+                        // ИСПРАВЛЕНИЕ: Shake animation
+                        .keyframeAnimator(initialValue: 0.0, trigger: shakeTrigger) { content, xOffset in
+                            content.offset(x: isWeightInvalid ? xOffset : 0)
+                        } keyframes: { _ in
+                            KeyframeTrack {
+                                CubicKeyframe(10, duration: 0.05)
+                                CubicKeyframe(-10, duration: 0.05)
+                                CubicKeyframe(10, duration: 0.05)
+                                CubicKeyframe(-10, duration: 0.05)
+                                CubicKeyframe(0, duration: 0.05)
+                            }
+                        }
                     }
                     .padding(.horizontal, 30)
                     
                     Spacer(minLength: 20)
                     
-                    Button(action: onNext) {
+                    Button(action: validateAndContinue) {
                         Text("Continue")
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            // ИСПРАВЛЕНИЕ: Используем isFormValid для цвета
-                            .background(isFormValid ? Color.blue : Color.gray)
+                            // ИСПРАВЛЕНИЕ: Кнопка всегда активна визуально
+                            .background(Color.blue)
                             .cornerRadius(12)
                     }
-                    // ИСПРАВЛЕНИЕ: Запрещаем переход, если форма невалидна
-                    .disabled(!isFormValid)
                     .padding(.horizontal, 30)
                     .padding(.bottom, 50)
                 }
                 .frame(minHeight: geometry.size.height)
             }
+            // ИСПРАВЛЕНИЕ: Используем defaultFocus вместо Task.sleep
+            .defaultFocus($focusedField, .name)
         }
+        // ИСПРАВЛЕНИЕ: Haptic feedback при ошибке
+        .sensoryFeedback(.error, trigger: shakeTrigger)
         .onAppear {
             weightString = LocalizationHelper.shared.formatInteger(weight)
-            Task { @MainActor in
-                try? await Task.sleep(nanoseconds: 500_000_000)
-                focusedField = .name
-            }
         }
         .onTapGesture {
             focusedField = nil
+        }
+    }
+    
+    // ИСПРАВЛЕНИЕ: Валидация при нажатии
+    private func validateAndContinue() {
+        let formattedValue = weightString.replacingOccurrences(of: ",", with: ".")
+        let parsedWeight = Double(formattedValue) ?? 0
+        
+        let validName = !name.trimmingCharacters(in: .whitespaces).isEmpty
+        let validWeight = parsedWeight > 0
+        
+        isNameInvalid = !validName
+        isWeightInvalid = !validWeight
+        
+        if validName && validWeight {
+            onNext()
+        } else {
+            // Запускает анимацию shake и Haptic feedback
+            shakeTrigger += 1
         }
     }
 }

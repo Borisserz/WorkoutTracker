@@ -44,6 +44,11 @@ struct ConfigureExerciseView: View {
     @State private var showValidationAlert = false
     @State private var validationErrorMessage = ""
     
+    // НОВОЕ: Для Progressive Overload
+    @State private var hasAutoFilled = false
+    @State private var showOverloadBanner = false
+    @State private var recommendedWeight: Double = 0.0
+    
     // MARK: - Binding Adapters
     // Эти вычисляемые свойства нужны для адаптации @State к Binding<Double?>, 
     // который требуется компонентом ClearableTextField.
@@ -122,6 +127,12 @@ struct ConfigureExerciseView: View {
     var body: some View {
         NavigationStack {
             Form {
+                
+                // ПРОАКТИВНАЯ РЕКОМЕНДАЦИЯ OVERLOAD
+                if showOverloadBanner {
+                    overloadBannerSection
+                }
+                
                 // Основная секция настроек
                 Section(header: Text("Configuration")) {
                     // Заголовок с именем упражнения
@@ -155,10 +166,62 @@ struct ConfigureExerciseView: View {
             } message: {
                 Text(validationErrorMessage)
             }
+            .onAppear {
+                if !hasAutoFilled {
+                    loadLastPerformance()
+                    hasAutoFilled = true
+                }
+            }
         }
     }
     
     // MARK: - View Components
+    
+    private var overloadBannerSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .foregroundColor(.green)
+                    Text("Progressive Overload")
+                        .font(.headline)
+                        .foregroundColor(.green)
+                }
+                
+                let convertedWeight = unitsManager.convertFromKilograms(recommendedWeight)
+                let weightStr = convertedWeight.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", convertedWeight) : String(format: "%.1f", convertedWeight)
+                
+                Text("Your forecast allows it! Try **\(weightStr) \(unitsManager.weightUnitString())** today for better results.")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 12) {
+                    Button("Discard") {
+                        withAnimation {
+                            showOverloadBanner = false
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
+                    .frame(maxWidth: .infinity)
+                    
+                    Button("Apply") {
+                        withAnimation {
+                            weight = recommendedWeight
+                            showOverloadBanner = false
+                        }
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.top, 4)
+            }
+            .padding(.vertical, 4)
+        }
+    }
     
     // 1. Силовая конфигурация
     @ViewBuilder
@@ -219,6 +282,44 @@ struct ConfigureExerciseView: View {
     }
     
     // MARK: - Logic
+    
+    private func loadLastPerformance() {
+        guard let lastPerf = viewModel.lastPerformancesCache[exerciseName] else { return }
+        let lastSets = lastPerf.sortedSets.filter { $0.type != .warmup && $0.isCompleted }
+        guard !lastSets.isEmpty else { return }
+        
+        // Автозаполнение
+        if exerciseType == .strength {
+            self.sets = lastSets.count
+            self.reps = lastSets.first?.reps ?? 10
+            
+            let lastMax = lastSets.compactMap { $0.weight }.max() ?? 0.0
+            self.weight = lastMax
+            
+            // Если есть что рекомендовать, показываем баннер
+            if lastMax > 0 {
+                self.recommendedWeight = lastMax + 2.5
+                withAnimation {
+                    self.showOverloadBanner = true
+                }
+            }
+            
+        } else if exerciseType == .cardio {
+            if let firstSet = lastSets.first {
+                self.distance = firstSet.distance
+                let t = firstSet.time ?? 0
+                self.minutes = t / 60
+                self.seconds = t % 60
+            }
+        } else if exerciseType == .duration {
+            self.sets = lastSets.count
+            if let firstSet = lastSets.first {
+                let t = firstSet.time ?? 0
+                self.minutes = t / 60
+                self.seconds = t % 60
+            }
+        }
+    }
     
     private func handleSave() {
         // Final validation before saving

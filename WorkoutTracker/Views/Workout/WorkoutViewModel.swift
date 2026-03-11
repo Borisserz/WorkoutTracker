@@ -63,6 +63,9 @@ class WorkoutViewModel: ObservableObject {
     @Published var weakPoints: [WeakPoint] = []
     @Published var recommendations: [Recommendation] = []
     
+    // ИСПРАВЛЕНИЕ: Хранение активной тренировки для защиты от OOM
+    @Published var activeWorkoutToResume: Workout?
+    
     // MARK: - Error Handling
     struct AppError: Identifiable { let id = UUID(); let title: String; let message: String }
     @Published var currentError: AppError?
@@ -75,67 +78,164 @@ class WorkoutViewModel: ObservableObject {
         MuscleMapping.preload()
     }
     
-    // MARK: - BACKGROUND CACHE REFRESH
+    // MARK: - ЗОМБИ-ТРЕНИРОВКИ И ВОССТАНОВЛЕНИЕ (Защита от OOM)
+    
+    /// Находит тренировки без endTime. Вызывайте при старте приложения.
+    func cleanupAndFindActiveWorkouts(context: ModelContext) {
+        let descriptor = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime == nil })
+        guard let activeWorkouts = try? context.fetch(descriptor) else { return }
+        
+        for workout in activeWorkouts {
+            let hoursSinceStart = Date().timeIntervalSince(workout.date) / 3600
+            if hoursSinceStart > 12 {
+                // Тренировка-зомби (зависла более 12 часов назад). Закрываем принудительно.
+                workout.endTime = workout.date.addingTimeInterval(3600) // Фиктивный час
+                processCompletedWorkout(workout, context: context)
+            } else {
+                // Свежая незавершенная тренировка. Предлагаем восстановить.
+                self.activeWorkoutToResume = workout
+            }
+        }
+        try? context.save()
+    }
+    
+    // MARK: - ИНКАПСУЛЯЦИЯ УДАЛЕНИЯ ДЛЯ ЗАЩИТЫ СТАТИСТИКИ
+    
+    /// Единая точка удаления тренировки. Гарантирует, что статистика не рассинхронизируется.
+    func deleteWorkout(_ workout: Workout, context: ModelContext) {
+        let container = context.container
+        context.delete(workout)
+        try? context.save()
+        
+        // Полностью перестраиваем статистику, чтобы гарантировать консистентность
+        Task {
+            await rebuildAllStats(container: container)
+        }
+    }
+    
+    // MARK: - INCREMENTAL WORKOUT COMPLETION (Защита от N+1)
+    
+    /// Эту функцию ВАЖНО вызывать ровно один раз при нажатии кнопки "Завершить тренировку".
+    func processCompletedWorkout(_ workout: Workout, context: ModelContext) {
+        // Обновляем общие пользовательские статы
+        let uStatsDesc = FetchDescriptor<UserStats>()
+        let uStats = (try? context.fetch(uStatsDesc))?.first ?? UserStats()
+        if uStats.modelContext == nil { context.insert(uStats) }
+        
+        uStats.totalWorkouts += 1
+        uStats.totalVolume += workout.exercises.reduce(0.0) { $0 + $1.computedVolume }
+        uStats.totalDistance += workout.exercises.filter { $0.type == .cardio }.reduce(0.0) { $0 + ($1.distance ?? 0) }
+        
+        let hour = Calendar.current.component(.hour, from: workout.date)
+        if hour < 9 { uStats.earlyWorkouts += 1 }
+        if hour >= 20 { uStats.nightWorkouts += 1 }
+        
+        // Быстрый Dictionary-загрузчик (избегает N+1 внутри цикла)
+        let allExStats = (try? context.fetch(FetchDescriptor<ExerciseStat>())) ?? []
+        let allMStats = (try? context.fetch(FetchDescriptor<MuscleStat>())) ?? []
+        var exStatsDict = Dictionary(uniqueKeysWithValues: allExStats.map { ($0.exerciseName, $0) })
+        var mStatsDict = Dictionary(uniqueKeysWithValues: allMStats.map { ($0.muscleName, $0) })
+        
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            for ex in targets {
+                let name = ex.name
+                
+                let exStat = exStatsDict[name] ?? {
+                    let newStat = ExerciseStat(exerciseName: name)
+                    context.insert(newStat)
+                    exStatsDict[name] = newStat
+                    return newStat
+                }()
+                
+                exStat.totalCount += 1
+                if let encoded = try? JSONEncoder().encode(ex.toDTO()) {
+                    exStat.lastPerformanceDTO = encoded
+                }
+                
+                if ex.type == .strength {
+                    let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                    if maxWeight > exStat.maxWeight { exStat.maxWeight = maxWeight }
+                }
+                
+                let isCardio = ex.type == .cardio || ex.type == .duration || ex.muscleGroup == "Cardio"
+                if !isCardio {
+                    let mName = ex.muscleGroup
+                    let mStat = mStatsDict[mName] ?? {
+                        let newMStat = MuscleStat(muscleName: mName)
+                        context.insert(newMStat)
+                        mStatsDict[mName] = newMStat
+                        return newMStat
+                    }()
+                    mStat.totalCount += 1
+                }
+            }
+        }
+        
+        try? context.save()
+        refreshAllCaches(container: context.container)
+    }
+    
+    // MARK: - BACKGROUND CACHE REFRESH (Оптимизировано, без OOM)
     
     func refreshAllCaches(container: ModelContainer) {
         Task.detached(priority: .userInitiated) {
             let context = ModelContext(container)
             
-            let descriptor = FetchDescriptor<Workout>(
-                predicate: #Predicate<Workout> { $0.endTime != nil },
-                sortBy: [SortDescriptor(\.date, order: .reverse)]
-            )
+            // 1. Проверяем, нужна ли миграция или пересчет
+            let exStatsCount = (try? context.fetchCount(FetchDescriptor<ExerciseStat>())) ?? 0
+            let totalWorkoutsDesc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime != nil })
+            let totalWorkoutsCount = (try? context.fetchCount(totalWorkoutsDesc)) ?? 0
             
-            guard let workouts = try? context.fetch(descriptor) else { return }
+            if exStatsCount == 0 && totalWorkoutsCount > 0 {
+                await self.rebuildAllStats(container: container)
+                return // Пересчет сам перезапустит этот метод
+            }
+            
+            // 2. Читаем готовые агрегированные модели O(1)
+            let exStats = (try? context.fetch(FetchDescriptor<ExerciseStat>())) ?? []
+            let mStats = (try? context.fetch(FetchDescriptor<MuscleStat>())) ?? []
             
             var partialLastPerformancesDTO: [String: ExerciseDTO] = [:]
             var partialPRs: [String: Double] = [:]
-            var stats: [String: Int] = [:]
             var exerciseCounts: [String: Int] = [:]
+            var stats: [String: Int] = [:]
             
-            for workout in workouts {
-                for exercise in workout.exercises {
-                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                    
-                    for ex in targets {
-                        let name = ex.name
-                        
-                        if partialLastPerformancesDTO[name] == nil {
-                            partialLastPerformancesDTO[name] = ex.toDTO()
-                        }
-                        
-                        if ex.type == .strength {
-                            let maxWeight = ex.setsList
-                                .filter { $0.isCompleted && $0.type != .warmup }
-                                .compactMap { $0.weight }
-                                .max() ?? 0
-                                
-                            let currentMax = partialPRs[name] ?? 0.0
-                            if maxWeight > currentMax { partialPRs[name] = maxWeight }
-                        }
-                        
-                        let isCardio = ex.type == .cardio || ex.type == .duration || ex.muscleGroup == "Cardio"
-                        if !isCardio {
-                            stats[ex.muscleGroup, default: 0] += 1
-                        }
-                        exerciseCounts[name, default: 0] += 1
-                    }
+            for ex in exStats {
+                partialPRs[ex.exerciseName] = ex.maxWeight
+                exerciseCounts[ex.exerciseName] = ex.totalCount
+                if let data = ex.lastPerformanceDTO, let dto = try? JSONDecoder().decode(ExerciseDTO.self, from: data) {
+                    partialLastPerformancesDTO[ex.exerciseName] = dto
                 }
             }
             
-            let recovery = RecoveryCalculator.calculate(hours: nil, workouts: workouts)
+            for m in mStats {
+                stats[m.muscleName] = m.totalCount
+            }
+            
+            // 3. Достаем "сырые" тренировки только за последние 90 дней для Recovery и Аналитики
+            let calendar = Calendar.current
+            let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: Date())!
+            
+            var recentDesc = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= threeMonthsAgo },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            recentDesc.fetchLimit = 150 // Гарантированная защита от OOM, даже если пользователь монстр
+            let recentWorkouts = (try? context.fetch(recentDesc)) ?? []
+            
+            let recovery = RecoveryCalculator.calculate(hours: nil, workouts: recentWorkouts)
             let sortedMuscleData = stats.map { (muscle: $0.key, count: $0.value) }.filter { $0.count > 0 }.sorted { $0.count > $1.count }
             let totalExCount = sortedMuscleData.reduce(0) { $0 + $1.count }
             let topExercises = Array(exerciseCounts.sorted { $0.value > $1.value || ($0.value == $1.value && $0.key < $1.key) }.prefix(5)).map { (name: $0.key, count: $0.value) }
             
-            let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
-            let bWeek = StatisticsManager.getBestStats(for: .week, workouts: workouts)
-            let bMonth = StatisticsManager.getBestStats(for: .month, workouts: workouts)
-            let weakPts = AnalyticsManager.getWeakPoints(recentWorkouts: workouts)
-            let recs = AnalyticsManager.getRecommendations(workouts: workouts, recoveryStatus: recovery)
+            let streak = StatisticsManager.calculateWorkoutStreak(workouts: recentWorkouts)
+            let bWeek = StatisticsManager.getBestStats(for: .week, workouts: recentWorkouts)
+            let bMonth = StatisticsManager.getBestStats(for: .month, workouts: recentWorkouts)
+            let weakPts = AnalyticsManager.getWeakPoints(recentWorkouts: recentWorkouts)
+            let recs = AnalyticsManager.getRecommendations(workouts: recentWorkouts, recoveryStatus: recovery)
             
             await MainActor.run {
-                // Загружаем словарь в главный кэш
                 self.loadDictionary(context: ModelContext(container))
                 
                 var newPerformancesCache: [String: Exercise] = [:]
@@ -156,6 +256,76 @@ class WorkoutViewModel: ObservableObject {
                 self.weakPoints = weakPts
                 self.recommendations = recs
             }
+        }
+    }
+    
+    // ИСПРАВЛЕНИЕ: Универсальный инструмент пересчета статистики для решения проблемы рассинхронизации.
+    func rebuildAllStats(container: ModelContainer) async {
+        Task.detached(priority: .background) {
+            let context = ModelContext(container)
+            
+            // Полная очистка старых агрегатов для чистого пересчета
+            try? context.delete(model: UserStats.self)
+            try? context.delete(model: ExerciseStat.self)
+            try? context.delete(model: MuscleStat.self)
+            
+            let allDesc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime != nil })
+            guard let allWorkouts = try? context.fetch(allDesc) else { return }
+            
+            let uStats = UserStats()
+            context.insert(uStats)
+            
+            var exStatsDict: [String: ExerciseStat] = [:]
+            var mStatsDict: [String: MuscleStat] = [:]
+            
+            for workout in allWorkouts {
+                uStats.totalWorkouts += 1
+                uStats.totalVolume += workout.exercises.reduce(0.0) { $0 + $1.computedVolume }
+                uStats.totalDistance += workout.exercises.filter { $0.type == .cardio }.reduce(0.0) { $0 + ($1.distance ?? 0) }
+                
+                let hour = Calendar.current.component(.hour, from: workout.date)
+                if hour < 9 { uStats.earlyWorkouts += 1 }
+                if hour >= 20 { uStats.nightWorkouts += 1 }
+                
+                for exercise in workout.exercises {
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targets {
+                        let name = ex.name
+                        
+                        let exStat = exStatsDict[name] ?? {
+                            let stat = ExerciseStat(exerciseName: name)
+                            context.insert(stat)
+                            exStatsDict[name] = stat
+                            return stat
+                        }()
+                        
+                        exStat.totalCount += 1
+                        if let encoded = try? JSONEncoder().encode(ex.toDTO()) {
+                            exStat.lastPerformanceDTO = encoded
+                        }
+                        if ex.type == .strength {
+                            let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                            if maxWeight > exStat.maxWeight { exStat.maxWeight = maxWeight }
+                        }
+                        
+                        let isCardio = ex.type == .cardio || ex.type == .duration || ex.muscleGroup == "Cardio"
+                        if !isCardio {
+                            let mName = ex.muscleGroup
+                            let mStat = mStatsDict[mName] ?? {
+                                let stat = MuscleStat(muscleName: mName)
+                                context.insert(stat)
+                                mStatsDict[mName] = stat
+                                return stat
+                            }()
+                            mStat.totalCount += 1
+                        }
+                    }
+                }
+            }
+            try? context.save()
+            
+            // После завершения пересчета запускаем нормальное обновление кэшей
+            await self.refreshAllCaches(container: container)
         }
     }
     
@@ -296,21 +466,29 @@ class WorkoutViewModel: ObservableObject {
         do {
             let preset = try ImportExportService.importPreset(from: url)
             
-            // ИСПРАВЛЕНИЕ: Проверка на существование дубликата по имени
-            let presetName = preset.name
-            let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.name == presetName })
-            let existingCount = (try? context.fetchCount(descriptor)) ?? 0
+            // ИСПРАВЛЕНИЕ: Автоматическое добавление суффикса, если имя занято
+            let baseName = preset.name
+            var finalName = baseName
+            var suffixCounter = 1
             
-            if existingCount > 0 {
-                showError(
-                    title: String(localized: "Duplicate Template"),
-                    message: String(localized: "You already have a template named '\(presetName)'.")
-                )
-                return false
+            while true {
+                let nameToCheck = finalName
+                let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.name == nameToCheck })
+                let existingCount = (try? context.fetchCount(descriptor)) ?? 0
+                
+                if existingCount == 0 {
+                    break // Нашли уникальное имя
+                }
+                
+                // Имя занято, добавляем суффикс и пробуем снова
+                finalName = "\(baseName) (\(suffixCounter))"
+                suffixCounter += 1
             }
             
+            preset.name = finalName
             context.insert(preset)
             try? context.save()
+            
             return true
             
         } catch {
@@ -324,10 +502,13 @@ class WorkoutViewModel: ObservableObject {
     func updateWidgetData(container: ModelContainer) {
         Task.detached(priority: .background) {
             let context = ModelContext(container)
-            let descriptor = FetchDescriptor<Workout>(
-                predicate: #Predicate<Workout> { $0.endTime != nil },
+            // Виджету достаточно последних 6 недель. Лимитируем, чтобы не тянуть 500 тренировок
+            let sixWeeksAgo = Calendar.current.date(byAdding: .weekOfYear, value: -6, to: Date())!
+            var descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= sixWeeksAgo },
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
             )
+            descriptor.fetchLimit = 100
             
             guard let workouts = try? context.fetch(descriptor) else { return }
             

@@ -400,10 +400,13 @@ struct DebouncedSearchBar: View {
                     
                     // Создаем новую задачу с задержкой 300мс
                     debounceTask = Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 300_000_000)
-                        // Если задача не была отменена следующим нажатием, обновляем основной текст
-                        if !Task.isCancelled {
+                        do {
+                            // try await позволит мгновенно прервать sleep при отмене
+                            try await Task.sleep(nanoseconds: 300_000_000)
+                            // Если сон не был прерван, обновляем текст
                             text = newValue
+                        } catch {
+                            // Задача была отменена (CancellationError)
                         }
                     }
                 }

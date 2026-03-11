@@ -4,16 +4,18 @@ import SwiftData
 struct ProfileView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) private var modelContext
     
-    // Данные базы напрямую из SwiftData
-    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    @Query private var userStats: [UserStats]
+    
+    // Вытягиваем историю веса напрямую из БД
+    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     
     @AppStorage("userName") private var userName = "Fitness Enthusiast"
     @AppStorage("userBodyWeight") private var userBodyWeight = 75.0  // Хранится в кг
     @AppStorage("userGender") private var userGender = "male" // "male" or "female"
     
-    @StateObject private var unitsManager = UnitsManager.shared
-    @StateObject private var weightManager = WeightTrackingManager.shared
+    @ObservedObject private var unitsManager = UnitsManager.shared
     
     // Состояния для редактирования
     @State private var isEditingName = false
@@ -32,27 +34,37 @@ struct ProfileView: View {
     
     // Функция для обновления кеша
     private func updateCache() {
-        let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
-        cachedAchievements = AchievementCalculator.calculateAchievements(workouts: workouts, streak: streak)
-        cachedPersonalRecords = StatisticsManager.getAllPersonalRecords(workouts: workouts)
-    }
-    
-    // Уникальная сигнатура данных для инвалидации кеша при изменении результатов
-    private var cacheTrigger: String {
-        var totalValue = 0.0
-        for workout in workouts {
-            for exercise in workout.exercises {
-                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targets {
-                    for set in ex.setsList {
-                        totalValue += set.weight ?? 0.0
-                        totalValue += set.distance ?? 0.0
-                        totalValue += Double(set.time ?? 0)
-                    }
-                }
+        let stats = userStats.first ?? UserStats()
+        let currentStreak = viewModel.streakCount
+        
+        cachedAchievements = AchievementCalculator.calculateAchievements(
+            totalWorkouts: stats.totalWorkouts,
+            totalVolume: stats.totalVolume,
+            totalDistance: stats.totalDistance,
+            earlyWorkouts: stats.earlyWorkouts,
+            nightWorkouts: stats.nightWorkouts,
+            streak: currentStreak
+        )
+        
+        let container = modelContext.container
+        Task.detached(priority: .userInitiated) {
+            let bgContext = ModelContext(container)
+            let descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil }
+            )
+            
+            let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
+            let records = StatisticsManager.getAllPersonalRecords(workouts: bgWorkouts)
+            
+            await MainActor.run {
+                self.cachedPersonalRecords = records
             }
         }
-        return "\(workouts.count)-\(totalValue)"
+    }
+    
+    private var cacheTrigger: String {
+        guard let stats = userStats.first else { return "0-0.0" }
+        return "\(stats.totalWorkouts)-\(stats.totalVolume)"
     }
     
     var body: some View {
@@ -123,7 +135,7 @@ struct ProfileView: View {
                         }
                         .padding(.top, 20)
                         
-                        // 2. АЧИВКИ С ГРАДАЦИЕЙ УРОВНЕЙ
+                        // 2. АЧИВКИ
                         VStack(alignment: .leading) {
                             Text(LocalizedStringKey("Achievements")).font(.title3).bold().padding(.horizontal)
                             
@@ -134,7 +146,6 @@ struct ProfileView: View {
                                             let generator = UIImpactFeedbackGenerator(style: .medium)
                                             generator.impactOccurred()
                                             
-                                            // Добавлена анимация появления попапа
                                             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                                                 selectedAchievement = achievement
                                             }
@@ -154,7 +165,6 @@ struct ProfileView: View {
                                 VStack(spacing: 0) {
                                     ForEach(cachedPersonalRecords) { record in
                                         HStack {
-                                            // Иконка типа
                                             Image(systemName: getIcon(for: record.type))
                                                 .foregroundColor(getColor(for: record.type))
                                                 .frame(width: 30)
@@ -206,12 +216,12 @@ struct ProfileView: View {
                     Button(LocalizedStringKey("Save")) { 
                         let sanitizedWeight = tempWeight.replacingOccurrences(of: ",", with: ".")
                         if let val = Double(sanitizedWeight) { 
-                            // Конвертируем из выбранных единиц в кг для сохранения
                             let weightInKg = unitsManager.convertToKilograms(val)
                             userBodyWeight = weightInKg
                             
-                            // Автоматически сохраняем запись в историю веса
-                            weightManager.addWeightEntry(weight: weightInKg, date: Date())
+                            // Сохраняем в БД напрямую через SwiftData
+                            let newEntry = WeightEntry(date: Date(), weight: weightInKg)
+                            modelContext.insert(newEntry)
                         }
                     }
                     Button(LocalizedStringKey("Cancel"), role: .cancel) { }
@@ -220,7 +230,11 @@ struct ProfileView: View {
                     WeightHistoryView()
                 }
                 .onAppear {
-                    weightManager.initializeFirstWeightIfNeeded(from: userBodyWeight)
+                    // Добавляем первую запись в SwiftData, если история пуста
+                    if weightHistory.isEmpty {
+                        let initialEntry = WeightEntry(date: Date(), weight: userBodyWeight)
+                        modelContext.insert(initialEntry)
+                    }
                     updateCache()
                 }
                 .onChange(of: cacheTrigger) { _, _ in
@@ -241,7 +255,6 @@ struct ProfileView: View {
         }
     }
     
-    // Вспомогательные функции для иконок
     func getIcon(for type: ExerciseType) -> String {
         switch type {
         case .strength: return "dumbbell.fill"
@@ -263,7 +276,6 @@ struct ProfileView: View {
 struct AchievementBadge: View {
     let achievement: Achievement
     
-    // Более спокойные, "настоящие" металлические цвета для градиента
     var angularColors: [Color] {
         switch achievement.tier {
         case .none:
@@ -282,22 +294,18 @@ struct AchievementBadge: View {
     var body: some View {
         VStack(spacing: 8) {
             ZStack {
-                // Базовый темный фон круга
                 Circle()
                     .fill(Color(UIColor.secondarySystemBackground))
                     .shadow(color: .black.opacity(0.1), radius: 3, x: 0, y: 2)
                 
                 if achievement.isUnlocked {
-                    // Кольцо с металлическим градиентом
                     Circle()
                         .strokeBorder(
                             AngularGradient(gradient: Gradient(colors: angularColors), center: .center),
                             lineWidth: 8
                         )
-                        // Аккуратная тень под кольцом вместо вырвиглазного свечения
                         .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 2)
                     
-                    // Объемная иконка
                     Image(systemName: achievement.icon)
                         .font(.system(size: 30, weight: .bold))
                         .foregroundStyle(
@@ -310,7 +318,6 @@ struct AchievementBadge: View {
                         .shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
                     
                 } else {
-                    // Состояние "Заблокировано"
                     Circle()
                         .strokeBorder(Color.gray.opacity(0.2), lineWidth: 8)
                     
@@ -318,7 +325,6 @@ struct AchievementBadge: View {
                         .font(.system(size: 30, weight: .bold))
                         .foregroundColor(.gray.opacity(0.3))
                     
-                    // Замок
                     Image(systemName: "lock.fill")
                         .font(.caption2)
                         .foregroundColor(.white)
@@ -330,7 +336,6 @@ struct AchievementBadge: View {
             }
             .frame(width: 80, height: 80)
             
-            // Текст ачивки (с фиксом локализации)
             Text(achievement.title)
                 .font(.caption)
                 .fontWeight(achievement.isUnlocked ? .bold : .medium)
@@ -367,23 +372,19 @@ struct AchievementPopupView: View {
     
     var body: some View {
         ZStack {
-            // Эффект темного матового стекла на фоне
             Color.black.opacity(0.4)
                 .background(.ultraThinMaterial)
                 .ignoresSafeArea()
                 .onTapGesture { onClose() }
             
-            // Запускаем конфетти, если ачивка разблокирована
             if achievement.isUnlocked {
                 AchievementConfetti()
                     .allowsHitTesting(false)
             }
             
             VStack(spacing: 24) {
-                // Большая анимированная медаль
                 ZStack {
                     if achievement.isUnlocked {
-                        // Свечение на фоне
                         Circle()
                             .fill(AngularGradient(gradient: Gradient(colors: angularColors), center: .center))
                             .frame(width: 110, height: 110)
@@ -429,7 +430,6 @@ struct AchievementPopupView: View {
                 .scaleEffect(isAnimating ? 1.05 : 0.95)
                 .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isAnimating)
                 
-                // Текст названия и описания (Исправлена локализация)
                 VStack(spacing: 8) {
                     Text(achievement.title)
                         .font(.title2)
@@ -442,7 +442,6 @@ struct AchievementPopupView: View {
                         .foregroundColor(.secondary)
                 }
                 
-                // Плашка со статусом выполнения
                 VStack(spacing: 8) {
                     if achievement.isUnlocked {
                         HStack(spacing: 4) {
@@ -472,7 +471,6 @@ struct AchievementPopupView: View {
                 .background(Color.primary.opacity(0.05))
                 .cornerRadius(12)
                 
-                // Кнопка закрытия
                 Button(action: onClose) {
                     Text(LocalizedStringKey("Cool!"))
                         .font(.headline)
@@ -494,7 +492,7 @@ struct AchievementPopupView: View {
         }
     }
 }
-// MARK: - Эффект Салюта / Конфетти для новых достижений
+
 struct AchievementConfetti: View {
     @State private var animate = false
     
@@ -523,7 +521,6 @@ struct AchievementConfetti: View {
             }
         }
         .onAppear {
-            // Небольшая задержка, чтобы окно успело появиться
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 animate = true
             }

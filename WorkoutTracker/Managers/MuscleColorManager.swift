@@ -1,111 +1,56 @@
-//
-//  MuscleColorManager.swift
-//  WorkoutTracker
-//
-//  Менеджер для хранения пользовательских цветов групп мышц.
-//  Отвечает за:
-//  1. Хранение пользовательских цветов для групп мышц
-//  2. Синхронизацию данных с UserDefaults (персистентность)
-//  3. Предоставление дефолтных цветов, если пользователь не настроил свои
-//
-
-import Foundation
 internal import SwiftUI
-import UIKit
+import SwiftData
 import Combine
 
+@MainActor
 class MuscleColorManager: ObservableObject {
-    
-    // MARK: - Singleton
     static let shared = MuscleColorManager()
     
-    // MARK: - Published State
+    @Published var colors: [String: String] = [:]
     
-    /// Словарь с цветами: [Название группы мышц : [r, g, b, a]]
-    @Published private(set) var colors: [String: [Double]] = [:]
-    
-    // MARK: - Constants
-    
-    private let userDefaultsKey = "muscleGroupColors"
-    
-    // Дефолтные цвета для групп мышц
-    static let defaultColors: [String: Color] = [
-        "Chest": .red,
-        "Back": .blue,
-        "Legs": .green,
-        "Arms": .orange,
+    // ИСПРАВЛЕНИЕ: Дефолтные красивые цвета для диаграммы, если пользователь их не менял
+    private let defaultColors: [String: Color] = [
+        "Chest": .blue,
+        "Back": .green,
+        "Legs": .orange,
         "Shoulders": .purple,
-        "Core": .pink,
-        "Cardio": .cyan
+        "Arms": .red,
+        "Core": .yellow,
+        "Cardio": .teal
     ]
     
-    // MARK: - Init
+    private init() {}
     
-    private init() {
-        loadColors()
-    }
-    
-    // MARK: - Public Methods
-    
-    /// Получить цвет для группы мышц
-    func getColor(for muscleGroup: String) -> Color {
-        if let rgba = colors[muscleGroup], rgba.count == 4 {
-            return Color(
-                red: rgba[0],
-                green: rgba[1],
-                blue: rgba[2],
-                opacity: rgba[3]
-            )
+    func load(context: ModelContext) {
+        let descriptor = FetchDescriptor<MuscleColorPreference>()
+        if let prefs = try? context.fetch(descriptor), !prefs.isEmpty {
+            for pref in prefs {
+                colors[pref.muscleName] = pref.hexColor
+            }
         }
-        // Возвращаем дефолтный цвет или серый
-        return Self.defaultColors[muscleGroup] ?? .gray
     }
     
-    /// Установить цвет для группы мышц
-    func setColor(_ color: Color, for muscleGroup: String) {
-        let rgba = colorToRGBA(color)
-        colors[muscleGroup] = rgba
-        saveColors()
-    }
-    
-    /// Сбросить цвет к дефолтному
-    func resetColor(for muscleGroup: String) {
-        colors.removeValue(forKey: muscleGroup)
-        saveColors()
-    }
-    
-    /// Сбросить все цвета к дефолтным
-    func resetAllColors() {
-        colors.removeAll()
-        saveColors()
-    }
-    
-    // MARK: - Persistence (UserDefaults)
-    
-    private func saveColors() {
-        UserDefaults.standard.set(colors, forKey: userDefaultsKey)
-        objectWillChange.send()
-    }
-    
-    private func loadColors() {
-        if let saved = UserDefaults.standard.dictionary(forKey: userDefaultsKey) as? [String: [Double]] {
-            self.colors = saved
+    func save(muscle: String, hex: String, context: ModelContext) {
+        colors[muscle] = hex
+        
+        let descriptor = FetchDescriptor<MuscleColorPreference>(predicate: #Predicate { $0.muscleName == muscle })
+        
+        if let existing = try? context.fetch(descriptor).first {
+            existing.hexColor = hex
         } else {
-            self.colors = [:]
+            let newPref = MuscleColorPreference(muscleName: muscle, hexColor: hex)
+            context.insert(newPref)
         }
+        
+        try? context.save()
     }
     
-    // MARK: - Helpers
-    
-    private func colorToRGBA(_ color: Color) -> [Double] {
-        let uiColor = UIColor(color)
-        var r: CGFloat = 0
-        var g: CGFloat = 0
-        var b: CGFloat = 0
-        var a: CGFloat = 0
-        
-        uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
-        
-        return [Double(r), Double(g), Double(b), Double(a)]
+    func getColor(for muscle: String) -> Color {
+        // Если пользователь задал свой цвет, возвращаем его
+        if let hex = colors[muscle] {
+            return Color(hex: hex)
+        }
+        // Иначе возвращаем дефолтный цвет для этой группы
+        return defaultColors[muscle] ?? .gray
     }
 }

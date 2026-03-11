@@ -1,97 +1,124 @@
-//
-//  MuscleColorSettingsView.swift
-//  WorkoutTracker
-//
-//  Модальное окно для настройки цветов групп мышц в круговой диаграмме
-//
-
 internal import SwiftUI
+import SwiftData
 
 struct MuscleColorSettingsView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) private var modelContext
     @StateObject private var colorManager = MuscleColorManager.shared
     
-    // Все возможные группы мышц
-    let muscleGroups = ["Chest", "Back", "Legs", "Arms", "Shoulders", "Core", "Cardio"]
+    // ИСПРАВЛЕНИЕ: Оставляем только основные группы мышц (как они записаны в тренировках)
+    let muscles = [
+        "Chest", "Back", "Legs", "Shoulders", "Arms", "Core"
+    ]
+    
+    // Дефолтные пресеты цветов для быстрого выбора
+    let colorPresets: [Color] = [
+        .red, .orange, .yellow, .green, .blue, .purple, .pink, .teal, .indigo, .brown
+    ]
+    
+    @State private var selectedMuscle: String? = nil
     
     var body: some View {
         NavigationStack {
             List {
-                ForEach(muscleGroups, id: \.self) { muscleGroup in
-                    MuscleColorRow(
-                        muscleGroup: muscleGroup,
-                        colorManager: colorManager
-                    )
-                }
-                
-                Section {
-                    Button(role: .destructive) {
-                        colorManager.resetAllColors()
-                    } label: {
+                Section(header: Text(LocalizedStringKey("Chart Colors")),
+                        footer: Text(LocalizedStringKey("Customize the colors used to represent different muscle groups in your dashboard."))) {
+                    
+                    ForEach(muscles, id: \.self) { muscle in
                         HStack {
+                            Text(LocalizedStringKey(muscle))
                             Spacer()
-                            Text(LocalizedStringKey("Reset All Colors"))
-                            Spacer()
+                            
+                            // Текущий цвет
+                            Circle()
+                                .fill(colorManager.getColor(for: muscle))
+                                .frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(Color.gray.opacity(0.3), lineWidth: 1))
+                                .onTapGesture {
+                                    selectedMuscle = muscle
+                                }
                         }
                     }
                 }
             }
-            .navigationTitle(LocalizedStringKey("Muscle Group Colors"))
+            .navigationTitle(LocalizedStringKey("Customize Colors"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Done")) {
                         dismiss()
                     }
                 }
             }
+            // Шторка с выбором цвета
+            .sheet(item: Binding(
+                get: { selectedMuscle.map { IdentifiableString(id: $0) } },
+                set: { selectedMuscle = $0?.id }
+            )) { muscleItem in
+                NavigationStack {
+                    VStack(spacing: 30) {
+                        Text(LocalizedStringKey("Choose Color for \(muscleItem.id)"))
+                            .font(.headline)
+                            .padding(.top)
+                        
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 60))], spacing: 20) {
+                            ForEach(colorPresets, id: \.self) { color in
+                                Circle()
+                                    .fill(color)
+                                    .frame(width: 50, height: 50)
+                                    .overlay(
+                                        Circle().stroke(Color.primary, lineWidth: colorManager.getColor(for: muscleItem.id) == color ? 3 : 0)
+                                    )
+                                    .onTapGesture {
+                                        colorManager.save(muscle: muscleItem.id, hex: color.toHex() ?? "0000FF", context: modelContext)
+                                        selectedMuscle = nil
+                                    }
+                            }
+                        }
+                        .padding()
+                        
+                        Spacer()
+                    }
+                    .navigationTitle(LocalizedStringKey("Select Color"))
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(LocalizedStringKey("Cancel")) {
+                                selectedMuscle = nil
+                            }
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
+            }
         }
     }
 }
 
-struct MuscleColorRow: View {
-    let muscleGroup: String
-    @ObservedObject var colorManager: MuscleColorManager
-    
-    @State private var selectedColor: Color
-    
-    init(muscleGroup: String, colorManager: MuscleColorManager) {
-        self.muscleGroup = muscleGroup
-        self.colorManager = colorManager
-        _selectedColor = State(initialValue: colorManager.getColor(for: muscleGroup))
-    }
-    
-    var body: some View {
-        HStack {
-            // Цветной индикатор
-            Circle()
-                .fill(selectedColor)
-                .frame(width: 30, height: 30)
-                .overlay(
-                    Circle()
-                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                )
-            
-            Text(LocalizedStringKey(muscleGroup))
-                .font(.body)
-            
-            Spacer()
-            
-            // ColorPicker
-            ColorPicker("", selection: $selectedColor, supportsOpacity: false)
-                .labelsHidden()
-                .onChange(of: selectedColor) { newColor in
-                    colorManager.setColor(newColor, for: muscleGroup)
-                }
-            
-            // Кнопка сброса
-            Button {
-                colorManager.resetColor(for: muscleGroup)
-                selectedColor = MuscleColorManager.defaultColors[muscleGroup] ?? .gray
-            } label: {
-                Image(systemName: "arrow.counterclockwise")
-                    .foregroundColor(.secondary)
-                    .font(.body)
-            }
+// Утилита для работы с Sheet
+struct IdentifiableString: Identifiable {
+    let id: String
+}
+
+// Расширение для конвертации Color в HEX
+extension Color {
+    func toHex() -> String? {
+        let uic = UIColor(self)
+        guard let components = uic.cgColor.components, components.count >= 3 else {
+            return nil
+        }
+        let r = Float(components[0])
+        let g = Float(components[1])
+        let b = Float(components[2])
+        var a = Float(1.0)
+        
+        if components.count >= 4 {
+            a = Float(components[3])
+        }
+        
+        if a != Float(1.0) {
+            return String(format: "%02lX%02lX%02lX%02lX", lroundf(r * 255), lroundf(g * 255), lroundf(b * 255), lroundf(a * 255))
+        } else {
+            return String(format: "%02lX%02lX%02lX", lroundf(r * 255), lroundf(g * 255), lroundf(b * 255))
         }
     }
 }

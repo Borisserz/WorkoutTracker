@@ -46,7 +46,6 @@ struct WorkoutDetailView: View {
     @State private var showSupersetBuilder = false
     @State private var showShareSheet = false
     @State private var showEmptyWorkoutAlert = false
-    @State private var showFinishWorkoutConfirmation = false
     
     // Редактирование
     @State private var exerciseToEdit: Exercise?
@@ -60,18 +59,18 @@ struct WorkoutDetailView: View {
     @State private var exerciseToSwap: Exercise?
     @State private var tempSwapList: [Exercise] = [] // Временный буфер для выбора замены
     
-    // Удаление с предупреждением
-    @State private var showDeleteExerciseAlert = false
-    @State private var exerciseToDelete: Exercise?
-    @State private var showDeleteSupersetAlert = false
-    @State private var supersetToDelete: Exercise?
-    
     // НОВОЕ: Состояние для рекорда на уровне всего экрана тренировки
     @State private var showPRCelebration = false
     @State private var prLevel: PRLevel = .bronze
     
     // НОВОЕ: Состояние для отображения только что полученного достижения
     @State private var newlyUnlockedAchievement: Achievement?
+    
+    // НОВОЕ: Snackbar/Undo State
+    @State private var snackbarMessage: LocalizedStringKey?
+    @State private var snackbarCommitAction: (() -> Void)?
+    @State private var snackbarUndoAction: (() -> Void)?
+    @State private var snackbarTimer: Timer?
     
     // Sharing
     @State private var shareItems: [Any] = []
@@ -175,6 +174,31 @@ struct WorkoutDetailView: View {
                         alignment: .top
                     )
                 }
+                
+                // --- SNACKBAR (UNDO PATTERN) ---
+                if let message = snackbarMessage {
+                    HStack {
+                        Text(message)
+                            .font(.subheadline)
+                            .foregroundColor(.white)
+                        Spacer()
+                        Button(action: undoAction) {
+                            Text(LocalizedStringKey("Undo"))
+                                .font(.subheadline)
+                                .bold()
+                                .foregroundColor(.yellow)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.darkGray).opacity(0.95))
+                    .cornerRadius(10)
+                    .shadow(radius: 5)
+                    .padding(.horizontal)
+                    // Сдвигаем с учетом таймера и FAB
+                    .padding(.bottom, workout.isActive ? (timerManager.isRestTimerActive ? 160 : 80) : 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(100)
+                }
             }
             .navigationTitle(workout.title)
             .toolbar {
@@ -195,6 +219,9 @@ struct WorkoutDetailView: View {
                         expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
                     }
                 }
+            }
+            .onDisappear {
+                commitSnackbar() // Обязательно применяем действие, если пользователь ушел с экрана
             }
             .onChange(of: workout.exercises.count) { oldCount, newCount in
                 updateComputedData()
@@ -242,8 +269,18 @@ struct WorkoutDetailView: View {
                 supersetToEdit = nil
             }, onDelete: {
                 if let index = workout.exercises.firstIndex(where: { $0.id == superset.id }) {
-                    supersetToDelete = workout.exercises[index]
-                    showDeleteSupersetAlert = true
+                    executeWithUndo(
+                        message: LocalizedStringKey("Superset removed"),
+                        optimisticUpdate: {
+                            workout.exercises.remove(at: index)
+                        },
+                        commit: {
+                            context.delete(superset)
+                        },
+                        undo: {
+                            workout.exercises.insert(superset, at: index)
+                        }
+                    )
                 }
                 supersetToEdit = nil
             })
@@ -258,72 +295,16 @@ struct WorkoutDetailView: View {
                     exerciseToSwap = nil
                 }
         }
-        
-        .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
-            Button(LocalizedStringKey("Delete"), role: .destructive) {
-                if let ex = exerciseToDelete {
-                    withAnimation {
-                        if let index = workout.exercises.firstIndex(where: { $0.id == ex.id }) {
-                            workout.exercises.remove(at: index)
-                        }
-                        context.delete(ex)
-                    }
-                    exerciseToDelete = nil
-                }
-            }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) {
-                exerciseToDelete = nil
-            }
-        } message: {
-            if let ex = exerciseToDelete {
-                Text(LocalizedStringKey("Are you sure you want to delete '\(ex.name)'? This action cannot be undone."))
-            } else {
-                Text(LocalizedStringKey("Are you sure you want to delete this exercise? This action cannot be undone."))
-            }
-        }
-        .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteSupersetAlert) {
-            Button(LocalizedStringKey("Delete"), role: .destructive) {
-                if let ex = supersetToDelete {
-                    withAnimation {
-                        if let index = workout.exercises.firstIndex(where: { $0.id == ex.id }) {
-                            workout.exercises.remove(at: index)
-                        }
-                        context.delete(ex)
-                    }
-                    supersetToDelete = nil
-                }
-            }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) {
-                supersetToDelete = nil
-            }
-        } message: {
-            Text(LocalizedStringKey("Are you sure you want to delete this superset? This action cannot be undone."))
-        }
         .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyWorkoutAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
-                context.delete(workout)
-                
-                // Фикс: сохраняем изменения и обновляем кэш, чтобы Overview не пытался прочесть удаленный объект
-                try? context.save()
-                viewModel.updateWidgetData(container: context.container)
-                viewModel.refreshAllCaches(container: context.container)
-                
-                // Останавливаем таймер при удалении пустой тренировки
+                // ИСПРАВЛЕНИЕ: Используем централизованный метод ViewModel для консистентного удаления тренировки
+                viewModel.deleteWorkout(workout, context: context)
                 timerManager.stopRestTimer()
-                
                 dismiss()
             }
             Button(LocalizedStringKey("Continue"), role: .cancel) { }
         } message: {
             Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
-        }
-        .alert(LocalizedStringKey("Finish Workout?"), isPresented: $showFinishWorkoutConfirmation) {
-            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
-            Button(LocalizedStringKey("Finish Workout")) {
-                executeFinishWorkout()
-            }
-        } message: {
-            Text(LocalizedStringKey("Are you sure you want to finish and save this workout?"))
         }
         // ДОБАВЛЕНО: Полноэкранное отображение рекорда
         .fullScreenCover(isPresented: $showPRCelebration) {
@@ -500,9 +481,22 @@ struct WorkoutDetailView: View {
                 VStack(spacing: 16) {
                     ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
                         
+                        // ИСПОЛЬЗУЕМ SNACKBAR ВМЕСТО ALERT
                         let deleteAction = {
-                            self.exerciseToDelete = exercise
-                            self.showDeleteExerciseAlert = true
+                            if let removeIndex = workout.exercises.firstIndex(where: { $0.id == exercise.id }) {
+                                executeWithUndo(
+                                    message: LocalizedStringKey("Exercise removed"),
+                                    optimisticUpdate: {
+                                        workout.exercises.remove(at: removeIndex)
+                                    },
+                                    commit: {
+                                        context.delete(exercise)
+                                    },
+                                    undo: {
+                                        workout.exercises.insert(exercise, at: removeIndex)
+                                    }
+                                )
+                            }
                         }
                         
                         let swapAction = {
@@ -686,6 +680,50 @@ struct WorkoutDetailView: View {
     
     // MARK: - Logic & Actions
     
+    // УПРАВЛЕНИЕ SNACKBAR (UNDO)
+    private func executeWithUndo(
+        message: LocalizedStringKey,
+        optimisticUpdate: @escaping () -> Void,
+        commit: @escaping () -> Void,
+        undo: @escaping () -> Void
+    ) {
+        // Применяем предыдущее отложенное действие, если оно еще висит
+        commitSnackbar()
+        
+        withAnimation {
+            optimisticUpdate()
+            snackbarMessage = message
+        }
+        
+        snackbarCommitAction = commit
+        snackbarUndoAction = undo
+        
+        snackbarTimer?.invalidate()
+        snackbarTimer = Timer.scheduledTimer(withTimeInterval: 3.5, repeats: false) { _ in
+            self.commitSnackbar()
+        }
+    }
+    
+    private func commitSnackbar() {
+        snackbarCommitAction?()
+        withAnimation {
+            snackbarMessage = nil
+        }
+        snackbarCommitAction = nil
+        snackbarUndoAction = nil
+        snackbarTimer?.invalidate()
+    }
+    
+    private func undoAction() {
+        snackbarTimer?.invalidate()
+        withAnimation {
+            snackbarUndoAction?()
+            snackbarMessage = nil
+        }
+        snackbarCommitAction = nil
+        snackbarUndoAction = nil
+    }
+    
     private func updateComputedData() {
         let newFlattened = workout.exercises.flatMap { exercise in
             exercise.isSuperset ? exercise.subExercises : [exercise]
@@ -764,14 +802,23 @@ struct WorkoutDetailView: View {
             return
         }
         
-        // Если есть выполненные подходы - вызываем подтверждение
-        showFinishWorkoutConfirmation = true
+        // ИСПОЛЬЗУЕМ SNACKBAR ВМЕСТО ALERT
+        executeWithUndo(
+            message: LocalizedStringKey("Workout finished"),
+            optimisticUpdate: {
+                workout.endTime = Date() // Визуально переключает экран в Completed
+                timerManager.stopRestTimer()
+            },
+            commit: {
+                executeFinishWorkoutBackend()
+            },
+            undo: {
+                workout.endTime = nil // Отменяем завершение
+            }
+        )
     }
 
-    private func executeFinishWorkout() {
-        // 1. Фиксируем время
-        workout.endTime = Date()
-        
+    private func executeFinishWorkoutBackend() {
         if tutorialManager.currentStep == .finishWorkout {
             tutorialManager.setStep(.recoveryCheck)
         }
@@ -785,10 +832,7 @@ struct WorkoutDetailView: View {
         // 4. Останавливаем Live Activity
         stopLiveActivity()
         
-        // Останавливаем глобальный таймер отдыха
-        timerManager.stopRestTimer()
-        
-        // 5. Инкрементальное обновление глобальной статистики (Агрегация: Предотвращение N+1 Faulting Bomb)
+        // Запоминаем старые статы ДО обновления для расчета новых ачивок
         let statsDescriptor = FetchDescriptor<UserStats>()
         let stats = (try? context.fetch(statsDescriptor))?.first ?? {
             let newStats = UserStats()
@@ -796,35 +840,16 @@ struct WorkoutDetailView: View {
             return newStats
         }()
         
-        // Запоминаем старые значения, ДО инкремента этой тренировкой
         let old_tWorkouts = stats.totalWorkouts
         let old_tVolume = stats.totalVolume
         let old_tDistance = stats.totalDistance
         let old_eWorkouts = stats.earlyWorkouts
         let old_nWorkouts = stats.nightWorkouts
         
-        // Считаем дистанцию (Cardio) только для текущей тренировки
-        var currentWorkoutDistance = 0.0
-        for exercise in workout.exercises {
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-            for ex in targets where ex.type == .cardio {
-                currentWorkoutDistance += ex.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
-            }
-        }
+        // 5. ИСПРАВЛЕНИЕ: Делегируем инкремент всей статистики во ViewModel, чтобы не дублировать код и избежать рассинхрона
+        viewModel.processCompletedWorkout(workout, context: context)
         
-        // Инкремент
-        stats.totalWorkouts += 1
-        stats.totalVolume += self.totalStrengthVolume // Уже посчитано во View!
-        stats.totalDistance += currentWorkoutDistance
-        
-        let hour = Calendar.current.component(.hour, from: workout.date)
-        if hour >= 4 && hour < 8 { stats.earlyWorkouts += 1 }
-        if hour >= 22 || hour < 4 { stats.nightWorkouts += 1 }
-        
-        // Сохраняем агрегированную модель на главном потоке
-        try? context.save()
-        
-        // Копируем скалярные значения для безопасной передачи в фоновую задачу
+        // Берем обновленные данные из того же объекта
         let tWorkouts = stats.totalWorkouts
         let tVolume = stats.totalVolume
         let tDistance = stats.totalDistance
@@ -837,7 +862,6 @@ struct WorkoutDetailView: View {
         Task.detached(priority: .background) {
             let bgContext = ModelContext(modelContainer)
             
-            // Запрашиваем все тренировки
             let descriptor = FetchDescriptor<Workout>(
                 predicate: #Predicate<Workout> { $0.endTime != nil },
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
@@ -845,7 +869,6 @@ struct WorkoutDetailView: View {
             
             guard let workouts = try? bgContext.fetch(descriptor) else { return }
             
-            // --- Считаем старые данные (ДО этой тренировки) ---
             let oldWorkouts = workouts.count > 1 ? Array(workouts.dropFirst()) : []
             let oldStreak = StatisticsManager.calculateWorkoutStreak(workouts: oldWorkouts)
             let oldWeekendWorkouts = oldWorkouts.filter {
@@ -868,11 +891,10 @@ struct WorkoutDetailView: View {
                 lunchWorkouts: oldLunchWorkouts
             )
             
-            // --- Считаем новые данные (ПОСЛЕ этой тренировки) ---
             let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
             let weekendWorkouts = workouts.filter {
                 let weekday = Calendar.current.component(.weekday, from: $0.date)
-                return weekday == 1 || weekday == 7 // Воскресенье (1) или Суббота (7)
+                return weekday == 1 || weekday == 7
             }.count
             
             let lunchWorkouts = workouts.filter {
@@ -891,14 +913,12 @@ struct WorkoutDetailView: View {
                 lunchWorkouts: lunchWorkouts
             )
             
-            // Ищем разницу, чтобы показать попап
             var newUnlocks: [Achievement] = []
             for i in 0..<calculatedAchievements.count {
                 guard i < oldAchievements.count else { break }
                 let oldTier = oldAchievements[i].tier
                 let newTier = calculatedAchievements[i].tier
                 
-                // Если уровень поднялся (или был .none и стал .bronze/и т.д.)
                 if newTier != oldTier && newTier != .none {
                     newUnlocks.append(calculatedAchievements[i])
                 }
@@ -908,27 +928,17 @@ struct WorkoutDetailView: View {
             
             await MainActor.run {
                 if !newUnlocks.isEmpty {
-                    // Обновляем счетчик
                     self.unlockedAchievementsCount = currentUnlockedCount
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
-                    
-                    // Показываем самую крутую или первую новую ачивку
                     self.newlyUnlockedAchievement = newUnlocks.first
                 } else if currentUnlockedCount > cachedUnlockedCount {
-                    // Фолбек на старую логику, если вдруг не поймали разницу
                     self.unlockedAchievementsCount = currentUnlockedCount
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
                 }
             }
         }
-        
-        // 6. Обновляем виджеты
-        viewModel.updateWidgetData(container: context.container)
-        
-        // 7. Обновляем кеши напрямую через ViewModel
-        viewModel.refreshAllCaches(container: context.container)
     }
     
     private func stopLiveActivity() {
@@ -1083,14 +1093,11 @@ struct FunFactView: View {
     private func pickRandomComparison() {
         guard totalStrengthVolume > 0 else { return }
         
-        // Filter out items that are heavier than the user's lifted volume
-        // Ensures the count is always >= 1.0
         let validComparisons = allComparisons.filter { totalStrengthVolume / $0.weight >= 1.0 }
         
         if let random = validComparisons.randomElement() {
             selectedComparison = random
         } else {
-            // If the user lifted very little, pick the lightest possible option
             selectedComparison = allComparisons.min(by: { $0.weight < $1.weight })
         }
     }

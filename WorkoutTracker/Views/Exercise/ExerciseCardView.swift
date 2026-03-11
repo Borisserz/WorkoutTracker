@@ -37,7 +37,6 @@ struct ExerciseCardView: View {
     
     @State private var showEffortSheet = false
     @Binding var isExpanded: Bool // Состояние раскрытия/сворачивания упражнения (значение bool, поэтому Binding остается)
-    @State private var showDeleteAlert = false
     @State private var newlyAddedSetId: UUID? = nil // ДОБАВЛЕНО: Для автофокуса нового сета
     
     // Callback при завершении упражнения (вызывается после закрытия EffortSheet)
@@ -132,14 +131,6 @@ struct ExerciseCardView: View {
         }) {
             EffortInputView(effort: $exercise.effort)
         }
-        .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteAlert) {
-            Button(LocalizedStringKey("Delete"), role: .destructive) {
-                onDelete()
-            }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
-        } message: {
-            Text(LocalizedStringKey("Are you sure you want to delete '\(exercise.name)'? This action cannot be undone."))
-        }
     }
     
     // MARK: - View Components
@@ -229,8 +220,9 @@ struct ExerciseCardView: View {
                         }
                     }
                     
+                    // ИСПРАВЛЕНИЕ: Удаляем локальный алерт, вызываем удаление напрямую
                     Button(role: .destructive) {
-                        showDeleteAlert = true
+                        onDelete()
                     } label: {
                         Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash")
                     }

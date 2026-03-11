@@ -114,7 +114,6 @@ struct SupersetCardView: View {
     var onPRSet: ((PRLevel) -> Void)? = nil
     
     @State private var showEffortSheet = false
-    @State private var showDeleteAlert = false
     
     private var isActiveExercise: Bool {
         isCurrentExercise && !superset.isCompleted
@@ -160,14 +159,6 @@ struct SupersetCardView: View {
         }) {
             EffortInputView(effort: $superset.effort)
         }
-        .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteAlert) {
-            Button(LocalizedStringKey("Delete"), role: .destructive) {
-                onDelete()
-            }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
-        } message: {
-            Text(LocalizedStringKey("Are you sure you want to delete this superset? This action cannot be undone."))
-        }
     }
     
     var headerView: some View {
@@ -183,8 +174,9 @@ struct SupersetCardView: View {
             }
             Spacer()
             Menu {
+                // ИСПРАВЛЕНИЕ: Удаляем локальный алерт, вызываем удаление напрямую
                 Button(role: .destructive) {
-                    showDeleteAlert = true
+                    onDelete()
                 } label: {
                     Label(LocalizedStringKey("Remove Superset"), systemImage: "trash")
                 }

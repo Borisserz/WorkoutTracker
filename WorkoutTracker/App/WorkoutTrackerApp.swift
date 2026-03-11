@@ -23,7 +23,8 @@ struct WorkoutTrackerApp: App {
     
     @State private var showImportAlert = false
     
-    let sharedModelContainer: ModelContainer
+    let sharedModelContainer: ModelContainer?
+    let databaseLoadError: Error?
     
     private var colorScheme: ColorScheme? {
         switch appearanceMode {
@@ -35,88 +36,109 @@ struct WorkoutTrackerApp: App {
     
     init() {
         do {
-            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self)
+            // ИСПРАВЛЕНИЕ: Добавлены WeightEntry и MuscleColorPreference в единый контейнер данных
+            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self)
+            databaseLoadError = nil
         } catch {
-            print("Could not create ModelContainer, attempting to backup corrupted/unmigrated database: \(error)")
-            
-            // БЭКАПИМ, а не удаляем поврежденные/непромигрировавшие файлы базы данных
-            let fileManager = FileManager.default
-            let storeURL = URL.applicationSupportDirectory.appending(path: "default.store")
-            let shmURL = URL.applicationSupportDirectory.appending(path: "default.store-shm")
-            let walURL = URL.applicationSupportDirectory.appending(path: "default.store-wal")
-            
-            // Создаем уникальный суффикс для бэкапа
-            let backupSuffix = "-backup-\(Int(Date().timeIntervalSince1970))"
-            let backupStoreURL = URL.applicationSupportDirectory.appending(path: "default.store\(backupSuffix)")
-            let backupShmURL = URL.applicationSupportDirectory.appending(path: "default.store-shm\(backupSuffix)")
-            let backupWalURL = URL.applicationSupportDirectory.appending(path: "default.store-wal\(backupSuffix)")
-            
-            try? fileManager.moveItem(at: storeURL, to: backupStoreURL)
-            try? fileManager.moveItem(at: shmURL, to: backupShmURL)
-            try? fileManager.moveItem(at: walURL, to: backupWalURL)
-            
-            print("Original database preserved at: \(backupStoreURL.path)")
-            
-            do {
-                // Пробуем создать новую чистую базу данных
-                sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self)
-            } catch {
-                print("Failed to recreate ModelContainer, falling back to in-memory store: \(error)")
-                // Запасной вариант (Fallback): база в оперативной памяти, чтобы избежать 100% крэшей
-                let fallbackConfig = ModelConfiguration(isStoredInMemoryOnly: true)
-                do {
-                    sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, configurations: fallbackConfig)
-                } catch {
-                    fatalError("Critical failure: Could not create even an in-memory ModelContainer: \(error)")
-                }
-            }
+            print("Could not create ModelContainer: \(error)")
+            // Оставляем контейнер пустым и сохраняем ошибку, чтобы показать её в UI.
+            // Ни в коем случае не удаляем и не подменяем файлы базы данных.
+            sharedModelContainer = nil
+            databaseLoadError = error
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if hasCompletedOnboarding {
-                    ContentView()
-                        .transition(.opacity)
-                } else {
-                    OnboardingFlowView(isOnboardingCompleted: $hasCompletedOnboarding)
+            if let container = sharedModelContainer {
+                Group {
+                    if hasCompletedOnboarding {
+                        ContentView()
+                            .transition(.opacity)
+                    } else {
+                        OnboardingFlowView(isOnboardingCompleted: $hasCompletedOnboarding)
+                    }
                 }
-            }
-            // ИСПРАВЛЕНИЕ: environmentObject должны быть ЗДЕСЬ, чтобы избежать крэша во время transition
-            .environmentObject(viewModel)
-            .environmentObject(tutorialManager)
-            .environmentObject(timerManager)
-            .onAppear {
-                viewModel.checkAndGenerateDefaultPresets(context: sharedModelContainer.mainContext)
-            }
-            .onOpenURL { url in
-                if viewModel.importPreset(from: url, context: sharedModelContainer.mainContext) {
-                    showImportAlert = true
+                .environmentObject(viewModel)
+                .environmentObject(tutorialManager)
+                .environmentObject(timerManager)
+                .onAppear {
+                    // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ
+                    LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
+                    
+                    viewModel.checkAndGenerateDefaultPresets(context: container.mainContext)
+                    
+                    // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
+                    MuscleColorManager.shared.load(context: container.mainContext)
                 }
-            }
-            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
-                if let url = userActivity.webpageURL {
-                    if viewModel.importPreset(from: url, context: sharedModelContainer.mainContext) {
+                .onOpenURL { url in
+                    if viewModel.importPreset(from: url, context: container.mainContext) {
                         showImportAlert = true
                     }
                 }
-            }
-            .alert("Template Imported!", isPresented: $showImportAlert) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text("A new workout template has been added to your collection.")
-            }
-            .animation(.default, value: hasCompletedOnboarding)
-            .preferredColorScheme(colorScheme)
-            .onChange(of: scenePhase) { newPhase in
-                if newPhase == .active {
-                    UIApplication.shared.applicationIconBadgeNumber = 0
-                    UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                    if let url = userActivity.webpageURL {
+                        if viewModel.importPreset(from: url, context: container.mainContext) {
+                            showImportAlert = true
+                        }
+                    }
                 }
+                .alert("Template Imported!", isPresented: $showImportAlert) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text("A new workout template has been added to your collection.")
+                }
+                .animation(.default, value: hasCompletedOnboarding)
+                .preferredColorScheme(colorScheme)
+                .onChange(of: scenePhase) { newPhase in
+                    if newPhase == .active {
+                        UIApplication.shared.applicationIconBadgeNumber = 0
+                        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+                    }
+                }
+                .modelContainer(container)
+            } else {
+                // Если база данных не загрузилась, показываем заглушку с ошибкой
+                DatabaseErrorView(error: databaseLoadError)
+                    .preferredColorScheme(colorScheme)
             }
         }
-        .modelContainer(sharedModelContainer)
+    }
+}
+
+struct DatabaseErrorView: View {
+    let error: Error?
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 64))
+                .foregroundColor(.red)
+            
+            Text("Database Error")
+                .font(.title)
+                .fontWeight(.bold)
+                .multilineTextAlignment(.center)
+            
+            Text("There was an issue loading your data. Please do not delete the app, as this could result in permanent data loss.\n\nTry restarting the app or contact support.")
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+                .padding(.horizontal)
+            
+            if let error = error {
+                ScrollView {
+                    Text(error.localizedDescription)
+                        .font(.caption)
+                        .foregroundColor(.primary)
+                        .padding()
+                }
+                .frame(maxHeight: 150)
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(12)
+                .padding(.horizontal)
+            }
+        }
+        .padding()
     }
 }
 
