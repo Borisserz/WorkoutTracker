@@ -274,7 +274,7 @@ class WorkoutViewModel: ObservableObject {
         do {
             return try ImportExportService.generateShareLink(for: preset)
         } catch {
-            showError(title: "Export Failed", message: error.localizedDescription)
+            showError(title: String(localized: "Export Failed"), message: error.localizedDescription)
             return nil
         }
     }
@@ -283,22 +283,38 @@ class WorkoutViewModel: ObservableObject {
         do {
             return try ImportExportService.exportPresetToFile(preset)
         } catch {
-            showError(title: "Export Failed", message: error.localizedDescription)
+            showError(title: String(localized: "Export Failed"), message: error.localizedDescription)
             return nil
         }
     }
     
     func exportPresetToCSV(_ preset: WorkoutPreset) -> URL? {
-        do { return try ImportExportService.exportPresetToCSV(preset) } catch { showError(title: "Export Failed", message: error.localizedDescription); return nil }
+        do { return try ImportExportService.exportPresetToCSV(preset) } catch { showError(title: String(localized: "Export Failed"), message: error.localizedDescription); return nil }
     }
     
     func importPreset(from url: URL, context: ModelContext) -> Bool {
         do {
             let preset = try ImportExportService.importPreset(from: url)
+            
+            // ИСПРАВЛЕНИЕ: Проверка на существование дубликата по имени
+            let presetName = preset.name
+            let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.name == presetName })
+            let existingCount = (try? context.fetchCount(descriptor)) ?? 0
+            
+            if existingCount > 0 {
+                showError(
+                    title: String(localized: "Duplicate Template"),
+                    message: String(localized: "You already have a template named '\(presetName)'.")
+                )
+                return false
+            }
+            
             context.insert(preset)
+            try? context.save()
             return true
+            
         } catch {
-            showError(title: "Import Failed", message: error.localizedDescription)
+            showError(title: String(localized: "Import Failed"), message: error.localizedDescription)
             return false
         }
     }

@@ -70,6 +70,9 @@ struct WorkoutDetailView: View {
     @State private var showPRCelebration = false
     @State private var prLevel: PRLevel = .bronze
     
+    // НОВОЕ: Состояние для отображения только что полученного достижения
+    @State private var newlyUnlockedAchievement: Achievement?
+    
     // Sharing
     @State private var shareItems: [Any] = []
     
@@ -331,6 +334,13 @@ struct WorkoutDetailView: View {
                     showPRCelebration = false
                 }
                 .presentationBackground(.clear)
+        }
+        // ДОБАВЛЕНО: Полноэкранное отображение полученного достижения
+        .fullScreenCover(item: $newlyUnlockedAchievement) { achievement in
+            AchievementPopupView(achievement: achievement) {
+                newlyUnlockedAchievement = nil
+            }
+            .presentationBackground(.clear)
         }
     }
     
@@ -786,6 +796,13 @@ struct WorkoutDetailView: View {
             return newStats
         }()
         
+        // Запоминаем старые значения, ДО инкремента этой тренировкой
+        let old_tWorkouts = stats.totalWorkouts
+        let old_tVolume = stats.totalVolume
+        let old_tDistance = stats.totalDistance
+        let old_eWorkouts = stats.earlyWorkouts
+        let old_nWorkouts = stats.nightWorkouts
+        
         // Считаем дистанцию (Cardio) только для текущей тренировки
         var currentWorkoutDistance = 0.0
         for exercise in workout.exercises {
@@ -820,8 +837,7 @@ struct WorkoutDetailView: View {
         Task.detached(priority: .background) {
             let bgContext = ModelContext(modelContainer)
             
-            // Запрашиваем тренировки ТОЛЬКО для расчета streak. 
-            // Prefetching удален, чтобы не грузить упражнения и сеты (предотвращение N+1).
+            // Запрашиваем все тренировки
             let descriptor = FetchDescriptor<Workout>(
                 predicate: #Predicate<Workout> { $0.endTime != nil },
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
@@ -829,24 +845,78 @@ struct WorkoutDetailView: View {
             
             guard let workouts = try? bgContext.fetch(descriptor) else { return }
             
-            // Расчет стрик-статуса безопасен: он читает только свойство .date у Workout.
-            let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
+            // --- Считаем старые данные (ДО этой тренировки) ---
+            let oldWorkouts = workouts.count > 1 ? Array(workouts.dropFirst()) : []
+            let oldStreak = StatisticsManager.calculateWorkoutStreak(workouts: oldWorkouts)
+            let oldWeekendWorkouts = oldWorkouts.filter {
+                let weekday = Calendar.current.component(.weekday, from: $0.date)
+                return weekday == 1 || weekday == 7
+            }.count
+            let oldLunchWorkouts = oldWorkouts.filter {
+                let hour = Calendar.current.component(.hour, from: $0.date)
+                return hour >= 11 && hour <= 14
+            }.count
             
-            // Передаем O(1) статистику вместо прохода по вложенным массивам сотен тренировок
+            let oldAchievements = AchievementCalculator.calculateAchievements(
+                totalWorkouts: old_tWorkouts,
+                totalVolume: old_tVolume,
+                totalDistance: old_tDistance,
+                earlyWorkouts: old_eWorkouts,
+                nightWorkouts: old_nWorkouts,
+                streak: oldStreak,
+                weekendWorkouts: oldWeekendWorkouts,
+                lunchWorkouts: oldLunchWorkouts
+            )
+            
+            // --- Считаем новые данные (ПОСЛЕ этой тренировки) ---
+            let streak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
+            let weekendWorkouts = workouts.filter {
+                let weekday = Calendar.current.component(.weekday, from: $0.date)
+                return weekday == 1 || weekday == 7 // Воскресенье (1) или Суббота (7)
+            }.count
+            
+            let lunchWorkouts = workouts.filter {
+                let hour = Calendar.current.component(.hour, from: $0.date)
+                return hour >= 11 && hour <= 14
+            }.count
+            
             let calculatedAchievements = AchievementCalculator.calculateAchievements(
                 totalWorkouts: tWorkouts,
                 totalVolume: tVolume,
                 totalDistance: tDistance,
                 earlyWorkouts: eWorkouts,
                 nightWorkouts: nWorkouts,
-                streak: streak
+                streak: streak,
+                weekendWorkouts: weekendWorkouts,
+                lunchWorkouts: lunchWorkouts
             )
+            
+            // Ищем разницу, чтобы показать попап
+            var newUnlocks: [Achievement] = []
+            for i in 0..<calculatedAchievements.count {
+                guard i < oldAchievements.count else { break }
+                let oldTier = oldAchievements[i].tier
+                let newTier = calculatedAchievements[i].tier
+                
+                // Если уровень поднялся (или был .none и стал .bronze/и т.д.)
+                if newTier != oldTier && newTier != .none {
+                    newUnlocks.append(calculatedAchievements[i])
+                }
+            }
             
             let currentUnlockedCount = calculatedAchievements.filter { $0.isUnlocked }.count
             
-            // Проверяем, появились ли *новые* ачивки
-            if currentUnlockedCount > cachedUnlockedCount {
-                await MainActor.run {
+            await MainActor.run {
+                if !newUnlocks.isEmpty {
+                    // Обновляем счетчик
+                    self.unlockedAchievementsCount = currentUnlockedCount
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.success)
+                    
+                    // Показываем самую крутую или первую новую ачивку
+                    self.newlyUnlockedAchievement = newUnlocks.first
+                } else if currentUnlockedCount > cachedUnlockedCount {
+                    // Фолбек на старую логику, если вдруг не поймали разницу
                     self.unlockedAchievementsCount = currentUnlockedCount
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)

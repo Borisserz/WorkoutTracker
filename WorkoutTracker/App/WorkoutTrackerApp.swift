@@ -37,20 +37,28 @@ struct WorkoutTrackerApp: App {
         do {
             sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self)
         } catch {
-            print("Could not create ModelContainer, attempting to delete corrupted database: \(error)")
+            print("Could not create ModelContainer, attempting to backup corrupted/unmigrated database: \(error)")
             
-            // Удаляем поврежденные файлы базы данных
+            // БЭКАПИМ, а не удаляем поврежденные/непромигрировавшие файлы базы данных
             let fileManager = FileManager.default
             let storeURL = URL.applicationSupportDirectory.appending(path: "default.store")
             let shmURL = URL.applicationSupportDirectory.appending(path: "default.store-shm")
             let walURL = URL.applicationSupportDirectory.appending(path: "default.store-wal")
             
-            try? fileManager.removeItem(at: storeURL)
-            try? fileManager.removeItem(at: shmURL)
-            try? fileManager.removeItem(at: walURL)
+            // Создаем уникальный суффикс для бэкапа
+            let backupSuffix = "-backup-\(Int(Date().timeIntervalSince1970))"
+            let backupStoreURL = URL.applicationSupportDirectory.appending(path: "default.store\(backupSuffix)")
+            let backupShmURL = URL.applicationSupportDirectory.appending(path: "default.store-shm\(backupSuffix)")
+            let backupWalURL = URL.applicationSupportDirectory.appending(path: "default.store-wal\(backupSuffix)")
+            
+            try? fileManager.moveItem(at: storeURL, to: backupStoreURL)
+            try? fileManager.moveItem(at: shmURL, to: backupShmURL)
+            try? fileManager.moveItem(at: walURL, to: backupWalURL)
+            
+            print("Original database preserved at: \(backupStoreURL.path)")
             
             do {
-                // Пробуем создать чистую базу данных
+                // Пробуем создать новую чистую базу данных
                 sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self)
             } catch {
                 print("Failed to recreate ModelContainer, falling back to in-memory store: \(error)")
@@ -94,10 +102,10 @@ struct WorkoutTrackerApp: App {
                     }
                 }
             }
-            .alert(Text(LocalizedStringKey("Template Imported!")), isPresented: $showImportAlert) {
-                Button(LocalizedStringKey("OK"), role: .cancel) { }
+            .alert("Template Imported!", isPresented: $showImportAlert) {
+                Button("OK", role: .cancel) { }
             } message: {
-                Text(LocalizedStringKey("A new workout template has been added to your collection."))
+                Text("A new workout template has been added to your collection.")
             }
             .animation(.default, value: hasCompletedOnboarding)
             .preferredColorScheme(colorScheme)
