@@ -67,6 +67,8 @@ struct SliderSheetView: View {
                     Text(fieldType.title(unitsManager: unitsManager).uppercased())
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                     
                     // Заменили Text на TextField для быстрого ручного ввода
                     TextField("0", text: $textValue)
@@ -74,6 +76,8 @@ struct SliderSheetView: View {
                         .foregroundColor(errorMessage != nil ? .red : .primary)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                         .focused($isBigTextFocused)
                         .onChange(of: isBigTextFocused) { _, focused in
                             if focused && localValue == 0 {
@@ -192,12 +196,13 @@ struct SliderSheetView: View {
             // Кэшируем параметры слайдера один раз при появлении, основываясь на Enum
             switch fieldType {
             case .weight:
-                // Для фунтов увеличиваем максимальный вес до 440 (примерно 200 кг)
-                params = (0, unitsManager.weightUnit == .pounds ? 440 : 200, 0.5)
+                // ИЗМЕНЕНО: Для фунтов увеличиваем максимальный вес до 1100, для кг до 500
+                params = (0, unitsManager.weightUnit == .pounds ? 1100 : 500, 0.5)
             case .reps:
-                params = (0, 50, 1)
+                // ИЗМЕНЕНО: До 100 повторений
+                params = (0, 100, 1)
             case .distance:
-                params = (0, unitsManager.distanceUnit == .miles ? 30 : 50, 0.1)
+                params = (0, unitsManager.distanceUnit == .miles ? 60 : 10000, unitsManager.distanceUnit == .miles ? 0.1 : 100)
             case .timeMin, .timeSec:
                 params = (0, 300, 1)
             }
@@ -230,8 +235,8 @@ struct SliderSheetView: View {
             let v = InputValidator.validateReps(Int(val))
             isValid = v.isValid; errMsg = v.errorMessage
         case .distance:
-            let km = unitsManager.convertToKilometers(val)
-            let v = InputValidator.validateDistance(km)
+            let m = unitsManager.convertToMeters(val)
+            let v = InputValidator.validateDistance(m)
             isValid = v.isValid; errMsg = v.errorMessage
         case .timeMin:
             let v = InputValidator.validateTime(Int(val) * 60)
@@ -307,7 +312,7 @@ struct SliderInputView: View {
         fieldType: InputFieldType,
         value: Binding<Double?>,
         minValue: Double = 0,
-        maxValue: Double = 200,
+        maxValue: Double = 500, // ИЗМЕНЕНО: По умолчанию до 500
         step: Double = 1
     ) {
         self.fieldType = fieldType
@@ -332,7 +337,9 @@ struct SliderInputView: View {
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.center)
                     .font(.headline)
-                    .frame(width: 50)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .frame(width: 60) // Сделали чуть шире (было 50) для надежности
                     .foregroundColor(errorMessage != nil ? .red : .primary)
                     .focused($isFocused)
                     .onChange(of: isFocused) { _, focused in
@@ -434,8 +441,8 @@ struct SliderInputView: View {
             let v = InputValidator.validateReps(Int(num))
             isValid = v.isValid; errMsg = v.errorMessage
         case .distance:
-            let km = unitsManager.convertToKilometers(num)
-            let v = InputValidator.validateDistance(km)
+            let m = unitsManager.convertToMeters(num)
+            let v = InputValidator.validateDistance(m)
             isValid = v.isValid; errMsg = v.errorMessage
         case .timeMin:
             let v = InputValidator.validateTime(Int(num) * 60)

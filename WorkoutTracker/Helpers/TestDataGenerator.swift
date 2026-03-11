@@ -35,19 +35,32 @@ class TestDataGenerator {
     
     static func clearAllDataAsync(container: ModelContainer) async {
         let context = ModelContext(container)
+        
+        // 1. В SwiftData массовое удаление (batch delete) НЕ вызывает каскадного удаления связанных объектов (cascade).
+        // Поэтому мы должны явно удалять WorkoutSet и Exercise, иначе база данных забьется "сиротами" (orphans).
+        // 2. Также мы удаляем всю агрегированную статистику, чтобы WorkoutViewModel пересчитала ее заново 
+        // для новых сгенерированных данных.
+        try? context.delete(model: WorkoutSet.self)
+        try? context.delete(model: Exercise.self)
+        try? context.delete(model: Workout.self)
+        try? context.delete(model: WeightEntry.self)
+        try? context.delete(model: UserStats.self)
+        try? context.delete(model: ExerciseStat.self)
+        try? context.delete(model: MuscleStat.self)
+        try? context.delete(model: ExerciseNote.self)
+        
+        // Фоллбэк для надежности (если batch delete не поддерживается на старой версии iOS или не сработал)
         do {
-            try context.delete(model: Workout.self)
-            try context.delete(model: WeightEntry.self) // ИСПРАВЛЕНИЕ: Удаляем веса через SwiftData
+            if let items = try? context.fetch(FetchDescriptor<Workout>()) { items.forEach { context.delete($0) } }
+            if let items = try? context.fetch(FetchDescriptor<Exercise>()) { items.forEach { context.delete($0) } }
+            if let items = try? context.fetch(FetchDescriptor<WorkoutSet>()) { items.forEach { context.delete($0) } }
+            if let items = try? context.fetch(FetchDescriptor<WeightEntry>()) { items.forEach { context.delete($0) } }
+            if let items = try? context.fetch(FetchDescriptor<UserStats>()) { items.forEach { context.delete($0) } }
+            if let items = try? context.fetch(FetchDescriptor<ExerciseStat>()) { items.forEach { context.delete($0) } }
+            if let items = try? context.fetch(FetchDescriptor<MuscleStat>()) { items.forEach { context.delete($0) } }
             try context.save()
         } catch {
-            print("Ошибка массового удаления: \(error)")
-            if let workouts = try? context.fetch(FetchDescriptor<Workout>()) {
-                for workout in workouts { context.delete(workout) }
-            }
-            if let weights = try? context.fetch(FetchDescriptor<WeightEntry>()) {
-                for weight in weights { context.delete(weight) }
-            }
-            try? context.save()
+            print("Ошибка fallback удаления: \(error)")
         }
     }
     
@@ -58,7 +71,8 @@ class TestDataGenerator {
         var workoutNumber = 0
         let calendar = Calendar.current
         
-        var context = ModelContext(container)
+        // Используем единый контекст для всего процесса (не пересоздаем его в цикле)
+        let context = ModelContext(container)
         
         while currentDate <= endDate {
             let weekday = calendar.component(.weekday, from: currentDate)
@@ -66,12 +80,27 @@ class TestDataGenerator {
             
             if isWorkoutDay {
                 let workout = generateWorkout(for: currentDate, workoutIndex: workoutNumber)
+                
+                // В SwiftData вставка корневого объекта иногда не цепляет глубокие связи (массивы внутри массивов).
+                // Для надежности делаем явный insert всех созданных объектов в контекст.
                 context.insert(workout)
+                for exercise in workout.exercises {
+                    context.insert(exercise)
+                    for set in exercise.setsList {
+                        context.insert(set)
+                    }
+                    for sub in exercise.subExercises {
+                        context.insert(sub)
+                        for set in sub.setsList {
+                            context.insert(set)
+                        }
+                    }
+                }
+                
                 workoutNumber += 1
                 
                 if workoutNumber % 50 == 0 {
                     try? context.save()
-                    context = ModelContext(container)
                     await Task.yield()
                 }
             }

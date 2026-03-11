@@ -2,7 +2,7 @@
 //  UnitsManager.swift
 //  WorkoutTracker
 //
-//  Менеджер для управления единицами измерения веса (кг/фунты) и расстояния (км/мили)
+//  Менеджер для управления единицами измерения веса (кг/фунты) и расстояния (м/мили)
 //
 
 import Foundation
@@ -25,12 +25,12 @@ enum WeightUnit: String, Codable, CaseIterable {
 }
 
 enum DistanceUnit: String, Codable, CaseIterable {
-    case kilometers = "km"
+    case meters = "m"
     case miles = "mi"
     
     var displayName: String {
         switch self {
-        case .kilometers: return "Kilometers (km)"
+        case .meters: return "Meters (m)"
         case .miles: return "Miles (mi)"
         }
     }
@@ -63,11 +63,18 @@ class UnitsManager: ObservableObject {
             self.weightUnit = .kilograms
         }
         
-        if let savedDist = UserDefaults.standard.string(forKey: "distanceUnit"),
-           let dUnit = DistanceUnit(rawValue: savedDist) {
-            self.distanceUnit = dUnit
+        if let savedDist = UserDefaults.standard.string(forKey: "distanceUnit") {
+            // Миграция старых данных (если было km, ставим m)
+            if savedDist == "km" {
+                self.distanceUnit = .meters
+                UserDefaults.standard.set("m", forKey: "distanceUnit")
+            } else if let dUnit = DistanceUnit(rawValue: savedDist) {
+                self.distanceUnit = dUnit
+            } else {
+                self.distanceUnit = .meters
+            }
         } else {
-            self.distanceUnit = .kilometers
+            self.distanceUnit = .meters
         }
     }
     
@@ -110,29 +117,29 @@ class UnitsManager: ObservableObject {
         return weightUnit.shortName
     }
     
-    // Конвертация из км в выбранные единицы
-    func convertFromKilometers(_ km: Double) -> Double {
+    // Конвертация из метров в выбранные единицы
+    func convertFromMeters(_ m: Double) -> Double {
         switch distanceUnit {
-        case .kilometers:
-            return km
+        case .meters:
+            return m
         case .miles:
-            return km * 0.621371
+            return m * 0.000621371 // 1 метр = 0.000621371 мили
         }
     }
     
-    // Конвертация в км из выбранных единиц
-    func convertToKilometers(_ value: Double) -> Double {
+    // Конвертация в метры из выбранных единиц
+    func convertToMeters(_ value: Double) -> Double {
         switch distanceUnit {
-        case .kilometers:
+        case .meters:
             return value
         case .miles:
-            return value / 0.621371
+            return value / 0.000621371
         }
     }
     
     // Форматирование расстояния
-    func formatDistance(_ km: Double) -> String {
-        let converted = convertFromKilometers(km)
+    func formatDistance(_ m: Double) -> String {
+        let converted = convertFromMeters(m)
         return LocalizationHelper.shared.formatDecimal(converted)
     }
     

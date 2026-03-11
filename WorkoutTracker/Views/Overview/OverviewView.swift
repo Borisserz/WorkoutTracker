@@ -306,7 +306,62 @@ struct OverviewView: View {
                 }
                 .chartForegroundStyleScale(domain: viewModel.dashboardMuscleData.map { $0.muscle }, range: viewModel.dashboardMuscleData.map { colorManager.getColor(for: $0.muscle) })
                 .frame(height: 250)
-                .chartAngleSelection(value: $selectedAngle)
+                // ИСПРАВЛЕНИЕ: Вычисляем угол нажатия вручную, чтобы график реагировал на мгновенный тап
+                .chartOverlay { proxy in
+                    GeometryReader { geometry in
+                        Rectangle()
+                            .fill(Color.clear)
+                            .contentShape(Rectangle())
+                            .onTapGesture { location in
+                                let centerX = geometry.size.width / 2
+                                let centerY = geometry.size.height / 2
+                                let dx = location.x - centerX
+                                let dy = location.y - centerY
+                                let distance = sqrt(dx * dx + dy * dy)
+                                
+                                let outerRadius = min(geometry.size.width, geometry.size.height) / 2
+                                let innerRadius = outerRadius * 0.6
+                                
+                                // Если нажали в центр (дырку) — снимаем выделение
+                                if distance < innerRadius {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        selectedAngle = nil
+                                    }
+                                    return
+                                }
+                                
+                                // Вычисляем угол от 12 часов по часовой стрелке
+                                var angle = atan2(dy, dx) + .pi / 2
+                                if angle < 0 { angle += 2 * .pi }
+                                
+                                let totalCount = viewModel.dashboardMuscleData.map { $0.count }.reduce(0, +)
+                                guard totalCount > 0 else { return }
+                                
+                                let selectedValue = Double(totalCount) * (angle / (2 * .pi))
+                                let newAngle = Int(selectedValue)
+                                
+                                // Находим мышцу, по которой кликнули, для возможности toggle
+                                var currentSum = 0
+                                var tappedMuscle: String? = nil
+                                for item in viewModel.dashboardMuscleData {
+                                    currentSum += item.count
+                                    if newAngle <= currentSum {
+                                        tappedMuscle = item.muscle
+                                        break
+                                    }
+                                }
+                                
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    // Снимаем выделение при повторном нажатии
+                                    if let selected = selectedMuscleInfo?.muscle, selected == tappedMuscle {
+                                        selectedAngle = nil
+                                    } else {
+                                        selectedAngle = newAngle
+                                    }
+                                }
+                            }
+                    }
+                }
                 .chartBackground { proxy in
                     GeometryReader { geometry in
                         VStack {

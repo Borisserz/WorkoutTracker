@@ -223,9 +223,18 @@ class Workout: Identifiable {
     }
     
     var effortPercentage: Int {
-        if exercises.isEmpty { return 0 }
-        let totalEffort = exercises.reduce(0) { $0 + $1.effort }
-        let average = Double(totalEffort) / Double(exercises.count)
+        // Учитываем только те упражнения, где есть хотя бы один выполненный подход
+        let activeExercises = exercises.filter { exercise in
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            return targets.contains { ex in
+                ex.setsList.contains { $0.isCompleted }
+            }
+        }
+        
+        if activeExercises.isEmpty { return 0 }
+        
+        let totalEffort = activeExercises.reduce(0) { $0 + $1.effort }
+        let average = Double(totalEffort) / Double(activeExercises.count)
         return Int(average * 10)
     }
 }

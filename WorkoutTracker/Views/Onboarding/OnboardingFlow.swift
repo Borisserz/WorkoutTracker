@@ -281,6 +281,16 @@ struct UserDataInputView: View {
         .onTapGesture {
             focusedField = nil
         }
+        // ИСПРАВЛЕНИЕ: Добавляем тулбар с кнопкой Готово для скрытия цифровой клавиатуры
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+                .bold()
+            }
+        }
     }
     
     // ИСПРАВЛЕНИЕ: Валидация при нажатии

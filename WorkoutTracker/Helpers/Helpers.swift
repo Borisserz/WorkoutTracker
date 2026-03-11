@@ -5,8 +5,8 @@ internal import SwiftUI
 struct InputValidator {
     // Maximum reasonable values
     static let maxWeight: Double = 500.0  // kg
-    static let maxReps: Int = 1000
-    static let maxDistance: Double = 1000.0  // km
+    static let maxReps: Int = 100 // ИЗМЕНЕНО: Максимум 100 повторений
+    static let maxDistance: Double = 100_000.0  // m (100 км)
     static let maxTime: Int = 86400  // 24 hours in seconds
     
     // Minimum values
@@ -43,7 +43,7 @@ struct InputValidator {
             return (false, minDistance, String(localized: "Distance cannot be negative"))
         }
         if value > maxDistance {
-            return (false, maxDistance, String(localized: "Distance cannot exceed \(Int(maxDistance)) km"))
+            return (false, maxDistance, String(localized: "Distance cannot exceed \(Int(maxDistance)) m"))
         }
         return (true, value, nil)
     }
@@ -219,8 +219,6 @@ struct SVGParser {
         return path
     }
 }
-
-// MARK: - Empty State View Component
 
 // MARK: - Muscle Display Helper
 

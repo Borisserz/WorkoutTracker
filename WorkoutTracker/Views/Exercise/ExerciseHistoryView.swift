@@ -73,11 +73,11 @@ struct ExerciseHistoryView: View {
     
     let exerciseName: String
     
-    // ИСПРАВЛЕНИЕ: Мгновенный запрос ТОЛЬКО нужных упражнений, а не всех тренировок в БД!
-    @Query private var matchingExercises: [Exercise]
+    // ИСПРАВЛЕНИЕ: Удаляем @Query. Будем загружать данные асинхронно, чтобы не блокировать UI при переходе
+    @Environment(\.modelContext) private var context
     
     @EnvironmentObject var viewModel: WorkoutViewModel
-    @StateObject private var unitsManager = UnitsManager.shared
+    @ObservedObject private var unitsManager = UnitsManager.shared
     @FocusState private var isInputActive: Bool
     
     // MARK: - State
@@ -103,23 +103,10 @@ struct ExerciseHistoryView: View {
     @State private var displayedGraphData: [DataPoint] = []
     @State private var currentMetricValue: Double? = nil
     
-    // ИСПРАВЛЕНИЕ: Хэш для отслеживания изменений в @Query, чтобы избежать зацикливания onChange
-    private var exercisesHash: String {
-        "\(matchingExercises.count)-\(matchingExercises.map { "\($0.id.uuidString)-\($0.setsList.count)" }.joined())"
-    }
-    
     // MARK: - Initialization
     
     init(exerciseName: String) {
         self.exerciseName = exerciseName
-        
-        // Настраиваем предикат: ищем только упражнения с этим именем, 
-        // которые не принадлежат шаблонам (preset == nil).
-        let filter = #Predicate<Exercise> { ex in
-            ex.name == exerciseName && ex.preset == nil
-        }
-        // Запрашиваем без сортировки, отсортируем сами в памяти по дате тренировки
-        _matchingExercises = Query(filter: filter)
     }
     
     // MARK: - Computed Properties (General)
@@ -178,10 +165,8 @@ struct ExerciseHistoryView: View {
         .navigationTitle(exerciseName)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            if !isDataLoaded {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                loadInitialData()
-            }
+            // Запускаем асинхронную загрузку при открытии экрана
+            loadInitialData()
         }
         .onChange(of: selectedTrendPeriod) { _, _ in
             if isDataLoaded {
@@ -198,88 +183,116 @@ struct ExerciseHistoryView: View {
                 updateGraphData()
             }
         }
-        // ИСПРАВЛЕНИЕ: Используем вычисляемый hash вместо всего массива
-        .onChange(of: exercisesHash) { _, _ in
-            loadInitialData()
-        }
     }
     
     // MARK: - Data Loading & Processing (Optimized)
     
     private func loadInitialData() {
-        var foundType: ExerciseType = .strength
-        var foundCategory: ExerciseCategory? = nil
-        var foundMuscle: String? = nil
-        var filtered: [(workout: Workout, exercise: Exercise)] = []
-        
-        // ИСПРАВЛЕНИЕ: Перебираем ТОЛЬКО упражнения, полученные из запроса. Это O(1) относительно всей БД!
-        for ex in matchingExercises {
-            // Упражнение может быть напрямую в тренировке, либо внутри суперсета
-            if let w = ex.workout, w.endTime != nil {
-                filtered.append((w, ex))
-            } else if let parent = ex.parentExercise, let w = parent.workout, w.endTime != nil {
-                filtered.append((w, ex))
+        Task { @MainActor in
+            // ИСПРАВЛЕНИЕ ЗАВИСАНИЙ: Даем SwiftUI время завершить анимацию перехода (50 мс),
+            // прежде чем нагружать процессор выборкой из базы данных.
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            
+            let localName = exerciseName
+            let filter = #Predicate<Exercise> { ex in
+                ex.name == localName && ex.preset == nil
+            }
+            let descriptor = FetchDescriptor<Exercise>(predicate: filter)
+            
+            // Выполняем запрос к БД вручную и безопасно
+            guard let fetchedExercises = try? context.fetch(descriptor) else {
+                self.isDataLoaded = true
+                return
             }
             
-            // Запоминаем мета-данные
-            if foundCategory == nil {
-                foundType = ex.type
-                foundCategory = ex.category
-                foundMuscle = ex.muscleGroup
-            }
-        }
-        
-        // Сортируем по дате завершения
-        filtered.sort { $0.workout.date > $1.workout.date }
-        
-        // Вычисляем базовые точки графика ОДИН РАЗ
-        let dataPoints = filtered.reversed().compactMap { item -> DataPoint? in
-            let exercise = item.exercise
-            var value: Double = 0.0
+            var foundType: ExerciseType = .strength
+            var foundCategory: ExerciseCategory? = nil
+            var foundMuscle: String? = nil
             
-            switch foundType {
-            case .strength:
-                let maxSetWeight = exercise.setsList
-                    .filter { $0.isCompleted && $0.type != .warmup }
-                    .compactMap { $0.weight }
-                    .max()
-                let kgValue = maxSetWeight ?? exercise.weight
-                value = unitsManager.convertFromKilograms(kgValue)
+            var workoutMap: [UUID: (workout: Workout, exercises: [Exercise])] = [:]
+            
+            for ex in fetchedExercises {
+                let targetWorkout = ex.workout ?? ex.parentExercise?.workout
+                if let w = targetWorkout, w.endTime != nil {
+                    if workoutMap[w.id] == nil {
+                        workoutMap[w.id] = (w, [ex])
+                    } else {
+                        workoutMap[w.id]?.exercises.append(ex)
+                    }
+                }
                 
-            case .cardio:
-                let totalDist = exercise.setsList
-                    .filter { $0.isCompleted }
-                    .compactMap { $0.distance }
-                    .reduce(0, +)
-                let finalDist = (totalDist > 0) ? totalDist : (exercise.distance ?? 0.0)
-                value = unitsManager.convertFromKilometers(finalDist)
-                
-            case .duration:
-                let totalSeconds = exercise.setsList
-                    .filter { $0.isCompleted }
-                    .compactMap { $0.time }
-                    .reduce(0, +)
-                let finalSeconds = (totalSeconds > 0) ? totalSeconds : (exercise.timeSeconds ?? 0)
-                value = Double(finalSeconds) / 60.0
+                if foundCategory == nil {
+                    foundType = ex.type
+                    foundCategory = ex.category
+                    foundMuscle = ex.muscleGroup
+                }
             }
             
-            if value == 0 { return nil }
-            return DataPoint(date: item.workout.date, value: value)
-        }
-        
-        self.allDataPoints = dataPoints
-        self.filteredWorkoutsData = filtered
-        self.exerciseType = foundType
-        self.exerciseCategory = foundCategory
-        self.muscleGroup = foundMuscle
-        
-        self.exerciseForecast = calculateForecast()
-        self.exerciseTrend = calculateTrend(for: selectedTrendPeriod)
-        
-        self.updateGraphData()
-        
-        withAnimation {
-            self.isDataLoaded = true
+            var filtered: [(workout: Workout, exercise: Exercise)] = []
+            
+            // Выбираем лучший результат, если было несколько одинаковых упражнений в одной тренировке
+            for (_, data) in workoutMap {
+                let bestExercise = data.exercises.max { e1, e2 in
+                    let max1 = e1.setsList.compactMap { $0.weight }.max() ?? 0
+                    let max2 = e2.setsList.compactMap { $0.weight }.max() ?? 0
+                    return max1 < max2
+                } ?? data.exercises.first!
+                
+                filtered.append((data.workout, bestExercise))
+            }
+            
+            // Сортируем по дате завершения
+            filtered.sort { $0.workout.date > $1.workout.date }
+            
+            // Вычисляем базовые точки графика ОДИН РАЗ
+            let dataPoints = filtered.reversed().compactMap { item -> DataPoint? in
+                let exercise = item.exercise
+                var value: Double = 0.0
+                
+                switch foundType {
+                case .strength:
+                    let maxSetWeight = exercise.setsList
+                        .filter { $0.isCompleted && $0.type != .warmup }
+                        .compactMap { $0.weight }
+                        .max()
+                    let kgValue = maxSetWeight ?? exercise.weight
+                    value = unitsManager.convertFromKilograms(kgValue)
+                    
+                case .cardio:
+                    let totalDist = exercise.setsList
+                        .filter { $0.isCompleted }
+                        .compactMap { $0.distance }
+                        .reduce(0, +)
+                    let finalDist = (totalDist > 0) ? totalDist : (exercise.distance ?? 0.0)
+                    value = unitsManager.convertFromMeters(finalDist)
+                    
+                case .duration:
+                    let totalSeconds = exercise.setsList
+                        .filter { $0.isCompleted }
+                        .compactMap { $0.time }
+                        .reduce(0, +)
+                    let finalSeconds = (totalSeconds > 0) ? totalSeconds : (exercise.timeSeconds ?? 0)
+                    value = Double(finalSeconds) / 60.0
+                }
+                
+                if value == 0 { return nil }
+                return DataPoint(date: item.workout.date, value: value)
+            }
+            
+            self.allDataPoints = dataPoints
+            self.filteredWorkoutsData = filtered
+            self.exerciseType = foundType
+            self.exerciseCategory = foundCategory
+            self.muscleGroup = foundMuscle
+            
+            self.exerciseForecast = calculateForecast()
+            self.exerciseTrend = calculateTrend(for: selectedTrendPeriod)
+            
+            self.updateGraphData()
+            
+            withAnimation {
+                self.isDataLoaded = true
+            }
         }
     }
     
@@ -341,7 +354,6 @@ struct ExerciseHistoryView: View {
         let previousStart = calendar.date(byAdding: .month, value: -(months * 2), to: now)!
         let previousInterval = DateInterval(start: previousStart, end: currentStart)
         
-        // ИСПОЛЬЗУЕМ УЖЕ ОТФИЛЬТРОВАННЫЙ КЭШ
         let currentWorkouts = filteredWorkoutsData.filter { currentInterval.contains($0.workout.date) }
         let previousWorkouts = filteredWorkoutsData.filter { previousInterval.contains($0.workout.date) }
         
@@ -686,7 +698,7 @@ struct ExerciseHistoryView: View {
                         Text("\(Int(convertedWeight)) \(unitsManager.weightUnitString())").bold().foregroundColor(.blue)
                         Text("\(exercise.sets) x \(exercise.reps)").font(.caption).foregroundColor(.secondary)
                     case .cardio:
-                        let convertedDist = unitsManager.convertFromKilometers(exercise.distance ?? 0)
+                        let convertedDist = unitsManager.convertFromMeters(exercise.distance ?? 0)
                         Text("\(LocalizationHelper.shared.formatDecimal(convertedDist)) \(unitsManager.distanceUnitString())").bold().foregroundColor(.orange)
                         Text(formatTime(exercise.timeSeconds ?? 0)).font(.caption).foregroundColor(.secondary)
                     case .duration:
@@ -694,9 +706,17 @@ struct ExerciseHistoryView: View {
                         Text("\(exercise.sets) sets").font(.caption).foregroundColor(.secondary)
                     }
                 }
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.gray.opacity(0.5))
+                    .padding(.leading, 4)
             }
-            .padding().background(Color.gray.opacity(0.05)).cornerRadius(10)
+            .padding()
+            .background(Color.gray.opacity(0.05))
+            .cornerRadius(10)
+            .contentShape(Rectangle()) // Чтобы весь блок был кликабельным
         }
+        .buttonStyle(.plain) // Убирает дефолтное "синее" наложение для всего содержимого
     }
     
     /// Список истории тренировок
@@ -855,9 +875,9 @@ struct ExerciseHistoryView: View {
         case .squat:
             return NSLocalizedString("Stand with your feet shoulder-width apart. Lower your body by bending your knees and pushing your hips back, as if sitting into a chair. Keep your chest up and core engaged. Lower until your thighs are parallel to the ground, then push through your heels to return to the starting position.", comment: "")
         case .press:
-            return NSLocalizedString("Lie on a flat bench with your feet flat on the floor. Grip the bar with hands slightly wider than shoulder-width. Lower the bar to your chest with control, then press it back up explosively. Keep your shoulders retracted and core tight throughout the movement.", comment: "")
+            return NSLocalizedString("Lie on a flat bench with your feet flat on the floor. Grip the bar with hands slightly wider than shoulder-width. Lower the bar to your chest with control, then press it back up explosively. Keep your shoulders retracted and core tight throughout movement.", comment: "")
         case .deadlift:
-            return NSLocalizedString("Stand with feet hip-width apart, bar over mid-foot. Hinge at the hips and bend your knees to grip the bar. Keep your back straight and chest up. Drive through your heels and extend your hips and knees simultaneously to lift the bar. Keep the bar close to your body throughout the movement.", comment: "")
+            return NSLocalizedString("Stand with feet hip-width apart, bar over mid-foot. Hinge at the hips and bend your knees to grip the bar. Keep your back straight and chest up. Drive through your heels and extend your hips and knees simultaneously to lift the bar. Keep the bar close to your body throughout movement.", comment: "")
         case .pull:
             return NSLocalizedString("Grasp the bar or handles with an overhand or underhand grip. Pull the weight toward your torso, squeezing your shoulder blades together at the end of the movement. Keep your core engaged and avoid swinging. Lower the weight with control to complete the repetition.", comment: "")
         case .curl:
@@ -1139,7 +1159,6 @@ struct ExerciseNoteEditor: View {
             let newNote = ExerciseNote(exerciseName: exerciseName, text: text)
             context.insert(newNote)
         }
-        // Автоматическое сохранение SwiftData обработает эту операцию.
     }
 }
 

@@ -44,8 +44,10 @@ struct StatisticsManager {
         return bests.map { name, data in
             var valString = ""
             switch data.type {
-            case .strength: valString = String(localized: "\(Int(data.result)) kg")
-            case .cardio:   valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(data.result)) km")
+            case .strength: valString = String(localized: "\(Int(data.result)) \(UnitsManager.shared.weightUnitString())")
+            case .cardio:
+                let converted = UnitsManager.shared.convertFromMeters(data.result)
+                valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(converted)) \(UnitsManager.shared.distanceUnitString())")
             case .duration:
                 let m = Int(data.result) / 60
                 let s = Int(data.result) % 60
@@ -621,7 +623,7 @@ struct ImportExportService {
         }
         csvLines.append("")
         csvLines.append("## SETS")
-        csvLines.append("Set ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (km),Time (sec),Is Completed,Set Type")
+        csvLines.append("Set ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (m),Time (sec),Is Completed,Set Type")
         for exercise in preset.exercises {
             for set in exercise.setsList {
                 let weightStr = set.weight != nil ? String(set.weight!) : ""

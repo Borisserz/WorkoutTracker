@@ -57,7 +57,6 @@ struct WorkoutDetailView: View {
     // Swap (Замена упражнения)
     @State private var showSwapSheet = false
     @State private var exerciseToSwap: Exercise?
-    @State private var tempSwapList: [Exercise] = [] // Временный буфер для выбора замены
     
     // НОВОЕ: Состояние для рекорда на уровне всего экрана тренировки
     @State private var showPRCelebration = false
@@ -257,7 +256,9 @@ struct WorkoutDetailView: View {
                 .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showExerciseSelection) {
-            ExerciseSelectionView(selectedExercises: $workout.exercises)
+            ExerciseSelectionView { newExercise in
+                workout.exercises.append(newExercise)
+            }
         }
         .sheet(isPresented: $showSupersetBuilder) {
             SupersetBuilderView { newSuperset in
@@ -286,14 +287,12 @@ struct WorkoutDetailView: View {
             })
         }
         .sheet(isPresented: $showSwapSheet) {
-            ExerciseSelectionView(selectedExercises: $tempSwapList)
-                .onDisappear {
-                    if let newExercise = tempSwapList.first, let oldExercise = exerciseToSwap {
-                        performSwap(old: oldExercise, new: newExercise)
-                    }
-                    tempSwapList = []
-                    exerciseToSwap = nil
+            ExerciseSelectionView { newExercise in
+                if let oldExercise = exerciseToSwap {
+                    performSwap(old: oldExercise, new: newExercise)
                 }
+                exerciseToSwap = nil
+            }
         }
         .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyWorkoutAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
@@ -582,7 +581,9 @@ struct WorkoutDetailView: View {
                         .font(.title2).bold().padding(.top)
                     
                     if let selected = selectedChartExerciseName {
-                        Text(LocalizedStringKey(selected))
+                        // ИСПРАВЛЕНИЕ: Удаляем невидимые пробелы, если они есть
+                        let originalName = selected.trimmingCharacters(in: .whitespaces)
+                        Text(LocalizedStringKey(originalName))
                             .font(.subheadline)
                             .foregroundColor(.accentColor)
                             .padding(.bottom, 4)
@@ -595,11 +596,12 @@ struct WorkoutDetailView: View {
                             .frame(minHeight: 20)
                     }
                     
-                    let exerciseNames = strengthExercises.map { $0.name }
-                    
                     Chart {
-                        ForEach(strengthExercises) { exercise in
-                            // ИСПРАВЛЕНИЕ: Берем вес только из завершенных подходов
+                        // ИСПРАВЛЕНИЕ ЗАВИСАНИЯ ГРАФИКОВ:
+                        // Раньше передавался массив имен для осей. Если в массиве были дубликаты 
+                        // (пользователь добавил 5 одинаковых упражнений), Chart ловил Infinite Loop и 
+                        // намертво подвешивал приложение. Теперь мы делаем их уникальными через невидимые пробелы.
+                        ForEach(Array(strengthExercises.enumerated()), id: \.element.id) { index, exercise in
                             let maxWeight = exercise.setsList
                                 .filter { $0.isCompleted && $0.type != .warmup }
                                 .compactMap { $0.weight }
@@ -608,16 +610,18 @@ struct WorkoutDetailView: View {
                             if maxWeight > 0 {
                                 let unitsManager = UnitsManager.shared
                                 let convertedWeight = unitsManager.convertFromKilograms(maxWeight)
+                                let uniqueName = exercise.name + String(repeating: " ", count: index)
+                                
                                 BarMark(
-                                    x: .value("Exercise", exercise.name),
+                                    x: .value("Exercise", uniqueName),
                                     y: .value("Weight", convertedWeight)
                                 )
-                                .foregroundStyle(selectedChartExerciseName == exercise.name ? Color.orange.gradient : Color.accentColor.gradient)
+                                .foregroundStyle(selectedChartExerciseName == uniqueName ? Color.orange.gradient : Color.accentColor.gradient)
                                 .cornerRadius(4)
                                 .annotation(position: .top) {
                                     Text("\(Int(convertedWeight))")
                                         .font(.caption2)
-                                        .foregroundColor(selectedChartExerciseName == exercise.name ? .orange : .secondary)
+                                        .foregroundColor(selectedChartExerciseName == uniqueName ? .orange : .secondary)
                                 }
                             }
                         }
@@ -626,11 +630,13 @@ struct WorkoutDetailView: View {
                     .padding(.bottom, 10)
                     .chartXSelection(value: $selectedChartExerciseName)
                     .chartXAxis {
-                        AxisMarks(values: exerciseNames) { value in
+                        // ИСПРАВЛЕНИЕ ЗАВИСАНИЯ: Используем .automatic вместо массива дубликатов
+                        AxisMarks(values: .automatic) { value in
                             AxisTick()
                             AxisValueLabel {
-                                if let exerciseName = value.as(String.self) {
-                                    Text(abbreviateName(exerciseName))
+                                if let uniqueName = value.as(String.self) {
+                                    let originalName = uniqueName.trimmingCharacters(in: .whitespaces)
+                                    Text(abbreviateName(originalName))
                                         .font(.caption2)
                                 }
                             }
@@ -779,7 +785,10 @@ struct WorkoutDetailView: View {
     private func performSwap(old: Exercise, new: Exercise) {
         guard let index = workout.exercises.firstIndex(where: { $0.id == old.id }) else { return }
         withAnimation {
-            workout.exercises[index] = new
+            workout.exercises.insert(new, at: index)
+            if let removeIndex = workout.exercises.lastIndex(where: { $0.id == old.id }) {
+                workout.exercises.remove(at: removeIndex)
+            }
             context.delete(old) 
         }
         updateComputedData()
@@ -1026,7 +1035,8 @@ struct ComparisonItem {
 
 struct FunFactView: View {
     let totalStrengthVolume: Double
-    @StateObject private var unitsManager = UnitsManager.shared
+    // ИСПРАВЛЕНИЕ: Используем @ObservedObject для синглтона. @StateObject приводил к зависанию приложения при навигации!
+    @ObservedObject private var unitsManager = UnitsManager.shared
     @State private var selectedComparison: ComparisonItem?
     
     private let allComparisons: [ComparisonItem] = [
@@ -1105,7 +1115,8 @@ struct FunFactView: View {
 
 struct ExerciseRowView: View {
     let exercise: Exercise
-    @StateObject private var unitsManager = UnitsManager.shared
+    // ИСПРАВЛЕНИЕ: Используем @ObservedObject для синглтона
+    @ObservedObject private var unitsManager = UnitsManager.shared
     
     var body: some View {
         HStack {
@@ -1140,7 +1151,7 @@ struct ExerciseRowView: View {
             Text("\(exercise.sets)s x \(exercise.reps)r • \(LocalizationHelper.shared.formatInteger(convertedWeight))\(unitsManager.weightUnitString())")
         case .cardio:
             if let dist = exercise.distance, let time = exercise.timeSeconds {
-                let convertedDist = unitsManager.convertFromKilometers(dist)
+                let convertedDist = unitsManager.convertFromMeters(dist)
                 Text(LocalizedStringKey("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) in \(formatTime(time))"))
             } else {
                 Text(LocalizedStringKey("Cardio"))

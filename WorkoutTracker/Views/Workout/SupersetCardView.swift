@@ -120,38 +120,42 @@ struct SupersetCardView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            
-            headerView
-            
-            if isExpanded {
-                exerciseListView
+        // ИСПРАВЛЕНИЕ: Обернули в ZStack, чтобы .sheet прикреплялся к стабильному 
+        // элементу, который не меняет свои модификаторы фона/тени при завершении упражнения.
+        ZStack {
+            VStack(alignment: .leading, spacing: 0) {
                 
-                finishButton
-            } else {
-                collapsedInfoSection
+                headerView
+                
+                if isExpanded {
+                    exerciseListView
+                    
+                    finishButton
+                } else {
+                    collapsedInfoSection
+                }
             }
+            .padding()
+            .background(
+                isActiveExercise
+                    ? Color.blue.opacity(0.08)
+                    : Color(UIColor.secondarySystemBackground)
+            )
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(
+                        isActiveExercise ? Color.blue.opacity(0.5) : Color.clear,
+                        lineWidth: isActiveExercise ? 2 : 0
+                    )
+            )
+            .shadow(
+                color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear,
+                radius: isActiveExercise ? 8 : 0,
+                x: 0,
+                y: 2
+            )
         }
-        .padding()
-        .background(
-            isActiveExercise
-                ? Color.blue.opacity(0.08)
-                : Color(UIColor.secondarySystemBackground)
-        )
-        .cornerRadius(12)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(
-                    isActiveExercise ? Color.blue.opacity(0.5) : Color.clear,
-                    lineWidth: isActiveExercise ? 2 : 0
-                )
-        )
-        .shadow(
-            color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear,
-            radius: isActiveExercise ? 8 : 0,
-            x: 0,
-            y: 2
-        )
         .sheet(isPresented: $showEffortSheet, onDismiss: {
             if superset.isCompleted {
                 onExerciseFinished?()
@@ -174,7 +178,6 @@ struct SupersetCardView: View {
             }
             Spacer()
             Menu {
-                // ИСПРАВЛЕНИЕ: Удаляем локальный алерт, вызываем удаление напрямую
                 Button(role: .destructive) {
                     onDelete()
                 } label: {
@@ -256,10 +259,24 @@ struct SupersetCardView: View {
     func finishSuperset() {
         guard !superset.isCompleted && !isWorkoutCompleted else { return }
         
-        markAllSetsInSupersetCompleted()
-        superset.isCompleted = true
+        // ИСПРАВЛЕНИЕ: Удаляем незавершенные подходы во всем суперсете
+        for sub in superset.subExercises {
+            let uncompletedSets = sub.setsList.filter { !$0.isCompleted }
+            for set in uncompletedSets {
+                if let index = sub.setsList.firstIndex(where: { $0.id == set.id }) {
+                    sub.setsList.remove(at: index)
+                }
+                modelContext.delete(set)
+            }
+            
+            let remainingSets = sub.sortedSets
+            for (i, set) in remainingSets.enumerated() {
+                set.index = i + 1
+            }
+            sub.isCompleted = true
+        }
         
-        // Сохраняем перед проверкой рекордов
+        superset.isCompleted = true
         try? modelContext.save()
         
         var newRecordWasSet = false
@@ -298,16 +315,15 @@ struct SupersetCardView: View {
                 calculatedPRLevel = .bronze
             }
             
-            // Вызываем событие рекорда, передавая его на уровень экрана тренировки
             onPRSet?(calculatedPRLevel)
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
-                showEffortSheet = true
+                self.showEffortSheet = true
             }
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
         } else {
-            showEffortSheet = true
+            self.showEffortSheet = true
         }
     }
     

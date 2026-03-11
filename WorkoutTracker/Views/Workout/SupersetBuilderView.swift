@@ -98,7 +98,9 @@ struct SupersetBuilderView: View {
                 }
             }
             .sheet(isPresented: $showExerciseSelector) {
-                ExerciseSelectionView(selectedExercises: $addedExercises)
+                ExerciseSelectionView { newExercise in
+                    addedExercises.append(newExercise)
+                }
             }
             .sheet(item: $exerciseToEdit) { ex in
                 EditSupersetItemView(exercise: ex) { updatedEx in
@@ -295,13 +297,13 @@ struct EditSupersetItemView: View {
         Binding<Double?>(
             get: {
                 guard let first = sortedSets.first, let dist = first.distance else { return nil }
-                return unitsManager.convertFromKilometers(dist)
+                return unitsManager.convertFromMeters(dist)
             },
             set: { newValue in
                 guard let first = sortedSets.first else { return }
                 if let value = newValue {
-                    let kmValue = unitsManager.convertToKilometers(value)
-                    let validation = InputValidator.validateDistance(kmValue)
+                    let mValue = unitsManager.convertToMeters(value)
+                    let validation = InputValidator.validateDistance(mValue)
                     first.distance = validation.clampedValue
                     if !validation.isValid, let error = validation.errorMessage {
                         validationErrorMessage = error
@@ -343,9 +345,15 @@ struct EditSupersetItemView: View {
                 }
                 
                 Button(LocalizedStringKey("Save")) {
-                    propagateFirstSetData()
-                    onSave(exercise)
-                    dismiss()
+                    let weight = sortedSets.first?.weight ?? 0.0
+                    if exercise.type == .strength && weight <= 0 {
+                        validationErrorMessage = String(localized: "Please enter a weight greater than 0.")
+                        showValidationAlert = true
+                    } else {
+                        propagateFirstSetData()
+                        onSave(exercise)
+                        dismiss()
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)

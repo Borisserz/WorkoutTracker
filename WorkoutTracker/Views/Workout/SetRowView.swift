@@ -19,34 +19,30 @@ struct SetRowView: View {
     
     // MARK: - Bindings & Properties
     
-    @Bindable var set: WorkoutSet // ДОБАВЛЕНО: SwiftData модель вместо Binding
+    @Bindable var set: WorkoutSet 
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
-    @StateObject private var unitsManager = UnitsManager.shared
+    // ИСПРАВЛЕНИЕ: Используем @ObservedObject для синглтона. Использование @StateObject на синглтонах внутри повторяющихся списков приводит к зависанию!
+    @ObservedObject private var unitsManager = UnitsManager.shared
     let exerciseType: ExerciseType
     let isLastSet: Bool
-    let isExerciseCompleted: Bool // Флаг завершения упражнения
-    let isWorkoutCompleted: Bool // Флаг завершения тренировки
+    let isExerciseCompleted: Bool 
+    let isWorkoutCompleted: Bool 
     
-    /// Колбэк при завершении сета. Возвращает true, если нужно запустить таймер отдыха.
     var onCheck: (_ shouldStartTimer: Bool) -> Void
     
-    // --- Данные прошлой тренировки (Ghost Data) ---
     var prevWeight: Double? = nil
     var prevReps: Int? = nil
     var prevDist: Double? = nil
     var prevTime: Int? = nil
     
-    // ДОБАВЛЕНО: Автофокус при создании
     var autoFocus: Bool = false
     
-    // Состояние для показа слайдера
     @State private var showSliderSheet: Bool = false
     @State private var activeBindingType: InputFieldType = .weight
-    @State private var hasAutoFocused: Bool = false // Флаг, чтобы открывать только один раз
+    @State private var hasAutoFocused: Bool = false 
     
     // MARK: - Computed Bindings (Type Adapters)
     
-    // Адаптер Int? <-> Double? для поля повторов
     private var repsBinding: Binding<Double?> {
         Binding<Double?>(
             get: { set.reps.map { Double($0) } },
@@ -62,7 +58,6 @@ struct SetRowView: View {
         )
     }
     
-    // Адаптер Int? <-> Double? для поля времени
     private var timeBinding: Binding<Double?> {
         Binding<Double?>(
             get: { set.time.map { Double($0) } },
@@ -78,17 +73,14 @@ struct SetRowView: View {
         )
     }
     
-    // Validated binding for weight (конвертирует между кг и выбранными единицами)
     private var weightBinding: Binding<Double?> {
         Binding<Double?>(
             get: { 
-                // Конвертируем из кг в выбранные единицы для отображения
                 guard let kg = set.weight else { return nil }
                 return unitsManager.convertFromKilograms(kg)
             },
             set: { newValue in
                 if let value = newValue {
-                    // Конвертируем из выбранных единиц в кг для сохранения
                     let kg = unitsManager.convertToKilograms(value)
                     let validation = InputValidator.validateWeight(kg)
                     set.weight = validation.clampedValue
@@ -99,17 +91,16 @@ struct SetRowView: View {
         )
     }
     
-    // Validated binding for distance
     private var distanceBinding: Binding<Double?> {
         Binding<Double?>(
             get: { 
-                guard let km = set.distance else { return nil }
-                return unitsManager.convertFromKilometers(km)
+                guard let m = set.distance else { return nil }
+                return unitsManager.convertFromMeters(m)
             },
             set: { newValue in
                 if let value = newValue {
-                    let km = unitsManager.convertToKilometers(value)
-                    let validation = InputValidator.validateDistance(km)
+                    let m = unitsManager.convertToMeters(value)
+                    let validation = InputValidator.validateDistance(m)
                     set.distance = validation.clampedValue
                 } else {
                     set.distance = nil
@@ -123,28 +114,22 @@ struct SetRowView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 4) {
             
-            // 1. Номер сета
             indexLabel
             
-            // 2. Поля ввода (в зависимости от типа)
             inputsSection
             
-            // 3. Spacer для центрирования Type
             Spacer(minLength: 0)
             
-            // 4. Кнопка типа сета (W/N) - по центру
             setTypeButton
             
-            // 5. Spacer для центрирования Type
             Spacer(minLength: 0)
             
-            // 6. Чекбокс выполнения
             checkButton
         }
         .padding(.vertical, 4)
         .background(set.isCompleted ? Color.green.opacity(0.05) : Color.clear)
         .cornerRadius(6)
-        .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted) // Блокируем ввод, если сет выполнен, упражнение завершено или тренировка завершена
+        .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted) 
         .sheet(isPresented: $showSliderSheet) {
             SliderSheetView(
                 fieldType: activeBindingType,
@@ -156,7 +141,6 @@ struct SetRowView: View {
             if autoFocus && !hasAutoFocused {
                 hasAutoFocused = true
                 
-                // Устанавливаем правильный тип поля для фокусировки в зависимости от типа упражнения
                 switch exerciseType {
                 case .strength:
                     activeBindingType = .weight
@@ -166,7 +150,6 @@ struct SetRowView: View {
                     activeBindingType = .timeSec
                 }
                 
-                // Небольшая задержка, чтобы UI обновился и анимация добавления строки завершилась
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     showSliderSheet = true
                 }
@@ -187,7 +170,6 @@ struct SetRowView: View {
     private var inputsSection: some View {
         switch exerciseType {
         case .strength:
-            // Вес + Повторы
             HStack(spacing: 4) {
                 inputColumn(
                     type: .weight,
@@ -206,12 +188,11 @@ struct SetRowView: View {
             }
             
         case .cardio:
-            // Дистанция + Время
             inputColumn(
                 type: .distance,
                 binding: distanceBinding,
                 ghostText: prevDist.map { 
-                    let converted = unitsManager.convertFromKilometers($0)
+                    let converted = unitsManager.convertFromMeters($0)
                     return LocalizationHelper.shared.formatDecimal(converted) 
                 }
             )
@@ -225,7 +206,6 @@ struct SetRowView: View {
             )
             
         case .duration:
-            // Только время
             inputColumn(
                 type: .timeSec,
                 binding: timeBinding,
@@ -234,7 +214,6 @@ struct SetRowView: View {
         }
     }
     
-    /// Получает активный binding в зависимости от типа
     private func getActiveBinding() -> Binding<Double?> {
         switch activeBindingType {
         case .weight:
@@ -248,7 +227,6 @@ struct SetRowView: View {
         }
     }
     
-    /// Форматирует значение для отображения
     private func formatValue(_ value: Double?, type: InputFieldType) -> String {
         guard let value = value, value >= 0 else {
             return type.title(unitsManager: unitsManager)
@@ -266,7 +244,6 @@ struct SetRowView: View {
         }
     }
     
-    /// Универсальная колонка ввода с "призрачным" текстом снизу
     private func inputColumn(type: InputFieldType, binding: Binding<Double?>, ghostText: String?) -> some View {
         VStack(spacing: 2) {
             Button {
@@ -294,9 +271,7 @@ struct SetRowView: View {
     
     private var setTypeButton: some View {
         Button {
-            // Запрещаем изменять тип сета, если упражнение или тренировка завершены
             guard !isExerciseCompleted && !isWorkoutCompleted else { return }
-            // Переключение между Normal и Warmup
             set.type = (set.type == .normal) ? .warmup : .normal
         } label: {
             Text(set.type.rawValue)
@@ -307,7 +282,7 @@ struct SetRowView: View {
                 .clipShape(Circle())
         }
         .buttonStyle(BorderlessButtonStyle())
-        .disabled(isExerciseCompleted || isWorkoutCompleted) // Отключаем кнопку, если упражнение или тренировка завершены
+        .disabled(isExerciseCompleted || isWorkoutCompleted) 
     }
     
     private var checkButton: some View {
@@ -318,13 +293,12 @@ struct SetRowView: View {
                 .foregroundColor(set.isCompleted ? .green : .gray.opacity(0.5))
         }
         .buttonStyle(BorderlessButtonStyle())
-        .disabled(isExerciseCompleted || isWorkoutCompleted) // Отключаем кнопку, если упражнение или тренировка завершены
+        .disabled(isExerciseCompleted || isWorkoutCompleted)
     }
     
     // MARK: - Logic
     
     func toggleComplete() {
-        // Запрещаем отмечать сеты, если упражнение или тренировка завершены
         guard !isExerciseCompleted && !isWorkoutCompleted else { return }
         
         withAnimation { set.isCompleted.toggle() }
@@ -333,9 +307,9 @@ struct SetRowView: View {
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
             if autoStartTimer && !isLastSet {
-                onCheck(true) // Запускаем
+                onCheck(true) 
             } else {
-                onCheck(false) // Не запускаем (только сохраняем прогресс)
+                onCheck(false) 
             }
         }
     }

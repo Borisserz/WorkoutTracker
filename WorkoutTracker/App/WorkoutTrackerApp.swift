@@ -124,7 +124,6 @@ struct DatabaseErrorView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
                 .padding(.horizontal)
-            
             if let error = error {
                 ScrollView {
                     Text(error.localizedDescription)
@@ -141,4 +140,3 @@ struct DatabaseErrorView: View {
         .padding()
     }
 }
-

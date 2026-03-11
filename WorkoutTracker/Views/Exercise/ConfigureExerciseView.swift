@@ -33,8 +33,8 @@ struct ConfigureExerciseView: View {
     // Значения по умолчанию
     @State private var sets = 3
     @State private var reps = 10
-    @State private var weight: Double? = 0.0
-    @State private var distance: Double? = 0.0
+    @State private var weight: Double? = nil
+    @State private var distance: Double? = nil
     
     // Время разбито на минуты и секунды для удобства ввода
     @State private var minutes: Int? = 0
@@ -75,9 +75,15 @@ struct ConfigureExerciseView: View {
     }
     
     private var distanceBinding: Binding<Double?> {
-        Binding<Double?>(get: { distance }, set: { newValue in
+        Binding<Double?>(get: { 
+            if let d = distance {
+                return unitsManager.convertFromMeters(d)
+            }
+            return nil
+        }, set: { newValue in
             if let value = newValue {
-                let validation = InputValidator.validateDistance(value)
+                let mValue = unitsManager.convertToMeters(value)
+                let validation = InputValidator.validateDistance(mValue)
                 distance = validation.clampedValue
                 if !validation.isValid, let error = validation.errorMessage {
                     validationErrorMessage = error
@@ -249,9 +255,9 @@ struct ConfigureExerciseView: View {
     @ViewBuilder
     private var cardioConfig: some View {
         HStack {
-            Text("Distance (km):")
+            Text("Distance (\(unitsManager.distanceUnitString())):")
             Spacer()
-            ClearableTextField(placeholder: "km", value: distanceBinding)
+            ClearableTextField(placeholder: unitsManager.distanceUnitString(), value: distanceBinding)
                 .frame(width: 80)
         }
         timePickerRow(label: "Duration")
@@ -294,7 +300,7 @@ struct ConfigureExerciseView: View {
             self.reps = lastSets.first?.reps ?? 10
             
             let lastMax = lastSets.compactMap { $0.weight }.max() ?? 0.0
-            self.weight = lastMax
+            self.weight = lastMax > 0 ? lastMax : nil
             
             // Если есть что рекомендовать, показываем баннер
             if lastMax > 0 {
@@ -332,13 +338,18 @@ struct ConfigureExerciseView: View {
         let actualSeconds = seconds ?? 0
         
         if exerciseType == .strength {
-            let weightValidation = InputValidator.validateWeight(actualWeight)
-            if !weightValidation.isValid {
+            if actualWeight <= 0 {
                 hasError = true
-                if let error = weightValidation.errorMessage {
-                    errorMessages.append(error)
+                errorMessages.append(String(localized: "Please enter a weight greater than 0."))
+            } else {
+                let weightValidation = InputValidator.validateWeight(actualWeight)
+                if !weightValidation.isValid {
+                    hasError = true
+                    if let error = weightValidation.errorMessage {
+                        errorMessages.append(error)
+                    }
+                    weight = weightValidation.clampedValue
                 }
-                weight = weightValidation.clampedValue
             }
             
             let repsValidation = InputValidator.validateReps(reps)

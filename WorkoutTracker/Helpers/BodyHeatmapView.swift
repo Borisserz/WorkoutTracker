@@ -93,6 +93,9 @@ struct BodyHeatmapView: View {
                         .cornerRadius(20)
                         .padding(.bottom, 20)
                         .transition(.scale.combined(with: .opacity))
+                        // ИСПРАВЛЕНИЕ: Отключаем перехват нажатий для плашки,
+                        // чтобы она не блокировала возможность нажать на ноги и икры
+                        .allowsHitTesting(false)
                     }
                 }
             }
@@ -167,17 +170,23 @@ struct BodyHeatmapView: View {
         let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
         let isSelected = selectedMuscleName == muscle.name
         
-        finalPath
-            .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
-            .overlay(
-                finalPath.stroke(isSelected ? Color.blue : Color.black.opacity(0.15), lineWidth: isSelected ? 2.5 : 1.5)
-            )
-            .contentShape(Path(finalPath.cgPath))
-            .onTapGesture {
-                withAnimation(.spring()) {
-                    selectedMuscleName = muscle.name
-                }
+        // ИСПРАВЛЕНИЕ: Button реагирует внутри ScrollView мгновенно и без багов,
+        // в отличие от обычного onTapGesture.
+        Button {
+            withAnimation(.spring()) {
+                selectedMuscleName = muscle.name
             }
+        } label: {
+            finalPath
+                .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
+                .overlay(
+                    finalPath.stroke(isSelected ? Color.blue : Color.black.opacity(0.15), lineWidth: isSelected ? 2.5 : 1.5)
+                )
+        }
+        .buttonStyle(.plain)
+        // ИСПРАВЛЕНИЕ: Используем прямой Path для точного попадания по контуру,
+        // игнорируя пустоты (что позволяет избегать перекрытий).
+        .contentShape(finalPath)
     }
     
     func colorForMuscle(_ slug: String, isSelected: Bool) -> Color {

@@ -138,10 +138,11 @@ class AchievementCalculator {
         ))
         
         // --- 7. Cardio (Марафонец) ---
-        let dTierData = getTierAndTarget(current: totalDistance, thresholds: [10, 42, 100, 500])
+        let distanceKm = totalDistance / 1000.0 // Переводим метры в километры для сверки с порогами
+        let dTierData = getTierAndTarget(current: distanceKm, thresholds: [10, 42, 100, 500])
         
-        let currentDistConverted = unitsManager.convertFromKilometers(totalDistance)
-        let targetDistConverted = unitsManager.convertFromKilometers(dTierData.1)
+        let currentDistConverted = unitsManager.convertFromMeters(totalDistance)
+        let targetDistConverted = unitsManager.convertFromMeters(dTierData.1 * 1000.0) // Цель переводим обратно в метры для отображения
         let distUnit = unitsManager.distanceUnitString()
         
         list.append(Achievement(
@@ -153,8 +154,8 @@ class AchievementCalculator {
         ))
         
         // --- 8. Globetrotter (Глобальный бегун) ---
-        let globetrotterTierData = getTierAndTarget(current: totalDistance, thresholds: [1000, 2500, 5000, 10000])
-        let targetGlobeConverted = unitsManager.convertFromKilometers(globetrotterTierData.1)
+        let globetrotterTierData = getTierAndTarget(current: distanceKm, thresholds: [1000, 2500, 5000, 10000])
+        let targetGlobeConverted = unitsManager.convertFromMeters(globetrotterTierData.1 * 1000.0)
         list.append(Achievement(
             title: "Globetrotter",
             description: "Run across countries.",

@@ -29,13 +29,15 @@ struct WorkoutView: View {
     @State private var selectedFilter: FilterPeriod = .all
     @State private var sortOption: SortOption = .dateDescending
     
+    // ДОБАВЛЕНО: Отдельный переключатель для избранных (звездных) тренировок
+    @State private var showFavoritesOnly = false
+    
     // ОПТИМИЗАЦИЯ: Локальный стейт для расчётов, чтобы не тормозить UI
     @State private var calculatedAvgDuration: Int = 0
     @State private var calculatedAvgVolume: Int = 0
     
     enum FilterPeriod: String, CaseIterable {
-        case all = "All"
-        case favorites = "Favorites"
+        case all = "All Time" // ИЗМЕНЕНО: Более понятное название для фильтра времени
         case week = "Last Week"
         case month = "Last Month"
         case threeMonths = "Last 3 Months"
@@ -55,14 +57,17 @@ struct WorkoutView: View {
     var filteredWorkouts: [Workout] {
         var filtered = workouts
         
+        // Фильтр по избранному (звездные)
+        if showFavoritesOnly {
+            filtered = filtered.filter { $0.isFavorite }
+        }
+        
         // Фильтр по периоду
         let calendar = Calendar.current
         let now = Date()
         switch selectedFilter {
         case .all:
             break
-        case .favorites:
-            filtered = filtered.filter { $0.isFavorite }
         case .week:
             if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) {
                 filtered = filtered.filter { $0.date >= weekAgo }
@@ -107,7 +112,7 @@ struct WorkoutView: View {
     
     // Триггер для обновления расчетов при изменении любого параметра фильтрации
     private var filterTrigger: String {
-        "\(workouts.count)-\(selectedFilter.rawValue)-\(searchText)-\(sortOption.rawValue)"
+        "\(workouts.count)-\(selectedFilter.rawValue)-\(searchText)-\(sortOption.rawValue)-\(showFavoritesOnly)"
     }
     
     var body: some View {
@@ -309,6 +314,15 @@ struct WorkoutView: View {
     // Секция поиска и фильтров
     private var searchAndFiltersSection: some View {
         VStack(spacing: 12) {
+            
+            // ДОБАВЛЕНО: Слайд-бар (Segmented Control) для звездных тренировок
+            Picker(LocalizedStringKey("View Mode"), selection: $showFavoritesOnly) {
+                Text(LocalizedStringKey("All Workouts")).tag(false)
+                Text(LocalizedStringKey("Favorites")).tag(true)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+            
             // Поиск с использованием Debounced компонента
             DebouncedSearchBar(text: $searchText)
                 .padding()
@@ -468,6 +482,22 @@ struct ImbalanceDetailSheet: View {
     }
 }
 
+// --- ИНДИКАТОР АКТИВНОЙ ТРЕНИРОВКИ ---
+struct ActiveWorkoutIndicator: View {
+    @State private var isBlinking = false
+    
+    var body: some View {
+        Circle()
+            .fill(Color.blue)
+            .frame(width: 8, height: 8)
+            .opacity(isBlinking ? 0.2 : 1.0)
+            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isBlinking)
+            .onAppear {
+                isBlinking = true
+            }
+    }
+}
+
 // --- ДИЗАЙН ЯЧЕЙКИ ТРЕНИРОВКИ ---
 struct WorkoutRow: View {
     let workout: Workout
@@ -496,9 +526,16 @@ struct WorkoutRow: View {
                 .clipShape(Circle())
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(workout.title)
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                HStack(spacing: 6) {
+                    Text(workout.title)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .lineLimit(1)
+                    
+                    if workout.isActive {
+                        ActiveWorkoutIndicator()
+                    }
+                }
                 
                 Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
@@ -508,9 +545,16 @@ struct WorkoutRow: View {
             Spacer()
             
             VStack(alignment: .trailing, spacing: 4) {
-                Text(LocalizedStringKey("\(workout.duration) min"))
-                    .font(.subheadline)
-                    .bold()
+                if workout.isActive {
+                    Text(LocalizedStringKey("In Progress"))
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundColor(.blue)
+                } else {
+                    Text(LocalizedStringKey("\(workout.duration) min"))
+                        .font(.subheadline)
+                        .bold()
+                }
                 
                 Text(LocalizedStringKey("Effort: \(workout.effortPercentage)%"))
                     .font(.caption2)

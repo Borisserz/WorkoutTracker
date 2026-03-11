@@ -118,7 +118,9 @@ struct PresetEditorView: View {
             }
             // Добавление упражнения
             .sheet(isPresented: $showExerciseSelector) {
-                ExerciseSelectionView(selectedExercises: $exercises)
+                ExerciseSelectionView { newExercise in
+                    exercises.append(newExercise)
+                }
             }
             // Редактирование упражнения
             .sheet(item: $exerciseToEdit) { ex in
@@ -195,7 +197,7 @@ struct PresetEditorView: View {
                                 Text("\(exercise.sets) x \(exercise.reps) • \(Int(convertedWeight))\(unitsManager.weightUnitString())")
                             case .cardio:
                                 let dist = exercise.distance ?? 0
-                                let convertedDist = unitsManager.convertFromKilometers(dist)
+                                let convertedDist = unitsManager.convertFromMeters(dist)
                                 let time = exercise.timeSeconds ?? 0
                                 Text("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) • \(formatTime(time))")
                             case .duration:
@@ -365,10 +367,10 @@ struct PresetExerciseEditor: View {
         HStack {
             Text("Distance (\(unitsManager.distanceUnitString())):")
             TextField("0", value: Binding(get: { 
-                if let d = distanceValue { return unitsManager.convertFromKilometers(d) }
+                if let d = distanceValue { return unitsManager.convertFromMeters(d) }
                 return 0
             }, set: { newValue in
-                distanceValue = unitsManager.convertToKilometers(newValue)
+                distanceValue = unitsManager.convertToMeters(newValue)
             }), format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
@@ -412,13 +414,18 @@ struct PresetExerciseEditor: View {
         var errorMessages: [String] = []
         
         if exercise.type == .strength {
-            let weightValidation = InputValidator.validateWeight(weightValue)
-            if !weightValidation.isValid {
+            if weightValue <= 0 {
                 hasError = true
-                if let error = weightValidation.errorMessage {
-                    errorMessages.append(error)
+                errorMessages.append(String(localized: "Please enter a weight greater than 0."))
+            } else {
+                let weightValidation = InputValidator.validateWeight(weightValue)
+                if !weightValidation.isValid {
+                    hasError = true
+                    if let error = weightValidation.errorMessage {
+                        errorMessages.append(error)
+                    }
+                    weightValue = weightValidation.clampedValue
                 }
-                weightValue = weightValidation.clampedValue
             }
             
             let repsValidation = InputValidator.validateReps(repsCount)
