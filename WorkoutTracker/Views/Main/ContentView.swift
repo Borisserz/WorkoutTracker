@@ -17,7 +17,8 @@ struct ContentView: View {
     // УДАЛЕН: @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
     // Нам больше не нужно загружать все тренировки в UI-поток!
     
-    @State private var selectedTab = 1 // Начинаем с вкладки тренировок (Workout)
+    // ИЗМЕНЕНО: Начинаем с вкладки Overview (0) вместо тренировок (1)
+    @State private var selectedTab = 0 
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -45,10 +46,6 @@ struct ContentView: View {
         }
         // ДОБАВЛЕНО: Инициализируем кеши при запуске в фоне
         .onAppear {
-            viewModel.refreshAllCaches(container: modelContext.container)
-        }
-        // ДОБАВЛЕНО: Слушаем явные события (например, завершение или удаление тренировки)
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshPerformanceCaches"))) { _ in
             viewModel.refreshAllCaches(container: modelContext.container)
         }
         .alert(item: $viewModel.currentError) { error in

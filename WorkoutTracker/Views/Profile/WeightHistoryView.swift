@@ -6,10 +6,14 @@
 //
 
 internal import SwiftUI
+import SwiftData
 import Charts
 
 struct WeightHistoryView: View {
-    @StateObject private var weightManager = WeightTrackingManager.shared
+    // ИСПРАВЛЕНИЕ: Удаляем weightManager, используем нативные инструменты SwiftData
+    @Environment(\.modelContext) private var context
+    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    
     @StateObject private var unitsManager = UnitsManager.shared
     @Environment(\.dismiss) var dismiss
     
@@ -33,7 +37,8 @@ struct WeightHistoryView: View {
     }
     
     var filteredHistory: [WeightEntry] {
-        return weightManager.getWeightHistory(days: selectedPeriod.days)
+        let cutoff = Calendar.current.date(byAdding: .day, value: -selectedPeriod.days, to: Date())!
+        return weightHistory.filter { $0.date >= cutoff }
     }
     
     var chartData: [(date: Date, weight: Double)] {
@@ -43,11 +48,18 @@ struct WeightHistoryView: View {
     }
     
     var stats: (startWeight: Double?, currentWeight: Double?, change: Double?) {
-        let stats = weightManager.getWeightStats()
+        guard let firstEntryWeight = weightHistory.last?.weight, // Массив отсортирован по убыванию, поэтому oldest это last
+              let currentEntryWeight = weightHistory.first?.weight else {
+            return (nil, nil, nil)
+        }
+        
+        let start = unitsManager.convertFromKilograms(firstEntryWeight)
+        let current = unitsManager.convertFromKilograms(currentEntryWeight)
+        
         return (
-            startWeight: stats.startWeight.map { unitsManager.convertFromKilograms($0) },
-            currentWeight: stats.currentWeight.map { unitsManager.convertFromKilograms($0) },
-            change: stats.change.map { unitsManager.convertFromKilograms($0) }
+            startWeight: start,
+            currentWeight: current,
+            change: current - start
         )
     }
     
@@ -56,7 +68,7 @@ struct WeightHistoryView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     // Статистика
-                    if !weightManager.weightHistory.isEmpty {
+                    if !weightHistory.isEmpty {
                         HStack(spacing: 20) {
                             WeightStatCard(
                                 title: LocalizedStringKey("Start"),
@@ -117,7 +129,6 @@ struct WeightHistoryView: View {
                                     .foregroundStyle(.blue)
                                     .symbolSize(chartData.count == 1 ? 50 : 30)
                                     .annotation(position: .top) {
-                                        // Показываем значения только для недели и месяца, не для 3 месяцев
                                         if selectedPeriod != .threeMonths {
                                             Text(LocalizationHelper.shared.formatDecimal(data.weight))
                                                 .font(.caption2)
@@ -170,17 +181,17 @@ struct WeightHistoryView: View {
                                 .padding(.horizontal)
                             
                             VStack(spacing: 0) {
-                                ForEach(filteredHistory.reversed()) { entry in
+                                ForEach(filteredHistory) { entry in
                                     WeightEntryRow(entry: entry, unitsManager: unitsManager)
                                         .contextMenu {
                                             Button(role: .destructive) {
-                                                weightManager.deleteWeightEntry(entry)
+                                                context.delete(entry)
                                             } label: {
                                                 Label(LocalizedStringKey("Delete"), systemImage: "trash")
                                             }
                                         }
                                     
-                                    if entry.id != filteredHistory.reversed().last?.id {
+                                    if entry.id != filteredHistory.last?.id {
                                         Divider().padding(.leading, 50)
                                     }
                                 }
@@ -201,7 +212,7 @@ struct WeightHistoryView: View {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         newWeightDate = Date()
-                        if let latest = weightManager.getLatestWeight() {
+                        if let latest = weightHistory.first?.weight {
                             newWeightText = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(latest))
                         } else {
                             newWeightText = ""
@@ -223,9 +234,10 @@ struct WeightHistoryView: View {
                     .keyboardType(.decimalPad)
                 }
                 Button(LocalizedStringKey("Save")) {
-                    if let weight = Double(newWeightText) {
+                    if let weight = Double(newWeightText.replacingOccurrences(of: ",", with: ".")) {
                         let weightInKg = unitsManager.convertToKilograms(weight)
-                        weightManager.addWeightEntry(weight: weightInKg, date: newWeightDate)
+                        let newEntry = WeightEntry(date: newWeightDate, weight: weightInKg)
+                        context.insert(newEntry)
                     }
                 }
                 Button(LocalizedStringKey("Cancel"), role: .cancel) { }
@@ -301,5 +313,4 @@ struct WeightEntryRow: View {
         return formatter.string(from: date)
     }
 }
-
 

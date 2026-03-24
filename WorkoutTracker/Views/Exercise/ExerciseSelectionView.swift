@@ -18,8 +18,8 @@ struct ExerciseSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WorkoutViewModel
     
-    /// Сюда добавится новое упражнение после конфигурации
-    @Binding var selectedExercises: [Exercise]
+    /// Замыкание для добавления нового упражнения
+    var onAdd: (Exercise) -> Void
     
     // MARK: - State
     @State private var searchText: String = ""
@@ -58,7 +58,7 @@ struct ExerciseSelectionView: View {
                                                 muscleGroup: group,
                                                 exerciseType: detectedType
                                             ) { newExercise in
-                                                selectedExercises.append(newExercise)
+                                                onAdd(newExercise)
                                                 dismiss()
                                                 if tutorialManager.currentStep == .addExercise {
                                                     // Небольшая задержка, чтобы экран успел закрыться

@@ -15,11 +15,12 @@ import SwiftData
 struct ExerciseCardView: View {
     
     // MARK: - Environment & Bindings
-    @Environment(\.modelContext) private var context // РЕШЕНИЕ 2.1: Доступ к контексту для правильного удаления
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
-    @StateObject private var unitsManager = UnitsManager.shared
+    // ИСПРАВЛЕНИЕ: Используем @ObservedObject для синглтона, чтобы избежать зависаний интерфейса (deadlocks)
+    @ObservedObject private var unitsManager = UnitsManager.shared
     
     // ДОБАВЛЕНО: SwiftData модель
     @Bindable var exercise: Exercise
@@ -29,19 +30,19 @@ struct ExerciseCardView: View {
     let currentWorkoutId: UUID
     var onDelete: () -> Void
     var onSwap: (() -> Void)? = nil
-    var isEmbeddedInSuperset: Bool = false // Флаг: скрывать кнопку Finish, если это часть суперсета
-    var isWorkoutCompleted: Bool = false // Флаг завершения тренировки
-    var isCurrentExercise: Bool = false // Флаг: является ли это упражнение текущим (активным)
+    var isEmbeddedInSuperset: Bool = false
+    var isWorkoutCompleted: Bool = false
+    var isCurrentExercise: Bool = false
     
     // MARK: - Local State
     
     @State private var showEffortSheet = false
-    @State private var showPRCelebration = false
-    @Binding var isExpanded: Bool // Состояние раскрытия/сворачивания упражнения (значение bool, поэтому Binding остается)
-    @State private var showDeleteAlert = false
+    @State private var showTechniqueSheet = false // НОВОЕ СВОЙСТВО
+    @Binding var isExpanded: Bool
+    @State private var newlyAddedSetId: UUID? = nil
     
-    // Callback при завершении упражнения (вызывается после закрытия EffortSheet)
     var onExerciseFinished: (() -> Void)? = nil
+    var onPRSet: ((PRLevel) -> Void)? = nil
     
     // MARK: - Initializer
     
@@ -54,7 +55,8 @@ struct ExerciseCardView: View {
         isWorkoutCompleted: Bool = false,
         isExpanded: Binding<Bool>,
         onExerciseFinished: (() -> Void)? = nil,
-        isCurrentExercise: Bool = false
+        isCurrentExercise: Bool = false,
+        onPRSet: ((PRLevel) -> Void)? = nil
     ) {
         self.exercise = exercise
         self.currentWorkoutId = currentWorkoutId
@@ -65,6 +67,7 @@ struct ExerciseCardView: View {
         self._isExpanded = isExpanded
         self.onExerciseFinished = onExerciseFinished
         self.isCurrentExercise = isCurrentExercise
+        self.onPRSet = onPRSet
     }
     
     // MARK: - Computed
@@ -118,30 +121,21 @@ struct ExerciseCardView: View {
                 x: 0,
                 y: 2
             )
-            
-            // Оверлей рекорда (PR)
-            if showPRCelebration {
-                recordOverlay
-            }
         }
-        // Модификаторы
         .sheet(isPresented: $showEffortSheet, onDismiss: {
-            // После закрытия EffortSheet вызываем callback для сворачивания и перехода к следующему упражнению
+            // Автоматически сворачиваем карточку и идем дальше
             if exercise.isCompleted {
                 onExerciseFinished?()
             }
         }) {
             EffortInputView(effort: $exercise.effort)
         }
-        .alert(LocalizedStringKey("Delete Exercise?"), isPresented: $showDeleteAlert) {
-            Button(LocalizedStringKey("Delete"), role: .destructive) {
-                onDelete()
-            }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
-        } message: {
-            Text(LocalizedStringKey("Are you sure you want to delete '\(exercise.name)'? This action cannot be undone."))
+        // НОВАЯ ШТОРКА ДЛЯ ТЕХНИКИ ВЫПОЛНЕНИЯ
+        .sheet(isPresented: $showTechniqueSheet) {
+            TechniqueSheetView(category: exercise.category)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
-        .blur(radius: showPRCelebration ? 5 : 0)
     }
     
     // MARK: - View Components
@@ -149,18 +143,13 @@ struct ExerciseCardView: View {
     @ViewBuilder
     private var setsSection: some View {
         let lastExerciseData = viewModel.lastPerformancesCache[exercise.name]
-        
-        // ИСПРАВЛЕНИЕ: Используем sortedSets для правильного отображения по порядку
         let sortedSets = exercise.sortedSets
-        
-        // То же самое делаем для прошлой тренировки
         let sortedPrevSets: [WorkoutSet] = lastExerciseData?.sortedSets ?? []
         
         ForEach(Array(sortedSets.enumerated()), id: \.element.id) { currentIndex, set in
             let isLast = currentIndex == sortedSets.count - 1
             
             let prevSet: WorkoutSet? = {
-                // Если индекс существует в кэшированной прошлой тренировке — берем его за O(1)
                 if currentIndex < sortedPrevSets.count {
                     return sortedPrevSets[currentIndex]
                 }
@@ -169,17 +158,27 @@ struct ExerciseCardView: View {
             
             SetRowView(
                 set: set,
+                exerciseName: exercise.name,
+                cached1RM: viewModel.personalRecordsCache[exercise.name] ?? 0.0,
+                effort: exercise.effort,
                 exerciseType: exercise.type,
                 isLastSet: isLast,
                 isExerciseCompleted: exercise.isCompleted,
                 isWorkoutCompleted: isWorkoutCompleted,
-                onCheck: { shouldStartTimer in
-                    if shouldStartTimer { timerManager.startRestTimer() }
+                onCheck: { shouldStartTimer, suggestedDuration in
+                    if shouldStartTimer {
+                        if let duration = suggestedDuration {
+                            timerManager.startRestTimer(duration: duration)
+                        } else {
+                            timerManager.startRestTimer()
+                        }
+                    }
                 },
                 prevWeight: prevSet?.weight,
                 prevReps: prevSet?.reps,
                 prevDist: prevSet?.distance,
-                prevTime: prevSet?.time
+                prevTime: prevSet?.time,
+                autoFocus: set.id == newlyAddedSetId
             )
             .swipeActions(edge: .trailing) {
                 if !exercise.isCompleted && !isWorkoutCompleted {
@@ -196,7 +195,6 @@ struct ExerciseCardView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                // Иконка "бутерброда" для раскрытия/сворачивания
                 Image(systemName: "line.3.horizontal")
                     .foregroundColor(.gray)
                     .font(.caption)
@@ -215,15 +213,34 @@ struct ExerciseCardView: View {
                 }
                 .highPriorityGesture(TapGesture().onEnded { })
                 
+                // НОВАЯ КНОПКА ПОКАЗА ТЕХНИКИ
+                Button {
+                    showTechniqueSheet = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 4)
+                }
+                .buttonStyle(BorderlessButtonStyle())
+                
                 Spacer()
                 
-                // Информация о количестве сетов (ИСПРАВЛЕНИЕ: setsList.count)
-                Text(LocalizedStringKey("\(exercise.setsList.count) sets"))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                // ПРОГРЕСС ВЫПОЛНЕНИЯ ПОДХОДОВ
+                let completedCount = exercise.setsList.filter { $0.isCompleted }.count
+                let totalCount = exercise.setsList.count
+                
+                HStack(spacing: 4) {
+                    Image(systemName: completedCount == totalCount && totalCount > 0 ? "checkmark.circle.fill" : "checkmark.circle")
+                        .foregroundColor(completedCount == totalCount && totalCount > 0 ? .green : (completedCount > 0 ? .blue : .gray))
+                        .font(.caption)
+                    
+                    (Text("\(completedCount)/\(totalCount) ") + Text(LocalizedStringKey("sets")))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
                 
                 Menu {
-                    // Опция замены упражнения
                     if let onSwap = onSwap {
                         Button(action: onSwap) {
                             Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath")
@@ -231,7 +248,7 @@ struct ExerciseCardView: View {
                     }
                     
                     Button(role: .destructive) {
-                        showDeleteAlert = true
+                        onDelete()
                     } label: {
                         Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash")
                     }
@@ -243,7 +260,6 @@ struct ExerciseCardView: View {
                 .highPriorityGesture(TapGesture().onEnded { })
             }
             
-            // Таргетные мускулы
             let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exercise.name, muscleGroup: exercise.muscleGroup)
             if !targetMuscles.isEmpty {
                 HStack(spacing: 6) {
@@ -261,7 +277,6 @@ struct ExerciseCardView: View {
         .padding(.bottom, 10)
         .contentShape(Rectangle())
         .onTapGesture {
-            // Раскрытие/сворачивание при нажатии на заголовок
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 isExpanded.toggle()
             }
@@ -309,7 +324,7 @@ struct ExerciseCardView: View {
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
             Button(action: addSet) {
-                Text(LocalizedStringKey("+ Add Set"))
+                Text(exercise.isCompleted ? LocalizedStringKey("Exercise Completed") : LocalizedStringKey("+ Add Set"))
                     .font(.subheadline).bold()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -318,12 +333,21 @@ struct ExerciseCardView: View {
                     .cornerRadius(8)
             }
             .buttonStyle(BorderlessButtonStyle())
-            .disabled(exercise.isCompleted || isWorkoutCompleted) // Запрещаем добавлять сеты, если упражнение или тренировка завершены
+            .disabled(exercise.isCompleted || isWorkoutCompleted)
             
-            // Показываем кнопку "Finish", только если это НЕ вложенное упражнение
             if !isEmbeddedInSuperset {
-                Button(action: finishExercise) {
-                    Text(LocalizedStringKey("Finish Exercise"))
+                Button(action: {
+                    if exercise.isCompleted {
+                        // ВОЗОБНОВИТЬ: Возвращаем статус в "не завершено"
+                        withAnimation {
+                            exercise.isCompleted = false
+                        }
+                    } else {
+                        // ЗАКОНЧИТЬ: Завершение текущего
+                        finishExercise()
+                    }
+                }) {
+                    Text(exercise.isCompleted ? LocalizedStringKey("Continue") : LocalizedStringKey("Finish Exercise"))
                         .font(.subheadline).bold()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
@@ -332,98 +356,92 @@ struct ExerciseCardView: View {
                         .cornerRadius(8)
                 }
                 .buttonStyle(BorderlessButtonStyle())
-                .disabled(exercise.isCompleted || isWorkoutCompleted)
+                .disabled(isWorkoutCompleted)
                 .spotlight(
-                    step: .finishExercise,       // Убедись, что используешь правильный шаг (finishExercise)
-                    manager: tutorialManager,    // Переменная @EnvironmentObject var tutorialManager
+                    step: .finishExercise,
+                    manager: tutorialManager,
                     text: "Tap here when you are done with this exercise.",
-                    alignment: .top,             // <--- СТАВИМ .top (ТЕКСТ СВЕРХУ)
-                    yOffset: -20                 // <--- Чуть приподнимаем над кнопкой
+                    alignment: .top,
+                    yOffset: -20
                 )
             }
         }
         .padding(.top, 12)
     }
     
-    private var recordOverlay: some View {
-        VStack {
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 50))
-                .foregroundColor(.yellow)
-            Text(LocalizedStringKey("New Record!"))
-                .font(.title).bold()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color.black.opacity(0.4))
-        .cornerRadius(12)
-        .transition(.opacity.combined(with: .scale))
-    }
-    
     // MARK: - Logic
     
     private func finishExercise() {
-            // Запрещаем завершать, если упражнение или тренировка завершены
-            guard !exercise.isCompleted && !isWorkoutCompleted else { return }
+        guard !exercise.isCompleted && !isWorkoutCompleted else { return }
+        
+        // Удаляем пустые (незавершенные) подходы
+        // ViewModel позаботится об удалении, переиндексации и сохранении в БД
+        let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
+        for set in uncompletedSets {
+            viewModel.deleteSet(set, from: exercise, context: context)
+        }
+        
+        exercise.isCompleted = true // Помечаем упражнение как завершенное
+        
+        let lastData = viewModel.lastPerformancesCache[exercise.name]
+        var newRecordWasSet = false
+        var maxIncreasePercent: Double = 0.0
+        
+        if exercise.type == .strength {
+            let maxWeightInWorkout = exercise.setsList
+                .filter { $0.isCompleted }
+                .compactMap { $0.weight }
+                .max() ?? 0
             
-            markAllSetsCompleted()
-            exercise.isCompleted = true // Помечаем упражнение как завершенное
-            
-            // Получаем данные из кэша O(1)
-            let lastData = viewModel.lastPerformancesCache[exercise.name]
-            
-            // Логика рекорда
-            if exercise.type == .strength {
-                // ИСПРАВЛЕНИЕ: Используем setsList
-                let maxWeightInWorkout = exercise.setsList
-                    .filter { $0.isCompleted }
-                    .compactMap { $0.weight }
-                    .max() ?? 0
-                
-                if let _ = lastData {
-                    let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
-                    if maxWeightInWorkout > oldRecord {
-                        triggerRecordAnimation()
+            if let _ = lastData {
+                let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
+                if maxWeightInWorkout > oldRecord {
+                    newRecordWasSet = true
+                    
+                    let increase = oldRecord > 0 ? (maxWeightInWorkout - oldRecord) / oldRecord : 0.0
+                    if increase > maxIncreasePercent {
+                        maxIncreasePercent = increase
                     }
                 }
             }
+        }
+        
+        if tutorialManager.currentStep == .finishExercise {
+            tutorialManager.setStep(.explainEffort)
+        }
+        
+        if newRecordWasSet {
+            let calculatedPRLevel: PRLevel
             
-            // ТУТОРИАЛ
-            if tutorialManager.currentStep == .finishExercise {
-                tutorialManager.setStep(.explainEffort)
+            if maxIncreasePercent >= 0.20 {
+                calculatedPRLevel = .diamond
+            } else if maxIncreasePercent >= 0.10 {
+                calculatedPRLevel = .gold
+            } else if maxIncreasePercent >= 0.05 {
+                calculatedPRLevel = .silver
+            } else {
+                calculatedPRLevel = .bronze
             }
             
+            onPRSet?(calculatedPRLevel)
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                showEffortSheet = true
+            }
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+        } else {
             showEffortSheet = true
-        }
-    
-    private func triggerRecordAnimation() {
-        withAnimation { showPRCelebration = true }
-        
-        // Скрываем через 3 секунды
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            withAnimation { showPRCelebration = false }
-        }
-        
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-    }
-    
-    private func markAllSetsCompleted() {
-        // ИСПРАВЛЕНИЕ: Используем setsList
-        for set in exercise.setsList {
-            set.isCompleted = true
         }
     }
     
     private func addSet() {
-        // Запрещаем добавлять сеты, если упражнение или тренировка завершены
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
-        // ИСПРАВЛЕНИЕ: Используем sortedSets
         let sortedSets = exercise.sortedSets
         let lastSet = sortedSets.last
         let newIndex = (lastSet?.index ?? 0) + 1
         
-        // Копируем данные из предыдущего сета для удобства
         let newSet = WorkoutSet(
             index: newIndex,
             weight: lastSet?.weight,
@@ -432,35 +450,18 @@ struct ExerciseCardView: View {
             time: lastSet?.time
         )
         
-        // ИСПРАВЛЕНИЕ SwiftData: Вставляем в контекст ДО добавления в массив для избежания дублирования
-        context.insert(newSet)
-        
         withAnimation {
-            // Мы по-прежнему модифицируем оригинальный массив базы данных!
-            exercise.setsList.append(newSet)
+            viewModel.addSet(newSet, to: exercise, context: context)
+            newlyAddedSetId = newSet.id
         }
     }
     
     private func removeSet(withId id: UUID) {
-        // Запрещаем удалять сеты, если упражнение или тренировка завершены
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
         withAnimation {
-            if let index = exercise.setsList.firstIndex(where: { $0.id == id }) {
-                let setToDelete = exercise.setsList[index]
-                
-                // РЕШЕНИЕ 2.1: Явно удаляем объект из базы данных (ModelContext)
-                context.delete(setToDelete)
-                
-                // Удаляем из локального массива
-                exercise.setsList.remove(at: index)
-                
-                // Пересчитываем индексы
-                // ИСПРАВЛЕНИЕ: Используем sortedSets
-                let sortedSets = exercise.sortedSets
-                for (i, set) in sortedSets.enumerated() {
-                    set.index = i + 1
-                }
+            if let setToDelete = exercise.setsList.first(where: { $0.id == id }) {
+                viewModel.deleteSet(setToDelete, from: exercise, context: context)
             }
         }
     }

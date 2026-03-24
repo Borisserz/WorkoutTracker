@@ -62,50 +62,52 @@ struct PresetEditorView: View {
                     deleteButtonSection
                 }
             }
-            .navigationTitle(preset == nil ? Text("New Template") : Text("Edit Template"))
+            .navigationTitle(preset == nil ? String(localized: "New Template") : String(localized: "Edit Template"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(String(localized: "Cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(String(localized: "Save")) {
                         savePreset()
                     }
                     .disabled(name.isEmpty || exercises.isEmpty)
                 }
             }
-            // Алерт удаления
-            .alert("Delete Template?", isPresented: $showDeleteAlert) {
-                Button("Delete", role: .destructive) {
+            // Алерт удаления шаблона
+            .alert(String(localized: "Delete Template?"), isPresented: $showDeleteAlert) {
+                Button(String(localized: "Delete"), role: .destructive) {
                     if let p = preset {
                         context.delete(p)
                         dismiss()
                     }
                 }
-                Button("Cancel", role: .cancel) { }
+                Button(String(localized: "Cancel"), role: .cancel) { }
             } message: {
-                Text("Are you sure you want to delete '\(name)'? This action cannot be undone.")
+                Text(String(localized: "Are you sure you want to delete '\(name)'? This action cannot be undone."))
             }
-            .alert("Delete Exercise?", isPresented: $showDeleteExerciseAlert) {
-                Button("Delete", role: .destructive) {
+            // Алерт удаления упражнения
+            .alert(String(localized: "Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
+                Button(String(localized: "Delete"), role: .destructive) {
                     if let indexSet = exercisesToDelete {
                         exercises.remove(atOffsets: indexSet)
                         exercisesToDelete = nil
                     }
                 }
-                Button("Cancel", role: .cancel) {
+                Button(String(localized: "Cancel"), role: .cancel) {
                     exercisesToDelete = nil
                 }
             } message: {
                 if let indexSet = exercisesToDelete {
                     let count = indexSet.count
                     if count == 1, let firstIndex = indexSet.first, firstIndex < exercises.count {
-                        Text("Are you sure you want to delete '\(exercises[firstIndex].name)'? This action cannot be undone.")
+                        let exName = exercises[firstIndex].name
+                        Text(String(localized: "Are you sure you want to delete '\(exName)'? This action cannot be undone."))
                     } else {
-                        Text("Are you sure you want to delete \(count) exercises? This action cannot be undone.")
+                        Text(String(localized: "Are you sure you want to delete \(count) exercises? This action cannot be undone."))
                     }
                 } else {
-                    Text("Are you sure you want to delete this exercise? This action cannot be undone.")
+                    Text(String(localized: "Are you sure you want to delete this exercise? This action cannot be undone."))
                 }
             }
             // Инициализация
@@ -118,7 +120,9 @@ struct PresetEditorView: View {
             }
             // Добавление упражнения
             .sheet(isPresented: $showExerciseSelector) {
-                ExerciseSelectionView(selectedExercises: $exercises)
+                ExerciseSelectionView { newExercise in
+                    exercises.append(newExercise)
+                }
             }
             // Редактирование упражнения
             .sheet(item: $exerciseToEdit) { ex in
@@ -136,8 +140,8 @@ struct PresetEditorView: View {
     // MARK: - View Components
     
     private var headerSection: some View {
-        Section(header: Text("Template Info")) {
-            TextField("Template Name", text: $name)
+        Section(header: Text(String(localized: "Template Info"))) {
+            TextField(String(localized: "Template Name"), text: $name)
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 15) {
@@ -163,18 +167,18 @@ struct PresetEditorView: View {
     }
     
     private var exerciseListSection: some View {
-        Section(header: Text("Exercises")) {
+        Section(header: Text(String(localized: "Exercises"))) {
             if exercises.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 50))
                         .foregroundColor(.secondary)
                     
-                    Text("No exercises yet")
+                    Text(String(localized: "No exercises yet"))
                         .font(.headline)
                         .foregroundColor(.primary)
                     
-                    Text("Tap the button below to add your first exercise to this template")
+                    Text(String(localized: "Tap the button below to add your first exercise to this template"))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -186,21 +190,21 @@ struct PresetEditorView: View {
             ForEach(exercises) { exercise in
                 HStack {
                     VStack(alignment: .leading) {
-                        Text(LocalizedStringKey(exercise.name)).font(.headline)
+                        Text(exercise.name).font(.headline)
                         
                         Group {
                             switch exercise.type {
                             case .strength:
-                                let convertedWeight = unitsManager.convertFromKilograms(exercise.weight)
-                                Text("\(exercise.sets) x \(exercise.reps) • \(Int(convertedWeight))\(unitsManager.weightUnitString())")
+                                let convertedWeight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
+                                Text("\(exercise.setsCount) x \(exercise.firstSetReps) • \(Int(convertedWeight))\(unitsManager.weightUnitString())")
                             case .cardio:
-                                let dist = exercise.distance ?? 0
-                                let convertedDist = unitsManager.convertFromKilometers(dist)
-                                let time = exercise.timeSeconds ?? 0
+                                let dist = exercise.firstSetDistance ?? 0
+                                let convertedDist = unitsManager.convertFromMeters(dist)
+                                let time = exercise.firstSetTimeSeconds ?? 0
                                 Text("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) • \(formatTime(time))")
                             case .duration:
-                                let time = exercise.timeSeconds ?? 0
-                                Text("\(exercise.sets) sets • \(formatTime(time))")
+                                let time = exercise.firstSetTimeSeconds ?? 0
+                                Text("\(exercise.setsCount) sets • \(formatTime(time))")
                             }
                         }
                         .font(.caption).foregroundColor(.secondary)
@@ -225,7 +229,7 @@ struct PresetEditorView: View {
             Button {
                 showExerciseSelector = true
             } label: {
-                Label("Add Exercise", systemImage: "plus")
+                Label(String(localized: "Add Exercise"), systemImage: "plus")
             }
         }
     }
@@ -237,7 +241,7 @@ struct PresetEditorView: View {
             } label: {
                 HStack {
                     Spacer()
-                    Text("Delete Template")
+                    Text(String(localized: "Delete Template"))
                     Spacer()
                 }
             }
@@ -275,12 +279,13 @@ struct PresetEditorView: View {
 // MARK: - Inner Exercise Editor
 
 struct PresetExerciseEditor: View {
-    @State var exercise: Exercise
+    // ИСПРАВЛЕНИЕ: Используем let для объекта SwiftData, чтобы избежать конфликтов Binding.
+    let exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
     @StateObject private var unitsManager = UnitsManager.shared
     
-    // Локальное состояние (т.к. старые свойства Exercise теперь read-only)
+    // Локальное состояние для редактирования
     @State private var setsCount: Int = 1
     @State private var repsCount: Int = 0
     @State private var weightValue: Double = 0
@@ -307,7 +312,7 @@ struct PresetExerciseEditor: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text(LocalizedStringKey(exercise.name))) {
+                Section(header: Text(exercise.name)) {
                     switch exercise.type {
                     case .strength: strengthConfig
                     case .cardio: cardioConfig
@@ -315,33 +320,33 @@ struct PresetExerciseEditor: View {
                     }
                 }
                 
-                Button("Save Changes") {
+                Button(String(localized: "Save Changes")) {
                     save()
                 }
                 .frame(maxWidth: .infinity)
                 .buttonStyle(.borderedProminent)
             }
-            .navigationTitle("Configure Preset")
+            .navigationTitle(String(localized: "Configure Preset"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(String(localized: "Cancel")) { dismiss() }
                 }
             }
             .onAppear {
-                // Инициализация локальных состояний при открытии
-                setsCount = exercise.setsList.isEmpty ? 1 : exercise.setsList.count
-                repsCount = exercise.setsList.first?.reps ?? 0
-                weightValue = exercise.setsList.first?.weight ?? 0.0
-                distanceValue = exercise.setsList.first?.distance
+                // Инициализация локальных состояний при открытии из новых агрегатов
+                setsCount = exercise.setsCount > 0 ? exercise.setsCount : 1
+                repsCount = exercise.firstSetReps
+                weightValue = exercise.firstSetWeight
+                distanceValue = exercise.firstSetDistance
                 
-                let total = exercise.setsList.first?.time ?? 0
+                let total = exercise.firstSetTimeSeconds ?? 0
                 minutes = total / 60
                 seconds = total % 60
             }
-            .alert("Invalid Input", isPresented: $showValidationAlert) {
-                Button("OK", role: .cancel) { }
+            .alert(String(localized: "Invalid Input"), isPresented: $showValidationAlert) {
+                Button(String(localized: "OK"), role: .cancel) { }
             } message: {
-                Text(LocalizedStringKey(validationErrorMessage))
+                Text(validationErrorMessage)
             }
         }
     }
@@ -350,10 +355,10 @@ struct PresetExerciseEditor: View {
     
     @ViewBuilder
     private var strengthConfig: some View {
-        Stepper("Sets: \(setsCount)", value: $setsCount, in: 1...20)
-        Stepper("Reps: \(repsCount)", value: $repsCount, in: 0...100)
+        Stepper(String(localized: "Sets: \(setsCount)"), value: $setsCount, in: 1...20)
+        Stepper(String(localized: "Reps: \(repsCount)"), value: $repsCount, in: 0...100)
         HStack {
-            Text("Weight (\(unitsManager.weightUnitString())):")
+            Text(String(localized: "Weight (\(unitsManager.weightUnitString())):"))
             TextField("0", value: weightBindingAdapter, format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
@@ -363,12 +368,12 @@ struct PresetExerciseEditor: View {
     @ViewBuilder
     private var cardioConfig: some View {
         HStack {
-            Text("Distance (\(unitsManager.distanceUnitString())):")
-            TextField("0", value: Binding(get: { 
-                if let d = distanceValue { return unitsManager.convertFromKilometers(d) }
+            Text(String(localized: "Distance (\(unitsManager.distanceUnitString())):"))
+            TextField("0", value: Binding(get: {
+                if let d = distanceValue { return unitsManager.convertFromMeters(d) }
                 return 0
             }, set: { newValue in
-                distanceValue = unitsManager.convertToKilometers(newValue)
+                distanceValue = unitsManager.convertToMeters(newValue)
             }), format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
@@ -378,19 +383,19 @@ struct PresetExerciseEditor: View {
     
     @ViewBuilder
     private var durationConfig: some View {
-        Stepper("Sets: \(setsCount)", value: $setsCount, in: 1...10)
+        Stepper(String(localized: "Sets: \(setsCount)"), value: $setsCount, in: 1...10)
         timePickerRow(label: "Time per set")
     }
     
-    private func timePickerRow(label: LocalizedStringKey) -> some View {
+    private func timePickerRow(label: String) -> some View {
         HStack {
-            Text(label)
+            Text(String(localized: String.LocalizationValue(label)))
             Spacer()
             TextField("0", value: $minutes, format: .number)
                 .frame(width: 40).multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
                 .background(Color.gray.opacity(0.1)).cornerRadius(5)
-            Text("min")
+            Text(String(localized: "min"))
             TextField("0", value: $seconds, format: .number)
                 .frame(width: 40).multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
@@ -401,7 +406,7 @@ struct PresetExerciseEditor: View {
                         seconds = clampedSeconds
                     }
                 }
-            Text("sec")
+            Text(String(localized: "sec"))
         }
     }
     
@@ -412,13 +417,18 @@ struct PresetExerciseEditor: View {
         var errorMessages: [String] = []
         
         if exercise.type == .strength {
-            let weightValidation = InputValidator.validateWeight(weightValue)
-            if !weightValidation.isValid {
+            if weightValue <= 0 {
                 hasError = true
-                if let error = weightValidation.errorMessage {
-                    errorMessages.append(error)
+                errorMessages.append(String(localized: "Please enter a weight greater than 0."))
+            } else {
+                let weightValidation = InputValidator.validateWeight(weightValue)
+                if !weightValidation.isValid {
+                    hasError = true
+                    if let error = weightValidation.errorMessage {
+                        errorMessages.append(error)
+                    }
+                    weightValue = weightValidation.clampedValue
                 }
-                weightValue = weightValidation.clampedValue
             }
             
             let repsValidation = InputValidator.validateReps(repsCount)
@@ -493,6 +503,7 @@ struct PresetExerciseEditor: View {
         }
         
         exercise.setsList = newSets
+        exercise.updateAggregates() // Обновляем агрегаты сразу, чтобы UI отрисовал изменения
         onSave(exercise)
         dismiss()
     }

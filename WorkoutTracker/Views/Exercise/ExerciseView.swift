@@ -16,6 +16,7 @@ struct ExerciseView: View {
     
     // MARK: - Environment & State
     
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
     @State private var showAddSheet = false
     @State private var selectedGroups: Set<String>
@@ -314,7 +315,7 @@ struct ExerciseView: View {
     private func deleteExercises() {
         withAnimation {
             for item in exercisesToDelete {
-                viewModel.deleteExercise(name: item.name, category: item.category)
+                viewModel.deleteExercise(name: item.name, category: item.category, context: context)
             }
             exercisesToDelete = []
         }

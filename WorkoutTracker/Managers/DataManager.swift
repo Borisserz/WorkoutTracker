@@ -7,8 +7,8 @@ class DataManager {
     
     // Заглушки, чтобы не ломать старые вызовы
     func saveWorkouts(_ workouts: [Workout], onError: ((Error) -> Void)? = nil) { }
-    func loadWorkouts(onComplete: @escaping (Result<[Workout], Error>) -> Void) { 
-        onComplete(.success([])) 
+    func loadWorkouts(onComplete: @escaping (Result<[Workout], Error>) -> Void) {
+        onComplete(.success([]))
     }
     
     // MARK: - Export to JSON (Manual mapping for @Model objects)
@@ -76,7 +76,8 @@ class DataManager {
         for workout in workouts {
             let workoutDate = dateFormatter.string(from: workout.date)
             let endTimeStr = workout.endTime != nil ? dateFormatter.string(from: workout.endTime!) : ""
-            csvLines.append("\(workout.id.uuidString),\"\(escapeCSV(workout.title))\",\(workoutDate),\(endTimeStr),\(workout.duration),\(workout.icon),\(workout.isFavorite),\(workout.exercises.count)")
+            // ИСПРАВЛЕНИЕ: Используем durationSeconds / 60
+            csvLines.append("\(workout.id.uuidString),\"\(escapeCSV(workout.title))\",\(workoutDate),\(endTimeStr),\(workout.durationSeconds / 60),\(workout.icon),\(workout.isFavorite),\(workout.exercises.count)")
         }
         csvLines.append("")
         

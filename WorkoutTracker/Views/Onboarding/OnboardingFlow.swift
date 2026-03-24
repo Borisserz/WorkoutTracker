@@ -11,8 +11,8 @@ internal import SwiftUI
 struct OnboardingItem: Identifiable {
     let id = UUID()
     let image: String
-    let title: String
-    let description: String
+    let title: LocalizedStringKey
+    let description: LocalizedStringKey
     let color: Color
 }
 
@@ -130,7 +130,8 @@ struct OnboardingIntroView: View {
                     onNext()
                 }
             }) {
-                Text(slideIndex == items.count - 1 ? "Let's Set Up Profile" : "Next")
+                let buttonTitle: LocalizedStringKey = slideIndex == items.count - 1 ? "Let's Set Up Profile" : "Next"
+                Text(buttonTitle)
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -150,74 +151,164 @@ struct UserDataInputView: View {
     @Binding var weight: Double
     var onNext: () -> Void
     
-    @FocusState private var isNameFocused: Bool
+    private enum Field {
+        case name
+        case weight
+    }
+    
+    @FocusState private var focusedField: Field?
     @State private var weightString: String = ""
     
+    // ИСПРАВЛЕНИЕ: Состояния для показа ошибок
+    @State private var isNameInvalid = false
+    @State private var isWeightInvalid = false
+    @State private var shakeTrigger = 0
+    
     var body: some View {
-        VStack(spacing: 25) {
-            Spacer()
-            
-            Text(LocalizedStringKey("About You"))
-                .font(.largeTitle).bold()
-            
-            Text(LocalizedStringKey("This helps us personalize your profile and calculate stats."))
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            
-            VStack(spacing: 20) {
-                VStack(alignment: .leading) {
-                    Text(LocalizedStringKey("Your Name")).font(.caption).foregroundColor(.gray)
-                    TextField(LocalizedStringKey("Name"), text: $name)
-                        .font(.title3)
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(12)
-                        .focused($isNameFocused)
-                        .submitLabel(.next)
-                }
-                
-                VStack(alignment: .leading) {
-                    let unitsManager = UnitsManager.shared
-                    Text(LocalizedStringKey("Body Weight (\(unitsManager.weightUnitString()))")).font(.caption).foregroundColor(.gray)
-                    TextField(LocalizedStringKey("75"), text: $weightString)
-                        .font(.title3)
-                        .keyboardType(.decimalPad)
-                        .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(12)
-                        .onChange(of: weightString) { _, newValue in
-                            if let val = Double(newValue) {
-                                weight = val
+        GeometryReader { geometry in
+            ScrollView {
+                VStack(spacing: 25) {
+                    Spacer(minLength: 20)
+                    
+                    Text("About You")
+                        .font(.largeTitle).bold()
+                    
+                    Text("This helps us personalize your profile and calculate stats.")
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    VStack(spacing: 20) {
+                        VStack(alignment: .leading) {
+                            Text("Your Name")
+                                .font(.caption)
+                                .foregroundColor(isNameInvalid ? .red : .gray)
+                            
+                            TextField("Name", text: $name)
+                                .font(.title3)
+                                .padding()
+                                .background(isNameInvalid ? Color.red.opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(isNameInvalid ? Color.red : Color.clear, lineWidth: 1)
+                                )
+                                .focused($focusedField, equals: .name)
+                                .submitLabel(.next)
+                                .onChange(of: name) { _, _ in isNameInvalid = false }
+                                .onSubmit {
+                                    focusedField = .weight
+                                }
+                        }
+                        // ИСПРАВЛЕНИЕ: Shake animation
+                        .keyframeAnimator(initialValue: 0.0, trigger: shakeTrigger) { content, xOffset in
+                            content.offset(x: isNameInvalid ? xOffset : 0)
+                        } keyframes: { _ in
+                            KeyframeTrack {
+                                CubicKeyframe(10, duration: 0.05)
+                                CubicKeyframe(-10, duration: 0.05)
+                                CubicKeyframe(10, duration: 0.05)
+                                CubicKeyframe(-10, duration: 0.05)
+                                CubicKeyframe(0, duration: 0.05)
                             }
                         }
+                        
+                        VStack(alignment: .leading) {
+                            let unitsManager = UnitsManager.shared
+                            Text("Body Weight (\(unitsManager.weightUnitString()))")
+                                .font(.caption)
+                                .foregroundColor(isWeightInvalid ? .red : .gray)
+                            
+                            TextField("75", text: $weightString)
+                                .font(.title3)
+                                .keyboardType(.decimalPad)
+                                .padding()
+                                .background(isWeightInvalid ? Color.red.opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(isWeightInvalid ? Color.red : Color.clear, lineWidth: 1)
+                                )
+                                .focused($focusedField, equals: .weight)
+                                .onChange(of: weightString) { _, newValue in
+                                    isWeightInvalid = false
+                                    let formattedValue = newValue.replacingOccurrences(of: ",", with: ".")
+                                    if let val = Double(formattedValue) {
+                                        weight = val
+                                    }
+                                }
+                        }
+                        // ИСПРАВЛЕНИЕ: Shake animation
+                        .keyframeAnimator(initialValue: 0.0, trigger: shakeTrigger) { content, xOffset in
+                            content.offset(x: isWeightInvalid ? xOffset : 0)
+                        } keyframes: { _ in
+                            KeyframeTrack {
+                                CubicKeyframe(10, duration: 0.05)
+                                CubicKeyframe(-10, duration: 0.05)
+                                CubicKeyframe(10, duration: 0.05)
+                                CubicKeyframe(-10, duration: 0.05)
+                                CubicKeyframe(0, duration: 0.05)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 30)
+                    
+                    Spacer(minLength: 20)
+                    
+                    Button(action: validateAndContinue) {
+                        Text("Continue")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            // ИСПРАВЛЕНИЕ: Кнопка всегда активна визуально
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.bottom, 50)
                 }
+                .frame(minHeight: geometry.size.height)
             }
-            .padding(.horizontal, 30)
-            
-            Spacer()
-            
-            Button(action: onNext) {
-                Text(LocalizedStringKey("Continue"))
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(name.isEmpty || weightString.isEmpty ? Color.gray : Color.blue)
-                    .cornerRadius(12)
-            }
-            .disabled(name.isEmpty || weightString.isEmpty)
-            .padding(.horizontal, 30)
-            .padding(.bottom, 50)
+            // ИСПРАВЛЕНИЕ: Используем defaultFocus вместо Task.sleep
+            .defaultFocus($focusedField, .name)
         }
+        // ИСПРАВЛЕНИЕ: Haptic feedback при ошибке
+        .sensoryFeedback(.error, trigger: shakeTrigger)
         .onAppear {
             weightString = LocalizationHelper.shared.formatInteger(weight)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                isNameFocused = true
-            }
         }
         .onTapGesture {
-            UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+            focusedField = nil
+        }
+        // ИСПРАВЛЕНИЕ: Добавляем тулбар с кнопкой Готово для скрытия цифровой клавиатуры
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+                .bold()
+            }
+        }
+    }
+    
+    // ИСПРАВЛЕНИЕ: Валидация при нажатии
+    private func validateAndContinue() {
+        let formattedValue = weightString.replacingOccurrences(of: ",", with: ".")
+        let parsedWeight = Double(formattedValue) ?? 0
+        
+        let validName = !name.trimmingCharacters(in: .whitespaces).isEmpty
+        let validWeight = parsedWeight > 0
+        
+        isNameInvalid = !validName
+        isWeightInvalid = !validWeight
+        
+        if validName && validWeight {
+            onNext()
+        } else {
+            // Запускает анимацию shake и Haptic feedback
+            shakeTrigger += 1
         }
     }
 }
@@ -237,10 +328,10 @@ struct PermissionsView: View {
                 .padding()
                 .background(Circle().fill(Color.orange.opacity(0.1)).frame(width: 150, height: 150))
             
-            Text(LocalizedStringKey("Stay on Track"))
+            Text("Stay on Track")
                 .font(.largeTitle).bold()
             
-            Text(LocalizedStringKey("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam."))
+            Text("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam.")
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
                 .padding(.horizontal)
@@ -249,7 +340,8 @@ struct PermissionsView: View {
                 requestNotifications()
             } label: {
                 HStack {
-                    Text(notificationsAllowed ? LocalizedStringKey("Allowed") : LocalizedStringKey("Enable Notifications"))
+                    let text: LocalizedStringKey = notificationsAllowed ? "Allowed" : "Enable Notifications"
+                    Text(text)
                     if notificationsAllowed {
                         Image(systemName: "checkmark")
                     }
@@ -267,7 +359,7 @@ struct PermissionsView: View {
             Spacer()
             
             Button(action: onNext) {
-                Text(LocalizedStringKey("Continue"))
+                Text("Continue")
                     .font(.headline)
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -306,10 +398,10 @@ struct TutorialChoiceView: View {
                 .padding()
                 .background(Circle().fill(Color.purple.opacity(0.1)).frame(width: 150, height: 150))
             
-            Text(LocalizedStringKey("Quick Tutorial"))
+            Text("Quick Tutorial")
                 .font(.largeTitle).bold()
             
-            Text(LocalizedStringKey("Would you like a quick interactive tour to learn how to create workouts and track progress?"))
+            Text("Would you like a quick interactive tour to learn how to create workouts and track progress?")
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
                 .padding(.horizontal)
@@ -321,7 +413,7 @@ struct TutorialChoiceView: View {
                 Button {
                     startTutorial()
                 } label: {
-                    Text(LocalizedStringKey("Start Tutorial"))
+                    Text("Start Tutorial")
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -335,7 +427,7 @@ struct TutorialChoiceView: View {
                 Button {
                     skipTutorial()
                 } label: {
-                    Text(LocalizedStringKey("No, I'll figure it out"))
+                    Text("No, I'll figure it out")
                         .font(.headline)
                         .foregroundColor(.gray)
                         .padding()
@@ -355,17 +447,13 @@ struct TutorialChoiceView: View {
         tutorialManager.complete()
         onFinish()
     }
-} // <--- ВОТ ЭТА СКОБКА БЫЛА ПРОПУЩЕНА!
+}
 
 // Расширение теперь находится вне структуры
 extension NotificationManager {
     func requestPermission(completion: @escaping (Bool) -> Void) {
-        var options: UNAuthorizationOptions = [.alert, .badge, .sound]
-        // Для iOS 15+ добавляем временно чувствительные уведомления
-        if #available(iOS 15.0, *) {
-            options.insert(.timeSensitive)
-        }
-        UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
+        let options: UNAuthorizationOptions = [.alert, .badge, .sound, .timeSensitive]
+        UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, _ in
             completion(granted)
         }
     }

@@ -92,7 +92,8 @@ class ProgressManager: ObservableObject {
     private func calculateXP(for workout: Workout) -> Int {
         // Учитываем объем всех упражнений (включая вложенные в супер-сеты)
         let totalVolume = workout.exercises.reduce(0.0) { partialResult, exercise in
-            return partialResult + exercise.computedVolume
+            // ИСПРАВЛЕНИЕ: Используем новый кешированный exerciseVolume
+            return partialResult + exercise.exerciseVolume
         }
         
         let effortMultiplier = 1.0 + (Double(workout.effortPercentage) / 100.0)

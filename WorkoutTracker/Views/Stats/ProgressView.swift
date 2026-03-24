@@ -23,6 +23,14 @@ struct StatsView: View {
         case month = "Month"
         case year = "Year"
         var id: Self { self }
+        
+        var localizedName: LocalizedStringKey {
+            switch self {
+            case .week: return "Week"
+            case .month: return "Month"
+            case .year: return "Year"
+            }
+        }
     }
     
     enum GraphMetric: Identifiable {
@@ -30,7 +38,7 @@ struct StatsView: View {
         
         var id: Self { self }
         
-        var title: String {
+        var title: LocalizedStringKey {
             switch self {
             case .count: return "Activity"
             case .volume: return "Volume (kg)"
@@ -97,11 +105,11 @@ struct StatsView: View {
                 } else {
                     VStack {
                         Spacer()
-                        ProgressView(LocalizedStringKey("Loading stats..."))
+                        ProgressView("Loading stats...")
                             .controlSize(.large)
                         Spacer()
                     }
-                    .navigationTitle(LocalizedStringKey("Progress"))
+                    .navigationTitle("Progress")
                 }
             }
         }
@@ -242,27 +250,27 @@ struct StatsContentView: View {
             
             // Детальное сравнение с предыдущим периодом
             if !detailedComparison.isEmpty {
-                Section(header: Text(LocalizedStringKey("Detailed Comparison"))) {
+                Section(header: Text("Detailed Comparison")) {
                     DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
                 }
             }
             
             // Анализ слабых мест
             if !weakPoints.isEmpty {
-                Section(header: Text(LocalizedStringKey("Weak Points Analysis"))) {
+                Section(header: Text("Weak Points Analysis")) {
                     WeakPointsView(weakPoints: weakPoints)
                 }
             }
             
             // Рекомендации (всегда показываем секцию)
-            Section(header: Text(LocalizedStringKey("Recommendations"))) {
+            Section(header: Text("Recommendations")) {
                 RecommendationsView(recommendations: recommendations)
             }
             
             prSection
             bestStatsSection
         }
-        .navigationTitle(LocalizedStringKey("Progress"))
+        .navigationTitle("Progress")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showProfile = true } label: {
@@ -286,9 +294,10 @@ struct StatsContentView: View {
                     .foregroundColor(.orange)
                 
                 VStack(alignment: .leading) {
-                    Text(LocalizedStringKey("\(streakCount) Day Streak"))
+                    Text("\(streakCount) Day Streak")
                         .font(.headline)
-                    Text(streakCount > 0 ? LocalizedStringKey("Keep the fire burning!") : LocalizedStringKey("Start your streak today!"))
+                    let streakMessage: LocalizedStringKey = streakCount > 0 ? "Keep the fire burning!" : "Start your streak today!"
+                    Text(streakMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -300,15 +309,24 @@ struct StatsContentView: View {
     
     private var periodPicker: some View {
         Picker("Period", selection: $selectedPeriod) {
-            ForEach(StatsView.Period.allCases) { Text($0.rawValue) }
+            ForEach(StatsView.Period.allCases) { Text($0.localizedName).tag($0) }
         }
         .pickerStyle(.segmented)
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .listRowBackground(Color.clear)
     }
     
+    // Это улучшит опыт переводчиков (мы передаем целую фразу с контекстом)
+    private var highlightsTitle: LocalizedStringKey {
+        switch selectedPeriod {
+        case .week: return "Highlights for this Week"
+        case .month: return "Highlights for this Month"
+        case .year: return "Highlights for this Year"
+        }
+    }
+    
     private var highlightsSection: some View {
-        Section(header: Text(LocalizedStringKey("Highlights for this \(selectedPeriod.rawValue)"))) {
+        Section(header: Text(highlightsTitle)) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     // 1. Workouts
@@ -363,8 +381,8 @@ struct StatsContentView: View {
             if chartData.isEmpty || chartData.reduce(0, { $0 + $1.value }) == 0 {
                 EmptyStateView(
                     icon: "chart.bar.fill",
-                    title: LocalizedStringKey("No data for this period"),
-                    message: LocalizedStringKey("Complete some workouts to see your progress chart here. The more you train, the more insights you'll get!")
+                    title: "No data for this period",
+                    message: "Complete some workouts to see your progress chart here. The more you train, the more insights you'll get!"
                 )
                 .frame(height: 180)
             } else {
@@ -416,7 +434,7 @@ struct StatsContentView: View {
     @ViewBuilder
     private var prSection: some View {
         if !recentPRs.isEmpty {
-            Section(header: Text(LocalizedStringKey("New Personal Records"))) {
+            Section(header: Text("New Personal Records")) {
                 ForEach(recentPRs) { pr in
                     HStack {
                         Image(systemName: "trophy.fill").foregroundColor(.orange)
@@ -426,7 +444,7 @@ struct StatsContentView: View {
                                 .font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()
-                        Text(LocalizedStringKey("\(Int(pr.weight)) kg"))
+                        Text("\(Int(pr.weight)) kg")
                             .font(.headline).foregroundColor(.blue)
                     }
                 }
@@ -435,26 +453,26 @@ struct StatsContentView: View {
     }
     
     private var bestStatsSection: some View {
-        Section(header: Text(LocalizedStringKey("All-Time Bests"))) {
+        Section(header: Text("All-Time Bests")) {
             HStack {
                 Image(systemName: "calendar.badge.exclamationmark").foregroundColor(.green)
-                Text(LocalizedStringKey("Best Week:"))
+                Text("Best Week:")
                 Spacer()
-                Text(LocalizedStringKey("\(bestWeek.workoutCount) workouts, \(Int(bestWeek.totalVolume)) kg")).bold()
+                Text("\(bestWeek.workoutCount) workouts, \(Int(bestWeek.totalVolume)) kg").bold()
             }
             
             HStack {
                 Image(systemName: "calendar").foregroundColor(.green)
-                Text(LocalizedStringKey("Best Month:"))
+                Text("Best Month:")
                 Spacer()
-                Text(LocalizedStringKey("\(bestMonth.workoutCount) workouts, \(Int(bestMonth.totalVolume)) kg")).bold()
+                Text("\(bestMonth.workoutCount) workouts, \(Int(bestMonth.totalVolume)) kg").bold()
             }
         }
     }
     
     // MARK: - Helpers
     
-    private func metricButton(metric: StatsView.GraphMetric, title: String, value: String, icon: String, prevValue: Double, currValue: Double) -> some View {
+    private func metricButton(metric: StatsView.GraphMetric, title: LocalizedStringKey, value: String, icon: String, prevValue: Double, currValue: Double) -> some View {
         Button {
             withAnimation { selectedMetric = metric }
         } label: {
@@ -478,7 +496,7 @@ struct StatsContentView: View {
 // MARK: - 3. Helper Components
 
 struct HighlightCard: View {
-    let title: String
+    let title: LocalizedStringKey
     let value: String
     let icon: String
     let isSelected: Bool
@@ -511,6 +529,8 @@ struct HighlightCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2.5)
         )
+        // PERFORMANCE OPTIMIZATION: Render overlay and card contents as a single composed view
+        .compositingGroup()
     }
 }
 

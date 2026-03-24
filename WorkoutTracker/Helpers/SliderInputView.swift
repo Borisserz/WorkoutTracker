@@ -44,6 +44,9 @@ struct SliderSheetView: View {
     @State private var textValue: String = ""
     @FocusState private var isBigTextFocused: Bool
     
+    // Ошибки валидации
+    @State private var errorMessage: String? = nil
+    
     // Кэшированные параметры слайдера (вычисляются один раз)
     @State private var params: (min: Double, max: Double, step: Double) = (0, 100, 1)
     
@@ -64,13 +67,17 @@ struct SliderSheetView: View {
                     Text(fieldType.title(unitsManager: unitsManager).uppercased())
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                     
                     // Заменили Text на TextField для быстрого ручного ввода
                     TextField("0", text: $textValue)
                         .font(.system(size: 48, weight: .bold))
-                        .foregroundColor(.primary)
+                        .foregroundColor(errorMessage != nil ? .red : .primary)
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.center)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
                         .focused($isBigTextFocused)
                         .onChange(of: isBigTextFocused) { _, focused in
                             if focused && localValue == 0 {
@@ -84,10 +91,16 @@ struct SliderSheetView: View {
                                 // Защита от запятых (в некоторых локалях они ломают конвертацию)
                                 let cleanStr = newText.replacingOccurrences(of: ",", with: ".")
                                 if let val = Double(cleanStr) {
-                                    let validated = min(max(val, params.min), params.max)
-                                    localValue = validated
+                                    validateValue(val)
+                                    localValue = val // Позволяем UI обновиться, даже если значение ошибочно
+                                    
+                                    // Динамически расширяем лимит слайдера, если ввели больше руками
+                                    if errorMessage == nil && val > params.max {
+                                        params.max = val
+                                    }
                                 } else if newText.isEmpty {
                                     localValue = 0
+                                    errorMessage = nil
                                 }
                             }
                         }
@@ -96,6 +109,14 @@ struct SliderSheetView: View {
                                 textValue = formatValue(newVal)
                             }
                         }
+                    
+                    // Показ текста ошибки под полем
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .animation(.easeInOut, value: errorMessage)
+                    }
                 }
                 .padding(.top, 40)
                 
@@ -130,10 +151,11 @@ struct SliderSheetView: View {
                             // Когда пользователь ОТПУСКАЕТ палец (editing == false),
                             // мы передаем значение в модель (сохраняем)
                             if !editing {
+                                validateValue(localValue)
                                 updateBindingValue(localValue)
                             }
                         }
-                        .tint(.blue)
+                        .tint(errorMessage != nil ? .red : .blue)
                         
                         HStack {
                             Text("\(Int(params.min))")
@@ -155,12 +177,14 @@ struct SliderSheetView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
+                    // Блокируем кнопку "Сохранить", если есть ошибка
                     Button(LocalizedStringKey("Done")) {
                         isBigTextFocused = false
                         // При закрытии сохраняем финальное значение
                         updateBindingValue(localValue)
                         isPresented = false
                     }
+                    .disabled(errorMessage != nil)
                 }
             }
         }
@@ -172,38 +196,79 @@ struct SliderSheetView: View {
             // Кэшируем параметры слайдера один раз при появлении, основываясь на Enum
             switch fieldType {
             case .weight:
-                // Для фунтов увеличиваем максимальный вес до 440 (примерно 200 кг)
-                params = (0, unitsManager.weightUnit == .pounds ? 440 : 200, 0.5)
+                // ИЗМЕНЕНО: Для фунтов увеличиваем максимальный вес до 1100, для кг до 500
+                params = (0, unitsManager.weightUnit == .pounds ? 1100 : 500, 0.5)
             case .reps:
-                params = (0, 50, 1)
+                // ИЗМЕНЕНО: До 100 повторений
+                params = (0, 100, 1)
             case .distance:
-                params = (0, unitsManager.distanceUnit == .miles ? 30 : 50, 0.1)
+                params = (0, unitsManager.distanceUnit == .miles ? 60 : 10000, unitsManager.distanceUnit == .miles ? 0.1 : 100)
             case .timeMin, .timeSec:
                 params = (0, 300, 1)
+            }
+            
+            // Если в истории был сохранен больший вес, подстраиваем ползунок под него
+            if localValue > params.max {
+                params.max = localValue
             }
             
             textValue = formatValue(localValue)
         }
         .onDisappear {
-            // На всякий случай сохраняем при скрытии шторки смахиванием вниз
+            // На всякий случай сохраняем при скрытии шторки смахиванием вниз, только если нет ошибки
             updateBindingValue(localValue)
         }
     }
     
+    // MARK: - Validation
+    
+    private func validateValue(_ val: Double) {
+        let isValid: Bool
+        let errMsg: String?
+        
+        switch fieldType {
+        case .weight:
+            let kg = unitsManager.convertToKilograms(val)
+            let v = InputValidator.validateWeight(kg)
+            isValid = v.isValid; errMsg = v.errorMessage
+        case .reps:
+            let v = InputValidator.validateReps(Int(val))
+            isValid = v.isValid; errMsg = v.errorMessage
+        case .distance:
+            let m = unitsManager.convertToMeters(val)
+            let v = InputValidator.validateDistance(m)
+            isValid = v.isValid; errMsg = v.errorMessage
+        case .timeMin:
+            let v = InputValidator.validateTime(Int(val) * 60)
+            isValid = v.isValid; errMsg = v.errorMessage
+        case .timeSec:
+            let v = InputValidator.validateTime(Int(val))
+            isValid = v.isValid; errMsg = v.errorMessage
+        }
+        
+        self.errorMessage = errMsg
+    }
+    
     // Обновляет binding с валидацией
     private func updateBindingValue(_ newValue: Double) {
-        let validated = max(params.min, min(newValue, params.max))
+        guard errorMessage == nil else { return } // Не сохраняем невалидные значения!
+        let validated = max(params.min, newValue)
         value = validated > 0 ? validated : nil
     }
     
     private func increment() {
-        let newValue = min(localValue + params.step, params.max)
+        let newValue = localValue + params.step // Позволяем увеличивать без искусственного максимума от слайдера
         localValue = newValue
+        validateValue(newValue)
+        if errorMessage == nil && newValue > params.max {
+            params.max = newValue
+        }
     }
     
     private func decrement() {
         let newValue = max(localValue - params.step, params.min)
         localValue = newValue
+        validateValue(newValue)
     }
     
     private func formatValue(_ val: Double) -> String {
@@ -232,6 +297,9 @@ struct SliderInputView: View {
     let maxValue: Double
     let step: Double
     
+    @State private var dynamicMaxValue: Double
+    @State private var errorMessage: String? = nil
+    
     // Состояние для отслеживания фокуса текстового поля (для ручного ввода)
     @FocusState private var isFocused: Bool
     @State private var textValue: String = ""
@@ -244,7 +312,7 @@ struct SliderInputView: View {
         fieldType: InputFieldType,
         value: Binding<Double?>,
         minValue: Double = 0,
-        maxValue: Double = 200,
+        maxValue: Double = 500, // ИЗМЕНЕНО: По умолчанию до 500
         step: Double = 1
     ) {
         self.fieldType = fieldType
@@ -252,6 +320,7 @@ struct SliderInputView: View {
         self.minValue = minValue
         self.maxValue = maxValue
         self.step = step
+        self._dynamicMaxValue = State(initialValue: maxValue)
     }
     
     var body: some View {
@@ -268,7 +337,10 @@ struct SliderInputView: View {
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.center)
                     .font(.headline)
-                    .frame(width: 50)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .frame(width: 60) // Сделали чуть шире (было 50) для надежности
+                    .foregroundColor(errorMessage != nil ? .red : .primary)
                     .focused($isFocused)
                     .onChange(of: isFocused) { _, focused in
                         if focused && sliderDoubleValue == 0 {
@@ -280,22 +352,27 @@ struct SliderInputView: View {
                     .onChange(of: textValue) { oldValue, newValue in
                         let cleanStr = newValue.replacingOccurrences(of: ",", with: ".")
                         if let num = Double(cleanStr) {
-                            let validated = max(minValue, min(num, maxValue))
-                            sliderDoubleValue = validated
-                            commitValueWithDebounce(validated)
+                            sliderDoubleValue = num
+                            validateAndCommit(num)
+                            if errorMessage == nil && num > dynamicMaxValue {
+                                dynamicMaxValue = num
+                            }
                         } else if newValue.isEmpty {
                             sliderDoubleValue = 0
+                            errorMessage = nil
                             commitValueWithDebounce(0)
                         }
                     }
                     .onChange(of: value) { oldValue, newValue in
                         // Внешнее изменение (например, загрузка из модели)
                         if let newValue = newValue {
-                            // Чтобы избежать зацикливания, обновляем только если текст не в фокусе
                             if !isFocused {
                                 textValue = formatValue(newValue)
                             }
                             sliderDoubleValue = newValue
+                            if newValue > dynamicMaxValue {
+                                dynamicMaxValue = newValue
+                            }
                         } else {
                             if !isFocused {
                                 textValue = ""
@@ -307,6 +384,9 @@ struct SliderInputView: View {
                         if let val = value {
                             textValue = formatValue(val)
                             sliderDoubleValue = val
+                            if val > dynamicMaxValue {
+                                dynamicMaxValue = val
+                            }
                         } else {
                             sliderDoubleValue = 0
                         }
@@ -322,19 +402,19 @@ struct SliderInputView: View {
             
             Slider(
                 value: $sliderDoubleValue,
-                in: minValue...maxValue,
+                in: minValue...dynamicMaxValue,
                 step: step
             ) { editing in
                 // Когда пользователь ОТПУСКАЕТ палец, передаем данные наверх
                 if !editing {
-                    commitValueWithDebounce(sliderDoubleValue, immediate: true)
+                    validateAndCommit(sliderDoubleValue, immediate: true)
                     updateTextValue()
                 } else {
                     // Пока тянет, просто обновляем текст без сохранения
                     textValue = formatValue(sliderDoubleValue)
                 }
             }
-            .tint(.blue)
+            .tint(errorMessage != nil ? .red : .blue)
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 4)
@@ -342,7 +422,42 @@ struct SliderInputView: View {
         .cornerRadius(8)
         .onDisappear {
             updateTask?.cancel()
-            value = sliderDoubleValue > 0 ? sliderDoubleValue : nil
+            if errorMessage == nil {
+                value = sliderDoubleValue > 0 ? sliderDoubleValue : nil
+            }
+        }
+    }
+    
+    private func validateAndCommit(_ num: Double, immediate: Bool = false) {
+        let isValid: Bool
+        let errMsg: String?
+        
+        switch fieldType {
+        case .weight:
+            let kg = unitsManager.convertToKilograms(num)
+            let v = InputValidator.validateWeight(kg)
+            isValid = v.isValid; errMsg = v.errorMessage
+        case .reps:
+            let v = InputValidator.validateReps(Int(num))
+            isValid = v.isValid; errMsg = v.errorMessage
+        case .distance:
+            let m = unitsManager.convertToMeters(num)
+            let v = InputValidator.validateDistance(m)
+            isValid = v.isValid; errMsg = v.errorMessage
+        case .timeMin:
+            let v = InputValidator.validateTime(Int(num) * 60)
+            isValid = v.isValid; errMsg = v.errorMessage
+        case .timeSec:
+            let v = InputValidator.validateTime(Int(num))
+            isValid = v.isValid; errMsg = v.errorMessage
+        }
+        
+        self.errorMessage = errMsg
+        
+        if isValid {
+            commitValueWithDebounce(num, immediate: immediate)
+        } else {
+            updateTask?.cancel() // Отменяем сохранение невалидного значения
         }
     }
     
@@ -367,10 +482,13 @@ struct SliderInputView: View {
     
     private func increment() {
         let current = sliderDoubleValue
-        let newValue = min(current + step, maxValue)
+        let newValue = current + step
         sliderDoubleValue = newValue
+        if newValue > dynamicMaxValue {
+            dynamicMaxValue = newValue
+        }
         updateTextValue()
-        commitValueWithDebounce(newValue) // Сохраняем с задержкой
+        validateAndCommit(newValue)
     }
     
     private func decrement() {
@@ -378,7 +496,7 @@ struct SliderInputView: View {
         let newValue = max(current - step, minValue)
         sliderDoubleValue = newValue
         updateTextValue()
-        commitValueWithDebounce(newValue) // Сохраняем с задержкой
+        validateAndCommit(newValue)
     }
     
     private func updateTextValue() {

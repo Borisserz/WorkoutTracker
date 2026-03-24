@@ -1,3 +1,4 @@
+
 //
 //  WorkoutShareCard.swift
 //  WorkoutTracker
@@ -12,6 +13,90 @@
 internal import SwiftUI
 internal import UniformTypeIdentifiers
 
+// Обертка для ActivityViewController (Share Sheet)
+struct SharedImageWrapper: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+// Карточка для шаринга Ачивок и Рекордов (Social Flex)
+struct MilestoneShareCard: View {
+    let title: LocalizedStringKey
+    let subtitle: LocalizedStringKey
+    let icon: String
+    let colors: [Color]
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [Color(hex: "1a1a1a"), Color(hex: "000000")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            
+            Circle()
+                .fill(colors.first?.opacity(0.2) ?? Color.blue.opacity(0.2))
+                .frame(width: 400)
+                .offset(x: -200, y: -300)
+            
+            Circle()
+                .fill(colors.last?.opacity(0.2) ?? Color.purple.opacity(0.2))
+                .frame(width: 300)
+                .offset(x: 200, y: 300)
+            
+            VStack(spacing: 30) {
+                HStack {
+                    Image(systemName: "star.fill")
+                        .font(.title)
+                        .foregroundColor(.yellow)
+                    Text(title)
+                        .font(.headline)
+                        .tracking(2)
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                .padding(.top, 80)
+                
+                Spacer()
+                
+                ZStack {
+                    Circle()
+                        .strokeBorder(
+                            AngularGradient(gradient: Gradient(colors: colors), center: .center),
+                            lineWidth: 20
+                        )
+                        .frame(width: 350, height: 350)
+                        .shadow(color: colors.first?.opacity(0.5) ?? .clear, radius: 20)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 140))
+                        .foregroundStyle(
+                            LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 5)
+                }
+                
+                Text(subtitle)
+                    .font(.system(size: 60, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 40)
+                    .padding(.top, 20)
+                
+                Spacer()
+                
+                HStack {
+                    Image(systemName: "applewatch")
+                    Text(LocalizedStringKey("Tracked with WorkoutTracker"))
+                }
+                .font(.title)
+                .foregroundColor(.gray.opacity(0.5))
+                .padding(.bottom, 80)
+            }
+        }
+        .frame(width: 1080, height: 1080)
+    }
+}
+
 struct WorkoutShareCard: View {
     
     // MARK: - Properties
@@ -20,9 +105,9 @@ struct WorkoutShareCard: View {
     
     // MARK: - Computed Logic
     
-    /// Общий тоннаж (сумма объемов всех упражнений)
+    /// Общий тоннаж (используем закэшированное значение из модели)
     private var totalVolume: Int {
-        Int(workout.exercises.reduce(0) { $0 + $1.computedVolume })
+        Int(workout.totalStrengthVolume)
     }
     
     /// Топ-3 группы мышц по количеству упражнений
@@ -122,7 +207,7 @@ struct WorkoutShareCard: View {
     
     private var statsGridSection: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 30) {
-            statCell(title: "DURATION", value: "\(workout.duration) min", icon: "stopwatch", color: .yellow)
+            statCell(title: "DURATION", value: "\(workout.durationSeconds / 60) min", icon: "stopwatch", color: .yellow)
             statCell(title: "TOTAL VOLUME", value: "\(totalVolume) kg", icon: "scalemass", color: .green)
             statCell(title: "EXERCISES", value: "\(workout.exercises.count)", icon: "list.bullet", color: .blue)
             statCell(title: "AVG EFFORT", value: "\(workout.effortPercentage)%", icon: "flame.fill", color: .red)

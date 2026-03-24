@@ -38,10 +38,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     /// Запрос прав на отправку уведомлений
     func requestPermission() {
-        var options: UNAuthorizationOptions = [.alert, .badge, .sound]
-        if #available(iOS 15.0, *) {
-            options.insert(.timeSensitive)
-        }
+        let options: UNAuthorizationOptions = [.alert, .badge, .sound, .timeSensitive]
         UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, error in
         }
     }
@@ -108,11 +105,7 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         content.userInfo = ["type": "rest_timer"]
         // Добавляем threadIdentifier для группировки уведомлений
         content.threadIdentifier = "rest_timer"
-        
-        // Для iOS 15+ добавляем interruptionLevel для более заметного уведомления
-        if #available(iOS 15.0, *) {
-            content.interruptionLevel = .timeSensitive
-        }
+        content.interruptionLevel = .timeSensitive
         
         // Триггер сработает ровно через seconds
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)

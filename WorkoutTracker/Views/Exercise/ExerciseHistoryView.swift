@@ -2,14 +2,6 @@
 //  ExerciseHistoryView.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Экран детальной истории конкретного упражнения.
-//  Включает три вкладки:
-//  1. Summary - График и заметки.
-//  2. Technique - Информация о технике упражнения.
-//  3. History - Список всех выполненных тренировок с этим упражнением.
-//
 
 internal import SwiftUI
 import SwiftData
@@ -72,12 +64,9 @@ struct ExerciseHistoryView: View {
     // MARK: - Properties
     
     let exerciseName: String
-    
-    // ИСПРАВЛЕНИЕ: Мгновенный запрос ТОЛЬКО нужных упражнений, а не всех тренировок в БД!
-    @Query private var matchingExercises: [Exercise]
-    
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
-    @StateObject private var unitsManager = UnitsManager.shared
+    @ObservedObject private var unitsManager = UnitsManager.shared
     @FocusState private var isInputActive: Bool
     
     // MARK: - State
@@ -98,28 +87,14 @@ struct ExerciseHistoryView: View {
     @State private var exerciseTrend: WorkoutViewModel.ExerciseTrend?
     @State private var exerciseForecast: WorkoutViewModel.ProgressForecast?
     
-    // Кэш для быстрого рендеринга графика
     @State private var allDataPoints: [DataPoint] = []
     @State private var displayedGraphData: [DataPoint] = []
     @State private var currentMetricValue: Double? = nil
-    
-    // ИСПРАВЛЕНИЕ: Хэш для отслеживания изменений в @Query, чтобы избежать зацикливания onChange
-    private var exercisesHash: String {
-        "\(matchingExercises.count)-\(matchingExercises.map { "\($0.id.uuidString)-\($0.setsList.count)" }.joined())"
-    }
     
     // MARK: - Initialization
     
     init(exerciseName: String) {
         self.exerciseName = exerciseName
-        
-        // Настраиваем предикат: ищем только упражнения с этим именем, 
-        // которые не принадлежат шаблонам (preset == nil).
-        let filter = #Predicate<Exercise> { ex in
-            ex.name == exerciseName && ex.preset == nil
-        }
-        // Запрашиваем без сортировки, отсортируем сами в памяти по дате тренировки
-        _matchingExercises = Query(filter: filter)
     }
     
     // MARK: - Computed Properties (General)
@@ -140,7 +115,6 @@ struct ExerciseHistoryView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Вкладки навигации
             tabBar
             
             if !isDataLoaded {
@@ -149,7 +123,6 @@ struct ExerciseHistoryView: View {
                     .controlSize(.large)
                 Spacer()
             } else {
-                // Контент выбранной вкладки
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 30) {
@@ -166,7 +139,6 @@ struct ExerciseHistoryView: View {
                     }
                     .onChange(of: isInputActive) { oldValue, newValue in
                         if newValue {
-                            // Прокручиваем к секции заметок когда начинается ввод
                             withAnimation(.easeInOut(duration: 0.3)) {
                                 proxy.scrollTo("notesSection", anchor: .center)
                             }
@@ -178,10 +150,7 @@ struct ExerciseHistoryView: View {
         .navigationTitle(exerciseName)
         .navigationBarTitleDisplayMode(.inline)
         .task {
-            if !isDataLoaded {
-                try? await Task.sleep(nanoseconds: 100_000_000)
-                loadInitialData()
-            }
+            loadInitialData()
         }
         .onChange(of: selectedTrendPeriod) { _, _ in
             if isDataLoaded {
@@ -198,92 +167,115 @@ struct ExerciseHistoryView: View {
                 updateGraphData()
             }
         }
-        // ИСПРАВЛЕНИЕ: Используем вычисляемый hash вместо всего массива
-        .onChange(of: exercisesHash) { _, _ in
-            loadInitialData()
-        }
     }
     
-    // MARK: - Data Loading & Processing (Optimized)
+    // MARK: - Data Loading & Processing
     
     private func loadInitialData() {
-        var foundType: ExerciseType = .strength
-        var foundCategory: ExerciseCategory? = nil
-        var foundMuscle: String? = nil
-        var filtered: [(workout: Workout, exercise: Exercise)] = []
-        
-        // ИСПРАВЛЕНИЕ: Перебираем ТОЛЬКО упражнения, полученные из запроса. Это O(1) относительно всей БД!
-        for ex in matchingExercises {
-            // Упражнение может быть напрямую в тренировке, либо внутри суперсета
-            if let w = ex.workout, w.endTime != nil {
-                filtered.append((w, ex))
-            } else if let parent = ex.parentExercise, let w = parent.workout, w.endTime != nil {
-                filtered.append((w, ex))
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            
+            let localName = exerciseName
+            let filter = #Predicate<Exercise> { ex in
+                ex.name == localName && ex.preset == nil
+            }
+            let descriptor = FetchDescriptor<Exercise>(predicate: filter)
+            
+            guard let fetchedExercises = try? context.fetch(descriptor) else {
+                self.isDataLoaded = true
+                return
             }
             
-            // Запоминаем мета-данные
-            if foundCategory == nil {
-                foundType = ex.type
-                foundCategory = ex.category
-                foundMuscle = ex.muscleGroup
-            }
-        }
-        
-        // Сортируем по дате завершения
-        filtered.sort { $0.workout.date > $1.workout.date }
-        
-        // Вычисляем базовые точки графика ОДИН РАЗ
-        let dataPoints = filtered.reversed().compactMap { item -> DataPoint? in
-            let exercise = item.exercise
-            var value: Double = 0.0
+            var foundType: ExerciseType = .strength
+            var foundCategory: ExerciseCategory? = nil
+            var foundMuscle: String? = nil
+            var workoutMap: [UUID: (workout: Workout, exercises: [Exercise])] = [:]
             
-            switch foundType {
-            case .strength:
-                let maxSetWeight = exercise.setsList
-                    .filter { $0.isCompleted && $0.type != .warmup }
-                    .compactMap { $0.weight }
-                    .max()
-                let kgValue = maxSetWeight ?? exercise.weight
-                value = unitsManager.convertFromKilograms(kgValue)
+            for ex in fetchedExercises {
+                let targetWorkout = ex.workout ?? ex.parentExercise?.workout
+                if let w = targetWorkout, w.endTime != nil {
+                    if workoutMap[w.id] == nil {
+                        workoutMap[w.id] = (w, [ex])
+                    } else {
+                        workoutMap[w.id]?.exercises.append(ex)
+                    }
+                }
                 
-            case .cardio:
-                let totalDist = exercise.setsList
-                    .filter { $0.isCompleted }
-                    .compactMap { $0.distance }
-                    .reduce(0, +)
-                let finalDist = (totalDist > 0) ? totalDist : (exercise.distance ?? 0.0)
-                value = unitsManager.convertFromKilometers(finalDist)
-                
-            case .duration:
-                let totalSeconds = exercise.setsList
-                    .filter { $0.isCompleted }
-                    .compactMap { $0.time }
-                    .reduce(0, +)
-                let finalSeconds = (totalSeconds > 0) ? totalSeconds : (exercise.timeSeconds ?? 0)
-                value = Double(finalSeconds) / 60.0
+                if foundCategory == nil {
+                    foundType = ex.type
+                    foundCategory = ex.category
+                    foundMuscle = ex.muscleGroup
+                }
             }
             
-            if value == 0 { return nil }
-            return DataPoint(date: item.workout.date, value: value)
-        }
-        
-        self.allDataPoints = dataPoints
-        self.filteredWorkoutsData = filtered
-        self.exerciseType = foundType
-        self.exerciseCategory = foundCategory
-        self.muscleGroup = foundMuscle
-        
-        self.exerciseForecast = calculateForecast()
-        self.exerciseTrend = calculateTrend(for: selectedTrendPeriod)
-        
-        self.updateGraphData()
-        
-        withAnimation {
-            self.isDataLoaded = true
+            var filtered: [(workout: Workout, exercise: Exercise)] = []
+            
+            for (_, data) in workoutMap {
+                let bestExercise = data.exercises.max { e1, e2 in
+                    let max1 = e1.setsList.compactMap { $0.weight }.max() ?? 0
+                    let max2 = e2.setsList.compactMap { $0.weight }.max() ?? 0
+                    return max1 < max2
+                } ?? data.exercises.first!
+                
+                filtered.append((data.workout, bestExercise))
+            }
+            
+            filtered.sort { $0.workout.date > $1.workout.date }
+            
+            let dataPoints = filtered.reversed().compactMap { item -> DataPoint? in
+                let exercise = item.exercise
+                var value: Double = 0.0
+                
+                switch foundType {
+                case .strength:
+                    let maxSetWeight = exercise.setsList
+                        .filter { $0.isCompleted && $0.type != .warmup }
+                        .compactMap { $0.weight }
+                        .max()
+                    // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetWeight вместо weight
+                    let kgValue = maxSetWeight ?? exercise.firstSetWeight
+                    value = unitsManager.convertFromKilograms(kgValue)
+                    
+                case .cardio:
+                    let totalDist = exercise.setsList
+                        .filter { $0.isCompleted }
+                        .compactMap { $0.distance }
+                        .reduce(0, +)
+                    // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetDistance вместо distance
+                    let finalDist = (totalDist > 0) ? totalDist : (exercise.firstSetDistance ?? 0.0)
+                    value = unitsManager.convertFromMeters(finalDist)
+                    
+                case .duration:
+                    let totalSeconds = exercise.setsList
+                        .filter { $0.isCompleted }
+                        .compactMap { $0.time }
+                        .reduce(0, +)
+                    // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetTimeSeconds вместо timeSeconds
+                    let finalSeconds = (totalSeconds > 0) ? totalSeconds : (exercise.firstSetTimeSeconds ?? 0)
+                    value = Double(finalSeconds) / 60.0
+                }
+                
+                if value == 0 { return nil }
+                return DataPoint(date: item.workout.date, value: value)
+            }
+            
+            self.allDataPoints = dataPoints
+            self.filteredWorkoutsData = filtered
+            self.exerciseType = foundType
+            self.exerciseCategory = foundCategory
+            self.muscleGroup = foundMuscle
+            
+            self.exerciseForecast = calculateForecast()
+            self.exerciseTrend = calculateTrend(for: selectedTrendPeriod)
+            
+            self.updateGraphData()
+            
+            withAnimation {
+                self.isDataLoaded = true
+            }
         }
     }
     
-    /// Быстро обновляет отображаемые данные графика без глубокого пересчета истории
     private func updateGraphData() {
         let calendar = Calendar.current
         let filteredByDate: [DataPoint]
@@ -341,7 +333,6 @@ struct ExerciseHistoryView: View {
         let previousStart = calendar.date(byAdding: .month, value: -(months * 2), to: now)!
         let previousInterval = DateInterval(start: previousStart, end: currentStart)
         
-        // ИСПОЛЬЗУЕМ УЖЕ ОТФИЛЬТРОВАННЫЙ КЭШ
         let currentWorkouts = filteredWorkoutsData.filter { currentInterval.contains($0.workout.date) }
         let previousWorkouts = filteredWorkoutsData.filter { previousInterval.contains($0.workout.date) }
         
@@ -465,7 +456,6 @@ struct ExerciseHistoryView: View {
                                 .fontWeight(selectedTab == tab ? .semibold : .regular)
                                 .foregroundColor(selectedTab == tab ? .blue : .secondary)
                             
-                            // Подчеркивание активной вкладки
                             Rectangle()
                                 .fill(selectedTab == tab ? Color.blue : Color.clear)
                                 .frame(height: 2)
@@ -480,7 +470,6 @@ struct ExerciseHistoryView: View {
             .padding(.top, 8)
             .padding(.bottom, 4)
             
-            // Разделитель под вкладками
             Divider()
         }
         .background(Color(UIColor.systemBackground))
@@ -488,28 +477,22 @@ struct ExerciseHistoryView: View {
     
     // MARK: - Tab Content
     
-    /// Контент вкладки Summary (График и заметки)
     private var summaryContent: some View {
         VStack(spacing: 30) {
-            // 1. Блок графика
             chartContainerView
             
-            // 2. Тренды упражнения
             if let exerciseTrend = exerciseTrend {
                 exerciseTrendSection(trend: exerciseTrend)
             }
             
-            // 3. Прогноз прогресса
             if let exerciseForecast = exerciseForecast {
                 exerciseForecastSection(forecast: exerciseForecast)
             }
             
-            // 4. Блок заметок
             noteSection
         }
     }
     
-    /// Контент вкладки Technique (Техника упражнения)
     private var techniqueContent: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text(LocalizedStringKey("Exercise Technique"))
@@ -517,7 +500,6 @@ struct ExerciseHistoryView: View {
                 .bold()
                 .padding(.bottom, 10)
             
-            // Базовое описание упражнения
             VStack(alignment: .leading, spacing: 15) {
                 Text(LocalizedStringKey("How to Perform"))
                     .font(.headline)
@@ -533,7 +515,6 @@ struct ExerciseHistoryView: View {
             .cornerRadius(12)
             .shadow(radius: 5)
             
-            // Основные советы
             VStack(alignment: .leading, spacing: 15) {
                 Text(LocalizedStringKey("Key Tips"))
                     .font(.headline)
@@ -557,7 +538,6 @@ struct ExerciseHistoryView: View {
             .cornerRadius(12)
             .shadow(radius: 5)
             
-            // Мышцы, которые работают
             let muscleGroupToUse = muscleGroup ?? NSLocalizedString("Unknown", comment: "")
             let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exerciseName, muscleGroup: muscleGroupToUse)
             
@@ -572,12 +552,10 @@ struct ExerciseHistoryView: View {
                             .foregroundColor(.secondary)
                     }
                     
-                    // Отображаем мускулы как теги в LazyVGrid
                     LazyVGrid(columns: [
                         GridItem(.adaptive(minimum: 100), spacing: 8)
                     ], spacing: 8) {
                         ForEach(targetMuscles, id: \.self) { muscle in
-                            // Обернули каждый тег в NavigationLink для перехода в каталог упражнений
                             NavigationLink(destination: ExerciseView(preselectedCategory: muscleGroup)) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "figure.strengthtraining.traditional")
@@ -602,14 +580,12 @@ struct ExerciseHistoryView: View {
         }
     }
     
-    /// Контент вкладки History (История тренировок)
     private var historyContent: some View {
         historyListSection
     }
     
     // MARK: - View Components
     
-    /// Секция заметок
     private var noteSection: some View {
         ExerciseNoteEditor(exerciseName: exerciseName, isInputActive: $isInputActive)
             .id("notesSection")
@@ -619,10 +595,8 @@ struct ExerciseHistoryView: View {
             .shadow(radius: 5)
     }
     
-    /// Контейнер для графика (Заголовок, График, Фильтры)
     private var chartContainerView: some View {
         VStack(alignment: .leading, spacing: 15) {
-            // Заголовок и выбор диапазона
             HStack {
                 Text(chartTitle).font(.headline).foregroundColor(.secondary)
                 Spacer()
@@ -642,12 +616,10 @@ struct ExerciseHistoryView: View {
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(8)
             } else {
-                // Сам график
                 chartView
                 
                 Divider()
                 
-                // Выбор метрики (Среднее / Макс), если данных достаточно
                 if displayedGraphData.count > 1 {
                     HStack {
                         Text(LocalizedStringKey("Show line:"))
@@ -668,7 +640,6 @@ struct ExerciseHistoryView: View {
         .shadow(radius: 5)
     }
     
-    /// Контент строки тренировки
     @ViewBuilder
     private func workoutRowContent(workout: Workout, exercise: Exercise) -> some View {
         NavigationLink(destination: WorkoutDetailView(workout: workout)) {
@@ -678,28 +649,37 @@ struct ExerciseHistoryView: View {
                     Text(workout.date, style: .date).font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
-                // Отображение результата справа в зависимости от типа
                 VStack(alignment: .trailing) {
                     switch exercise.type {
                     case .strength:
-                        let convertedWeight = unitsManager.convertFromKilograms(exercise.weight)
+                        // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetWeight и firstSetReps, setsCount
+                        let convertedWeight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
                         Text("\(Int(convertedWeight)) \(unitsManager.weightUnitString())").bold().foregroundColor(.blue)
-                        Text("\(exercise.sets) x \(exercise.reps)").font(.caption).foregroundColor(.secondary)
+                        Text("\(exercise.setsCount) x \(exercise.firstSetReps)").font(.caption).foregroundColor(.secondary)
                     case .cardio:
-                        let convertedDist = unitsManager.convertFromKilometers(exercise.distance ?? 0)
+                        // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetDistance
+                        let convertedDist = unitsManager.convertFromMeters(exercise.firstSetDistance ?? 0)
                         Text("\(LocalizationHelper.shared.formatDecimal(convertedDist)) \(unitsManager.distanceUnitString())").bold().foregroundColor(.orange)
-                        Text(formatTime(exercise.timeSeconds ?? 0)).font(.caption).foregroundColor(.secondary)
+                        Text(formatTime(exercise.firstSetTimeSeconds ?? 0)).font(.caption).foregroundColor(.secondary)
                     case .duration:
-                        Text(formatTime(exercise.timeSeconds ?? 0)).bold().foregroundColor(.purple)
-                        Text("\(exercise.sets) sets").font(.caption).foregroundColor(.secondary)
+                        // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetTimeSeconds
+                        Text(formatTime(exercise.firstSetTimeSeconds ?? 0)).bold().foregroundColor(.purple)
+                        Text("\(exercise.setsCount) sets").font(.caption).foregroundColor(.secondary)
                     }
                 }
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.gray.opacity(0.5))
+                    .padding(.leading, 4)
             }
-            .padding().background(Color.gray.opacity(0.05)).cornerRadius(10)
+            .padding()
+            .background(Color.gray.opacity(0.05))
+            .cornerRadius(10)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
     }
     
-    /// Список истории тренировок
     private var historyListSection: some View {
         VStack(alignment: .leading) {
             Text(LocalizedStringKey("History")).font(.title2).bold()
@@ -719,17 +699,13 @@ struct ExerciseHistoryView: View {
         }
     }
     
-    // MARK: - Chart Logic (Builders & Data)
+    // MARK: - Chart Logic
     
-    /// Построитель самого графика (оси, масштаб)
     @ViewBuilder
     var chartView: some View {
-        // 1. Создаем базовый график
         let baseChart = Chart {
-            // Рисуем содержимое (линии и точки)
             chartContent
             
-            // Рисуем линию метрики (среднее/макс), если выбрано
             if let val = currentMetricValue, displayedGraphData.count > 1 {
                 RuleMark(y: .value("Metric", val))
                     .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
@@ -763,7 +739,6 @@ struct ExerciseHistoryView: View {
             }
         }
 
-        // 2. Применяем кастомные масштабы (Domains), если точек мало
         if let yDom = customYDomain, let xDom = customXDomain {
             baseChart.chartYScale(domain: yDom).chartXScale(domain: xDom)
         } else if let xDom = customXDomain {
@@ -773,11 +748,9 @@ struct ExerciseHistoryView: View {
         }
     }
     
-    /// Содержимое графика (Точки и Линии)
     @ChartContentBuilder
     var chartContent: some ChartContent {
         ForEach(displayedGraphData) { dataPoint in
-            // ЛИНИЯ (если больше 1 точки)
             if displayedGraphData.count > 1 {
                 LineMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
                     .interpolationMethod(.linear)
@@ -785,7 +758,6 @@ struct ExerciseHistoryView: View {
                     .lineStyle(StrokeStyle(lineWidth: 3))
             }
             
-            // ТОЧКА
             PointMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
                 .foregroundStyle(chartColor)
                 .symbolSize(displayedGraphData.count == 1 ? 50 : 30)
@@ -798,8 +770,6 @@ struct ExerciseHistoryView: View {
                 }
         }
     }
-    
-    // --- Chart Helpers (Scaling & Data) ---
     
     var chartTitle: String {
         switch exerciseType {
@@ -817,7 +787,6 @@ struct ExerciseHistoryView: View {
         }
     }
     
-    // Масштаб по X (если одна точка - показываем день до и после)
     var customXDomain: ClosedRange<Date>? {
         guard displayedGraphData.count == 1, let point = displayedGraphData.first else { return nil }
         let start = Calendar.current.date(byAdding: .day, value: -1, to: point.date)!
@@ -825,7 +794,6 @@ struct ExerciseHistoryView: View {
         return start...end
     }
     
-    // Масштаб по Y (добавляем отступы сверху и снизу)
     var customYDomain: ClosedRange<Double>? {
         guard !displayedGraphData.isEmpty else { return nil }
         let values = displayedGraphData.map { $0.value }
@@ -839,8 +807,6 @@ struct ExerciseHistoryView: View {
         return nil
     }
     
-    // MARK: - Helpers
-    
     func formatTime(_ seconds: Int) -> String {
         let m = seconds / 60
         let s = seconds % 60
@@ -849,220 +815,108 @@ struct ExerciseHistoryView: View {
     
     // MARK: - Technique Helpers
     
-    /// Получить описание техники упражнения
     func getTechniqueDescription() -> String {
         switch safeCategory {
-        case .squat:
-            return NSLocalizedString("Stand with your feet shoulder-width apart. Lower your body by bending your knees and pushing your hips back, as if sitting into a chair. Keep your chest up and core engaged. Lower until your thighs are parallel to the ground, then push through your heels to return to the starting position.", comment: "")
-        case .press:
-            return NSLocalizedString("Lie on a flat bench with your feet flat on the floor. Grip the bar with hands slightly wider than shoulder-width. Lower the bar to your chest with control, then press it back up explosively. Keep your shoulders retracted and core tight throughout the movement.", comment: "")
-        case .deadlift:
-            return NSLocalizedString("Stand with feet hip-width apart, bar over mid-foot. Hinge at the hips and bend your knees to grip the bar. Keep your back straight and chest up. Drive through your heels and extend your hips and knees simultaneously to lift the bar. Keep the bar close to your body throughout the movement.", comment: "")
-        case .pull:
-            return NSLocalizedString("Grasp the bar or handles with an overhand or underhand grip. Pull the weight toward your torso, squeezing your shoulder blades together at the end of the movement. Keep your core engaged and avoid swinging. Lower the weight with control to complete the repetition.", comment: "")
-        case .curl:
-            return NSLocalizedString("Stand or sit with a dumbbell in each hand, arms fully extended. Keeping your elbows close to your body, curl the weights up by contracting your biceps. Squeeze at the top of the movement, then lower the weights slowly with control.", comment: "")
-        default:
-            return NSLocalizedString("Perform this exercise with proper form, focusing on controlled movements and full range of motion. Engage your core throughout the exercise and avoid using momentum. Consult with a fitness professional for specific technique guidance.", comment: "")
+        case .squat: return NSLocalizedString("Stand with your feet shoulder-width apart. Lower your body by bending your knees and pushing your hips back, as if sitting into a chair. Keep your chest up and core engaged. Lower until your thighs are parallel to the ground, then push through your heels to return to the starting position.", comment: "")
+        case .press: return NSLocalizedString("Lie on a flat bench with your feet flat on the floor. Grip the bar with hands slightly wider than shoulder-width. Lower the bar to your chest with control, then press it back up explosively. Keep your shoulders retracted and core tight throughout movement.", comment: "")
+        case .deadlift: return NSLocalizedString("Stand with feet hip-width apart, bar over mid-foot. Hinge at the hips and bend your knees to grip the bar. Keep your back straight and chest up. Drive through your heels and extend your hips and knees simultaneously to lift the bar. Keep the bar close to your body throughout movement.", comment: "")
+        case .pull: return NSLocalizedString("Grasp the bar or handles with an overhand or underhand grip. Pull the weight toward your torso, squeezing your shoulder blades together at the end of the movement. Keep your core engaged and avoid swinging. Lower the weight with control to complete the repetition.", comment: "")
+        case .curl: return NSLocalizedString("Stand or sit with a dumbbell in each hand, arms fully extended. Keeping your elbows close to your body, curl the weights up by contracting your biceps. Squeeze at the top of the movement, then lower the weights slowly with control.", comment: "")
+        default: return NSLocalizedString("Perform this exercise with proper form, focusing on controlled movements and full range of motion. Engage your core throughout the exercise and avoid using momentum. Consult with a fitness professional for specific technique guidance.", comment: "")
         }
     }
     
-    /// Получить советы по технике
     func getTechniqueTips() -> [String] {
         switch safeCategory {
-        case .squat:
-            return [
-                NSLocalizedString("Keep your knees in line with your toes, never let them cave inward", comment: ""),
-                NSLocalizedString("Maintain a neutral spine throughout the entire movement", comment: ""),
-                NSLocalizedString("Focus on pushing through your heels, not your toes", comment: ""),
-                NSLocalizedString("Don't let your knees go past your toes when descending", comment: ""),
-                NSLocalizedString("Keep your chest up and gaze forward to maintain proper posture", comment: "")
-            ]
-        case .press:
-            return [
-                NSLocalizedString("Keep your shoulder blades retracted and pressed into the bench", comment: ""),
-                NSLocalizedString("Lower the bar with control - don't let it drop onto your chest", comment: ""),
-                NSLocalizedString("Keep your feet firmly planted on the floor for stability", comment: ""),
-                NSLocalizedString("Maintain a slight arch in your lower back (not excessive)", comment: ""),
-                NSLocalizedString("Press the bar in a straight line up and slightly back", comment: "")
-            ]
-        case .deadlift:
-            return [
-                NSLocalizedString("Keep the bar close to your body - it should almost scrape your shins", comment: ""),
-                NSLocalizedString("Start with your hips higher than your knees", comment: ""),
-                NSLocalizedString("Drive through your heels and extend your hips forward at the top", comment: ""),
-                NSLocalizedString("Never round your back - keep it neutral throughout", comment: ""),
-                NSLocalizedString("Breathe out as you lift and breathe in as you lower", comment: "")
-            ]
-        default:
-            return [
-                NSLocalizedString("Focus on proper form over the amount of weight", comment: ""),
-                NSLocalizedString("Control the negative (lowering) portion of the movement", comment: ""),
-                NSLocalizedString("Keep your core engaged throughout the exercise", comment: ""),
-                NSLocalizedString("Breathe properly - exhale on exertion, inhale on return", comment: ""),
-                NSLocalizedString("If you feel sharp pain, stop immediately and consult a professional", comment: "")
-            ]
+        case .squat: return [NSLocalizedString("Keep your knees in line with your toes, never let them cave inward", comment: ""), NSLocalizedString("Maintain a neutral spine throughout the entire movement", comment: ""), NSLocalizedString("Focus on pushing through your heels, not your toes", comment: ""), NSLocalizedString("Don't let your knees go past your toes when descending", comment: ""), NSLocalizedString("Keep your chest up and gaze forward to maintain proper posture", comment: "")]
+        case .press: return [NSLocalizedString("Keep your shoulder blades retracted and pressed into the bench", comment: ""), NSLocalizedString("Lower the bar with control - don't let it drop onto your chest", comment: ""), NSLocalizedString("Keep your feet firmly planted on the floor for stability", comment: ""), NSLocalizedString("Maintain a slight arch in your lower back (not excessive)", comment: ""), NSLocalizedString("Press the bar in a straight line up and slightly back", comment: "")]
+        case .deadlift: return [NSLocalizedString("Keep the bar close to your body - it should almost scrape your shins", comment: ""), NSLocalizedString("Start with your hips higher than your knees", comment: ""), NSLocalizedString("Drive through your heels and extend your hips forward at the top", comment: ""), NSLocalizedString("Never round your back - keep it neutral throughout", comment: ""), NSLocalizedString("Breathe out as you lift and breathe in as you lower", comment: "")]
+        default: return [NSLocalizedString("Focus on proper form over the amount of weight", comment: ""), NSLocalizedString("Control the negative (lowering) portion of the movement", comment: ""), NSLocalizedString("Keep your core engaged throughout the exercise", comment: ""), NSLocalizedString("Breathe properly - exhale on exertion, inhale on return", comment: ""), NSLocalizedString("If you feel sharp pain, stop immediately and consult a professional", comment: "")]
         }
     }
     
     // MARK: - Exercise Trends & Forecast Views
     
-    /// Секция тренда упражнения
     @ViewBuilder
     private func exerciseTrendSection(trend: WorkoutViewModel.ExerciseTrend) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(LocalizedStringKey("Exercise Trend"))
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
+                Text(LocalizedStringKey("Exercise Trend")).font(.headline).foregroundColor(.secondary)
                 Spacer()
-                
-                // Переключатель периода в правом верхнем углу
                 Picker(LocalizedStringKey("Period"), selection: $selectedTrendPeriod) {
-                    ForEach(TrendPeriod.allCases) { period in
-                        Text(period.displayName).tag(period)
-                    }
+                    ForEach(TrendPeriod.allCases) { period in Text(period.displayName).tag(period) }
                 }
-                .pickerStyle(.segmented)
-                .frame(width: 120)
+                .pickerStyle(.segmented).frame(width: 120)
             }
             
             HStack {
-                Image(systemName: trend.trend.icon)
-                    .foregroundColor(trend.trend.color)
-                    .frame(width: 24)
-                
+                Image(systemName: trend.trend.icon).foregroundColor(trend.trend.color).frame(width: 24)
                 VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 8) {
+                    HStack(spacing: 8) {
                         let prevConverted = unitsManager.convertFromKilograms(trend.previousValue)
                         let currConverted = unitsManager.convertFromKilograms(trend.currentValue)
-                        Text("\(Int(prevConverted)) \(unitsManager.weightUnitString())")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        Image(systemName: "arrow.right")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                        
-                        Text("\(Int(currConverted)) \(unitsManager.weightUnitString())")
-                            .font(.caption)
-                            .bold()
+                        Text("\(Int(prevConverted)) \(unitsManager.weightUnitString())").font(.caption).foregroundColor(.secondary)
+                        Image(systemName: "arrow.right").font(.caption2).foregroundColor(.secondary)
+                        Text("\(Int(currConverted)) \(unitsManager.weightUnitString())").font(.caption).bold()
                     }
                 }
-                
                 Spacer()
-                
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("\(trend.changePercentage, specifier: "%.0f")%")
-                        .font(.headline)
-                        .foregroundColor(trend.trend.color)
-                    
-                    Text(trend.trend == .growing ? LocalizedStringKey("↑ Growing") : trend.trend == .declining ? LocalizedStringKey("↓ Declining") : LocalizedStringKey("→ Stable"))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text("\(trend.changePercentage, specifier: "%.0f")%").font(.headline).foregroundColor(trend.trend.color)
+                    Text(trend.trend == .growing ? LocalizedStringKey("↑ Growing") : trend.trend == .declining ? LocalizedStringKey("↓ Declining") : LocalizedStringKey("→ Stable")).font(.caption2).foregroundColor(.secondary)
                 }
             }
             .padding(.vertical, 8)
         }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
-        .shadow(radius: 5)
+        .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).shadow(radius: 5)
     }
     
-    /// Секция прогноза упражнения
     @ViewBuilder
     private func exerciseForecastSection(forecast: WorkoutViewModel.ProgressForecast) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(LocalizedStringKey("Progress Forecast"))
-                    .font(.headline)
-                    .foregroundColor(.secondary)
-                
+                Text(LocalizedStringKey("Progress Forecast")).font(.headline).foregroundColor(.secondary)
                 Spacer()
-                
-                // Индикатор уверенности с цветовой кодировкой
                 HStack(spacing: 4) {
-                    Circle()
-                        .fill(forecast.confidence >= 70 ? Color.green :
-                              forecast.confidence >= 50 ? Color.orange : Color.red)
-                        .frame(width: 8, height: 8)
-                    Text("\(forecast.confidence)%")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    Circle().fill(forecast.confidence >= 70 ? Color.green : forecast.confidence >= 50 ? Color.orange : Color.red).frame(width: 8, height: 8)
+                    Text("\(forecast.confidence)%").font(.caption).foregroundColor(.secondary)
                 }
             }
             
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey("Current"))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Current")).font(.caption2).foregroundColor(.secondary)
                     let currentConverted = unitsManager.convertFromKilograms(forecast.currentMax)
-                    Text("\(Int(currentConverted)) \(unitsManager.weightUnitString())")
-                        .font(.subheadline)
-                        .bold()
+                    Text("\(Int(currentConverted)) \(unitsManager.weightUnitString())").font(.subheadline).bold()
                 }
-                
-                Image(systemName: "arrow.right")
-                    .foregroundColor(.blue)
-                
+                Image(systemName: "arrow.right").foregroundColor(.blue)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey("Predicted"))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Predicted")).font(.caption2).foregroundColor(.secondary)
                     let predictedConverted = unitsManager.convertFromKilograms(forecast.predictedMax)
-                    Text("\(Int(predictedConverted)) \(unitsManager.weightUnitString())")
-                        .font(.subheadline)
-                        .bold()
-                        .foregroundColor(.blue)
+                    Text("\(Int(predictedConverted)) \(unitsManager.weightUnitString())").font(.subheadline).bold().foregroundColor(.blue)
                 }
-                
                 Spacer()
-                
                 VStack(alignment: .trailing, spacing: 2) {
                     let diffConverted = unitsManager.convertFromKilograms(forecast.predictedMax - forecast.currentMax)
-                    Text("+\(Int(diffConverted)) \(unitsManager.weightUnitString())")
-                        .font(.caption)
-                        .bold()
-                        .foregroundColor(.green)
-                    Text(LocalizedStringKey("in \(forecast.timeframe)"))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+                    Text("+\(Int(diffConverted)) \(unitsManager.weightUnitString())").font(.caption).bold().foregroundColor(.green)
+                    Text(LocalizedStringKey("in \(forecast.timeframe)")).font(.caption2).foregroundColor(.secondary)
                 }
             }
             
-            // Прогресс бар для визуализации
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.2))
-                        .frame(height: 6)
-                        .cornerRadius(3)
-                    
-                    Rectangle()
-                        .fill(Color.blue.gradient)
-                        .frame(
-                            width: geometry.size.width * min(1.0, forecast.predictedMax / max(forecast.currentMax, 1)),
-                            height: 6
-                        )
-                        .cornerRadius(3)
+                    Rectangle().fill(Color.gray.opacity(0.2)).frame(height: 6).cornerRadius(3)
+                    Rectangle().fill(Color.blue.gradient).frame(width: geometry.size.width * min(1.0, forecast.predictedMax / max(forecast.currentMax, 1)), height: 6).cornerRadius(3)
                 }
             }
             .frame(height: 6)
         }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
-        .shadow(radius: 5)
+        .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).shadow(radius: 5)
     }
 }
 
-// MARK: - Isolated Note Editor View (SWIFT DATA)
+// MARK: - Isolated Note Editor View
 
-/// Вынесенное представление для редактирования заметки.
-/// Интегрировано с SwiftData с помощью @Query
 struct ExerciseNoteEditor: View {
     let exerciseName: String
     var isInputActive: FocusState<Bool>.Binding
@@ -1076,8 +930,6 @@ struct ExerciseNoteEditor: View {
     init(exerciseName: String, isInputActive: FocusState<Bool>.Binding) {
         self.exerciseName = exerciseName
         self.isInputActive = isInputActive
-        
-        // Фильтруем данные прямо из базы SwiftData
         let filter = #Predicate<ExerciseNote> { $0.exerciseName == exerciseName }
         _notes = Query(filter: filter)
     }
@@ -1100,15 +952,10 @@ struct ExerciseNoteEditor: View {
                     alignment: .topLeading
                 )
                 .onChange(of: exerciseNote) { oldValue, newValue in
-                    // Отменяем предыдущую задачу сохранения
                     saveTask?.cancel()
-                    
-                    // Сохраняем с debounce (300ms)
                     saveTask = Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 300_000_000)
-                        if !Task.isCancelled {
-                            saveNote(newValue)
-                        }
+                        if !Task.isCancelled { saveNote(newValue) }
                     }
                 }
                 .toolbar {
@@ -1131,7 +978,6 @@ struct ExerciseNoteEditor: View {
         }
     }
     
-    // Прямое сохранение в SwiftData ModelContext
     private func saveNote(_ text: String) {
         if let existingNote = notes.first {
             existingNote.text = text
@@ -1139,7 +985,5 @@ struct ExerciseNoteEditor: View {
             let newNote = ExerciseNote(exerciseName: exerciseName, text: text)
             context.insert(newNote)
         }
-        // Автоматическое сохранение SwiftData обработает эту операцию.
     }
 }
-

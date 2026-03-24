@@ -6,9 +6,11 @@
 //
 
 import Foundation
+import SwiftData
 
-struct WeightEntry: Identifiable, Codable {
-    var id = UUID()
+@Model
+class WeightEntry {
+    @Attribute(.unique) var id: UUID
     var date: Date
     var weight: Double // Вес в килограммах
     

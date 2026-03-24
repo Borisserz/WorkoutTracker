@@ -20,11 +20,9 @@ struct StatisticsManager {
         
         for workout in workouts {
             for exercise in workout.exercises {
-                // ИСПРАВЛЕНИЕ: Используем subExercises
                 let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 
                 for ex in targetExercises {
-                    // ИСПРАВЛЕНИЕ: Используем setsList
                     for set in ex.setsList where set.isCompleted {
                         var currentValue: Double = 0
                         switch ex.type {
@@ -44,8 +42,10 @@ struct StatisticsManager {
         return bests.map { name, data in
             var valString = ""
             switch data.type {
-            case .strength: valString = String(localized: "\(Int(data.result)) kg")
-            case .cardio:   valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(data.result)) km")
+            case .strength: valString = String(localized: "\(Int(data.result)) \(UnitsManager.shared.weightUnitString())")
+            case .cardio:
+                let converted = UnitsManager.shared.convertFromMeters(data.result)
+                valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(converted)) \(UnitsManager.shared.distanceUnitString())")
             case .duration:
                 let m = Int(data.result) / 60
                 let s = Int(data.result) % 60
@@ -97,9 +97,9 @@ struct StatisticsManager {
         stats.workoutCount = relevantWorkouts.count
         
         for workout in relevantWorkouts {
-            stats.totalDuration += workout.duration
+            stats.totalDuration += (workout.durationSeconds / 60)
             for exercise in workout.exercises {
-                stats.totalVolume += exercise.computedVolume
+                stats.totalVolume += exercise.exerciseVolume
                 let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in targetExercises {
                     let reps = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.reps }.reduce(0, +)
@@ -225,8 +225,8 @@ struct StatisticsManager {
             guard let yearInterval = calendar.dateInterval(of: .year, for: now) else { return [] }
             let symbols = calendar.shortMonthSymbols
             for month in 1...12 {
-                let mWorkouts = workouts.filter { 
-                    yearInterval.contains($0.date) && 
+                let mWorkouts = workouts.filter {
+                    yearInterval.contains($0.date) &&
                     calendar.component(.month, from: $0.date) == month
                 }
                 let label = symbols[month - 1]
@@ -239,8 +239,8 @@ struct StatisticsManager {
     static func calculateValue(for workouts: [Workout], metric: StatsView.GraphMetric) -> Double {
         switch metric {
         case .count: return Double(workouts.count)
-        case .volume: return workouts.reduce(0) { wSum, w in wSum + w.exercises.reduce(0) { eSum, e in eSum + e.computedVolume } }
-        case .time: return Double(workouts.reduce(0) { $0 + $1.duration })
+        case .volume: return workouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.exerciseVolume } }
+        case .time: return Double(workouts.reduce(0) { $0 + ($1.durationSeconds / 60) })
         case .distance:
             return workouts.reduce(0.0) { wSum, w in
                 wSum + w.exercises.reduce(0.0) { eSum, e in
@@ -266,7 +266,7 @@ struct AnalyticsManager {
                 let list = exercise.isSuperset ? exercise.subExercises : [exercise]
                 for ex in list {
                     let completedSets = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
-                    let count = ex.setsList.isEmpty ? ex.sets : completedSets
+                    let count = ex.setsList.isEmpty ? ex.setsCount : completedSets
                     if ex.muscleGroup == "Chest" { chestSets += count }
                     if ex.muscleGroup == "Back" { backSets += count }
                     if ex.muscleGroup == "Legs" { legSets += count }
@@ -409,7 +409,7 @@ struct AnalyticsManager {
                     for muscle in muscles {
                         uniqueMuscles.insert(muscle)
                         let existing = muscleData[muscle] ?? (0, 0)
-                        muscleData[muscle] = (existing.frequency, existing.totalVolume + ex.computedVolume)
+                        muscleData[muscle] = (existing.frequency, existing.totalVolume + ex.exerciseVolume)
                     }
                 }
             }
@@ -494,13 +494,13 @@ struct AnalyticsManager {
         var curInt: DateInterval, prevInt: DateInterval
         
         switch period {
-        case .week: 
+        case .week:
             curInt = cal.dateInterval(of: .weekOfYear, for: now)!
             prevInt = cal.dateInterval(of: .weekOfYear, for: cal.date(byAdding: .day, value: -7, to: now)!)!
-        case .month: 
+        case .month:
             curInt = cal.dateInterval(of: .month, for: now)!
             prevInt = cal.dateInterval(of: .month, for: cal.date(byAdding: .month, value: -1, to: now)!)!
-        case .year: 
+        case .year:
             curInt = cal.dateInterval(of: .year, for: now)!
             prevInt = cal.dateInterval(of: .year, for: cal.date(byAdding: .year, value: -1, to: now)!)!
         }
@@ -535,13 +535,31 @@ struct RecoveryCalculator {
         for workout in workouts.filter({ $0.date >= cutoffDate && !$0.isActive }).sorted(by: { $0.date < $1.date }) {
             let hoursSince = max(0, Date().timeIntervalSince(workout.date) / 3600)
             if hoursSince >= fullRecoveryHours { continue }
-            let fatigueFactor = max(0.0, min(1.0, 1.0 - (hoursSince / fullRecoveryHours)))
+            
+            // Соотношение прошедшего времени к полному времени восстановления
+            let timeDecay = hoursSince / fullRecoveryHours
             
             for exercise in workout.exercises {
                 let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targetExercises where ex.type == .strength {
+                
+                for ex in targetExercises { // УБРАНО ограничение where ex.type == .strength
+                    
+                    // 1. Базовая усталость зависит от RPE (effort 1-10 -> 0.1 - 1.0)
+                    var initialFatigue = Double(ex.effort) / 10.0
+                    
+                    // 2. Учет объема: легкая разминка (менее 3 сетов) дает меньше усталости
+                    let completedSets = ex.setsList.filter { $0.isCompleted }.count
+                    let actualSetsCount = completedSets > 0 ? completedSets : ex.setsCount
+                    
+                    if actualSetsCount < 3 {
+                        initialFatigue *= 0.7
+                    }
+                    
+                    // 3. Вычисление текущей остаточной усталости (линейный распад)
+                    let currentFatigue = max(0.0, initialFatigue - timeDecay)
+                    
                     for slug in MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup) {
-                        rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, fatigueFactor)
+                        rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, currentFatigue)
                     }
                 }
             }
@@ -621,7 +639,7 @@ struct ImportExportService {
         }
         csvLines.append("")
         csvLines.append("## SETS")
-        csvLines.append("Set ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (km),Time (sec),Is Completed,Set Type")
+        csvLines.append("Set ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (m),Time (sec),Is Completed,Set Type")
         for exercise in preset.exercises {
             for set in exercise.setsList {
                 let weightStr = set.weight != nil ? String(set.weight!) : ""
@@ -661,4 +679,3 @@ struct ImportExportService {
         }
     }
 }
-

@@ -2,8 +2,6 @@
 //  RestTimerView.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 28.12.25.
-//
 
 internal import SwiftUI
 
@@ -15,81 +13,79 @@ struct RestTimerView: View {
     
     var body: some View {
         if timerManager.isRestTimerActive {
-            HStack(spacing: 15) {
+            HStack(spacing: 16) {
                 
-                HStack(spacing: 8) {
+                // Левая часть: Иконка + Время
+                HStack(spacing: 6) {
                     Image(systemName: timerManager.restTimerFinished ? "checkmark.circle.fill" : "timer")
-                        .foregroundColor(.white)
-                        .symbolEffect(.bounce, value: timerManager.restTimerFinished) // Анимация иконки (iOS 17+)
+                        .foregroundColor(timerManager.restTimerFinished ? .green : .white)
+                        .symbolEffect(.bounce, value: timerManager.restTimerFinished)
                     
                     Text(timerManager.restTimerFinished ? "DONE" : timeString(time: timerManager.restTimeRemaining))
-                        .font(.title3)
+                        .font(.title3.monospacedDigit())
                         .bold()
                         .foregroundColor(.white)
-                        .monospacedDigit()
                 }
                 
                 Spacer()
                 
-                // Скрываем кнопки +/- когда таймер уже звонит (finished)
+                // Правая часть: Управление
                 if !timerManager.restTimerFinished {
-                    HStack(spacing: 12) {
-                        
-                        // Кнопка -30
+                    HStack(spacing: 16) {
                         Button {
                             timerManager.subtractRestTime(30)
                         } label: {
                             Text("-30")
-                                .font(.caption).bold()
-                                .frame(width: 35, height: 30)
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(8)
-                                .foregroundColor(.white)
+                                .font(.subheadline.bold())
+                                .foregroundColor(.white.opacity(0.9))
                         }
                         
-                        // Кнопка +30
                         Button {
                             timerManager.addRestTime(30)
                         } label: {
                             Text("+30")
-                                .font(.caption).bold()
-                                .frame(width: 35, height: 30)
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(8)
-                                .foregroundColor(.white)
+                                .font(.subheadline.bold())
+                                .foregroundColor(.white.opacity(0.9))
                         }
                         
-                        // Разделитель
-                        Divider()
-                            .frame(height: 20)
-                            .background(Color.white.opacity(0.5))
-                        
-                        // Кнопка Стоп
+                        // Кнопка закрытия
                         Button {
-                            withAnimation {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 timerManager.stopRestTimer()
                             }
                         } label: {
-                            Image(systemName: "xmark")
-                                .font(.headline)
-                                .foregroundColor(.white.opacity(0.8))
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title3)
+                                .foregroundColor(.white.opacity(0.6))
                         }
                     }
                 }
             }
-            .padding()
-            // Меняем цвет фона: Синий (идет время) -> Зеленый (готово)
-            .background(timerManager.restTimerFinished ? Color.green.gradient : Color.blue.gradient)
-            .cornerRadius(16)
-            .shadow(radius: 10)
-            .padding(.horizontal)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            // Эффект матового стекла + темная тема (всегда выглядит красиво и читаемо)
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .environment(\.colorScheme, .dark)
+            )
+            // Легкая цветовая подложка (Синяя пока идет время, зеленая когда окончено)
+            .background(
+                Capsule()
+                    .fill(timerManager.restTimerFinished ? Color.green.opacity(0.3) : Color.blue.opacity(0.3))
+            )
+            // Тонкая белая рамка для объема
+            .overlay(
+                Capsule()
+                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.5)
+            )
+            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+            .padding(.horizontal, 16)
             .padding(.bottom, 10)
             
-            // Анимация появления/исчезновения
-            .transition(.move(edge: .bottom).combined(with: .opacity))
-            
-            // Анимация пульсации при завершении
-            .scaleEffect(isPulsing ? 1.05 : 1.0)
+            // Анимации появления и пульсации
+            .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
+            .scaleEffect(isPulsing ? 1.04 : 1.0)
             .onChange(of: timerManager.restTimerFinished) { finished in
                 if finished {
                     withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {

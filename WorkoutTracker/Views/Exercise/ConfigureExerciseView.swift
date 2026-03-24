@@ -33,66 +33,98 @@ struct ConfigureExerciseView: View {
     // Значения по умолчанию
     @State private var sets = 3
     @State private var reps = 10
-    @State private var weight = 0.0
-    @State private var distance = 0.0
+    @State private var weight: Double? = nil
+    @State private var distance: Double? = nil
     
     // Время разбито на минуты и секунды для удобства ввода
-    @State private var minutes = 0
-    @State private var seconds = 0
+    @State private var minutes: Int? = 0
+    @State private var seconds: Int? = 0
     
     // Validation alerts
     @State private var showValidationAlert = false
     @State private var validationErrorMessage = ""
     
+    // НОВОЕ: Для Progressive Overload
+    @State private var hasAutoFilled = false
+    @State private var showOverloadBanner = false
+    @State private var recommendedWeight: Double = 0.0
+    
     // MARK: - Binding Adapters
-    // Эти вычисляемые свойства нужны для адаптации @State (non-optional)
-    // к Binding<Double?>, который требуется компонентом ClearableTextField.
+    // Эти вычисляемые свойства нужны для адаптации @State к Binding<Double?>,
+    // который требуется компонентом ClearableTextField.
     
     private var weightBinding: Binding<Double?> {
-        Binding<Double?>(get: { 
-            // Конвертируем из кг в выбранные единицы для отображения
-            return unitsManager.convertFromKilograms(weight)
+        Binding<Double?>(get: {
+            if let w = weight {
+                return unitsManager.convertFromKilograms(w)
+            }
+            return nil
         }, set: { newValue in
-            let value = newValue ?? 0
-            // Конвертируем из выбранных единиц в кг для сохранения
-            let kgValue = unitsManager.convertToKilograms(value)
-            let validation = InputValidator.validateWeight(kgValue)
-            weight = validation.clampedValue
-            if !validation.isValid, let error = validation.errorMessage {
-                validationErrorMessage = error
-                showValidationAlert = true
+            if let value = newValue {
+                let kgValue = unitsManager.convertToKilograms(value)
+                let validation = InputValidator.validateWeight(kgValue)
+                weight = validation.clampedValue
+                if !validation.isValid, let error = validation.errorMessage {
+                    validationErrorMessage = error
+                    showValidationAlert = true
+                }
+            } else {
+                weight = nil
             }
         })
     }
     
     private var distanceBinding: Binding<Double?> {
-        Binding<Double?>(get: { distance }, set: { newValue in
-            let value = newValue ?? 0
-            let validation = InputValidator.validateDistance(value)
-            distance = validation.clampedValue
-            if !validation.isValid, let error = validation.errorMessage {
-                validationErrorMessage = error
-                showValidationAlert = true
+        Binding<Double?>(get: {
+            if let d = distance {
+                return unitsManager.convertFromMeters(d)
+            }
+            return nil
+        }, set: { newValue in
+            if let value = newValue {
+                let mValue = unitsManager.convertToMeters(value)
+                let validation = InputValidator.validateDistance(mValue)
+                distance = validation.clampedValue
+                if !validation.isValid, let error = validation.errorMessage {
+                    validationErrorMessage = error
+                    showValidationAlert = true
+                }
+            } else {
+                distance = nil
             }
         })
     }
     
     private var minutesBinding: Binding<Double?> {
-        Binding<Double?>(get: { Double(minutes) }, set: { newValue in
-            let value = Int(newValue ?? 0)
-            let validation = InputValidator.validateTime(value * 60)
-            minutes = max(0, min(value, validation.clampedValue / 60))
-            if !validation.isValid, let error = validation.errorMessage {
-                validationErrorMessage = error
-                showValidationAlert = true
+        Binding<Double?>(get: {
+            if let m = minutes { return Double(m) }
+            return nil
+        }, set: { newValue in
+            if let val = newValue {
+                let value = Int(val)
+                let validation = InputValidator.validateTime(value * 60)
+                minutes = max(0, min(value, validation.clampedValue / 60))
+                if !validation.isValid, let error = validation.errorMessage {
+                    validationErrorMessage = error
+                    showValidationAlert = true
+                }
+            } else {
+                minutes = nil
             }
         })
     }
     
     private var secondsBinding: Binding<Double?> {
-        Binding<Double?>(get: { Double(seconds) }, set: { newValue in
-            let value = Int(newValue ?? 0)
-            seconds = max(0, min(value, 59))
+        Binding<Double?>(get: {
+            if let s = seconds { return Double(s) }
+            return nil
+        }, set: { newValue in
+            if let val = newValue {
+                let value = Int(val)
+                seconds = max(0, min(value, 59))
+            } else {
+                seconds = nil
+            }
         })
     }
 
@@ -101,6 +133,12 @@ struct ConfigureExerciseView: View {
     var body: some View {
         NavigationStack {
             Form {
+                
+                // ПРОАКТИВНАЯ РЕКОМЕНДАЦИЯ OVERLOAD
+                if showOverloadBanner {
+                    overloadBannerSection
+                }
+                
                 // Основная секция настроек
                 Section(header: Text("Configuration")) {
                     // Заголовок с именем упражнения
@@ -134,16 +172,69 @@ struct ConfigureExerciseView: View {
             } message: {
                 Text(validationErrorMessage)
             }
+            .onAppear {
+                if !hasAutoFilled {
+                    loadLastPerformance()
+                    hasAutoFilled = true
+                }
+            }
         }
     }
     
     // MARK: - View Components
     
+    private var overloadBannerSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .foregroundColor(.green)
+                    Text("Progressive Overload")
+                        .font(.headline)
+                        .foregroundColor(.green)
+                }
+                
+                let convertedWeight = unitsManager.convertFromKilograms(recommendedWeight)
+                let weightStr = convertedWeight.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", convertedWeight) : String(format: "%.1f", convertedWeight)
+                
+                Text("Your forecast allows it! Try **\(weightStr) \(unitsManager.weightUnitString())** today for better results.")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 12) {
+                    Button("Discard") {
+                        withAnimation {
+                            showOverloadBanner = false
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
+                    .frame(maxWidth: .infinity)
+                    
+                    Button("Apply") {
+                        withAnimation {
+                            weight = recommendedWeight
+                            showOverloadBanner = false
+                        }
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .frame(maxWidth: .infinity)
+                }
+                .padding(.top, 4)
+            }
+            .padding(.vertical, 4)
+        }
+    }
+    
     // 1. Силовая конфигурация
     @ViewBuilder
     private var strengthConfig: some View {
         Stepper("Sets: \(sets)", value: $sets, in: 1...20)
-        Stepper("Reps: \(reps)", value: $reps, in: 0...100)
+        // ИСПРАВЛЕНИЕ: Количество повторений не может быть меньше 1
+        Stepper("Reps: \(reps)", value: $reps, in: 1...100)
             .onChange(of: reps) { oldValue, newValue in
                 let validation = InputValidator.validateReps(newValue)
                 if !validation.isValid {
@@ -165,9 +256,9 @@ struct ConfigureExerciseView: View {
     @ViewBuilder
     private var cardioConfig: some View {
         HStack {
-            Text("Distance (km):")
+            Text("Distance (\(unitsManager.distanceUnitString())):")
             Spacer()
-            ClearableTextField(placeholder: "km", value: distanceBinding)
+            ClearableTextField(placeholder: unitsManager.distanceUnitString(), value: distanceBinding)
                 .frame(width: 80)
         }
         timePickerRow(label: "Duration")
@@ -199,33 +290,89 @@ struct ConfigureExerciseView: View {
     
     // MARK: - Logic
     
+    private func loadLastPerformance() {
+        guard let lastPerf = viewModel.lastPerformancesCache[exerciseName] else { return }
+        let lastSets = lastPerf.sortedSets.filter { $0.type != .warmup && $0.isCompleted }
+        guard !lastSets.isEmpty else { return }
+        
+        // Автозаполнение
+        if exerciseType == .strength {
+            self.sets = lastSets.count
+            self.reps = lastSets.first?.reps ?? 10
+            
+            let lastMax = lastSets.compactMap { $0.weight }.max() ?? 0.0
+            self.weight = lastMax > 0 ? lastMax : nil
+            
+            // Если есть что рекомендовать, показываем баннер
+            if lastMax > 0 {
+                self.recommendedWeight = lastMax + 2.5
+                withAnimation {
+                    self.showOverloadBanner = true
+                }
+            }
+            
+        } else if exerciseType == .cardio {
+            if let firstSet = lastSets.first {
+                self.distance = firstSet.distance
+                let t = firstSet.time ?? 0
+                self.minutes = t / 60
+                self.seconds = t % 60
+            }
+        } else if exerciseType == .duration {
+            self.sets = lastSets.count
+            if let firstSet = lastSets.first {
+                let t = firstSet.time ?? 0
+                self.minutes = t / 60
+                self.seconds = t % 60
+            }
+        }
+    }
+    
     private func handleSave() {
         // Final validation before saving
         var hasError = false
         var errorMessages: [String] = []
         
+        let actualWeight = weight ?? 0.0
+        let actualDistance = distance ?? 0.0
+        let actualMinutes = minutes ?? 0
+        let actualSeconds = seconds ?? 0
+        
         if exerciseType == .strength {
-            let weightValidation = InputValidator.validateWeight(weight)
-            if !weightValidation.isValid {
+            // ИСПРАВЛЕНИЕ: Допускаем вес 0 (работа с собственным весом)
+            if actualWeight < 0 {
                 hasError = true
-                if let error = weightValidation.errorMessage {
-                    errorMessages.append(error)
+                errorMessages.append(String(localized: "Weight cannot be negative."))
+            } else {
+                let weightValidation = InputValidator.validateWeight(actualWeight)
+                if !weightValidation.isValid {
+                    hasError = true
+                    if let error = weightValidation.errorMessage {
+                        errorMessages.append(error)
+                    }
+                    weight = weightValidation.clampedValue
                 }
-                weight = weightValidation.clampedValue
             }
             
-            let repsValidation = InputValidator.validateReps(reps)
-            if !repsValidation.isValid {
+            // ИСПРАВЛЕНИЕ: Строгая валидация повторений (должны быть строго больше 0)
+            if reps <= 0 {
                 hasError = true
-                if let error = repsValidation.errorMessage {
-                    errorMessages.append(error)
+                errorMessages.append(String(localized: "Reps must be greater than 0"))
+                reps = 1 // Безопасный фоллбэк
+            } else {
+                let repsValidation = InputValidator.validateReps(reps)
+                if !repsValidation.isValid {
+                    hasError = true
+                    if let error = repsValidation.errorMessage {
+                        errorMessages.append(error)
+                    }
+                    reps = repsValidation.clampedValue
                 }
-                reps = repsValidation.clampedValue
             }
         }
         
         if exerciseType == .cardio {
-            let distanceValidation = InputValidator.validateDistance(distance)
+            let distanceValidation = InputValidator.validateDistance(actualDistance)
             if !distanceValidation.isValid {
                 hasError = true
                 if let error = distanceValidation.errorMessage {
@@ -235,7 +382,7 @@ struct ConfigureExerciseView: View {
             }
         }
         
-        let totalSeconds = (minutes * 60) + seconds
+        let totalSeconds = (actualMinutes * 60) + actualSeconds
         if totalSeconds > 0 {
             let timeValidation = InputValidator.validateTime(totalSeconds)
             if !timeValidation.isValid {
@@ -264,9 +411,9 @@ struct ConfigureExerciseView: View {
         for i in 1...setsCount {
             generatedSets.append(WorkoutSet(
                 index: i,
-                weight: (exerciseType == .strength) ? weight : nil,
+                weight: (exerciseType == .strength) ? actualWeight : nil,
                 reps: (exerciseType == .strength) ? reps : nil,
-                distance: (exerciseType == .cardio) ? distance : nil,
+                distance: (exerciseType == .cardio) ? actualDistance : nil,
                 time: (totalSeconds > 0) ? totalSeconds : nil,
                 isCompleted: false,
                 type: .normal
@@ -280,12 +427,16 @@ struct ConfigureExerciseView: View {
             type: exerciseType,
             sets: setsCount,
             reps: reps,
-            weight: weight,
-            distance: (exerciseType == .cardio) ? distance : nil,
+            weight: actualWeight,
+            distance: (exerciseType == .cardio) ? actualDistance : nil,
             timeSeconds: (totalSeconds > 0) ? totalSeconds : nil,
             effort: 5,
             setsList: generatedSets // <-- Передаем сгенерированный список
         )
+        
+        // ИСПРАВЛЕНИЕ: Легкая вибрация, подтверждающая успешное добавление упражнения в тренировку
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
         
         onAdd(newExercise)
         dismiss()

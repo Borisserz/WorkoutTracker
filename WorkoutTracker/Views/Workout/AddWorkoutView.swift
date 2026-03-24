@@ -27,6 +27,9 @@ struct AddWorkoutView: View {
     @State private var title = ""
     @State private var selectedPreset: WorkoutPreset?
     
+    // Состояние для алерта активной тренировки
+    @State private var showActiveWorkoutAlert = false
+    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topTrailing) {
@@ -61,13 +64,18 @@ struct AddWorkoutView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Start Now")) {
-                        startWorkout()
+                        checkAndStartWorkout()
                     }
                     .disabled(title.isEmpty)
                 }
             }
             .onAppear {
                 if title.isEmpty { setFormattedDateName() }
+            }
+            .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
+                Button(LocalizedStringKey("OK"), role: .cancel) { dismiss() }
+            } message: {
+                Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one."))
             }
         }
     }
@@ -158,24 +166,24 @@ struct AddWorkoutView: View {
     private func formatExerciseDetails(_ exercise: Exercise) -> String {
         switch exercise.type {
         case .strength:
-            if exercise.weight > 0 {
-                let convertedWeight = unitsManager.convertFromKilograms(exercise.weight)
-                return "\(exercise.sets)/\(exercise.reps) \(Int(convertedWeight))\(unitsManager.weightUnitString())"
+            if exercise.firstSetWeight > 0 {
+                let convertedWeight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
+                return "\(exercise.setsCount)/\(exercise.firstSetReps) \(Int(convertedWeight))\(unitsManager.weightUnitString())"
             } else {
-                return "\(exercise.sets)/\(exercise.reps)"
+                return "\(exercise.setsCount)/\(exercise.firstSetReps)"
             }
         case .cardio:
-            if let distance = exercise.distance, distance > 0 {
-                return "\(exercise.sets) x \(LocalizationHelper.shared.formatDecimal(distance))km"
+            if let distance = exercise.firstSetDistance, distance > 0 {
+                return "\(exercise.setsCount) x \(LocalizationHelper.shared.formatDecimal(distance))km"
             } else {
-                return "\(exercise.sets) sets"
+                return "\(exercise.setsCount) sets"
             }
         case .duration:
-            if let timeSeconds = exercise.timeSeconds, timeSeconds > 0 {
+            if let timeSeconds = exercise.firstSetTimeSeconds, timeSeconds > 0 {
                 let minutes = timeSeconds / 60
-                return "\(exercise.sets) x \(minutes)min"
+                return "\(exercise.setsCount) x \(minutes)min"
             } else {
-                return "\(exercise.sets) sets"
+                return "\(exercise.setsCount) sets"
             }
         }
     }
@@ -251,6 +259,22 @@ struct AddWorkoutView: View {
         title = LocalizationHelper.shared.formatWorkoutDateName()
     }
     
+    // 1. Проверяем наличие активных тренировок
+    private func checkAndStartWorkout() {
+        let descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime == nil }
+        )
+        
+        if let activeWorkouts = try? context.fetch(descriptor), !activeWorkouts.isEmpty {
+            // Найдена активная тренировка - показываем алерт
+            showActiveWorkoutAlert = true
+        } else {
+            // Если всё чисто, запускаем новую
+            startWorkout()
+        }
+    }
+    
+    // 2. Логика запуска перенесена сюда
     private func startWorkout() {
         var exercisesToAdd: [Exercise] = []
         
@@ -267,6 +291,10 @@ struct AddWorkoutView: View {
         
         // Вставляем прямо в SwiftData context
         context.insert(newWorkout)
+        
+        // РЕШЕНИЕ КРАША: Обязательно сохраняем контекст СРАЗУ, чтобы Workout получил
+        // постоянный ID (PersistentIdentifier) перед тем, как откроется WorkoutDetailView.
+        try? context.save()
         
         startLiveActivity()
         dismiss()
