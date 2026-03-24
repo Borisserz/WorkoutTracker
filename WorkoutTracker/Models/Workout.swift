@@ -1,23 +1,16 @@
 //
-//  WorkoutTrackerModels.swift
+//  Workout.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Основные модели данных приложения (SwiftData):
-//  - Workout (Тренировка)
-//  - Exercise (Упражнение)
-//  - WorkoutSet (Подход/Сет)
-//  - WorkoutPreset (Шаблон тренировки)
-//  - ExerciseNote (Заметки)
-//  - UserStats (Агрегированная статистика для защиты от OOM/N+1)
+//  Main Data Models (SwiftData):
+//  Optimized to prevent OOM/N+1 performance issues by using stored aggregates.
 //
 
 import Foundation
 import SwiftData
-internal import SwiftUI // Нужно для Color в SetType
+internal import SwiftUI // Required for Color mapping in SetType
 
-// MARK: - Enums (Codable для SwiftData)
+// MARK: - Enums (Codable for SwiftData)
 
 enum SetType: String, Codable, CaseIterable {
     case normal = "N"
@@ -42,6 +35,7 @@ enum ExerciseType: String, Codable, CaseIterable, Identifiable {
 }
 
 enum ExerciseCategory: String, Codable, CaseIterable {
+    // Note: Raw values for enums must be literals, so we don't use Constants here.
     case squat = "Squat"
     case press = "Press"
     case deadlift = "Deadlift"
@@ -100,14 +94,22 @@ class Exercise: Identifiable {
     var name: String = ""
     var muscleGroup: String = ""
     var type: ExerciseType = ExerciseType.strength
-    var category: ExerciseCategory = ExerciseCategory.other
+    @Attribute var category: ExerciseCategory = ExerciseCategory.other
     var effort: Int = 5
     var isCompleted: Bool = false
     
-    @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise) 
+    // MARK: - Stored Aggregates (Performance Optimization)
+    @Attribute var setsCount: Int = 0
+    @Attribute var firstSetReps: Int = 0
+    @Attribute var firstSetWeight: Double = 0.0
+    @Attribute var firstSetDistance: Double? = nil
+    @Attribute var firstSetTimeSeconds: Int? = nil
+    @Attribute var exerciseVolume: Double = 0.0
+    
+    @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise)
     var setsList: [WorkoutSet] = []
     
-    @Relationship(deleteRule: .cascade, inverse: \Exercise.parentExercise) 
+    @Relationship(deleteRule: .cascade, inverse: \Exercise.parentExercise)
     var subExercises: [Exercise] = []
     
     var parentExercise: Exercise? = nil
@@ -140,30 +142,41 @@ class Exercise: Identifiable {
             }
             self.setsList = generatedSets
         }
+        
+        self.updateAggregates()
     }
     
     var sortedSets: [WorkoutSet] {
         setsList.sorted(by: { $0.index < $1.index })
     }
     
-    // MARK: - Computed Properties (Read-Only)
-    var sets: Int { setsList.count }
-    var reps: Int { sortedSets.first?.reps ?? 0 }
-    var weight: Double { sortedSets.first?.weight ?? 0.0 }
-    var distance: Double? { sortedSets.first?.distance }
-    var timeSeconds: Int? { sortedSets.first?.time }
-    
     var isSuperset: Bool { !subExercises.isEmpty }
     
-    var computedVolume: Double {
-        if isSuperset {
-            return subExercises.reduce(0.0) { $0 + $1.computedVolume }
+    /// To be called by the ViewModel when a set is modified, deleted, or added
+    func updateAggregates() {
+        self.setsCount = setsList.count
+        
+        if let firstSet = sortedSets.first {
+            self.firstSetReps = firstSet.reps ?? 0
+            self.firstSetWeight = firstSet.weight ?? 0.0
+            self.firstSetDistance = firstSet.distance
+            self.firstSetTimeSeconds = firstSet.time
+        } else {
+            self.firstSetReps = 0
+            self.firstSetWeight = 0.0
+            self.firstSetDistance = nil
+            self.firstSetTimeSeconds = nil
         }
-        return setsList.reduce(0.0) { partialResult, set in
-            if set.type == .warmup || !set.isCompleted { return partialResult }
-            switch type {
-            case .strength: return partialResult + ((set.weight ?? 0) * Double(set.reps ?? 0))
-            case .cardio, .duration: return partialResult
+        
+        if isSuperset {
+            self.exerciseVolume = subExercises.reduce(0.0) { $0 + $1.exerciseVolume }
+        } else {
+            self.exerciseVolume = setsList.reduce(0.0) { partialResult, set in
+                if set.type == .warmup || !set.isCompleted { return partialResult }
+                switch type {
+                case .strength: return partialResult + ((set.weight ?? 0) * Double(set.reps ?? 0))
+                case .cardio, .duration: return partialResult
+                }
             }
         }
     }
@@ -171,7 +184,7 @@ class Exercise: Identifiable {
     func duplicate() -> Exercise {
         let copiedSets = setsList.map { $0.duplicate() }
         let copiedSubs = subExercises.map { $0.duplicate() }
-        return Exercise(id: UUID(), name: name, muscleGroup: muscleGroup, type: type, category: category, effort: effort, subExercises: copiedSubs, setsList: copiedSets, isCompleted: isCompleted)
+        return Exercise(id: UUID(), name: name, muscleGroup: muscleGroup, type: type, category: category, sets: 0, effort: effort, subExercises: copiedSubs, setsList: copiedSets, isCompleted: isCompleted)
     }
 }
 
@@ -181,7 +194,7 @@ class WorkoutPreset: Identifiable {
     var name: String = ""
     var icon: String = ""
     
-    @Relationship(deleteRule: .cascade, inverse: \Exercise.preset) 
+    @Relationship(deleteRule: .cascade, inverse: \Exercise.preset)
     var exercises: [Exercise] = []
     
     init(id: UUID = UUID(), name: String, icon: String, exercises: [Exercise]) {
@@ -201,7 +214,13 @@ class Workout: Identifiable {
     var icon: String = "figure.run"
     var isFavorite: Bool = false
     
-    @Relationship(deleteRule: .cascade, inverse: \Exercise.workout) 
+    // MARK: - Stored Aggregates (Performance Optimization)
+    @Attribute var durationSeconds: Int = 0
+    @Attribute var effortPercentage: Int = 0
+    @Attribute var totalStrengthVolume: Double = 0.0
+    @Attribute var totalCardioDistance: Double = 0.0
+    
+    @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
     var exercises: [Exercise] = []
     
     init(id: UUID = UUID(), title: String, date: Date, endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false) {
@@ -212,31 +231,14 @@ class Workout: Identifiable {
         self.icon = icon
         self.isFavorite = isFavorite
         self.exercises = exercises
+        
+        self.durationSeconds = 0
+        self.effortPercentage = 0
+        self.totalStrengthVolume = 0.0
+        self.totalCardioDistance = 0.0
     }
     
     var isActive: Bool { endTime == nil }
-    
-    var duration: Int {
-        let end = endTime ?? Date()
-        let diff = end.timeIntervalSince(date)
-        return Int(diff / 60)
-    }
-    
-    var effortPercentage: Int {
-        // Учитываем только те упражнения, где есть хотя бы один выполненный подход
-        let activeExercises = exercises.filter { exercise in
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-            return targets.contains { ex in
-                ex.setsList.contains { $0.isCompleted }
-            }
-        }
-        
-        if activeExercises.isEmpty { return 0 }
-        
-        let totalEffort = activeExercises.reduce(0) { $0 + $1.effort }
-        let average = Double(totalEffort) / Double(activeExercises.count)
-        return Int(average * 10)
-    }
 }
 
 @Model
@@ -250,7 +252,9 @@ class ExerciseNote {
     }
 }
 
-// MARK: - Агрегированная статистика (Защита от OOM)
+
+
+// MARK: - Aggregated Stats (Protects from OOM)
 
 @Model
 class UserStats {
@@ -378,6 +382,7 @@ extension Exercise {
             setsList: dto.setsList.map { WorkoutSet(from: $0) },
             isCompleted: dto.isCompleted
         )
+        self.updateAggregates()
     }
 }
 
@@ -399,18 +404,18 @@ extension WorkoutPreset {
         )
     }
 }
-
 // MARK: - Extensions (Data & Catalog)
+
 extension Exercise {
     static let catalog: [String: [String]] = [
-        "Chest": [
+        Constants.MuscleName.chest.rawValue: [
             "Bench Press", "Push Ups", "Incline Dumbbell Press", "Dips",
             "Dumbbell Flyes", "Cable Crossover", "Decline Bench Press",
             "Chest Press Machine", "Pec Deck", "Incline Bench Press",
             "Diamond Push Ups", "Wide Grip Push Ups", "Cable Flyes",
             "Push-up Variations", "Chest Dips", "Landmine Press"
         ],
-        "Back": [
+        Constants.MuscleName.back.rawValue: [
             "Pull-ups", "Deadlift", "Barbell Rows", "Lat Pulldown",
             "T-Bar Row", "Cable Rows", "One-Arm Dumbbell Row",
             "Chin-ups", "Wide Grip Pull-ups", "Seated Cable Row",
@@ -418,7 +423,7 @@ extension Exercise {
             "Shrugs", "Good Mornings", "Rack Pulls", "Renegade Rows",
             "Inverted Row", "Hyperextensions", "Meadows Row"
         ],
-        "Legs": [
+        Constants.MuscleName.legs.rawValue: [
             "Squat", "Leg Press", "Lunges", "Calf Raises",
             "Romanian Deadlift", "Bulgarian Split Squat", "Leg Curls",
             "Leg Extensions", "Hack Squat", "Front Squat",
@@ -427,14 +432,14 @@ extension Exercise {
             "Sumo Squat", "Stiff Leg Deadlift", "Seated Calf Raise",
             "Standing Calf Raise", "Wall Sits", "Quadruped Hip Extension"
         ],
-        "Shoulders": [
+        Constants.MuscleName.shoulders.rawValue: [
             "Overhead Press", "Lateral Raises", "Face Pulls",
             "Arnold Press", "Reverse Flyes", "Front Raises",
             "Upright Row", "Pike Push-ups", "Shoulder Press Machine",
             "Cable Lateral Raises", "Rear Delt Flyes", "Push Press",
             "Handstand Push-ups", "Landmine Press", "Turkish Get-up"
         ],
-        "Arms": [
+        Constants.MuscleName.arms.rawValue: [
             "Barbell Curl", "Triceps Extension", "Hammer Curls",
             "Bicep Curls", "Triceps Dips", "Close Grip Bench Press",
             "Preacher Curl", "Concentration Curls", "Cable Curls",
@@ -442,7 +447,7 @@ extension Exercise {
             "Spider Curls", "Rope Hammer Curls", "Skull Crushers",
             "French Press", "Zottman Curls", "Cable Kickbacks"
         ],
-        "Core": [
+        Constants.MuscleName.core.rawValue: [
             "Plank", "Crunches", "Leg Raises",
             "Russian Twists", "Mountain Climbers", "Bicycle Crunches",
             "Hanging Knee Raises", "Dead Bug", "Bird Dog",
@@ -450,7 +455,7 @@ extension Exercise {
             "L-sit", "Dragon Flag", "Toes to Bar",
             "Cable Crunches", "Pallof Press", "Turkish Get-up"
         ],
-        "Cardio": [
+        Constants.MuscleName.cardio.rawValue: [
             "Running", "Cycling", "Rowing", "Jump Rope", "Stretching",
             "Treadmill", "Elliptical", "HIIT", "Burpees",
             "Jumping Jacks", "High Knees", "Mountain Climbers",
@@ -469,12 +474,12 @@ extension Workout {
                 endTime: Date().addingTimeInterval(3600),
                 icon: "img_default",
                 exercises: [
-                    Exercise(name: "Squat", muscleGroup: "Legs", sets: 4, reps: 8, weight: 90, effort: 9),
-                    Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 4, reps: 8, weight: 75, effort: 9),
-                    Exercise(name: "Barbell Rows", muscleGroup: "Back", sets: 4, reps: 8, weight: 70, effort: 8),
-                    Exercise(name: "Overhead Press", muscleGroup: "Shoulders", sets: 3, reps: 10, weight: 35, effort: 8),
-                    Exercise(name: "Barbell Curl", muscleGroup: "Arms", sets: 3, reps: 10, weight: 25, effort: 7),
-                    Exercise(name: "Plank", muscleGroup: "Core", type: .duration, sets: 3, reps: 0, weight: 0, timeSeconds: 60, effort: 6)
+                    Exercise(name: "Squat", muscleGroup: Constants.MuscleName.legs.rawValue, sets: 4, reps: 8, weight: 90, effort: 9),
+                    Exercise(name: "Bench Press", muscleGroup: Constants.MuscleName.chest.rawValue, sets: 4, reps: 8, weight: 75, effort: 9),
+                    Exercise(name: "Barbell Rows", muscleGroup: Constants.MuscleName.back.rawValue, sets: 4, reps: 8, weight: 70, effort: 8),
+                    Exercise(name: "Overhead Press", muscleGroup: Constants.MuscleName.shoulders.rawValue, sets: 3, reps: 10, weight: 35, effort: 8),
+                    Exercise(name: "Barbell Curl", muscleGroup: Constants.MuscleName.arms.rawValue, sets: 3, reps: 10, weight: 25, effort: 7),
+                    Exercise(name: "Plank", muscleGroup: Constants.MuscleName.core.rawValue, type: .duration, sets: 3, reps: 0, weight: 0, timeSeconds: 60, effort: 6)
                 ]
             ),
             Workout(
@@ -483,13 +488,13 @@ extension Workout {
                 endTime: Date().addingTimeInterval(3600),
                 icon: "img_chest2",
                 exercises: [
-                    Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 4, reps: 6, weight: 85, effort: 10),
-                    Exercise(name: "Incline Dumbbell Press", muscleGroup: "Chest", sets: 3, reps: 10, weight: 32, effort: 8),
-                    Exercise(name: "Dips", muscleGroup: "Chest", sets: 3, reps: 12, weight: 0, effort: 8),
-                    Exercise(name: "Overhead Press", muscleGroup: "Shoulders", sets: 4, reps: 8, weight: 42, effort: 9),
-                    Exercise(name: "Lateral Raises", muscleGroup: "Shoulders", sets: 3, reps: 15, weight: 12, effort: 7),
-                    Exercise(name: "Triceps Extension", muscleGroup: "Arms", sets: 3, reps: 12, weight: 22, effort: 7),
-                    Exercise(name: "Close Grip Bench Press", muscleGroup: "Arms", sets: 3, reps: 10, weight: 65, effort: 8)
+                    Exercise(name: "Bench Press", muscleGroup: Constants.MuscleName.chest.rawValue, sets: 4, reps: 6, weight: 85, effort: 10),
+                    Exercise(name: "Incline Dumbbell Press", muscleGroup: Constants.MuscleName.chest.rawValue, sets: 3, reps: 10, weight: 32, effort: 8),
+                    Exercise(name: "Dips", muscleGroup: Constants.MuscleName.chest.rawValue, sets: 3, reps: 12, weight: 0, effort: 8),
+                    Exercise(name: "Overhead Press", muscleGroup: Constants.MuscleName.shoulders.rawValue, sets: 4, reps: 8, weight: 42, effort: 9),
+                    Exercise(name: "Lateral Raises", muscleGroup: Constants.MuscleName.shoulders.rawValue, sets: 3, reps: 15, weight: 12, effort: 7),
+                    Exercise(name: "Triceps Extension", muscleGroup: Constants.MuscleName.arms.rawValue, sets: 3, reps: 12, weight: 22, effort: 7),
+                    Exercise(name: "Close Grip Bench Press", muscleGroup: Constants.MuscleName.arms.rawValue, sets: 3, reps: 10, weight: 65, effort: 8)
                 ]
             ),
             Workout(
@@ -498,13 +503,13 @@ extension Workout {
                 endTime: Date().addingTimeInterval(3600),
                 icon: "img_back2",
                 exercises: [
-                    Exercise(name: "Deadlift", muscleGroup: "Back", sets: 4, reps: 5, weight: 120, effort: 10),
-                    Exercise(name: "Pull-ups", muscleGroup: "Back", sets: 4, reps: 8, weight: 0, effort: 9),
-                    Exercise(name: "Barbell Rows", muscleGroup: "Back", sets: 4, reps: 8, weight: 75, effort: 8),
-                    Exercise(name: "Lat Pulldown", muscleGroup: "Back", sets: 3, reps: 10, weight: 60, effort: 7),
-                    Exercise(name: "Face Pulls", muscleGroup: "Shoulders", sets: 3, reps: 15, weight: 25, effort: 6),
-                    Exercise(name: "Barbell Curl", muscleGroup: "Arms", sets: 4, reps: 10, weight: 28, effort: 8),
-                    Exercise(name: "Hammer Curls", muscleGroup: "Arms", sets: 3, reps: 12, weight: 22, effort: 7)
+                    Exercise(name: "Deadlift", muscleGroup: Constants.MuscleName.back.rawValue, sets: 4, reps: 5, weight: 120, effort: 10),
+                    Exercise(name: "Pull-ups", muscleGroup: Constants.MuscleName.back.rawValue, sets: 4, reps: 8, weight: 0, effort: 9),
+                    Exercise(name: "Barbell Rows", muscleGroup: Constants.MuscleName.back.rawValue, sets: 4, reps: 8, weight: 75, effort: 8),
+                    Exercise(name: "Lat Pulldown", muscleGroup: Constants.MuscleName.back.rawValue, sets: 3, reps: 10, weight: 60, effort: 7),
+                    Exercise(name: "Face Pulls", muscleGroup: Constants.MuscleName.shoulders.rawValue, sets: 3, reps: 15, weight: 25, effort: 6),
+                    Exercise(name: "Barbell Curl", muscleGroup: Constants.MuscleName.arms.rawValue, sets: 4, reps: 10, weight: 28, effort: 8),
+                    Exercise(name: "Hammer Curls", muscleGroup: Constants.MuscleName.arms.rawValue, sets: 3, reps: 12, weight: 22, effort: 7)
                 ]
             ),
             Workout(
@@ -513,13 +518,13 @@ extension Workout {
                 endTime: Date().addingTimeInterval(3600),
                 icon: "img_legs",
                 exercises: [
-                    Exercise(name: "Squat", muscleGroup: "Legs", sets: 5, reps: 5, weight: 110, effort: 10),
-                    Exercise(name: "Romanian Deadlift", muscleGroup: "Legs", sets: 4, reps: 8, weight: 85, effort: 9),
-                    Exercise(name: "Leg Press", muscleGroup: "Legs", sets: 4, reps: 12, weight: 130, effort: 8),
-                    Exercise(name: "Bulgarian Split Squat", muscleGroup: "Legs", sets: 3, reps: 10, weight: 30, effort: 8),
-                    Exercise(name: "Leg Curls", muscleGroup: "Legs", sets: 3, reps: 12, weight: 45, effort: 7),
-                    Exercise(name: "Leg Extensions", muscleGroup: "Legs", sets: 3, reps: 15, weight: 55, effort: 7),
-                    Exercise(name: "Standing Calf Raise", muscleGroup: "Legs", sets: 4, reps: 15, weight: 55, effort: 6)
+                    Exercise(name: "Squat", muscleGroup: Constants.MuscleName.legs.rawValue, sets: 5, reps: 5, weight: 110, effort: 10),
+                    Exercise(name: "Romanian Deadlift", muscleGroup: Constants.MuscleName.legs.rawValue, sets: 4, reps: 8, weight: 85, effort: 9),
+                    Exercise(name: "Leg Press", muscleGroup: Constants.MuscleName.legs.rawValue, sets: 4, reps: 12, weight: 130, effort: 8),
+                    Exercise(name: "Bulgarian Split Squat", muscleGroup: Constants.MuscleName.legs.rawValue, sets: 3, reps: 10, weight: 30, effort: 8),
+                    Exercise(name: "Leg Curls", muscleGroup: Constants.MuscleName.legs.rawValue, sets: 3, reps: 12, weight: 45, effort: 7),
+                    Exercise(name: "Leg Extensions", muscleGroup: Constants.MuscleName.legs.rawValue, sets: 3, reps: 15, weight: 55, effort: 7),
+                    Exercise(name: "Standing Calf Raise", muscleGroup: Constants.MuscleName.legs.rawValue, sets: 4, reps: 15, weight: 55, effort: 6)
                 ]
             )
         ]

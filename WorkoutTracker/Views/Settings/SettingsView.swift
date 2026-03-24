@@ -14,14 +14,17 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var viewModel: WorkoutViewModel
     
-    // ИСПРАВЛЕНИЕ: Убрали @Query! Нам не нужно грузить 5 лет тренировок в память
-    // только ради того, чтобы показать меню настроек. Экспорт будет брать их из базы сам.
+    @AppStorage("userName") private var userName = "Fitness Enthusiast"
+    @AppStorage("userBodyWeight") private var userBodyWeight = 75.0
+    @AppStorage("userGender") private var userGender = "male" // "male" or "female"
     
     @AppStorage("streakRestDays") private var streakRestDays: Int = 2
     @AppStorage("defaultRestTime") private var defaultRestTime: Int = 60
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
     @AppStorage("appearanceMode") private var appearanceMode: String = "system" // "light", "dark", "system"
     @StateObject private var unitsManager = UnitsManager.shared
+    
+    @FocusState private var isProfileFocused: Bool
     
     @State private var isProcessing = false
     @State private var showTestDataAlert = false
@@ -39,6 +42,36 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // Секция профиля пользователя
+                Section(header: Text(LocalizedStringKey("Profile"))) {
+                    // Имя
+                    TextField(LocalizedStringKey("Name"), text: $userName)
+                        .focused($isProfileFocused)
+                        .textInputAutocapitalization(.words)
+                    
+                    // Вес
+                    HStack {
+                        Text(LocalizedStringKey("Body Weight"))
+                        Spacer()
+                        TextField("75", value: $userBodyWeight, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .focused($isProfileFocused)
+                        Text(unitsManager.weightUnitString())
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Пол
+                    Picker(LocalizedStringKey("Gender"), selection: $userGender) {
+                        Text(LocalizedStringKey("Male")).tag("male")
+                        Text(LocalizedStringKey("Female")).tag("female")
+                    }
+                    .pickerStyle(.menu)
+                    .onChange(of: userGender) { _, _ in
+                        triggerLightHaptic()
+                    }
+                }
+                
                 // Секция управления тренировками
                 Section(header: Text(LocalizedStringKey("Workout Management"))) {
                     NavigationLink(destination: PresetListView()) {
@@ -48,28 +81,29 @@ struct SettingsView: View {
                 
                 // Секция настроек таймера
                 Section(header: Text(LocalizedStringKey("Rest Timer")), footer: Text(LocalizedStringKey("If enabled, the rest timer will start automatically when you check off a set."))) {
-                                 
-                                 // 1. Выбор времени
-                                 HStack {
-                                     Label(LocalizedStringKey("Default"), systemImage: "timer")
-                                     Spacer()
-                                     Picker(LocalizedStringKey("Time"), selection: $defaultRestTime) {
-                                         ForEach(restOptions, id: \.self) { seconds in
-                                             if seconds < 60 {
-                                                 Text(LocalizedStringKey("\(seconds) sec")).tag(seconds)
-                                             } else {
-                                                 Text(LocalizedStringKey("\(seconds / 60) min")).tag(seconds)
-                                             }
-                                         }
-                                     }
-                                     .pickerStyle(.menu)
-                                 }
-                                 
-                                 // 2. Переключатель авто-старта
-                                 Toggle(isOn: $autoStartTimer) {
-                                     Label(LocalizedStringKey("Auto-start Timer"), systemImage: "play.circle")
-                                 }
-                             }
+                    
+                    // 1. Выбор времени
+                    HStack {
+                        Label(LocalizedStringKey("Default"), systemImage: "timer")
+                        Spacer()
+                        Picker(LocalizedStringKey("Time"), selection: $defaultRestTime) {
+                            ForEach(restOptions, id: \.self) { seconds in
+                                if seconds % 60 == 0 {
+                                    Text(LocalizedStringKey("\(seconds / 60) min")).tag(seconds)
+                                } else {
+                                    Text(LocalizedStringKey("\(seconds) sec")).tag(seconds)
+                                }
+                            }
+                        }
+                        .pickerStyle(.menu)
+                    }
+                    
+                    // 2. Переключатель авто-старта
+                    Toggle(isOn: $autoStartTimer) {
+                        Label(LocalizedStringKey("Auto-start Timer"), systemImage: "play.circle")
+                    }
+                }
+                
                 // Секция настроек стрика
                 Section {
                     Stepper(value: $streakRestDays, in: 1...7) {
@@ -191,8 +225,6 @@ struct SettingsView: View {
                     Text(LocalizedStringKey("These buttons are for testing only. Remove TestDataGenerator.swift and this section after testing."))
                 }
                 
-               
-                
                 // Секция поддержки и обратной связи
                 Section(header: Text(LocalizedStringKey("Support & Feedback"))) {
                     NavigationLink(destination: FeedbackView()) {
@@ -221,10 +253,23 @@ struct SettingsView: View {
                         .foregroundColor(.secondary)
                 }
             }
+            .onChange(of: isProfileFocused) { _, isFocused in
+                if !isFocused {
+                    // Вызываем тактильный отклик при завершении редактирования (скрытии клавиатуры)
+                    triggerLightHaptic()
+                }
+            }
             .navigationTitle(LocalizedStringKey("Settings"))
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Done")) { dismiss() }
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button(LocalizedStringKey("Done")) {
+                        isProfileFocused = false
+                    }
+                    .bold()
                 }
             }
             .alert(LocalizedStringKey("Test Data"), isPresented: $showTestDataAlert) {
@@ -245,6 +290,12 @@ struct SettingsView: View {
                     .presentationDetents([.medium, .large])
             }
         }
+    }
+    
+    // Хелпер для Haptics
+    private func triggerLightHaptic() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
     }
     
     // MARK: - Test Data Functions
@@ -290,7 +341,6 @@ struct SettingsView: View {
         isProcessing = true
         let container = modelContext.container
         
-        // ИСПРАВЛЕНИЕ: Выполняем загрузку данных для экспорта в фоне
         Task.detached(priority: .userInitiated) {
             let bgContext = ModelContext(container)
             let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])

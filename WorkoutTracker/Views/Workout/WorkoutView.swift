@@ -2,42 +2,35 @@
 //  WorkoutView.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 24.12.25.
-//
 
 internal import SwiftUI
 import SwiftData
 import UIKit
+
+// MARK: - Main View
 
 struct WorkoutView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
     @StateObject private var unitsManager = UnitsManager.shared
     
-    // Подписываемся на тренировки напрямую из SwiftData
-    @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
+    // ОПТИМИЗАЦИЯ: Грузим только последние 30 тренировок для проверки на пустоту и анализа дисбаланса (защита от OOM)
+    @Query(sort: \Workout.date, order: .reverse) private var recentWorkoutsForImbalance: [Workout]
     
-    // Состояние для открытия шторки с советом
     @State private var showImbalanceInfo = false
-    
-    // Навигация и модальные окна
     @State private var showAddWorkout = false
     @State private var navigateToNewWorkout = false
     
-    // Поиск и фильтры
     @State private var searchText = ""
     @State private var selectedFilter: FilterPeriod = .all
     @State private var sortOption: SortOption = .dateDescending
-    
-    // ДОБАВЛЕНО: Отдельный переключатель для избранных (звездных) тренировок
     @State private var showFavoritesOnly = false
     
-    // ОПТИМИЗАЦИЯ: Локальный стейт для расчётов, чтобы не тормозить UI
     @State private var calculatedAvgDuration: Int = 0
     @State private var calculatedAvgVolume: Int = 0
     
     enum FilterPeriod: String, CaseIterable {
-        case all = "All Time" // ИЗМЕНЕНО: Более понятное название для фильтра времени
+        case all = "All Time"
         case week = "Last Week"
         case month = "Last Month"
         case threeMonths = "Last 3 Months"
@@ -53,88 +46,30 @@ struct WorkoutView: View {
         case effortAscending = "Lowest Effort"
     }
     
-    // Отфильтрованные и отсортированные тренировки
-    var filteredWorkouts: [Workout] {
-        var filtered = workouts
-        
-        // Фильтр по избранному (звездные)
-        if showFavoritesOnly {
-            filtered = filtered.filter { $0.isFavorite }
-        }
-        
-        // Фильтр по периоду
-        let calendar = Calendar.current
-        let now = Date()
-        switch selectedFilter {
-        case .all:
-            break
-        case .week:
-            if let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) {
-                filtered = filtered.filter { $0.date >= weekAgo }
-            }
-        case .month:
-            if let monthAgo = calendar.date(byAdding: .month, value: -1, to: now) {
-                filtered = filtered.filter { $0.date >= monthAgo }
-            }
-        case .threeMonths:
-            if let threeMonthsAgo = calendar.date(byAdding: .month, value: -3, to: now) {
-                filtered = filtered.filter { $0.date >= threeMonthsAgo }
-            }
-        case .year:
-            if let yearAgo = calendar.date(byAdding: .year, value: -1, to: now) {
-                filtered = filtered.filter { $0.date >= yearAgo }
-            }
-        }
-        
-        // Поиск по названию
-        if !searchText.isEmpty {
-            filtered = filtered.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
-        }
-        
-        // Сортировка
-        switch sortOption {
-        case .dateDescending:
-            filtered.sort { $0.date > $1.date }
-        case .dateAscending:
-            filtered.sort { $0.date < $1.date }
-        case .durationDescending:
-            filtered.sort { $0.duration > $1.duration }
-        case .durationAscending:
-            filtered.sort { $0.duration < $1.duration }
-        case .effortDescending:
-            filtered.sort { $0.effortPercentage > $1.effortPercentage }
-        case .effortAscending:
-            filtered.sort { $0.effortPercentage < $1.effortPercentage }
-        }
-        
-        return filtered
-    }
-    
-    // Триггер для обновления расчетов при изменении любого параметра фильтрации
-    private var filterTrigger: String {
-        "\(workouts.count)-\(selectedFilter.rawValue)-\(searchText)-\(sortOption.rawValue)-\(showFavoritesOnly)"
+    init() {
+        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 30 // Для дисбаланса нужны только свежие данные
+        _recentWorkoutsForImbalance = Query(descriptor)
     }
     
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle(LocalizedStringKey("History"))
-                // --- НАВИГАЦИЯ ---
                 .navigationDestination(isPresented: $navigateToNewWorkout) {
-                    if let first = workouts.first {
+                    // Переход к новой тренировке
+                    if let first = recentWorkoutsForImbalance.first {
                         WorkoutDetailView(workout: first)
                     }
                 }
                 .toolbar {
-                    // 1. Кнопка "Править" (справа)
-                    if !workouts.isEmpty {
+                    if !recentWorkoutsForImbalance.isEmpty {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             EditButton()
                         }
                     }
                     
-                    // 2. КНОПКА ДИСБАЛАНСА
-                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: workouts) {
+                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: recentWorkoutsForImbalance) {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
                                 showImbalanceInfo = true
@@ -152,28 +87,21 @@ struct WorkoutView: View {
                     })
                 }
                 .sheet(isPresented: $showImbalanceInfo) {
-                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: workouts) {
+                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: recentWorkoutsForImbalance) {
                         ImbalanceDetailSheet(advice: advice)
-                            .presentationDetents([.fraction(0.35)]) // Шторка занимает 35% экрана снизу
+                            .presentationDetents([.fraction(0.35)])
                             .presentationDragIndicator(.visible)
                     }
-                }
-                // ИСПРАВЛЕНИЕ: Безопасный фоновый расчет через потокобезопасные ID
-                .onChange(of: filterTrigger, initial: true) { _, _ in
-                    let identifiers = filteredWorkouts.map { $0.persistentModelID }
-                    calculateStatsAsync(identifiers: identifiers)
                 }
         }
     }
     
-    // Выносим содержимое в отдельную переменную
     @ViewBuilder
     var content: some View {
-        if workouts.isEmpty {
+        if recentWorkoutsForImbalance.isEmpty {
             emptyState
         } else {
             List {
-                // Кнопка "Начать тренировку" - на всю ширину
                 Section {
                     Button {
                         showAddWorkout = true
@@ -190,60 +118,28 @@ struct WorkoutView: View {
                 .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
                 .listRowBackground(Color.clear)
                 
-                // Статистика вверху
                 Section {
                     statsSection
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 
-                // Поиск и фильтры
                 Section {
                     searchAndFiltersSection
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
                 
-                // Список тренировок
                 Section {
-                    if filteredWorkouts.isEmpty {
-                        VStack(spacing: 12) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 50))
-                                .foregroundColor(.gray.opacity(0.3))
-                            Text(LocalizedStringKey("No workouts found"))
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            Text(LocalizedStringKey("Try adjusting your search or filters"))
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                        .padding(.vertical, 40)
-                        .frame(maxWidth: .infinity)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets())
-                    } else {
-                        ForEach(filteredWorkouts) { workout in
-                            ZStack {
-                                NavigationLink(destination: WorkoutDetailView(workout: workout)) {
-                                    EmptyView()
-                                }
-                                .opacity(0)
-                                
-                                WorkoutRow(workout: workout)
-                            }
-                            .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                        }
-                        .onDelete { indexSet in
-                            // ИСПРАВЛЕНИЕ: Прямое удаление без алерта восстанавливает нормальную работу EditMode
-                            withAnimation {
-                                for index in indexSet {
-                                    context.delete(filteredWorkouts[index])
-                                }
-                            }
-                        }
-                    }
+                    // ОПТИМИЗАЦИЯ: Передаем параметры фильтрации в динамический компонент
+                    DynamicWorkoutListView(
+                        searchText: searchText,
+                        filter: selectedFilter,
+                        sort: sortOption,
+                        favoritesOnly: showFavoritesOnly,
+                        avgDuration: $calculatedAvgDuration,
+                        avgVolume: $calculatedAvgVolume
+                    )
                 }
                 .listRowInsets(EdgeInsets())
             }
@@ -252,9 +148,8 @@ struct WorkoutView: View {
         }
     }
     
-    // Секция статистики
     private var statsSection: some View {
-        return VStack(spacing: 12) {
+        VStack(spacing: 12) {
             HStack(spacing: 12) {
                 StatCard(
                     title: LocalizedStringKey("Avg Duration"),
@@ -276,46 +171,8 @@ struct WorkoutView: View {
         }
     }
     
-    // ИСПРАВЛЕНИЕ: Вычисляем статистику в фоновом потоке, используя ModelContext
-    private func calculateStatsAsync(identifiers: [PersistentIdentifier]) {
-        let container = context.container
-        let totalWorkouts = identifiers.count
-        
-        guard totalWorkouts > 0 else {
-            self.calculatedAvgDuration = 0
-            self.calculatedAvgVolume = 0
-            return
-        }
-        
-        Task.detached(priority: .userInitiated) {
-            let bgContext = ModelContext(container)
-            
-            var totalDur = 0
-            var totalVol = 0.0
-            
-            for id in identifiers {
-                // Безопасно загружаем модель в фоновом потоке для расчетов
-                if let workout = bgContext.model(for: id) as? Workout {
-                    totalDur += workout.duration
-                    totalVol += workout.exercises.reduce(0.0) { $0 + $1.computedVolume }
-                }
-            }
-            
-            let avgDur = totalDur / totalWorkouts
-            let avgVol = Int(totalVol / Double(totalWorkouts))
-            
-            await MainActor.run {
-                self.calculatedAvgDuration = avgDur
-                self.calculatedAvgVolume = avgVol
-            }
-        }
-    }
-    
-    // Секция поиска и фильтров
     private var searchAndFiltersSection: some View {
         VStack(spacing: 12) {
-            
-            // ДОБАВЛЕНО: Слайд-бар (Segmented Control) для звездных тренировок
             Picker(LocalizedStringKey("View Mode"), selection: $showFavoritesOnly) {
                 Text(LocalizedStringKey("All Workouts")).tag(false)
                 Text(LocalizedStringKey("Favorites")).tag(true)
@@ -323,20 +180,16 @@ struct WorkoutView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal)
             
-            // Поиск с использованием Debounced компонента
             DebouncedSearchBar(text: $searchText)
                 .padding()
                 .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(12)
                 .padding(.horizontal)
             
-            // Фильтры и сортировка
             HStack(spacing: 12) {
                 Menu {
                     ForEach(FilterPeriod.allCases, id: \.self) { period in
-                        Button(LocalizedStringKey(period.rawValue)) {
-                            selectedFilter = period
-                        }
+                        Button(LocalizedStringKey(period.rawValue)) { selectedFilter = period }
                     }
                 } label: {
                     HStack {
@@ -352,14 +205,12 @@ struct WorkoutView: View {
                 
                 Menu {
                     ForEach(SortOption.allCases, id: \.self) { option in
-                        Button(option.rawValue) {
-                            sortOption = option
-                        }
+                        Button(LocalizedStringKey(option.rawValue)) { sortOption = option }
                     }
                 } label: {
                     HStack {
                         Image(systemName: "arrow.up.arrow.down")
-                        Text(sortOption.rawValue)
+                        Text(LocalizedStringKey(sortOption.rawValue))
                     }
                     .font(.subheadline)
                     .padding(.horizontal, 12)
@@ -373,7 +224,6 @@ struct WorkoutView: View {
         }
     }
     
-    // Экран, когда пусто
     var emptyState: some View {
         VStack(spacing: 20) {
             Image(systemName: "dumbbell.fill")
@@ -390,7 +240,117 @@ struct WorkoutView: View {
     }
 }
 
-// --- DEBOUNCED SEARCH BAR (Оптимизация поиска) ---
+// MARK: - Dynamic Workout List (OOM Protection)
+
+struct DynamicWorkoutListView: View {
+    @Environment(\.modelContext) private var context
+    @Query private var workouts: [Workout]
+    
+    @Binding var calculatedAvgDuration: Int
+    @Binding var calculatedAvgVolume: Int
+    
+    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, avgDuration: Binding<Int>, avgVolume: Binding<Int>) {
+        self._calculatedAvgDuration = avgDuration
+        self._calculatedAvgVolume = avgVolume
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let cutoffDate: Date
+        
+        switch filter {
+        case .all: cutoffDate = Date.distantPast
+        case .week: cutoffDate = calendar.date(byAdding: .day, value: -7, to: now) ?? .distantPast
+        case .month: cutoffDate = calendar.date(byAdding: .month, value: -1, to: now) ?? .distantPast
+        case .threeMonths: cutoffDate = calendar.date(byAdding: .month, value: -3, to: now) ?? .distantPast
+        case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now) ?? .distantPast
+        }
+        
+        // Построение Предиката с поддержкой локального поиска
+        let predicate: Predicate<Workout>
+        if favoritesOnly {
+            if searchText.isEmpty {
+                predicate = #Predicate<Workout> { $0.date >= cutoffDate && $0.isFavorite }
+            } else {
+                predicate = #Predicate<Workout> { $0.date >= cutoffDate && $0.isFavorite && $0.title.localizedStandardContains(searchText) }
+            }
+        } else {
+            if searchText.isEmpty {
+                predicate = #Predicate<Workout> { $0.date >= cutoffDate }
+            } else {
+                predicate = #Predicate<Workout> { $0.date >= cutoffDate && $0.title.localizedStandardContains(searchText) }
+            }
+        }
+        
+        let sortDescriptors: [SortDescriptor<Workout>]
+        switch sort {
+        case .dateDescending: sortDescriptors = [SortDescriptor(\.date, order: .reverse)]
+        case .dateAscending: sortDescriptors = [SortDescriptor(\.date, order: .forward)]
+        case .durationDescending: sortDescriptors = [SortDescriptor(\.durationSeconds, order: .reverse)]
+        case .durationAscending: sortDescriptors = [SortDescriptor(\.durationSeconds, order: .forward)]
+        case .effortDescending: sortDescriptors = [SortDescriptor(\.effortPercentage, order: .reverse)]
+        case .effortAscending: sortDescriptors = [SortDescriptor(\.effortPercentage, order: .forward)]
+        }
+        
+        _workouts = Query(filter: predicate, sort: sortDescriptors)
+    }
+    
+    var body: some View {
+        if workouts.isEmpty {
+            VStack(spacing: 12) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 50))
+                    .foregroundColor(.gray.opacity(0.3))
+                Text(LocalizedStringKey("No workouts found"))
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text(LocalizedStringKey("Try adjusting your search or filters"))
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            .padding(.vertical, 40)
+            .frame(maxWidth: .infinity)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets())
+        } else {
+            ForEach(workouts) { workout in
+                ZStack {
+                    NavigationLink(destination: WorkoutDetailView(workout: workout)) { EmptyView() }.opacity(0)
+                    WorkoutRow(workout: workout)
+                }
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            }
+            .onDelete { indexSet in
+                withAnimation {
+                    for index in indexSet {
+                        context.delete(workouts[index])
+                    }
+                }
+            }
+            .onChange(of: workouts, initial: true) { _, newWorkouts in
+                calculateStatsAsync(workouts: newWorkouts)
+            }
+        }
+    }
+    
+    private func calculateStatsAsync(workouts: [Workout]) {
+        let totalWorkouts = workouts.count
+        guard totalWorkouts > 0 else {
+            calculatedAvgDuration = 0
+            calculatedAvgVolume = 0
+            return
+        }
+        
+        let totalDur = workouts.reduce(0) { $0 + ($1.durationSeconds / 60) }
+        let totalVol = workouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.exerciseVolume } }
+        
+        self.calculatedAvgDuration = totalDur / totalWorkouts
+        self.calculatedAvgVolume = Int(totalVol / Double(totalWorkouts))
+    }
+}
+
+// MARK: - Debounced Search Bar
+
 struct DebouncedSearchBar: View {
     @Binding var text: String
     @State private var localText: String
@@ -403,67 +363,49 @@ struct DebouncedSearchBar: View {
     
     var body: some View {
         HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
-            
+            Image(systemName: "magnifyingglass").foregroundColor(.secondary)
             TextField(LocalizedStringKey("Search workouts..."), text: $localText)
                 .textFieldStyle(.plain)
                 .onChange(of: localText) { oldValue, newValue in
-                    // Отменяем предыдущую задачу, если пользователь продолжает вводить
                     debounceTask?.cancel()
-                    
-                    // Создаем новую задачу с задержкой 300мс
                     debounceTask = Task { @MainActor in
-                        do {
-                            // try await позволит мгновенно прервать sleep при отмене
-                            try await Task.sleep(nanoseconds: 300_000_000)
-                            // Если сон не был прерван, обновляем текст
-                            text = newValue
-                        } catch {
-                            // Задача была отменена (CancellationError)
-                        }
+                        try? await Task.sleep(nanoseconds: 300_000_000)
+                        if !Task.isCancelled { text = newValue }
                     }
                 }
                 .onChange(of: text) { oldValue, newValue in
-                    // Синхронизация, если текст изменился извне (например очистился)
-                    if localText != newValue {
-                        localText = newValue
-                    }
+                    if localText != newValue { localText = newValue }
                 }
-            
             if !localText.isEmpty {
-                Button(action: {
-                    localText = ""
-                    text = ""
-                }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray)
+                Button(action: { localText = ""; text = "" }) {
+                    Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
                 }
             }
         }
     }
 }
 
-// --- НОВАЯ ВЬЮХА ДЛЯ ВСПЛЫВАЮЩЕГО ОКНА ---
+// MARK: - Helper Views
+
+// --- ВСПЛЫВАЮЩЕЕ ОКНО СОВЕТА ---
 struct ImbalanceDetailSheet: View {
     let advice: (title: String, message: String)
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
         VStack(spacing: 20) {
-            // Иконка
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 50))
                 .foregroundStyle(.orange)
                 .padding(.top, 20)
             
             VStack(spacing: 8) {
-                Text(advice.title)
+                Text(LocalizedStringKey(advice.title))
                     .font(.title2)
                     .bold()
                     .multilineTextAlignment(.center)
                 
-                Text(advice.message)
+                Text(LocalizedStringKey(advice.message))
                     .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
@@ -482,19 +424,16 @@ struct ImbalanceDetailSheet: View {
     }
 }
 
-// --- ИНДИКАТОР АКТИВНОЙ ТРЕНИРОВКИ ---
+// --- ИНДИКАТОР ТЕКУЩЕЙ ТРЕНИРОВКИ ---
 struct ActiveWorkoutIndicator: View {
     @State private var isBlinking = false
-    
     var body: some View {
         Circle()
             .fill(Color.blue)
             .frame(width: 8, height: 8)
             .opacity(isBlinking ? 0.2 : 1.0)
             .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isBlinking)
-            .onAppear {
-                isBlinking = true
-            }
+            .onAppear { isBlinking = true }
     }
 }
 
@@ -508,13 +447,7 @@ struct WorkoutRow: View {
         return .green
     }
     
-    // ИСПРАВЛЕНИЕ: Защита от несуществующих системных иконок
-    var safeIcon: String {
-        if UIImage(systemName: workout.icon) != nil {
-            return workout.icon
-        }
-        return "figure.run" // Базовая иконка, если в тестовых данных указано то, чего нет
-    }
+    var safeIcon: String { UIImage(systemName: workout.icon) != nil ? workout.icon : "figure.run" }
     
     var body: some View {
         HStack {
@@ -531,19 +464,13 @@ struct WorkoutRow: View {
                         .font(.headline)
                         .foregroundColor(.primary)
                         .lineLimit(1)
-                    
-                    if workout.isActive {
-                        ActiveWorkoutIndicator()
-                    }
+                    if workout.isActive { ActiveWorkoutIndicator() }
                 }
-                
                 Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
-            
             Spacer()
-            
             VStack(alignment: .trailing, spacing: 4) {
                 if workout.isActive {
                     Text(LocalizedStringKey("In Progress"))
@@ -551,11 +478,10 @@ struct WorkoutRow: View {
                         .bold()
                         .foregroundColor(.blue)
                 } else {
-                    Text(LocalizedStringKey("\(workout.duration) min"))
+                    Text(LocalizedStringKey("\(workout.durationSeconds / 60) min"))
                         .font(.subheadline)
                         .bold()
                 }
-                
                 Text(LocalizedStringKey("Effort: \(workout.effortPercentage)%"))
                     .font(.caption2)
                     .fontWeight(.bold)
@@ -569,11 +495,12 @@ struct WorkoutRow: View {
         .padding()
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
+        .compositingGroup()
         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
     }
 }
 
-// Карточка статистики
+// --- КАРТОЧКА СТАТИСТИКИ ---
 struct StatCard: View {
     let title: LocalizedStringKey
     let value: String
@@ -588,7 +515,6 @@ struct StatCard: View {
                     .font(.title3)
                 Spacer()
             }
-            
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text(value)
@@ -597,7 +523,6 @@ struct StatCard: View {
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
-                
                 Text(title)
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -607,10 +532,6 @@ struct StatCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(12)
+        .compositingGroup()
     }
-}
-
-#Preview {
-    WorkoutView()
-        .environmentObject(WorkoutViewModel())
 }

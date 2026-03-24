@@ -8,6 +8,7 @@
 internal import SwiftUI
 import SwiftData
 import Charts
+import ActivityKit
 
 struct OverviewView: View {
     
@@ -115,6 +116,11 @@ struct OverviewView: View {
                         
                         // 3. Блок восстановления
                         recoverySection
+                        
+                        // 3.5 Умный генератор тренировки
+                        if !recentWorkouts.isEmpty {
+                            generateFreshWorkoutBanner
+                        }
                         
                         // 4. Топ упражнений
                         if !recentWorkouts.isEmpty {
@@ -230,6 +236,128 @@ struct OverviewView: View {
             }
         }
         return nil
+    }
+    
+    // MARK: - Smart Workout Generator
+    
+    private var generateFreshWorkoutBanner: some View {
+        Button(action: generateFreshWorkout) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.yellow.opacity(0.2))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: "bolt.fill")
+                        .foregroundColor(.yellow)
+                        .font(.title2)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("Fresh Muscle Workout"))
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text(LocalizedStringKey("Generate a routine for fully recovered muscles"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            .padding()
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(16)
+            .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    private func generateFreshWorkout() {
+        // 1. Ищем мышцы, восстановившиеся на >= 90%
+        let freshMuscles = viewModel.recoveryStatus
+            .filter { $0.recoveryPercentage >= 90 }
+            .map { $0.muscleGroup }
+        
+        guard !freshMuscles.isEmpty else {
+            viewModel.showError(
+                title: String(localized: "Too Tired!"),
+                message: String(localized: "You don't have enough fully recovered muscles. Take a rest day or do light cardio!")
+            )
+            return
+        }
+        
+        // 2. Берем 2 случайные свежие мышцы
+        let selectedMuscles = Array(freshMuscles.shuffled().prefix(2))
+        var generatedExercises: [Exercise] = []
+        
+        // 3. Подбираем упражнения
+        for muscle in selectedMuscles {
+            let catalogKey = mapRecoveryNameToCatalogKey(muscle)
+            if let availableExercises = Exercise.catalog[catalogKey] {
+                // Берем 2 случайных упражнения на эту мышечную группу
+                let pickedNames = Array(availableExercises.shuffled().prefix(2))
+                
+                for name in pickedNames {
+                    // Создаем базовую болванку: 3 сета, 10 повторений, без веса
+                    let newEx = Exercise(
+                        name: name,
+                        muscleGroup: catalogKey,
+                        type: .strength,
+                        sets: 3,
+                        reps: 10,
+                        weight: 0.0,
+                        effort: 5
+                    )
+                    generatedExercises.append(newEx)
+                }
+            }
+        }
+        
+        guard !generatedExercises.isEmpty else { return }
+        
+        // 4. Формируем тренировку
+        let workoutName = "Fresh: " + selectedMuscles.joined(separator: " & ")
+        let newWorkout = Workout(
+            title: workoutName,
+            date: Date(),
+            icon: "bolt.fill",
+            exercises: generatedExercises
+        )
+        
+        // 5. Сохраняем в SwiftData и запускаем Live Activity
+        context.insert(newWorkout)
+        try? context.save()
+        
+        let attributes = WorkoutActivityAttributes(workoutTitle: workoutName)
+        let state = WorkoutActivityAttributes.ContentState(startTime: Date())
+        _ = try? Activity<WorkoutActivityAttributes>.request(
+            attributes: attributes,
+            content: .init(state: state, staleDate: nil),
+            pushType: nil
+        )
+        
+        // 6. Переходим в деталку (с небольшой задержкой, чтобы SwiftData Query обновился)
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            navigateToNewWorkout = true
+        }
+    }
+    
+    /// Маппинг красивых названий с экрана Recovery в ключи каталога упражнений
+    private func mapRecoveryNameToCatalogKey(_ name: String) -> String {
+        switch name {
+        case "Chest": return "Chest"
+        case "Back", "Lower Back", "Lats", "Traps": return "Back"
+        case "Shoulders", "Deltoids": return "Shoulders"
+        case "Biceps", "Triceps", "Forearms", "Arms": return "Arms"
+        case "Abs", "Core", "Obliques": return "Core"
+        case "Legs", "Glutes", "Hamstrings", "Quads", "Calves": return "Legs"
+        default: return "Other"
+        }
     }
     
     // --- Subviews ---
@@ -426,4 +554,3 @@ struct OverviewView: View {
         }.padding(.trailing, 5)
     }
 }
-

@@ -1,3 +1,8 @@
+
+//  SupersetCardView.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import SwiftData
 
@@ -14,12 +19,12 @@ enum PRLevel {
         }
     }
     
-    var title: LocalizedStringKey {
+    var title: String {
         switch self {
-        case .bronze: return LocalizedStringKey("Bronze Record!")
-        case .silver: return LocalizedStringKey("Silver Record!")
-        case .gold: return LocalizedStringKey("Gold Record!")
-        case .diamond: return LocalizedStringKey("Diamond Record!")
+        case .bronze: return String(localized: "Bronze Record!")
+        case .silver: return String(localized: "Silver Record!")
+        case .gold: return String(localized: "Gold Record!")
+        case .diamond: return String(localized: "Diamond Record!")
         }
     }
 }
@@ -27,7 +32,10 @@ enum PRLevel {
 // НОВАЯ ВЬЮ ДЛЯ РЕКОРДА (ВЫНЕСЛИ ИЗ КАРТОЧКИ, ЧТОБЫ ИСПОЛЬЗОВАТЬ ГЛОБАЛЬНО)
 struct PRCelebrationView: View {
     let prLevel: PRLevel
+    let onClose: () -> Void
+    
     @State private var isAnimatingPR = false
+    @State private var shareItem: SharedImageWrapper?
     
     var body: some View {
         ZStack {
@@ -67,12 +75,12 @@ struct PRCelebrationView: View {
                 
                 // Плашка с текстом уровня
                 VStack(spacing: 4) {
-                    Text(prLevel.title)
+                    Text(LocalizedStringKey(prLevel.title))
                         .font(.title2)
                         .bold()
                         .foregroundColor(.white)
                     
-                    Text(LocalizedStringKey("New Personal Best!"))
+                    Text(String(localized: "New Personal Best!"))
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.8))
                 }
@@ -87,6 +95,42 @@ struct PRCelebrationView: View {
                 )
                 .shadow(color: .black.opacity(0.2), radius: 5, x: 0, y: 5)
             }
+            
+            // Кнопка закрытия сверху
+            VStack {
+                HStack {
+                    Spacer()
+                    Button(action: onClose) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    .padding(25)
+                }
+                Spacer()
+            }
+            
+            // Кнопка "Поделиться" снизу
+            VStack {
+                Spacer()
+                Button {
+                    share()
+                } label: {
+                    HStack {
+                        Image(systemName: "square.and.arrow.up")
+                        Text(LocalizedStringKey("Share Result"))
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(LinearGradient(colors: prLevel.angularColors, startPoint: .leading, endPoint: .trailing))
+                    .cornerRadius(16)
+                    .shadow(radius: 10)
+                }
+                .padding(.horizontal, 30)
+                .padding(.bottom, 40)
+            }
         }
         .onAppear {
             isAnimatingPR = true
@@ -94,12 +138,29 @@ struct PRCelebrationView: View {
         .onDisappear {
             isAnimatingPR = false
         }
+        .sheet(item: $shareItem) { item in
+            ActivityViewController(activityItems: [item.image])
+        }
+    }
+    
+    @MainActor
+    private func share() {
+        let renderer = ImageRenderer(content: MilestoneShareCard(
+            title: LocalizedStringKey("New Personal Best!"),
+            subtitle: LocalizedStringKey(prLevel.title),
+            icon: prLevel == .diamond ? "sparkles" : "trophy.fill",
+            colors: prLevel.angularColors
+        ))
+        renderer.scale = 3.0
+        if let image = renderer.uiImage {
+            shareItem = SharedImageWrapper(image: image)
+        }
     }
 }
 
 struct SupersetCardView: View {
     @Bindable var superset: Exercise // SwiftData модель
-    @Environment(\.modelContext) private var modelContext 
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
     
     var currentWorkoutId: UUID
@@ -110,7 +171,6 @@ struct SupersetCardView: View {
     var onExerciseFinished: (() -> Void)? = nil
     var isCurrentExercise: Bool = false
     
-    // ДОБАВЛЕНО: Замыкание для передачи события о рекорде наверх
     var onPRSet: ((PRLevel) -> Void)? = nil
     
     @State private var showEffortSheet = false
@@ -120,8 +180,6 @@ struct SupersetCardView: View {
     }
     
     var body: some View {
-        // ИСПРАВЛЕНИЕ: Обернули в ZStack, чтобы .sheet прикреплялся к стабильному 
-        // элементу, который не меняет свои модификаторы фона/тени при завершении упражнения.
         ZStack {
             VStack(alignment: .leading, spacing: 0) {
                 
@@ -174,14 +232,14 @@ struct SupersetCardView: View {
                 
             HStack {
                 Image(systemName: "link").foregroundColor(.purple)
-                Text(LocalizedStringKey("Superset")).font(.headline).foregroundColor(.purple)
+                Text(String(localized: "Superset")).font(.headline).foregroundColor(.purple)
             }
             Spacer()
             Menu {
                 Button(role: .destructive) {
                     onDelete()
                 } label: {
-                    Label(LocalizedStringKey("Remove Superset"), systemImage: "trash")
+                    Label(String(localized: "Remove Superset"), systemImage: "trash")
                 }
             } label: {
                 Image(systemName: "ellipsis").foregroundColor(.gray).padding(10)
@@ -200,7 +258,7 @@ struct SupersetCardView: View {
     private var collapsedInfoSection: some View {
         HStack {
             Spacer()
-            Text(LocalizedStringKey("Tap to expand"))
+            Text(String(localized: "Tap to expand"))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .italic()
@@ -210,24 +268,24 @@ struct SupersetCardView: View {
     }
     
     var exerciseListView: some View {
-        ForEach(Array(superset.subExercises.enumerated()), id: \.element.id) { index, exercise in
+        // ИСПРАВЛЕНИЕ: Итерируем напрямую по массиву с использованием id
+        ForEach(0..<superset.subExercises.count, id: \.self) { index in
+            let exercise = superset.subExercises[index]
             let isLast = index == superset.subExercises.count - 1
+            
             VStack(spacing: 0) {
                 ExerciseCardView(
                     exercise: exercise,
                     currentWorkoutId: currentWorkoutId,
                     onDelete: {
                         withAnimation {
-                            if let removeIndex = superset.subExercises.firstIndex(where: { $0.id == exercise.id }) {
-                                let removedExercise = superset.subExercises.remove(at: removeIndex)
-                                modelContext.delete(removedExercise)
-                            }
+                            viewModel.removeSubExercise(exercise, from: superset, context: context)
                         }
                     },
                     isEmbeddedInSuperset: true,
                     isWorkoutCompleted: isWorkoutCompleted,
                     isExpanded: .constant(true),
-                    isCurrentExercise: false 
+                    isCurrentExercise: false
                 )
                 .background(Color.clear)
                 .shadow(color: .clear, radius: 0)
@@ -243,7 +301,7 @@ struct SupersetCardView: View {
     
     var finishButton: some View {
         Button(action: finishSuperset) {
-            Text(LocalizedStringKey("Finish Superset"))
+            Text(String(localized: "Finish Superset"))
                 .font(.subheadline).bold()
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
@@ -259,25 +317,16 @@ struct SupersetCardView: View {
     func finishSuperset() {
         guard !superset.isCompleted && !isWorkoutCompleted else { return }
         
-        // ИСПРАВЛЕНИЕ: Удаляем незавершенные подходы во всем суперсете
         for sub in superset.subExercises {
             let uncompletedSets = sub.setsList.filter { !$0.isCompleted }
             for set in uncompletedSets {
-                if let index = sub.setsList.firstIndex(where: { $0.id == set.id }) {
-                    sub.setsList.remove(at: index)
-                }
-                modelContext.delete(set)
-            }
-            
-            let remainingSets = sub.sortedSets
-            for (i, set) in remainingSets.enumerated() {
-                set.index = i + 1
+                viewModel.deleteSet(set, from: sub, context: context)
             }
             sub.isCompleted = true
         }
         
         superset.isCompleted = true
-        try? modelContext.save()
+        superset.updateAggregates()
         
         var newRecordWasSet = false
         var maxIncreasePercent: Double = 0.0
@@ -324,14 +373,6 @@ struct SupersetCardView: View {
             generator.notificationOccurred(.success)
         } else {
             self.showEffortSheet = true
-        }
-    }
-    
-    func markAllSetsInSupersetCompleted() {
-        for sub in superset.subExercises {
-            for set in sub.setsList {
-                set.isCompleted = true
-            }
         }
     }
 }

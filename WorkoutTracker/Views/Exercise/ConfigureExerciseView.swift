@@ -50,11 +50,11 @@ struct ConfigureExerciseView: View {
     @State private var recommendedWeight: Double = 0.0
     
     // MARK: - Binding Adapters
-    // Эти вычисляемые свойства нужны для адаптации @State к Binding<Double?>, 
+    // Эти вычисляемые свойства нужны для адаптации @State к Binding<Double?>,
     // который требуется компонентом ClearableTextField.
     
     private var weightBinding: Binding<Double?> {
-        Binding<Double?>(get: { 
+        Binding<Double?>(get: {
             if let w = weight {
                 return unitsManager.convertFromKilograms(w)
             }
@@ -75,7 +75,7 @@ struct ConfigureExerciseView: View {
     }
     
     private var distanceBinding: Binding<Double?> {
-        Binding<Double?>(get: { 
+        Binding<Double?>(get: {
             if let d = distance {
                 return unitsManager.convertFromMeters(d)
             }
@@ -96,7 +96,7 @@ struct ConfigureExerciseView: View {
     }
     
     private var minutesBinding: Binding<Double?> {
-        Binding<Double?>(get: { 
+        Binding<Double?>(get: {
             if let m = minutes { return Double(m) }
             return nil
         }, set: { newValue in
@@ -115,7 +115,7 @@ struct ConfigureExerciseView: View {
     }
     
     private var secondsBinding: Binding<Double?> {
-        Binding<Double?>(get: { 
+        Binding<Double?>(get: {
             if let s = seconds { return Double(s) }
             return nil
         }, set: { newValue in
@@ -233,7 +233,8 @@ struct ConfigureExerciseView: View {
     @ViewBuilder
     private var strengthConfig: some View {
         Stepper("Sets: \(sets)", value: $sets, in: 1...20)
-        Stepper("Reps: \(reps)", value: $reps, in: 0...100)
+        // ИСПРАВЛЕНИЕ: Количество повторений не может быть меньше 1
+        Stepper("Reps: \(reps)", value: $reps, in: 1...100)
             .onChange(of: reps) { oldValue, newValue in
                 let validation = InputValidator.validateReps(newValue)
                 if !validation.isValid {
@@ -338,9 +339,10 @@ struct ConfigureExerciseView: View {
         let actualSeconds = seconds ?? 0
         
         if exerciseType == .strength {
-            if actualWeight <= 0 {
+            // ИСПРАВЛЕНИЕ: Допускаем вес 0 (работа с собственным весом)
+            if actualWeight < 0 {
                 hasError = true
-                errorMessages.append(String(localized: "Please enter a weight greater than 0."))
+                errorMessages.append(String(localized: "Weight cannot be negative."))
             } else {
                 let weightValidation = InputValidator.validateWeight(actualWeight)
                 if !weightValidation.isValid {
@@ -352,13 +354,20 @@ struct ConfigureExerciseView: View {
                 }
             }
             
-            let repsValidation = InputValidator.validateReps(reps)
-            if !repsValidation.isValid {
+            // ИСПРАВЛЕНИЕ: Строгая валидация повторений (должны быть строго больше 0)
+            if reps <= 0 {
                 hasError = true
-                if let error = repsValidation.errorMessage {
-                    errorMessages.append(error)
+                errorMessages.append(String(localized: "Reps must be greater than 0"))
+                reps = 1 // Безопасный фоллбэк
+            } else {
+                let repsValidation = InputValidator.validateReps(reps)
+                if !repsValidation.isValid {
+                    hasError = true
+                    if let error = repsValidation.errorMessage {
+                        errorMessages.append(error)
+                    }
+                    reps = repsValidation.clampedValue
                 }
-                reps = repsValidation.clampedValue
             }
         }
         
@@ -424,6 +433,10 @@ struct ConfigureExerciseView: View {
             effort: 5,
             setsList: generatedSets // <-- Передаем сгенерированный список
         )
+        
+        // ИСПРАВЛЕНИЕ: Легкая вибрация, подтверждающая успешное добавление упражнения в тренировку
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
         
         onAdd(newExercise)
         dismiss()

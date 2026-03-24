@@ -1,3 +1,8 @@
+
+//  ProfileView.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import SwiftData
 
@@ -17,18 +22,15 @@ struct ProfileView: View {
     
     @ObservedObject private var unitsManager = UnitsManager.shared
     
-    // Состояния для редактирования
-    @State private var isEditingName = false
-    @State private var isEditingWeight = false
-    @State private var tempName = ""
-    @State private var tempWeight = ""
-    
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false
     
     // Кешированные значения для производительности
     @State private var cachedAchievements: [Achievement] = []
     @State private var cachedPersonalRecords: [WorkoutViewModel.BestResult] = []
+    
+    // AI Forecast
+    @State private var topForecast: WorkoutViewModel.ProgressForecast?
     
     let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
     
@@ -56,8 +58,13 @@ struct ProfileView: View {
             let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
             let records = StatisticsManager.getAllPersonalRecords(workouts: bgWorkouts)
             
+            // Вычисляем AI прогноз
+            let forecasts = AnalyticsManager.getProgressForecast(workouts: bgWorkouts)
+            let topF = forecasts.first
+            
             await MainActor.run {
                 self.cachedPersonalRecords = records
+                self.topForecast = topF
             }
         }
     }
@@ -80,20 +87,14 @@ struct ProfileView: View {
                                 .frame(width: 100, height: 100)
                                 .foregroundColor(.gray.opacity(0.3))
                                 .overlay(Circle().stroke(Color.blue, lineWidth: 3))
-                                .shadow(radius: 5)
                             
                             VStack(spacing: 8) {
-                                // ИМЯ (Кликабельное)
-                                HStack {
-                                    Text(userName).font(.title2).bold()
-                                    Image(systemName: "pencil").font(.caption).foregroundColor(.blue)
-                                }
-                                .onTapGesture {
-                                    tempName = userName
-                                    isEditingName = true
-                                }
+                                // ИМЯ (Read-Only)
+                                Text(userName)
+                                    .font(.title2)
+                                    .bold()
                                 
-                                // ВЕС под ником (Кликабельный)
+                                // ВЕС под ником (Read-Only)
                                 let convertedWeight = unitsManager.convertFromKilograms(userBodyWeight)
                                 Text("\(LocalizationHelper.shared.formatDecimal(convertedWeight)) \(unitsManager.weightUnitString())")
                                     .font(.title3)
@@ -102,10 +103,6 @@ struct ProfileView: View {
                                     .padding(.vertical, 6)
                                     .background(Color.blue.opacity(0.1))
                                     .cornerRadius(8)
-                                    .onTapGesture {
-                                        tempWeight = LocalizationHelper.shared.formatDecimal(convertedWeight)
-                                        isEditingWeight = true
-                                    }
                                 
                                 // Кнопка просмотра истории веса
                                 Button {
@@ -122,18 +119,40 @@ struct ProfileView: View {
                                     .background(Color.blue.opacity(0.1))
                                     .cornerRadius(8)
                                 }
-                                
-                                // ПЕРЕКЛЮЧАТЕЛЬ ПОЛА
-                                Picker(LocalizedStringKey("Gender"), selection: $userGender) {
-                                    Text(LocalizedStringKey("Male")).tag("male")
-                                    Text(LocalizedStringKey("Female")).tag("female")
-                                }
-                                .pickerStyle(.segmented)
-                                .frame(width: 200)
-                                
                             }
                         }
                         .padding(.top, 20)
+                        
+                        // AI FORECAST BANNER
+                        if let forecast = topForecast {
+                            let convertedWeight = unitsManager.convertFromKilograms(forecast.predictedMax)
+                            let weightStr = convertedWeight.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", convertedWeight) : String(format: "%.1f", convertedWeight)
+                            let unitStr = unitsManager.weightUnitString()
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "sparkles")
+                                        .foregroundColor(.yellow)
+                                    Text("AI Forecast")
+                                        .font(.headline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                }
+                                
+                                Text("In \(forecast.timeframe) your \(forecast.exerciseName) is predicted to reach \(weightStr) \(unitStr)!")
+                                    .font(.subheadline)
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .minimumScaleFactor(0.8)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                LinearGradient(colors: [Color.purple.opacity(0.8), Color.blue.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: .purple.opacity(0.3), radius: 8, x: 0, y: 4)
+                            .padding(.horizontal)
+                        }
                         
                         // 2. АЧИВКИ
                         VStack(alignment: .leading) {
@@ -201,30 +220,6 @@ struct ProfileView: View {
                     ToolbarItem(placement: .confirmationAction) {
                         Button(LocalizedStringKey("Close")) { dismiss() }
                     }
-                }
-                // Алерты
-                .alert(LocalizedStringKey("Change Name"), isPresented: $isEditingName) {
-                    TextField(LocalizedStringKey("Name"), text: $tempName)
-                    Button(LocalizedStringKey("Save")) { 
-                        let trimmedName = tempName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        if !trimmedName.isEmpty { userName = trimmedName } 
-                    }
-                    Button(LocalizedStringKey("Cancel"), role: .cancel) { }
-                }
-                .alert(LocalizedStringKey("Update Body Weight"), isPresented: $isEditingWeight) {
-                    TextField(LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"), text: $tempWeight).keyboardType(.decimalPad)
-                    Button(LocalizedStringKey("Save")) { 
-                        let sanitizedWeight = tempWeight.replacingOccurrences(of: ",", with: ".")
-                        if let val = Double(sanitizedWeight) { 
-                            let weightInKg = unitsManager.convertToKilograms(val)
-                            userBodyWeight = weightInKg
-                            
-                            // Сохраняем в БД напрямую через SwiftData
-                            let newEntry = WeightEntry(date: Date(), weight: weightInKg)
-                            modelContext.insert(newEntry)
-                        }
-                    }
-                    Button(LocalizedStringKey("Cancel"), role: .cancel) { }
                 }
                 .sheet(isPresented: $showingWeightHistory) {
                     WeightHistoryView()
@@ -354,6 +349,7 @@ struct AchievementPopupView: View {
     let onClose: () -> Void
     
     @State private var isAnimating = false
+    @State private var shareItem: SharedImageWrapper?
     
     var angularColors: [Color] {
         switch achievement.tier {
@@ -471,14 +467,29 @@ struct AchievementPopupView: View {
                 .background(Color.primary.opacity(0.05))
                 .cornerRadius(12)
                 
-                Button(action: onClose) {
-                    Text(LocalizedStringKey("Cool!"))
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .cornerRadius(12)
+                HStack(spacing: 12) {
+                    Button(action: onClose) {
+                        Text(LocalizedStringKey("Cool!"))
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(12)
+                    }
+                    
+                    if achievement.isUnlocked {
+                        Button {
+                            share()
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.blue)
+                                .cornerRadius(12)
+                        }
+                    }
                 }
             }
             .padding(24)
@@ -489,6 +500,23 @@ struct AchievementPopupView: View {
         }
         .onAppear {
             isAnimating = true
+        }
+        .sheet(item: $shareItem) { item in
+            ActivityViewController(activityItems: [item.image])
+        }
+    }
+    
+    @MainActor
+    private func share() {
+        let renderer = ImageRenderer(content: MilestoneShareCard(
+            title: LocalizedStringKey("Unlocked Achievements"),
+            subtitle: achievement.title,
+            icon: achievement.icon,
+            colors: angularColors
+        ))
+        renderer.scale = 3.0
+        if let image = renderer.uiImage {
+            shareItem = SharedImageWrapper(image: image)
         }
     }
 }
@@ -527,4 +555,3 @@ struct AchievementConfetti: View {
         }
     }
 }
-

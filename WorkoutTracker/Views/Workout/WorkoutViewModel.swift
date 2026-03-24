@@ -6,7 +6,7 @@
 //
 //  Главная ViewModel приложения.
 //  Является "мозгом", управляющим локальным стейтом и ошибками.
-//  Вся работа со SwiftData переведена на фоновые потоки.
+//  Вся работа со SwiftData переведена на фоновые потоки или инкапсулирована по MVVM.
 //
 
 internal import SwiftUI
@@ -65,6 +65,14 @@ class WorkoutViewModel: ObservableObject {
     
     // ИСПРАВЛЕНИЕ: Хранение активной тренировки для защиты от OOM
     @Published var activeWorkoutToResume: Workout?
+    func removeExercise(_ exercise: Exercise, from workout: Workout, context: ModelContext) {
+            if let index = workout.exercises.firstIndex(where: { $0.id == exercise.id }) {
+                workout.exercises.remove(at: index)
+            }
+            context.delete(exercise)
+            try? context.save()
+        }
+        
     
     // MARK: - Error Handling
     struct AppError: Identifiable { let id = UUID(); let title: String; let message: String }
@@ -77,6 +85,44 @@ class WorkoutViewModel: ObservableObject {
     init() {
         MuscleMapping.preload()
     }
+    
+    // MARK: - MVVM Entity Manipulation (Sets & Exercises)
+    
+    func addSet(_ set: WorkoutSet, to exercise: Exercise, context: ModelContext) {
+        context.insert(set)
+        exercise.setsList.append(set)
+        exercise.updateAggregates()
+        try? context.save()
+    }
+    
+    func deleteSet(_ set: WorkoutSet, from exercise: Exercise, context: ModelContext) {
+        if let index = exercise.setsList.firstIndex(where: { $0.id == set.id }) {
+            exercise.setsList.remove(at: index)
+        }
+        context.delete(set)
+        
+        // Re-index remaining sets to maintain sequence
+        let remainingSets = exercise.sortedSets
+        for (i, remainingSet) in remainingSets.enumerated() {
+            remainingSet.index = i + 1
+        }
+        
+        exercise.updateAggregates()
+        try? context.save()
+    }
+    
+
+        
+        // 👇 ДОБАВЬ ВОТ ЭТОТ МЕТОД:
+        func removeSubExercise(_ subExercise: Exercise, from superset: Exercise, context: ModelContext) {
+            if let index = superset.subExercises.firstIndex(where: { $0.id == subExercise.id }) {
+                superset.subExercises.remove(at: index)
+            }
+            context.delete(subExercise)
+            superset.updateAggregates()
+            try? context.save()
+        }
+        // 👆 КОНЕЦ ВСТАВКИ
     
     // MARK: - ЗОМБИ-ТРЕНИРОВКИ И ВОССТАНОВЛЕНИЕ (Защита от OOM)
     
@@ -117,14 +163,60 @@ class WorkoutViewModel: ObservableObject {
     
     /// Эту функцию ВАЖНО вызывать ровно один раз при нажатии кнопки "Завершить тренировку".
     func processCompletedWorkout(_ workout: Workout, context: ModelContext) {
-        // Обновляем общие пользовательские статы
+        
+        // 1. ОБНОВЛЯЕМ АГРЕГАТЫ НА УРОВНЕ САМОЙ ТРЕНИРОВКИ
+        if let endTime = workout.endTime {
+            workout.durationSeconds = Int(endTime.timeIntervalSince(workout.date))
+        } else {
+            workout.durationSeconds = 0
+        }
+        
+        var totalEffort = 0
+        var exercisesWithCompletedSets = 0
+        var strengthVol = 0.0
+        var cardioDist = 0.0
+        
+        for exercise in workout.exercises {
+            // Убеждаемся, что агрегаты самого упражнения актуальны
+            exercise.updateAggregates()
+            
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            var hasCompletedSet = false
+            
+            for sub in targets {
+                sub.updateAggregates()
+                
+                if sub.setsList.contains(where: { $0.isCompleted }) {
+                    hasCompletedSet = true
+                }
+                
+                if sub.type == .strength {
+                    strengthVol += sub.exerciseVolume
+                } else if sub.type == .cardio {
+                    cardioDist += sub.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0.0, +)
+                }
+            }
+            
+            if hasCompletedSet {
+                totalEffort += exercise.effort
+                exercisesWithCompletedSets += 1
+            }
+        }
+        
+        // Effort slider returns 1-10, we want a percentage 10-100
+        let avgEffort = exercisesWithCompletedSets > 0 ? Double(totalEffort) / Double(exercisesWithCompletedSets) : 0.0
+        workout.effortPercentage = Int(avgEffort * 10)
+        workout.totalStrengthVolume = strengthVol
+        workout.totalCardioDistance = cardioDist
+        
+        // 2. ОБНОВЛЯЕМ ГЛОБАЛЬНУЮ СТАТИСТИКУ
         let uStatsDesc = FetchDescriptor<UserStats>()
         let uStats = (try? context.fetch(uStatsDesc))?.first ?? UserStats()
         if uStats.modelContext == nil { context.insert(uStats) }
         
         uStats.totalWorkouts += 1
-        uStats.totalVolume += workout.exercises.reduce(0.0) { $0 + $1.computedVolume }
-        uStats.totalDistance += workout.exercises.filter { $0.type == .cardio }.reduce(0.0) { $0 + ($1.distance ?? 0) }
+        uStats.totalVolume += workout.totalStrengthVolume     // O(1) complexity now
+        uStats.totalDistance += workout.totalCardioDistance   // O(1) complexity now
         
         let hour = Calendar.current.component(.hour, from: workout.date)
         if hour < 9 { uStats.earlyWorkouts += 1 }
@@ -221,7 +313,7 @@ class WorkoutViewModel: ObservableObject {
                 predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= threeMonthsAgo },
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
             )
-            recentDesc.fetchLimit = 150 // Гарантированная защита от OOM, даже если пользователь монстр
+            recentDesc.fetchLimit = 150 // Гарантированная защита от OOM
             let recentWorkouts = (try? context.fetch(recentDesc)) ?? []
             
             let recovery = RecoveryCalculator.calculate(hours: nil, workouts: recentWorkouts)
@@ -259,7 +351,7 @@ class WorkoutViewModel: ObservableObject {
         }
     }
     
-    // ИСПРАВЛЕНИЕ: Универсальный инструмент пересчета статистики для решения проблемы рассинхронизации.
+    // ИСПРАВЛЕНИЕ: Универсальный инструмент пересчета статистики, решающий проблему рассинхронизации.
     func rebuildAllStats(container: ModelContainer) async {
         Task.detached(priority: .background) {
             let context = ModelContext(container)
@@ -279,19 +371,36 @@ class WorkoutViewModel: ObservableObject {
             var mStatsDict: [String: MuscleStat] = [:]
             
             for workout in allWorkouts {
-                uStats.totalWorkouts += 1
-                uStats.totalVolume += workout.exercises.reduce(0.0) { $0 + $1.computedVolume }
-                uStats.totalDistance += workout.exercises.filter { $0.type == .cardio }.reduce(0.0) { $0 + ($1.distance ?? 0) }
                 
-                let hour = Calendar.current.component(.hour, from: workout.date)
-                if hour < 9 { uStats.earlyWorkouts += 1 }
-                if hour >= 20 { uStats.nightWorkouts += 1 }
+                // BACKWARD COMPATIBILITY: Force generate aggregates for old workouts
+                if let endTime = workout.endTime, workout.durationSeconds == 0 {
+                    workout.durationSeconds = Int(endTime.timeIntervalSince(workout.date))
+                }
+                
+                var strVol = 0.0
+                var carDist = 0.0
+                var totEff = 0
+                var exComp = 0
                 
                 for exercise in workout.exercises {
+                    exercise.updateAggregates()
+                    
                     let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                    for ex in targets {
-                        let name = ex.name
+                    var hasComp = false
+                    
+                    for sub in targets {
+                        sub.updateAggregates()
+                        if sub.setsList.contains(where: { $0.isCompleted }) {
+                            hasComp = true
+                        }
                         
+                        if sub.type == .strength {
+                            strVol += sub.exerciseVolume
+                        } else if sub.type == .cardio {
+                            carDist += sub.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
+                        }
+                        
+                        let name = sub.name
                         let exStat = exStatsDict[name] ?? {
                             let stat = ExerciseStat(exerciseName: name)
                             context.insert(stat)
@@ -300,17 +409,17 @@ class WorkoutViewModel: ObservableObject {
                         }()
                         
                         exStat.totalCount += 1
-                        if let encoded = try? JSONEncoder().encode(ex.toDTO()) {
+                        if let encoded = try? JSONEncoder().encode(sub.toDTO()) {
                             exStat.lastPerformanceDTO = encoded
                         }
-                        if ex.type == .strength {
-                            let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                        if sub.type == .strength {
+                            let maxWeight = sub.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
                             if maxWeight > exStat.maxWeight { exStat.maxWeight = maxWeight }
                         }
                         
-                        let isCardio = ex.type == .cardio || ex.type == .duration || ex.muscleGroup == "Cardio"
+                        let isCardio = sub.type == .cardio || sub.type == .duration || sub.muscleGroup == "Cardio"
                         if !isCardio {
-                            let mName = ex.muscleGroup
+                            let mName = sub.muscleGroup
                             let mStat = mStatsDict[mName] ?? {
                                 let stat = MuscleStat(muscleName: mName)
                                 context.insert(stat)
@@ -320,8 +429,30 @@ class WorkoutViewModel: ObservableObject {
                             mStat.totalCount += 1
                         }
                     }
+                    
+                    if hasComp {
+                        totEff += exercise.effort
+                        exComp += 1
+                    }
                 }
+                
+                // Set workout level aggregates
+                workout.totalStrengthVolume = strVol
+                workout.totalCardioDistance = carDist
+                if exComp > 0 {
+                    workout.effortPercentage = Int((Double(totEff) / Double(exComp)) * 10)
+                }
+                
+                // Add to global User Stats
+                uStats.totalWorkouts += 1
+                uStats.totalVolume += workout.totalStrengthVolume
+                uStats.totalDistance += workout.totalCardioDistance
+                
+                let hour = Calendar.current.component(.hour, from: workout.date)
+                if hour < 9 { uStats.earlyWorkouts += 1 }
+                if hour >= 20 { uStats.nightWorkouts += 1 }
             }
+            
             try? context.save()
             
             // После завершения пересчета запускаем нормальное обновление кэшей
@@ -338,9 +469,26 @@ class WorkoutViewModel: ObservableObject {
         let count = (try? context.fetchCount(descriptor)) ?? 0
         
         if count == 0 {
-            let defaultPresets = Workout.examples.map { WorkoutPreset(id: UUID(), name: $0.title, icon: $0.icon, exercises: $0.exercises.map { $0.duplicate() }) }
-            for preset in defaultPresets {
+            for example in Workout.examples {
+                let preset = WorkoutPreset(id: UUID(), name: example.title, icon: example.icon, exercises: [])
                 context.insert(preset)
+                
+                for exercise in example.exercises {
+                    let duplicatedExercise = exercise.duplicate()
+                    context.insert(duplicatedExercise)
+                    preset.exercises.append(duplicatedExercise)
+                    
+                    for set in duplicatedExercise.setsList {
+                        context.insert(set)
+                    }
+                    
+                    for sub in duplicatedExercise.subExercises {
+                        context.insert(sub)
+                        for subSet in sub.setsList {
+                            context.insert(subSet)
+                        }
+                    }
+                }
             }
             try? context.save()
         }
@@ -349,21 +497,23 @@ class WorkoutViewModel: ObservableObject {
     // MARK: - Data Management (Dictionary / Custom Exercises)
     
     func loadDictionary(context: ModelContext) {
-        let descriptor = FetchDescriptor<ExerciseDictionaryItem>()
-        let count = (try? context.fetchCount(descriptor)) ?? 0
-        
-        // Автоматическая миграция из старых JSON
-        if count == 0 {
-            migrateJSONToSwiftData(context: context)
-        }
-        
-        if let items = try? context.fetch(descriptor) {
-            self.customExercises = items.filter { $0.isCustom }.map {
-                CustomExerciseDefinition(id: UUID(), name: $0.name, category: $0.category, targetedMuscles: $0.targetedMuscles, type: $0.type)
+            let descriptor = FetchDescriptor<ExerciseDictionaryItem>()
+            let count = (try? context.fetchCount(descriptor)) ?? 0
+            
+            // Автоматическая миграция из старых JSON
+            if count == 0 {
+                migrateJSONToSwiftData(context: context)
             }
-            self.deletedDefaultExercises = Set(items.filter { $0.isHidden }.map { $0.name })
+            
+            if let items = try? context.fetch(descriptor) {
+                // ИСПРАВЛЕНИЕ: Исключаем скрытые кастомные упражнения из UI каталога (!$0.isHidden)
+                self.customExercises = items.filter { $0.isCustom && !$0.isHidden }.map {
+                    CustomExerciseDefinition(id: UUID(), name: $0.name, category: $0.category, targetedMuscles: $0.targetedMuscles, type: $0.type)
+                }
+                self.deletedDefaultExercises = Set(items.filter { $0.isHidden && !$0.isCustom }.map { $0.name })
+            }
         }
-    }
+    
     
     private func migrateJSONToSwiftData(context: ModelContext) {
         let fm = FileManager.default
@@ -417,16 +567,16 @@ class WorkoutViewModel: ObservableObject {
     }
     
     private func deleteCustomExercise(name: String, category: String, context: ModelContext) {
-        let descriptor = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.name == name && $0.isCustom })
-        if let items = try? context.fetch(descriptor), let item = items.first {
-            context.delete(item)
-            try? context.save()
+            let descriptor = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.name == name && $0.isCustom })
+            if let items = try? context.fetch(descriptor), let item = items.first {
+                // ИСПРАВЛЕНИЕ: Soft Delete (скрываем упражнение из каталога, но оставляем для истории)
+                item.isHidden = true
+                try? context.save()
+            }
+            
+            loadDictionary(context: context)
+            MuscleMapping.updateCustomMapping(name: name, muscles: nil)
         }
-        
-        loadDictionary(context: context)
-        MuscleMapping.updateCustomMapping(name: name, muscles: nil)
-    }
-    
     func deleteExercise(name: String, category: String, context: ModelContext) {
         if isCustomExercise(name: name) {
             deleteCustomExercise(name: name, category: category, context: context)
@@ -466,7 +616,6 @@ class WorkoutViewModel: ObservableObject {
         do {
             let preset = try ImportExportService.importPreset(from: url)
             
-            // ИСПРАВЛЕНИЕ: Автоматическое добавление суффикса, если имя занято
             let baseName = preset.name
             var finalName = baseName
             var suffixCounter = 1
@@ -477,10 +626,9 @@ class WorkoutViewModel: ObservableObject {
                 let existingCount = (try? context.fetchCount(descriptor)) ?? 0
                 
                 if existingCount == 0 {
-                    break // Нашли уникальное имя
+                    break
                 }
                 
-                // Имя занято, добавляем суффикс и пробуем снова
                 finalName = "\(baseName) (\(suffixCounter))"
                 suffixCounter += 1
             }
@@ -502,7 +650,6 @@ class WorkoutViewModel: ObservableObject {
     func updateWidgetData(container: ModelContainer) {
         Task.detached(priority: .background) {
             let context = ModelContext(container)
-            // Виджету достаточно последних 6 недель. Лимитируем, чтобы не тянуть 500 тренировок
             let sixWeeksAgo = Calendar.current.date(byAdding: .weekOfYear, value: -6, to: Date())!
             var descriptor = FetchDescriptor<Workout>(
                 predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= sixWeeksAgo },

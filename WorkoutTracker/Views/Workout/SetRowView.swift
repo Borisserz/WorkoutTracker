@@ -8,8 +8,9 @@
 //  Содержит:
 //  1. Номер сета.
 //  2. Поля ввода (Вес/Повторы/Время) с подсказками из прошлой тренировки.
-//  3. Кнопку типа сета (Разминка/Обычный).
-//  4. Чекбокс завершения.
+//  3. Индикатор расчетного 1RM (Эпли) для силовых упражнений.
+//  4. Кнопку типа сета (Разминка/Обычный).
+//  5. Чекбокс завершения с поддержкой Smart Rest.
 //
 
 internal import SwiftUI
@@ -19,16 +20,20 @@ struct SetRowView: View {
     
     // MARK: - Bindings & Properties
     
-    @Bindable var set: WorkoutSet 
+    @Bindable var set: WorkoutSet
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
-    // ИСПРАВЛЕНИЕ: Используем @ObservedObject для синглтона. Использование @StateObject на синглтонах внутри повторяющихся списков приводит к зависанию!
     @ObservedObject private var unitsManager = UnitsManager.shared
+    
+    let exerciseName: String
+    let cached1RM: Double
+    let effort: Int
+    
     let exerciseType: ExerciseType
     let isLastSet: Bool
-    let isExerciseCompleted: Bool 
-    let isWorkoutCompleted: Bool 
+    let isExerciseCompleted: Bool
+    let isWorkoutCompleted: Bool
     
-    var onCheck: (_ shouldStartTimer: Bool) -> Void
+    var onCheck: (_ shouldStartTimer: Bool, _ suggestedDuration: Int?) -> Void
     
     var prevWeight: Double? = nil
     var prevReps: Int? = nil
@@ -39,7 +44,7 @@ struct SetRowView: View {
     
     @State private var showSliderSheet: Bool = false
     @State private var activeBindingType: InputFieldType = .weight
-    @State private var hasAutoFocused: Bool = false 
+    @State private var hasAutoFocused: Bool = false
     
     // MARK: - Computed Bindings (Type Adapters)
     
@@ -75,7 +80,7 @@ struct SetRowView: View {
     
     private var weightBinding: Binding<Double?> {
         Binding<Double?>(
-            get: { 
+            get: {
                 guard let kg = set.weight else { return nil }
                 return unitsManager.convertFromKilograms(kg)
             },
@@ -93,7 +98,7 @@ struct SetRowView: View {
     
     private var distanceBinding: Binding<Double?> {
         Binding<Double?>(
-            get: { 
+            get: {
                 guard let m = set.distance else { return nil }
                 return unitsManager.convertFromMeters(m)
             },
@@ -107,6 +112,13 @@ struct SetRowView: View {
                 }
             }
         )
+    }
+
+    // MARK: - Computed 1RM
+    
+    private var estimated1RM: Double {
+        guard let w = set.weight, let r = set.reps, w > 0, r > 0 else { return 0 }
+        return w * (1.0 + Double(r) / 30.0) // Формула Эпли
     }
 
     // MARK: - Body
@@ -129,7 +141,9 @@ struct SetRowView: View {
         .padding(.vertical, 4)
         .background(set.isCompleted ? Color.green.opacity(0.05) : Color.clear)
         .cornerRadius(6)
-        .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted) 
+        // PERFORMANCE OPTIMIZATION: Flatten the heavy inner views (buttons, texts, backgrounds) into a single layer to avoid List stuttering
+        .compositingGroup()
+        .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
         .sheet(isPresented: $showSliderSheet) {
             SliderSheetView(
                 fieldType: activeBindingType,
@@ -170,30 +184,41 @@ struct SetRowView: View {
     private var inputsSection: some View {
         switch exerciseType {
         case .strength:
-            HStack(spacing: 4) {
-                inputColumn(
-                    type: .weight,
-                    binding: weightBinding,
-                    ghostText: prevWeight.map { 
-                        let converted = unitsManager.convertFromKilograms($0)
-                        return LocalizationHelper.shared.formatFlexible(converted)
-                    }
-                )
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    inputColumn(
+                        type: .weight,
+                        binding: weightBinding,
+                        ghostText: prevWeight.map {
+                            let converted = unitsManager.convertFromKilograms($0)
+                            return LocalizationHelper.shared.formatFlexible(converted)
+                        }
+                    )
+                    
+                    inputColumn(
+                        type: .reps,
+                        binding: repsBinding,
+                        ghostText: prevReps.map { "\($0)" }
+                    )
+                }
                 
-                inputColumn(
-                    type: .reps,
-                    binding: repsBinding,
-                    ghostText: prevReps.map { "\($0)" }
-                )
+                if estimated1RM > 0 {
+                    estimated1RMView
+                } else {
+                    // Невидимый плейсхолдер, чтобы UI не "прыгал" по высоте, когда начинаем вводить данные
+                    Text(" ")
+                        .font(.system(size: 10))
+                        .padding(.leading, 4)
+                }
             }
             
         case .cardio:
             inputColumn(
                 type: .distance,
                 binding: distanceBinding,
-                ghostText: prevDist.map { 
+                ghostText: prevDist.map {
                     let converted = unitsManager.convertFromMeters($0)
-                    return LocalizationHelper.shared.formatDecimal(converted) 
+                    return LocalizationHelper.shared.formatDecimal(converted)
                 }
             )
             
@@ -212,6 +237,25 @@ struct SetRowView: View {
                 ghostText: prevTime.map { "\($0)s" }
             )
         }
+    }
+    
+    @ViewBuilder
+    private var estimated1RMView: some View {
+        let est1RMConverted = unitsManager.convertFromKilograms(estimated1RM)
+        let formatted1RM = LocalizationHelper.shared.formatInteger(est1RMConverted)
+        let isRecord = estimated1RM > cached1RM && cached1RM > 0
+
+        HStack(spacing: 2) {
+            if isRecord {
+                Text("🏆")
+                    .font(.system(size: 10))
+            }
+            Text("Est. 1RM: \(formatted1RM) \(unitsManager.weightUnitString())")
+                .font(.system(size: 10))
+                .fontWeight(isRecord ? .bold : .regular)
+                .foregroundColor(isRecord ? .orange : .secondary)
+        }
+        .padding(.leading, 4)
     }
     
     private func getActiveBinding() -> Binding<Double?> {
@@ -282,7 +326,7 @@ struct SetRowView: View {
                 .clipShape(Circle())
         }
         .buttonStyle(BorderlessButtonStyle())
-        .disabled(isExerciseCompleted || isWorkoutCompleted) 
+        .disabled(isExerciseCompleted || isWorkoutCompleted)
     }
     
     private var checkButton: some View {
@@ -306,10 +350,24 @@ struct SetRowView: View {
         if set.isCompleted {
             let generator = UIImpactFeedbackGenerator(style: .medium)
             generator.impactOccurred()
+            
+            var suggestedDuration: Int? = nil
+            
+            // Smart Rest Calculation
+            if exerciseType == .strength {
+                if effort >= 8 {
+                    suggestedDuration = 180
+                } else if effort >= 6 {
+                    suggestedDuration = 120
+                } else {
+                    suggestedDuration = 90
+                }
+            }
+            
             if autoStartTimer && !isLastSet {
-                onCheck(true) 
+                onCheck(true, suggestedDuration)
             } else {
-                onCheck(false) 
+                onCheck(false, nil)
             }
         }
     }

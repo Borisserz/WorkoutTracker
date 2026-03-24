@@ -166,24 +166,24 @@ struct AddWorkoutView: View {
     private func formatExerciseDetails(_ exercise: Exercise) -> String {
         switch exercise.type {
         case .strength:
-            if exercise.weight > 0 {
-                let convertedWeight = unitsManager.convertFromKilograms(exercise.weight)
-                return "\(exercise.sets)/\(exercise.reps) \(Int(convertedWeight))\(unitsManager.weightUnitString())"
+            if exercise.firstSetWeight > 0 {
+                let convertedWeight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
+                return "\(exercise.setsCount)/\(exercise.firstSetReps) \(Int(convertedWeight))\(unitsManager.weightUnitString())"
             } else {
-                return "\(exercise.sets)/\(exercise.reps)"
+                return "\(exercise.setsCount)/\(exercise.firstSetReps)"
             }
         case .cardio:
-            if let distance = exercise.distance, distance > 0 {
-                return "\(exercise.sets) x \(LocalizationHelper.shared.formatDecimal(distance))km"
+            if let distance = exercise.firstSetDistance, distance > 0 {
+                return "\(exercise.setsCount) x \(LocalizationHelper.shared.formatDecimal(distance))km"
             } else {
-                return "\(exercise.sets) sets"
+                return "\(exercise.setsCount) sets"
             }
         case .duration:
-            if let timeSeconds = exercise.timeSeconds, timeSeconds > 0 {
+            if let timeSeconds = exercise.firstSetTimeSeconds, timeSeconds > 0 {
                 let minutes = timeSeconds / 60
-                return "\(exercise.sets) x \(minutes)min"
+                return "\(exercise.setsCount) x \(minutes)min"
             } else {
-                return "\(exercise.sets) sets"
+                return "\(exercise.setsCount) sets"
             }
         }
     }

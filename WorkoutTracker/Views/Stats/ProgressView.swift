@@ -529,6 +529,8 @@ struct HighlightCard: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2.5)
         )
+        // PERFORMANCE OPTIMIZATION: Render overlay and card contents as a single composed view
+        .compositingGroup()
     }
 }
 

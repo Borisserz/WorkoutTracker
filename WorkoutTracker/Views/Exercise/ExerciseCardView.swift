@@ -37,6 +37,7 @@ struct ExerciseCardView: View {
     // MARK: - Local State
     
     @State private var showEffortSheet = false
+    @State private var showTechniqueSheet = false // НОВОЕ СВОЙСТВО
     @Binding var isExpanded: Bool
     @State private var newlyAddedSetId: UUID? = nil
     
@@ -122,12 +123,18 @@ struct ExerciseCardView: View {
             )
         }
         .sheet(isPresented: $showEffortSheet, onDismiss: {
-            // ВОЗВРАЩЕНО: Автоматически сворачиваем карточку и идем дальше
+            // Автоматически сворачиваем карточку и идем дальше
             if exercise.isCompleted {
                 onExerciseFinished?()
             }
         }) {
             EffortInputView(effort: $exercise.effort)
+        }
+        // НОВАЯ ШТОРКА ДЛЯ ТЕХНИКИ ВЫПОЛНЕНИЯ
+        .sheet(isPresented: $showTechniqueSheet) {
+            TechniqueSheetView(category: exercise.category)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
     
@@ -151,12 +158,21 @@ struct ExerciseCardView: View {
             
             SetRowView(
                 set: set,
+                exerciseName: exercise.name,
+                cached1RM: viewModel.personalRecordsCache[exercise.name] ?? 0.0,
+                effort: exercise.effort,
                 exerciseType: exercise.type,
                 isLastSet: isLast,
                 isExerciseCompleted: exercise.isCompleted,
                 isWorkoutCompleted: isWorkoutCompleted,
-                onCheck: { shouldStartTimer in
-                    if shouldStartTimer { timerManager.startRestTimer() }
+                onCheck: { shouldStartTimer, suggestedDuration in
+                    if shouldStartTimer {
+                        if let duration = suggestedDuration {
+                            timerManager.startRestTimer(duration: duration)
+                        } else {
+                            timerManager.startRestTimer()
+                        }
+                    }
                 },
                 prevWeight: prevSet?.weight,
                 prevReps: prevSet?.reps,
@@ -196,6 +212,17 @@ struct ExerciseCardView: View {
                     }
                 }
                 .highPriorityGesture(TapGesture().onEnded { })
+                
+                // НОВАЯ КНОПКА ПОКАЗА ТЕХНИКИ
+                Button {
+                    showTechniqueSheet = true
+                } label: {
+                    Image(systemName: "info.circle")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 4)
+                }
+                .buttonStyle(BorderlessButtonStyle())
                 
                 Spacer()
                 
@@ -315,7 +342,6 @@ struct ExerciseCardView: View {
                         withAnimation {
                             exercise.isCompleted = false
                         }
-                        try? context.save()
                     } else {
                         // ЗАКОНЧИТЬ: Завершение текущего
                         finishExercise()
@@ -348,23 +374,14 @@ struct ExerciseCardView: View {
     private func finishExercise() {
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
-        // Удаляем пустые (незавершенные) подходы вместо того, чтобы помечать их как выполненные
+        // Удаляем пустые (незавершенные) подходы
+        // ViewModel позаботится об удалении, переиндексации и сохранении в БД
         let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
         for set in uncompletedSets {
-            if let index = exercise.setsList.firstIndex(where: { $0.id == set.id }) {
-                exercise.setsList.remove(at: index)
-            }
-            context.delete(set)
-        }
-        
-        // Переиндексируем оставшиеся подходы
-        let remainingSets = exercise.sortedSets
-        for (i, set) in remainingSets.enumerated() {
-            set.index = i + 1
+            viewModel.deleteSet(set, from: exercise, context: context)
         }
         
         exercise.isCompleted = true // Помечаем упражнение как завершенное
-        try? context.save()
         
         let lastData = viewModel.lastPerformancesCache[exercise.name]
         var newRecordWasSet = false
@@ -433,10 +450,8 @@ struct ExerciseCardView: View {
             time: lastSet?.time
         )
         
-        context.insert(newSet)
-        
         withAnimation {
-            exercise.setsList.append(newSet)
+            viewModel.addSet(newSet, to: exercise, context: context)
             newlyAddedSetId = newSet.id
         }
     }
@@ -446,11 +461,7 @@ struct ExerciseCardView: View {
         
         withAnimation {
             if let setToDelete = exercise.setsList.first(where: { $0.id == id }) {
-                context.delete(setToDelete)
-                let remainingSets = exercise.sortedSets.filter { $0.id != id }
-                for (i, set) in remainingSets.enumerated() {
-                    set.index = i + 1
-                }
+                viewModel.deleteSet(setToDelete, from: exercise, context: context)
             }
         }
     }

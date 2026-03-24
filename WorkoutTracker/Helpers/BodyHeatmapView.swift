@@ -158,36 +158,49 @@ struct BodyHeatmapView: View {
     }
     
     @ViewBuilder
-    func drawMuscle(_ muscle: MuscleGroup, centeringOffset: CGFloat) -> some View {
-        let rawPath = combinedPath(from: muscle.paths)
-        
-        let baseXOffset: CGFloat = isFrontView ? 0 : -backViewOffset
-        var xOffset = baseXOffset + centeringOffset
-        
-        // Специальное смещение для головы на заднем виде (если нужно)
-        let finalXOffset = (isFrontView == false && muscle.slug == "head") ? xOffset + 37.0 : xOffset
-        
-        let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
-        let isSelected = selectedMuscleName == muscle.name
-        
-        // ИСПРАВЛЕНИЕ: Button реагирует внутри ScrollView мгновенно и без багов,
-        // в отличие от обычного onTapGesture.
-        Button {
-            withAnimation(.spring()) {
-                selectedMuscleName = muscle.name
+        func drawMuscle(_ muscle: MuscleGroup, centeringOffset: CGFloat) -> some View {
+            let rawPath = combinedPath(from: muscle.paths)
+            
+            let baseXOffset: CGFloat = isFrontView ? 0 : -backViewOffset
+            var xOffset = baseXOffset + centeringOffset
+            
+            // Специальное смещение для головы на заднем виде (если нужно)
+            let finalXOffset = (isFrontView == false && muscle.slug == "head") ? xOffset + 37.0 : xOffset
+            
+            let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
+            let isSelected = selectedMuscleName == muscle.name
+            
+            // ИСПРАВЛЕНИЕ ДЛЯ РЕАЛЬНЫХ УСТРОЙСТВ: Расширенная зона нажатия.
+            // Делаем hitArea умной: для тонких мышц рук зону делаем еще шире.
+            let hitPath: Path = {
+                var p = Path()
+                p.addPath(finalPath)
+                
+                let isThinMuscle = ["biceps", "triceps", "forearm"].contains(muscle.slug)
+                let strokeWidth: CGFloat = isThinMuscle ? 80.0 : 60.0
+                
+                let stroked = finalPath.cgPath.copy(strokingWithWidth: strokeWidth, lineCap: .round, lineJoin: .round, miterLimit: 10)
+                p.addPath(Path(stroked))
+                return p
+            }()
+            
+            // ИСПРАВЛЕНИЕ: Button реагирует внутри ScrollView мгновенно и без багов,
+            // в отличие от обычного onTapGesture.
+            Button {
+                withAnimation(.spring()) {
+                    selectedMuscleName = muscle.name
+                }
+            } label: {
+                finalPath
+                    .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
+                    .overlay(
+                        finalPath.stroke(isSelected ? Color.blue : Color.black.opacity(0.15), lineWidth: isSelected ? 2.5 : 1.5)
+                    )
             }
-        } label: {
-            finalPath
-                .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
-                .overlay(
-                    finalPath.stroke(isSelected ? Color.blue : Color.black.opacity(0.15), lineWidth: isSelected ? 2.5 : 1.5)
-                )
+            .buttonStyle(.plain)
+            // Используем нашу расширенную зону нажатия вместо строгой finalPath
+            .contentShape(hitPath)
         }
-        .buttonStyle(.plain)
-        // ИСПРАВЛЕНИЕ: Используем прямой Path для точного попадания по контуру,
-        // игнорируя пустоты (что позволяет избегать перекрытий).
-        .contentShape(finalPath)
-    }
     
     func colorForMuscle(_ slug: String, isSelected: Bool) -> Color {
         if isSelected { return Color.blue.opacity(0.8) }

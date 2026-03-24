@@ -1,3 +1,8 @@
+//
+//  AchievementModels.swift
+//  WorkoutTracker
+//
+
 import Foundation
 internal import SwiftUI
 
@@ -211,43 +216,60 @@ class AchievementCalculator {
     // Если у вас есть экран "Достижения", который тоже вызывает calculateAchievements,
     // он продолжит работать через эту функцию-мост.
     static func calculateAchievements(workouts: [Workout], streak: Int) -> [Achievement] {
-        let totalVolume = workouts.reduce(0.0) { wSum, w in
-            wSum + w.exercises.reduce(0.0) { eSum, e in
-                e.type == .strength ? eSum + e.computedVolume : eSum
-            }
-        }
         
-        let totalDistance = workouts.reduce(0.0) { wSum, w in
-            wSum + w.exercises.reduce(0.0) { eSum, e in
-                if e.type == .cardio {
-                    let totalDist = e.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0.0, +)
-                    return eSum + ((totalDist > 0) ? totalDist : (e.distance ?? 0.0))
+        // ИСПРАВЛЕНИЕ ОШИБКИ ТАЙМАУТА: Заменяем сложные .reduce на простые циклы for,
+        // чтобы компилятор Swift мог легко их переварить.
+        var totalVolume: Double = 0.0
+        var totalDistance: Double = 0.0
+        
+        for workout in workouts {
+            for exercise in workout.exercises {
+                if exercise.type == ExerciseType.strength {
+                    totalVolume += exercise.exerciseVolume
+                } else if exercise.type == ExerciseType.cardio {
+                    var distForExercise: Double = 0.0
+                    for set in exercise.setsList {
+                        if set.isCompleted {
+                            if let d = set.distance {
+                                distForExercise += d
+                            }
+                        }
+                    }
+                    
+                    if distForExercise > 0 {
+                        totalDistance += distForExercise
+                    } else {
+                        // Используем новое сохраненное свойство
+                        totalDistance += (exercise.firstSetDistance ?? 0.0)
+                    }
                 }
-                return eSum
             }
         }
         
-        let earlyWorkouts = workouts.filter {
-            let hour = Calendar.current.component(.hour, from: $0.date)
-            return hour >= 4 && hour < 8
-        }.count
+        var earlyWorkouts = 0
+        var nightWorkouts = 0
+        var weekendWorkouts = 0
+        var lunchWorkouts = 0
         
-        let nightWorkouts = workouts.filter {
-            let hour = Calendar.current.component(.hour, from: $0.date)
-            return hour >= 22 || hour < 4
-        }.count
+        let calendar = Calendar.current
         
-        // Подсчет новых метрик
-        let weekendWorkouts = workouts.filter {
-            let weekday = Calendar.current.component(.weekday, from: $0.date)
-            // 1 = Sunday, 7 = Saturday
-            return weekday == 1 || weekday == 7
-        }.count
-        
-        let lunchWorkouts = workouts.filter {
-            let hour = Calendar.current.component(.hour, from: $0.date)
-            return hour >= 11 && hour <= 14
-        }.count
+        for workout in workouts {
+            let hour = calendar.component(.hour, from: workout.date)
+            let weekday = calendar.component(.weekday, from: workout.date)
+            
+            if hour >= 4 && hour < 8 {
+                earlyWorkouts += 1
+            }
+            if hour >= 22 || hour < 4 {
+                nightWorkouts += 1
+            }
+            if hour >= 11 && hour <= 14 {
+                lunchWorkouts += 1
+            }
+            if weekday == 1 || weekday == 7 { // 1 = Sunday, 7 = Saturday
+                weekendWorkouts += 1
+            }
+        }
         
         return calculateAchievements(
             totalWorkouts: workouts.count,
@@ -261,4 +283,3 @@ class AchievementCalculator {
         )
     }
 }
-
