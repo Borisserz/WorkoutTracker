@@ -145,17 +145,18 @@ struct PRCelebrationView: View {
     
     @MainActor
     private func share() {
-        let renderer = ImageRenderer(content: MilestoneShareCard(
-            title: LocalizedStringKey("New Personal Best!"),
-            subtitle: LocalizedStringKey(prLevel.title),
-            icon: prLevel == .diamond ? "sparkles" : "trophy.fill",
-            colors: prLevel.angularColors
-        ))
-        renderer.scale = 3.0
-        if let image = renderer.uiImage {
-            shareItem = SharedImageWrapper(image: image)
-        }
-    }
+           let renderer = ImageRenderer(content: MilestoneShareCard(
+               title: LocalizedStringKey("New Personal Best!"),
+               subtitle: LocalizedStringKey(prLevel.title),
+               descriptionText: LocalizedStringKey("Hard work pays off!"), // Или nil
+               icon: prLevel == .diamond ? "sparkles" : "trophy.fill",
+               colors: prLevel.angularColors
+           ))
+           renderer.scale = 3.0
+           if let image = renderer.uiImage {
+               shareItem = SharedImageWrapper(image: image)
+           }
+       }
 }
 
 struct SupersetCardView: View {

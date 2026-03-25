@@ -23,6 +23,7 @@ struct SharedImageWrapper: Identifiable {
 struct MilestoneShareCard: View {
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey
+    let descriptionText: LocalizedStringKey?
     let icon: String
     let colors: [Color]
     
@@ -81,6 +82,16 @@ struct MilestoneShareCard: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                     .padding(.top, 20)
+                
+                if let desc = descriptionText {
+                                   Text(desc)
+                                       .font(.title2)
+                                       .fontWeight(.medium)
+                                       .foregroundColor(.white.opacity(0.8))
+                                       .multilineTextAlignment(.center)
+                                       .padding(.horizontal, 50)
+                                       .padding(.top, 10)
+                               }
                 
                 Spacer()
                 

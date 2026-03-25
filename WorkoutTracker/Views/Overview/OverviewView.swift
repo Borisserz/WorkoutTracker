@@ -29,6 +29,10 @@ struct OverviewView: View {
     @State private var navigateToExercises = false
     @State private var navigateToDetailedRecovery = false // Программная навигация к восстановлению
     
+    // Новые стейты для Профиля и превью тренировки
+    @State private var showProfile = false
+    @State private var generatedFreshWorkout: GeneratedWorkout?
+    
     // Интерактивность графика и анимации
     @State private var selectedAngle: Int?
     @State private var isPulsing = false // Добавлено для пульсирующей кнопки
@@ -173,8 +177,18 @@ struct OverviewView: View {
                 }
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: WorkoutCalendarView()) {
-                        Image(systemName: "calendar")
+                    HStack(spacing: 16) {
+                        // Кнопка профиля пользователя
+                        Button {
+                            showProfile = true
+                        } label: {
+                            Image(systemName: "person.crop.circle.fill")
+                                .foregroundColor(.primary)
+                        }
+                        
+                        NavigationLink(destination: WorkoutCalendarView()) {
+                            Image(systemName: "calendar")
+                        }
                     }
                 }
             }
@@ -189,6 +203,15 @@ struct OverviewView: View {
             }
             .sheet(isPresented: $showMuscleColorSettings) {
                 MuscleColorSettingsView()
+            }
+            .sheet(isPresented: $showProfile) {
+                ProfileView()
+                    .environmentObject(viewModel.progressManager)
+            }
+            .sheet(item: $generatedFreshWorkout) { generated in
+                FreshWorkoutPreviewSheet(generatedWorkout: generated) {
+                    startGeneratedWorkout(generated)
+                }
             }
         }
     }
@@ -317,20 +340,25 @@ struct OverviewView: View {
         
         guard !generatedExercises.isEmpty else { return }
         
-        // 4. Формируем тренировку
+        // 4. Формируем тренировку и показываем шторку превью (Без сохранения в БД)
         let workoutName = "Fresh: " + selectedMuscles.joined(separator: " & ")
+        generatedFreshWorkout = GeneratedWorkout(title: workoutName, exercises: generatedExercises)
+    }
+    
+    // Запуск сгенерированной тренировки (вызывается из шторки)
+    private func startGeneratedWorkout(_ generated: GeneratedWorkout) {
         let newWorkout = Workout(
-            title: workoutName,
+            title: generated.title,
             date: Date(),
             icon: "bolt.fill",
-            exercises: generatedExercises
+            exercises: generated.exercises
         )
         
         // 5. Сохраняем в SwiftData и запускаем Live Activity
         context.insert(newWorkout)
         try? context.save()
         
-        let attributes = WorkoutActivityAttributes(workoutTitle: workoutName)
+        let attributes = WorkoutActivityAttributes(workoutTitle: generated.title)
         let state = WorkoutActivityAttributes.ContentState(startTime: Date())
         _ = try? Activity<WorkoutActivityAttributes>.request(
             attributes: attributes,
@@ -338,7 +366,6 @@ struct OverviewView: View {
             pushType: nil
         )
         
-        // 6. Переходим в деталку (с небольшой задержкой, чтобы SwiftData Query обновился)
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
         
@@ -429,12 +456,10 @@ struct OverviewView: View {
                 Chart(viewModel.dashboardMuscleData, id: \.muscle) { item in
                     SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.6), angularInset: 2)
                         .cornerRadius(5)
-                        .foregroundStyle(by: .value("Muscle", item.muscle))
+                        .foregroundStyle(colorManager.getColor(for: item.muscle))
                         .opacity(selectedMuscleInfo == nil || selectedMuscleInfo?.muscle == item.muscle ? 1.0 : 0.3)
                 }
-                .chartForegroundStyleScale(domain: viewModel.dashboardMuscleData.map { $0.muscle }, range: viewModel.dashboardMuscleData.map { colorManager.getColor(for: $0.muscle) })
                 .frame(height: 250)
-                // ИСПРАВЛЕНИЕ: Вычисляем угол нажатия вручную, чтобы график реагировал на мгновенный тап
                 .chartOverlay { proxy in
                     GeometryReader { geometry in
                         Rectangle()
@@ -552,5 +577,64 @@ struct OverviewView: View {
             Circle().fill(rank == 1 ? Color.yellow : rank == 2 ? Color.gray : rank == 3 ? Color.brown : Color.blue.opacity(0.1)).frame(width: 30, height: 30)
             Text("\(rank)").font(.caption).bold().foregroundColor(rank <= 3 ? .white : .blue)
         }.padding(.trailing, 5)
+    }
+}
+
+// MARK: - Fresh Workout Preview Models & Views
+
+struct GeneratedWorkout: Identifiable {
+    let id = UUID()
+    let title: String
+    let exercises: [Exercise]
+}
+
+struct FreshWorkoutPreviewSheet: View {
+    let generatedWorkout: GeneratedWorkout
+    let onStart: () -> Void
+    
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(generatedWorkout.exercises) { ex in
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(ex.name).font(.headline)
+                            Text(ex.muscleGroup)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Text("\(ex.setsCount) sets")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .navigationTitle(LocalizedStringKey("Ready to Train"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(LocalizedStringKey("Cancel")) { dismiss() }
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button {
+                    dismiss()
+                    onStart()
+                } label: {
+                    Text(LocalizedStringKey("Start Workout"))
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(12)
+                        .shadow(radius: 5)
+                }
+                .padding()
+                .background(Color(UIColor.systemBackground).shadow(color: .black.opacity(0.1), radius: 5, y: -5))
+            }
+        }
     }
 }

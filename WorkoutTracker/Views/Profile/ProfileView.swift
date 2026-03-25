@@ -1,4 +1,4 @@
-
+//
 //  ProfileView.swift
 //  WorkoutTracker
 //
@@ -17,6 +17,7 @@ struct ProfileView: View {
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     
     @AppStorage("userName") private var userName = "Fitness Enthusiast"
+    @AppStorage("userAvatar") private var userAvatar = "🦍"
     @AppStorage("userBodyWeight") private var userBodyWeight = 75.0  // Хранится в кг
     @AppStorage("userGender") private var userGender = "male" // "male" or "female"
     
@@ -24,6 +25,12 @@ struct ProfileView: View {
     
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false
+    
+    // State для редактирования
+    @State private var showEditAvatar = false
+    @State private var newAvatar = ""
+    @State private var showEditWeight = false
+    @State private var newWeightString = ""
     
     // Кешированные значения для производительности
     @State private var cachedAchievements: [Achievement] = []
@@ -82,27 +89,45 @@ struct ProfileView: View {
                         
                         // 1. HEADER (Аватар, Имя, Вес)
                         VStack(spacing: 15) {
-                            Image(systemName: "person.crop.circle.fill")
-                                .resizable()
-                                .frame(width: 100, height: 100)
-                                .foregroundColor(.gray.opacity(0.3))
-                                .overlay(Circle().stroke(Color.blue, lineWidth: 3))
+                            Button {
+                                newAvatar = userAvatar
+                                showEditAvatar = true
+                            } label: {
+                                Text(userAvatar)
+                                    .font(.system(size: 60))
+                                    .frame(width: 100, height: 100)
+                                    .background(Color.gray.opacity(0.1))
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(Color.blue, lineWidth: 3))
+                            }
                             
                             VStack(spacing: 8) {
-                                // ИМЯ (Read-Only)
-                                Text(userName)
+                                // ИМЯ (Editable)
+                                TextField("Name", text: $userName)
                                     .font(.title2)
                                     .bold()
+                                    .multilineTextAlignment(.center)
                                 
-                                // ВЕС под ником (Read-Only)
+                                // ВЕС под ником (Editable)
                                 let convertedWeight = unitsManager.convertFromKilograms(userBodyWeight)
-                                Text("\(LocalizationHelper.shared.formatDecimal(convertedWeight)) \(unitsManager.weightUnitString())")
-                                    .font(.title3)
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(8)
+                                HStack(spacing: 8) {
+                                    Text("\(LocalizationHelper.shared.formatDecimal(convertedWeight)) \(unitsManager.weightUnitString())")
+                                        .font(.title3)
+                                        .foregroundColor(.blue)
+                                    
+                                    Button {
+                                        newWeightString = LocalizationHelper.shared.formatDecimal(convertedWeight)
+                                        showEditWeight = true
+                                    } label: {
+                                        Image(systemName: "pencil")
+                                            .font(.subheadline)
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
                                 
                                 // Кнопка просмотра истории веса
                                 Button {
@@ -223,6 +248,36 @@ struct ProfileView: View {
                 }
                 .sheet(isPresented: $showingWeightHistory) {
                     WeightHistoryView()
+                }
+                .alert(LocalizedStringKey("Update Avatar"), isPresented: $showEditAvatar) {
+                    TextField("Emoji", text: $newAvatar)
+                        .onChange(of: newAvatar) { _, newValue in
+                            if newValue.count > 1 {
+                                newAvatar = String(newValue.prefix(1))
+                            }
+                        }
+                    Button("Save") {
+                        if !newAvatar.isEmpty {
+                            userAvatar = newAvatar
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Enter 1 character or emoji.")
+                }
+                .alert(LocalizedStringKey("Update Body Weight"), isPresented: $showEditWeight) {
+                    TextField("Weight", text: $newWeightString)
+                        .keyboardType(.decimalPad)
+                    Button("Save") {
+                        if let val = Double(newWeightString.replacingOccurrences(of: ",", with: ".")) {
+                            userBodyWeight = unitsManager.convertToKilograms(val)
+                            let newEntry = WeightEntry(date: Date(), weight: userBodyWeight)
+                            modelContext.insert(newEntry)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Enter your current weight in \(unitsManager.weightUnitString())")
                 }
                 .onAppear {
                     // Добавляем первую запись в SwiftData, если история пуста
@@ -508,17 +563,18 @@ struct AchievementPopupView: View {
     
     @MainActor
     private func share() {
-        let renderer = ImageRenderer(content: MilestoneShareCard(
-            title: LocalizedStringKey("Unlocked Achievements"),
-            subtitle: achievement.title,
-            icon: achievement.icon,
-            colors: angularColors
-        ))
-        renderer.scale = 3.0
-        if let image = renderer.uiImage {
-            shareItem = SharedImageWrapper(image: image)
+            let renderer = ImageRenderer(content: MilestoneShareCard(
+                title: LocalizedStringKey("Unlocked Achievements"),
+                subtitle: achievement.title,
+                descriptionText: achievement.description, // ПЕРЕДАЕМ ОПИСАНИЕ СЮДА
+                icon: achievement.icon,
+                colors: angularColors
+            ))
+            renderer.scale = 3.0
+            if let image = renderer.uiImage {
+                shareItem = SharedImageWrapper(image: image)
+            }
         }
-    }
 }
 
 struct AchievementConfetti: View {

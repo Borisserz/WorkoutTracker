@@ -232,26 +232,27 @@ actor WorkoutRepository {
         return Set(items.filter { $0.isHidden && !$0.isCustom }.map { $0.name })
     }
 
-    func checkAndGenerateDefaultPresets() throws {
-        let count = (try? modelContext.fetchCount(FetchDescriptor<WorkoutPreset>())) ?? 0
-        if count == 0 {
-            for example in Workout.examples {
-                let preset = WorkoutPreset(id: UUID(), name: example.title, icon: example.icon, exercises: [])
-                modelContext.insert(preset)
-                for exercise in example.exercises {
-                    let dup = exercise.duplicate()
-                    modelContext.insert(dup)
-                    preset.exercises.append(dup)
-                    for set in dup.setsList { modelContext.insert(set) }
-                    for sub in dup.subExercises {
-                        modelContext.insert(sub)
-                        for s in sub.setsList { modelContext.insert(s) }
+    public func checkAndGenerateDefaultPresets() throws {
+            let count = (try? modelContext.fetchCount(FetchDescriptor<WorkoutPreset>())) ?? 0
+            if count == 0 {
+                for example in Workout.examples {
+                    let preset = WorkoutPreset(id: UUID(), name: example.title, icon: example.icon, exercises: [])
+                    modelContext.insert(preset)
+                    for exercise in example.exercises {
+                        let dup = exercise.duplicate()
+                        modelContext.insert(dup)
+                        dup.preset = preset // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+                        preset.exercises.append(dup)
+                        for set in dup.setsList { modelContext.insert(set) }
+                        for sub in dup.subExercises {
+                            modelContext.insert(sub)
+                            for s in sub.setsList { modelContext.insert(s) }
+                        }
                     }
                 }
+                try modelContext.save()
             }
-            try modelContext.save()
         }
-    }
 
     func addCustomExercise(name: String, category: String, muscles: [String], type: ExerciseType) throws {
         let item = ExerciseDictionaryItem(name: name, category: category, targetedMuscles: muscles, type: type, isCustom: true, isHidden: false)

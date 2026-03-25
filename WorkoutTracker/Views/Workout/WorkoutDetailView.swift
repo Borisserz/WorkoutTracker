@@ -1,4 +1,4 @@
-
+//
 //  WorkoutDetailView.swift
 //  WorkoutTracker
 //
@@ -485,14 +485,19 @@ struct WorkoutDetailView: View {
     
     private var exerciseListSection: some View {
         Group {
-            if workout.exercises.isEmpty {
-                EmptyStateView(
-                    icon: "plus.circle.fill",
-                    title: LocalizedStringKey("No exercises added yet"),
-                    message: LocalizedStringKey("Tap the + button above to add your first exercise to this workout.")
-                )
-                .padding(.vertical, 30)
-            } else {
+             if workout.exercises.isEmpty {
+                 Button {
+                     showExerciseSelection = true
+                 } label: {
+                     EmptyStateView(
+                         icon: "plus.circle.fill",
+                         title: LocalizedStringKey("No exercises added yet"),
+                         message: LocalizedStringKey("Tap the + button above to add your first exercise to this workout.")
+                     )
+                     .padding(.vertical, 30)
+                 }
+                 .buttonStyle(.plain)
+             } else {
                 VStack(spacing: 16) {
                     ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
                         
