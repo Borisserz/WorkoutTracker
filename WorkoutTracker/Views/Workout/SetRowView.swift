@@ -2,16 +2,6 @@
 //  SetRowView.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Строка одного сета в таблице упражнения.
-//  Содержит:
-//  1. Номер сета.
-//  2. Поля ввода (Вес/Повторы/Время) с подсказками из прошлой тренировки.
-//  3. Индикатор расчетного 1RM (Эпли) для силовых упражнений.
-//  4. Кнопку типа сета (Разминка/Обычный).
-//  5. Чекбокс завершения с поддержкой Smart Rest.
-//
 
 internal import SwiftUI
 import SwiftData
@@ -23,6 +13,8 @@ struct SetRowView: View {
     @Bindable var set: WorkoutSet
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
     @ObservedObject private var unitsManager = UnitsManager.shared
+    
+    @State private var showAITracker: Bool = false
     
     let exerciseName: String
     let cached1RM: Double
@@ -141,7 +133,6 @@ struct SetRowView: View {
         .padding(.vertical, 4)
         .background(set.isCompleted ? Color.green.opacity(0.05) : Color.clear)
         .cornerRadius(6)
-        // PERFORMANCE OPTIMIZATION: Flatten the heavy inner views (buttons, texts, backgrounds) into a single layer to avoid List stuttering
         .compositingGroup()
         .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
         .sheet(isPresented: $showSliderSheet) {
@@ -195,17 +186,50 @@ struct SetRowView: View {
                         }
                     )
                     
-                    inputColumn(
-                        type: .reps,
-                        binding: repsBinding,
-                        ghostText: prevReps.map { "\($0)" }
-                    )
+                    // MARK: Обертка для Reps + AI Кнопка
+                    HStack(spacing: 8) {
+                        inputColumn(
+                            type: .reps,
+                            binding: repsBinding,
+                            ghostText: prevReps.map { "\($0)" }
+                        )
+                        
+                        // ДОБАВЛЕНО: Кнопка AI показывается для ВСЕХ поддерживаемых упражнений
+                        if TrackedExercise(name: exerciseName) != .unsupported {
+                            Button {
+                                showAITracker = true
+                            } label: {
+                                Image(systemName: "brain.head.profile")
+                                    .font(.title2)
+                                    .symbolRenderingMode(.multicolor)
+                                    .foregroundStyle(
+                                        LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                            .fullScreenCover(isPresented: $showAITracker) {
+                                // ПЕРЕДАЕМ ИМЯ УПРАЖНЕНИЯ В ТРЕКЕР
+                                AITrackerView(exerciseName: exerciseName) { countedReps in
+                                    // Callback: возвращаем повторения из трекера
+                                    if countedReps > 0 {
+                                        set.reps = countedReps
+                                        
+                                        // Завершаем подход с небольшой задержкой для красоты
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                            if !set.isCompleted {
+                                                toggleComplete()
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 
                 if estimated1RM > 0 {
                     estimated1RMView
                 } else {
-                    // Невидимый плейсхолдер, чтобы UI не "прыгал" по высоте, когда начинаем вводить данные
                     Text(" ")
                         .font(.system(size: 10))
                         .padding(.leading, 4)
@@ -221,9 +245,7 @@ struct SetRowView: View {
                     return LocalizationHelper.shared.formatDecimal(converted)
                 }
             )
-            
             Spacer()
-            
             inputColumn(
                 type: .timeMin,
                 binding: timeBinding,
@@ -260,14 +282,10 @@ struct SetRowView: View {
     
     private func getActiveBinding() -> Binding<Double?> {
         switch activeBindingType {
-        case .weight:
-            return weightBinding
-        case .reps:
-            return repsBinding
-        case .distance:
-            return distanceBinding
-        case .timeMin, .timeSec:
-            return timeBinding
+        case .weight: return weightBinding
+        case .reps: return repsBinding
+        case .distance: return distanceBinding
+        case .timeMin, .timeSec: return timeBinding
         }
     }
     
@@ -275,16 +293,11 @@ struct SetRowView: View {
         guard let value = value, value >= 0 else {
             return type.title(unitsManager: unitsManager)
         }
-        
         switch type {
-        case .weight:
-            return LocalizationHelper.shared.formatFlexible(value)
-        case .reps:
-            return LocalizationHelper.shared.formatInteger(value)
-        case .distance:
-            return LocalizationHelper.shared.formatDecimal(value)
-        case .timeMin, .timeSec:
-            return LocalizationHelper.shared.formatInteger(value)
+        case .weight: return LocalizationHelper.shared.formatFlexible(value)
+        case .reps: return LocalizationHelper.shared.formatInteger(value)
+        case .distance: return LocalizationHelper.shared.formatDecimal(value)
+        case .timeMin, .timeSec: return LocalizationHelper.shared.formatInteger(value)
         }
     }
     
@@ -352,16 +365,10 @@ struct SetRowView: View {
             generator.impactOccurred()
             
             var suggestedDuration: Int? = nil
-            
-            // Smart Rest Calculation
             if exerciseType == .strength {
-                if effort >= 8 {
-                    suggestedDuration = 180
-                } else if effort >= 6 {
-                    suggestedDuration = 120
-                } else {
-                    suggestedDuration = 90
-                }
+                if effort >= 8 { suggestedDuration = 180 }
+                else if effort >= 6 { suggestedDuration = 120 }
+                else { suggestedDuration = 90 }
             }
             
             if autoStartTimer && !isLastSet {

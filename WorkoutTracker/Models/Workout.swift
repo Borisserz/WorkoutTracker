@@ -405,62 +405,61 @@ extension WorkoutPreset {
     }
 }
 // MARK: - Extensions (Data & Catalog)
-
 extension Exercise {
     static let catalog: [String: [String]] = [
         Constants.MuscleName.chest.rawValue: [
-            "Bench Press", "Push Ups", "Incline Dumbbell Press", "Dips",
-            "Dumbbell Flyes", "Cable Crossover", "Decline Bench Press",
-            "Chest Press Machine", "Pec Deck", "Incline Bench Press",
-            "Diamond Push Ups", "Wide Grip Push Ups", "Cable Flyes",
-            "Push-up Variations", "Chest Dips", "Landmine Press"
+            "Bench Press", "Push Ups", // "Incline Dumbbell Press", "Dips",
+            // "Dumbbell Flyes", "Cable Crossover", "Decline Bench Press",
+            // "Chest Press Machine", "Pec Deck", "Incline Bench Press",
+            // "Diamond Push Ups", "Wide Grip Push Ups", "Cable Flyes",
+            // "Push-up Variations", "Chest Dips", "Landmine Press"
         ],
         Constants.MuscleName.back.rawValue: [
-            "Pull-ups", "Deadlift", "Barbell Rows", "Lat Pulldown",
-            "T-Bar Row", "Cable Rows", "One-Arm Dumbbell Row",
-            "Chin-ups", "Wide Grip Pull-ups", "Seated Cable Row",
-            "Bent Over Row", "Face Pulls", "Reverse Flyes",
-            "Shrugs", "Good Mornings", "Rack Pulls", "Renegade Rows",
-            "Inverted Row", "Hyperextensions", "Meadows Row"
+            "Pull-ups", "Deadlift", "Barbell Rows", // "Lat Pulldown",
+            // "T-Bar Row", "Cable Rows", "One-Arm Dumbbell Row",
+            // "Chin-ups", "Wide Grip Pull-ups", "Seated Cable Row",
+            // "Bent Over Row", "Face Pulls", "Reverse Flyes",
+            // "Shrugs", "Good Mornings", "Rack Pulls", "Renegade Rows",
+            // "Inverted Row", "Hyperextensions", "Meadows Row"
         ],
         Constants.MuscleName.legs.rawValue: [
-            "Squat", "Leg Press", "Lunges", "Calf Raises",
-            "Romanian Deadlift", "Bulgarian Split Squat", "Leg Curls",
-            "Leg Extensions", "Hack Squat", "Front Squat",
-            "Walking Lunges", "Step-ups", "Glute Bridge",
-            "Hip Thrusts", "Goblet Squat", "Pistol Squat",
-            "Sumo Squat", "Stiff Leg Deadlift", "Seated Calf Raise",
-            "Standing Calf Raise", "Wall Sits", "Quadruped Hip Extension"
+            "Squat", "Leg Press", "Lunges", // "Calf Raises",
+            // "Romanian Deadlift", "Bulgarian Split Squat", "Leg Curls",
+            // "Leg Extensions", "Hack Squat", "Front Squat",
+            // "Walking Lunges", "Step-ups", "Glute Bridge",
+            // "Hip Thrusts", "Goblet Squat", "Pistol Squat",
+            // "Sumo Squat", "Stiff Leg Deadlift", "Seated Calf Raise",
+            // "Standing Calf Raise", "Wall Sits", "Quadruped Hip Extension"
         ],
         Constants.MuscleName.shoulders.rawValue: [
-            "Overhead Press", "Lateral Raises", "Face Pulls",
-            "Arnold Press", "Reverse Flyes", "Front Raises",
-            "Upright Row", "Pike Push-ups", "Shoulder Press Machine",
-            "Cable Lateral Raises", "Rear Delt Flyes", "Push Press",
-            "Handstand Push-ups", "Landmine Press", "Turkish Get-up"
+            "Overhead Press", "Lateral Raises", // "Face Pulls",
+            // "Arnold Press", "Reverse Flyes", "Front Raises",
+            // "Upright Row", "Pike Push-ups", "Shoulder Press Machine",
+            // "Cable Lateral Raises", "Rear Delt Flyes", "Push Press",
+            // "Handstand Push-ups", "Landmine Press", "Turkish Get-up"
         ],
         Constants.MuscleName.arms.rawValue: [
-            "Barbell Curl", "Triceps Extension", "Hammer Curls",
-            "Bicep Curls", "Triceps Dips", "Close Grip Bench Press",
-            "Preacher Curl", "Concentration Curls", "Cable Curls",
-            "Triceps Pushdown", "Overhead Triceps Extension",
-            "Spider Curls", "Rope Hammer Curls", "Skull Crushers",
-            "French Press", "Zottman Curls", "Cable Kickbacks"
+            "Barbell Curl", "Triceps Extension", // "Hammer Curls",
+            // "Bicep Curls", "Triceps Dips", "Close Grip Bench Press",
+            // "Preacher Curl", "Concentration Curls", "Cable Curls",
+            // "Triceps Pushdown", "Overhead Triceps Extension",
+            // "Spider Curls", "Rope Hammer Curls", "Skull Crushers",
+            // "French Press", "Zottman Curls", "Cable Kickbacks"
         ],
         Constants.MuscleName.core.rawValue: [
-            "Plank", "Crunches", "Leg Raises",
-            "Russian Twists", "Mountain Climbers", "Bicycle Crunches",
-            "Hanging Knee Raises", "Dead Bug", "Bird Dog",
-            "Side Plank", "Ab Wheel Rollout", "Sit-ups",
-            "L-sit", "Dragon Flag", "Toes to Bar",
-            "Cable Crunches", "Pallof Press", "Turkish Get-up"
+            "Plank", "Crunches", // "Leg Raises",
+            // "Russian Twists", "Mountain Climbers", "Bicycle Crunches",
+            // "Hanging Knee Raises", "Dead Bug", "Bird Dog",
+            // "Side Plank", "Ab Wheel Rollout", "Sit-ups",
+            // "L-sit", "Dragon Flag", "Toes to Bar",
+            // "Cable Crunches", "Pallof Press", "Turkish Get-up"
         ],
         Constants.MuscleName.cardio.rawValue: [
-            "Running", "Cycling", "Rowing", "Jump Rope", "Stretching",
-            "Treadmill", "Elliptical", "HIIT", "Burpees",
-            "Jumping Jacks", "High Knees", "Mountain Climbers",
-            "Battle Ropes", "Box Jumps", "Swimming", "Stair Climber",
-            "Kettlebell Swings", "Rowing Machine", "Treadmill Sprints"
+            "Running", "Cycling", // "Rowing", "Jump Rope", "Stretching",
+            // "Treadmill", "Elliptical", "HIIT", "Burpees",
+            // "Jumping Jacks", "High Knees", "Mountain Climbers",
+            // "Battle Ropes", "Box Jumps", "Swimming", "Stair Climber",
+            // "Kettlebell Swings", "Rowing Machine", "Treadmill Sprints"
         ]
     ]
 }
