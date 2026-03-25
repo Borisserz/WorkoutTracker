@@ -279,7 +279,7 @@ struct SupersetCardView: View {
                     currentWorkoutId: currentWorkoutId,
                     onDelete: {
                         withAnimation {
-                            viewModel.removeSubExercise(exercise, from: superset, context: context)
+                            viewModel.removeSubExercise(exercise, from: superset, container: context.container)
                         }
                     },
                     isEmbeddedInSuperset: true,
@@ -320,7 +320,7 @@ struct SupersetCardView: View {
         for sub in superset.subExercises {
             let uncompletedSets = sub.setsList.filter { !$0.isCompleted }
             for set in uncompletedSets {
-                viewModel.deleteSet(set, from: sub, context: context)
+                viewModel.deleteSet(set, from: sub, container: context.container)
             }
             sub.isCompleted = true
         }

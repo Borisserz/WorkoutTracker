@@ -9,6 +9,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 struct AddNewExerciseView: View {
     
@@ -120,15 +121,16 @@ struct AddNewExerciseView: View {
     }
     
     private func saveExercise() {
-        viewModel.addCustomExercise(
-            name: name,
-            category: selectedCategory,
-            muscles: Array(selectedMuscles),
-            type: selectedType,
-            context: context
-        )
-        dismiss()
-    }
+            viewModel.addCustomExercise(
+                name: name,
+                category: selectedCategory,
+                muscles: Array(selectedMuscles),
+                type: selectedType,
+                container: context.container // ИСПРАВЛЕНИЕ ЗДЕСЬ
+            )
+            dismiss()
+        }
+    
 }
 
 // MARK: - Preview

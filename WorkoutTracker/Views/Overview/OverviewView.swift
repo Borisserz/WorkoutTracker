@@ -226,7 +226,7 @@ struct OverviewView: View {
         }
     }
     
-    private var selectedMuscleInfo: (muscle: String, count: Int)? {
+    private var selectedMuscleInfo: MuscleCountDTO? {
         guard let selectedAngle else { return nil }
         var currentSum = 0
         for item in viewModel.dashboardMuscleData {

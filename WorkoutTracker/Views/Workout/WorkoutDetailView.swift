@@ -301,7 +301,7 @@ struct WorkoutDetailView: View {
                 supersetToEdit = nil
             }, onDelete: {
                 withAnimation {
-                    viewModel.removeExercise(superset, from: workout, context: context)
+                    viewModel.removeExercise(superset, from: workout, container: context.container)
                 }
                 supersetToEdit = nil
             })
@@ -317,7 +317,7 @@ struct WorkoutDetailView: View {
         .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyWorkoutAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
                 // Используем централизованный метод ViewModel для консистентного удаления тренировки
-                viewModel.deleteWorkout(workout, context: context)
+                viewModel.deleteWorkout(workout, container: context.container)
                 timerManager.stopRestTimer()
                 dismiss()
             }
@@ -498,7 +498,7 @@ struct WorkoutDetailView: View {
                         
                         let deleteAction = {
                             withAnimation {
-                                viewModel.removeExercise(exercise, from: workout, context: context)
+                                viewModel.removeExercise(exercise, from: workout, container: context.container)
                             }
                         }
                         
@@ -794,7 +794,7 @@ struct WorkoutDetailView: View {
         guard let index = workout.exercises.firstIndex(where: { $0.id == old.id }) else { return }
         withAnimation {
             workout.exercises.insert(new, at: index)
-            viewModel.removeExercise(old, from: workout, context: context)
+            viewModel.removeExercise(old, from: workout, container: context.container)
         }
         updateComputedData()
     }
@@ -861,7 +861,7 @@ struct WorkoutDetailView: View {
         let old_nWorkouts = stats.nightWorkouts
         
         // 5. Делегируем инкремент всей статистики во ViewModel
-        viewModel.processCompletedWorkout(workout, context: context)
+        viewModel.processCompletedWorkout(workout, container: context.container)
         
         // Берем обновленные данные из того же объекта
         let tWorkouts = stats.totalWorkouts
