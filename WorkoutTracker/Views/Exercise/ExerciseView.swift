@@ -11,6 +11,7 @@
 //
 
 internal import SwiftUI
+import SwiftData
 
 struct ExerciseView: View {
     
@@ -313,12 +314,13 @@ struct ExerciseView: View {
     
     /// Логика удаления (работает для всех упражнений - пользовательских и стандартных)
     private func deleteExercises() {
-        withAnimation {
-            for item in exercisesToDelete {
-                viewModel.deleteExercise(name: item.name, category: item.category, context: context)
-            }
-            exercisesToDelete = []
-        }
-    }
+           withAnimation {
+               for item in exercisesToDelete {
+                   // ИСПРАВЛЕНИЕ: Передаем container вместо context
+                   viewModel.deleteExercise(name: item.name, category: item.category, container: context.container)
+               }
+               exercisesToDelete = []
+           }
+       }
 }
 

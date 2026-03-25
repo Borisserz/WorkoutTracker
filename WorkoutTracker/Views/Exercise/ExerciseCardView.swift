@@ -371,100 +371,107 @@ struct ExerciseCardView: View {
     
     // MARK: - Logic
     
-    private func finishExercise() {
-        guard !exercise.isCompleted && !isWorkoutCompleted else { return }
+    // MARK: - Logic
         
-        // Удаляем пустые (незавершенные) подходы
-        // ViewModel позаботится об удалении, переиндексации и сохранении в БД
-        let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
-        for set in uncompletedSets {
-            viewModel.deleteSet(set, from: exercise, context: context)
-        }
-        
-        exercise.isCompleted = true // Помечаем упражнение как завершенное
-        
-        let lastData = viewModel.lastPerformancesCache[exercise.name]
-        var newRecordWasSet = false
-        var maxIncreasePercent: Double = 0.0
-        
-        if exercise.type == .strength {
-            let maxWeightInWorkout = exercise.setsList
-                .filter { $0.isCompleted }
-                .compactMap { $0.weight }
-                .max() ?? 0
+        private func finishExercise() {
+            guard !exercise.isCompleted && !isWorkoutCompleted else { return }
             
-            if let _ = lastData {
-                let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
-                if maxWeightInWorkout > oldRecord {
-                    newRecordWasSet = true
-                    
-                    let increase = oldRecord > 0 ? (maxWeightInWorkout - oldRecord) / oldRecord : 0.0
-                    if increase > maxIncreasePercent {
-                        maxIncreasePercent = increase
+            // Удаляем пустые (незавершенные) подходы
+            let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
+            for set in uncompletedSets {
+                // ИСПРАВЛЕНИЕ: Передаем container вместо context
+                viewModel.deleteSet(set, from: exercise, container: context.container)
+            }
+            
+            exercise.isCompleted = true // Помечаем упражнение как завершенное
+            
+            let lastData = viewModel.lastPerformancesCache[exercise.name]
+            var newRecordWasSet = false
+            var maxIncreasePercent: Double = 0.0
+            
+            if exercise.type == .strength {
+                let maxWeightInWorkout = exercise.setsList
+                    .filter { $0.isCompleted }
+                    .compactMap { $0.weight }
+                    .max() ?? 0
+                
+                if let _ = lastData {
+                    let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
+                    if maxWeightInWorkout > oldRecord {
+                        newRecordWasSet = true
+                        
+                        let increase = oldRecord > 0 ? (maxWeightInWorkout - oldRecord) / oldRecord : 0.0
+                        if increase > maxIncreasePercent {
+                            maxIncreasePercent = increase
+                        }
                     }
                 }
             }
-        }
-        
-        if tutorialManager.currentStep == .finishExercise {
-            tutorialManager.setStep(.explainEffort)
-        }
-        
-        if newRecordWasSet {
-            let calculatedPRLevel: PRLevel
             
-            if maxIncreasePercent >= 0.20 {
-                calculatedPRLevel = .diamond
-            } else if maxIncreasePercent >= 0.10 {
-                calculatedPRLevel = .gold
-            } else if maxIncreasePercent >= 0.05 {
-                calculatedPRLevel = .silver
-            } else {
-                calculatedPRLevel = .bronze
+            if tutorialManager.currentStep == .finishExercise {
+                tutorialManager.setStep(.explainEffort)
             }
             
-            onPRSet?(calculatedPRLevel)
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+            if newRecordWasSet {
+                let calculatedPRLevel: PRLevel
+                
+                if maxIncreasePercent >= 0.20 {
+                    calculatedPRLevel = .diamond
+                } else if maxIncreasePercent >= 0.10 {
+                    calculatedPRLevel = .gold
+                } else if maxIncreasePercent >= 0.05 {
+                    calculatedPRLevel = .silver
+                } else {
+                    calculatedPRLevel = .bronze
+                }
+                
+                onPRSet?(calculatedPRLevel)
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) {
+                    showEffortSheet = true
+                }
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            } else {
                 showEffortSheet = true
             }
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-        } else {
-            showEffortSheet = true
         }
-    }
-    
-    private func addSet() {
-        guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         
-        let sortedSets = exercise.sortedSets
-        let lastSet = sortedSets.last
-        let newIndex = (lastSet?.index ?? 0) + 1
-        
-        let newSet = WorkoutSet(
-            index: newIndex,
-            weight: lastSet?.weight,
-            reps: lastSet?.reps,
-            distance: lastSet?.distance,
-            time: lastSet?.time
-        )
-        
-        withAnimation {
-            viewModel.addSet(newSet, to: exercise, context: context)
-            newlyAddedSetId = newSet.id
-        }
-    }
-    
-    private func removeSet(withId id: UUID) {
-        guard !exercise.isCompleted && !isWorkoutCompleted else { return }
-        
-        withAnimation {
-            if let setToDelete = exercise.setsList.first(where: { $0.id == id }) {
-                viewModel.deleteSet(setToDelete, from: exercise, context: context)
+        private func addSet() {
+            guard !exercise.isCompleted && !isWorkoutCompleted else { return }
+            
+            let sortedSets = exercise.sortedSets
+            let lastSet = sortedSets.last
+            let newIndex = (lastSet?.index ?? 0) + 1
+            
+            withAnimation {
+                // ИСПРАВЛЕНИЕ: Передаем сырые данные и container
+                viewModel.addSet(
+                    to: exercise,
+                    index: newIndex,
+                    weight: lastSet?.weight,
+                    reps: lastSet?.reps,
+                    distance: lastSet?.distance,
+                    time: lastSet?.time,
+                    type: .normal,
+                    isCompleted: false,
+                    container: context.container
+                )
+                // Сохраняем ID для фокуса (берем последний добавленный)
+                newlyAddedSetId = exercise.setsList.last?.id
             }
         }
-    }
+        
+        private func removeSet(withId id: UUID) {
+            guard !exercise.isCompleted && !isWorkoutCompleted else { return }
+            
+            withAnimation {
+                if let setToDelete = exercise.setsList.first(where: { $0.id == id }) {
+                    // ИСПРАВЛЕНИЕ: Передаем container вместо context
+                    viewModel.deleteSet(setToDelete, from: exercise, container: context.container)
+                }
+            }
+        }
     
     // MARK: - Helpers
     

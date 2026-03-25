@@ -156,7 +156,7 @@ struct BodyHeatmapView: View {
         // Возвращаем смещение, необходимое для центрирования
         return canvasCenterX - bodyCenterX
     }
-    
+
     @ViewBuilder
         func drawMuscle(_ muscle: MuscleGroup, centeringOffset: CGFloat) -> some View {
             let rawPath = combinedPath(from: muscle.paths)
@@ -191,15 +191,19 @@ struct BodyHeatmapView: View {
                     selectedMuscleName = muscle.name
                 }
             } label: {
-                finalPath
-                    .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
-                    .overlay(
-                        finalPath.stroke(isSelected ? Color.blue : Color.black.opacity(0.15), lineWidth: isSelected ? 2.5 : 1.5)
-                    )
+                ZStack {
+                    // ИСПРАВЛЕНИЕ: Железобетонная невидимая подложка для точного захвата тапов
+                    hitPath
+                        .fill(Color.white.opacity(0.001))
+                    
+                    finalPath
+                        .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
+                        .overlay(
+                            finalPath.stroke(isSelected ? Color.blue : Color.black.opacity(0.15), lineWidth: isSelected ? 2.5 : 1.5)
+                        )
+                }
             }
             .buttonStyle(.plain)
-            // Используем нашу расширенную зону нажатия вместо строгой finalPath
-            .contentShape(hitPath)
         }
     
     func colorForMuscle(_ slug: String, isSelected: Bool) -> Color {

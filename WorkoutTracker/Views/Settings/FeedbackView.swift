@@ -180,17 +180,17 @@ struct MailComposeView: UIViewControllerRepresentable {
     let result: (Result<MFMailComposeResult, Error>) -> Void
     
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
-        let composer = MFMailComposeViewController()
-        composer.mailComposeDelegate = context.coordinator
-        composer.setSubject(subject)
-        composer.setMessageBody(messageBody, isHTML: false)
-        // Замените на ваш реальный email адрес для поддержки
-        composer.setToRecipients(["support@workouttracker.app"])
+            let composer = MFMailComposeViewController()
+            composer.mailComposeDelegate = context.coordinator
+            composer.setSubject(subject)
+            composer.setMessageBody(messageBody, isHTML: false)
+            // Замените на ваш реальный email адрес для поддержки
+            composer.setToRecipients(["support@workouttracker.app"])
+            
+            return composer
+        }
         
-        return composer
-    }
-    
-    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
+        func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)

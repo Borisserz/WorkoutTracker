@@ -251,23 +251,36 @@ struct PresetEditorView: View {
     // MARK: - Logic Helpers
     
     private func savePreset() {
-        if let existingPreset = preset {
-            // Обновляем существующий
-            existingPreset.name = name
-            existingPreset.icon = selectedIcon
-            existingPreset.exercises = exercises
-        } else {
-            // Создаем новый
-            let newPreset = WorkoutPreset(
-                id: UUID(),
-                name: name,
-                icon: selectedIcon,
-                exercises: exercises
-            )
-            context.insert(newPreset)
+            if let existingPreset = preset {
+                // Обновляем существующий
+                existingPreset.name = name
+                existingPreset.icon = selectedIcon
+                
+                // Очищаем старые и добавляем новые, чтобы SwiftData понял изменения
+                existingPreset.exercises.removeAll()
+                for ex in exercises {
+                    if ex.modelContext == nil { context.insert(ex) }
+                    ex.preset = existingPreset
+                    existingPreset.exercises.append(ex)
+                }
+            } else {
+                // Создаем новый
+                let newPreset = WorkoutPreset(
+                    id: UUID(),
+                    name: name,
+                    icon: selectedIcon,
+                    exercises: []
+                )
+                context.insert(newPreset)
+                
+                for ex in exercises {
+                    context.insert(ex)
+                    ex.preset = newPreset
+                    newPreset.exercises.append(ex)
+                }
+            }
+            dismiss()
         }
-        dismiss()
-    }
     
     private func formatTime(_ totalSeconds: Int) -> String {
         let m = totalSeconds / 60

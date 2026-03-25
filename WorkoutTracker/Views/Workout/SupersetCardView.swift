@@ -145,17 +145,18 @@ struct PRCelebrationView: View {
     
     @MainActor
     private func share() {
-        let renderer = ImageRenderer(content: MilestoneShareCard(
-            title: LocalizedStringKey("New Personal Best!"),
-            subtitle: LocalizedStringKey(prLevel.title),
-            icon: prLevel == .diamond ? "sparkles" : "trophy.fill",
-            colors: prLevel.angularColors
-        ))
-        renderer.scale = 3.0
-        if let image = renderer.uiImage {
-            shareItem = SharedImageWrapper(image: image)
-        }
-    }
+           let renderer = ImageRenderer(content: MilestoneShareCard(
+               title: LocalizedStringKey("New Personal Best!"),
+               subtitle: LocalizedStringKey(prLevel.title),
+               descriptionText: LocalizedStringKey("Hard work pays off!"), // Или nil
+               icon: prLevel == .diamond ? "sparkles" : "trophy.fill",
+               colors: prLevel.angularColors
+           ))
+           renderer.scale = 3.0
+           if let image = renderer.uiImage {
+               shareItem = SharedImageWrapper(image: image)
+           }
+       }
 }
 
 struct SupersetCardView: View {
@@ -279,7 +280,7 @@ struct SupersetCardView: View {
                     currentWorkoutId: currentWorkoutId,
                     onDelete: {
                         withAnimation {
-                            viewModel.removeSubExercise(exercise, from: superset, context: context)
+                            viewModel.removeSubExercise(exercise, from: superset, container: context.container)
                         }
                     },
                     isEmbeddedInSuperset: true,
@@ -320,7 +321,7 @@ struct SupersetCardView: View {
         for sub in superset.subExercises {
             let uncompletedSets = sub.setsList.filter { !$0.isCompleted }
             for set in uncompletedSets {
-                viewModel.deleteSet(set, from: sub, context: context)
+                viewModel.deleteSet(set, from: sub, container: context.container)
             }
             sub.isCompleted = true
         }

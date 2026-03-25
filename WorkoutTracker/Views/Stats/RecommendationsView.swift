@@ -10,8 +10,18 @@ internal import SwiftUI
 
 struct RecommendationsView: View {
     let recommendations: [WorkoutViewModel.Recommendation]
-    
-    var body: some View {
+       var onTap: ((WorkoutViewModel.Recommendation) -> Void)?
+       
+       // ДОБАВЛЕН ЯВНЫЙ ИНИЦИАЛИЗАТОР
+       init(
+           recommendations: [WorkoutViewModel.Recommendation],
+           onTap: ((WorkoutViewModel.Recommendation) -> Void)? = nil
+       ) {
+           self.recommendations = recommendations
+           self.onTap = onTap
+       }
+       
+       var body: some View {
         if recommendations.isEmpty {
             EmptyStateView(
                 icon: "checkmark.circle.fill",

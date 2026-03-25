@@ -63,26 +63,29 @@ struct WorkoutTrackerApp: App {
                 .environmentObject(tutorialManager)
                 .environmentObject(timerManager)
                 .onAppear {
-                    // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ
-                    LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
-                    
-                    viewModel.checkAndGenerateDefaultPresets(context: container.mainContext)
-                    
-                    // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
-                    MuscleColorManager.shared.load(context: container.mainContext)
-                }
-                .onOpenURL { url in
-                    if viewModel.importPreset(from: url, context: container.mainContext) {
-                        showImportAlert = true
-                    }
-                }
-                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
-                    if let url = userActivity.webpageURL {
-                        if viewModel.importPreset(from: url, context: container.mainContext) {
-                            showImportAlert = true
-                        }
-                    }
-                }
+                                    // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ
+                                    LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
+                                    
+                                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
+                                    viewModel.checkAndGenerateDefaultPresets(container: container)
+                                    
+                                    // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
+                                    MuscleColorManager.shared.load(context: container.mainContext)
+                                }
+                                .onOpenURL { url in
+                                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
+                                    if viewModel.importPreset(from: url, container: container) {
+                                        showImportAlert = true
+                                    }
+                                }
+                                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                                    if let url = userActivity.webpageURL {
+                                        // ИСПРАВЛЕНИЕ: Передаем container напрямую
+                                        if viewModel.importPreset(from: url, container: container) {
+                                            showImportAlert = true
+                                        }
+                                    }
+                                }
                 .alert("Template Imported!", isPresented: $showImportAlert) {
                     Button("OK", role: .cancel) { }
                 } message: {

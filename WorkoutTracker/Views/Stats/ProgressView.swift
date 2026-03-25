@@ -264,8 +264,16 @@ struct StatsContentView: View {
             
             // Рекомендации (всегда показываем секцию)
             Section(header: Text("Recommendations")) {
-                RecommendationsView(recommendations: recommendations)
-            }
+                           RecommendationsView(recommendations: recommendations, onTap: { selectedRec in
+                               if selectedRec.type == .recovery {
+                                   // Если совет про восстановление - открываем профиль
+                                   showProfile = true
+                               } else if selectedRec.type == .progression {
+                                   // Если совет про падение прогресса - можно добавить переход
+                                   // (в будущем сделаем открытие графика конкретного упражнения)
+                               }
+                           })
+                       }
             
             prSection
             bestStatsSection

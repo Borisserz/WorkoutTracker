@@ -42,36 +42,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Секция профиля пользователя
-                Section(header: Text(LocalizedStringKey("Profile"))) {
-                    // Имя
-                    TextField(LocalizedStringKey("Name"), text: $userName)
-                        .focused($isProfileFocused)
-                        .textInputAutocapitalization(.words)
-                    
-                    // Вес
-                    HStack {
-                        Text(LocalizedStringKey("Body Weight"))
-                        Spacer()
-                        TextField("75", value: $userBodyWeight, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .focused($isProfileFocused)
-                        Text(unitsManager.weightUnitString())
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    // Пол
-                    Picker(LocalizedStringKey("Gender"), selection: $userGender) {
-                        Text(LocalizedStringKey("Male")).tag("male")
-                        Text(LocalizedStringKey("Female")).tag("female")
-                    }
-                    .pickerStyle(.menu)
-                    .onChange(of: userGender) { _, _ in
-                        triggerLightHaptic()
-                    }
-                }
-                
+            
                 // Секция управления тренировками
                 Section(header: Text(LocalizedStringKey("Workout Management"))) {
                     NavigationLink(destination: PresetListView()) {
