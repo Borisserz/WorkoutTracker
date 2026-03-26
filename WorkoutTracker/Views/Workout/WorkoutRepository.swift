@@ -238,19 +238,27 @@ actor WorkoutRepository {
                 for example in Workout.examples {
                     let preset = WorkoutPreset(id: UUID(), name: example.title, icon: example.icon, exercises: [])
                     modelContext.insert(preset)
+                    try? modelContext.save() // СРАЗУ сохраняем пресет
+                    
                     for exercise in example.exercises {
                         let dup = exercise.duplicate()
                         modelContext.insert(dup)
-                        dup.preset = preset // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+                        dup.preset = preset // Явно назначаем родителя
                         preset.exercises.append(dup)
-                        for set in dup.setsList { modelContext.insert(set) }
+                        
+                        for set in dup.setsList {
+                            modelContext.insert(set)
+                        }
+                        
                         for sub in dup.subExercises {
                             modelContext.insert(sub)
-                            for s in sub.setsList { modelContext.insert(s) }
+                            for s in sub.setsList {
+                                modelContext.insert(s)
+                            }
                         }
                     }
+                    try? modelContext.save() // Сохраняем после добавления упражнений
                 }
-                try modelContext.save()
             }
         }
 

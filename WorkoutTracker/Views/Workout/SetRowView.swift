@@ -116,51 +116,52 @@ struct SetRowView: View {
     // MARK: - Body
     
     var body: some View {
-        HStack(alignment: .center, spacing: 4) {
-            
-            indexLabel
-            
-            inputsSection
-            
-            Spacer(minLength: 0)
-            
-            setTypeButton
-            
-            Spacer(minLength: 0)
-            
-            checkButton
-        }
-        .padding(.vertical, 4)
-        .background(set.isCompleted ? Color.green.opacity(0.05) : Color.clear)
-        .cornerRadius(6)
-        .compositingGroup()
-        .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
-        .sheet(isPresented: $showSliderSheet) {
-            SliderSheetView(
-                fieldType: activeBindingType,
-                value: getActiveBinding(),
-                isPresented: $showSliderSheet
-            )
-        }
-        .onAppear {
-            if autoFocus && !hasAutoFocused {
-                hasAutoFocused = true
+            HStack(alignment: .center, spacing: 4) {
                 
-                switch exerciseType {
-                case .strength:
-                    activeBindingType = .weight
-                case .cardio:
-                    activeBindingType = .distance
-                case .duration:
-                    activeBindingType = .timeSec
-                }
+                indexLabel
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    showSliderSheet = true
+                inputsSection
+                
+                Spacer(minLength: 0)
+                
+                // ИЗМЕНЕНО: Вместо setTypeButton вставляем AI кнопку
+                aiTrackerButton
+                
+                Spacer(minLength: 0)
+                
+                checkButton
+            }
+            .padding(.vertical, 4)
+            .background(set.isCompleted ? Color.green.opacity(0.05) : Color.clear)
+            .cornerRadius(6)
+            .compositingGroup()
+            .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
+            .sheet(isPresented: $showSliderSheet) {
+                SliderSheetView(
+                    fieldType: activeBindingType,
+                    value: getActiveBinding(),
+                    isPresented: $showSliderSheet
+                )
+            }
+            .onAppear {
+                if autoFocus && !hasAutoFocused {
+                    hasAutoFocused = true
+                    
+                    switch exerciseType {
+                    case .strength:
+                        activeBindingType = .weight
+                    case .cardio:
+                        activeBindingType = .distance
+                    case .duration:
+                        activeBindingType = .timeSec
+                    }
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        showSliderSheet = true
+                    }
                 }
             }
         }
-    }
     
     // MARK: - Subviews (Components)
     
@@ -172,94 +173,60 @@ struct SetRowView: View {
     }
     
     @ViewBuilder
-    private var inputsSection: some View {
-        switch exerciseType {
-        case .strength:
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 4) {
-                    inputColumn(
-                        type: .weight,
-                        binding: weightBinding,
-                        ghostText: prevWeight.map {
-                            let converted = unitsManager.convertFromKilograms($0)
-                            return LocalizationHelper.shared.formatFlexible(converted)
-                        }
-                    )
-                    
-                    // MARK: Обертка для Reps + AI Кнопка
+        private var inputsSection: some View {
+            switch exerciseType {
+            case .strength:
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
+                        inputColumn(
+                            type: .weight,
+                            binding: weightBinding,
+                            ghostText: prevWeight.map {
+                                let converted = unitsManager.convertFromKilograms($0)
+                                return LocalizationHelper.shared.formatFlexible(converted)
+                            }
+                        )
+                        
                         inputColumn(
                             type: .reps,
                             binding: repsBinding,
                             ghostText: prevReps.map { "\($0)" }
                         )
-                        
-                        // ДОБАВЛЕНО: Кнопка AI показывается для ВСЕХ поддерживаемых упражнений
-                        if TrackedExercise(name: exerciseName) != .unsupported {
-                            Button {
-                                showAITracker = true
-                            } label: {
-                                Image(systemName: "brain.head.profile")
-                                    .font(.title2)
-                                    .symbolRenderingMode(.multicolor)
-                                    .foregroundStyle(
-                                        LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                    )
-                            }
-                            .buttonStyle(BorderlessButtonStyle())
-                            .fullScreenCover(isPresented: $showAITracker) {
-                                // ПЕРЕДАЕМ ИМЯ УПРАЖНЕНИЯ В ТРЕКЕР
-                                AITrackerView(exerciseName: exerciseName) { countedReps in
-                                    // Callback: возвращаем повторения из трекера
-                                    if countedReps > 0 {
-                                        set.reps = countedReps
-                                        
-                                        // Завершаем подход с небольшой задержкой для красоты
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                            if !set.isCompleted {
-                                                toggleComplete()
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    }
+                    
+                    if estimated1RM > 0 {
+                        estimated1RMView
+                    } else {
+                        Text(" ")
+                            .font(.system(size: 10))
+                            .padding(.leading, 4)
                     }
                 }
                 
-                if estimated1RM > 0 {
-                    estimated1RMView
-                } else {
-                    Text(" ")
-                        .font(.system(size: 10))
-                        .padding(.leading, 4)
-                }
+            case .cardio:
+                inputColumn(
+                    type: .distance,
+                    binding: distanceBinding,
+                    ghostText: prevDist.map {
+                        let converted = unitsManager.convertFromMeters($0)
+                        return LocalizationHelper.shared.formatDecimal(converted)
+                    }
+                )
+                Spacer()
+                inputColumn(
+                    type: .timeMin,
+                    binding: timeBinding,
+                    ghostText: prevTime.map { formatTime($0) }
+                )
+                
+            case .duration:
+                inputColumn(
+                    type: .timeSec,
+                    binding: timeBinding,
+                    ghostText: prevTime.map { "\($0)s" }
+                )
             }
-            
-        case .cardio:
-            inputColumn(
-                type: .distance,
-                binding: distanceBinding,
-                ghostText: prevDist.map {
-                    let converted = unitsManager.convertFromMeters($0)
-                    return LocalizationHelper.shared.formatDecimal(converted)
-                }
-            )
-            Spacer()
-            inputColumn(
-                type: .timeMin,
-                binding: timeBinding,
-                ghostText: prevTime.map { formatTime($0) }
-            )
-            
-        case .duration:
-            inputColumn(
-                type: .timeSec,
-                binding: timeBinding,
-                ghostText: prevTime.map { "\($0)s" }
-            )
         }
-    }
     
     @ViewBuilder
     private var estimated1RMView: some View {
@@ -352,7 +319,38 @@ struct SetRowView: View {
         .buttonStyle(BorderlessButtonStyle())
         .disabled(isExerciseCompleted || isWorkoutCompleted)
     }
-    
+    @ViewBuilder
+        private var aiTrackerButton: some View {
+            let isAISupported = TrackedExercise(name: exerciseName) != .unsupported
+            
+            Button {
+                showAITracker = true
+            } label: {
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 20))
+                    .symbolRenderingMode(.multicolor)
+                    .foregroundStyle(
+                        isAISupported
+                            ? AnyShapeStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            : AnyShapeStyle(Color.gray.opacity(0.4))
+                    )
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(BorderlessButtonStyle())
+            .disabled(!isAISupported || isExerciseCompleted || isWorkoutCompleted)
+            .fullScreenCover(isPresented: $showAITracker) {
+                AITrackerView(exerciseName: exerciseName) { countedReps in
+                    if countedReps > 0 {
+                        set.reps = countedReps
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            if !set.isCompleted {
+                                toggleComplete()
+                            }
+                        }
+                    }
+                }
+            }
+        }
     // MARK: - Logic
     
     func toggleComplete() {

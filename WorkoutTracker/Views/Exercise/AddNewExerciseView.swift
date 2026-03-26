@@ -70,23 +70,27 @@ struct AddNewExerciseView: View {
     // MARK: - View Components
     
     private var basicInfoSection: some View {
-        Section(header: Text(LocalizedStringKey("Basic Info"))) {
-            TextField(LocalizedStringKey("Exercise Name"), text: $name)
-            
-            Picker(LocalizedStringKey("Category"), selection: $selectedCategory) {
-                ForEach(categories, id: \.self) { cat in
-                    Text(cat).tag(cat)
+            Section(header: Text(LocalizedStringKey("Basic Info"))) {
+                TextField(LocalizedStringKey("Exercise Name"), text: $name)
+                
+                Picker(LocalizedStringKey("Category"), selection: $selectedCategory) {
+                    ForEach(categories, id: \.self) { cat in
+                        Text(cat).tag(cat)
+                    }
                 }
-            }
-            
-            Picker(LocalizedStringKey("Exercise Type"), selection: $selectedType) {
-                ForEach(ExerciseType.allCases) { type in
-                    Text(type.rawValue).tag(type)
+                
+                // На будущее: скрыли выбор типа упражнения по запросу,
+                // но переменная $selectedType остается дефолтной (.strength)
+                /*
+                Picker(LocalizedStringKey("Exercise Type"), selection: $selectedType) {
+                    ForEach(ExerciseType.allCases) { type in
+                        Text(type.rawValue).tag(type)
+                    }
                 }
+                .pickerStyle(.segmented)
+                */
             }
-            .pickerStyle(.segmented)
         }
-    }
     
     private var muscleSelectionSection: some View {
         Section(header: Text(LocalizedStringKey("Affected Muscles (for Heatmap)"))) {

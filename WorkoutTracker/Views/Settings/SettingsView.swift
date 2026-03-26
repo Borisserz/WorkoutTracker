@@ -2,8 +2,6 @@
 //  SettingsView.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 27.12.25.
-//
 
 internal import SwiftUI
 internal import UniformTypeIdentifiers
@@ -44,189 +42,204 @@ struct SettingsView: View {
             List {
             
                 // Секция управления тренировками
-                Section(header: Text(LocalizedStringKey("Workout Management"))) {
-                    NavigationLink(destination: PresetListView()) {
-                        Label(LocalizedStringKey("Workout Templates"), systemImage: "list.bullet.clipboard")
+                Section {
+                    DisclosureGroup(LocalizedStringKey("Workout Management")) {
+                        NavigationLink(destination: PresetListView()) {
+                            Label(LocalizedStringKey("Workout Templates"), systemImage: "list.bullet.clipboard")
+                        }
                     }
                 }
                 
                 // Секция настроек таймера
-                Section(header: Text(LocalizedStringKey("Rest Timer")), footer: Text(LocalizedStringKey("If enabled, the rest timer will start automatically when you check off a set."))) {
-                    
-                    // 1. Выбор времени
-                    HStack {
-                        Label(LocalizedStringKey("Default"), systemImage: "timer")
-                        Spacer()
-                        Picker(LocalizedStringKey("Time"), selection: $defaultRestTime) {
-                            ForEach(restOptions, id: \.self) { seconds in
-                                if seconds % 60 == 0 {
-                                    Text(LocalizedStringKey("\(seconds / 60) min")).tag(seconds)
-                                } else {
-                                    Text(LocalizedStringKey("\(seconds) sec")).tag(seconds)
+                Section(footer: Text(LocalizedStringKey("If enabled, the rest timer will start automatically when you check off a set."))) {
+                    DisclosureGroup(LocalizedStringKey("Rest Timer")) {
+                        // 1. Выбор времени
+                        HStack {
+                            Label(LocalizedStringKey("Default"), systemImage: "timer")
+                            Spacer()
+                            Picker(LocalizedStringKey("Time"), selection: $defaultRestTime) {
+                                ForEach(restOptions, id: \.self) { seconds in
+                                    if seconds % 60 == 0 {
+                                        Text(LocalizedStringKey("\(seconds / 60) min")).tag(seconds)
+                                    } else {
+                                        Text(LocalizedStringKey("\(seconds) sec")).tag(seconds)
+                                    }
                                 }
                             }
+                            .pickerStyle(.menu)
                         }
-                        .pickerStyle(.menu)
-                    }
-                    
-                    // 2. Переключатель авто-старта
-                    Toggle(isOn: $autoStartTimer) {
-                        Label(LocalizedStringKey("Auto-start Timer"), systemImage: "play.circle")
+                        
+                        // 2. Переключатель авто-старта
+                        Toggle(isOn: $autoStartTimer) {
+                            Label(LocalizedStringKey("Auto-start Timer"), systemImage: "play.circle")
+                        }
                     }
                 }
                 
                 // Секция настроек стрика
-                Section {
-                    Stepper(value: $streakRestDays, in: 1...7) {
-                        HStack {
-                            Label(LocalizedStringKey("Max Rest Days"), systemImage: "flame.fill")
-                            Spacer()
-                            Text(LocalizedStringKey("\(streakRestDays) day\(streakRestDays > 1 ? "s" : "")"))
-                                .foregroundColor(.secondary)
-                                .bold()
+                Section(footer: Text(LocalizedStringKey("Your streak will reset if you don't train within this number of rest days."))) {
+                    DisclosureGroup(LocalizedStringKey("Streak Settings")) {
+                        Stepper(value: $streakRestDays, in: 1...7) {
+                            HStack {
+                                Label(LocalizedStringKey("Max Rest Days"), systemImage: "flame.fill")
+                                Spacer()
+                                Text(LocalizedStringKey("\(streakRestDays) day\(streakRestDays > 1 ? "s" : "")"))
+                                    .foregroundColor(.secondary)
+                                    .bold()
+                            }
                         }
                     }
-                } header: {
-                    Text(LocalizedStringKey("Streak Settings"))
-                } footer: {
-                    Text(LocalizedStringKey("Your streak will reset if you don't train within this number of rest days."))
                 }
                 
                 // Секция дополнительных настроек
-                Section(header: Text(LocalizedStringKey("Additional Settings"))) {
-                    // Темная тема
-                    HStack {
-                        Label(LocalizedStringKey("Appearance"), systemImage: appearanceMode == "dark" ? "moon.fill" : appearanceMode == "light" ? "sun.max.fill" : "circle.lefthalf.filled")
-                        Spacer()
-                        Picker("", selection: $appearanceMode) {
-                            Text(LocalizedStringKey("System")).tag("system")
-                            Text(LocalizedStringKey("Light")).tag("light")
-                            Text(LocalizedStringKey("Dark")).tag("dark")
-                        }
-                        .pickerStyle(.menu)
-                    }
-                    
-                    // Единицы измерения веса
-                    HStack {
-                        Label(LocalizedStringKey("Weight Units"), systemImage: "scalemass")
-                        Spacer()
-                        Picker("", selection: Binding(
-                            get: { unitsManager.weightUnit },
-                            set: { unitsManager.setWeightUnit($0) }
-                        )) {
-                            ForEach(WeightUnit.allCases, id: \.self) { unit in
-                                Text(unit.displayName).tag(unit)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                    }
-                    
-                    // Единицы измерения расстояния
-                    HStack {
-                        Label(LocalizedStringKey("Distance Units"), systemImage: "ruler")
-                        Spacer()
-                        Picker("", selection: Binding(
-                            get: { unitsManager.distanceUnit },
-                            set: { unitsManager.setDistanceUnit($0) }
-                        )) {
-                            ForEach(DistanceUnit.allCases, id: \.self) { unit in
-                                Text(unit.displayName).tag(unit)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                    }
-                    
-                    // Язык
-                    Button {
-                        if let url = URL(string: UIApplication.openSettingsURLString) {
-                            UIApplication.shared.open(url)
-                        }
-                    } label: {
+                Section {
+                    DisclosureGroup(LocalizedStringKey("Additional Settings")) {
+                        // Темная тема
                         HStack {
-                            Label(LocalizedStringKey("Language"), systemImage: "globe")
-                                .foregroundColor(.primary)
+                            Label(LocalizedStringKey("Appearance"), systemImage: appearanceMode == "dark" ? "moon.fill" : appearanceMode == "light" ? "sun.max.fill" : "circle.lefthalf.filled")
                             Spacer()
-                            Text(Locale.current.language.languageCode?.identifier == "ru" ? "Русский" : "English")
-                                .foregroundColor(.secondary)
-                            Image(systemName: "arrow.up.forward.app")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            Picker("", selection: $appearanceMode) {
+                                Text(LocalizedStringKey("System")).tag("system")
+                                Text(LocalizedStringKey("Light")).tag("light")
+                                Text(LocalizedStringKey("Dark")).tag("dark")
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        
+                        // Выбор пола (НОВОЕ)
+                        HStack {
+                            Label(LocalizedStringKey("Gender"), systemImage: "person.fill")
+                            Spacer()
+                            Picker("", selection: $userGender) {
+                                Text(LocalizedStringKey("Male")).tag("male")
+                                Text(LocalizedStringKey("Female")).tag("female")
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        
+                        // Единицы измерения веса
+                        HStack {
+                            Label(LocalizedStringKey("Weight Units"), systemImage: "scalemass")
+                            Spacer()
+                            Picker("", selection: Binding(
+                                get: { unitsManager.weightUnit },
+                                set: { unitsManager.setWeightUnit($0) }
+                            )) {
+                                ForEach(WeightUnit.allCases, id: \.self) { unit in
+                                    Text(unit.displayName).tag(unit)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        
+                        // Единицы измерения расстояния
+                        HStack {
+                            Label(LocalizedStringKey("Distance Units"), systemImage: "ruler")
+                            Spacer()
+                            Picker("", selection: Binding(
+                                get: { unitsManager.distanceUnit },
+                                set: { unitsManager.setDistanceUnit($0) }
+                            )) {
+                                ForEach(DistanceUnit.allCases, id: \.self) { unit in
+                                    Text(unit.displayName).tag(unit)
+                                }
+                            }
+                            .pickerStyle(.menu)
+                        }
+                        
+                        // Язык
+                        Button {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        } label: {
+                            HStack {
+                                Label(LocalizedStringKey("Language"), systemImage: "globe")
+                                    .foregroundColor(.primary)
+                                Spacer()
+                                Text(Locale.current.language.languageCode?.identifier == "ru" ? "Русский" : "English")
+                                    .foregroundColor(.secondary)
+                                Image(systemName: "arrow.up.forward.app")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }
                 
-                // ВРЕМЕННАЯ СЕКЦИЯ ДЛЯ ТЕСТИРОВАНИЯ - УДАЛИТЬ ПОСЛЕ ТЕСТОВ
-                Section {
-                    Button(role: .destructive) {
-                        generateTestData()
-                    } label: {
-                        HStack {
-                            Label(LocalizedStringKey("Generate All Test Data"), systemImage: "flask.fill")
-                            Spacer()
-                            if isProcessing {
-                                ProgressView()
-                            } else {
-                                Text(LocalizedStringKey("TEST"))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                // ВРЕМЕННАЯ СЕКЦИЯ ДЛЯ ТЕСТИРОВАНИЯ
+                Section(footer: Text(LocalizedStringKey("These buttons are for testing only. Remove TestDataGenerator.swift and this section after testing."))) {
+                    DisclosureGroup(LocalizedStringKey("TESTING (REMOVE AFTER TEST)")) {
+                        Button(role: .destructive) {
+                            generateTestData()
+                        } label: {
+                            HStack {
+                                Label(LocalizedStringKey("Generate All Test Data"), systemImage: "flask.fill")
+                                Spacer()
+                                if isProcessing {
+                                    ProgressView()
+                                } else {
+                                    Text(LocalizedStringKey("TEST"))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
-                    }
-                    .disabled(isProcessing)
-                    
-                    Button(role: .destructive) {
-                        showClearAllAlert = true
-                    } label: {
-                        HStack {
-                            Label(LocalizedStringKey("Clear All Data"), systemImage: "trash.fill")
-                            Spacer()
-                            if isProcessing {
-                                ProgressView()
-                            } else {
-                                Text(LocalizedStringKey("DANGER"))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                        .disabled(isProcessing)
+                        
+                        Button(role: .destructive) {
+                            showClearAllAlert = true
+                        } label: {
+                            HStack {
+                                Label(LocalizedStringKey("Clear All Data"), systemImage: "trash.fill")
+                                Spacer()
+                                if isProcessing {
+                                    ProgressView()
+                                } else {
+                                    Text(LocalizedStringKey("DANGER"))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
+                        .disabled(isProcessing)
                     }
-                    .disabled(isProcessing)
-                } header: {
-                    Text(LocalizedStringKey("TESTING (REMOVE AFTER TEST)"))
-                } footer: {
-                    Text(LocalizedStringKey("These buttons are for testing only. Remove TestDataGenerator.swift and this section after testing."))
                 }
                 
                 // Секция поддержки и обратной связи
-                Section(header: Text(LocalizedStringKey("Support & Feedback"))) {
-                    NavigationLink(destination: FeedbackView()) {
-                        Label(LocalizedStringKey("Send Feedback"), systemImage: "envelope.fill")
-                    }
-                    
-                    Button {
-                        showExportFormatPicker = true
-                    } label: {
-                        Label(LocalizedStringKey("Export All Data"), systemImage: "square.and.arrow.up")
-                    }
-                    .confirmationDialog(LocalizedStringKey("Export Format"), isPresented: $showExportFormatPicker) {
-                        Button(LocalizedStringKey("Export as JSON")) {
-                            exportAllData(format: .json)
+                Section {
+                    DisclosureGroup(LocalizedStringKey("Support & Feedback")) {
+                        NavigationLink(destination: FeedbackView()) {
+                            Label(LocalizedStringKey("Send Feedback"), systemImage: "envelope.fill")
                         }
-                        Button(LocalizedStringKey("Export as CSV")) {
-                            exportAllData(format: .csv)
+                        
+                        Button {
+                            showExportFormatPicker = true
+                        } label: {
+                            Label(LocalizedStringKey("Export All Data"), systemImage: "square.and.arrow.up")
                         }
-                        Button(LocalizedStringKey("Cancel"), role: .cancel) { }
+                        .confirmationDialog(LocalizedStringKey("Export Format"), isPresented: $showExportFormatPicker) {
+                            Button(LocalizedStringKey("Export as JSON")) {
+                                exportAllData(format: .json)
+                            }
+                            Button(LocalizedStringKey("Export as CSV")) {
+                                exportAllData(format: .csv)
+                            }
+                            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
+                        }
                     }
                 }
                 
                 // Секция "О программе"
-                Section(header: Text(LocalizedStringKey("About"))) {
-                    Text(LocalizedStringKey("Version 1.0.0"))
-                        .foregroundColor(.secondary)
+                Section {
+                    DisclosureGroup(LocalizedStringKey("About")) {
+                        Text(LocalizedStringKey("Version 1.0.0"))
+                            .foregroundColor(.secondary)
+                    }
                 }
             }
             .onChange(of: isProfileFocused) { _, isFocused in
                 if !isFocused {
-                    // Вызываем тактильный отклик при завершении редактирования (скрытии клавиатуры)
                     triggerLightHaptic()
                 }
             }

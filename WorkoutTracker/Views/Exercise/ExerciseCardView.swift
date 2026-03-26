@@ -284,30 +284,31 @@ struct ExerciseCardView: View {
     }
     
     private var columnHeadersSection: some View {
-        HStack(spacing: 8) {
-            Text(LocalizedStringKey("Set"))
-                .font(.caption2)
-                .frame(width: 25)
-                .foregroundColor(.secondary)
-            
-            switch exercise.type {
-            case .strength:
-                Text(unitsManager.weightUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
-                Text(LocalizedStringKey("Reps")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
-            case .cardio:
-                Text(unitsManager.distanceUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
-                Spacer()
-                Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
-            case .duration:
-                Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+            HStack(spacing: 8) {
+                Text(LocalizedStringKey("Set"))
+                    .font(.caption2)
+                    .frame(width: 25)
+                    .foregroundColor(.secondary)
+                
+                switch exercise.type {
+                case .strength:
+                    Text(unitsManager.weightUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Reps")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                case .cardio:
+                    Text(unitsManager.distanceUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                    Spacer()
+                    Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                case .duration:
+                    Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+                }
+                
+                // ИЗМЕНЕНО: Заменили слово "Type" на иконку ИИ головы (серая, просто как заголовок колонки)
+                Image(systemName: "brain.head.profile").font(.title3).frame(width: 32).foregroundColor(.secondary)
+                Image(systemName: "checkmark").font(.caption2).frame(width: 32).foregroundColor(.secondary)
             }
-            
-            Text(LocalizedStringKey("Type")).font(.caption2).frame(width: 32).foregroundColor(.secondary)
-            Image(systemName: "checkmark").font(.caption2).frame(width: 32).foregroundColor(.secondary)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 4)
         }
-        .padding(.horizontal, 8)
-        .padding(.bottom, 4)
-    }
     
     private var collapsedInfoSection: some View {
         HStack {
