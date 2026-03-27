@@ -11,15 +11,15 @@ struct AITrackerView: View {
     @Environment(\.dismiss) private var dismiss
     
     @StateObject private var cameraManager = CameraManager()
-    // ИСПРАВЛЕНИЕ: Используем новый движок
     @StateObject private var engine: AITrackerEngine
+    
+    @StateObject private var gestureCtrl = GestureController()
+    @StateObject private var coach = VoiceCoach()
     
     @State private var repScale: CGFloat = 1.0
     var onFinish: ((Int) -> Void)?
     
-    // ДОБАВЛЕНО: Инициализатор, принимающий имя упражнения
     init(exerciseName: String, onFinish: ((Int) -> Void)? = nil) {
-        // Инициализируем StateObject с нужным упражнением
         _engine = StateObject(wrappedValue: AITrackerEngine(exerciseName: exerciseName))
         self.onFinish = onFinish
     }
@@ -37,13 +37,26 @@ struct AITrackerView: View {
                     .frame(height: 150)
                 Spacer()
                 LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 150)
+                    .frame(height: 250)
             }
             .ignoresSafeArea()
             
             VStack {
                 topHUD
                 Spacer()
+                
+                // ДОБАВЛЕНО: Контейнер для виджета мышц и жестов (Внизу над кнопкой)
+                HStack(alignment: .bottom) {
+                    // PiP Виджет "Live Muscle Activation"
+                    liveMusclePiP
+                    
+                    Spacer()
+                    
+                    // UI Индикатор жестов
+                    gestureHUD
+                }
+                .padding(.bottom, 10)
+                
                 finishButton
             }
             .padding(.horizontal, 24)
@@ -52,17 +65,101 @@ struct AITrackerView: View {
         .navigationBarHidden(true)
         .onAppear {
             cameraManager.checkPermission()
+            coach.speak("Ready. Let's go!")
         }
         .onDisappear {
             cameraManager.stopSession()
         }
-        .onChange(of: cameraManager.joints) { newJoints in
-            engine.processFrame(joints: newJoints)
+        .onChange(of: cameraManager.bodyPose) { newPose in
+                  if let pose = newPose {
+                      engine.processFrame(observation: pose)
+                  }
+              }
+        .onChange(of: cameraManager.handPose) { newHandPose in
+            if let pose = newHandPose {
+                gestureCtrl.processHandPose(observation: pose)
+            }
         }
         .onChange(of: engine.repsCount) { _ in
             triggerRepAnimation()
+            coach.speak("\(engine.repsCount)")
+        }
+        .onChange(of: gestureCtrl.didConfirmSet) { confirmed in
+            if confirmed {
+                coach.speak("Set completed! Great job.")
+                onFinish?(engine.repsCount)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                    dismiss()
+                }
+            }
+        }
+        .onChange(of: gestureCtrl.didCancelSet) { canceled in
+            if canceled {
+                coach.speak("Tracker canceled.")
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    dismiss()
+                }
+            }
         }
     }
+    
+    // MARK: - Live Muscle Activation UI
+    
+    @ViewBuilder
+    private var liveMusclePiP: some View {
+        if !engine.liveMuscleTension.isEmpty {
+            BodyHeatmapView(muscleIntensities: engine.liveMuscleTension, isRecoveryMode: false)
+                .frame(width: 100, height: 220)
+                .background(.ultraThinMaterial)
+                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.blue.opacity(0.5), lineWidth: 1)
+                )
+                .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                .animation(.easeInOut(duration: 0.1), value: engine.liveMuscleTension)
+                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+        } else {
+            // Держим пустое место, чтобы интерфейс не прыгал, когда мышцы скрываются
+            Color.clear.frame(width: 100, height: 220)
+        }
+    }
+    
+    // MARK: - Gesture UI
+    
+    @ViewBuilder
+        private var gestureHUD: some View {
+            if gestureCtrl.activeGesture != .none {
+                ZStack {
+                    Circle()
+                        .stroke(Color.white.opacity(0.2), lineWidth: 8)
+                        .frame(width: 80, height: 80)
+                    
+                    Circle()
+                        .trim(from: 0.0, to: CGFloat(gestureCtrl.gestureProgress))
+                        .stroke(gestureCtrl.activeGesture == .victory ? Color.green : Color.red, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                        .frame(width: 80, height: 80)
+                        .rotationEffect(.degrees(-90))
+                        .animation(.linear(duration: 0.1), value: gestureCtrl.gestureProgress)
+                    
+                    // ИСПРАВЛЕНО: Показываем эмодзи ✌️ для успеха и красную ладонь для отмены
+                    if gestureCtrl.activeGesture == .victory {
+                        Text("✌️")
+                            .font(.system(size: 38))
+                    } else {
+                        Image(systemName: "hand.raised.fill")
+                            .font(.system(size: 34))
+                            .foregroundColor(.red)
+                    }
+                }
+                .background(Color.black.opacity(0.6).clipShape(Circle()))
+                .transition(.scale.combined(with: .opacity))
+            } else {
+                Color.clear.frame(width: 80, height: 80)
+            }
+        }
+    
+    // MARK: - Legacy UI (HUDs)
     
     private var topHUD: some View {
         VStack(spacing: 8) {
@@ -75,7 +172,6 @@ struct AITrackerView: View {
             
             HStack(spacing: 8) {
                 Circle()
-                    // ИСПРАВЛЕНИЕ: Теперь используем isTrackingAction
                     .fill(engine.isTrackingAction ? Color.blue : Color.white.opacity(0.5))
                     .frame(width: 10, height: 10)
                     .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
@@ -130,7 +226,6 @@ struct AITrackerView: View {
     
     private func feedbackColor(for message: String) -> Color {
         let lowercased = message.lowercased()
-        // Оранжевый для предупреждений об осанке/читинге
         if lowercased.contains("straight") || lowercased.contains("don't") || lowercased.contains("swing") {
             return .orange
         } else if lowercased.contains("perfect") || lowercased.contains("great") || lowercased.contains("good") {

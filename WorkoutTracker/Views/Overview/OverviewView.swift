@@ -11,7 +11,7 @@ import Charts
 import ActivityKit
 
 struct OverviewView: View {
-    
+    @AppStorage("use3DHeatmap") private var use3DHeatmap = false
     // MARK: - Environment & State
     @Environment(\.modelContext) private var context
     @EnvironmentObject var tutorialManager: TutorialManager
@@ -372,6 +372,8 @@ struct OverviewView: View {
     
     // --- Subviews ---
     
+
+
     private var recoverySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Заголовок работает как кнопка "Перейти"
@@ -405,7 +407,23 @@ struct OverviewView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
-                BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
+                // Переключатель между 2D и 3D видами
+                Picker(LocalizedStringKey("View Mode"), selection: $use3DHeatmap.animation(.easeInOut)) {
+                    Text("2D").tag(false)
+                    Text("3D").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .padding(.bottom, 8)
+                
+                Group {
+                    if use3DHeatmap {
+                        Body3DHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
+                            .frame(height: 500)
+                    } else {
+                        BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
+                    }
+                }
+                .transition(.opacity) // Добавлена анимация растворения при переключении
             }
         }
         .padding()
@@ -419,7 +437,6 @@ struct OverviewView: View {
             yOffset: -10
         )
     }
-    
     private var chartSection: some View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {

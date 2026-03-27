@@ -231,13 +231,16 @@ struct BodyHeatmapView: View {
                 return Color.red.opacity(1.0)
             }
             
-        } else {
-            let count = muscleIntensities[slug] ?? 0
-            switch count {
-            case 0: return Color.gray.opacity(0.3)
-            case 1: return Color.red.opacity(0.35)
-            case 2: return Color.red.opacity(0.65)
-            default: return Color.red.opacity(1.0)
+        }  else {
+            // ИСПРАВЛЕНО: РЕЖИМ ЖИВОЙ АКТИВАЦИИ (Live Muscle Tension: 0...100)
+            let tension = muscleIntensities[slug] ?? 0
+            
+            if tension == 0 {
+                return Color.gray.opacity(0.3)
+            } else {
+                // Плавная математика: чем сильнее напряжение (0-100), тем плотнее и ярче красный цвет
+                let opacity = 0.3 + (0.7 * (Double(tension) / 100.0))
+                return Color.red.opacity(opacity)
             }
         }
     }

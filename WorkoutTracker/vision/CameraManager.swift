@@ -7,6 +7,11 @@ import Combine
 @MainActor
 final class CameraManager: NSObject, ObservableObject {
     @Published var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+    @Published var handPose: VNHumanHandPoseObservation? = nil
+    
+    // ДОБАВЛЕНО: Публикуем сырой кадр для Core ML
+    @Published var bodyPose: VNHumanBodyPoseObservation? = nil
+    
     @Published var isAuthorized = false
     
     let session = AVCaptureSession()
@@ -14,7 +19,6 @@ final class CameraManager: NSObject, ObservableObject {
     private let videoOutput = AVCaptureVideoDataOutput()
     private let cameraQueue = DispatchQueue(label: "com.workouttracker.cameraQueue", qos: .userInitiated)
     
-    // Безопасный делегат для фонового потока
     private var cameraDelegate: CameraDelegate?
     
     override init() {
@@ -52,12 +56,18 @@ final class CameraManager: NSObject, ObservableObject {
         }
         session.addInput(videoInput)
         
-        // Создаем фоновый делегат и передаем замыкание для обновления UI
-        let delegate = CameraDelegate { [weak self] newJoints in
-            Task { @MainActor in
-                self?.joints = newJoints
+        // ОБНОВЛЕНО: Передаем 3 коллбека (точки тела, сырое тело для ML, и руки)
+        let delegate = CameraDelegate(
+            onUpdate: { [weak self] newJoints in
+                Task { @MainActor in self?.joints = newJoints }
+            },
+            onBodyPoseUpdate: { [weak self] newBodyPose in
+                Task { @MainActor in self?.bodyPose = newBodyPose } // Прокидываем в MainActor
+            },
+            onHandUpdate: { [weak self] newHandPose in
+                Task { @MainActor in self?.handPose = newHandPose }
             }
-        }
+        )
         self.cameraDelegate = delegate
         
         videoOutput.alwaysDiscardsLateVideoFrames = true
@@ -91,31 +101,49 @@ final class CameraManager: NSObject, ObservableObject {
 // MARK: - Safe Camera Delegate (Фоновый поток)
 final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     private let onUpdate: @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void
+    private let onBodyPoseUpdate: @Sendable (VNHumanBodyPoseObservation?) -> Void
+    private let onHandUpdate: @Sendable (VNHumanHandPoseObservation?) -> Void
     
-    init(onUpdate: @escaping @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void) {
+    init(
+        onUpdate: @escaping @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void,
+        onBodyPoseUpdate: @escaping @Sendable (VNHumanBodyPoseObservation?) -> Void,
+        onHandUpdate: @escaping @Sendable (VNHumanHandPoseObservation?) -> Void
+    ) {
         self.onUpdate = onUpdate
+        self.onBodyPoseUpdate = onBodyPoseUpdate
+        self.onHandUpdate = onHandUpdate
         super.init()
     }
     
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        let request = VNDetectHumanBodyPoseRequest { [weak self] req, err in
-            self?.handlePose(request: req, error: err)
+        
+        let bodyRequest = VNDetectHumanBodyPoseRequest { [weak self] req, err in
+            self?.handleBodyPose(request: req, error: err)
         }
+        
+        let handRequest = VNDetectHumanHandPoseRequest { [weak self] req, err in
+            self?.handleHandPose(request: req, error: err)
+        }
+        handRequest.maximumHandCount = 1
         
         let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
         do {
-            try handler.perform([request])
+            try handler.perform([bodyRequest, handRequest])
         } catch {
             print("Vision request failed: \(error.localizedDescription)")
         }
     }
     
-    nonisolated private func handlePose(request: VNRequest, error: Error?) {
+    nonisolated private func handleBodyPose(request: VNRequest, error: Error?) {
         guard let observations = request.results as? [VNHumanBodyPoseObservation],
               let observation = observations.first else {
             onUpdate([:])
+            onBodyPoseUpdate(nil)
             return
         }
+        
+        // ПЕРЕДАЕМ СЫРОЙ КАДР НАРУЖУ
+        onBodyPoseUpdate(observation)
         
         guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
         var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
@@ -124,6 +152,15 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
             normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
         }
         onUpdate(normalizedJoints)
+    }
+    
+    nonisolated private func handleHandPose(request: VNRequest, error: Error?) {
+        guard let observations = request.results as? [VNHumanHandPoseObservation],
+              let observation = observations.first else {
+            onHandUpdate(nil)
+            return
+        }
+        onHandUpdate(observation)
     }
 }
 
