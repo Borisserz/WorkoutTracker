@@ -1,3 +1,8 @@
+//
+//  CameraManager.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import AVFoundation
 import Vision
@@ -8,22 +13,15 @@ import Combine
 final class CameraManager: NSObject, ObservableObject {
     @Published var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
     @Published var handPose: VNHumanHandPoseObservation? = nil
-    
-    // ДОБАВЛЕНО: Публикуем сырой кадр для Core ML
     @Published var bodyPose: VNHumanBodyPoseObservation? = nil
-    
     @Published var isAuthorized = false
     
     let session = AVCaptureSession()
-    
     private let videoOutput = AVCaptureVideoDataOutput()
     private let cameraQueue = DispatchQueue(label: "com.workouttracker.cameraQueue", qos: .userInitiated)
-    
     private var cameraDelegate: CameraDelegate?
     
-    override init() {
-        super.init()
-    }
+    override init() { super.init() }
     
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -44,7 +42,6 @@ final class CameraManager: NSObject, ObservableObject {
     
     private func setupSession() {
         guard !session.isRunning else { return }
-        
         session.beginConfiguration()
         session.sessionPreset = .high
         
@@ -56,13 +53,12 @@ final class CameraManager: NSObject, ObservableObject {
         }
         session.addInput(videoInput)
         
-        // ОБНОВЛЕНО: Передаем 3 коллбека (точки тела, сырое тело для ML, и руки)
         let delegate = CameraDelegate(
             onUpdate: { [weak self] newJoints in
                 Task { @MainActor in self?.joints = newJoints }
             },
             onBodyPoseUpdate: { [weak self] newBodyPose in
-                Task { @MainActor in self?.bodyPose = newBodyPose } // Прокидываем в MainActor
+                Task { @MainActor in self?.bodyPose = newBodyPose }
             },
             onHandUpdate: { [weak self] newHandPose in
                 Task { @MainActor in self?.handPose = newHandPose }
@@ -75,30 +71,23 @@ final class CameraManager: NSObject, ObservableObject {
         
         if session.canAddOutput(videoOutput) {
             session.addOutput(videoOutput)
-            
             if let connection = videoOutput.connection(with: .video), connection.isVideoOrientationSupported {
                 connection.videoOrientation = .portrait
-                connection.isVideoMirrored = true // Фронталка как зеркало
+                connection.isVideoMirrored = true
             }
         }
-        
         session.commitConfiguration()
-        
-        Task.detached { [weak self] in
-            self?.session.startRunning()
-        }
+        Task.detached { [weak self] in self?.session.startRunning() }
     }
     
     func stopSession() {
         if session.isRunning {
-            Task.detached { [weak self] in
-                self?.session.stopRunning()
-            }
+            Task.detached { [weak self] in self?.session.stopRunning() }
         }
     }
 }
 
-// MARK: - Safe Camera Delegate (Фоновый поток)
+// MARK: - Safe Camera Delegate
 final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     private let onUpdate: @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void
     private let onBodyPoseUpdate: @Sendable (VNHumanBodyPoseObservation?) -> Void
@@ -116,94 +105,65 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     }
     
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        
         let bodyRequest = VNDetectHumanBodyPoseRequest { [weak self] req, err in
-            self?.handleBodyPose(request: req, error: err)
+            guard let observations = req.results as? [VNHumanBodyPoseObservation],
+                  let observation = observations.first else {
+                self?.onUpdate([:])
+                self?.onBodyPoseUpdate(nil)
+                return
+            }
+            
+            self?.onBodyPoseUpdate(observation)
+            
+            guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
+            var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+            for (key, point) in recognizedPoints where point.confidence > 0.3 {
+                normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+            }
+            self?.onUpdate(normalizedJoints)
         }
         
         let handRequest = VNDetectHumanHandPoseRequest { [weak self] req, err in
-            self?.handleHandPose(request: req, error: err)
+            guard let observations = req.results as? [VNHumanHandPoseObservation],
+                  let observation = observations.first else {
+                self?.onHandUpdate(nil)
+                return
+            }
+            self?.onHandUpdate(observation)
         }
         handRequest.maximumHandCount = 1
         
         let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
-        do {
-            try handler.perform([bodyRequest, handRequest])
-        } catch {
-            print("Vision request failed: \(error.localizedDescription)")
-        }
-    }
-    
-    nonisolated private func handleBodyPose(request: VNRequest, error: Error?) {
-        guard let observations = request.results as? [VNHumanBodyPoseObservation],
-              let observation = observations.first else {
-            onUpdate([:])
-            onBodyPoseUpdate(nil)
-            return
-        }
-        
-        // ПЕРЕДАЕМ СЫРОЙ КАДР НАРУЖУ
-        onBodyPoseUpdate(observation)
-        
-        guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
-        var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-        
-        for (key, point) in recognizedPoints where point.confidence > 0.3 {
-            normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
-        }
-        onUpdate(normalizedJoints)
-    }
-    
-    nonisolated private func handleHandPose(request: VNRequest, error: Error?) {
-        guard let observations = request.results as? [VNHumanHandPoseObservation],
-              let observation = observations.first else {
-            onHandUpdate(nil)
-            return
-        }
-        onHandUpdate(observation)
+        try? handler.perform([bodyRequest, handRequest])
     }
 }
 
 // MARK: - Camera Preview
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
-    
     class VideoPreviewView: UIView {
-        override class var layerClass: AnyClass {
-            AVCaptureVideoPreviewLayer.self
-        }
-        var videoPreviewLayer: AVCaptureVideoPreviewLayer {
-            layer as! AVCaptureVideoPreviewLayer
-        }
+        override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
+        var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
     }
-    
     func makeUIView(context: Context) -> VideoPreviewView {
         let view = VideoPreviewView()
         view.videoPreviewLayer.session = session
         view.videoPreviewLayer.videoGravity = .resizeAspectFill
         return view
     }
-    
     func updateUIView(_ uiView: VideoPreviewView, context: Context) {}
 }
 
 // MARK: - Pose Overlay View
 struct PoseOverlayView: View {
     let joints: [VNHumanBodyPoseObservation.JointName: CGPoint]
-    
     private static let lines: [(VNHumanBodyPoseObservation.JointName, VNHumanBodyPoseObservation.JointName)] = [
-        (.neck, .leftShoulder), (.neck, .rightShoulder),
-        (.leftShoulder, .rightShoulder),
-        (.leftShoulder, .leftHip), (.rightShoulder, .rightHip),
-        (.leftHip, .rightHip),
-        (.leftShoulder, .leftElbow), (.leftElbow, .leftWrist),
-        (.rightShoulder, .rightElbow), (.rightElbow, .rightWrist),
-        (.leftHip, .leftKnee), (.leftKnee, .leftAnkle),
-        (.rightHip, .rightKnee), (.rightKnee, .rightAnkle),
-        (.neck, .nose), (.nose, .leftEye), (.nose, .rightEye),
-        (.leftEye, .leftEar), (.rightEye, .rightEar)
+        (.neck, .leftShoulder), (.neck, .rightShoulder), (.leftShoulder, .rightShoulder),
+        (.leftShoulder, .leftHip), (.rightShoulder, .rightHip), (.leftHip, .rightHip),
+        (.leftShoulder, .leftElbow), (.leftElbow, .leftWrist), (.rightShoulder, .rightElbow), (.rightElbow, .rightWrist),
+        (.leftHip, .leftKnee), (.leftKnee, .leftAnkle), (.rightHip, .rightKnee), (.rightKnee, .rightAnkle),
+        (.neck, .nose), (.nose, .leftEye), (.nose, .rightEye), (.leftEye, .leftEar), (.rightEye, .rightEar)
     ]
-    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -216,12 +176,9 @@ struct PoseOverlayView: View {
                     }
                 }
                 .stroke(Color.green.opacity(0.8), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                
                 ForEach(Array(joints.keys), id: \.self) { key in
                     if let point = joints[key] {
-                        Circle()
-                            .fill(Color.red)
-                            .frame(width: 8, height: 8)
+                        Circle().fill(Color.red).frame(width: 8, height: 8)
                             .position(x: point.x * geometry.size.width, y: point.y * geometry.size.height)
                     }
                 }

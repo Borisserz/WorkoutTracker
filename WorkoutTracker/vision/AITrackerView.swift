@@ -17,6 +17,7 @@ struct AITrackerView: View {
     @StateObject private var coach = VoiceCoach()
     
     @State private var repScale: CGFloat = 1.0
+    
     var onFinish: ((Int) -> Void)?
     
     init(exerciseName: String, onFinish: ((Int) -> Void)? = nil) {
@@ -45,14 +46,9 @@ struct AITrackerView: View {
                 topHUD
                 Spacer()
                 
-                // ДОБАВЛЕНО: Контейнер для виджета мышц и жестов (Внизу над кнопкой)
                 HStack(alignment: .bottom) {
-                    // PiP Виджет "Live Muscle Activation"
                     liveMusclePiP
-                    
                     Spacer()
-                    
-                    // UI Индикатор жестов
                     gestureHUD
                 }
                 .padding(.bottom, 10)
@@ -71,10 +67,10 @@ struct AITrackerView: View {
             cameraManager.stopSession()
         }
         .onChange(of: cameraManager.bodyPose) { newPose in
-                  if let pose = newPose {
-                      engine.processFrame(observation: pose)
-                  }
-              }
+            if let pose = newPose {
+                engine.processFrame(observation: pose)
+            }
+        }
         .onChange(of: cameraManager.handPose) { newHandPose in
             if let pose = newHandPose {
                 gestureCtrl.processHandPose(observation: pose)
@@ -104,63 +100,59 @@ struct AITrackerView: View {
     }
     
     // MARK: - Live Muscle Activation UI
-    
+        @ViewBuilder
+        private var liveMusclePiP: some View {
+            BodyHeatmapView(
+                // ИСПРАВЛЕНИЕ: Передаем liveMuscleTension напрямую, без привязки к isTrackingAction
+                muscleIntensities: engine.liveMuscleTension,
+                isRecoveryMode: false,
+                isCompactMode: true
+            )
+            .frame(width: 100, height: 220)
+            // Убираем material фон, потому что теперь внутри BodyHeatmapView есть белый фон
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(engine.isTrackingAction ? Color.blue.opacity(0.8) : Color.gray.opacity(0.5),
+                            lineWidth: engine.isTrackingAction ? 3 : 2)
+            )
+            .shadow(color: engine.isTrackingAction ? .blue.opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
+            .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
+            .animation(.easeInOut(duration: 0.1), value: engine.liveMuscleTension)
+        }
+    // MARK: - Gesture UI
     @ViewBuilder
-    private var liveMusclePiP: some View {
-        if !engine.liveMuscleTension.isEmpty {
-            BodyHeatmapView(muscleIntensities: engine.liveMuscleTension, isRecoveryMode: false)
-                .frame(width: 100, height: 220)
-                .background(.ultraThinMaterial)
-                .cornerRadius(16)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.blue.opacity(0.5), lineWidth: 1)
-                )
-                .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
-                .animation(.easeInOut(duration: 0.1), value: engine.liveMuscleTension)
-                .transition(.opacity.combined(with: .scale(scale: 0.9)))
+    private var gestureHUD: some View {
+        if gestureCtrl.activeGesture != .none {
+            ZStack {
+                Circle()
+                    .stroke(Color.white.opacity(0.2), lineWidth: 8)
+                    .frame(width: 80, height: 80)
+                
+                Circle()
+                    .trim(from: 0.0, to: CGFloat(gestureCtrl.gestureProgress))
+                    .stroke(gestureCtrl.activeGesture == .victory ? Color.green : Color.red, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .frame(width: 80, height: 80)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 0.1), value: gestureCtrl.gestureProgress)
+                
+                if gestureCtrl.activeGesture == .victory {
+                    Text("✌️")
+                        .font(.system(size: 38))
+                } else {
+                    Image(systemName: "hand.raised.fill")
+                        .font(.system(size: 34))
+                        .foregroundColor(.red)
+                }
+            }
+            .background(Color.black.opacity(0.6).clipShape(Circle()))
+            .transition(.scale.combined(with: .opacity))
         } else {
-            // Держим пустое место, чтобы интерфейс не прыгал, когда мышцы скрываются
-            Color.clear.frame(width: 100, height: 220)
+            Color.clear.frame(width: 80, height: 80)
         }
     }
     
-    // MARK: - Gesture UI
-    
-    @ViewBuilder
-        private var gestureHUD: some View {
-            if gestureCtrl.activeGesture != .none {
-                ZStack {
-                    Circle()
-                        .stroke(Color.white.opacity(0.2), lineWidth: 8)
-                        .frame(width: 80, height: 80)
-                    
-                    Circle()
-                        .trim(from: 0.0, to: CGFloat(gestureCtrl.gestureProgress))
-                        .stroke(gestureCtrl.activeGesture == .victory ? Color.green : Color.red, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .frame(width: 80, height: 80)
-                        .rotationEffect(.degrees(-90))
-                        .animation(.linear(duration: 0.1), value: gestureCtrl.gestureProgress)
-                    
-                    // ИСПРАВЛЕНО: Показываем эмодзи ✌️ для успеха и красную ладонь для отмены
-                    if gestureCtrl.activeGesture == .victory {
-                        Text("✌️")
-                            .font(.system(size: 38))
-                    } else {
-                        Image(systemName: "hand.raised.fill")
-                            .font(.system(size: 34))
-                            .foregroundColor(.red)
-                    }
-                }
-                .background(Color.black.opacity(0.6).clipShape(Circle()))
-                .transition(.scale.combined(with: .opacity))
-            } else {
-                Color.clear.frame(width: 80, height: 80)
-            }
-        }
-    
-    // MARK: - Legacy UI (HUDs)
-    
+    // MARK: - HUDs
     private var topHUD: some View {
         VStack(spacing: 8) {
             Text("\(engine.repsCount)")

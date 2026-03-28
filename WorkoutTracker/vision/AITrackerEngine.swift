@@ -2,405 +2,386 @@
 //  AITrackerEngine.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 25.03.26.
+//  Vision & Biomechanics Engine
+//  Combines deterministic geometric heuristics with ML safeguards.
 //
 
 import Foundation
 import Vision
 import CoreGraphics
 import Combine
-import UIKit
 
-// MARK: - Enums
+// MARK: - 1. Biomechanics Core Models (Thread-Safe)
 
-enum TrackedExercise: String {
-    case squat
-    case pushUp
-    case deadlift
-    case lunge
-    case bicepCurl
-    case unsupported
-    
-    init(name: String) {
-        let lowercased = name.lowercased()
-        if lowercased.contains("squat") {
-            self = .squat
-        } else if lowercased.contains("push up") || lowercased.contains("push-up") {
-            self = .pushUp
-        } else if lowercased.contains("deadlift") {
-            self = .deadlift
-        } else if lowercased.contains("lunge") {
-            self = .lunge
-        } else if lowercased.contains("curl") {
-            self = .bicepCurl
-        } else {
-            self = .unsupported
-        }
-    }
-    
-    func matches(mlAction: String) -> Bool {
-        let lower = mlAction.lowercased()
-        switch self {
-        case .squat: return lower.contains("squat")
-        case .pushUp: return lower.contains("push")
-        case .deadlift: return lower.contains("deadlift")
-        case .lunge: return lower.contains("lunge")
-        case .bicepCurl: return lower.contains("curl")
-        case .unsupported: return false
-        }
-    }
+/// Универсальные названия суставов, независимые от стороны (лево/право)
+public enum AgnosticJointName: Sendable {
+    case neck, root
+    case shoulder, elbow, wrist
+    case hip, knee, ankle
 }
 
-// MARK: - Biomechanics Math & Helpers
-
-struct ActiveJoints {
-    let neck: CGPoint?
-    let shoulder: CGPoint?
-    let elbow: CGPoint?
-    let wrist: CGPoint?
-    let hip: CGPoint?
-    let knee: CGPoint?
-    let ankle: CGPoint?
+public enum MovementMetric: Sendable {
+    case angle(AgnosticJointName, AgnosticJointName, AgnosticJointName)
+    case distance(AgnosticJointName, AgnosticJointName)
+    case projectionY(AgnosticJointName, AgnosticJointName)
+    indirect case fallback(primary: MovementMetric, secondary: MovementMetric)
 }
 
-struct BiomechanicsMath {
+public struct PhaseThresholds: Sendable {
+    public let relaxed: Double
+    public let contracted: Double
+    public let hysteresis: Double
+}
+
+public struct PhaseTexts: Sendable {
+    public let contracting: String
+    public let contracted: String
+    public let extending: String
+    public let relaxed: String
+}
+
+public struct BiomechanicsProfile: Sendable {
+    public let exerciseName: String
+    public let metric: MovementMetric
+    public let thresholds: PhaseThresholds
+    public let maxOccludedFrames: Int
+    public let primaryMuscles: [String]
+    public let secondaryMuscles: [String]
+    public let texts: PhaseTexts
+}
+
+// MARK: - 2. Biomechanics Math
+
+public enum BiomechanicsMath {
     
-    /// Рассчитывает внутренний угол между тремя точками (в градусах).
-    static func angleBetween(p1: CGPoint, p2: CGPoint, p3: CGPoint) -> CGFloat {
-        let v1 = CGPoint(x: p1.x - p2.x, y: p1.y - p2.y)
-        let v2 = CGPoint(x: p3.x - p2.x, y: p3.y - p2.y)
+    /// Извлекает самые уверенные точки, автоматически выбирая левую или правую сторону
+    public static func extractAgnosticJoints(from points: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint]) -> [AgnosticJointName: CGPoint] {
+        var agnostic: [AgnosticJointName: CGPoint] = [:]
         
-        let dotProduct = (v1.x * v2.x) + (v1.y * v2.y)
-        let magnitude1 = hypot(v1.x, v1.y)
-        let magnitude2 = hypot(v2.x, v2.y)
-        
-        guard magnitude1 > 0, magnitude2 > 0 else { return 0.0 }
-        
-        let cosineAngle = dotProduct / (magnitude1 * magnitude2)
-        
-        // Защита от NaN при ошибках округления float
-        let clampedCosine = max(-1.0, min(1.0, cosineAngle))
-        let angleInRadians = acos(clampedCosine)
-        
-        return angleInRadians * (180.0 / .pi)
-    }
-    
-    /// Умный экстрактор рабочей стороны.
-    static func extractActiveSide(joints: [VNHumanBodyPoseObservation.JointName: CGPoint]) -> ActiveJoints {
-        let leftJoints: [VNHumanBodyPoseObservation.JointName] = [.leftShoulder, .leftElbow, .leftWrist, .leftHip, .leftKnee, .leftAnkle]
-        let rightJoints: [VNHumanBodyPoseObservation.JointName] = [.rightShoulder, .rightElbow, .rightWrist, .rightHip, .rightKnee, .rightAnkle]
-        
-        let leftScore = leftJoints.compactMap { joints[$0] }.count
-        let rightScore = rightJoints.compactMap { joints[$0] }.count
+        let leftScore = [points[.leftShoulder], points[.leftElbow], points[.leftWrist], points[.leftHip], points[.leftKnee], points[.leftAnkle]]
+            .compactMap { $0?.confidence }.reduce(0, +)
+        let rightScore = [points[.rightShoulder], points[.rightElbow], points[.rightWrist], points[.rightHip], points[.rightKnee], points[.rightAnkle]]
+            .compactMap { $0?.confidence }.reduce(0, +)
         
         let isLeft = leftScore >= rightScore
+        let threshold: Float = 0.3
         
-        return ActiveJoints(
-            neck: joints[.neck] ?? joints[.nose], // Фолбэк на нос, если шея перекрыта
-            shoulder: isLeft ? joints[.leftShoulder] : joints[.rightShoulder],
-            elbow: isLeft ? joints[.leftElbow] : joints[.rightElbow],
-            wrist: isLeft ? joints[.leftWrist] : joints[.rightWrist],
-            hip: isLeft ? joints[.leftHip] : joints[.rightHip],
-            knee: isLeft ? joints[.leftKnee] : joints[.rightKnee],
-            ankle: isLeft ? joints[.leftAnkle] : joints[.rightAnkle]
+        func add(_ name: AgnosticJointName, left: VNHumanBodyPoseObservation.JointName, right: VNHumanBodyPoseObservation.JointName) {
+            let target = isLeft ? left : right
+            if let pt = points[target], pt.confidence > threshold {
+                // Инвертируем Y для удобной работы в системе координат UI
+                agnostic[name] = CGPoint(x: pt.location.x, y: 1.0 - pt.location.y)
+            }
+        }
+        
+        add(.shoulder, left: .leftShoulder, right: .rightShoulder)
+        add(.elbow, left: .leftElbow, right: .rightElbow)
+        add(.wrist, left: .leftWrist, right: .rightWrist)
+        add(.hip, left: .leftHip, right: .rightHip)
+        add(.knee, left: .leftKnee, right: .rightKnee)
+        add(.ankle, left: .leftAnkle, right: .rightAnkle)
+        
+        if let neck = points[.neck] ?? points[.nose], neck.confidence > threshold {
+            agnostic[.neck] = CGPoint(x: neck.location.x, y: 1.0 - neck.location.y)
+        }
+        if let root = points[.root], root.confidence > threshold {
+            agnostic[.root] = CGPoint(x: root.location.x, y: 1.0 - root.location.y)
+        }
+        
+        return agnostic
+    }
+    // Вставь этот код внутрь enum BiomechanicsMath
+    public static func distance(p1: CGPoint, p2: CGPoint) -> Double {
+        return hypot(p1.x - p2.x, p1.y - p2.y)
+    }
+    public static func angleBetween(p1: CGPoint, p2: CGPoint, p3: CGPoint) -> Double {
+        let v1 = CGVector(dx: p1.x - p2.x, dy: p1.y - p2.y)
+        let v2 = CGVector(dx: p3.x - p2.x, dy: p3.y - p2.y)
+        
+        let dotProduct = (v1.dx * v2.dx) + (v1.dy * v2.dy)
+        let magnitude1 = hypot(v1.dx, v1.dy)
+        let magnitude2 = hypot(v2.dx, v2.dy)
+        guard magnitude1 > 0, magnitude2 > 0 else { return 0.0 }
+        
+        let cosineAngle = max(-1.0, min(1.0, dotProduct / (magnitude1 * magnitude2)))
+        return acos(cosineAngle) * (180.0 / .pi)
+    }
+    
+    public static func projectedDistanceY(p1: CGPoint, p2: CGPoint) -> Double {
+        return abs(p1.y - p2.y)
+    }
+    
+    public static func amplitudePercentage(current: Double, relaxed: Double, contracted: Double) -> Double {
+        let totalRange = contracted - relaxed
+        guard totalRange != 0 else { return 0.0 }
+        let progress = (current - relaxed) / totalRange
+        return max(0.0, min(100.0, progress * 100.0))
+    }
+}
+
+// MARK: - 3. Exercise Registry (Factory)
+
+public enum ExerciseRegistry {
+    public static func profile(for exercise: String) -> BiomechanicsProfile? {
+        let name = exercise.lowercased()
+        if name.contains("curl") { return bicepsCurl }
+        if name.contains("squat") { return squat }
+        if name.contains("bench") || name.contains("press") { return benchPress }
+        return nil // Фоллбэк: упражнение не поддерживается ИИ
+    }
+    
+    private static var bicepsCurl: BiomechanicsProfile {
+        BiomechanicsProfile(
+            exerciseName: "Biceps Curl",
+            metric: .angle(.shoulder, .elbow, .wrist),
+            thresholds: PhaseThresholds(relaxed: 160.0, contracted: 45.0, hysteresis: 15.0),
+            maxOccludedFrames: 3,
+            primaryMuscles: ["biceps"], secondaryMuscles: ["forearm"],
+            texts: PhaseTexts(contracting: "Curl up!", contracted: "Squeeze!", extending: "Control down...", relaxed: "Ready")
+        )
+    }
+    
+    private static var squat: BiomechanicsProfile {
+        BiomechanicsProfile(
+            exerciseName: "Squat",
+            metric: .fallback(primary: .angle(.hip, .knee, .ankle), secondary: .angle(.shoulder, .hip, .knee)),
+            thresholds: PhaseThresholds(relaxed: 165.0, contracted: 90.0, hysteresis: 15.0),
+            maxOccludedFrames: 4,
+            primaryMuscles: ["quadriceps", "gluteal"], secondaryMuscles: ["hamstring", "calves"],
+            texts: PhaseTexts(contracting: "Lower...", contracted: "Push up!", extending: "Stand tall", relaxed: "Ready")
+        )
+    }
+    
+    private static var benchPress: BiomechanicsProfile {
+        BiomechanicsProfile(
+            exerciseName: "Bench Press",
+            metric: .projectionY(.wrist, .shoulder),
+            thresholds: PhaseThresholds(relaxed: 0.45, contracted: 0.10, hysteresis: 0.05),
+            maxOccludedFrames: 3,
+            primaryMuscles: ["chest", "triceps"], secondaryMuscles: ["deltoids"],
+            texts: PhaseTexts(contracting: "Lower bar...", contracted: "Press!", extending: "Lock out", relaxed: "Ready")
         )
     }
 }
 
-// MARK: - Hybrid AI Tracker Engine
+// MARK: - 4. Repetition Tracker (State Machine)
+
+public enum MovementPhase: Sendable {
+    case relaxed, contracting, contracted, extending, unknown
+}
+
+public struct TrackingState: Sendable {
+    public var phase: MovementPhase = .unknown
+    public var repsCount: Int = 0
+    public var currentAmplitude: Double = 0.0
+    
+    fileprivate var missingFramesCount: Int = 0
+    fileprivate var lastValidMetricValue: Double? = nil
+}
+
+public final class RepetitionTracker {
+    private let profile: BiomechanicsProfile
+    private(set) var state: TrackingState
+    
+    public init(profile: BiomechanicsProfile) {
+        self.profile = profile
+        self.state = TrackingState()
+    }
+    
+    public func process(joints: [AgnosticJointName: CGPoint]) -> TrackingState {
+        guard let metricValue = extractMetricValue(profile.metric, from: joints) else {
+            return handleOcclusion()
+        }
+        
+        state.missingFramesCount = 0
+        state.lastValidMetricValue = metricValue
+        
+        state.currentAmplitude = BiomechanicsMath.amplitudePercentage(
+            current: metricValue,
+            relaxed: profile.thresholds.relaxed,
+            contracted: profile.thresholds.contracted
+        )
+        
+        updatePhase(with: metricValue)
+        return state
+    }
+    
+    private func handleOcclusion() -> TrackingState {
+        state.missingFramesCount += 1
+        if state.missingFramesCount > profile.maxOccludedFrames {
+            state.phase = .unknown
+            state.currentAmplitude = 0.0
+            state.lastValidMetricValue = nil
+        }
+        return state
+    }
+    
+    private func updatePhase(with value: Double) {
+        let t = profile.thresholds
+        let isDecreasing = t.contracted < t.relaxed
+        
+        let reachedContracted = isDecreasing ? (value <= t.contracted + t.hysteresis) : (value >= t.contracted - t.hysteresis)
+        let reachedRelaxed = isDecreasing ? (value >= t.relaxed - t.hysteresis) : (value <= t.relaxed + t.hysteresis)
+        
+        switch state.phase {
+        case .unknown, .relaxed:
+            if !reachedRelaxed { state.phase = .contracting }
+        case .contracting:
+            if reachedContracted { state.phase = .contracted }
+            else if reachedRelaxed { state.phase = .relaxed } // False start
+        case .contracted:
+            if !reachedContracted { state.phase = .extending }
+        case .extending:
+            if reachedRelaxed {
+                state.phase = .relaxed
+                state.repsCount += 1 // ✅ Повторение засчитано!
+            } else if reachedContracted {
+                state.phase = .contracted // Bounce back
+            }
+        }
+    }
+    
+    private func extractMetricValue(_ metric: MovementMetric, from joints: [AgnosticJointName: CGPoint]) -> Double? {
+        switch metric {
+        case .angle(let j1, let j2, let j3):
+            guard let p1 = joints[j1], let p2 = joints[j2], let p3 = joints[j3] else { return nil }
+            return BiomechanicsMath.angleBetween(p1: p1, p2: p2, p3: p3)
+        case .distance(let j1, let j2):
+            guard let p1 = joints[j1], let p2 = joints[j2] else { return nil }
+            return BiomechanicsMath.distance(p1: p1, p2: p2)
+        case .projectionY(let j1, let j2):
+            guard let p1 = joints[j1], let p2 = joints[j2] else { return nil }
+            return BiomechanicsMath.projectedDistanceY(p1: p1, p2: p2)
+        case .fallback(let primary, let secondary):
+            return extractMetricValue(primary, from: joints) ?? extractMetricValue(secondary, from: joints)
+        }
+    }
+}
+
+// MARK: - 5. AITrackerEngine (Main Coordinator)
 
 @MainActor
-final class AITrackerEngine: ObservableObject {
+public final class AITrackerEngine: ObservableObject {
     
-    // MARK: - Published State (UI)
+    // MARK: - Published UI State
+    @Published public private(set) var repsCount: Int = 0
+    @Published public private(set) var feedbackMessage: String = "Initializing..."
+    @Published public private(set) var isTrackingAction: Bool = false
+    @Published public var liveMuscleTension: [String: Int] = [:]
     
-    @Published private(set) var repsCount: Int = 0
-    @Published private(set) var feedbackMessage: String = "Ready"
-    @Published private(set) var isTrackingAction: Bool = false
-    
-    // Живое напряжение мышц (Live Muscle Activation) от 0 до 100%
-    @Published var liveMuscleTension: [String: Int] = [:]
-    
-    // MARK: - Internal State
-    
-    private let exercise: TrackedExercise
+    // MARK: - Private Core Components
+    private let exerciseName: String
+    private let profile: BiomechanicsProfile? // Кэшируем профиль, чтобы не искать каждый кадр
     private let mlEngine = MLWorkoutEngine()
+    private var repetitionTracker: RepetitionTracker?
     private var cancellables = Set<AnyCancellable>()
     
-    // Внутренний флаг для стейт-машины Core ML классификатора
-    private var isMLActivePhase = false
-    
     // MARK: - Init
-    
-    init(exerciseName: String) {
-        self.exercise = TrackedExercise(name: exerciseName)
+    public init(exerciseName: String) {
+        self.exerciseName = exerciseName
+        self.profile = ExerciseRegistry.profile(for: exerciseName)
         
-        if self.exercise == .unsupported {
-            self.feedbackMessage = "Exercise not supported by AI"
+        if let profile = self.profile {
+            self.repetitionTracker = RepetitionTracker(profile: profile)
+            self.feedbackMessage = "Ready. Waiting for action."
+        } else {
+            self.feedbackMessage = "AI Tracking not optimized for this exercise"
         }
         
         setupMLSubscription()
     }
     
-    // MARK: - ML Rep Counting (Combine State Machine)
+    // MARK: - Pipeline
     
     private func setupMLSubscription() {
-        // Подписываемся на изменение текущего действия от Core ML
         mlEngine.$currentAction
             .dropFirst()
             .sink { [weak self] action in
-                self?.handleMLActionChange(action)
+                self?.handleMLActionChange(action: action)
             }
             .store(in: &cancellables)
     }
     
-    private func handleMLActionChange(_ action: String) {
-        guard exercise != .unsupported else { return }
+    private func handleMLActionChange(action: String) {
+        guard repetitionTracker != nil else { return }
         
-        let isCurrentExerciseAction = exercise.matches(mlAction: action)
+        // Считаем активным, если ML выдает "Active" или точное название упражнения
+        let isActive = action.lowercased() == "active" ||
+                       exerciseName.lowercased().contains(action.lowercased())
         
-        if isCurrentExerciseAction {
-            // Начали делать упражнение (концентрическая фаза)
-            if !isMLActivePhase {
-                isMLActivePhase = true
-                updateTrackingState(true)
-            }
-        } else {
-            // Перестали делать упражнение (перешли в Idle или сменили позу)
-            if isMLActivePhase {
-                isMLActivePhase = false
-                updateTrackingState(false)
-                
-                // Засчитываем повторение
-                repsCount += 1
-                updateFeedback("Great rep!")
-                triggerHaptic()
+        if isTrackingAction != isActive {
+            isTrackingAction = isActive
+            
+            if !isActive {
+                feedbackMessage = "Adjust form / Waiting..."
+                liveMuscleTension.removeAll()
             }
         }
     }
     
-    private func triggerHaptic() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-    }
-    
-    // MARK: - Public API
-    
-    func processFrame(observation: VNHumanBodyPoseObservation) {
-        guard exercise != .unsupported else { return }
+    public func processFrame(observation: VNHumanBodyPoseObservation) {
+        guard let tracker = repetitionTracker, let profile = self.profile else { return }
         
-        // 1. Отдаем сырой кадр в Core ML для анализа и подсчета повторений
+        // 1. Всегда кормим ML Engine для поддержания окна предикшенов
         mlEngine.processFrame(observation: observation)
         
-        // 2. Извлекаем точки для эвристической математики (Форма и Напряжение мышц)
+        // 2. Если ML запрещает трекинг, ставим математику на паузу
+        // 2. Если ML запрещает трекинг, ставим математику на паузу
+        // guard isTrackingAction else { return } // ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ТЕСТА
+        
+        // 3. Извлекаем сырые точки и конвертируем в агностичные
         guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
+        let agnosticJoints = BiomechanicsMath.extractAgnosticJoints(from: recognizedPoints)
         
-        var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-        for (key, point) in recognizedPoints where point.confidence > 0.3 {
-            // Инверсия Y оси (Vision vs UIKit/SwiftUI)
-            joints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+        // 4. Прогоняем через математический трекер
+        let state = tracker.process(joints: agnosticJoints)
+        
+        // 5. Синхронизируем состояние с UI
+        syncStateToUI(state: state, profile: profile)
+    }
+    
+    // MARK: - State Synchronization
+    
+    private func syncStateToUI(state: TrackingState, profile: BiomechanicsProfile) {
+        // Синхронизация повторений
+        if self.repsCount != state.repsCount {
+            self.repsCount = state.repsCount
         }
         
-        let activeSide = BiomechanicsMath.extractActiveSide(joints: joints)
+        // Обновление Heatmap Tension
+        let tension = Int(state.currentAmplitude)
+        var newTension: [String: Int] = [:]
         
-        // 3. Запускаем математику для отрисовки напряжения мышц и советов по осанке
-        switch exercise {
-        case .squat:
-            processSquat(side: activeSide)
-        case .pushUp:
-            processPushUp(side: activeSide)
-        case .deadlift:
-            processDeadlift(side: activeSide)
-        case .lunge:
-            processLunge(side: activeSide)
-        case .bicepCurl:
-            processBicepCurl(side: activeSide)
-        case .unsupported:
-            break
+        if tension > 0 {
+            for m in profile.primaryMuscles { newTension[m] = tension }
+            for m in profile.secondaryMuscles { newTension[m] = tension / 2 }
+        }
+        self.liveMuscleTension = newTension
+        
+        // Обратная связь по State Machine
+        let newFeedback: String
+        switch state.phase {
+        case .relaxed:      newFeedback = profile.texts.relaxed
+        case .contracting:  newFeedback = profile.texts.contracting
+        case .contracted:   newFeedback = profile.texts.contracted
+        case .extending:    newFeedback = profile.texts.extending
+        case .unknown:      newFeedback = "Body parts occluded. Adjust camera!"
+        }
+        
+        if self.feedbackMessage != newFeedback {
+            self.feedbackMessage = newFeedback
         }
     }
     
-    func reset() {
-        repsCount = 0
-        isMLActivePhase = false
-        updateFeedback("Ready")
-        updateTrackingState(false)
-        liveMuscleTension.removeAll()
-        mlEngine.reset()
-    }
-    
-    // MARK: - Biomechanics Math & Helpers
-    
-    /// Helper для перевода угла сустава в процент напряжения
-    private func calculateTension(currentAngle: CGFloat, relaxedAngle: CGFloat, contractedAngle: CGFloat) -> Int {
-        let range = relaxedAngle - contractedAngle
-        guard range != 0 else { return 0 }
+    public func reset() {
+        self.repsCount = 0
+        self.liveMuscleTension.removeAll()
+        self.isTrackingAction = false
+        self.mlEngine.reset()
         
-        let progress = (relaxedAngle - currentAngle) / range
-        let percentage = Int(progress * 100)
-        
-        return max(0, min(100, percentage))
-    }
-    
-    // MARK: - Exercise Processors (Form & Tension ONLY)
-    
-    private func processSquat(side: ActiveJoints) {
-        guard let hip = side.hip, let knee = side.knee, let ankle = side.ankle, let neck = side.neck else {
-            liveMuscleTension.removeAll()
-            return
-        }
-        
-        let kneeAngle = BiomechanicsMath.angleBetween(p1: hip, p2: knee, p3: ankle)
-        
-        // Считаем напряжение ног (квадрицепсы и ягодичные)
-        let tension = calculateTension(currentAngle: kneeAngle, relaxedAngle: 160.0, contractedAngle: 90.0)
-        liveMuscleTension["quadriceps"] = tension
-        liveMuscleTension["gluteal"] = tension
-        
-        let verticalRef = CGPoint(x: hip.x, y: hip.y - 0.1)
-        let backLeanAngle = BiomechanicsMath.angleBetween(p1: neck, p2: hip, p3: verticalRef)
-        
-        if isMLActivePhase {
-            if backLeanAngle > 45.0 {
-                updateFeedback("Keep your back straight!")
-            } else if kneeAngle < 90.0 {
-                updateFeedback("Good depth! Push up!")
-            } else {
-                updateFeedback("Lower...")
-            }
-        } else {
-            if feedbackMessage != "Great rep!" {
-                updateFeedback("Ready")
-            }
-        }
-    }
-    
-    private func processPushUp(side: ActiveJoints) {
-        guard let shoulder = side.shoulder, let elbow = side.elbow, let wrist = side.wrist,
-              let hip = side.hip, let ankle = side.ankle else {
-            liveMuscleTension.removeAll()
-            return
-        }
-        
-        let elbowAngle = BiomechanicsMath.angleBetween(p1: shoulder, p2: elbow, p3: wrist)
-        let bodyAngle = BiomechanicsMath.angleBetween(p1: shoulder, p2: hip, p3: ankle)
-        
-        // Грудь и трицепс
-        let tension = calculateTension(currentAngle: elbowAngle, relaxedAngle: 160.0, contractedAngle: 90.0)
-        liveMuscleTension["chest"] = tension
-        liveMuscleTension["triceps"] = tension
-        liveMuscleTension["deltoids"] = tension / 2 // Дельты тоже работают, но меньше
-        
-        if bodyAngle < 150.0 {
-            updateFeedback("Keep your body straight!")
-        } else if isMLActivePhase {
-            if elbowAngle < 90.0 {
-                updateFeedback("Push up!")
-            } else {
-                updateFeedback("Lower...")
-            }
-        } else if feedbackMessage != "Great rep!" {
-            updateFeedback("Ready")
-        }
-    }
-    
-    private func processDeadlift(side: ActiveJoints) {
-        guard let shoulder = side.shoulder, let hip = side.hip, let knee = side.knee, let neck = side.neck else {
-            liveMuscleTension.removeAll()
-            return
-        }
-        
-        let hipAngle = BiomechanicsMath.angleBetween(p1: shoulder, p2: hip, p3: knee)
-        
-        // Спина и бицепс бедра
-        let tension = calculateTension(currentAngle: hipAngle, relaxedAngle: 170.0, contractedAngle: 90.0)
-        liveMuscleTension["hamstring"] = tension
-        liveMuscleTension["lower-back"] = tension
-        liveMuscleTension["gluteal"] = tension
-        
-        let verticalRef = CGPoint(x: hip.x, y: hip.y - 0.1)
-        let backLeanAngle = BiomechanicsMath.angleBetween(p1: neck, p2: hip, p3: verticalRef)
-        
-        if backLeanAngle > 85.0 {
-            updateFeedback("Don't round your back!")
-        } else if isMLActivePhase {
-            if hipAngle < 100.0 {
-                updateFeedback("Good hinge. Squeeze glutes!")
-            } else {
-                updateFeedback("Hinge forward...")
-            }
-        } else if feedbackMessage != "Great rep!" {
-            updateFeedback("Ready")
-        }
-    }
-    
-    private func processLunge(side: ActiveJoints) {
-        guard let hip = side.hip, let knee = side.knee, let ankle = side.ankle else {
-            liveMuscleTension.removeAll()
-            return
-        }
-        
-        let kneeAngle = BiomechanicsMath.angleBetween(p1: hip, p2: knee, p3: ankle)
-        
-        // Ноги
-        let tension = calculateTension(currentAngle: kneeAngle, relaxedAngle: 160.0, contractedAngle: 90.0)
-        liveMuscleTension["quadriceps"] = tension
-        liveMuscleTension["gluteal"] = tension
-        liveMuscleTension["calves"] = tension / 2
-        
-        if isMLActivePhase {
-            if kneeAngle < 90.0 {
-                updateFeedback("Push back up!")
-            } else {
-                updateFeedback("Lower...")
-            }
-        } else if feedbackMessage != "Great rep!" {
-            updateFeedback("Ready")
-        }
-    }
-    
-    private func processBicepCurl(side: ActiveJoints) {
-        guard let shoulder = side.shoulder, let elbow = side.elbow, let wrist = side.wrist,
-              let hip = side.hip, let neck = side.neck else {
-            liveMuscleTension.removeAll()
-            return
-        }
-        
-        let elbowAngle = BiomechanicsMath.angleBetween(p1: shoulder, p2: elbow, p3: wrist)
-        
-        // Считаем напряжение бицепса
-        let tension = calculateTension(currentAngle: elbowAngle, relaxedAngle: 160.0, contractedAngle: 60.0)
-        liveMuscleTension["biceps"] = tension
-        
-        let verticalRef = CGPoint(x: hip.x, y: hip.y - 0.1)
-        let backLeanAngle = BiomechanicsMath.angleBetween(p1: neck, p2: hip, p3: verticalRef)
-        
-        if backLeanAngle > 20.0 {
-            updateFeedback("Don't swing your back!")
-        } else if isMLActivePhase {
-            if elbowAngle < 60.0 {
-                updateFeedback("Squeeze and lower slowly")
-            } else if elbowAngle > 100.0 {
-                updateFeedback("Lower all the way")
-            } else {
-                updateFeedback("Curl up...")
-            }
-        } else if feedbackMessage != "Great rep!" {
-            updateFeedback("Ready")
-        }
-    }
-    
-    // MARK: - State Update Helpers
-    
-    private func updateFeedback(_ text: String) {
-        if feedbackMessage != text {
-            feedbackMessage = text
-        }
-    }
-    
-    private func updateTrackingState(_ state: Bool) {
-        if isTrackingAction != state {
-            isTrackingAction = state
+        if let profile = self.profile {
+            self.repetitionTracker = RepetitionTracker(profile: profile)
+            self.feedbackMessage = "Ready. Waiting for action."
         }
     }
 }

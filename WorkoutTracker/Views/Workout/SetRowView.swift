@@ -321,7 +321,10 @@ struct SetRowView: View {
     }
     @ViewBuilder
         private var aiTrackerButton: some View {
-            let isAISupported = TrackedExercise(name: exerciseName) != .unsupported
+            // ИСПРАВЛЕНИЕ: Используем нашу новую систему категорий!
+            let category = ExerciseCategory.determine(from: exerciseName)
+            let supportedCategories: [ExerciseCategory] = [.squat, .curl, .press, .deadlift, .pull]
+            let isAISupported = supportedCategories.contains(category)
             
             Button {
                 showAITracker = true

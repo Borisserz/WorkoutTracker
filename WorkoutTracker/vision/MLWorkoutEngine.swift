@@ -2,8 +2,6 @@
 //  MLWorkoutEngine.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 27.03.26.
-//
 
 internal import SwiftUI
 import Vision
@@ -28,6 +26,10 @@ final class MLWorkoutEngine: ObservableObject {
     
     /// Флаг для защиты от наслоения предикшенов (backpressure)
     private var isPredicting = false
+    
+    /// Гистерезис (сглаживание) для удержания распознанного экшена
+    private var lastConfidentPredictionTime: Date = .distantPast
+    private let predictionCooldown: TimeInterval = 1.5 // 1.5 секунды
     
     // Модель Action Classifier
     private var actionClassifier: MLModel?
@@ -69,71 +71,74 @@ final class MLWorkoutEngine: ObservableObject {
     
     // MARK: - ML Prediction (Background)
     
-    // MARK: - ML Prediction (Background)
+    private func predictAction() {
+        // Защита: не запускаем новый запрос, если старый еще считается
+        guard !isPredicting, let model = actionClassifier else { return }
         
-        private func predictAction() {
-            // Защита: не запускаем новый запрос, если старый еще считается
-            guard !isPredicting, let model = actionClassifier else { return }
+        // Делаем копию массива для безопасной передачи в фоновый поток
+        let windowToPredict = observations
+        isPredicting = true
+        
+        Task.detached(priority: .userInitiated) {
+            defer {
+                // Гарантированно освобождаем блокировку после завершения
+                Task { @MainActor in self.isPredicting = false }
+            }
             
-            // Делаем копию массива для безопасной передачи в фоновый поток
-            let windowToPredict = observations
-            isPredicting = true
-            
-            Task.detached(priority: .userInitiated) {
-                defer {
-                    // Гарантированно освобождаем блокировку после завершения
-                    Task { @MainActor in self.isPredicting = false }
+            do {
+                // 1. Извлекаем MLMultiArray из каждого кадра
+                let multiArrays = try windowToPredict.compactMap { try $0.keypointsMultiArray() }
+                
+                // Убеждаемся, что никто не потерялся
+                guard multiArrays.count == self.predictionWindowSize else { return }
+                
+                // 2. Склеиваем массив в единый таймлайн (Shape: 60 x 3 x 18)
+                let combinedArray = try MLMultiArray(
+                    concatenating: multiArrays,
+                    axis: 0,
+                    dataType: .float32
+                )
+                
+                // 3. Формируем входные данные
+                let input = try MLDictionaryFeatureProvider(dictionary: ["poses": combinedArray])
+                
+                // 4. Выполняем предикшен
+                let prediction = try await model.prediction(from: input)
+                
+                // 5. Парсим результаты
+                guard let labelFeature = prediction.featureValue(for: "label"),
+                      let probabilitiesFeature = prediction.featureValue(for: "labelProbabilities") else {
+                    return
                 }
                 
-                do {
-                    // 1. Извлекаем MLMultiArray из каждого кадра
-                    let multiArrays = try windowToPredict.compactMap { try $0.keypointsMultiArray() }
-                    
-                    // Убеждаемся, что никто не потерялся
-                    guard multiArrays.count == self.predictionWindowSize else { return }
-                    
-                    // 2. Склеиваем массив в единый таймлайн (Shape: 60 x 3 x 18)
-                    let combinedArray = try MLMultiArray(
-                        concatenating: multiArrays,
-                        axis: 0,
-                        dataType: .float32
-                    )
-                    
-                    // 3. Формируем входные данные
-                    let input = try MLDictionaryFeatureProvider(dictionary: ["poses": combinedArray])
-                    
-                    // 4. Выполняем предикшен (ИСПРАВЛЕНИЕ: добавлен await)
-                    let prediction = try await model.prediction(from: input)
-                    
-                    // 5. Парсим результаты (ИСПРАВЛЕНИЕ: stringValue вынесено из guard)
-                    guard let labelFeature = prediction.featureValue(for: "label"),
-                          let probabilitiesFeature = prediction.featureValue(for: "labelProbabilities") else {
-                        return
-                    }
-                    
-                    let label = labelFeature.stringValue // Это точно строка, nil быть не может
-                    
-                    guard let probabilities = probabilitiesFeature.dictionaryValue as? [String: Double],
-                          let conf = probabilities[label] else {
-                        return
-                    }
-                    
-                    // 6. Отдаем результат в UI на MainActor
-                    await MainActor.run {
-                        if conf > 0.5 { // Порог уверенности
-                            self.currentAction = label
-                            self.confidence = conf
-                        } else {
+                let label = labelFeature.stringValue // Это точно строка, nil быть не может
+                
+                guard let probabilities = probabilitiesFeature.dictionaryValue as? [String: Double],
+                      let conf = probabilities[label] else {
+                    return
+                }
+                
+                // 6. Отдаем результат в UI на MainActor с поддержкой гистерезиса
+                await MainActor.run {
+                    // Чуть снижаем порог для большего доверия сырой модели
+                    if conf > 0.45 {
+                        self.currentAction = label
+                        self.confidence = conf
+                        self.lastConfidentPredictionTime = Date() // Запоминаем момент успешного распознавания
+                    } else {
+                        // Сбрасываем только если прошло достаточно времени с последнего успешного распознавания
+                        if Date().timeIntervalSince(self.lastConfidentPredictionTime) > self.predictionCooldown {
                             self.currentAction = "Idle"
                             self.confidence = 0.0
                         }
                     }
-                    
-                } catch {
-                    print("⚠️ Action classification failed: \(error.localizedDescription)")
                 }
+                
+            } catch {
+                print("⚠️ Action classification failed: \(error.localizedDescription)")
             }
         }
+    }
     
     // MARK: - Utilities
     
@@ -143,6 +148,6 @@ final class MLWorkoutEngine: ObservableObject {
         frameCounter = 0
         currentAction = "Idle"
         confidence = 0.0
+        lastConfidentPredictionTime = .distantPast
     }
 }
-
