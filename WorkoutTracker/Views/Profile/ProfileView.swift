@@ -5,6 +5,7 @@
 
 internal import SwiftUI
 import SwiftData
+import PhotosUI
 
 struct ProfileView: View {
     @EnvironmentObject var viewModel: WorkoutViewModel
@@ -26,11 +27,13 @@ struct ProfileView: View {
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false
     
-    // State для редактирования
-    @State private var showEditAvatar = false
-    @State private var newAvatar = ""
+    // State для редактирования веса
     @State private var showEditWeight = false
     @State private var newWeightString = ""
+    
+    // State для Фото Профиля
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var profileImage: UIImage?
     
     // Кешированные значения для производительности
     @State private var cachedAchievements: [Achievement] = []
@@ -89,16 +92,35 @@ struct ProfileView: View {
                         
                         // 1. HEADER (Аватар, Имя, Вес)
                         VStack(spacing: 15) {
-                            Button {
-                                newAvatar = userAvatar
-                                showEditAvatar = true
-                            } label: {
-                                Text(userAvatar)
-                                    .font(.system(size: 60))
-                                    .frame(width: 100, height: 100)
-                                    .background(Color.gray.opacity(0.1))
-                                    .clipShape(Circle())
-                                    .overlay(Circle().stroke(Color.blue, lineWidth: 3))
+                            
+                            // Выбор и отображение фото профиля
+                            PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                                if let profileImage {
+                                    Image(uiImage: profileImage)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 100, height: 100)
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(Color.blue, lineWidth: 3))
+                                } else {
+                                    Text(userAvatar)
+                                        .font(.system(size: 60))
+                                        .frame(width: 100, height: 100)
+                                        .background(Color.gray.opacity(0.1))
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(Color.blue, lineWidth: 3))
+                                }
+                            }
+                            .onChange(of: selectedPhotoItem) { _, newItem in
+                                Task {
+                                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                       let uiImage = UIImage(data: data) {
+                                        await MainActor.run {
+                                            profileImage = uiImage
+                                            ProfileImageManager.shared.saveImage(uiImage)
+                                        }
+                                    }
+                                }
                             }
                             
                             VStack(spacing: 8) {
@@ -249,22 +271,6 @@ struct ProfileView: View {
                 .sheet(isPresented: $showingWeightHistory) {
                     WeightHistoryView()
                 }
-                .alert(LocalizedStringKey("Update Avatar"), isPresented: $showEditAvatar) {
-                    TextField("Emoji", text: $newAvatar)
-                        .onChange(of: newAvatar) { _, newValue in
-                            if newValue.count > 1 {
-                                newAvatar = String(newValue.prefix(1))
-                            }
-                        }
-                    Button("Save") {
-                        if !newAvatar.isEmpty {
-                            userAvatar = newAvatar
-                        }
-                    }
-                    Button("Cancel", role: .cancel) { }
-                } message: {
-                    Text("Enter 1 character or emoji.")
-                }
                 .alert(LocalizedStringKey("Update Body Weight"), isPresented: $showEditWeight) {
                     TextField("Weight", text: $newWeightString)
                         .keyboardType(.decimalPad)
@@ -280,7 +286,9 @@ struct ProfileView: View {
                     Text("Enter your current weight in \(unitsManager.weightUnitString())")
                 }
                 .onAppear {
-                    // Добавляем первую запись в SwiftData, если история пуста
+                    // Загружаем картинку профиля
+                    profileImage = ProfileImageManager.shared.loadImage()
+                    
                     if weightHistory.isEmpty {
                         let initialEntry = WeightEntry(date: Date(), weight: userBodyWeight)
                         modelContext.insert(initialEntry)

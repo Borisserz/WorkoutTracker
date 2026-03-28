@@ -11,7 +11,7 @@ import Charts
 import ActivityKit
 
 struct OverviewView: View {
-    
+    @AppStorage("use3DHeatmap") private var use3DHeatmap = false
     // MARK: - Environment & State
     @Environment(\.modelContext) private var context
     @EnvironmentObject var tutorialManager: TutorialManager
@@ -34,7 +34,7 @@ struct OverviewView: View {
     @State private var generatedFreshWorkout: GeneratedWorkout?
     
     // Интерактивность графика и анимации
-    @State private var selectedAngle: Int?
+    @State private var selectedChartMuscle: String? = nil
     @State private var isPulsing = false // Добавлено для пульсирующей кнопки
     
     // Менеджер цветов
@@ -167,31 +167,21 @@ struct OverviewView: View {
                 DetailedRecoveryView()
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Image(systemName: "gearshape.fill")
-                            .foregroundColor(.primary)
-                    }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 16) {
-                        // Кнопка профиля пользователя
-                        Button {
-                            showProfile = true
-                        } label: {
-                            Image(systemName: "person.crop.circle.fill")
-                                .foregroundColor(.primary)
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button {
+                                    showSettings = true
+                                } label: {
+                                    Image(systemName: "gearshape.fill")
+                                        .foregroundColor(.primary)
+                                }
+                            }
+                            
+                            ToolbarItem(placement: .navigationBarTrailing) {
+                                NavigationLink(destination: WorkoutCalendarView()) {
+                                    Image(systemName: "calendar")
+                                }
+                            }
                         }
-                        
-                        NavigationLink(destination: WorkoutCalendarView()) {
-                            Image(systemName: "calendar")
-                        }
-                    }
-                }
-            }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
                     .environmentObject(viewModel)
@@ -250,16 +240,9 @@ struct OverviewView: View {
     }
     
     private var selectedMuscleInfo: MuscleCountDTO? {
-        guard let selectedAngle else { return nil }
-        var currentSum = 0
-        for item in viewModel.dashboardMuscleData {
-            currentSum += item.count
-            if selectedAngle <= currentSum {
-                return item
-            }
+            guard let selectedChartMuscle else { return nil }
+            return viewModel.dashboardMuscleData.first(where: { $0.muscle == selectedChartMuscle })
         }
-        return nil
-    }
     
     // MARK: - Smart Workout Generator
     
@@ -389,6 +372,8 @@ struct OverviewView: View {
     
     // --- Subviews ---
     
+
+
     private var recoverySection: some View {
         VStack(alignment: .leading, spacing: 10) {
             // Заголовок работает как кнопка "Перейти"
@@ -422,7 +407,23 @@ struct OverviewView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
-                BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
+                // Переключатель между 2D и 3D видами
+                Picker(LocalizedStringKey("View Mode"), selection: $use3DHeatmap.animation(.easeInOut)) {
+                    Text("2D").tag(false)
+                    Text("3D").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .padding(.bottom, 8)
+                
+                Group {
+                    if use3DHeatmap {
+                        Body3DHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
+                            .frame(height: 500)
+                    } else {
+                        BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
+                    }
+                }
+                .transition(.opacity) // Добавлена анимация растворения при переключении
             }
         }
         .padding()
@@ -436,110 +437,92 @@ struct OverviewView: View {
             yOffset: -10
         )
     }
-    
     private var chartSection: some View {
-        VStack(alignment: .leading) {
-            HStack {
-                Text(LocalizedStringKey("Muscles Worked")).font(.headline).foregroundColor(.secondary)
-                Spacer()
-                Button {
-                    showMuscleColorSettings = true
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-            if viewModel.dashboardMuscleData.isEmpty {
-                Text(LocalizedStringKey("No workouts yet")).padding().frame(maxWidth: .infinity).foregroundColor(.secondary)
-            } else {
-                Chart(viewModel.dashboardMuscleData, id: \.muscle) { item in
-                    SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.6), angularInset: 2)
-                        .cornerRadius(5)
-                        .foregroundStyle(colorManager.getColor(for: item.muscle))
-                        .opacity(selectedMuscleInfo == nil || selectedMuscleInfo?.muscle == item.muscle ? 1.0 : 0.3)
-                }
-                .frame(height: 250)
-                .chartOverlay { proxy in
-                    GeometryReader { geometry in
-                        Rectangle()
-                            .fill(Color.clear)
-                            .contentShape(Rectangle())
-                            .onTapGesture { location in
-                                let centerX = geometry.size.width / 2
-                                let centerY = geometry.size.height / 2
-                                let dx = location.x - centerX
-                                let dy = location.y - centerY
-                                let distance = sqrt(dx * dx + dy * dy)
-                                
-                                let outerRadius = min(geometry.size.width, geometry.size.height) / 2
-                                let innerRadius = outerRadius * 0.6
-                                
-                                // Если нажали в центр (дырку) — снимаем выделение
-                                if distance < innerRadius {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        selectedAngle = nil
-                                    }
-                                    return
-                                }
-                                
-                                // Вычисляем угол от 12 часов по часовой стрелке
-                                var angle = atan2(dy, dx) + .pi / 2
-                                if angle < 0 { angle += 2 * .pi }
-                                
-                                let totalCount = viewModel.dashboardMuscleData.map { $0.count }.reduce(0, +)
-                                guard totalCount > 0 else { return }
-                                
-                                let selectedValue = Double(totalCount) * (angle / (2 * .pi))
-                                let newAngle = Int(selectedValue)
-                                
-                                // Находим мышцу, по которой кликнули, для возможности toggle
-                                var currentSum = 0
-                                var tappedMuscle: String? = nil
-                                for item in viewModel.dashboardMuscleData {
-                                    currentSum += item.count
-                                    if newAngle <= currentSum {
-                                        tappedMuscle = item.muscle
-                                        break
-                                    }
-                                }
-                                
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    // Снимаем выделение при повторном нажатии
-                                    if let selected = selectedMuscleInfo?.muscle, selected == tappedMuscle {
-                                        selectedAngle = nil
-                                    } else {
-                                        selectedAngle = newAngle
-                                    }
-                                }
-                            }
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text(LocalizedStringKey("Muscles Worked")).font(.headline).foregroundColor(.secondary)
+                    Spacer()
+                    Button {
+                        showMuscleColorSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
-                .chartBackground { proxy in
-                    GeometryReader { geometry in
-                        VStack {
-                            if let selected = selectedMuscleInfo {
-                                Text(LocalizedStringKey(selected.muscle)).font(.headline).multilineTextAlignment(.center)
-                                Text(LocalizedStringKey("\(selected.count) sets")).font(.title2).bold().foregroundColor(.blue)
-                            } else {
-                                Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(.secondary)
-                                Text("\(viewModel.dashboardTotalExercises)").font(.title).bold().foregroundColor(.primary)
+                if viewModel.dashboardMuscleData.isEmpty {
+                    Text(LocalizedStringKey("No workouts yet")).padding().frame(maxWidth: .infinity).foregroundColor(.secondary)
+                } else {
+                    
+                    // 1. САМ ГРАФИК
+                    Chart(viewModel.dashboardMuscleData, id: \.muscle) { item in
+                        SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.6), angularInset: 2)
+                            .cornerRadius(5)
+                            .foregroundStyle(colorManager.getColor(for: item.muscle))
+                            .opacity(selectedChartMuscle == nil || selectedChartMuscle == item.muscle ? 1.0 : 0.3)
+                    }
+                    .frame(height: 220)
+                    .chartBackground { proxy in
+                        GeometryReader { geometry in
+                            VStack {
+                                if let selected = selectedMuscleInfo {
+                                    Text(LocalizedStringKey(selected.muscle)).font(.headline).multilineTextAlignment(.center)
+                                    Text(LocalizedStringKey("\(selected.count) sets")).font(.title2).bold().foregroundColor(.blue)
+                                } else {
+                                    Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(.secondary)
+                                    Text("\(viewModel.dashboardTotalExercises)").font(.title).bold().foregroundColor(.primary)
+                                }
+                            }
+                            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        }
+                    }
+                    
+                    // 2. ЛЕГЕНДА (ЦВЕТНЫЕ ТОЧКИ + НАЗВАНИЯ)
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)], spacing: 12) {
+                        ForEach(viewModel.dashboardMuscleData, id: \.muscle) { item in
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(colorManager.getColor(for: item.muscle))
+                                    .frame(width: 10, height: 10)
+                                    .opacity(selectedChartMuscle == nil || selectedChartMuscle == item.muscle ? 1.0 : 0.3)
+                                
+                                Text(LocalizedStringKey(item.muscle))
+                                    .font(.caption)
+                                    .fontWeight(selectedChartMuscle == item.muscle ? .bold : .regular)
+                                    .foregroundColor(selectedChartMuscle == item.muscle ? .primary : .secondary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            // Снимаем или ставим выделение по нажатию прямо на легенду!
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.impactOccurred()
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if selectedChartMuscle == item.muscle {
+                                        selectedChartMuscle = nil // Снять выделение
+                                    } else {
+                                        selectedChartMuscle = item.muscle // Выделить
+                                    }
+                                }
                             }
                         }
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     }
+                    .padding(.top, 8)
+                    .padding(.horizontal, 4)
                 }
             }
+            .padding()
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
+            .spotlight(
+                step: .highlightChart,
+                manager: tutorialManager,
+                text: "See which muscles you train the most.",
+                alignment: .top,
+                yOffset: -10
+            )
         }
-        .padding().background(Color.gray.opacity(0.1)).cornerRadius(12)
-        .spotlight(
-            step: .highlightChart,
-            manager: tutorialManager,
-            text: "See which muscles you train the most.",
-            alignment: .top,
-            yOffset: -10
-        )
-    }
     
     private var topExercisesSection: some View {
          VStack(alignment: .leading, spacing: 10) {
