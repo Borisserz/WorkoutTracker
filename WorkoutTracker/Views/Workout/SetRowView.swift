@@ -176,31 +176,23 @@ struct SetRowView: View {
         private var inputsSection: some View {
             switch exerciseType {
             case .strength:
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 8) {
-                        inputColumn(
-                            type: .weight,
-                            binding: weightBinding,
-                            ghostText: prevWeight.map {
-                                let converted = unitsManager.convertFromKilograms($0)
-                                return LocalizationHelper.shared.formatFlexible(converted)
-                            }
-                        )
-                        
-                        inputColumn(
-                            type: .reps,
-                            binding: repsBinding,
-                            ghostText: prevReps.map { "\($0)" }
-                        )
-                    }
+                // Убрали VStack и блок 1RM (estimated1RMView),
+                // чтобы все элементы выстроились в одну ровную линию
+                HStack(spacing: 8) {
+                    inputColumn(
+                        type: .weight,
+                        binding: weightBinding,
+                        ghostText: prevWeight.map {
+                            let converted = unitsManager.convertFromKilograms($0)
+                            return LocalizationHelper.shared.formatFlexible(converted)
+                        }
+                    )
                     
-                    if estimated1RM > 0 {
-                        estimated1RMView
-                    } else {
-                        Text(" ")
-                            .font(.system(size: 10))
-                            .padding(.leading, 4)
-                    }
+                    inputColumn(
+                        type: .reps,
+                        binding: repsBinding,
+                        ghostText: prevReps.map { "\($0)" }
+                    )
                 }
                 
             case .cardio:

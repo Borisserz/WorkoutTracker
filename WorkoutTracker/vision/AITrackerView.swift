@@ -6,7 +6,6 @@
 internal import SwiftUI
 import AVFoundation
 import Vision
-
 struct AITrackerView: View {
     @Environment(\.dismiss) private var dismiss
     
@@ -20,11 +19,24 @@ struct AITrackerView: View {
     
     var onFinish: ((Int) -> Void)?
     
+    // 1. ДОБАВЛЯЕМ СВОЙСТВО ДЛЯ ХРАНЕНИЯ ИМЕНИ
+    let exerciseName: String
+    
+    // 2. ИСПОЛЬЗУЕМ СОХРАНЕННОЕ ИМЯ (а не engine.exerciseName)
+    private var isBackExercise: Bool {
+        let name = exerciseName.lowercased()
+        let backKeywords = ["deadlift", "row", "pull", "chin", "tricep", "glute", "hamstring", "calf", "calves", "back", "good morning", "shrug"]
+        return backKeywords.contains { name.contains($0) }
+    }
+    
     init(exerciseName: String, onFinish: ((Int) -> Void)? = nil) {
+        // 3. СОХРАНЯЕМ ИМЯ ПРИ ИНИЦИАЛИЗАЦИИ
+        self.exerciseName = exerciseName
+        
         _engine = StateObject(wrappedValue: AITrackerEngine(exerciseName: exerciseName))
         self.onFinish = onFinish
     }
-    
+
     var body: some View {
         ZStack {
             CameraPreview(session: cameraManager.session)
@@ -100,16 +112,16 @@ struct AITrackerView: View {
     }
     
     // MARK: - Live Muscle Activation UI
+
         @ViewBuilder
         private var liveMusclePiP: some View {
             BodyHeatmapView(
-                // ИСПРАВЛЕНИЕ: Передаем liveMuscleTension напрямую, без привязки к isTrackingAction
                 muscleIntensities: engine.liveMuscleTension,
                 isRecoveryMode: false,
-                isCompactMode: true
+                isCompactMode: true,
+                defaultToBack: isBackExercise // ДОБАВЛЕНО: Передаем вычисленную сторону
             )
             .frame(width: 100, height: 220)
-            // Убираем material фон, потому что теперь внутри BodyHeatmapView есть белый фон
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
@@ -217,15 +229,15 @@ struct AITrackerView: View {
     }
     
     private func feedbackColor(for message: String) -> Color {
-        let lowercased = message.lowercased()
-        if lowercased.contains("straight") || lowercased.contains("don't") || lowercased.contains("swing") {
-            return .orange
-        } else if lowercased.contains("perfect") || lowercased.contains("great") || lowercased.contains("good") {
-            return .green
-        } else {
-            return .white
+            let lowercased = message.lowercased()
+            if lowercased.contains("occluded") || lowercased.contains("adjust") {
+                return .orange
+            } else if lowercased.contains("tracking") {
+                return .green
+            } else {
+                return .white
+            }
         }
-    }
     
     private func triggerRepAnimation() {
         let generator = UIImpactFeedbackGenerator(style: .heavy)

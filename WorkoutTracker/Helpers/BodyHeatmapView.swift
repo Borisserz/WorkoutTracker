@@ -18,14 +18,19 @@ struct BodyHeatmapView: View {
     let backViewOffset: CGFloat = 740
     
     init(
-        muscleIntensities: [String: Int] = [:],
-        isRecoveryMode: Bool = false,
-        isCompactMode: Bool = false
-    ) {
-        self.muscleIntensities = muscleIntensities
-        self.isRecoveryMode = isRecoveryMode
-        self.isCompactMode = isCompactMode
-    }
+            muscleIntensities: [String: Int] = [:],
+            isRecoveryMode: Bool = false,
+            isCompactMode: Bool = false,
+            defaultToBack: Bool = false 
+        ) {
+            self.muscleIntensities = muscleIntensities
+            self.isRecoveryMode = isRecoveryMode
+            self.isCompactMode = isCompactMode
+            
+  
+            // Если defaultToBack == true, то isFrontView будет false (задняя часть)
+            self._isFrontView = State(initialValue: !defaultToBack)
+        }
     
     var body: some View {
         VStack(spacing: 0) {

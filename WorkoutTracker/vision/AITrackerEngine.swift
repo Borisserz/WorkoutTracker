@@ -341,37 +341,39 @@ public final class AITrackerEngine: ObservableObject {
     }
     
     // MARK: - State Synchronization
-    
-    private func syncStateToUI(state: TrackingState, profile: BiomechanicsProfile) {
-        // Синхронизация повторений
-        if self.repsCount != state.repsCount {
-            self.repsCount = state.repsCount
-        }
+
         
-        // Обновление Heatmap Tension
-        let tension = Int(state.currentAmplitude)
-        var newTension: [String: Int] = [:]
-        
-        if tension > 0 {
-            for m in profile.primaryMuscles { newTension[m] = tension }
-            for m in profile.secondaryMuscles { newTension[m] = tension / 2 }
+        private func syncStateToUI(state: TrackingState, profile: BiomechanicsProfile) {
+            // Синхронизация повторений
+            if self.repsCount != state.repsCount {
+                self.repsCount = state.repsCount
+            }
+            
+            // Обновление Heatmap Tension
+            let tension = Int(state.currentAmplitude)
+            var newTension: [String: Int] = [:]
+            
+            if tension > 0 {
+                for m in profile.primaryMuscles { newTension[m] = tension }
+                for m in profile.secondaryMuscles { newTension[m] = tension / 2 }
+            }
+            self.liveMuscleTension = newTension
+            
+            // Обратная связь по State Machine
+            let newFeedback: String
+            switch state.phase {
+            case .relaxed:
+                newFeedback = "Ready"
+            case .contracting, .contracted, .extending:
+                newFeedback = "Tracking..."
+            case .unknown:
+                newFeedback = "Body parts occluded. Adjust camera!"
+            }
+            
+            if self.feedbackMessage != newFeedback {
+                self.feedbackMessage = newFeedback
+            }
         }
-        self.liveMuscleTension = newTension
-        
-        // Обратная связь по State Machine
-        let newFeedback: String
-        switch state.phase {
-        case .relaxed:      newFeedback = profile.texts.relaxed
-        case .contracting:  newFeedback = profile.texts.contracting
-        case .contracted:   newFeedback = profile.texts.contracted
-        case .extending:    newFeedback = profile.texts.extending
-        case .unknown:      newFeedback = "Body parts occluded. Adjust camera!"
-        }
-        
-        if self.feedbackMessage != newFeedback {
-            self.feedbackMessage = newFeedback
-        }
-    }
     
     public func reset() {
         self.repsCount = 0

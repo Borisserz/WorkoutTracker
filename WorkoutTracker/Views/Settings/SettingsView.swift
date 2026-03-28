@@ -91,6 +91,7 @@ struct SettingsView: View {
                     }
                 }
                 
+                
                 // Секция дополнительных настроек
                 Section {
                     DisclosureGroup(LocalizedStringKey("Additional Settings")) {
