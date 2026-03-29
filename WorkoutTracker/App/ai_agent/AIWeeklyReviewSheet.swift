@@ -153,56 +153,28 @@ struct AIWeeklyReviewSheet: View {
             isAnalyzing = true
         }
         
-        // Подготовка данных для контекста
-        let units = UnitsManager.shared.weightUnitString()
-        let prNames = recentPRs.map { "\($0.exerciseName) (\(Int($0.weight)) \(units))" }.joined(separator: ", ")
-        let weakNames = weakPoints.map { $0.muscleGroup }.joined(separator: ", ")
-        
         Task {
-            // Имитация загрузки (2.5 секунды)
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            // --- ЭТОТ БЛОК ТЕПЕРЬ АКТИВЕН ---
             
-            // Динамический МОК-текст, использующий РЕАЛЬНЫЕ переданные данные
-            let mockMarkdown = """
-            ## 📊 Your Weekly AI Review
+            // 1. Формируем подробный контекст для ИИ
+            let units = UnitsManager.shared.weightUnitString()
+            let prNames = recentPRs.isEmpty ? "None" : recentPRs.map { "\($0.exerciseName) (\(Int($0.weight)) \(units))" }.joined(separator: ", ")
+            let weakNames = weakPoints.isEmpty ? "None" : weakPoints.map { $0.muscleGroup }.joined(separator: ", ")
             
-            Great job this week! Let's break down your performance.
-            
-            **🔥 The Good:**
-            * **Total Volume:** You lifted **\(Int(currentStats.totalVolume)) \(units)** this week! \(currentStats.totalVolume > previousStats.totalVolume ? "That's an increase compared to last week. Awesome job pushing harder! 📈" : "You're maintaining a solid baseline. ⚖️")
-            * **Consistency:** **\(currentStats.workoutCount)** workouts completed.
-            \(prNames.isEmpty ? "" : "* **New Records:** You set new PRs in: **\(prNames)**! 🏆")
-            
-            **⚠️ Areas for Improvement:**
-            \(weakNames.isEmpty ? "* Your training looks incredibly balanced! Keep it up." : "* **Imbalance Detected:** I noticed your **\(weakPoints.first?.muscleGroup ?? "")** volume is lagging behind. \(weakPoints.first?.recommendation ?? "")")
-            
-            **💡 AI Recommendation for Next Week:**
-            Keep up the consistency, make sure you're eating enough protein, and focus on progressive overload. You're doing great! 💪
-            """
-            
-            await MainActor.run {
-                let successGen = UINotificationFeedbackGenerator()
-                successGen.notificationOccurred(.success)
-                
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    self.reviewText = mockMarkdown
-                    self.isAnalyzing = false
-                }
-            }
-            
-            /*
-            // ================================================================
-            // ⚠️ КОГДА ДОБАВИШЬ МЕТОД В AILogicService, РАСКОММЕНТИРУЙ ЭТОТ БЛОК
-            // И УДАЛИ КОД ВЫШЕ (начиная с `try? await Task.sleep`):
-            // ================================================================
-            
-            let context = "THIS WEEK: \\(currentStats.workoutCount) workouts, \\(Int(currentStats.totalVolume)) \\(units) total volume.\\nPREVIOUS WEEK: \\(previousStats.workoutCount) workouts, \\(Int(previousStats.totalVolume)) \\(units) total volume.\\nNEW PRs: \\(prNames.isEmpty ? "None" : prNames).\\nWEAK POINTS IDENTIFIED: \\(weakNames.isEmpty ? "None" : weakNames)."
+            let context = """
+                THIS WEEK: \(currentStats.workoutCount) workouts, \(Int(currentStats.totalVolume)) \(units) total volume.
+                PREVIOUS WEEK: \(previousStats.workoutCount) workouts, \(Int(previousStats.totalVolume)) \(units) total volume.
+                NEW PERSONAL RECORDS THIS WEEK: \(prNames).
+                IDENTIFIED WEAK POINTS (based on last 30 days): \(weakNames).
+                """
             
             let lang = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
             
             do {
+                // 2. Вызываем реальный метод API
                 let markdownResponse = try await aiService.generatePerformanceReview(statsContext: context, language: lang)
                 
+                // 3. Обновляем UI с ответом от Gemini
                 await MainActor.run {
                     let successGen = UINotificationFeedbackGenerator()
                     successGen.notificationOccurred(.success)
@@ -212,14 +184,14 @@ struct AIWeeklyReviewSheet: View {
                     }
                 }
             } catch {
+                // 4. Обрабатываем ошибку сети или API
                 await MainActor.run {
                     withAnimation {
-                        self.reviewText = "❌ **Error:** \\(error.localizedDescription)"
+                        self.reviewText = "❌ **Error:** \(error.localizedDescription)"
                         self.isAnalyzing = false
                     }
                 }
             }
-            */
         }
     }
 }

@@ -1,21 +1,16 @@
-//
-//  RestTimerManager.swift
-//  WorkoutTracker
-//
 
 internal import SwiftUI
 import Combine
 import AudioToolbox
 
-@MainActor // Ensures UI updates always happen on the main thread
+@MainActor
 class RestTimerManager: ObservableObject {
     
-    // MARK: - Published Properties
     @Published var restTimeRemaining: Int = 0
     @Published var isRestTimerActive: Bool = false
     @Published var restTimerFinished: Bool = false
+    @Published var isHidden: Bool = false 
     
-    // MARK: - Private Properties
     private var restEndTime: Date?
     private var restTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
@@ -25,19 +20,15 @@ class RestTimerManager: ObservableObject {
         return saved > 0 ? saved : 60
     }
     
-    // MARK: - Init / Deinit
     init() {
-        // 1. Restore the timer state if the app was closed while the timer was running
         restoreTimerState()
         
-        // 2. Safely subscribe to foreground notifications
         NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
             .sink { [weak self] _ in
                 self?.checkTimerStateOnForeground()
             }
             .store(in: &cancellables)
         
-        // 3. Listen for "Done" interaction on the Local Notification (Posted by NotificationManager)
         NotificationCenter.default.publisher(for: NSNotification.Name(Constants.NotificationIdentifiers.restTimerFinishedNotification.rawValue))
             .sink { [weak self] _ in
                 self?.stopRestTimer()
@@ -49,8 +40,6 @@ class RestTimerManager: ObservableObject {
         restTimer?.invalidate()
         restTimer = nil
     }
-    
-    // MARK: - Persistence Logic
     
     private func saveTimerState() {
         guard let endTime = restEndTime else { return }
@@ -69,19 +58,15 @@ class RestTimerManager: ObservableObject {
         let timeRemaining = endTime.timeIntervalSinceNow
         
         if timeRemaining > 0 {
-            // Timer is still valid, resume it
             self.restEndTime = endTime
             self.restTimeRemaining = Int(ceil(timeRemaining))
             self.isRestTimerActive = true
             self.restTimerFinished = false
             startTicker()
         } else {
-            // Timer expired while the app was closed
             clearTimerState()
         }
     }
-    
-    // MARK: - Timer Logic
     
     func startRestTimer(duration: Int? = nil) {
         let seconds = duration ?? defaultRestTime
@@ -99,7 +84,6 @@ class RestTimerManager: ObservableObject {
     private func startTicker() {
         restTimer?.invalidate()
         
-        // Added to .common RunLoop to prevent pausing while scrolling
         let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             guard let self = self, let endTime = self.restEndTime else { return }
             let timeRemaining = endTime.timeIntervalSinceNow
@@ -136,7 +120,6 @@ class RestTimerManager: ObservableObject {
             let newEnd = currentEnd.addingTimeInterval(Double(seconds))
             self.restEndTime = newEnd
             saveTimerState()
-            
             NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
             self.restTimeRemaining += seconds
         }
@@ -151,7 +134,6 @@ class RestTimerManager: ObservableObject {
             } else {
                 self.restEndTime = newEnd
                 saveTimerState()
-                
                 NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
                 self.restTimeRemaining = max(0, restTimeRemaining - seconds)
             }
@@ -168,11 +150,10 @@ class RestTimerManager: ObservableObject {
         let generator = UINotificationFeedbackGenerator()
         generator.prepare()
         generator.notificationOccurred(.success)
-        AudioServicesPlaySystemSound(1005) // System notification sound
+        AudioServicesPlaySystemSound(1005)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             guard let self = self else { return }
-            
             if self.restTimerFinished {
                 withAnimation { self.stopRestTimer() }
             }

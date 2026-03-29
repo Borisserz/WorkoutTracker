@@ -25,7 +25,8 @@ struct SetRowView: View {
     let isExerciseCompleted: Bool
     let isWorkoutCompleted: Bool
     
-    var onCheck: (_ shouldStartTimer: Bool, _ suggestedDuration: Int?) -> Void
+    // MODIFIED: Теперь onCheck принимает сам сет
+    var onCheck: (_ set: WorkoutSet, _ shouldStartTimer: Bool, _ suggestedDuration: Int?) -> Void
     
     var prevWeight: Double? = nil
     var prevReps: Int? = nil
@@ -110,58 +111,57 @@ struct SetRowView: View {
     
     private var estimated1RM: Double {
         guard let w = set.weight, let r = set.reps, w > 0, r > 0 else { return 0 }
-        return w * (1.0 + Double(r) / 30.0) // Формула Эпли
+        return w * (1.0 + Double(r) / 30.0) // Epley formula
     }
 
     // MARK: - Body
     
     var body: some View {
-            HStack(alignment: .center, spacing: 4) {
+        HStack(alignment: .center, spacing: 4) {
+            
+            indexLabel
+            
+            inputsSection
+            
+            Spacer(minLength: 0)
+            
+            aiTrackerButton
+            
+            Spacer(minLength: 0)
+            
+            checkButton
+        }
+        .padding(.vertical, 4)
+        .background(set.isCompleted ? Color.green.opacity(0.05) : Color.clear)
+        .cornerRadius(6)
+        .compositingGroup()
+        .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
+        .sheet(isPresented: $showSliderSheet) {
+            SliderSheetView(
+                fieldType: activeBindingType,
+                value: getActiveBinding(),
+                isPresented: $showSliderSheet
+            )
+        }
+        .onAppear {
+            if autoFocus && !hasAutoFocused {
+                hasAutoFocused = true
                 
-                indexLabel
+                switch exerciseType {
+                case .strength:
+                    activeBindingType = .weight
+                case .cardio:
+                    activeBindingType = .distance
+                case .duration:
+                    activeBindingType = .timeSec
+                }
                 
-                inputsSection
-                
-                Spacer(minLength: 0)
-                
-                // ИЗМЕНЕНО: Вместо setTypeButton вставляем AI кнопку
-                aiTrackerButton
-                
-                Spacer(minLength: 0)
-                
-                checkButton
-            }
-            .padding(.vertical, 4)
-            .background(set.isCompleted ? Color.green.opacity(0.05) : Color.clear)
-            .cornerRadius(6)
-            .compositingGroup()
-            .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
-            .sheet(isPresented: $showSliderSheet) {
-                SliderSheetView(
-                    fieldType: activeBindingType,
-                    value: getActiveBinding(),
-                    isPresented: $showSliderSheet
-                )
-            }
-            .onAppear {
-                if autoFocus && !hasAutoFocused {
-                    hasAutoFocused = true
-                    
-                    switch exerciseType {
-                    case .strength:
-                        activeBindingType = .weight
-                    case .cardio:
-                        activeBindingType = .distance
-                    case .duration:
-                        activeBindingType = .timeSec
-                    }
-                    
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                        showSliderSheet = true
-                    }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    showSliderSheet = true
                 }
             }
         }
+    }
     
     // MARK: - Subviews (Components)
     
@@ -173,70 +173,49 @@ struct SetRowView: View {
     }
     
     @ViewBuilder
-        private var inputsSection: some View {
-            switch exerciseType {
-            case .strength:
-                // Убрали VStack и блок 1RM (estimated1RMView),
-                // чтобы все элементы выстроились в одну ровную линию
-                HStack(spacing: 8) {
-                    inputColumn(
-                        type: .weight,
-                        binding: weightBinding,
-                        ghostText: prevWeight.map {
-                            let converted = unitsManager.convertFromKilograms($0)
-                            return LocalizationHelper.shared.formatFlexible(converted)
-                        }
-                    )
-                    
-                    inputColumn(
-                        type: .reps,
-                        binding: repsBinding,
-                        ghostText: prevReps.map { "\($0)" }
-                    )
-                }
-                
-            case .cardio:
+    private var inputsSection: some View {
+        switch exerciseType {
+        case .strength:
+            HStack(spacing: 8) {
                 inputColumn(
-                    type: .distance,
-                    binding: distanceBinding,
-                    ghostText: prevDist.map {
-                        let converted = unitsManager.convertFromMeters($0)
-                        return LocalizationHelper.shared.formatDecimal(converted)
+                    type: .weight,
+                    binding: weightBinding,
+                    ghostText: prevWeight.map {
+                        let converted = unitsManager.convertFromKilograms($0)
+                        return LocalizationHelper.shared.formatFlexible(converted)
                     }
                 )
-                Spacer()
-                inputColumn(
-                    type: .timeMin,
-                    binding: timeBinding,
-                    ghostText: prevTime.map { formatTime($0) }
-                )
                 
-            case .duration:
                 inputColumn(
-                    type: .timeSec,
-                    binding: timeBinding,
-                    ghostText: prevTime.map { "\($0)s" }
+                    type: .reps,
+                    binding: repsBinding,
+                    ghostText: prevReps.map { "\($0)" }
                 )
             }
+            
+        case .cardio:
+            inputColumn(
+                type: .distance,
+                binding: distanceBinding,
+                ghostText: prevDist.map {
+                    let converted = unitsManager.convertFromMeters($0)
+                    return LocalizationHelper.shared.formatDecimal(converted)
+                }
+            )
+            Spacer()
+            inputColumn(
+                type: .timeMin,
+                binding: timeBinding,
+                ghostText: prevTime.map { formatTime($0) }
+            )
+            
+        case .duration:
+            inputColumn(
+                type: .timeSec,
+                binding: timeBinding,
+                ghostText: prevTime.map { "\($0)s" }
+            )
         }
-    
-    @ViewBuilder
-    private var estimated1RMView: some View {
-        let est1RMConverted = unitsManager.convertFromKilograms(estimated1RM)
-        let formatted1RM = LocalizationHelper.shared.formatInteger(est1RMConverted)
-        let isRecord = estimated1RM > cached1RM && cached1RM > 0
-
-        HStack(spacing: 2) {
-            if isRecord {
-                Text("🏆")
-                    .font(.system(size: 10))
-            }
-            Text("Est. 1RM: \(formatted1RM) \(unitsManager.weightUnitString())")
-                .font(.system(size: 10))
-                .fontWeight(isRecord ? .bold : .regular)
-                .foregroundColor(isRecord ? .orange : .secondary)
-        }
-        .padding(.leading, 4)
     }
     
     private func getActiveBinding() -> Binding<Double?> {
@@ -285,22 +264,6 @@ struct SetRowView: View {
         .frame(width: 100)
     }
     
-    private var setTypeButton: some View {
-        Button {
-            guard !isExerciseCompleted && !isWorkoutCompleted else { return }
-            set.type = (set.type == .normal) ? .warmup : .normal
-        } label: {
-            Text(set.type.rawValue)
-                .font(.system(size: 12, weight: .bold))
-                .frame(width: 32, height: 32)
-                .background(set.type.color.opacity(0.8))
-                .foregroundColor(set.type == .warmup ? .black : .white)
-                .clipShape(Circle())
-        }
-        .buttonStyle(BorderlessButtonStyle())
-        .disabled(isExerciseCompleted || isWorkoutCompleted)
-    }
-    
     private var checkButton: some View {
         Button(action: toggleComplete) {
             Image(systemName: set.isCompleted ? "checkmark.square.fill" : "square")
@@ -311,41 +274,42 @@ struct SetRowView: View {
         .buttonStyle(BorderlessButtonStyle())
         .disabled(isExerciseCompleted || isWorkoutCompleted)
     }
+    
     @ViewBuilder
-        private var aiTrackerButton: some View {
-            // ИСПРАВЛЕНИЕ: Используем нашу новую систему категорий!
-            let category = ExerciseCategory.determine(from: exerciseName)
-            let supportedCategories: [ExerciseCategory] = [.squat, .curl, .press, .deadlift, .pull]
-            let isAISupported = supportedCategories.contains(category)
-            
-            Button {
-                showAITracker = true
-            } label: {
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 20))
-                    .symbolRenderingMode(.multicolor)
-                    .foregroundStyle(
-                        isAISupported
-                            ? AnyShapeStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            : AnyShapeStyle(Color.gray.opacity(0.4))
-                    )
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(BorderlessButtonStyle())
-            .disabled(!isAISupported || isExerciseCompleted || isWorkoutCompleted)
-            .fullScreenCover(isPresented: $showAITracker) {
-                AITrackerView(exerciseName: exerciseName) { countedReps in
-                    if countedReps > 0 {
-                        set.reps = countedReps
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            if !set.isCompleted {
-                                toggleComplete()
-                            }
+    private var aiTrackerButton: some View {
+        let category = ExerciseCategory.determine(from: exerciseName)
+        let supportedCategories: [ExerciseCategory] = [.squat, .curl, .press, .deadlift, .pull]
+        let isAISupported = supportedCategories.contains(category)
+        
+        Button {
+            showAITracker = true
+        } label: {
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 20))
+                .symbolRenderingMode(.multicolor)
+                .foregroundStyle(
+                    isAISupported
+                        ? AnyShapeStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        : AnyShapeStyle(Color.gray.opacity(0.4))
+                )
+                .frame(width: 32, height: 32)
+        }
+        .buttonStyle(BorderlessButtonStyle())
+        .disabled(!isAISupported || isExerciseCompleted || isWorkoutCompleted)
+        .fullScreenCover(isPresented: $showAITracker) {
+            AITrackerView(exerciseName: exerciseName) { countedReps in
+                if countedReps > 0 {
+                    set.reps = countedReps
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if !set.isCompleted {
+                            toggleComplete()
                         }
                     }
                 }
             }
         }
+    }
+    
     // MARK: - Logic
     
     func toggleComplete() {
@@ -364,10 +328,11 @@ struct SetRowView: View {
                 else { suggestedDuration = 90 }
             }
             
+            // MODIFIED: Передаем set для AI тренера
             if autoStartTimer && !isLastSet {
-                onCheck(true, suggestedDuration)
+                onCheck(set, true, suggestedDuration)
             } else {
-                onCheck(false, nil)
+                onCheck(set, false, nil)
             }
         }
     }

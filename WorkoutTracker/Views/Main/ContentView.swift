@@ -36,7 +36,8 @@ struct ContentView: View {
                     .spotlight(step: .progressTab, manager: tutorialManager, text: "Check your Progress", alignment: .bottom, xOffset: -20)
             }
             
-            if timerManager.isRestTimerActive {
+            // ИСПРАВЛЕНИЕ: Скрываем таймер, если установлен флаг isHidden
+            if timerManager.isRestTimerActive && !timerManager.isHidden {
                 RestTimerView()
                     .padding(.bottom, 60)
                     .transition(.move(edge: .bottom))
@@ -44,10 +45,9 @@ struct ContentView: View {
             }
         }
         .onAppear {
-                    viewModel.refreshAllCaches(container: modelContext.container)
-                    // ДОБАВЛЯЕМ ВЫЗОВ СЮДА:
-                    fetchAvailableGeminiModels()
-                }
+            viewModel.refreshAllCaches(container: modelContext.container)
+            fetchAvailableGeminiModels()
+        }
         .alert(item: $viewModel.currentError) { error in
             Alert(
                 title: Text(error.title),
@@ -61,9 +61,7 @@ struct ContentView: View {
 func fetchAvailableGeminiModels() {
     let apiKey = Secrets.geminiApiKey
     let urlString = "https://generativelanguage.googleapis.com/v1beta/models?key=\(apiKey)"
-    
     guard let url = URL(string: urlString) else { return }
-    
     Task {
         do {
             let (data, _) = try await URLSession.shared.data(from: url)

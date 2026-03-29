@@ -9,7 +9,7 @@ internal import SwiftUI
 struct ChatMessageView: View {
     let message: AIChatMessage
     
-    // ДОБАВЛЕНО: Замыкание для передачи события нажатия кнопки наверх
+    // Замыкание для передачи события нажатия кнопки наверх
     var onAcceptWorkout: ((GeneratedWorkoutDTO) -> Void)? = nil
     
     var body: some View {
@@ -29,10 +29,11 @@ struct ChatMessageView: View {
             }
             
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
-                // Текст сообщения
+                // Текст сообщения с поддержкой Markdown (LocalizedStringKey автоматически парсит **bold**, *italic* и списки)
                 Text(LocalizedStringKey(message.text))
                     .font(.body)
                     .foregroundColor(message.isUser ? .white : .primary)
+                    .multilineTextAlignment(.leading) // Важно для корректного отображения списков
                     .padding(.horizontal, 16)
                     .padding(.vertical, 12)
                     .background(
@@ -45,7 +46,6 @@ struct ChatMessageView: View {
                 
                 // Карточка тренировки (если есть)
                 if let workout = message.proposedWorkout {
-                    // ДОБАВЛЕНО: Передаем нажатие в замыкание
                     ProposedWorkoutCardView(workout: workout, onAccept: {
                         onAcceptWorkout?(workout)
                     })
@@ -79,9 +79,9 @@ struct ChatBubbleShape: Shape {
     }
 }
 
-// MARK: - AI Loading Indicator
+// MARK: - Smart AI Loading Indicator
 struct AILoadingIndicator: View {
-    @State private var isPulsing = false
+    @State private var isAnimating = false
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
@@ -97,15 +97,15 @@ struct AILoadingIndicator: View {
             HStack(spacing: 4) {
                 ForEach(0..<3, id: \.self) { index in
                     Circle()
-                        .fill(Color.gray)
+                        .fill(Color.gray.opacity(0.6))
                         .frame(width: 8, height: 8)
-                        .scaleEffect(isPulsing ? 1.2 : 0.5)
-                        .opacity(isPulsing ? 1 : 0.3)
+                        // Анимация волны (Wave Effect)
+                        .offset(y: isAnimating ? -5 : 0)
                         .animation(
-                            .easeInOut(duration: 0.6)
-                            .repeatForever()
-                            .delay(0.2 * Double(index)),
-                            value: isPulsing
+                            Animation.easeInOut(duration: 0.4)
+                                .repeatForever(autoreverses: true)
+                                .delay(0.15 * Double(index)),
+                            value: isAnimating
                         )
                 }
             }
@@ -115,7 +115,7 @@ struct AILoadingIndicator: View {
             .clipShape(ChatBubbleShape(isUser: false))
         }
         .onAppear {
-            isPulsing = true
+            isAnimating = true
         }
     }
 }
@@ -123,8 +123,6 @@ struct AILoadingIndicator: View {
 // MARK: - Proposed Workout Card
 struct ProposedWorkoutCardView: View {
     let workout: GeneratedWorkoutDTO
-    
-    // ДОБАВЛЕНО: Свойство для получения события нажатия
     var onAccept: () -> Void
     
     var body: some View {
@@ -161,9 +159,7 @@ struct ProposedWorkoutCardView: View {
                             }
                             .foregroundColor(.secondary)
                         }
-                        
                         Spacer()
-                        
                         VStack(alignment: .trailing, spacing: 4) {
                             Text("\(exercise.sets) x \(exercise.reps)")
                                 .font(.subheadline)
@@ -176,7 +172,6 @@ struct ProposedWorkoutCardView: View {
                             }
                         }
                     }
-                    
                     if exercise.name != workout.exercises.last?.name {
                         Divider()
                     }
@@ -188,7 +183,6 @@ struct ProposedWorkoutCardView: View {
             Button {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
-                // ИСПРАВЛЕНИЕ: Вызываем переданное замыкание вместо TODO
                 onAccept()
             } label: {
                 HStack {
