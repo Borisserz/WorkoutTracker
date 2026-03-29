@@ -7,18 +7,13 @@ internal import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    // ДОБАВЛЕНО: Получаем доступ к контексту для передачи контейнера в фон
-    @Environment(\.modelContext) private var modelContext 
+    @Environment(\.modelContext) private var modelContext
     
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var timerManager: RestTimerManager
     @EnvironmentObject var tutorialManager: TutorialManager
     
-    // УДАЛЕН: @Query(sort: \Workout.date, order: .reverse) private var workouts: [Workout]
-    // Нам больше не нужно загружать все тренировки в UI-поток!
-    
-    // ИЗМЕНЕНО: Начинаем с вкладки Overview (0) вместо тренировок (1)
-    @State private var selectedTab = 0 
+    @State private var selectedTab = 0
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -31,9 +26,13 @@ struct ContentView: View {
                     .tabItem { Image(systemName: "figure.run"); Text(LocalizedStringKey("Workout")) }
                     .tag(1)
                 
+                AICoachView()
+                    .tabItem { Image(systemName: "brain.head.profile"); Text(LocalizedStringKey("AI Coach")) }
+                    .tag(2)
+                
                 StatsView()
                     .tabItem { Image(systemName: "trophy"); Text(LocalizedStringKey("Progress")) }
-                    .tag(2)
+                    .tag(3)
                     .spotlight(step: .progressTab, manager: tutorialManager, text: "Check your Progress", alignment: .bottom, xOffset: -20)
             }
             
@@ -44,16 +43,37 @@ struct ContentView: View {
                     .zIndex(100)
             }
         }
-        // ДОБАВЛЕНО: Инициализируем кеши при запуске в фоне
         .onAppear {
-            viewModel.refreshAllCaches(container: modelContext.container)
-        }
+                    viewModel.refreshAllCaches(container: modelContext.container)
+                    // ДОБАВЛЯЕМ ВЫЗОВ СЮДА:
+                    fetchAvailableGeminiModels()
+                }
         .alert(item: $viewModel.currentError) { error in
             Alert(
                 title: Text(error.title),
                 message: Text(error.message),
                 dismissButton: .default(Text(LocalizedStringKey("OK")))
             )
+        }
+    }
+}
+
+func fetchAvailableGeminiModels() {
+    let apiKey = Secrets.geminiApiKey
+    let urlString = "https://generativelanguage.googleapis.com/v1beta/models?key=\(apiKey)"
+    
+    guard let url = URL(string: urlString) else { return }
+    
+    Task {
+        do {
+            let (data, _) = try await URLSession.shared.data(from: url)
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("=== 🚀 ДОСТУПНЫЕ МОДЕЛИ GOOGLE ===")
+                print(jsonString)
+                print("==================================")
+            }
+        } catch {
+            print("❌ Ошибка сети: \(error)")
         }
     }
 }

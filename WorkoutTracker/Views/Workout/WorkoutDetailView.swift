@@ -20,13 +20,14 @@ struct WorkoutDetailView: View {
     
     // MARK: - Nested Types
     enum Tab: String, CaseIterable {
-        case workout = "Workout"
-        case analytics = "Analytics"
-        
-        var localizedName: LocalizedStringKey {
-            LocalizedStringKey(self.rawValue)
+            case workout = "Workout"
+            case analytics = "Analytics"
+            case aiCoach = "AI Coach"
+            
+            var localizedName: LocalizedStringKey {
+                LocalizedStringKey(self.rawValue)
+            }
         }
-    }
     
     // MARK: - Environment & Bindings
     @Environment(\.scenePhase) private var scenePhase // ДОБАВЛЕНО: Для отслеживания сворачивания приложения
@@ -139,23 +140,26 @@ struct WorkoutDetailView: View {
                         .padding(.bottom, 8)
                         
                         if selectedTab == .workout {
-                            // 3. Заголовок списка упражнений + Кнопки добавления
-                            exercisesToolbarSection
-                            
-                            // 4. Список карточек упражнений
-                            exerciseListSection
-                        } else {
-                            // 5. График (Максимальный вес)
-                            chartSection
-                            
-                            // 6. Тепловая карта тела
-                            muscleHeatmapSection
-                            
-                            // 7. Интересный факт (Сравнение веса)
-                            if !workout.exercises.isEmpty {
-                                FunFactView(totalStrengthVolume: totalStrengthVolume)
-                            }
-                        }
+                                                    // 3. Заголовок списка упражнений + Кнопки добавления
+                                                    exercisesToolbarSection
+                                                    
+                                                    // 4. Список карточек упражнений
+                                                    exerciseListSection
+                                                } else if selectedTab == .analytics {
+                                                    // 5. График (Максимальный вес)
+                                                    chartSection
+                                                    
+                                                    // 6. Тепловая карта тела
+                                                    muscleHeatmapSection
+                                                    
+                                                    // 7. Интересный факт (Сравнение веса)
+                                                    if !workout.exercises.isEmpty {
+                                                        FunFactView(totalStrengthVolume: totalStrengthVolume)
+                                                    }
+                                                } else if selectedTab == .aiCoach {
+                                                    // 8. ИИ-Тренер во время тренировки
+                                                    InWorkoutAICoachView(workout: workout)
+                                                }
                         
                         // Отступ снизу, чтобы глобальный таймер отдыха и кнопка завершения не перекрывали контент
                         Spacer(minLength: timerManager.isRestTimerActive ? 180 : 100)
