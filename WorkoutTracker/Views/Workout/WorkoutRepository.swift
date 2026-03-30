@@ -1,6 +1,12 @@
+//
+//  WorkoutRepository.swift
+//  WorkoutTracker
+//
+
 import Foundation
 import SwiftData
 import WidgetKit
+internal import SwiftUI // Для доступа к структурам StatsView.Period
 
 // MARK: - Errors
 enum WorkoutRepositoryError: Error, Sendable {
@@ -66,43 +72,55 @@ struct WorkoutHeatmapDTO: Sendable {
     let totalStrengthVolume: Double
 }
 
+struct StatsDataResultDTO: Sendable {
+    let currentStats: WorkoutViewModel.PeriodStats
+    let previousStats: WorkoutViewModel.PeriodStats
+    let recentPRs: [WorkoutViewModel.PersonalRecord]
+    let detailedComparison: [WorkoutViewModel.DetailedComparison]
+    let chartData: [WorkoutViewModel.ChartDataPoint]
+}
+
 // MARK: - Workout Repository (@ModelActor)
 @ModelActor
 actor WorkoutRepository {
     
-    func addSet(toExercise exerciseID: PersistentIdentifier, index: Int, weight: Double?, reps: Int?, distance: Double?, time: Int?, type: SetType, isCompleted: Bool) throws {
-        guard let exercise = modelContext.model(for: exerciseID) as? Exercise else { throw WorkoutRepositoryError.modelNotFound }
-        let newSet = WorkoutSet(index: index, weight: weight, reps: reps, distance: distance, time: time, isCompleted: isCompleted, type: type)
-        modelContext.insert(newSet)
-        exercise.setsList.append(newSet)
-        exercise.updateAggregates()
-        try modelContext.save()
-    }
+    // MARK: - Data Fetching (Background Safe)
     
-    func deleteSet(setID: PersistentIdentifier, fromExerciseID exerciseID: PersistentIdentifier) throws {
-        guard let exercise = modelContext.model(for: exerciseID) as? Exercise, let set = modelContext.model(for: setID) as? WorkoutSet else { throw WorkoutRepositoryError.modelNotFound }
-        if let index = exercise.setsList.firstIndex(where: { $0.id == set.id }) { exercise.setsList.remove(at: index) }
-        modelContext.delete(set)
-        let sortedSets = exercise.setsList.sorted { $0.index < $1.index }
-        for (i, remainingSet) in sortedSets.enumerated() { remainingSet.index = i + 1 }
-        exercise.updateAggregates()
-        try modelContext.save()
+    func fetchStatsData(
+        period: StatsView.Period,
+        metric: StatsView.GraphMetric,
+        currentInterval: DateInterval,
+        previousInterval: DateInterval,
+        prCache: [String: Double]
+    ) -> StatsDataResultDTO {
+        let minDate = previousInterval.start
+        let maxDate = currentInterval.end
+        
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.date >= minDate && $0.date <= maxDate },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.relationshipKeyPathsForPrefetching = [\.exercises]
+        
+        // Вся тяжелая выборка данных гарантированно выполняется в потоке этого актора
+        let bgWorkouts = (try? modelContext.fetch(descriptor)) ?? []
+        
+        let currentStats = StatisticsManager.getStats(for: currentInterval, workouts: bgWorkouts)
+        let previousStats = StatisticsManager.getStats(for: previousInterval, workouts: bgWorkouts)
+        let recentPRs = StatisticsManager.getRecentPRs(in: currentInterval, workouts: bgWorkouts, allTimePRs: prCache)
+        let detailedComparison = AnalyticsManager.getDetailedComparison(workouts: bgWorkouts, period: period)
+        let chartData = StatisticsManager.getChartData(for: period, metric: metric, workouts: bgWorkouts)
+        
+        return StatsDataResultDTO(
+            currentStats: currentStats,
+            previousStats: previousStats,
+            recentPRs: recentPRs,
+            detailedComparison: detailedComparison,
+            chartData: chartData
+        )
     }
 
-    func removeSubExercise(subExerciseID: PersistentIdentifier, fromSupersetID: PersistentIdentifier) throws {
-        guard let superset = modelContext.model(for: fromSupersetID) as? Exercise, let sub = modelContext.model(for: subExerciseID) as? Exercise else { return }
-        if let idx = superset.subExercises.firstIndex(where: { $0.id == sub.id }) { superset.subExercises.remove(at: idx) }
-        modelContext.delete(sub)
-        superset.updateAggregates()
-        try modelContext.save()
-    }
-    
-    func removeExercise(exerciseID: PersistentIdentifier, fromWorkoutID: PersistentIdentifier) throws {
-        guard let workout = modelContext.model(for: fromWorkoutID) as? Workout, let exercise = modelContext.model(for: exerciseID) as? Exercise else { return }
-        if let idx = workout.exercises.firstIndex(where: { $0.id == exercise.id }) { workout.exercises.remove(at: idx) }
-        modelContext.delete(exercise)
-        try modelContext.save()
-    }
+    // MARK: - Core Database Mutations
     
     func processCompletedWorkout(workoutID: PersistentIdentifier) throws {
         guard let workout = modelContext.model(for: workoutID) as? Workout else { throw WorkoutRepositoryError.modelNotFound }
@@ -181,6 +199,8 @@ actor WorkoutRepository {
         return hasActive
     }
     
+    // MARK: - Caching
+    
     func fetchDashboardCache() throws -> DashboardCacheDTO {
         let exStats = (try? modelContext.fetch(FetchDescriptor<ExerciseStat>())) ?? []
         let mStats = (try? modelContext.fetch(FetchDescriptor<MuscleStat>())) ?? []
@@ -222,6 +242,8 @@ actor WorkoutRepository {
         return DashboardCacheDTO(personalRecords: partialPRs, lastPerformances: partialLastPerformances, recoveryStatus: recoveryDTO, dashboardMuscleData: sortedMuscleData, dashboardTotalExercises: totalExCount, dashboardTopExercises: topExercises, streakCount: streak, bestWeekStats: bestWeekDTO, bestMonthStats: bestMonthDTO, weakPoints: weakPtsDTO, recommendations: recsDTO)
     }
     
+    // MARK: - Dictionary Management
+    
     func fetchCustomExercises() throws -> [CustomExerciseDefinition] {
         let items = (try? modelContext.fetch(FetchDescriptor<ExerciseDictionaryItem>())) ?? []
         return items.filter { $0.isCustom && !$0.isHidden }.map { CustomExerciseDefinition(id: UUID(), name: $0.name, category: $0.category, targetedMuscles: $0.targetedMuscles, type: $0.type) }
@@ -233,34 +255,34 @@ actor WorkoutRepository {
     }
 
     public func checkAndGenerateDefaultPresets() throws {
-            let count = (try? modelContext.fetchCount(FetchDescriptor<WorkoutPreset>())) ?? 0
-            if count == 0 {
-                for example in Workout.examples {
-                    let preset = WorkoutPreset(id: UUID(), name: example.title, icon: example.icon, exercises: [])
-                    modelContext.insert(preset)
-                    try? modelContext.save() // СРАЗУ сохраняем пресет
+        let count = (try? modelContext.fetchCount(FetchDescriptor<WorkoutPreset>())) ?? 0
+        if count == 0 {
+            for example in Workout.examples {
+                let preset = WorkoutPreset(id: UUID(), name: example.title, icon: example.icon, exercises: [])
+                modelContext.insert(preset)
+                try? modelContext.save()
+                
+                for exercise in example.exercises {
+                    let dup = exercise.duplicate()
+                    modelContext.insert(dup)
+                    dup.preset = preset
+                    preset.exercises.append(dup)
                     
-                    for exercise in example.exercises {
-                        let dup = exercise.duplicate()
-                        modelContext.insert(dup)
-                        dup.preset = preset // Явно назначаем родителя
-                        preset.exercises.append(dup)
-                        
-                        for set in dup.setsList {
-                            modelContext.insert(set)
-                        }
-                        
-                        for sub in dup.subExercises {
-                            modelContext.insert(sub)
-                            for s in sub.setsList {
-                                modelContext.insert(s)
-                            }
+                    for set in dup.setsList {
+                        modelContext.insert(set)
+                    }
+                    
+                    for sub in dup.subExercises {
+                        modelContext.insert(sub)
+                        for s in sub.setsList {
+                            modelContext.insert(s)
                         }
                     }
-                    try? modelContext.save() // Сохраняем после добавления упражнений
                 }
+                try? modelContext.save()
             }
         }
+    }
 
     func addCustomExercise(name: String, category: String, muscles: [String], type: ExerciseType) throws {
         let item = ExerciseDictionaryItem(name: name, category: category, targetedMuscles: muscles, type: type, isCustom: true, isHidden: false)
@@ -309,6 +331,8 @@ actor WorkoutRepository {
         WidgetDataManager.save(streak: currentStreak, weeklyStats: points)
         WidgetCenter.shared.reloadAllTimelines()
     }
+    
+    // MARK: - Stats Rebuild
     
     func rebuildAllStats() async {
         try? modelContext.delete(model: UserStats.self)

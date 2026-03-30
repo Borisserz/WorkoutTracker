@@ -66,7 +66,7 @@ struct ExerciseHistoryView: View {
     let exerciseName: String
     @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
-    @ObservedObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     @FocusState private var isInputActive: Bool
     
     // MARK: - State

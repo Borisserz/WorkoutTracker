@@ -23,7 +23,7 @@ struct PresetEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @EnvironmentObject private var viewModel: WorkoutViewModel
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     @State var preset: WorkoutPreset?
     
@@ -296,7 +296,7 @@ struct PresetExerciseEditor: View {
     let exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // Локальное состояние для редактирования
     @State private var setsCount: Int = 1

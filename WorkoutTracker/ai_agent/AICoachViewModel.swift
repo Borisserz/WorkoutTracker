@@ -51,11 +51,18 @@ final class AICoachViewModel: ObservableObject {
     @Published var currentSession: AIChatSession? = nil
     
     private var currentTask: Task<Void, Never>? = nil
-    private var typewriterTask: Task<Void, Never>? = nil // Для управления анимацией печати
+    private var typewriterTask: Task<Void, Never>? = nil
     
     private let aiService = AILogicService(apiKey: Secrets.geminiApiKey)
     
     init() {}
+    
+    // 🚩 ЗАЩИТА ОТ УТЕЧЕК: Отменяем все задачи при выгрузке экрана из памяти
+    deinit {
+        currentTask?.cancel()
+        typewriterTask?.cancel()
+        print("♻️ AICoachViewModel deallocated, tasks cancelled")
+    }
     
     // MARK: - Session Management
     
@@ -78,102 +85,114 @@ final class AICoachViewModel: ObservableObject {
     
     // MARK: - Messaging
     
-    /// Отправка сообщения с возможностью передать скрытый расширенный промпт для AI
     func sendMessage(workoutViewModel: WorkoutViewModel, userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil, context: ModelContext) {
-            let displayText = uiText ?? inputText
-            let actualPrompt = aiPrompt ?? displayText.trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            guard !displayText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isGenerating else { return }
-            
-            let userMessage = AIChatMessage(isUser: true, text: displayText, proposedWorkout: nil)
-            
-            var isFirstMessage = false
-            
-            if currentSession == nil {
-                isFirstMessage = true
-                // Временное название, пока ИИ придумывает красивое
-                let newSession = AIChatSession(title: "Новый чат...", date: Date(), messages: [])
-                context.insert(newSession)
-                currentSession = newSession
+        
+        guard NetworkManager.shared.checkConnection() else {
+                let noNetMessage = AIChatMessage(
+                    isUser: false,
+                    text: String(localized: "Internet connection required. Please check your network."),
+                    proposedWorkout: nil
+                )
+                chatHistory.append(noNetMessage)
+                return
             }
-            
-            currentSession?.messages.append(userMessage)
-            currentSession?.date = Date()
-            try? context.save()
-            
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                chatHistory.append(userMessage)
-                if uiText == nil {
-                    inputText = ""
-                }
+        
+        let displayText = uiText ?? inputText
+        let actualPrompt = aiPrompt ?? displayText.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        guard !displayText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !isGenerating else { return }
+        
+        let userMessage = AIChatMessage(isUser: true, text: displayText, proposedWorkout: nil)
+        
+        var isFirstMessage = false
+        
+        if currentSession == nil {
+            isFirstMessage = true
+            let newSession = AIChatSession(title: "Новый чат...", date: Date(), messages: [])
+            context.insert(newSession)
+            currentSession = newSession
+        }
+        
+        currentSession?.messages.append(userMessage)
+        currentSession?.date = Date()
+        try? context.save()
+        
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            chatHistory.append(userMessage)
+            if uiText == nil {
+                inputText = ""
             }
-            
-            // Фоновая генерация названия чата
-            if isFirstMessage {
-                Task.detached {
-                    if let newTitle = try? await self.aiService.generateChatTitle(for: actualPrompt) {
-                        await MainActor.run {
-                            if let session = self.currentSession {
-                                session.title = newTitle.replacingOccurrences(of: "\"", with: "")
-                                try? context.save()
-                            }
+        }
+        
+        // 🚩 Используем [weak self]
+        if isFirstMessage {
+            Task.detached { [weak self] in
+                guard let self else { return }
+                if let newTitle = try? await self.aiService.generateChatTitle(for: actualPrompt) {
+                    await MainActor.run { [weak self] in
+                        guard let self else { return }
+                        if let session = self.currentSession {
+                            session.title = newTitle.replacingOccurrences(of: "\"", with: "")
+                            try? context.save()
                         }
                     }
                 }
             }
-            
-            requestWorkout(prompt: actualPrompt, workoutViewModel: workoutViewModel, userWeight: userWeight, context: context)
         }
+        
+        requestWorkout(prompt: actualPrompt, workoutViewModel: workoutViewModel, userWeight: userWeight, context: context)
+    }
     
     private func requestWorkout(prompt: String, workoutViewModel: WorkoutViewModel, userWeight: Double, context: ModelContext) {
-            isGenerating = true
+        isGenerating = true
         let savedTone = UserDefaults.standard.string(forKey: "aiCoachTone") ?? "Мотивационный"
-            let workoutsThisWeek = workoutViewModel.bestWeekStats.workoutCount
-            let currentStreak = workoutViewModel.streakCount
-            let fatiguedMuscles = workoutViewModel.recoveryStatus
-                .filter { $0.recoveryPercentage < 50 }
-                .map { $0.muscleGroup }
-            
-            // НОВОЕ: Достаем все упражнения (стандартные + созданные пользователем) в единый плоский массив
-            let allAvailableExercises = workoutViewModel.combinedCatalog.values.flatMap { $0 }
-            
-            let userContext = UserProfileContext(
-                weightKg: UnitsManager.shared.convertToKilograms(userWeight),
-                experienceLevel: "Intermediate",
-                favoriteMuscles: [],
-                recentPRs: workoutViewModel.personalRecordsCache,
-                language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
-                workoutsThisWeek: workoutsThisWeek,
-                currentStreak: currentStreak,
-                fatiguedMuscles: fatiguedMuscles,
-                availableExercises: allAvailableExercises,
-                aiCoachTone: savedTone
-            )
+        let workoutsThisWeek = workoutViewModel.bestWeekStats.workoutCount
+        let currentStreak = workoutViewModel.streakCount
+        let fatiguedMuscles = workoutViewModel.recoveryStatus
+            .filter { $0.recoveryPercentage < 50 }
+            .map { $0.muscleGroup }
         
-        currentTask = Task {
+        let allAvailableExercises = workoutViewModel.combinedCatalog.values.flatMap { $0 }
+        
+        let userContext = UserProfileContext(
+            weightKg: UnitsManager.shared.convertToKilograms(userWeight),
+            experienceLevel: "Intermediate",
+            favoriteMuscles: [],
+            recentPRs: workoutViewModel.personalRecordsCache,
+            language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
+            workoutsThisWeek: workoutsThisWeek,
+            currentStreak: currentStreak,
+            fatiguedMuscles: fatiguedMuscles,
+            availableExercises: allAvailableExercises,
+            aiCoachTone: savedTone
+        )
+        
+        // 🚩 Используем [weak self]
+        currentTask = Task { [weak self] in
+            guard let self else { return }
             do {
-                let response = try await aiService.generateWorkoutPlan(userRequest: prompt, userProfile: userContext)
+                let response = try await self.aiService.generateWorkoutPlan(userRequest: prompt, userProfile: userContext)
                 guard !Task.isCancelled else { return }
                 
-                // Создаем пустой "каркас" сообщения перед началом анимации
                 let aiMessage = AIChatMessage(
                     isUser: false,
                     text: "",
                     proposedWorkout: response.workout
                 )
                 
-                await MainActor.run {
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                         self.chatHistory.append(aiMessage)
                         self.currentSession?.messages.append(aiMessage)
-                        self.isGenerating = false // Отключаем пульсирующие точки
+                        self.isGenerating = false
                     }
-                    // Запускаем печатную машинку
                     self.startTypewriter(text: response.text, messageId: aiMessage.id, proposedWorkout: response.workout, context: context)
                 }
             } catch {
                 guard !Task.isCancelled else { return }
-                await MainActor.run {
+                await MainActor.run { [weak self] in
+                    guard let self else { return }
                     let errorMessage = AIChatMessage(
                         isUser: false,
                         text: String(localized: "Oops, something went wrong: \(error.localizedDescription)"),
@@ -194,7 +213,9 @@ final class AICoachViewModel: ObservableObject {
     private func startTypewriter(text: String, messageId: UUID, proposedWorkout: GeneratedWorkoutDTO?, context: ModelContext) {
         typewriterTask?.cancel()
         
-        typewriterTask = Task {
+        // 🚩 Используем [weak self]
+        typewriterTask = Task { [weak self] in
+            guard let self else { return }
             var currentText = ""
             let chars = Array(text)
             
@@ -202,9 +223,9 @@ final class AICoachViewModel: ObservableObject {
                 guard !Task.isCancelled else { break }
                 currentText.append(char)
                 
-                // Обновляем UI пачками (каждые 3 символа) для плавности и защиты от лагов Скролла
                 if index % 3 == 0 || index == chars.count - 1 {
-                    await MainActor.run {
+                    await MainActor.run { [weak self] in
+                        guard let self else { return }
                         if let idx = self.chatHistory.firstIndex(where: { $0.id == messageId }) {
                             self.chatHistory[idx] = AIChatMessage(
                                 id: messageId,
@@ -215,13 +236,11 @@ final class AICoachViewModel: ObservableObject {
                         }
                     }
                 }
-                
-                // Скорость "печатания" (около 12 мс на символ)
-                try? await Task.sleep(nanoseconds: 12_000_000)
+                try? await Task.sleep(nanoseconds: 35_000_000)
             }
             
-            // Финальное сохранение полностью напечатанного сообщения в SwiftData
-            await MainActor.run {
+            await MainActor.run { [weak self] in
+                guard let self else { return }
                 if let session = self.currentSession, let idx = session.messages.firstIndex(where: { $0.id == messageId }) {
                     session.messages[idx] = AIChatMessage(
                         id: messageId,
@@ -237,7 +256,6 @@ final class AICoachViewModel: ObservableObject {
     
     // MARK: - Workout Acceptance
     func acceptWorkout(dto: GeneratedWorkoutDTO, container: ModelContainer, onStart: @escaping (Workout) -> Void) {
-        // Логика формирования тренировки остается без изменений
         let context = ModelContext(container)
         var exercises: [Exercise] = []
         for exDTO in dto.exercises {

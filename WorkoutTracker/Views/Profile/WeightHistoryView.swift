@@ -14,7 +14,7 @@ struct WeightHistoryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     @Environment(\.dismiss) var dismiss
     
     @State private var selectedPeriod: PeriodFilter = .month

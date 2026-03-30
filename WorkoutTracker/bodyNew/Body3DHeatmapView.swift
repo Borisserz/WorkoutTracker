@@ -18,7 +18,11 @@ struct Body3DHeatmapView: UIViewRepresentable {
         scnView.allowsCameraControl = true
         scnView.autoenablesDefaultLighting = false // Будем использовать свой красивый свет
         scnView.backgroundColor = .clear
-        scnView.antialiasingMode = .multisampling4X
+        
+        // 🎼 ОПТИМИЗАЦИЯ GPU: Отключаем непрерывный рендеринг и снижаем нагрузку
+        scnView.antialiasingMode = .multisampling2X // 2X достаточно для Retina-экранов
+        scnView.preferredFramesPerSecond = 30       // Экономим батарею
+        scnView.rendersContinuously = false         // Рендер только при взаимодействии/анимации
         
         let scene = SCNScene()
         
@@ -111,7 +115,6 @@ struct Body3DHeatmapView: UIViewRepresentable {
             createPart(geo: SCNCapsule(capRadius: 0.06, height: 0.4), name: "calves", pos: SCNVector3(-0.12, 0.2, -0.02))
         ]
         
-        // Добавляем все в Root
         // Добавляем все в Root по частям, чтобы компилятор Swift не зависал
         var allNodes: [SCNNode] = [chest, upperBack, absNode, lowerBack, pelvis, head, neck]
         allNodes.append(contentsOf: shoulders)
@@ -127,7 +130,6 @@ struct Body3DHeatmapView: UIViewRepresentable {
             dummyRoot.addChildNode(node)
         }
         
- 
         // Опускаем манекена, чтобы центрировать по камере (камера смотрит в 0,0,0)
         dummyRoot.position = SCNVector3(0, -1.0, 0)
         
@@ -170,9 +172,13 @@ struct Body3DHeatmapView: UIViewRepresentable {
             
             let color = calculateColor(for: name)
             
-            // Плавная анимация изменения цвета
+            // 🎼 Плавная анимация изменения цвета с пробуждением SceneKit
             SCNTransaction.begin()
             SCNTransaction.animationDuration = 0.5
+            // Гарантируем, что рендерер обработает переход, а затем уснет
+            SCNTransaction.completionBlock = {
+                // SceneKit автоматически засыпает при rendersContinuously = false
+            }
             material.diffuse.contents = color
             SCNTransaction.commit()
         }
@@ -195,18 +201,19 @@ struct Body3DHeatmapView: UIViewRepresentable {
             }
             
         } else {
-                   // ИСПРАВЛЕНО: РЕЖИМ ЖИВОЙ АКТИВАЦИИ (0...100%)
-                   let tension = value ?? 0
-                   
-                   if tension == 0 {
-                       return baseColor
-                   } else {
-                       // Плавная смена прозрачности от 0.3 до 1.0 в зависимости от напряжения
-                       let opacity = 0.3 + (0.7 * (Double(tension) / 100.0))
-                       return UIColor.systemRed.withAlphaComponent(CGFloat(opacity))
-                   }
-               }
-           }
+            // РЕЖИМ ЖИВОЙ АКТИВАЦИИ (0...100%)
+            let tension = value ?? 0
+            
+            if tension == 0 {
+                return baseColor
+            } else {
+                // Плавная смена прозрачности от 0.3 до 1.0 в зависимости от напряжения
+                let opacity = 0.3 + (0.7 * (Double(tension) / 100.0))
+                return UIColor.systemRed.withAlphaComponent(CGFloat(opacity))
+            }
+        }
+    }
+    
     // MARK: - 3. Камера и Освещение
     
     private func setupLighting(in scene: SCNScene) {

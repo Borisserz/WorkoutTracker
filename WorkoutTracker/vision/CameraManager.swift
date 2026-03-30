@@ -43,7 +43,10 @@ final class CameraManager: NSObject, ObservableObject {
     private func setupSession() {
         guard !session.isRunning else { return }
         session.beginConfiguration()
-        session.sessionPreset = .high
+        
+        // 🎼 Снижаем разрешение. Огромная экономия энергии и CPU.
+        // Для детекции скелета в Vision VGA разрешения более чем достаточно.
+        session.sessionPreset = .vga640x480
         
         guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
               let videoInput = try? AVCaptureDeviceInput(device: videoDevice),
@@ -93,6 +96,17 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     private let onBodyPoseUpdate: @Sendable (VNHumanBodyPoseObservation?) -> Void
     private let onHandUpdate: @Sendable (VNHumanHandPoseObservation?) -> Void
     
+    // 🚩 ОПТИМИЗАЦИЯ: Создаем тяжелые реквесты ОДИН РАЗ при инициализации
+    private let bodyRequest = VNDetectHumanBodyPoseRequest()
+    private let handRequest: VNDetectHumanHandPoseRequest = {
+        let req = VNDetectHumanHandPoseRequest()
+        req.maximumHandCount = 1
+        return req
+    }()
+    
+    // Счетчик кадров для троттлинга
+    private var frameCount = 0
+    
     init(
         onUpdate: @escaping @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void,
         onBodyPoseUpdate: @escaping @Sendable (VNHumanBodyPoseObservation?) -> Void,
@@ -105,36 +119,39 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     }
     
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        let bodyRequest = VNDetectHumanBodyPoseRequest { [weak self] req, err in
-            guard let observations = req.results as? [VNHumanBodyPoseObservation],
-                  let observation = observations.first else {
-                self?.onUpdate([:])
-                self?.onBodyPoseUpdate(nil)
-                return
-            }
-            
-            self?.onBodyPoseUpdate(observation)
-            
-            guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
-            var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-            for (key, point) in recognizedPoints where point.confidence > 0.3 {
-                normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
-            }
-            self?.onUpdate(normalizedJoints)
-        }
         
-        let handRequest = VNDetectHumanHandPoseRequest { [weak self] req, err in
-            guard let observations = req.results as? [VNHumanHandPoseObservation],
-                  let observation = observations.first else {
-                self?.onHandUpdate(nil)
-                return
-            }
-            self?.onHandUpdate(observation)
-        }
-        handRequest.maximumHandCount = 1
+        // 🎼 Пропускаем кадры. Обрабатываем каждый 3-й кадр (получаем ~10 FPS, чего достаточно для трекера)
+        frameCount += 1
+        guard frameCount % 3 == 0 else { return }
         
+        // 🚩 Выполняем предварительно созданные реквесты на текущем кадре
         let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
-        try? handler.perform([bodyRequest, handRequest])
+        
+        do {
+            try handler.perform([bodyRequest, handRequest])
+            
+            // --- 1. Обработка Body (Скелет тела) ---
+            if let bodyObservation = bodyRequest.results?.first {
+                self.onBodyPoseUpdate(bodyObservation)
+                
+                if let recognizedPoints = try? bodyObservation.recognizedPoints(.all) {
+                    var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+                    for (key, point) in recognizedPoints where point.confidence > 0.3 {
+                        normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                    }
+                    self.onUpdate(normalizedJoints)
+                }
+            } else {
+                self.onBodyPoseUpdate(nil)
+                self.onUpdate([:])
+            }
+            
+            // --- 2. Обработка Hand (Кисть для жестов) ---
+            self.onHandUpdate(handRequest.results?.first)
+            
+        } catch {
+            print("Vision request failed: \(error)")
+        }
     }
 }
 

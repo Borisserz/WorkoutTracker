@@ -37,7 +37,7 @@ struct SliderSheetView: View {
     @Binding var value: Double?
     @Binding var isPresented: Bool
     
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // Локальное состояние для слайдера - обновляется мгновенно без валидации
     @State private var localValue: Double = 0
@@ -290,7 +290,7 @@ struct SliderInputView: View {
     let fieldType: InputFieldType
     @Binding var value: Double?
     
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // Параметры слайдера
     let minValue: Double

@@ -22,7 +22,7 @@ struct ProfileView: View {
     @AppStorage("userBodyWeight") private var userBodyWeight = 75.0  // Хранится в кг
     @AppStorage("userGender") private var userGender = "male" // "male" or "female"
     
-    @ObservedObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false

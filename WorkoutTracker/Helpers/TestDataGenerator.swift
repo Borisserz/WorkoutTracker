@@ -6,21 +6,22 @@
 import Foundation
 import SwiftData
 
-class TestDataGenerator {
+@ModelActor
+actor TestDataGenerator {
     
     // MARK: - Configuration
     
-    private static let exerciseCatalog: [String: [String]] = Exercise.catalog
+    private let exerciseCatalog: [String: [String]] = Exercise.catalog
     
-    private static let workoutIcons = [
+    private let workoutIcons = [
         "img_chest", "img_chest2", "img_back", "img_back2",
         "img_legs", "img_legs2", "img_arms", "img_shoulders", "img_default", "figure.run"
     ]
     
     // MARK: - Main Generation Methods
     
-    static func generateAllData(container: ModelContainer) async {
-        await clearAllDataAsync(container: container)
+    func generateAllData() async {
+        await clearAllDataAsync()
         
         var components = DateComponents()
         components.year = 2021; components.month = 1; components.day = 1
@@ -29,36 +30,30 @@ class TestDataGenerator {
         components.year = 2026; components.month = 3; components.day = 1
         guard let endDate = Calendar.current.date(from: components) else { return }
         
-        await generateWorkouts(from: startDate, to: endDate, container: container)
-        await generateWeights(from: startDate, to: endDate, container: container)
+        await generateWorkouts(from: startDate, to: endDate)
+        await generateWeights(from: startDate, to: endDate)
     }
     
-    static func clearAllDataAsync(container: ModelContainer) async {
-        let context = ModelContext(container)
+    func clearAllDataAsync() async {
+        // Мы уже внутри контекста ModelActor'а
+        try? modelContext.delete(model: WorkoutSet.self)
+        try? modelContext.delete(model: Exercise.self)
+        try? modelContext.delete(model: Workout.self)
+        try? modelContext.delete(model: WeightEntry.self)
+        try? modelContext.delete(model: UserStats.self)
+        try? modelContext.delete(model: ExerciseStat.self)
+        try? modelContext.delete(model: MuscleStat.self)
+        try? modelContext.delete(model: ExerciseNote.self)
         
-        // 1. В SwiftData массовое удаление (batch delete) НЕ вызывает каскадного удаления связанных объектов (cascade).
-        // Поэтому мы должны явно удалять WorkoutSet и Exercise, иначе база данных забьется "сиротами" (orphans).
-        // 2. Также мы удаляем всю агрегированную статистику, чтобы WorkoutViewModel пересчитала ее заново 
-        // для новых сгенерированных данных.
-        try? context.delete(model: WorkoutSet.self)
-        try? context.delete(model: Exercise.self)
-        try? context.delete(model: Workout.self)
-        try? context.delete(model: WeightEntry.self)
-        try? context.delete(model: UserStats.self)
-        try? context.delete(model: ExerciseStat.self)
-        try? context.delete(model: MuscleStat.self)
-        try? context.delete(model: ExerciseNote.self)
-        
-        // Фоллбэк для надежности (если batch delete не поддерживается на старой версии iOS или не сработал)
         do {
-            if let items = try? context.fetch(FetchDescriptor<Workout>()) { items.forEach { context.delete($0) } }
-            if let items = try? context.fetch(FetchDescriptor<Exercise>()) { items.forEach { context.delete($0) } }
-            if let items = try? context.fetch(FetchDescriptor<WorkoutSet>()) { items.forEach { context.delete($0) } }
-            if let items = try? context.fetch(FetchDescriptor<WeightEntry>()) { items.forEach { context.delete($0) } }
-            if let items = try? context.fetch(FetchDescriptor<UserStats>()) { items.forEach { context.delete($0) } }
-            if let items = try? context.fetch(FetchDescriptor<ExerciseStat>()) { items.forEach { context.delete($0) } }
-            if let items = try? context.fetch(FetchDescriptor<MuscleStat>()) { items.forEach { context.delete($0) } }
-            try context.save()
+            if let items = try? modelContext.fetch(FetchDescriptor<Workout>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<Exercise>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<WorkoutSet>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<WeightEntry>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<UserStats>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<ExerciseStat>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<MuscleStat>()) { items.forEach { modelContext.delete($0) } }
+            try modelContext.save()
         } catch {
             print("Ошибка fallback удаления: \(error)")
         }
@@ -66,13 +61,10 @@ class TestDataGenerator {
     
     // MARK: - Workouts Generation
     
-    private static func generateWorkouts(from startDate: Date, to endDate: Date, container: ModelContainer) async {
+    private func generateWorkouts(from startDate: Date, to endDate: Date) async {
         var currentDate = startDate
         var workoutNumber = 0
         let calendar = Calendar.current
-        
-        // Используем единый контекст для всего процесса (не пересоздаем его в цикле)
-        let context = ModelContext(container)
         
         while currentDate <= endDate {
             let weekday = calendar.component(.weekday, from: currentDate)
@@ -81,18 +73,16 @@ class TestDataGenerator {
             if isWorkoutDay {
                 let workout = generateWorkout(for: currentDate, workoutIndex: workoutNumber)
                 
-                // В SwiftData вставка корневого объекта иногда не цепляет глубокие связи (массивы внутри массивов).
-                // Для надежности делаем явный insert всех созданных объектов в контекст.
-                context.insert(workout)
+                modelContext.insert(workout)
                 for exercise in workout.exercises {
-                    context.insert(exercise)
+                    modelContext.insert(exercise)
                     for set in exercise.setsList {
-                        context.insert(set)
+                        modelContext.insert(set)
                     }
                     for sub in exercise.subExercises {
-                        context.insert(sub)
+                        modelContext.insert(sub)
                         for set in sub.setsList {
-                            context.insert(set)
+                            modelContext.insert(set)
                         }
                     }
                 }
@@ -100,7 +90,7 @@ class TestDataGenerator {
                 workoutNumber += 1
                 
                 if workoutNumber % 50 == 0 {
-                    try? context.save()
+                    try? modelContext.save()
                     await Task.yield()
                 }
             }
@@ -110,19 +100,18 @@ class TestDataGenerator {
             } else { break }
         }
         
-        try? context.save()
+        try? modelContext.save()
         print("✅ Сгенерировано \(workoutNumber) разнообразных тренировок.")
     }
     
     // MARK: - Weights Generation
     
-    private static func generateWeights(from startDate: Date, to endDate: Date, container: ModelContainer) async {
+    private func generateWeights(from startDate: Date, to endDate: Date) async {
         let startWeight = 95.0, targetWeight = 78.0
         let totalDays = Calendar.current.dateComponents([.day], from: startDate, to: endDate).day ?? 1
         var currentDate = startDate
         var dayOffset = 0
         
-        let context = ModelContext(container)
         var count = 0
         
         while currentDate <= endDate {
@@ -136,8 +125,7 @@ class TestDataGenerator {
             
             let currentWeight = max(60.0, min(120.0, expectedWeight + dailyVariation + weeklyVariation))
             
-            // ИСПРАВЛЕНИЕ: Вставляем в БД
-            context.insert(WeightEntry(date: currentDate, weight: currentWeight))
+            modelContext.insert(WeightEntry(date: currentDate, weight: currentWeight))
             count += 1
             
             let jump = Int.random(in: 2...5)
@@ -147,7 +135,7 @@ class TestDataGenerator {
             } else { break }
         }
         
-        try? context.save()
+        try? modelContext.save()
         print("✅ Сгенерировано \(count) записей о весе.")
     }
     
@@ -167,7 +155,7 @@ class TestDataGenerator {
         case hiit = "HIIT Blast"
     }
     
-    private static func determineWorkoutType(index: Int) -> WorkoutType {
+    private func determineWorkoutType(index: Int) -> WorkoutType {
         let cycle: [WorkoutType] = [
             .push, .pull, .legs,
             .upper, .lower, .cardio,
@@ -177,7 +165,7 @@ class TestDataGenerator {
         return cycle[index % cycle.count]
     }
     
-    private static func generateWorkout(for date: Date, workoutIndex: Int) -> Workout {
+    private func generateWorkout(for date: Date, workoutIndex: Int) -> Workout {
         let type = determineWorkoutType(index: workoutIndex)
         var exercises = generateExercises(for: type, workoutIndex: workoutIndex)
         
@@ -192,7 +180,7 @@ class TestDataGenerator {
         return Workout(title: type.rawValue, date: date, endTime: endTime, icon: icon, exercises: exercises)
     }
     
-    private static func generateExercises(for type: WorkoutType, workoutIndex: Int) -> [Exercise] {
+    private func generateExercises(for type: WorkoutType, workoutIndex: Int) -> [Exercise] {
         var ex: [Exercise] = []
         
         switch type {
@@ -239,7 +227,7 @@ class TestDataGenerator {
         return ex
     }
     
-    private static func fetchStrength(group: String, count: Int, subFilter: String? = nil, index: Int) -> [Exercise] {
+    private func fetchStrength(group: String, count: Int, subFilter: String? = nil, index: Int) -> [Exercise] {
         var pool = exerciseCatalog[group] ?? []
         if let filter = subFilter {
             let filtered = pool.filter { $0.localizedCaseInsensitiveContains(filter) || $0.localizedCaseInsensitiveContains(filter.replacingOccurrences(of: "p", with: "ps")) || $0.localizedCaseInsensitiveContains("extension") }
@@ -253,7 +241,7 @@ class TestDataGenerator {
         return result
     }
     
-    private static func fetchCardio(count: Int, index: Int) -> [Exercise] {
+    private func fetchCardio(count: Int, index: Int) -> [Exercise] {
         let pool = (exerciseCatalog["Cardio"] ?? []).shuffled()
         var result: [Exercise] = []
         for i in 0..<min(count, pool.count) {
@@ -262,7 +250,7 @@ class TestDataGenerator {
         return result
     }
     
-    private static func fetchDuration(group: String, count: Int, index: Int) -> [Exercise] {
+    private func fetchDuration(group: String, count: Int, index: Int) -> [Exercise] {
         let pool = (exerciseCatalog[group] ?? []).shuffled()
         var result: [Exercise] = []
         for i in 0..<min(count, pool.count) {
@@ -271,7 +259,7 @@ class TestDataGenerator {
         return result
     }
     
-    private static func buildStrength(name: String, group: String, index: Int) -> Exercise {
+    private func buildStrength(name: String, group: String, index: Int) -> Exercise {
         let baseGroupWeight: Double
         switch group {
         case "Legs": baseGroupWeight = 70.0
@@ -313,14 +301,14 @@ class TestDataGenerator {
         return Exercise(name: name, muscleGroup: group, type: .strength, sets: setsCount, reps: actualReps, weight: finalWeight, effort: effort, setsList: setsList, isCompleted: true)
     }
     
-    private static func buildCardio(name: String, index: Int) -> Exercise {
+    private func buildCardio(name: String, index: Int) -> Exercise {
         let distance = 3.0 + (Double(index) / 200.0) + Double.random(in: -1...2)
         let timeMinutes = Int(15 + (distance * 5) + Double.random(in: -5...5))
         let set = WorkoutSet(index: 1, distance: max(1.0, distance), time: timeMinutes * 60, isCompleted: true, type: .normal)
         return Exercise(name: name, muscleGroup: "Cardio", type: .cardio, sets: 1, reps: 0, weight: 0, distance: max(1.0, distance), timeSeconds: timeMinutes * 60, effort: Int.random(in: 5...9), setsList: [set], isCompleted: true)
     }
     
-    private static func buildDuration(name: String, group: String, index: Int) -> Exercise {
+    private func buildDuration(name: String, group: String, index: Int) -> Exercise {
         let time = 45 + Int.random(in: -15...45)
         let setsCount = Int.random(in: 2...4)
         var setsList: [WorkoutSet] = []
@@ -330,7 +318,7 @@ class TestDataGenerator {
         return Exercise(name: name, muscleGroup: group, type: .duration, sets: setsCount, reps: 0, weight: 0, timeSeconds: time, effort: Int.random(in: 6...9), setsList: setsList, isCompleted: true)
     }
     
-    private static func createRandomSuperset(from exercises: [Exercise]) -> [Exercise] {
+    private func createRandomSuperset(from exercises: [Exercise]) -> [Exercise] {
         guard exercises.count >= 2 else { return exercises }
         var result = exercises
         let idx = Int.random(in: 0..<(result.count - 1))
@@ -352,4 +340,3 @@ class TestDataGenerator {
         return result
     }
 }
-

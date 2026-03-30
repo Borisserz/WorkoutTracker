@@ -17,7 +17,7 @@ struct ConfigureExerciseView: View {
     
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var viewModel: WorkoutViewModel
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // MARK: - Input Parameters
     

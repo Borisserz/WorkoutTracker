@@ -216,6 +216,10 @@ struct PulsatingGlowEffect: ViewModifier {
                     opacity = 0.1
                 }
             }
+            .onDisappear {
+                scale = 1.0
+                opacity = 0.5
+            }
     }
 }
 
@@ -229,6 +233,9 @@ struct BlinkingTextModifier: ViewModifier {
                 withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
                     isBlinking = true
                 }
+            }
+            .onDisappear {
+                isBlinking = false
             }
     }
 }

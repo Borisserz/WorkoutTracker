@@ -17,11 +17,14 @@ struct BodyHeatmapView: View {
     let canvasHeight: CGFloat = 1450
     let backViewOffset: CGFloat = 740
     
+    // 🎼 ОПТИМИЗАЦИЯ: Статический кэш для оффсетов центрирования
+    private static var cachedOffsets: [String: CGFloat] = [:]
+    
     init(
             muscleIntensities: [String: Int] = [:],
             isRecoveryMode: Bool = false,
             isCompactMode: Bool = false,
-            defaultToBack: Bool = false 
+            defaultToBack: Bool = false
         ) {
             self.muscleIntensities = muscleIntensities
             self.isRecoveryMode = isRecoveryMode
@@ -34,7 +37,7 @@ struct BodyHeatmapView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // ИСПРАВЛЕНИЕ: Скрываем Picker в режиме компактного отображения (на камере)
+            // Скрываем Picker в режиме компактного отображения (на камере)
             if !isCompactMode {
                 Picker(LocalizedStringKey("View"), selection: $isFrontView) {
                     Text(LocalizedStringKey("Front")).tag(true)
@@ -58,20 +61,21 @@ struct BodyHeatmapView: View {
                     }
                 }()
                 
-                let centeringOffset = calculateCenteringOffset(for: currentMuscles, isFront: isFrontView)
+                // 🎼 ОПТИМИЗАЦИЯ: Получаем смещение из кэша (О(1) вместо тяжелых вычислений O(N) каждый кадр)
+                let centeringOffset = getCenteringOffset(isFront: isFrontView)
                 
                 ZStack {
-                                    ForEach(currentMuscles) { muscle in
-                                        drawMuscle(muscle, centeringOffset: centeringOffset)
-                                    }
-                                }
-                                .frame(width: canvasWidth, height: canvasHeight)
-                                .scaleEffect(scale)
-                                .frame(width: canvasWidth * scale, height: canvasHeight * scale)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                                // Белый фон ТОЛЬКО в камере, в остальных местах прозрачный
-                                                .background(isCompactMode ? Color.white : Color.clear)
-                                                .clipShape(RoundedRectangle(cornerRadius: isCompactMode ? 16 : 12))
+                    ForEach(currentMuscles) { muscle in
+                        drawMuscle(muscle, centeringOffset: centeringOffset)
+                    }
+                }
+                .frame(width: canvasWidth, height: canvasHeight)
+                .scaleEffect(scale)
+                .frame(width: canvasWidth * scale, height: canvasHeight * scale)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Белый фон ТОЛЬКО в камере, в остальных местах прозрачный
+                .background(isCompactMode ? Color.white : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: isCompactMode ? 16 : 12))
                 .overlay(alignment: .bottom) {
                     if let name = selectedMuscleName, !isCompactMode {
                         let slug = findSlug(forName: name)
@@ -120,6 +124,23 @@ struct BodyHeatmapView: View {
             )
             .cornerRadius(isCompactMode ? 16 : 12)
         }
+    }
+    
+    // 🎼 ОПТИМИЗАЦИЯ: Функция извлечения / записи кэша
+    private func getCenteringOffset(isFront: Bool) -> CGFloat {
+        let key = "\(userGender)_\(isFront)"
+        
+        // Если уже вычисляли для этого пола и ракурса, возвращаем мгновенно
+        if let cached = Self.cachedOffsets[key] { return cached }
+        
+        // Иначе — считаем тяжелым методом
+        let muscles = userGender == "female" ?
+            (isFront ? BodyData.frontMusclesFemale : BodyData.backMusclesFemale) :
+            (isFront ? BodyData.frontMuscles : BodyData.backMuscles)
+            
+        let offset = calculateCenteringOffset(for: muscles, isFront: isFront)
+        Self.cachedOffsets[key] = offset // Сохраняем навсегда для сессии
+        return offset
     }
     
     func calculateCenteringOffset(for muscles: [MuscleGroup], isFront: Bool) -> CGFloat {
@@ -179,14 +200,14 @@ struct BodyHeatmapView: View {
                 hitPath
                     .fill(Color.white.opacity(0.001))
                 finalPath
-                                    .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
-                                    .overlay(
-                                        // В камере - черная четкая обводка. В профиле - мягкая адаптивная.
-                                        finalPath.stroke(
-                                            isSelected ? Color.blue : (isCompactMode ? Color.black.opacity(0.3) : Color.primary.opacity(0.15)),
-                                            lineWidth: isSelected ? 2.0 : (isCompactMode ? 1.5 : 1.0)
-                                        )
-                                    )
+                    .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
+                    .overlay(
+                        // В камере - черная четкая обводка. В профиле - мягкая адаптивная.
+                        finalPath.stroke(
+                            isSelected ? Color.blue : (isCompactMode ? Color.black.opacity(0.3) : Color.primary.opacity(0.15)),
+                            lineWidth: isSelected ? 2.0 : (isCompactMode ? 1.5 : 1.0)
+                        )
+                    )
             }
         }
         .buttonStyle(.plain)

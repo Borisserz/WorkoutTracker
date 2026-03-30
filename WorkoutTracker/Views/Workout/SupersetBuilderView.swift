@@ -22,7 +22,7 @@ struct SupersetBuilderView: View {
     
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var viewModel: WorkoutViewModel
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // Если редактируем — передаем сюда существующий супер-сет
     @State var existingSuperset: Exercise?
@@ -211,7 +211,7 @@ struct EditSupersetItemView: View {
     @Bindable var exercise: Exercise // ДОБАВЛЕНО: SwiftData Bindable
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // Валидация
     @State private var showValidationAlert = false

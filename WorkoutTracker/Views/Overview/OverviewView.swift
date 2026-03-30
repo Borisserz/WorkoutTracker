@@ -71,35 +71,35 @@ struct OverviewView: View {
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal)
-                                
                                 Button {
-                                    showAddWorkout = true
-                                    if tutorialManager.currentStep == .tapPlus {
-                                        tutorialManager.nextStep()
-                                    }
-                                } label: {
-                                    Text(LocalizedStringKey("Start Your First Workout"))
-                                        .font(.title3)
-                                        .bold()
-                                        .foregroundColor(.white)
-                                        .padding(.vertical, 20)
-                                        .frame(maxWidth: .infinity)
-                                        .background(Color.blue)
-                                        .cornerRadius(16)
-                                        .shadow(color: .blue.opacity(0.6), radius: isPulsing ? 15 : 5, x: 0, y: isPulsing ? 8 : 2)
-                                        .scaleEffect(isPulsing ? 1.03 : 0.97)
-                                        // ИСПРАВЛЕНИЕ: Анимация только для визуала кнопки, а не её позиции
-                                        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isPulsing)
-                                }
-                                .padding(.top, 10)
-                                .onAppear {
-                                    // ИСПРАВЛЕНИЕ: Минимальная задержка, чтобы UI успел отрендерить фрейм до старта анимации
-                                    Task { @MainActor in
-                                        try? await Task.sleep(nanoseconds: 100_000_000)
-                                        isPulsing = true
-                                    }
-                                }
-                                .spotlight(
+                                                                    showAddWorkout = true
+                                                                    if tutorialManager.currentStep == .tapPlus {
+                                                                        tutorialManager.nextStep()
+                                                                    }
+                                                                } label: {
+                                                                    Text(LocalizedStringKey("Start Your First Workout"))
+                                                                        .font(.title3)
+                                                                        .bold()
+                                                                        .foregroundColor(.white)
+                                                                        .padding(.vertical, 20)
+                                                                        .frame(maxWidth: .infinity)
+                                                                        .background(Color.blue)
+                                                                        .cornerRadius(16)
+                                                                        .shadow(color: .blue.opacity(0.6), radius: isPulsing ? 15 : 5, x: 0, y: isPulsing ? 8 : 2)
+                                                                        .scaleEffect(isPulsing ? 1.03 : 0.97)
+                                                                        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isPulsing)
+                                                                }
+                                                                .padding(.top, 10)
+                                                                .onAppear {
+                                                                    Task { @MainActor in
+                                                                        try? await Task.sleep(nanoseconds: 100_000_000)
+                                                                        isPulsing = true
+                                                                    }
+                                                                }
+                                                                .onDisappear {
+                                                                    isPulsing = false
+                                                                }
+                                                                .spotlight(
                                     step: .tapPlus,
                                     manager: tutorialManager,
                                     text: "Tap here to create your first workout!",

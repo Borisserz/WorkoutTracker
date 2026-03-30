@@ -643,7 +643,7 @@ struct ComparisonItem {
 
 struct FunFactView: View {
     let totalStrengthVolume: Double
-    @ObservedObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     @State private var selectedComparison: ComparisonItem?
     
     private let allComparisons: [ComparisonItem] = [
@@ -720,7 +720,7 @@ struct FunFactView: View {
 
 struct ExerciseRowView: View {
     let exercise: Exercise
-    @ObservedObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     var body: some View {
         HStack {
@@ -794,13 +794,20 @@ struct ExerciseRowView: View {
     }
 }
 
-// Анимация пульсации для Live индикатора
 struct Blinking: ViewModifier {
     @State private var isOn = false
+    
     func body(content: Content) -> some View {
-        content.opacity(isOn ? 1 : 0.5).onAppear {
-            withAnimation(Animation.easeInOut(duration: 1).repeatForever()) { isOn = true }
-        }
+        content
+            .opacity(isOn ? 1 : 0.5)
+            .onAppear {
+                withAnimation(Animation.easeInOut(duration: 1).repeatForever()) {
+                    isOn = true
+                }
+            }
+            .onDisappear {
+                isOn = false
+            }
     }
 }
 extension View { func blinking() -> some View { modifier(Blinking()) } }

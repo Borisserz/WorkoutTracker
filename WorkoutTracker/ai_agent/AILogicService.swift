@@ -66,6 +66,7 @@ public struct GeneratedExerciseDTO: Codable, Sendable {
 
 public enum AILogicError: Error, LocalizedError, Sendable {
     case invalidURL, invalidResponse, noDataReturned
+    case invalidData // 👈 ДОБАВЛЯЕМ ЭТОТ КЕЙС
     case apiError(statusCode: Int, message: String)
     case decodingFailed(Error)
     
@@ -77,6 +78,8 @@ public enum AILogicError: Error, LocalizedError, Sendable {
             return "Received an invalid response from the server."
         case .noDataReturned:
             return "No data was returned from the server."
+        case .invalidData: 
+            return "The AI response was malformed or missing valid JSON."
         case .apiError(let statusCode, let message):
             return "API Error (Status \(statusCode)): \(message)"
         case .decodingFailed(let error):
@@ -148,7 +151,7 @@ public actor AILogicService {
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: createSystemPrompt(language: userProfile.language, tone: userProfile.aiCoachTone))]),
             contents: [.init(role: "user", parts: [.init(text: createUserPrompt(request: userRequest, profile: userProfile))])],
-            generationConfig: .init(temperature: 0.7, responseMimeType: nil)
+            generationConfig: .init(temperature: 0.5, responseMimeType: nil)
         )
         
         let responseText = try await performRequest(requestBody)
@@ -354,49 +357,40 @@ public actor AILogicService {
         let startTag = "[WORKOUT_JSON]"
         let endTag = "[/WORKOUT_JSON]"
         
-        // Проверяем, есть ли в ответе сгенерированная тренировка
+        // 1. Пытаемся найти контент между тегами
         if let startRange = rawContent.range(of: startTag),
            let endRange = rawContent.range(of: endTag) {
             
-            // Вытаскиваем JSON
             let jsonString = String(rawContent[startRange.upperBound..<endRange.lowerBound])
-            var cleanJson = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            // Очищаем от возможных Markdown артефактов
-            if cleanJson.hasPrefix("```json") { cleanJson = String(cleanJson.dropFirst(7)) }
-            else if cleanJson.hasPrefix("```") { cleanJson = String(cleanJson.dropFirst(3)) }
-            if cleanJson.hasSuffix("```") { cleanJson = String(cleanJson.dropLast(3)) }
-            cleanJson = cleanJson.trimmingCharacters(in: .whitespacesAndNewlines)
+            // 2. ИСПОЛЬЗУЕМ REGEX: Ищем первую { и последнюю }, игнорируя любой мусор от ИИ (```json и т.д.)
+            guard let jsonStartIndex = jsonString.firstIndex(of: "{"),
+                  let jsonEndIndex = jsonString.lastIndex(of: "}") else {
+                throw AILogicError.invalidData // JSON не найден внутри тегов
+            }
             
-            guard let jsonData = cleanJson.data(using: .utf8) else {
+            let cleanJsonString = String(jsonString[jsonStartIndex...jsonEndIndex])
+            guard let jsonData = cleanJsonString.data(using: .utf8) else {
                 throw AILogicError.noDataReturned
             }
             
             do {
                 let workoutDTO = try JSONDecoder().decode(GeneratedWorkoutDTO.self, from: jsonData)
                 
-                // Вытаскиваем разговорный текст (до и после тегов)
+                // Собираем разговорный текст до и после тегов
                 let textBefore = String(rawContent[..<startRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
                 let textAfter = String(rawContent[endRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
                 
-                var conversationalText = textBefore
-                if !textAfter.isEmpty {
-                    conversationalText += (conversationalText.isEmpty ? "" : "\n\n") + textAfter
-                }
+                let conversationalText = [textBefore, textAfter].filter { !$0.isEmpty }.joined(separator: "\n\n")
+                let finalMessage = conversationalText.isEmpty ? workoutDTO.aiMessage : conversationalText
                 
-                // Если ИИ не написал ничего вне тегов, используем "aiMessage" из самого JSON
-                if conversationalText.isEmpty {
-                    conversationalText = workoutDTO.aiMessage
-                }
-                
-                return AICoachResponseDTO(text: conversationalText, workout: workoutDTO)
+                return AICoachResponseDTO(text: finalMessage, workout: workoutDTO)
                 
             } catch {
                 throw AILogicError.decodingFailed(error)
             }
-            
         } else {
-            // Если тегов нет, это просто обычный текстовый ответ (совет / болтовня)
+            // Обычный разговорный ответ
             let cleanText = rawContent.replacingOccurrences(of: "```", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
             return AICoachResponseDTO(text: cleanText, workout: nil)
         }

@@ -20,7 +20,7 @@ struct SettingsView: View {
     @AppStorage("defaultRestTime") private var defaultRestTime: Int = 60
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
     @AppStorage("appearanceMode") private var appearanceMode: String = "system" // "light", "dark", "system"
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     @FocusState private var isProfileFocused: Bool
     
@@ -107,7 +107,7 @@ struct SettingsView: View {
                             .pickerStyle(.menu)
                         }
                         
-                        // Выбор пола (НОВОЕ)
+                        // Выбор пола
                         HStack {
                             Label(LocalizedStringKey("Gender"), systemImage: "person.fill")
                             Spacer()
@@ -286,34 +286,36 @@ struct SettingsView: View {
     // MARK: - Test Data Functions
     
     private func generateTestData() {
-        isProcessing = true
-        let container = modelContext.container
-        
-        Task.detached {
-            await TestDataGenerator.generateAllData(container: container)
-            
-            await MainActor.run {
-                isProcessing = false
-                testDataAlertMessage = "Test data generated successfully!\n\nCreated workouts and weight tracking history from 2021 to 2026."
-                showTestDataAlert = true
-            }
-        }
-    }
-    
-    private func clearAllWorkouts() {
-        isProcessing = true
-        let container = modelContext.container
-        
-        Task.detached {
-            await TestDataGenerator.clearAllDataAsync(container: container)
-            
-            await MainActor.run {
-                isProcessing = false
-                testDataAlertMessage = "All workouts and weight history cleared."
-                showTestDataAlert = true
-            }
-        }
-    }
+         isProcessing = true
+         let container = modelContext.container
+         
+         Task.detached {
+             let generator = TestDataGenerator(modelContainer: container)
+             await generator.generateAllData()
+             
+             await MainActor.run {
+                 isProcessing = false
+                 testDataAlertMessage = "Test data generated successfully!\n\nCreated workouts and weight tracking history from 2021 to 2026."
+                 showTestDataAlert = true
+             }
+         }
+     }
+     
+     private func clearAllWorkouts() {
+         isProcessing = true
+         let container = modelContext.container
+         
+         Task.detached {
+             let generator = TestDataGenerator(modelContainer: container)
+             await generator.clearAllDataAsync()
+             
+             await MainActor.run {
+                 isProcessing = false
+                 testDataAlertMessage = "All workouts and weight history cleared."
+                 showTestDataAlert = true
+             }
+         }
+     }
     
     // MARK: - Export Functions
     
@@ -327,10 +329,12 @@ struct SettingsView: View {
         let container = modelContext.container
         
         Task.detached(priority: .userInitiated) {
+            // 🎼 Фоновый контекст для чтения базы и конвертации
             let bgContext = ModelContext(container)
             let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
             let workouts = (try? bgContext.fetch(descriptor)) ?? []
             
+            // DataManager больше не @MainActor, методы выполняются здесь, в фоне
             let fileURL: URL?
             switch format {
             case .json:

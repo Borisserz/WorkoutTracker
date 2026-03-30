@@ -17,7 +17,7 @@ struct AddWorkoutView: View {
     
     @EnvironmentObject var tutorialManager: TutorialManager
     @EnvironmentObject private var viewModel: WorkoutViewModel
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // Шаблоны из базы
     @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]

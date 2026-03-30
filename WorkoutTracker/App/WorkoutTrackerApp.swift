@@ -1,3 +1,4 @@
+//
 //  WorkoutTrackerApp.swift
 //  WorkoutTracker
 //
@@ -17,6 +18,9 @@ struct WorkoutTrackerApp: App {
     
     // НОВЫЙ МЕНЕДЖЕР ТАЙМЕРА
     @StateObject private var timerManager = RestTimerManager()
+    
+    // 🚩 ИСПРАВЛЕНИЕ: Менеджер единиц измерения. Создаем его 1 раз на уровне приложения
+    @StateObject private var unitsManager = UnitsManager.shared
     
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("appearanceMode") private var appearanceMode: String = "system"
@@ -62,30 +66,43 @@ struct WorkoutTrackerApp: App {
                 .environmentObject(viewModel)
                 .environmentObject(tutorialManager)
                 .environmentObject(timerManager)
+                .environmentObject(unitsManager)
                 .onAppear {
-                                    // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ
-                                    LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
-                                    
-                                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                                    viewModel.checkAndGenerateDefaultPresets(container: container)
-                                    
-                                    // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
-                                    MuscleColorManager.shared.load(context: container.mainContext)
-                                }
-                                .onOpenURL { url in
-                                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                                    if viewModel.importPreset(from: url, container: container) {
-                                        showImportAlert = true
-                                    }
-                                }
-                                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
-                                    if let url = userActivity.webpageURL {
-                                        // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                                        if viewModel.importPreset(from: url, container: container) {
-                                            showImportAlert = true
-                                        }
-                                    }
-                                }
+                    // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ
+                    LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
+                    
+                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
+                    viewModel.checkAndGenerateDefaultPresets(container: container)
+                    
+                    // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
+                    MuscleColorManager.shared.load(context: container.mainContext)
+                    
+                    // 3. ПРОГРЕВ КЭША SVG В ФОНЕ (Оптимизация CPU на старте)
+                    // Тяжелые регулярные выражения отработают в фоновом потоке,
+                    // спасая Main Thread от фризов при первой отрисовке BodyHeatmapView
+                    Task.detached(priority: .high) {
+                        let allMuscles = BodyData.frontMuscles + BodyData.backMuscles + BodyData.frontMusclesFemale + BodyData.backMusclesFemale
+                        for muscle in allMuscles {
+                            for pathStr in muscle.paths {
+                                _ = SVGParser.path(from: pathStr) // Кэшируем
+                            }
+                        }
+                    }
+                }
+                .onOpenURL { url in
+                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
+                    if viewModel.importPreset(from: url, container: container) {
+                        showImportAlert = true
+                    }
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                    if let url = userActivity.webpageURL {
+                        // ИСПРАВЛЕНИЕ: Передаем container напрямую
+                        if viewModel.importPreset(from: url, container: container) {
+                            showImportAlert = true
+                        }
+                    }
+                }
                 .alert("Template Imported!", isPresented: $showImportAlert) {
                     Button("OK", role: .cancel) { }
                 } message: {

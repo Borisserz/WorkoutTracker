@@ -19,13 +19,9 @@ struct EditExerciseView: View {
     @Environment(\.dismiss) var dismiss
     
     /// Ссылка на упражнение в родительском списке (основной источник истины)
-    @Bindable var exercise: Exercise // ДОБАВЛЕНО: @Bindable вместо @Binding
+    @Bindable var exercise: Exercise
     
-    // MARK: - Init
-    
-    init(exercise: Exercise) {
-        self.exercise = exercise
-    }
+    // 🚩 ИСПРАВЛЕНИЕ: Удалили явный инициализатор
     
     // MARK: - Body
     
