@@ -25,5 +25,6 @@ Pods/
 # macOS
 .DS_Store
 
+Secrets.swift
 
 Secrets.swift

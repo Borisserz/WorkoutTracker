@@ -4,9 +4,7 @@
 //
 //  Created by Boris Serzhanovich on 24.12.25.
 //
-//  Экран "Прогресс" (Статистика).
-//  ОПТИМИЗИРОВАНО: Математика вынесена в фон, устранены проблемы N+1 запросов.
-//
+
 
 internal import SwiftUI
 import SwiftData
@@ -53,7 +51,6 @@ struct StatsView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
     
-    // ИСПРАВЛЕНИЕ: Грузим только одну тренировку, чтобы SwiftUI перерисовывал при изменениях
     @Query private var dbTrigger: [Workout]
     
     @State private var selectedPeriod: Period = .week
@@ -120,7 +117,6 @@ struct StatsView: View {
         }
         .onChange(of: selectedPeriod) { _, _ in
             Task {
-                // Моментальная перерисовка при смене периода
                 await loadPeriodData()
             }
         }
@@ -143,14 +139,9 @@ struct StatsView: View {
         let container = context.container
         let period = selectedPeriod
         let metric = selectedMetric
-        
-        // Мы берем из ViewModel уже подсчитанные рекордные веса, чтобы не сканировать всю историю
         let prCache = viewModel.personalRecordsCache
-        
         let currentInterval = calculateCurrentInterval()
         let previousInterval = calculatePreviousInterval()
-        
-        // ОПТИМИЗАЦИЯ: Мы скачиваем тренировки ТОЛЬКО за выбранный период и предыдущий
         let minDate = previousInterval.start
         let maxDate = currentInterval.end
         
@@ -161,7 +152,6 @@ struct StatsView: View {
                 sortBy: [SortDescriptor(\.date, order: .reverse)]
             )
             descriptor.relationshipKeyPathsForPrefetching = [\.exercises]
-            // Вместо 1000 мы скачиваем только ~30 тренировок, если выбран месяц!
             let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
             
             let currentStats = StatisticsManager.getStats(for: currentInterval, workouts: bgWorkouts)
@@ -215,14 +205,9 @@ struct StatsView: View {
 // MARK: - 2. Dumb Content View
 
 struct StatsContentView: View {
-    
-    // MARK: - Environment & Bindings
-    
     @EnvironmentObject var viewModel: WorkoutViewModel
     @Binding var selectedPeriod: StatsView.Period
     @Binding var selectedMetric: StatsView.GraphMetric
-    
-    // MARK: - Data Properties
     
     let streakCount: Int
     let currentStats: WorkoutViewModel.PeriodStats
@@ -231,49 +216,42 @@ struct StatsContentView: View {
     let recentPRs: [WorkoutViewModel.PersonalRecord]
     let bestWeek: WorkoutViewModel.PeriodStats
     let bestMonth: WorkoutViewModel.PeriodStats
-    
-    // Новые данные аналитики
     let weakPoints: [WorkoutViewModel.WeakPoint]
     let recommendations: [WorkoutViewModel.Recommendation]
     let detailedComparison: [WorkoutViewModel.DetailedComparison]
     
     @State private var showProfile = false
-    
-    // MARK: - Body
+    @State private var showAIReviewSheet = false
     
     var body: some View {
         List {
             streakSection
+            
+            aiReviewButtonSection
+            
             periodPicker
             highlightsSection
             chartSection
             
-            // Детальное сравнение с предыдущим периодом
             if !detailedComparison.isEmpty {
                 Section(header: Text("Detailed Comparison")) {
                     DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
                 }
             }
             
-            // Анализ слабых мест
             if !weakPoints.isEmpty {
                 Section(header: Text("Weak Points Analysis")) {
                     WeakPointsView(weakPoints: weakPoints)
                 }
             }
             
-            // Рекомендации (всегда показываем секцию)
             Section(header: Text("Recommendations")) {
-                           RecommendationsView(recommendations: recommendations, onTap: { selectedRec in
-                               if selectedRec.type == .recovery {
-                                   // Если совет про восстановление - открываем профиль
-                                   showProfile = true
-                               } else if selectedRec.type == .progression {
-                                   // Если совет про падение прогресса - можно добавить переход
-                                   // (в будущем сделаем открытие графика конкретного упражнения)
-                               }
-                           })
-                       }
+                RecommendationsView(recommendations: recommendations, onTap: { selectedRec in
+                    if selectedRec.type == .recovery {
+                        showProfile = true
+                    }
+                })
+            }
             
             prSection
             bestStatsSection
@@ -289,6 +267,15 @@ struct StatsContentView: View {
         .sheet(isPresented: $showProfile) {
             ProfileView()
                 .environmentObject(viewModel.progressManager)
+        }
+        // ИСПРАВЛЕНИЕ ЗДЕСЬ: Передаем все необходимые данные
+        .sheet(isPresented: $showAIReviewSheet) {
+            AIWeeklyReviewSheet(
+                currentStats: currentStats,
+                previousStats: previousStats,
+                weakPoints: weakPoints,
+                recentPRs: recentPRs
+            )
         }
     }
     
@@ -315,6 +302,45 @@ struct StatsContentView: View {
         .listRowSeparator(.hidden)
     }
     
+    private var aiReviewButtonSection: some View {
+        Section {
+            Button {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                showAIReviewSheet = true
+            } label: {
+                HStack(spacing: 16) {
+                    Image(systemName: "sparkles")
+                        .font(.title2)
+                        .foregroundColor(.yellow)
+                        .shadow(color: .yellow.opacity(0.5), radius: 5, x: 0, y: 0)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(LocalizedStringKey("Generate AI Weekly Review"))
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        Text(LocalizedStringKey("Get personalized insights and tips"))
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.white.opacity(0.6))
+                        .font(.caption)
+                }
+                .padding(.vertical, 8)
+            }
+        }
+        .listRowBackground(
+            LinearGradient(
+                colors: [Color.purple.opacity(0.8), Color.blue.opacity(0.8)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+    }
+    
     private var periodPicker: some View {
         Picker("Period", selection: $selectedPeriod) {
             ForEach(StatsView.Period.allCases) { Text($0.localizedName).tag($0) }
@@ -324,7 +350,6 @@ struct StatsContentView: View {
         .listRowBackground(Color.clear)
     }
     
-    // Это улучшит опыт переводчиков (мы передаем целую фразу с контекстом)
     private var highlightsTitle: LocalizedStringKey {
         switch selectedPeriod {
         case .week: return "Highlights for this Week"
@@ -337,45 +362,10 @@ struct StatsContentView: View {
         Section(header: Text(highlightsTitle)) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    // 1. Workouts
-                    metricButton(
-                        metric: .count,
-                        title: "Workouts",
-                        value: "\(currentStats.workoutCount)",
-                        icon: "figure.run",
-                        prevValue: Double(previousStats.workoutCount),
-                        currValue: Double(currentStats.workoutCount)
-                    )
-                    
-                    // 2. Volume
-                    metricButton(
-                        metric: .volume,
-                        title: "Volume (kg)",
-                        value: "\(Int(currentStats.totalVolume))",
-                        icon: "scalemass.fill",
-                        prevValue: previousStats.totalVolume,
-                        currValue: currentStats.totalVolume
-                    )
-                    
-                    // 3. Distance
-                    metricButton(
-                        metric: .distance,
-                        title: "Distance (km)",
-                        value: LocalizationHelper.shared.formatDecimal(currentStats.totalDistance),
-                        icon: "map.fill",
-                        prevValue: previousStats.totalDistance,
-                        currValue: currentStats.totalDistance
-                    )
-                    
-                    // 4. Time
-                    metricButton(
-                        metric: .time,
-                        title: "Time (min)",
-                        value: "\(currentStats.totalDuration)",
-                        icon: "stopwatch.fill",
-                        prevValue: Double(previousStats.totalDuration),
-                        currValue: Double(currentStats.totalDuration)
-                    )
+                    metricButton(metric: .count, title: "Workouts", value: "\(currentStats.workoutCount)", icon: "figure.run", prevValue: Double(previousStats.workoutCount), currValue: Double(currentStats.workoutCount))
+                    metricButton(metric: .volume, title: "Volume (kg)", value: "\(Int(currentStats.totalVolume))", icon: "scalemass.fill", prevValue: previousStats.totalVolume, currValue: currentStats.totalVolume)
+                    metricButton(metric: .distance, title: "Distance (km)", value: LocalizationHelper.shared.formatDecimal(currentStats.totalDistance), icon: "map.fill", prevValue: previousStats.totalDistance, currValue: currentStats.totalDistance)
+                    metricButton(metric: .time, title: "Time (min)", value: "\(currentStats.totalDuration)", icon: "stopwatch.fill", prevValue: Double(previousStats.totalDuration), currValue: Double(currentStats.totalDuration))
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 5)
@@ -394,43 +384,25 @@ struct StatsContentView: View {
                 )
                 .frame(height: 180)
             } else {
-                // Для дистанции на год используем линейный график для лучшей видимости
                 let useLineChart = selectedMetric == .distance && selectedPeriod == .year && chartData.count > 1
-                
-                // Вычисляем диапазон значений для правильного масштабирования
                 let maxValue = chartData.map { $0.value }.max() ?? 0
                 let minValue = chartData.map { $0.value }.min() ?? 0
                 let valueRange = maxValue - minValue
-                // Если значения очень маленькие или диапазон мал, используем масштаб без нуля
                 let shouldExcludeZero = valueRange > 0 && (maxValue / valueRange < 0.1 || maxValue < 1.0)
                 
                 if useLineChart {
                     Chart(chartData) { dataPoint in
-                        LineMark(
-                            x: .value("Label", dataPoint.label),
-                            y: .value("Value", dataPoint.value)
-                        )
-                        .foregroundStyle(Color.blue)
-                        .interpolationMethod(.linear)
-                        .lineStyle(StrokeStyle(lineWidth: 3))
-                        
-                        PointMark(
-                            x: .value("Label", dataPoint.label),
-                            y: .value("Value", dataPoint.value)
-                        )
-                        .foregroundStyle(Color.blue)
-                        .symbolSize(30)
+                        LineMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
+                            .foregroundStyle(Color.blue).interpolationMethod(.linear).lineStyle(StrokeStyle(lineWidth: 3))
+                        PointMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
+                            .foregroundStyle(Color.blue).symbolSize(30)
                     }
                     .frame(height: 180)
                     .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
                 } else {
                     Chart(chartData) { dataPoint in
-                        BarMark(
-                            x: .value("Label", dataPoint.label),
-                            y: .value("Value", dataPoint.value)
-                        )
-                        .foregroundStyle(Color.blue.gradient)
-                        .cornerRadius(6)
+                        BarMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
+                            .foregroundStyle(Color.blue.gradient).cornerRadius(6)
                     }
                     .frame(height: 180)
                     .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
@@ -448,12 +420,10 @@ struct StatsContentView: View {
                         Image(systemName: "trophy.fill").foregroundColor(.orange)
                         VStack(alignment: .leading) {
                             Text(pr.exerciseName).fontWeight(.bold)
-                            Text(pr.date.formatted(date: .abbreviated, time: .omitted))
-                                .font(.caption).foregroundColor(.secondary)
+                            Text(pr.date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()
-                        Text("\(Int(pr.weight)) kg")
-                            .font(.headline).foregroundColor(.blue)
+                        Text("\(Int(pr.weight)) kg").font(.headline).foregroundColor(.blue)
                     }
                 }
             }
@@ -468,7 +438,6 @@ struct StatsContentView: View {
                 Spacer()
                 Text("\(bestWeek.workoutCount) workouts, \(Int(bestWeek.totalVolume)) kg").bold()
             }
-            
             HStack {
                 Image(systemName: "calendar").foregroundColor(.green)
                 Text("Best Month:")
@@ -484,13 +453,7 @@ struct StatsContentView: View {
         Button {
             withAnimation { selectedMetric = metric }
         } label: {
-            HighlightCard(
-                title: title,
-                value: value,
-                icon: icon,
-                isSelected: selectedMetric == metric,
-                change: calculateChange(current: currValue, previous: prevValue)
-            )
+            HighlightCard(title: title, value: value, icon: icon, isSelected: selectedMetric == metric, change: calculateChange(current: currValue, previous: prevValue))
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -512,39 +475,15 @@ struct HighlightCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.blue)
-            
-            Text(value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-            
+            Image(systemName: icon).font(.title2).foregroundColor(.blue)
+            Text(value).font(.system(size: 28, weight: .bold, design: .rounded))
             VStack(alignment: .leading) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                
-                Text("\(change, specifier: "%.0f")%")
-                    .font(.caption.bold())
-                    .foregroundColor(change >= 0 ? .green : .red)
+                Text(title).font(.caption).foregroundColor(.secondary)
+                Text("\(change, specifier: "%.0f")%").font(.caption.bold()).foregroundColor(change >= 0 ? .green : .red)
             }
         }
-        .padding()
-        .frame(minWidth: 140)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2.5)
-        )
-        // PERFORMANCE OPTIMIZATION: Render overlay and card contents as a single composed view
+        .padding().frame(minWidth: 140).background(Color(UIColor.secondarySystemBackground)).cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2.5))
         .compositingGroup()
     }
-}
-
-// MARK: - Preview
-
-#Preview {
-    StatsView()
-        .environmentObject(WorkoutViewModel())
 }

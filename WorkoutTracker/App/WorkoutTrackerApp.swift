@@ -37,7 +37,7 @@ struct WorkoutTrackerApp: App {
     init() {
         do {
             // ИСПРАВЛЕНИЕ: Добавлены WeightEntry и MuscleColorPreference в единый контейнер данных
-            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self)
+            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self)
             databaseLoadError = nil
         } catch {
             print("Could not create ModelContainer: \(error)")
