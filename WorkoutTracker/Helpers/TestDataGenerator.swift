@@ -2,7 +2,7 @@
 //  TestDataGenerator.swift
 //  WorkoutTracker
 //
-
+#if DEBUG
 import Foundation
 import SwiftData
 
@@ -340,3 +340,4 @@ actor TestDataGenerator {
         return result
     }
 }
+#endif

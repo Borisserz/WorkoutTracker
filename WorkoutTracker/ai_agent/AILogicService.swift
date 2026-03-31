@@ -14,7 +14,7 @@ public struct AICoachResponseDTO: Sendable {
 
 public struct InWorkoutResponseDTO: Codable, Sendable {
     let explanation: String
-    let actionType: String // "dropWeight", "addSet", "replaceExercise", "none"
+    let actionType: String // "dropWeight", "addSet", "replaceExercise", "skipExercise", "reduceRemainingLoad", "none"
     let targetExerciseName: String?
     let valuePercentage: Double?
     let valueReps: Int?
@@ -33,8 +33,9 @@ public struct UserProfileContext: Codable, Sendable {
     let fatiguedMuscles: [String]
     let availableExercises: [String]
     let aiCoachTone: String
+    let weightUnit: String
     
-    public init(weightKg: Double, experienceLevel: String, favoriteMuscles: [String] = [], recentPRs: [String: Double] = [:], language: String = "English", workoutsThisWeek: Int = 0, currentStreak: Int = 0, fatiguedMuscles: [String] = [], availableExercises: [String] = [], aiCoachTone: String = "Мотивационный") {
+    public init(weightKg: Double, experienceLevel: String, favoriteMuscles: [String] = [], recentPRs: [String: Double] = [:], language: String = "English", workoutsThisWeek: Int = 0, currentStreak: Int = 0, fatiguedMuscles: [String] = [], availableExercises: [String] = [], aiCoachTone: String = "Мотивационный", weightUnit: String = "kg") {
         self.weightKg = weightKg
         self.experienceLevel = experienceLevel
         self.favoriteMuscles = favoriteMuscles
@@ -45,6 +46,7 @@ public struct UserProfileContext: Codable, Sendable {
         self.fatiguedMuscles = fatiguedMuscles
         self.availableExercises = availableExercises
         self.aiCoachTone = aiCoachTone
+        self.weightUnit = weightUnit
     }
 }
 
@@ -66,7 +68,8 @@ public struct GeneratedExerciseDTO: Codable, Sendable {
 
 public enum AILogicError: Error, LocalizedError, Sendable {
     case invalidURL, invalidResponse, noDataReturned
-    case invalidData // 👈 ДОБАВЛЯЕМ ЭТОТ КЕЙС
+    case invalidData
+    case friendlyError
     case apiError(statusCode: Int, message: String)
     case decodingFailed(Error)
     
@@ -78,8 +81,10 @@ public enum AILogicError: Error, LocalizedError, Sendable {
             return "Received an invalid response from the server."
         case .noDataReturned:
             return "No data was returned from the server."
-        case .invalidData: 
+        case .invalidData:
             return "The AI response was malformed or missing valid JSON."
+        case .friendlyError:
+            return "Прости, я немного запутался. Можешь перефразировать запрос?"
         case .apiError(let statusCode, let message):
             return "API Error (Status \(statusCode)): \(message)"
         case .decodingFailed(let error):
@@ -117,9 +122,12 @@ public actor AILogicService {
     private let urlSession: URLSession
     private let apiKey: String
     
-    public init(apiKey: String, urlSession: URLSession = .shared) {
+    public init(apiKey: String) {
         self.apiKey = apiKey
-        self.urlSession = urlSession
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 15.0
+        config.timeoutIntervalForResource = 60.0
+        self.urlSession = URLSession(configuration: config)
     }
     
     private func getGeminiURL() throws -> URL {
@@ -149,9 +157,9 @@ public actor AILogicService {
     // --- 1. ДЛЯ ГЕНЕРАЦИИ ОТВЕТА / НОВОЙ ТРЕНИРОВКИ ---
     public func generateWorkoutPlan(userRequest: String, userProfile: UserProfileContext) async throws -> AICoachResponseDTO {
         let requestBody = GeminiRequest(
-            systemInstruction: .init(parts: [.init(text: createSystemPrompt(language: userProfile.language, tone: userProfile.aiCoachTone))]),
+            systemInstruction: .init(parts: [.init(text: createSystemPrompt(language: userProfile.language, tone: userProfile.aiCoachTone, weightUnit: userProfile.weightUnit, availableExercises: userProfile.availableExercises))]),
             contents: [.init(role: "user", parts: [.init(text: createUserPrompt(request: userRequest, profile: userProfile))])],
-            generationConfig: .init(temperature: 0.5, responseMimeType: nil)
+            generationConfig: .init(temperature: 0.5, responseMimeType: "application/json")
         )
         
         let responseText = try await performRequest(requestBody)
@@ -159,66 +167,70 @@ public actor AILogicService {
     }
     
     // --- 2. ДЛЯ СОВЕТОВ ВО ВРЕМЯ ТРЕНИРОВКИ ---
-    public func analyzeActiveWorkout(userMessage: String, workoutContext: String, tone: String) async throws -> InWorkoutResponseDTO {
-              let personality: String
-              switch tone {
-              case "Строгий": personality = "Твой стиль: Строгий армейский инструктор. Требуешь полной отдачи."
-              case "Дружелюбный": personality = "Твой стиль: Заботливый фитнес-наставник. Хвалишь за усилия."
-              case "Научный": personality = "Твой стиль: Профессор биомеханики. Используешь научную терминологию."
-              default: personality = "Твой стиль: Мотивационный тренер. Вдохновляешь и заряжаешь."
-              }
-              
-               let systemPrompt = """
-               Ты — элитный ИИ-тренер. Учитывай статус тренировки (ACTIVE WORKOUT или COMPLETED WORKOUT).
-               \(personality)
-               ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ, НО НАЗВАНИЯ УПРАЖНЕНИЙ ОСТАВЛЯЙ НА АНГЛИЙСКОМ!
-               Ответ должен быть СТРОГО в формате JSON без markdown блоков (```json).
-               
-               ПРАВИЛА:
-               1. Верни ТОЛЬКО чистый JSON. 
-               2. "explanation" — твой ответ НА РУССКОМ.
-               3. Если тренировка ЗАВЕРШЕНА (COMPLETED WORKOUT), "actionType" ВСЕГДА должен быть "none".
-               4. "actionType" ДОЛЖЕН БЫТЬ одним из:
-                  - "replaceExercise" (заменить упражнение. ВАЖНО: "replacementExerciseName" БРАТЬ ТОЛЬКО ИЗ КАТАЛОГА В КОНТЕКСТЕ)
-                  - "dropWeight" (снизить вес)
-                  - "reduceRemainingLoad" (снизить веса на все оставшиеся подходы, процент в valuePercentage)
-                  - "skipExercise" (удалить/пропустить упражнение)
-                  - "addSet" (добавить подход)
-                  - "none" (обычный разговор/аналитика)
-               
-               ПРИМЕР JSON ДЛЯ ЗАМЕНЫ:
-               {
-                 "explanation": "Давай заменим Bench Press на Dumbbell Press, это снимет нагрузку со связок.",
-                 "actionType": "replaceExercise",
-                 "targetExerciseName": "Bench Press",
-                 "valuePercentage": null,
-                 "valueReps": 10,
-                 "valueWeightKg": null,
-                 "replacementExerciseName": "Dumbbell Press"
-               }
-               """
-              
-              let userPrompt = "WORKOUT CONTEXT:\n\(workoutContext)\n\nUSER MESSAGE:\n\"\(userMessage)\""
-              
-              let requestBody = GeminiRequest(
-                  systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-                  contents: [.init(role: "user", parts: [.init(text: userPrompt)])],
-                  generationConfig: .init(temperature: 0.3, responseMimeType: "application/json") // Температуру снизили для точного JSON
-              )
-              
-              let responseText = try await performRequest(requestBody)
-              var text = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
-              if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
-              else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
-              if text.hasSuffix("```") { text = String(text.dropLast(3)) }
-              
-              guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
-              do {
-                  return try JSONDecoder().decode(InWorkoutResponseDTO.self, from: jsonData)
-              } catch {
-                  throw AILogicError.decodingFailed(error)
-              }
-          }
+    public func analyzeActiveWorkout(userMessage: String, workoutContext: String, catalogContext: String, tone: String, weightUnit: String) async throws -> InWorkoutResponseDTO {
+        let personality: String
+        switch tone {
+        case "Строгий": personality = "Твой стиль: Строгий армейский инструктор. Требуешь полной отдачи."
+        case "Дружелюбный": personality = "Твой стиль: Заботливый фитнес-наставник. Хвалишь за усилия."
+        case "Научный": personality = "Твой стиль: Профессор биомеханики. Используешь научную терминологию."
+        default: personality = "Твой стиль: Мотивационный тренер. Вдохновляешь и заряжаешь."
+        }
+        
+        let systemPrompt = """
+        Ты — элитный ИИ-тренер. Учитывай статус тренировки (ACTIVE WORKOUT или COMPLETED WORKOUT).
+        \(personality)
+        ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ, НО НАЗВАНИЯ УПРАЖНЕНИЙ ОСТАВЛЯЙ НА АНГЛИЙСКОМ!
+        
+        ПРАВИЛА:
+        1. YOU MUST ALWAYS RETURN A VALID JSON OBJECT. No markdown, no conversational text outside JSON.
+        2. All weight values MUST be in \(weightUnit).
+        3. "explanation" — твой ответ НА РУССКОМ.
+        4. Если тренировка ЗАВЕРШЕНА (COMPLETED WORKOUT), "actionType" ВСЕГДА должен быть "none".
+        5. "actionType" ДОЛЖЕН БЫТЬ одним из:
+           - "replaceExercise" (ВАЖНО: "replacementExerciseName" БРАТЬ ТОЛЬКО ИЗ КАТАЛОГА В КОНТЕКСТЕ)
+           - "dropWeight" (снизить вес)
+           - "reduceRemainingLoad" (снизить веса на все оставшиеся подходы, процент в valuePercentage)
+           - "skipExercise" (удалить/пропустить упражнение)
+           - "addSet" (добавить подход)
+           - "none" (обычный разговор/аналитика/похвала)
+        
+        ДОСТУПНЫЕ УПРАЖНЕНИЯ ДЛЯ ЗАМЕНЫ:
+        \(catalogContext)
+        
+        ПРИМЕР JSON ДЛЯ ЗАМЕНЫ:
+        {
+          "explanation": "Давай заменим Bench Press на Dumbbell Press, это снимет нагрузку со связок.",
+          "actionType": "replaceExercise",
+          "targetExerciseName": "Bench Press",
+          "valuePercentage": null,
+          "valueReps": 10,
+          "valueWeightKg": null,
+          "replacementExerciseName": "Dumbbell Press"
+        }
+        """
+        
+        let userPrompt = "WORKOUT CONTEXT:\n\(workoutContext)\n\nUSER MESSAGE:\n\"\(userMessage)\""
+        
+        let requestBody = GeminiRequest(
+            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
+            contents: [.init(role: "user", parts: [.init(text: userPrompt)])],
+            generationConfig: .init(temperature: 0.3, responseMimeType: "application/json")
+        )
+        
+        let responseText = try await performRequest(requestBody)
+        var text = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
+        else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
+        if text.hasSuffix("```") { text = String(text.dropLast(3)) }
+        
+        guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
+        do {
+            return try JSONDecoder().decode(InWorkoutResponseDTO.self, from: jsonData)
+        } catch {
+            print("❌ AI analyzeActiveWorkout decode error: \(error)")
+            throw AILogicError.friendlyError
+        }
+    }
 
     // --- 3. ДЛЯ ЕЖЕНЕДЕЛЬНОГО РЕВЬЮ ---
     public func generatePerformanceReview(statsContext: String, language: String) async throws -> String {
@@ -245,7 +257,6 @@ public actor AILogicService {
     }
     
     // --- PRIVATE NETWORK ENGINE ---
-    
     private func performRequest(_ requestBody: GeminiRequest) async throws -> String {
         var request = URLRequest(url: try getGeminiURL())
         request.httpMethod = "POST"
@@ -257,8 +268,6 @@ public actor AILogicService {
         guard let httpResponse = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
         
         let rawResponseString = String(data: data, encoding: .utf8) ?? "Unable to decode response data"
-        print("🌐 AILogicService | HTTP Status Code: \(httpResponse.statusCode)")
-        print("🌐 AILogicService | Raw Response: \(rawResponseString)")
         
         guard (200...299).contains(httpResponse.statusCode) else {
             throw AILogicError.apiError(statusCode: httpResponse.statusCode, message: rawResponseString)
@@ -276,37 +285,44 @@ public actor AILogicService {
     }
     
     // --- PRIVATE PROMPT HELPERS ---
-    
-    private func createSystemPrompt(language: String, tone: String) -> String {
+    private func createSystemPrompt(language: String, tone: String, weightUnit: String, availableExercises: [String]) -> String {
         
         let personality: String
         switch tone {
         case "Строгий":
-            personality = "Твой стиль общения: Строгий армейский инструктор. Ты обращаешься к пользователю жестко, требуешь полной отдачи, не терпишь лени, используешь командный тон и минимум похвалы."
+            personality = "Твой стиль общения: Строгий армейский инструктор. Требуешь полной отдачи."
         case "Дружелюбный":
-            personality = "Твой стиль общения: Добрый и заботливый фитнес-наставник. Ты общаешься мягко, как лучший друг, всегда хвалишь за усилия и заботишься о самочувствии."
+            personality = "Твой стиль общения: Добрый и заботливый фитнес-наставник. Хвалишь за усилия."
         case "Научный":
-            personality = "Твой стиль общения: Профессор биомеханики и спортивный врач. Ты используешь научную терминологию, объясняешь физиологические процессы (гипертрофия, ЦНС, метаболизм), оперируешь фактами и цифрами."
+            personality = "Твой стиль общения: Профессор биомеханики. Оперируешь научными фактами."
         default:
-            personality = "Твой стиль общения: Энергичный и мотивационный тренер. Ты вдохновляешь пользователя, заряжаешь позитивом и уверенностью в своих силах."
+            personality = "Твой стиль общения: Энергичный тренер. Вдохновляешь и заряжаешь позитивом."
         }
         
-        return """
+        var prompt = """
         Ты — элитный ИИ-фитнес-тренер. 
         \(personality) Поддерживай эту роль в каждом сообщении!
         Твоя задача — общаться с пользователем СТРОГО НА РУССКОМ ЯЗЫКЕ.
         
         ПРАВИЛА:
-        1. Если пользователь задает общий вопрос или просит совета — отвечай в рамках своей роли обычным текстом. Не ставь эмодзи, если тебя явно не просят.
-        2. ТОЛЬКО ЕСЛИ пользователь просит составить план тренировки, сгенерируй JSON внутри тегов [WORKOUT_JSON] и [/WORKOUT_JSON].
-        3. КРИТИЧЕСКИ ВАЖНО: Имена упражнений (поле "name" в JSON) ДОЛЖНЫ быть точной копией (один в один) из переданного списка "ДОСТУПНЫЕ УПРАЖНЕНИЯ". Не переводи их на русский! Это сломает аналитику приложения. Пиши "Bench Press", а не "Жим лежа".
-        4. "muscleGroup": Chest, Back, Legs, Shoulders, Arms, Core, Cardio. (Строго на английском).
-        5. "type": Strength, Cardio, Duration. (Строго на английском).
-        6. Избегай перетренированности уставших мышц (<50% восстановления).
-        7. Не спамь статистикой (стрики, количество тренировок), если пользователь об этом прямо не спрашивает.
+        1. YOU MUST ALWAYS RETURN A VALID JSON OBJECT. NO RAW TEXT OUTSIDE JSON. No markdown tags like ```json.
+        2. Твой ответ пользователю (совет, приветствие и т.д.) ДОЛЖЕН БЫТЬ в поле "aiMessage" внутри JSON.
+        3. ТОЛЬКО ЕСЛИ пользователь просит составить план тренировки, заполни поля "title" и "exercises". Если план не нужен, оставь "title" пустым ("") и "exercises" пустым массивом [].
+        4. КРИТИЧЕСКИ ВАЖНО: Имена упражнений (поле "name" в JSON) ДОЛЖНЫ быть точной копией из переданного списка "ДОСТУПНЫЕ УПРАЖНЕНИЯ". Не переводи их на русский!
+        5. "muscleGroup": Chest, Back, Legs, Shoulders, Arms, Core, Cardio. (Строго на английском).
+        6. "type": Strength, Cardio, Duration. (Строго на английском).
+        7. All weight values in JSON MUST be in \(weightUnit). Do not use any other metric.
+        8. Избегай перетренированности уставших мышц (<50% восстановления).
+        9. Не спамь статистикой, если пользователь об этом не спрашивает.
+        """
         
-        ПРИМЕР JSON (Используй ТОЛЬКО этот формат с реальными цифрами и строками, без комментариев):
-        [WORKOUT_JSON]
+        if !availableExercises.isEmpty {
+            prompt += "\n\nДОСТУПНЫЕ УПРАЖНЕНИЯ:\n\(availableExercises.joined(separator: ", "))"
+        }
+        
+        prompt += """
+        
+        ПРИМЕР ФОРМАТА JSON:
         {
           "title": "Мощная Тренировка",
           "aiMessage": "Отличный выбор! Я подобрал идеальные упражнения для твоего восстановления.",
@@ -322,16 +338,17 @@ public actor AILogicService {
             }
           ]
         }
-        [/WORKOUT_JSON]
         """
+        
+        return prompt
     }
         
     private func createUserPrompt(request: String, profile: UserProfileContext) -> String {
-        let prsString = profile.recentPRs.isEmpty ? "Нет" : profile.recentPRs.map { "\($0.key): \($0.value) кг" }.joined(separator: ", ")
+        let prsString = profile.recentPRs.isEmpty ? "Нет" : profile.recentPRs.map { "\($0.key): \($0.value) \(profile.weightUnit)" }.joined(separator: ", ")
         
         var prompt = """
         ПРОФИЛЬ ПОЛЬЗОВАТЕЛЯ:
-        Вес: \(profile.weightKg) кг
+        Вес: \(profile.weightKg) \(profile.weightUnit)
         Опыт: \(profile.experienceLevel)
         Тренировок на этой неделе: \(profile.workoutsThisWeek)
         Текущий стрик: \(profile.currentStreak) дней
@@ -342,57 +359,29 @@ public actor AILogicService {
             prompt += "\nУставшие мышцы (<50% восстановления): \(profile.fatiguedMuscles.joined(separator: ", "))"
         }
         
-        // ПЕРЕДАЕМ БАЗУ УПРАЖНЕНИЙ ИИ
-        if !profile.availableExercises.isEmpty {
-            prompt += "\n\nДОСТУПНЫЕ УПРАЖНЕНИЯ (Выбирай упражнения для JSON ТОЛЬКО из этого списка. Копируй их названия символ в символ, НЕ ПЕРЕВОДИ НА РУССКИЙ!):\n"
-            prompt += profile.availableExercises.joined(separator: ", ")
-        }
-        
         prompt += "\n\nЗАПРОС ПОЛЬЗОВАТЕЛЯ: \"\(request)\""
         return prompt
     }
     
-    // --- ПАРСЕР ГИБРИДНОГО ОТВЕТА (Текст + возможный JSON в тегах) ---
+    // --- ПАРСЕР СТРОГОГО JSON ОТВЕТА ---
     private func parseCoachResponse(from rawContent: String) throws -> AICoachResponseDTO {
-        let startTag = "[WORKOUT_JSON]"
-        let endTag = "[/WORKOUT_JSON]"
+        var text = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
+        else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
+        if text.hasSuffix("```") { text = String(text.dropLast(3)) }
         
-        // 1. Пытаемся найти контент между тегами
-        if let startRange = rawContent.range(of: startTag),
-           let endRange = rawContent.range(of: endTag) {
-            
-            let jsonString = String(rawContent[startRange.upperBound..<endRange.lowerBound])
-            
-            // 2. ИСПОЛЬЗУЕМ REGEX: Ищем первую { и последнюю }, игнорируя любой мусор от ИИ (```json и т.д.)
-            guard let jsonStartIndex = jsonString.firstIndex(of: "{"),
-                  let jsonEndIndex = jsonString.lastIndex(of: "}") else {
-                throw AILogicError.invalidData // JSON не найден внутри тегов
+        guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
+        
+        do {
+            let workoutDTO = try JSONDecoder().decode(GeneratedWorkoutDTO.self, from: jsonData)
+            if workoutDTO.exercises.isEmpty && (workoutDTO.title.isEmpty || workoutDTO.title == "") {
+                return AICoachResponseDTO(text: workoutDTO.aiMessage, workout: nil)
+            } else {
+                return AICoachResponseDTO(text: workoutDTO.aiMessage, workout: workoutDTO)
             }
-            
-            let cleanJsonString = String(jsonString[jsonStartIndex...jsonEndIndex])
-            guard let jsonData = cleanJsonString.data(using: .utf8) else {
-                throw AILogicError.noDataReturned
-            }
-            
-            do {
-                let workoutDTO = try JSONDecoder().decode(GeneratedWorkoutDTO.self, from: jsonData)
-                
-                // Собираем разговорный текст до и после тегов
-                let textBefore = String(rawContent[..<startRange.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
-                let textAfter = String(rawContent[endRange.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
-                
-                let conversationalText = [textBefore, textAfter].filter { !$0.isEmpty }.joined(separator: "\n\n")
-                let finalMessage = conversationalText.isEmpty ? workoutDTO.aiMessage : conversationalText
-                
-                return AICoachResponseDTO(text: finalMessage, workout: workoutDTO)
-                
-            } catch {
-                throw AILogicError.decodingFailed(error)
-            }
-        } else {
-            // Обычный разговорный ответ
-            let cleanText = rawContent.replacingOccurrences(of: "```", with: "").trimmingCharacters(in: .whitespacesAndNewlines)
-            return AICoachResponseDTO(text: cleanText, workout: nil)
+        } catch {
+            print("❌ AI parseCoachResponse decode error: \(error)")
+            throw AILogicError.friendlyError
         }
     }
 }

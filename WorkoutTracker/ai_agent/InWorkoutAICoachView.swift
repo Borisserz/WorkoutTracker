@@ -1,11 +1,16 @@
+//
+//  InWorkoutAICoachView.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import SwiftData
 
 struct InWorkoutAICoachView: View {
     @Bindable var workout: Workout
-    @StateObject private var viewModel = InWorkoutAICoachViewModel()
+    @ObservedObject var viewModel: InWorkoutAICoachViewModel // <-- ТЕПЕРЬ ОН ПРИХОДИТ СНАРУЖИ
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var workoutViewModel: WorkoutViewModel // Нужен для доступа к каталогу
+    @EnvironmentObject var workoutViewModel: WorkoutViewModel
     
     @FocusState private var isInputFocused: Bool
     
@@ -67,7 +72,6 @@ struct InWorkoutAICoachView: View {
     // MARK: - Input Area
     private var inputArea: some View {
         VStack(spacing: 0) {
-            // ДИНАМИЧЕСКИЕ ЧИПСЫ В ЗАВИСИМОСТИ ОТ СТАТУСА
             let quickActions = workout.isActive ? [
                 "Замени следующее упражнение",
                 "Тяжело, снизь веса",
@@ -169,7 +173,6 @@ struct InWorkoutChatBubble: View {
                     .background(message.isUser ? Color.accentColor : Color(UIColor.secondarySystemBackground))
                     .clipShape(ChatBubbleShape(isUser: message.isUser))
                 
-                // ПОКАЗЫВАЕМ КАРТОЧКУ ЭКШЕНА ТОЛЬКО ЕСЛИ ТРЕНИРОВКА АКТИВНА
                 if let adjustment = message.adjustment, workout.isActive {
                     WorkoutAdjustmentCardView(adjustment: adjustment, workout: workout)
                         .padding(.top, 4)
@@ -181,16 +184,12 @@ struct InWorkoutChatBubble: View {
     }
 }
 
-
-// MARK: - ПРОДВИНУТАЯ ЛОГИКА МУТАЦИИ ТРЕНИРОВКИ
 struct WorkoutAdjustmentCardView: View {
     let adjustment: InWorkoutResponseDTO
     @Bindable var workout: Workout
     
     @State private var isApplied = false
     @Environment(\.modelContext) private var context
-    
-    // ДОБАВЛЯЕМ ДОСТУП К ВЬЮ-МОДЕЛИ
     @EnvironmentObject var workoutViewModel: WorkoutViewModel
     
     var body: some View {
@@ -227,7 +226,7 @@ struct WorkoutAdjustmentCardView: View {
                 .foregroundColor(.white)
                 .cornerRadius(12)
             }
-            .disabled(isApplied || !workout.isActive) // Блокируем если тренировка завершена
+            .disabled(isApplied || !workout.isActive)
         }
         .padding()
         .background(.ultraThinMaterial).environment(\.colorScheme, .dark)
@@ -248,17 +247,11 @@ struct WorkoutAdjustmentCardView: View {
         }
     }
     
-    // ВЕСЬ ТОЛСТЫЙ КОД УДАЛЕН. ОСТАЛАСЬ ТОЛЬКО ИНТЕНЦИЯ И UI-АНИМАЦИЯ
     private func applyChanges() {
-        guard !isApplied, workout.isActive else { return }
-        
-        // 1. Вызываем бизнес-логику из ViewModel
-        workoutViewModel.applyAIAdjustment(adjustment, to: workout, context: context)
-        
-        // 2. Отрабатываем UI (Haptics + State)
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-        
-        withAnimation { isApplied = true }
-    }
+            guard !isApplied, workout.isActive else { return }
+        workoutViewModel.applyAIAdjustment(adjustment, to: workout)
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+            withAnimation { isApplied = true }
+        }
 }

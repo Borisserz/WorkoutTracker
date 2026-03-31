@@ -19,7 +19,7 @@ struct WorkoutTrackerApp: App {
     // НОВЫЙ МЕНЕДЖЕР ТАЙМЕРА
     @StateObject private var timerManager = RestTimerManager()
     
-    // 🚩 ИСПРАВЛЕНИЕ: Менеджер единиц измерения. Создаем его 1 раз на уровне приложения
+    // ИСПРАВЛЕНИЕ: Менеджер единиц измерения. Создаем его 1 раз на уровне приложения
     @StateObject private var unitsManager = UnitsManager.shared
     
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
@@ -40,8 +40,8 @@ struct WorkoutTrackerApp: App {
     
     init() {
         do {
-            // ИСПРАВЛЕНИЕ: Добавлены WeightEntry и MuscleColorPreference в единый контейнер данных
-            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self)
+            // ИСПРАВЛЕНИЕ: Добавлен BodyMeasurement в контейнер данных
+            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self, BodyMeasurement.self)
             databaseLoadError = nil
         } catch {
             print("Could not create ModelContainer: \(error)")
@@ -68,18 +68,19 @@ struct WorkoutTrackerApp: App {
                 .environmentObject(timerManager)
                 .environmentObject(unitsManager)
                 .onAppear {
+                    // ИЗМЕНЕНО: Инъекция ModelContainer в ViewModel
+                    viewModel.modelContainer = container
+                    
                     // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ
                     LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
                     
-                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                    viewModel.checkAndGenerateDefaultPresets(container: container)
+                    // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
+                    viewModel.checkAndGenerateDefaultPresets()
                     
                     // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
                     MuscleColorManager.shared.load(context: container.mainContext)
                     
                     // 3. ПРОГРЕВ КЭША SVG В ФОНЕ (Оптимизация CPU на старте)
-                    // Тяжелые регулярные выражения отработают в фоновом потоке,
-                    // спасая Main Thread от фризов при первой отрисовке BodyHeatmapView
                     Task.detached(priority: .high) {
                         let allMuscles = BodyData.frontMuscles + BodyData.backMuscles + BodyData.frontMusclesFemale + BodyData.backMusclesFemale
                         for muscle in allMuscles {
@@ -90,15 +91,15 @@ struct WorkoutTrackerApp: App {
                     }
                 }
                 .onOpenURL { url in
-                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                    if viewModel.importPreset(from: url, container: container) {
+                    // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
+                    if viewModel.importPreset(from: url) {
                         showImportAlert = true
                     }
                 }
                 .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                     if let url = userActivity.webpageURL {
-                        // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                        if viewModel.importPreset(from: url, container: container) {
+                        // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
+                        if viewModel.importPreset(from: url) {
                             showImportAlert = true
                         }
                     }

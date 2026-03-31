@@ -8,7 +8,6 @@ import Vision
 import CoreML
 import Combine
 import AVFoundation
-
 @MainActor
 final class MLWorkoutEngine: ObservableObject {
     
@@ -28,29 +27,30 @@ final class MLWorkoutEngine: ObservableObject {
     private var lastConfidentPredictionTime: Date = .distantPast
     private let predictionCooldown: TimeInterval = 1.5
     
-    // Модель Action Classifier
+    // МОДИФИЦИРОВАНО: Опциональная модель
     private var actionClassifier: MLModel?
     
-    // 🚩 Сохраняем задачу
     private var predictionTask: Task<Void, Never>? = nil
     
-    // MARK: - Init
     init() {
         loadModel()
     }
     
-    // 🚩 Отменяем тяжелую задачу ML при выгрузке
     deinit {
         predictionTask?.cancel()
         print("♻️ MLWorkoutEngine deallocated, prediction tasks cancelled")
     }
     
     private func loadModel() {
-        do {
+        Task.detached(priority: .userInitiated) {
             let config = MLModelConfiguration()
-            self.actionClassifier = try WorkoutClassifier(configuration: config).model
-        } catch {
-            print("❌ MLWorkoutEngine: Failed to load WorkoutClassifier: \(error)")
+            if let model = try? WorkoutClassifier(configuration: config).model {
+                await MainActor.run { [weak self] in
+                    self?.actionClassifier = model
+                }
+            } else {
+                print("❌ MLWorkoutEngine: Failed to load WorkoutClassifier")
+            }
         }
     }
     

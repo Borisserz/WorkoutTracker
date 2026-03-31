@@ -1,18 +1,18 @@
-//
-//  InWorkoutAICoachViewModel.swift
-//  WorkoutTracker
-//
-
 internal import SwiftUI
 import SwiftData
 import Combine
 
-struct InWorkoutChatMessage: Identifiable, Equatable {
-    let id = UUID()
+// ИСПРАВЛЕНИЕ: Добавлен Codable для сохранения истории в Data
+struct InWorkoutChatMessage: Identifiable, Equatable, Codable {
+    var id = UUID()
     let isUser: Bool
     let text: String
     let adjustment: InWorkoutResponseDTO?
     var isAnimating: Bool = false
+    
+    enum CodingKeys: String, CodingKey {
+        case id, isUser, text, adjustment, isAnimating
+    }
     
     static func == (lhs: InWorkoutChatMessage, rhs: InWorkoutChatMessage) -> Bool { lhs.id == rhs.id }
 }
@@ -24,69 +24,58 @@ final class InWorkoutAICoachViewModel: ObservableObject {
     @Published var inputText: String = ""
     @Published var focusedExerciseName: String? = nil
     
-    // 🚩 Храним ссылку на Task
     private var currentTask: Task<Void, Never>? = nil
     private let aiService = AILogicService(apiKey: Secrets.geminiApiKey)
     
-    // 🚩 Очищаем при выгрузке
-    deinit {
-        currentTask?.cancel()
-        print("♻️ InWorkoutAICoachViewModel deallocated, tasks cancelled")
-    }
+    deinit { currentTask?.cancel() }
     
     func sendMessage(currentWorkout: Workout, catalog: [String: [String]]) {
         let prompt = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !isGenerating else { return }
         
-        // 🚩 FAST FAIL: Проверка сети перед отправкой ручного запроса
         guard NetworkManager.shared.checkConnection() else {
-            let noNetMessage = InWorkoutChatMessage(
-                isUser: false,
-                text: String(localized: "Internet connection required. Please check your network."),
-                adjustment: nil
-            )
+            let noNetMessage = InWorkoutChatMessage(isUser: false, text: String(localized: "Internet connection required. Please check your network."), adjustment: nil, isAnimating: false)
             withAnimation { chatHistory.append(noNetMessage) }
             return
         }
         
-        let userMessage = InWorkoutChatMessage(isUser: true, text: prompt, adjustment: nil)
+        let userMessage = InWorkoutChatMessage(isUser: true, text: prompt, adjustment: nil, isAnimating: false)
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             chatHistory.append(userMessage)
             inputText = ""
         }
         
-        let workoutContext = buildWorkoutContext(workout: currentWorkout, catalog: catalog)
-        let savedTone = UserDefaults.standard.string(forKey: "aiCoachTone") ?? "Мотивационный"
-        requestAdjustment(prompt: prompt, context: workoutContext, tone: savedTone)
+        let contexts = buildWorkoutContext(workout: currentWorkout, catalog: catalog)
+        let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
+        requestAdjustment(prompt: prompt, workoutContext: contexts.workoutContext, catalogContext: contexts.catalogContext, tone: savedTone, weightUnit: UnitsManager.shared.weightUnitString())
     }
     
-    func triggerProactiveFeedback(for set: WorkoutSet, in exerciseName: String, currentWorkout: Workout, catalog: [String: [String]]) {
+    func triggerProactiveFeedback(for set: WorkoutSet?, isLastSet: Bool, isPR: Bool, prLevel: String?, in exerciseName: String, currentWorkout: Workout, catalog: [String: [String]], weightUnit: String) {
         guard !isGenerating, currentWorkout.isActive else { return }
+        guard isLastSet || isPR else { return }
+        guard NetworkManager.shared.checkConnection() else { return }
         
-        // 🚩 FAST FAIL: Проверка сети (Тихий выход, чтобы не спамить ошибками после каждого подхода без интернета)
-        guard NetworkManager.shared.checkConnection() else {
-            return
+        var prompt = ""
+        if let s = set { prompt = "System update: I just completed set \(s.index) of \(exerciseName)." } else { prompt = "System update: I just completed an exercise: \(exerciseName)." }
+        
+        if isPR {
+            prompt += " I just hit a new Personal Record: \(prLevel ?? "New Record")! Congratulate me briefly and motivate me."
+        } else {
+            prompt += " Give me a short motivating feedback or form tip."
         }
         
-        let prompt = "System update: I just completed set \(set.index) of \(exerciseName). Give me a short motivating feedback or form tip."
-        let workoutContext = buildWorkoutContext(workout: currentWorkout, catalog: catalog)
-        let savedTone = UserDefaults.standard.string(forKey: "aiCoachTone") ?? "Мотивационный"
-        requestAdjustment(prompt: prompt, context: workoutContext, tone: savedTone)
+        let contexts = buildWorkoutContext(workout: currentWorkout, catalog: catalog)
+        let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
+        requestAdjustment(prompt: prompt, workoutContext: contexts.workoutContext, catalogContext: contexts.catalogContext, tone: savedTone, weightUnit: weightUnit)
     }
     
-    private func buildWorkoutContext(workout: Workout, catalog: [String: [String]]) -> String {
-        var context = """
-        STATUS: \(workout.isActive ? "ACTIVE WORKOUT" : "COMPLETED WORKOUT")
-        Workout: \(workout.title)
-        Duration: \(workout.durationSeconds / 60) mins.
-        Effort: \(workout.effortPercentage)%
-        
-        --- COMPLETED EXERCISES ---
-        """
+    private func buildWorkoutContext(workout: Workout, catalog: [String: [String]]) -> (workoutContext: String, catalogContext: String) {
+        var context = "STATUS: \(workout.isActive ? "ACTIVE WORKOUT" : "COMPLETED WORKOUT")\nWorkout: \(workout.title)\nDuration: \(workout.durationSeconds / 60) mins.\nEffort: \(workout.effortPercentage)%\n\n--- COMPLETED EXERCISES ---"
         let completed = workout.exercises.filter { $0.isCompleted }
         if completed.isEmpty { context += "\nNone yet." }
         for ex in completed { context += "\n- \(ex.name): \(ex.setsList.count) sets done." }
         
+        var catalogCtx = ""
         if workout.isActive {
             let remaining = workout.exercises.filter { !$0.isCompleted }
             context += "\n\n--- REMAINING EXERCISES ---\n"
@@ -94,40 +83,30 @@ final class InWorkoutAICoachViewModel: ObservableObject {
                 let doneSets = ex.setsList.filter { $0.isCompleted }.count
                 context += "- \(ex.name): \(doneSets)/\(ex.setsCount) sets done.\n"
             }
-            
-            context += "\n\n--- AVAILABLE EXERCISES CATALOG (FOR REPLACEMENTS) ---\n"
-            for (group, exercises) in catalog {
-                context += "\(group): \(exercises.joined(separator: ", "))\n"
-            }
+            for (group, exercises) in catalog { catalogCtx += "\(group): \(exercises.joined(separator: ", "))\n" }
         }
-        
-        return context
+        return (context, catalogCtx)
     }
     
-    private func requestAdjustment(prompt: String, context: String, tone: String) {
+    private func requestAdjustment(prompt: String, workoutContext: String, catalogContext: String, tone: String, weightUnit: String) {
         isGenerating = true
         currentTask?.cancel()
-        
-        // 🚩 Используем [weak self]
         currentTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let dto = try await self.aiService.analyzeActiveWorkout(userMessage: prompt, workoutContext: context, tone: tone)
+                let dto = try await self.aiService.analyzeActiveWorkout(userMessage: prompt, workoutContext: workoutContext, catalogContext: catalogContext, tone: tone, weightUnit: weightUnit)
                 guard !Task.isCancelled else { return }
-                
-                let aiMessage = InWorkoutChatMessage(isUser: false, text: dto.explanation, adjustment: dto.actionType == "none" ? nil : dto)
+                let aiMessage = InWorkoutChatMessage(isUser: false, text: dto.explanation, adjustment: dto.actionType == "none" ? nil : dto, isAnimating: true)
                 await MainActor.run { [weak self] in
                     guard let self else { return }
-                    withAnimation(.spring()) {
-                        self.chatHistory.append(aiMessage)
-                        self.isGenerating = false
-                    }
+                    withAnimation(.spring()) { self.chatHistory.append(aiMessage); self.isGenerating = false }
                 }
             } catch {
                 guard !Task.isCancelled else { return }
                 await MainActor.run { [weak self] in
                     guard let self else { return }
-                    self.chatHistory.append(InWorkoutChatMessage(isUser: false, text: "Ошибка: \(error.localizedDescription)", adjustment: nil))
+                    let errorMsg = (error as? AILogicError)?.errorDescription ?? error.localizedDescription
+                    self.chatHistory.append(InWorkoutChatMessage(isUser: false, text: errorMsg, adjustment: nil, isAnimating: false))
                     self.isGenerating = false
                 }
             }

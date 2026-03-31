@@ -14,7 +14,7 @@ struct ContentView: View {
     @EnvironmentObject var tutorialManager: TutorialManager
     
     @State private var selectedTab = 0
-
+    
     var body: some View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
@@ -45,8 +45,8 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            viewModel.refreshAllCaches(container: modelContext.container)
-            fetchAvailableGeminiModels()
+            
+            viewModel.refreshAllCaches()
         }
         .alert(item: $viewModel.currentError) { error in
             Alert(
@@ -56,22 +56,5 @@ struct ContentView: View {
             )
         }
     }
-}
-
-func fetchAvailableGeminiModels() {
-    let apiKey = Secrets.geminiApiKey
-    let urlString = "https://generativelanguage.googleapis.com/v1beta/models?key=\(apiKey)"
-    guard let url = URL(string: urlString) else { return }
-    Task {
-        do {
-            let (data, _) = try await URLSession.shared.data(from: url)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print("=== 🚀 ДОСТУПНЫЕ МОДЕЛИ GOOGLE ===")
-                print(jsonString)
-                print("==================================")
-            }
-        } catch {
-            print("❌ Ошибка сети: \(error)")
-        }
-    }
+    
 }

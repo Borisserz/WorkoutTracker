@@ -30,7 +30,6 @@ struct BodyHeatmapView: View {
             self.isRecoveryMode = isRecoveryMode
             self.isCompactMode = isCompactMode
             
-  
             // Если defaultToBack == true, то isFrontView будет false (задняя часть)
             self._isFrontView = State(initialValue: !defaultToBack)
         }

@@ -17,16 +17,16 @@ struct ProfileView: View {
     // Вытягиваем историю веса напрямую из БД
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     
-    @AppStorage("userName") private var userName = "Fitness Enthusiast"
-    @AppStorage("userAvatar") private var userAvatar = "🦍"
-    @AppStorage("userBodyWeight") private var userBodyWeight = 75.0  // Хранится в кг
-    @AppStorage("userGender") private var userGender = "male" // "male" or "female"
+    @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = "Fitness Enthusiast"
+    @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = "🦍"
+    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
+    @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
     
-@EnvironmentObject var unitsManager: UnitsManager
+    @EnvironmentObject var unitsManager: UnitsManager
     
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false
-    
+    @State private var showingMeasurements = false
     // State для редактирования веса
     @State private var showEditWeight = false
     @State private var newWeightString = ""
@@ -55,7 +55,8 @@ struct ProfileView: View {
             totalDistance: stats.totalDistance,
             earlyWorkouts: stats.earlyWorkouts,
             nightWorkouts: stats.nightWorkouts,
-            streak: currentStreak
+            streak: currentStreak,
+            unitsManager: unitsManager
         )
         
         let container = modelContext.container
@@ -66,7 +67,7 @@ struct ProfileView: View {
             )
             
             let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
-            let records = StatisticsManager.getAllPersonalRecords(workouts: bgWorkouts)
+            let records = StatisticsManager.getAllPersonalRecords(workouts: bgWorkouts, unitsManager: UnitsManager.shared)
             
             // Вычисляем AI прогноз
             let forecasts = AnalyticsManager.getProgressForecast(workouts: bgWorkouts)
@@ -152,19 +153,38 @@ struct ProfileView: View {
                                 .cornerRadius(8)
                                 
                                 // Кнопка просмотра истории веса
-                                Button {
-                                    showingWeightHistory = true
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "chart.line.uptrend.xyaxis")
-                                        Text(LocalizedStringKey("View Weight History"))
+                                HStack(spacing: 12) {
+                                    // Кнопка просмотра истории веса
+                                    Button {
+                                        showingWeightHistory = true
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "scalemass")
+                                            Text(LocalizedStringKey("Weight Tracking"))
+                                        }
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(8)
                                     }
-                                    .font(.caption)
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(8)
+                                    
+                                    // НОВАЯ КНОПКА ЗАМЕРОВ ТЕЛА
+                                    Button {
+                                        showingMeasurements = true
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "ruler")
+                                            Text(LocalizedStringKey("Body Measurements"))
+                                        }
+                                        .font(.caption)
+                                        .foregroundColor(.purple)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(8)
+                                    }
                                 }
                             }
                         }
@@ -186,7 +206,7 @@ struct ProfileView: View {
                                         .foregroundColor(.white)
                                 }
                                 
-                                Text("In \(forecast.timeframe) your \(forecast.exerciseName) is predicted to reach \(weightStr) \(unitStr)!")
+                                Text(String(localized: "In \(forecast.timeframe) your \(forecast.exerciseName) is predicted to reach \(weightStr) \(unitStr)!"))
                                     .font(.subheadline)
                                     .foregroundColor(.white.opacity(0.9))
                                     .minimumScaleFactor(0.8)
@@ -270,6 +290,9 @@ struct ProfileView: View {
                 }
                 .sheet(isPresented: $showingWeightHistory) {
                     WeightHistoryView()
+                }
+                .sheet(isPresented: $showingMeasurements) {
+                    BodyMeasurementsView()
                 }
                 .alert(LocalizedStringKey("Update Body Weight"), isPresented: $showEditWeight) {
                     TextField("Weight", text: $newWeightString)
@@ -574,7 +597,7 @@ struct AchievementPopupView: View {
             let renderer = ImageRenderer(content: MilestoneShareCard(
                 title: LocalizedStringKey("Unlocked Achievements"),
                 subtitle: achievement.title,
-                descriptionText: achievement.description, // ПЕРЕДАЕМ ОПИСАНИЕ СЮДА
+                descriptionText: achievement.description,
                 icon: achievement.icon,
                 colors: angularColors
             ))

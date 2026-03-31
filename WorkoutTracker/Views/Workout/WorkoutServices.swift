@@ -15,7 +15,8 @@ internal import UniformTypeIdentifiers
 
 struct StatisticsManager {
     
-    static func getAllPersonalRecords(workouts: [Workout]) -> [WorkoutViewModel.BestResult] {
+    // ИСПРАВЛЕНИЕ: Передаем unitsManager как зависимость, избавляясь от синглтона
+    static func getAllPersonalRecords(workouts: [Workout], unitsManager: UnitsManager) -> [WorkoutViewModel.BestResult] {
         var bests: [String: (result: Double, date: Date, type: ExerciseType)] = [:]
         
         for workout in workouts {
@@ -42,10 +43,10 @@ struct StatisticsManager {
         return bests.map { name, data in
             var valString = ""
             switch data.type {
-            case .strength: valString = String(localized: "\(Int(data.result)) \(UnitsManager.shared.weightUnitString())")
+            case .strength: valString = String(localized: "\(Int(data.result)) \(unitsManager.weightUnitString())")
             case .cardio:
-                let converted = UnitsManager.shared.convertFromMeters(data.result)
-                valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(converted)) \(UnitsManager.shared.distanceUnitString())")
+                let converted = unitsManager.convertFromMeters(data.result)
+                valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(converted)) \(unitsManager.distanceUnitString())")
             case .duration:
                 let m = Int(data.result) / 60
                 let s = Int(data.result) % 60
@@ -59,7 +60,7 @@ struct StatisticsManager {
     static func calculateWorkoutStreak(workouts: [Workout]) -> Int {
         guard !workouts.isEmpty else { return 0 }
         
-        let maxRestDaysAllowed = UserDefaults.standard.integer(forKey: "streakRestDays")
+        let maxRestDaysAllowed = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue)
         let maxRestDays = maxRestDaysAllowed > 0 ? maxRestDaysAllowed : 2
         
         let sortedWorkouts = workouts.sorted(by: { $0.date > $1.date })
@@ -529,25 +530,20 @@ struct AnalyticsManager {
 struct RecoveryCalculator {
     static func calculate(hours: Double?, workouts: [Workout]) -> [WorkoutViewModel.MuscleRecoveryStatus] {
         var rawFatigueMap: [String: Double] = [:]
-        let fullRecoveryHours = hours ?? (UserDefaults.standard.double(forKey: "userRecoveryHours") > 0 ? UserDefaults.standard.double(forKey: "userRecoveryHours") : 48.0)
+        let fullRecoveryHours = hours ?? (UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue) > 0 ? UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue) : 48.0)
         let cutoffDate = Date().addingTimeInterval(-fullRecoveryHours * 3600)
         
         for workout in workouts.filter({ $0.date >= cutoffDate && !$0.isActive }).sorted(by: { $0.date < $1.date }) {
             let hoursSince = max(0, Date().timeIntervalSince(workout.date) / 3600)
             if hoursSince >= fullRecoveryHours { continue }
             
-            // Соотношение прошедшего времени к полному времени восстановления
             let timeDecay = hoursSince / fullRecoveryHours
             
             for exercise in workout.exercises {
                 let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 
-                for ex in targetExercises { // УБРАНО ограничение where ex.type == .strength
-                    
-                    // 1. Базовая усталость зависит от RPE (effort 1-10 -> 0.1 - 1.0)
+                for ex in targetExercises {
                     var initialFatigue = Double(ex.effort) / 10.0
-                    
-                    // 2. Учет объема: легкая разминка (менее 3 сетов) дает меньше усталости
                     let completedSets = ex.setsList.filter { $0.isCompleted }.count
                     let actualSetsCount = completedSets > 0 ? completedSets : ex.setsCount
                     
@@ -555,7 +551,6 @@ struct RecoveryCalculator {
                         initialFatigue *= 0.7
                     }
                     
-                    // 3. Вычисление текущей остаточной усталости (линейный распад)
                     let currentFatigue = max(0.0, initialFatigue - timeDecay)
                     
                     for slug in MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup) {
@@ -587,95 +582,6 @@ struct RecoveryCalculator {
         
         return displayFatigueMap.map { name, fatigue in
             WorkoutViewModel.MuscleRecoveryStatus(muscleGroup: name, recoveryPercentage: max(0, min(100, Int((1.0 - fatigue) * 100))))
-        }
-    }
-}
-
-// MARK: - Import Export Service
-
-struct ImportExportService {
-    enum ExportError: LocalizedError {
-        case noInternet, invalidData, encodingFailed
-        var errorDescription: String? { self == .noInternet ? String(localized: "Internet connection required.") : String(localized: "Data processing failed.") }
-    }
-    
-    private static func escapeCSV(_ string: String) -> String {
-        return string.contains(",") || string.contains("\"") || string.contains("\n") ? string.replacingOccurrences(of: "\"", with: "\"\"") : string
-    }
-    
-    static func generateShareLink(for preset: WorkoutPreset) throws -> URL {
-        let dto = preset.toDTO()
-        let jsonData = try JSONEncoder().encode(dto)
-        let compressedData = try (jsonData as NSData).compressed(using: .zlib) as Data
-        var comp = URLComponents(string: "https://borisserz.github.io/workout-share/")!
-        comp.queryItems = [URLQueryItem(name: "data", value: compressedData.base64EncodedString())]
-        return comp.url!
-    }
-    
-    static func exportPresetToFile(_ preset: WorkoutPreset) throws -> URL {
-        let dto = preset.toDTO()
-        let jsonData = try JSONEncoder().encode(dto)
-        let name = preset.name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).workouttemplate")
-        try jsonData.write(to: tempURL)
-        return tempURL
-    }
-    
-    static func exportPresetToCSV(_ preset: WorkoutPreset) throws -> URL {
-        var csvLines: [String] = []
-        csvLines.append("# Workout Template Export")
-        csvLines.append("# Preset Name: \(preset.name)")
-        csvLines.append("# Icon: \(preset.icon)")
-        csvLines.append("# Exercise Count: \(preset.exercises.count)")
-        csvLines.append("")
-        csvLines.append("## PRESET INFO")
-        csvLines.append("Preset ID,Name,Icon,Exercise Count")
-        csvLines.append("\(preset.id.uuidString),\"\(escapeCSV(preset.name))\",\(preset.icon),\(preset.exercises.count)")
-        csvLines.append("")
-        csvLines.append("## EXERCISES")
-        csvLines.append("Exercise ID,Name,Muscle Group,Type,Effort,Is Completed,Set Count")
-        for exercise in preset.exercises {
-            csvLines.append("\(exercise.id.uuidString),\"\(escapeCSV(exercise.name))\",\(exercise.muscleGroup),\(exercise.type.rawValue),\(exercise.effort),\(exercise.isCompleted),\(exercise.setsList.count)")
-        }
-        csvLines.append("")
-        csvLines.append("## SETS")
-        csvLines.append("Set ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (m),Time (sec),Is Completed,Set Type")
-        for exercise in preset.exercises {
-            for set in exercise.setsList {
-                let weightStr = set.weight != nil ? String(set.weight!) : ""
-                let repsStr = set.reps != nil ? String(set.reps!) : ""
-                let distanceStr = set.distance != nil ? String(set.distance!) : ""
-                let timeStr = set.time != nil ? String(set.time!) : ""
-                csvLines.append("\(set.id.uuidString),\(exercise.id.uuidString),\"\(escapeCSV(exercise.name))\",\(set.index),\(weightStr),\(repsStr),\(distanceStr),\(timeStr),\(set.isCompleted),\(set.type.rawValue)")
-            }
-        }
-        
-        let csvContent = csvLines.joined(separator: "\n")
-        guard let csvData = csvContent.data(using: .utf8) else {
-            throw ExportError.encodingFailed
-        }
-        
-        let sanitizedName = preset.name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: "\\", with: "-").replacingOccurrences(of: ":", with: "-")
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(sanitizedName).csv")
-        try csvData.write(to: tempURL)
-        return tempURL
-    }
-    
-    static func processImportedData(_ jsonData: Data) throws -> WorkoutPreset {
-        let dto = try JSONDecoder().decode(WorkoutPresetDTO.self, from: jsonData)
-        let preset = WorkoutPreset(from: dto)
-        preset.name += " (Imported)"
-        return preset
-    }
-    
-    static func importPreset(from url: URL) throws -> WorkoutPreset {
-        if url.isFileURL {
-            return try processImportedData(try Data(contentsOf: url))
-        } else {
-            guard let comp = URLComponents(url: url, resolvingAgainstBaseURL: true),
-                  let b64 = comp.queryItems?.first(where: { $0.name == "data" })?.value?.replacingOccurrences(of: " ", with: "+"),
-                  let raw = Data(base64Encoded: b64, options: .ignoreUnknownCharacters) else { throw ExportError.invalidData }
-            return try processImportedData((try? (raw as NSData).decompressed(using: .zlib) as Data) ?? raw)
         }
     }
 }
