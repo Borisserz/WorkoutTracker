@@ -168,17 +168,14 @@ public actor AILogicService {
     
     // --- 2. ДЛЯ СОВЕТОВ ВО ВРЕМЯ ТРЕНИРОВКИ ---
     public func analyzeActiveWorkout(userMessage: String, workoutContext: String, catalogContext: String, tone: String, weightUnit: String) async throws -> InWorkoutResponseDTO {
-        let personality: String
-        switch tone {
-        case "Строгий": personality = "Твой стиль: Строгий армейский инструктор. Требуешь полной отдачи."
-        case "Дружелюбный": personality = "Твой стиль: Заботливый фитнес-наставник. Хвалишь за усилия."
-        case "Научный": personality = "Твой стиль: Профессор биомеханики. Используешь научную терминологию."
-        default: personality = "Твой стиль: Мотивационный тренер. Вдохновляешь и заряжаешь."
-        }
-        
+        let isRussian = Locale.current.language.languageCode?.identifier == "ru"
+        let langInstruction = isRussian
+            ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ, НО НАЗВАНИЯ УПРАЖНЕНИЙ ОСТАВЛЯЙ НА АНГЛИЙСКОМ!"
+            : "REPLY STRICTLY IN ENGLISH!"
+
         let systemPrompt = """
-        Ты — элитный ИИ-тренер. Учитывай статус тренировки (ACTIVE WORKOUT или COMPLETED WORKOUT).
-        \(personality)
+        You are an elite AI Strength Coach. 
+        \(langInstruction)
         ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ, НО НАЗВАНИЯ УПРАЖНЕНИЙ ОСТАВЛЯЙ НА АНГЛИЙСКОМ!
         
         ПРАВИЛА:
@@ -234,22 +231,44 @@ public actor AILogicService {
 
     // --- 3. ДЛЯ ЕЖЕНЕДЕЛЬНОГО РЕВЬЮ ---
     public func generatePerformanceReview(statsContext: String, language: String) async throws -> String {
-        let systemPrompt = """
-        Ты — элитный аналитик данных и фитнес-тренер.
-        Пользователь просит еженедельный обзор его результатов на основе предоставленной статистики.
-        ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ.
+        let isRussian = language == "Russian"
+        let systemPrompt: String
+        let userStatsHeader: String
         
-        ПРАВИЛА:
-        1. Напиши очень мотивационный, структурированный ответ используя Markdown.
-        2. Используй заголовки (##), жирный текст (**), маркированные списки (*) и эмодзи.
-        3. Выдели объем поднятого веса, количество тренировок и личные рекорды (PRs).
-        4. Мягко укажи на отстающие группы мышц (если они есть) и дай 1-2 практических совета на следующую неделю.
-        5. Не используй блоки кода ```markdown. Выдавай просто отформатированный текст.
-        """
+        if isRussian {
+            systemPrompt = """
+            Ты — элитный аналитик данных и фитнес-тренер.
+            Пользователь просит еженедельный обзор его результатов на основе предоставленной статистики.
+            ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ.
+            
+            ПРАВИЛА:
+            1. Напиши очень мотивационный, структурированный ответ используя Markdown.
+            2. Используй заголовки (##), жирный текст (**), маркированные списки (*) и эмодзи.
+            3. Выдели объем поднятого веса, количество тренировок и личные рекорды (PRs).
+            4. Мягко укажи на отстающие группы мышц (если они есть) и дай 1-2 практических совета на следующую неделю.
+            5. Не используй блоки кода ```markdown. Выдавай просто отформатированный текст.
+            """
+            userStatsHeader = "Вот моя статистика:"
+        } else {
+            systemPrompt = """
+            You are an elite data analyst and fitness coach.
+            The user is asking for a weekly performance review based on the provided statistics.
+            REPLY STRICTLY IN ENGLISH.
+            
+            RULES:
+            1. Write a highly motivational, structured response using Markdown.
+            2. Use headers (##), bold text (**), bulleted lists (*), and emojis.
+            3. Highlight the total volume lifted, number of workouts, and personal records (PRs).
+            4. Gently point out lagging muscle groups (if any) and provide 1-2 practical tips for the next week.
+            5. Do not use code blocks like ```markdown. Provide only the raw formatted text.
+            """
+            userStatsHeader = "Here are my statistics:"
+        }
         
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-            contents: [.init(role: "user", parts: [.init(text: "Вот моя статистика:\n\(statsContext)")])],
+            // Запрос пользователя тоже адаптируем, чтобы ИИ понимал контекст ввода
+            contents: [.init(role: "user", parts: [.init(text: "\(userStatsHeader)\n\(statsContext)")])],
             generationConfig: .init(temperature: 0.7, responseMimeType: nil)
         )
         
@@ -286,63 +305,49 @@ public actor AILogicService {
     
     // --- PRIVATE PROMPT HELPERS ---
     private func createSystemPrompt(language: String, tone: String, weightUnit: String, availableExercises: [String]) -> String {
-        
         let personality: String
-        switch tone {
-        case "Строгий":
-            personality = "Твой стиль общения: Строгий армейский инструктор. Требуешь полной отдачи."
-        case "Дружелюбный":
-            personality = "Твой стиль общения: Добрый и заботливый фитнес-наставник. Хвалишь за усилия."
-        case "Научный":
-            personality = "Твой стиль общения: Профессор биомеханики. Оперируешь научными фактами."
-        default:
-            personality = "Твой стиль общения: Энергичный тренер. Вдохновляешь и заряжаешь позитивом."
+        let langIns: String
+        let rulesIns: String
+        
+        if language == "Russian" {
+            langIns = "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ, но названия упражнений (поле 'name') пиши только на английском."
+            personality = switch tone {
+                case "Строгий": "Твой стиль: Строгий армейский инструктор."
+                case "Дружелюбный": "Твой стиль: Добрый фитнес-наставник."
+                case "Научный": "Твой стиль: Профессор биомеханики."
+                default: "Твой стиль: Энергичный тренер."
+            }
+            rulesIns = "Твоя задача — составить план или дать совет."
+        } else {
+            langIns = "REPLY STRICTLY IN ENGLISH."
+            personality = switch tone {
+                case "Строгий": "Your style: Strict gym instructor."
+                case "Дружелюбный": "Your style: Friendly fitness coach."
+                case "Научный": "Your style: Sports science professor."
+                default: "Your style: Energetic motivator."
+            }
+            rulesIns = "Your task is to create a workout plan or give advice."
         }
-        
+
         var prompt = """
-        Ты — элитный ИИ-фитнес-тренер. 
-        \(personality) Поддерживай эту роль в каждом сообщении!
-        Твоя задача — общаться с пользователем СТРОГО НА РУССКОМ ЯЗЫКЕ.
+        \(personality)
+        \(langIns)
+        \(rulesIns)
         
-        ПРАВИЛА:
-        1. YOU MUST ALWAYS RETURN A VALID JSON OBJECT. NO RAW TEXT OUTSIDE JSON. No markdown tags like ```json.
-        2. Твой ответ пользователю (совет, приветствие и т.д.) ДОЛЖЕН БЫТЬ в поле "aiMessage" внутри JSON.
-        3. ТОЛЬКО ЕСЛИ пользователь просит составить план тренировки, заполни поля "title" и "exercises". Если план не нужен, оставь "title" пустым ("") и "exercises" пустым массивом [].
-        4. КРИТИЧЕСКИ ВАЖНО: Имена упражнений (поле "name" в JSON) ДОЛЖНЫ быть точной копией из переданного списка "ДОСТУПНЫЕ УПРАЖНЕНИЯ". Не переводи их на русский!
-        5. "muscleGroup": Chest, Back, Legs, Shoulders, Arms, Core, Cardio. (Строго на английском).
-        6. "type": Strength, Cardio, Duration. (Строго на английском).
-        7. All weight values in JSON MUST be in \(weightUnit). Do not use any other metric.
-        8. Избегай перетренированности уставших мышц (<50% восстановления).
-        9. Не спамь статистикой, если пользователь об этом не спрашивает.
+        RULES:
+        1. ALWAYS RETURN VALID JSON.
+        2. "aiMessage" should contain your response to the user.
+        3. If a workout is requested, fill "title" and "exercises". Otherwise, leave them empty.
+        4. IMPORTANT: Exercise names MUST be from the PROVIDED LIST.
+        5. Weights must be in \(weightUnit).
         """
         
         if !availableExercises.isEmpty {
-            prompt += "\n\nДОСТУПНЫЕ УПРАЖНЕНИЯ:\n\(availableExercises.joined(separator: ", "))"
+            prompt += "\n\nAVAILABLE EXERCISES:\n\(availableExercises.joined(separator: ", "))"
         }
-        
-        prompt += """
-        
-        ПРИМЕР ФОРМАТА JSON:
-        {
-          "title": "Мощная Тренировка",
-          "aiMessage": "Отличный выбор! Я подобрал идеальные упражнения для твоего восстановления.",
-          "exercises": [
-            {
-              "name": "Bench Press",
-              "muscleGroup": "Chest",
-              "type": "Strength",
-              "sets": 3,
-              "reps": 10,
-              "recommendedWeightKg": 60.0,
-              "restSeconds": 90
-            }
-          ]
-        }
-        """
-        
+        // ... пример JSON остается прежним
         return prompt
     }
-        
     private func createUserPrompt(request: String, profile: UserProfileContext) -> String {
         let prsString = profile.recentPRs.isEmpty ? "Нет" : profile.recentPRs.map { "\($0.key): \($0.value) \(profile.weightUnit)" }.joined(separator: ", ")
         

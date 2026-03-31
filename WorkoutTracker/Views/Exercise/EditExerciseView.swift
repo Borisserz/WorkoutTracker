@@ -40,43 +40,39 @@ struct EditExerciseView: View {
     }
     
     // MARK: - View Components
-    
     private var configSection: some View {
-        Section(header: Text("Configuration")) {
-            // Заголовок
-            HStack {
-                Text("Exercise")
-                Spacer()
-                Text(exercise.name).bold()
-            }
-        }
-    }
-    
-    private var effortSection: some View {
-        Section(header: Text("Effort (RPE)")) {
-            HStack {
-                Text("\(exercise.effort)/10")
-                    .bold()
-                    .foregroundColor(effortColor(exercise.effort))
-                
-                // Привязываем слайдер напрямую к свойству effort модели
-                Slider(value: Binding(get: { Double(exercise.effort) }, set: { exercise.effort = Int($0) }), in: 1...10, step: 1)
-                    .tint(effortColor(exercise.effort))
-            }
-            Text("1 = Easy, 10 = Failure")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    private var saveButton: some View {
-        Button("Save Changes") {
-            dismiss() // Изменения в @Bindable сохраняются автоматически
-        }
-        .frame(maxWidth: .infinity)
-        .buttonStyle(.borderedProminent)
-    }
-    
+           Section(header: Text(LocalizedStringKey("Configuration"))) {
+               HStack {
+                   Text(LocalizedStringKey("Exercise"))
+                   Spacer()
+                   Text(exercise.name).bold()
+               }
+           }
+       }
+       
+       private var effortSection: some View {
+           Section(header: Text(LocalizedStringKey("Effort (RPE)"))) {
+               HStack {
+                   Text("\(exercise.effort)/10")
+                       .bold()
+                       .foregroundColor(effortColor(exercise.effort))
+                   
+                   Slider(value: Binding(get: { Double(exercise.effort) }, set: { exercise.effort = Int($0) }), in: 1...10, step: 1)
+                       .tint(effortColor(exercise.effort))
+               }
+               Text(LocalizedStringKey("1 = Easy, 10 = Failure"))
+                   .font(.caption)
+                   .foregroundColor(.secondary)
+           }
+       }
+       
+       private var saveButton: some View {
+           Button(LocalizedStringKey("Save Changes")) {
+               dismiss()
+           }
+           .frame(maxWidth: .infinity)
+           .buttonStyle(.borderedProminent)
+       }
     // MARK: - Logic / Helpers
     
     private func effortColor(_ value: Int) -> Color {

@@ -153,28 +153,28 @@ struct AIWeeklyReviewSheet: View {
             isAnalyzing = true
         }
         
-        Task {
-            // --- ЭТОТ БЛОК ТЕПЕРЬ АКТИВЕН ---
-            
-            // 1. Формируем подробный контекст для ИИ
-            let units = UnitsManager.shared.weightUnitString()
-            let prNames = recentPRs.isEmpty ? "None" : recentPRs.map { "\($0.exerciseName) (\(Int($0.weight)) \(units))" }.joined(separator: ", ")
-            let weakNames = weakPoints.isEmpty ? "None" : weakPoints.map { $0.muscleGroup }.joined(separator: ", ")
+        let safeUnits = UnitsManager.shared.weightUnitString()
+        let safePRs = recentPRs
+        let safeWeakPoints = weakPoints
+        let cStats = currentStats
+        let pStats = previousStats
+        let lang = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
+        
+        // ИСПРАВЛЕНИЕ: Выносим тяжелую сборку строк в фоновый поток (Detached Task)
+        Task.detached(priority: .userInitiated) {
+            let prNames = safePRs.isEmpty ? "None" : safePRs.map { "\($0.exerciseName) (\(Int($0.weight)) \(safeUnits))" }.joined(separator: ", ")
+            let weakNames = safeWeakPoints.isEmpty ? "None" : safeWeakPoints.map { $0.muscleGroup }.joined(separator: ", ")
             
             let context = """
-                THIS WEEK: \(currentStats.workoutCount) workouts, \(Int(currentStats.totalVolume)) \(units) total volume.
-                PREVIOUS WEEK: \(previousStats.workoutCount) workouts, \(Int(previousStats.totalVolume)) \(units) total volume.
+                THIS WEEK: \(cStats.workoutCount) workouts, \(Int(cStats.totalVolume)) \(safeUnits) total volume.
+                PREVIOUS WEEK: \(pStats.workoutCount) workouts, \(Int(pStats.totalVolume)) \(safeUnits) total volume.
                 NEW PERSONAL RECORDS THIS WEEK: \(prNames).
                 IDENTIFIED WEAK POINTS (based on last 30 days): \(weakNames).
                 """
             
-            let lang = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
-            
             do {
-                // 2. Вызываем реальный метод API
                 let markdownResponse = try await aiService.generatePerformanceReview(statsContext: context, language: lang)
                 
-                // 3. Обновляем UI с ответом от Gemini
                 await MainActor.run {
                     let successGen = UINotificationFeedbackGenerator()
                     successGen.notificationOccurred(.success)
@@ -184,7 +184,6 @@ struct AIWeeklyReviewSheet: View {
                     }
                 }
             } catch {
-                // 4. Обрабатываем ошибку сети или API
                 await MainActor.run {
                     withAnimation {
                         self.reviewText = "❌ **Error:** \(error.localizedDescription)"

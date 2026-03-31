@@ -392,6 +392,7 @@ struct EditSupersetItemView: View {
         
         // ИСПРАВЛЕНИЕ SwiftData: Вставляем в контекст ДО добавления в массив для избежания дублирования
         if let context = exercise.modelContext {
+       
             context.insert(newSet)
         }
         
@@ -405,6 +406,7 @@ struct EditSupersetItemView: View {
                 
                 // ИСПРАВЛЕНИЕ SwiftData: Явно удаляем объект
                 if let context = exercise.modelContext {
+           
                     context.delete(setToDelete)
                 }
                 

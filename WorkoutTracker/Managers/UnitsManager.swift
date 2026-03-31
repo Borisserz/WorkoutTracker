@@ -5,12 +5,13 @@
 
 import Foundation
 import Combine
+internal import SwiftUI
 
 enum WeightUnit: String, Codable, CaseIterable {
     case kilograms = "kg"
     case pounds = "lbs"
     
-    var displayName: String {
+    var displayName: LocalizedStringKey {
         switch self {
         case .kilograms: return "Kilograms (kg)"
         case .pounds: return "Pounds (lbs)"

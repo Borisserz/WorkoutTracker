@@ -68,6 +68,11 @@ struct WorkoutTrackerApp: App {
                 .environmentObject(timerManager)
                 .environmentObject(unitsManager)
                 .onAppear {
+                    let container = container // захватываем контейнер
+                        Task.detached(priority: .background) {
+                            let bgContext = ModelContext(container)
+                            LegacyDataMigrator.migrateAllIfNeeded(context: bgContext)
+                        }
                     // ИЗМЕНЕНО: Инъекция ModelContainer в ViewModel
                     viewModel.modelContainer = container
                     

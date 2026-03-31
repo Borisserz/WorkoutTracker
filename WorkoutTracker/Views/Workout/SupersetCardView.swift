@@ -5,10 +5,10 @@
 
 internal import SwiftUI
 import SwiftData
-
 enum PRLevel {
     case bronze, silver, gold, diamond
     
+    // Твои старые свойства
     var angularColors: [Color] {
         switch self {
         case .bronze: return [.brown, .orange, .brown, .orange, .brown]
@@ -24,6 +24,15 @@ enum PRLevel {
         case .silver: return String(localized: "Silver Record!")
         case .gold: return String(localized: "Gold Record!")
         case .diamond: return String(localized: "Diamond Record!")
+        }
+    }
+    
+    var rank: Int {
+        switch self {
+        case .bronze: return 1
+        case .silver: return 2
+        case .gold: return 3
+        case .diamond: return 4
         }
     }
 }
@@ -201,42 +210,11 @@ struct SupersetCardView: View {
         }
     }
     var finishButton: some View {
-        Button(action: finishSuperset) {
-            Text(String(localized: "Finish Superset")).font(.subheadline).bold().frame(maxWidth: .infinity).padding(.vertical, 10).background(Color.green.opacity(0.1)).foregroundColor(.green).cornerRadius(8)
+            Button(action: {
+                onExerciseFinished?() 
+            }) {
+                Text(String(localized: "Finish Superset")).font(.subheadline).bold().frame(maxWidth: .infinity).padding(.vertical, 10).background(Color.green.opacity(0.1)).foregroundColor(.green).cornerRadius(8)
         }
         .padding(.top, 12).buttonStyle(BorderlessButtonStyle()).disabled(superset.isCompleted || isWorkoutCompleted)
-    }
-    
-    func finishSuperset() {
-        guard !superset.isCompleted && !isWorkoutCompleted else { return }
-        for sub in superset.subExercises {
-            let uncompletedSets = sub.setsList.filter { !$0.isCompleted }
-            for set in uncompletedSets { viewModel.deleteSet(set, from: sub) }
-            sub.isCompleted = true
-        }
-        superset.isCompleted = true; superset.updateAggregates()
-        var newRecordWasSet = false; var maxIncreasePercent: Double = 0.0
-        
-        for subExercise in superset.subExercises {
-            if subExercise.type == .strength {
-                if let _ = viewModel.lastPerformancesCache[subExercise.name] {
-                    let oldRecord = viewModel.personalRecordsCache[subExercise.name] ?? 0.0
-                    let maxWeight = subExercise.setsList.compactMap { $0.weight }.max() ?? 0.0
-                    if maxWeight > oldRecord {
-                        newRecordWasSet = true
-                        let increase = oldRecord > 0 ? (maxWeight - oldRecord) / oldRecord : 0.0
-                        if increase > maxIncreasePercent { maxIncreasePercent = increase }
-                    }
-                }
-            }
-        }
-        if newRecordWasSet {
-            let calculatedPRLevel: PRLevel = maxIncreasePercent >= 0.20 ? .diamond : (maxIncreasePercent >= 0.10 ? .gold : (maxIncreasePercent >= 0.05 ? .silver : .bronze))
-            onPRSet?(calculatedPRLevel)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { self.showEffortSheet = true }
-            let generator = UINotificationFeedbackGenerator(); generator.notificationOccurred(.success)
-        } else {
-            self.showEffortSheet = true
-        }
     }
 }

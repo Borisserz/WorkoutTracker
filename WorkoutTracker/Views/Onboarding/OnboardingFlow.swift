@@ -25,8 +25,8 @@ struct OnboardingFlowView: View {
     @State private var currentTab = 0
     
     // Данные для профиля
-    @AppStorage("userName") private var userName = "Champion"
-    @AppStorage("userBodyWeight") private var userBodyWeight = 75.0
+    @AppStorage("userName") private var userName = ""
+    @AppStorage("userBodyWeight") private var userBodyWeight = 0.0
     
     var body: some View {
         ZStack {
@@ -184,7 +184,7 @@ struct UserDataInputView: View {
                                 .font(.caption)
                                 .foregroundColor(isNameInvalid ? .red : .gray)
                             
-                            TextField("Name", text: $name)
+                            TextField("Champion", text: $name)
                                 .font(.title3)
                                 .padding()
                                 .background(isNameInvalid ? Color.red.opacity(0.1) : Color(UIColor.secondarySystemBackground))

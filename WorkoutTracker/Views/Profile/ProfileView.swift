@@ -2,6 +2,10 @@
 //  ProfileView.swift
 //  WorkoutTracker
 //
+//
+//  ProfileView.swift
+//  WorkoutTracker
+//
 
 internal import SwiftUI
 import SwiftData
@@ -17,9 +21,10 @@ struct ProfileView: View {
     // Вытягиваем историю веса напрямую из БД
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     
-    @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = "Fitness Enthusiast"
-    @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = "🦍"
-    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
+    // ИСПРАВЛЕНИЕ: Храним пустые значения, чтобы не засорять БД дефолтным хардкодом
+    @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
+    @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = ""
+    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 0.0
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
     
     @EnvironmentObject var unitsManager: UnitsManager
@@ -27,6 +32,7 @@ struct ProfileView: View {
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false
     @State private var showingMeasurements = false
+    
     // State для редактирования веса
     @State private var showEditWeight = false
     @State private var newWeightString = ""
@@ -104,7 +110,8 @@ struct ProfileView: View {
                                         .clipShape(Circle())
                                         .overlay(Circle().stroke(Color.blue, lineWidth: 3))
                                 } else {
-                                    Text(userAvatar)
+                                    // ИСПРАВЛЕНИЕ: Плейсхолдер 🦍 показывается только если строка пустая
+                                    Text(userAvatar.isEmpty ? "🦍" : userAvatar)
                                         .font(.system(size: 60))
                                         .frame(width: 100, height: 100)
                                         .background(Color.gray.opacity(0.1))
@@ -125,14 +132,16 @@ struct ProfileView: View {
                             }
                             
                             VStack(spacing: 8) {
-                                // ИМЯ (Editable)
-                                TextField("Name", text: $userName)
+                                // ИМЯ (Editable) - ИСПРАВЛЕНИЕ: Добавлен плейсхолдер
+                                TextField("Fitness Enthusiast", text: $userName)
                                     .font(.title2)
                                     .bold()
                                     .multilineTextAlignment(.center)
                                 
-                                // ВЕС под ником (Editable)
-                                let convertedWeight = unitsManager.convertFromKilograms(userBodyWeight)
+                                // ВЕС под ником (Editable) - ИСПРАВЛЕНИЕ: Отображаем 75.0 если вес 0.0
+                                let displayWeight = userBodyWeight == 0.0 ? 75.0 : userBodyWeight
+                                let convertedWeight = unitsManager.convertFromKilograms(displayWeight)
+                                
                                 HStack(spacing: 8) {
                                     Text("\(LocalizationHelper.shared.formatDecimal(convertedWeight)) \(unitsManager.weightUnitString())")
                                         .font(.title3)
@@ -152,9 +161,8 @@ struct ProfileView: View {
                                 .background(Color.blue.opacity(0.1))
                                 .cornerRadius(8)
                                 
-                                // Кнопка просмотра истории веса
+                                // Кнопка просмотра истории веса и замеров
                                 HStack(spacing: 12) {
-                                    // Кнопка просмотра истории веса
                                     Button {
                                         showingWeightHistory = true
                                     } label: {
@@ -170,7 +178,6 @@ struct ProfileView: View {
                                         .cornerRadius(8)
                                     }
                                     
-                                    // НОВАЯ КНОПКА ЗАМЕРОВ ТЕЛА
                                     Button {
                                         showingMeasurements = true
                                     } label: {
@@ -298,21 +305,22 @@ struct ProfileView: View {
                     TextField("Weight", text: $newWeightString)
                         .keyboardType(.decimalPad)
                     Button("Save") {
-                        if let val = Double(newWeightString.replacingOccurrences(of: ",", with: ".")) {
-                            userBodyWeight = unitsManager.convertToKilograms(val)
-                            let newEntry = WeightEntry(date: Date(), weight: userBodyWeight)
-                            modelContext.insert(newEntry)
-                        }
-                    }
+                           let formatter = NumberFormatter()
+                           formatter.numberStyle = .decimal
+                           if let number = formatter.number(from: newWeightString)?.doubleValue ?? Double(newWeightString.replacingOccurrences(of: ",", with: ".")) {
+                               userBodyWeight = unitsManager.convertToKilograms(number)
+                               let newEntry = WeightEntry(date: Date(), weight: userBodyWeight)
+                               modelContext.insert(newEntry)
+                           }
+                       }
                     Button("Cancel", role: .cancel) { }
                 } message: {
                     Text("Enter your current weight in \(unitsManager.weightUnitString())")
                 }
                 .onAppear {
-                    // Загружаем картинку профиля
                     profileImage = ProfileImageManager.shared.loadImage()
                     
-                    if weightHistory.isEmpty {
+                    if weightHistory.isEmpty && userBodyWeight > 0.0 {
                         let initialEntry = WeightEntry(date: Date(), weight: userBodyWeight)
                         modelContext.insert(initialEntry)
                     }
@@ -336,6 +344,14 @@ struct ProfileView: View {
         }
     }
     
+    func getColor(for type: ExerciseType) -> Color {
+        switch type {
+        case .strength: return .blue
+        case .cardio: return .orange
+        case .duration: return .purple
+        }
+    }
+}
     func getIcon(for type: ExerciseType) -> String {
         switch type {
         case .strength: return "dumbbell.fill"
@@ -351,7 +367,7 @@ struct ProfileView: View {
         case .duration: return .purple
         }
     }
-}
+
 
 // MARK: - Медаль-Ачивка с Градацией (Матовый дизайн)
 struct AchievementBadge: View {

@@ -23,6 +23,14 @@ final class CameraManager: NSObject, ObservableObject {
     
     override init() { super.init() }
     
+    deinit {
+            videoOutput.setSampleBufferDelegate(nil, queue: nil)
+            if session.isRunning {
+                session.stopRunning()
+            }
+            print("♻️ CameraManager deallocated, Vision pipeline cleared")
+        }
+    
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
@@ -120,37 +128,41 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         
-        // 🎼 Пропускаем кадры. Обрабатываем каждый 3-й кадр (получаем ~10 FPS, чего достаточно для трекера)
+        // 🎼 Пропускаем кадры. Обрабатываем каждый 3-й кадр (получаем ~10 FPS)
         frameCount += 1
         guard frameCount % 3 == 0 else { return }
         
-        // 🚩 Выполняем предварительно созданные реквесты на текущем кадре
-        let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
-        
-        do {
-            try handler.perform([bodyRequest, handRequest])
+        // 🛡 Обертка autoreleasepool немедленно очищает память от тяжелых
+        // объектов Vision и буферов камеры сразу после завершения скоупа
+        autoreleasepool {
+            // Выполняем предварительно созданные реквесты на текущем кадре
+            let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
             
-            // --- 1. Обработка Body (Скелет тела) ---
-            if let bodyObservation = bodyRequest.results?.first {
-                self.onBodyPoseUpdate(bodyObservation)
+            do {
+                try handler.perform([bodyRequest, handRequest])
                 
-                if let recognizedPoints = try? bodyObservation.recognizedPoints(.all) {
-                    var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-                    for (key, point) in recognizedPoints where point.confidence > 0.3 {
-                        normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                // --- 1. Обработка Body (Скелет тела) ---
+                if let bodyObservation = bodyRequest.results?.first {
+                    self.onBodyPoseUpdate(bodyObservation)
+                    
+                    if let recognizedPoints = try? bodyObservation.recognizedPoints(.all) {
+                        var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+                        for (key, point) in recognizedPoints where point.confidence > 0.3 {
+                            normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                        }
+                        self.onUpdate(normalizedJoints)
                     }
-                    self.onUpdate(normalizedJoints)
+                } else {
+                    self.onBodyPoseUpdate(nil)
+                    self.onUpdate([:])
                 }
-            } else {
-                self.onBodyPoseUpdate(nil)
-                self.onUpdate([:])
+                
+                // --- 2. Обработка Hand (Кисть для жестов) ---
+                self.onHandUpdate(handRequest.results?.first)
+                
+            } catch {
+                print("Vision request failed: \(error)")
             }
-            
-            // --- 2. Обработка Hand (Кисть для жестов) ---
-            self.onHandUpdate(handRequest.results?.first)
-            
-        } catch {
-            print("Vision request failed: \(error)")
         }
     }
 }

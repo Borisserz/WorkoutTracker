@@ -45,12 +45,11 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     /// Настройка категорий уведомлений для вибрации и действий
     private func setupNotificationCategories() {
-        // Создаем действие "Готово" для уведомления таймера
-        let doneAction = UNNotificationAction(
-            identifier: "DONE_ACTION",
-            title: "Готово",
-            options: [.foreground]
-        )
+            let doneAction = UNNotificationAction(
+                identifier: "DONE_ACTION",
+                title: String(localized: "Done"),
+                options: [.foreground]
+            )
         
         // Создаем категорию с действиями
         let restTimerCategory = UNNotificationCategory(
@@ -96,14 +95,13 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         cancelRestTimerNotification()
         
         let content = UNMutableNotificationContent()
-        content.title = "Таймер завершен!"
-        content.body = "Время отдыха истекло. Пора возвращаться к тренировке!"
-        // Используем системный звук по умолчанию (вызывает вибрацию на iPhone)
+        content.title = String(localized: "Timer Finished!")
+                content.body = String(localized: "Rest time is over. Time to get back to your workout!")
+                
         content.sound = UNNotificationSound.default
         content.categoryIdentifier = restTimerCategoryId
         content.badge = 1
         content.userInfo = ["type": "rest_timer"]
-        // Добавляем threadIdentifier для группировки уведомлений
         content.threadIdentifier = "rest_timer"
         content.interruptionLevel = .timeSensitive
         
@@ -194,19 +192,36 @@ class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     
     /// Возвращает мотивационный текст в зависимости от группы мышц
     private func getMotivationalText(for group: String) -> (String, String) {
-        switch group {
-        case "Chest":
-            return ("Chest Fully Recovered!", "Yo, your chest is ready. Time to push some heavy iron!")
-        case "Back":
-            return ("Back is Ready!", "Your wings are recovered. Go do some pull-ups!")
-        case "Legs":
-            return ("Leg Day Awaits!", "Your legs are fully charged. Don't skip leg day!")
-        case "Arms":
-            return ("Guns are Reloaded!", "Biceps and Triceps are fresh. Time for a pump!")
-        case "Shoulders":
-            return ("Shoulders Ready!", "Delts are recovered. Go lift something overhead!")
-        default:
-            return ("Fully Recovered!", "Your body is ready for the next challenge. Let's go!")
-        }
+            // Базовый язык - английский! Перевод будет в xcstrings.
+            switch group {
+            case "Chest":
+                return (String(localized: "Chest Fully Recovered!"), String(localized: "Yo, your chest is ready. Time to push some heavy iron!"))
+            case "Back":
+                        return (
+                            String(localized: "Back is Ready!"),
+                            String(localized: "Your wings are recovered. Go do some pull-ups!")
+                        )
+                    case "Legs":
+                        return (
+                            String(localized: "Leg Day Awaits!"),
+                            String(localized: "Your legs are fully charged. Don't skip leg day!")
+                        )
+                    case "Arms":
+                        return (
+                            String(localized: "Guns are Reloaded!"),
+                            String(localized: "Biceps and Triceps are fresh. Time for a pump!")
+                        )
+                    case "Shoulders":
+                        return (
+                            String(localized: "Shoulders Ready!"),
+                            String(localized: "Delts are recovered. Go lift something overhead!")
+                        )
+                    default:
+                        return (
+                            String(localized: "Fully Recovered!"),
+                            String(localized: "Your body is ready for the next challenge. Let's go!")
+                        )
+                    }
+                }
     }
-}
+

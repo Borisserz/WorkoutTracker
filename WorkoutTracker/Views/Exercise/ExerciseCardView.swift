@@ -294,9 +294,9 @@ struct ExerciseCardView: View {
     }
     
     private var actionButtonsSection: some View {
-        VStack(spacing: 12) {
-            Button(action: addSet) {
-                Text(exercise.isCompleted ? LocalizedStringKey("Exercise Completed") : LocalizedStringKey("+ Add Set"))
+            VStack(spacing: 12) {
+                Button(action: addSet) {
+                    Text(exercise.isCompleted ? LocalizedStringKey("Exercise Completed") : LocalizedStringKey("+ Add Set"))
                     .font(.subheadline).bold()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
@@ -312,7 +312,7 @@ struct ExerciseCardView: View {
                     if exercise.isCompleted {
                         withAnimation { exercise.isCompleted = false }
                     } else {
-                        finishExercise()
+                        onExerciseFinished?()
                     }
                 }) {
                     Text(exercise.isCompleted ? LocalizedStringKey("Continue") : LocalizedStringKey("Finish Exercise"))
@@ -336,50 +336,7 @@ struct ExerciseCardView: View {
         }
         .padding(.top, 12)
     }
-    
-    private func finishExercise() {
-        guard !exercise.isCompleted && !isWorkoutCompleted else { return }
-        
-        // 1. Удаляем незавершенные сеты (убрали параметр container)
-        let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
-        for set in uncompletedSets {
-            viewModel.deleteSet(set, from: exercise)
-        }
-        
-        // 2. Помечаем упражнение как завершенное
-        exercise.isCompleted = true
-        
-        // 3. Логика рекордов (PR)
-        let lastData = viewModel.lastPerformancesCache[exercise.name]
-        var newRecordWasSet = false
-        var maxIncreasePercent: Double = 0.0
-        
-        if exercise.type == .strength {
-            let maxWeightInWorkout = exercise.setsList
-                .filter { $0.isCompleted }
-                .compactMap { $0.weight }
-                .max() ?? 0
-            
-            let oldRecord = viewModel.personalRecordsCache[exercise.name] ?? 0.0
-            if maxWeightInWorkout > oldRecord && oldRecord > 0 {
-                newRecordWasSet = true
-                maxIncreasePercent = (maxWeightInWorkout - oldRecord) / oldRecord
-            }
-        }
-        
-        // Обновляем шаги туториала
-        if tutorialManager.currentStep == .finishExercise {
-            tutorialManager.setStep(.explainEffort)
-        }
-        
-        if newRecordWasSet {
-            let calculatedPRLevel: PRLevel = maxIncreasePercent >= 0.20 ? .diamond : (maxIncreasePercent >= 0.10 ? .gold : (maxIncreasePercent >= 0.05 ? .silver : .bronze))
-            onPRSet?(calculatedPRLevel)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.5) { showEffortSheet = true }
-        } else {
-            showEffortSheet = true
-        }
-    }
+
     private func addSet() {
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         let sortedSets = exercise.sortedSets

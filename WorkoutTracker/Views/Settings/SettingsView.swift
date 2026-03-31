@@ -7,8 +7,8 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject var viewModel: WorkoutViewModel
     
-    @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = "Fitness Enthusiast"
-    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
+    @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
+    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 0.0
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
     
     @AppStorage(Constants.UserDefaultsKeys.streakRestDays.rawValue) private var streakRestDays: Int = 2

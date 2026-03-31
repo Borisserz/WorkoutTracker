@@ -75,14 +75,16 @@ struct SVGParser {
     
     static func path(from string: String) -> Path {
         cacheLock.lock()
+        // 1. Сначала проверяем кэш по исходной строке
         if let cachedPath = pathCache[string] {
             cacheLock.unlock()
             return cachedPath
         }
         cacheLock.unlock()
         
+        // 2. Если в кэше нет — только тогда выполняем тяжелые операции
         var path = Path()
-        var formatted = string
+        let formatted = string
             .replacingOccurrences(of: "([a-zA-Z])", with: " $1 ", options: .regularExpression)
             .replacingOccurrences(of: "-", with: " -")
             .replacingOccurrences(of: ",", with: " ")
@@ -191,10 +193,10 @@ struct SVGParser {
         }
         
         cacheLock.lock()
-        pathCache[string] = path
-        cacheLock.unlock()
-        
-        return path
+            pathCache[string] = path
+            cacheLock.unlock()
+            
+            return path
     }
 }
 
