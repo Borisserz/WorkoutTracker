@@ -68,29 +68,34 @@ struct WorkoutTrackerApp: App {
                 .environmentObject(timerManager)
                 .environmentObject(unitsManager)
                 .onAppear {
-                    let container = container // захватываем контейнер
-                        Task.detached(priority: .background) {
-                            let bgContext = ModelContext(container)
-                            LegacyDataMigrator.migrateAllIfNeeded(context: bgContext)
+                    // ОПТИМИЗАЦИЯ SWIFT 6: Оборачиваем в Task для безопасной инициализации
+                    Task {
+                        // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ (MainActor, так как метод требует этого)
+                        await MainActor.run {
+                            LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
                         }
-                    // ИЗМЕНЕНО: Инъекция ModelContainer в ViewModel
-                    viewModel.modelContainer = container
-                    
-                    // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ
-                    LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
-                    
-                    // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
-                    viewModel.checkAndGenerateDefaultPresets()
-                    
-                    // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
-                    MuscleColorManager.shared.load(context: container.mainContext)
-                    
-                    // 3. ПРОГРЕВ КЭША SVG В ФОНЕ (Оптимизация CPU на старте)
-                    Task.detached(priority: .high) {
+                        
+                        // ИЗМЕНЕНО: Инъекция ModelContainer в ViewModel
+                        await MainActor.run {
+                            viewModel.modelContainer = container
+                            
+                            // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
+                            viewModel.checkAndGenerateDefaultPresets()
+                            
+                            // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
+                            MuscleColorManager.shared.load(context: container.mainContext)
+                        }
+                        
+                        // 3. ПРОГРЕВ КЭША SVG (Выполняем на MainActor, но асинхронно, с паузами, чтобы не фризить UI)
+                        // Так как Path должен создаваться на MainActor.
                         let allMuscles = BodyData.frontMuscles + BodyData.backMuscles + BodyData.frontMusclesFemale + BodyData.backMusclesFemale
                         for muscle in allMuscles {
                             for pathStr in muscle.paths {
-                                _ = SVGParser.path(from: pathStr) // Кэшируем
+                                await MainActor.run {
+                                    _ = SVGParser.path(from: pathStr) // Кэшируем
+                                }
+                                // Небольшая пауза, чтобы дать UI возможность перерисоваться (избегаем фризов)
+                                try? await Task.sleep(nanoseconds: 1_000_000)
                             }
                         }
                     }
@@ -116,9 +121,10 @@ struct WorkoutTrackerApp: App {
                 }
                 .animation(.default, value: hasCompletedOnboarding)
                 .preferredColorScheme(colorScheme)
-                .onChange(of: scenePhase) { newPhase in
+                .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
-                        UIApplication.shared.applicationIconBadgeNumber = 0
+                        // ОПТИМИЗАЦИЯ SWIFT 6: Использование нового API для бейджей
+                        UNUserNotificationCenter.current().setBadgeCount(0)
                         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
                     }
                 }

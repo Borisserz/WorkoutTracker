@@ -95,21 +95,21 @@ public enum AILogicError: Error, LocalizedError, Sendable {
 
 // MARK: - Gemini API Private Models
 
-private struct GeminiRequest: Codable {
-    struct Part: Codable { let text: String }
-    struct Content: Codable { let role: String; let parts: [Part] }
-    struct SystemInstruction: Codable { let parts: [Part] }
-    struct GenerationConfig: Codable { let temperature: Double; let responseMimeType: String? }
+private struct GeminiRequest: Codable, Sendable {
+    struct Part: Codable, Sendable { let text: String }
+    struct Content: Codable, Sendable { let role: String; let parts: [Part] }
+    struct SystemInstruction: Codable, Sendable { let parts: [Part] }
+    struct GenerationConfig: Codable, Sendable { let temperature: Double; let responseMimeType: String? }
     
     let systemInstruction: SystemInstruction?
     let contents: [Content]
     let generationConfig: GenerationConfig
 }
 
-private struct GeminiResponse: Codable {
-    struct Candidate: Codable {
-        struct Content: Codable {
-            struct Part: Codable { let text: String }
+private struct GeminiResponse: Codable, Sendable {
+    struct Candidate: Codable, Sendable {
+        struct Content: Codable, Sendable {
+            struct Part: Codable, Sendable { let text: String }
             let parts: [Part]
         }
         let content: Content
@@ -163,7 +163,7 @@ public actor AILogicService {
         )
         
         let responseText = try await performRequest(requestBody)
-        return try parseCoachResponse(from: responseText)
+        return try await parseCoachResponse(from: responseText)
     }
     
     // --- 2. ДЛЯ СОВЕТОВ ВО ВРЕМЯ ТРЕНИРОВКИ ---
@@ -176,7 +176,6 @@ public actor AILogicService {
         let systemPrompt = """
         You are an elite AI Strength Coach. 
         \(langInstruction)
-        ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ, НО НАЗВАНИЯ УПРАЖНЕНИЙ ОСТАВЛЯЙ НА АНГЛИЙСКОМ!
         
         ПРАВИЛА:
         1. YOU MUST ALWAYS RETURN A VALID JSON OBJECT. No markdown, no conversational text outside JSON.
@@ -222,7 +221,10 @@ public actor AILogicService {
         
         guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
         do {
-            return try JSONDecoder().decode(InWorkoutResponseDTO.self, from: jsonData)
+            // ОПТИМИЗАЦИЯ СОВМЕСТИМОСТИ SWIFT 6: Прыгаем в MainActor для декодирования
+            return try await MainActor.run {
+                try JSONDecoder().decode(InWorkoutResponseDTO.self, from: jsonData)
+            }
         } catch {
             print("❌ AI analyzeActiveWorkout decode error: \(error)")
             throw AILogicError.friendlyError
@@ -267,7 +269,6 @@ public actor AILogicService {
         
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-            // Запрос пользователя тоже адаптируем, чтобы ИИ понимал контекст ввода
             contents: [.init(role: "user", parts: [.init(text: "\(userStatsHeader)\n\(statsContext)")])],
             generationConfig: .init(temperature: 0.7, responseMimeType: nil)
         )
@@ -280,7 +281,11 @@ public actor AILogicService {
         var request = URLRequest(url: try getGeminiURL())
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONEncoder().encode(requestBody)
+        
+        // ОПТИМИЗАЦИЯ СОВМЕСТИМОСТИ SWIFT 6: Прыгаем в MainActor для кодирования
+        request.httpBody = try await MainActor.run {
+            try JSONEncoder().encode(requestBody)
+        }
         
         let (data, response) = try await urlSession.data(for: request)
         
@@ -293,7 +298,10 @@ public actor AILogicService {
         }
         
         do {
-            let geminiResponse = try JSONDecoder().decode(GeminiResponse.self, from: data)
+            // ОПТИМИЗАЦИЯ СОВМЕСТИМОСТИ SWIFT 6: Прыгаем в MainActor для декодирования
+            let geminiResponse = try await MainActor.run {
+                try JSONDecoder().decode(GeminiResponse.self, from: data)
+            }
             guard let aiContent = geminiResponse.candidates.first?.content.parts.first?.text else {
                 throw AILogicError.noDataReturned
             }
@@ -345,9 +353,9 @@ public actor AILogicService {
         if !availableExercises.isEmpty {
             prompt += "\n\nAVAILABLE EXERCISES:\n\(availableExercises.joined(separator: ", "))"
         }
-        // ... пример JSON остается прежним
         return prompt
     }
+    
     private func createUserPrompt(request: String, profile: UserProfileContext) -> String {
         let prsString = profile.recentPRs.isEmpty ? "Нет" : profile.recentPRs.map { "\($0.key): \($0.value) \(profile.weightUnit)" }.joined(separator: ", ")
         
@@ -369,7 +377,8 @@ public actor AILogicService {
     }
     
     // --- ПАРСЕР СТРОГОГО JSON ОТВЕТА ---
-    private func parseCoachResponse(from rawContent: String) throws -> AICoachResponseDTO {
+    // Функция стала асинхронной, так как использует MainActor.run
+    private func parseCoachResponse(from rawContent: String) async throws -> AICoachResponseDTO {
         var text = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
         else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
@@ -378,7 +387,11 @@ public actor AILogicService {
         guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
         
         do {
-            let workoutDTO = try JSONDecoder().decode(GeneratedWorkoutDTO.self, from: jsonData)
+            // ОПТИМИЗАЦИЯ СОВМЕСТИМОСТИ SWIFT 6: Прыгаем в MainActor
+            let workoutDTO = try await MainActor.run {
+                try JSONDecoder().decode(GeneratedWorkoutDTO.self, from: jsonData)
+            }
+            
             if workoutDTO.exercises.isEmpty && (workoutDTO.title.isEmpty || workoutDTO.title == "") {
                 return AICoachResponseDTO(text: workoutDTO.aiMessage, workout: nil)
             } else {

@@ -57,7 +57,7 @@ struct InWorkoutAICoachView: View {
                 }
                 .onTapGesture { isInputFocused = false }
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: viewModel.chatHistory.count) { _ in scrollToBottom(proxy: proxy) }
+                .onChange(of: viewModel.chatHistory.count) { _, _ in scrollToBottom(proxy: proxy) }
                 .onChange(of: isInputFocused) { _, focused in
                     if focused {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { scrollToBottom(proxy: proxy) }
