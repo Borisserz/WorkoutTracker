@@ -179,18 +179,21 @@ struct MailComposeView: UIViewControllerRepresentable {
     @Binding var isPresented: Bool
     let result: (Result<MFMailComposeResult, Error>) -> Void
     
+    // Возвращаем строго MFMailComposeViewController, так как защита стоит на уровне FeedbackView
     func makeUIViewController(context: Context) -> MFMailComposeViewController {
-            let composer = MFMailComposeViewController()
-            composer.mailComposeDelegate = context.coordinator
-            composer.setSubject(subject)
-            composer.setMessageBody(messageBody, isHTML: false)
-            // Замените на ваш реальный email адрес для поддержки
-            composer.setToRecipients(["support@workouttracker.app"])
-            
-            return composer
-        }
+        let composer = MFMailComposeViewController()
+        composer.mailComposeDelegate = context.coordinator
+        composer.setSubject(subject)
+        composer.setMessageBody(messageBody, isHTML: false)
+        composer.setToRecipients(["support@workouttracker.app"])
         
-        func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
+        // Фикс для темной темы в UIKit внутри SwiftUI
+        composer.overrideUserInterfaceStyle = .unspecified
+        
+        return composer
+    }
+        
+    func updateUIViewController(_ uiViewController: MFMailComposeViewController, context: Context) {}
     
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
@@ -199,19 +202,12 @@ struct MailComposeView: UIViewControllerRepresentable {
     class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
         let parent: MailComposeView
         
-        init(_ parent: MailComposeView) {
-            self.parent = parent
-        }
+        init(_ parent: MailComposeView) { self.parent = parent }
         
         func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
-            if let error = error {
-                parent.result(.failure(error))
-            } else {
-                parent.result(.success(result))
-            }
+            if let error = error { parent.result(.failure(error)) }
+            else { parent.result(.success(result)) }
             parent.isPresented = false
         }
     }
 }
-
-

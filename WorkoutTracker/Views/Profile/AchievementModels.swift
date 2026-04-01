@@ -37,14 +37,13 @@ struct Achievement: Identifiable {
     
     // Статус
     var tier: AchievementTier = .none
-    var progress: String = "" // Изменено с LocalizedStringKey на String
+    var progress: String = ""
     
     var isUnlocked: Bool { tier != .none }
 }
 
 class AchievementCalculator {
     
-    // Вспомогательная функция для определения уровня и следующей цели
     private static func getTierAndTarget(current: Double, thresholds: [Double]) -> (AchievementTier, Double) {
         if current >= thresholds[3] { return (.diamond, thresholds[3]) } // Максимальный уровень
         if current >= thresholds[2] { return (.gold, thresholds[3]) }
@@ -54,7 +53,6 @@ class AchievementCalculator {
     }
     
     // MARK: - ОПТИМИЗИРОВАННАЯ ФУНКЦИЯ (O(1))
-    // Не вызывает N+1 проблему, работает с готовыми агрегированными данными.
     static func calculateAchievements(
         totalWorkouts: Int,
         totalVolume: Double,
@@ -63,10 +61,10 @@ class AchievementCalculator {
         nightWorkouts: Int,
         streak: Int,
         weekendWorkouts: Int = 0,
-        lunchWorkouts: Int = 0
+        lunchWorkouts: Int = 0,
+        unitsManager: UnitsManager
     ) -> [Achievement] {
         var list: [Achievement] = []
-        let unitsManager = UnitsManager.shared
         
         // Локализованные строки для подстановок прогресса
         let maxLevelStr = String(localized: "Max Level!")
@@ -210,76 +208,5 @@ class AchievementCalculator {
         ))
         
         return list
-    }
-    
-    // MARK: - Legacy-функция для обратной совместимости
-    // Если у вас есть экран "Достижения", который тоже вызывает calculateAchievements,
-    // он продолжит работать через эту функцию-мост.
-    static func calculateAchievements(workouts: [Workout], streak: Int) -> [Achievement] {
-        
-        // ИСПРАВЛЕНИЕ ОШИБКИ ТАЙМАУТА: Заменяем сложные .reduce на простые циклы for,
-        // чтобы компилятор Swift мог легко их переварить.
-        var totalVolume: Double = 0.0
-        var totalDistance: Double = 0.0
-        
-        for workout in workouts {
-            for exercise in workout.exercises {
-                if exercise.type == ExerciseType.strength {
-                    totalVolume += exercise.exerciseVolume
-                } else if exercise.type == ExerciseType.cardio {
-                    var distForExercise: Double = 0.0
-                    for set in exercise.setsList {
-                        if set.isCompleted {
-                            if let d = set.distance {
-                                distForExercise += d
-                            }
-                        }
-                    }
-                    
-                    if distForExercise > 0 {
-                        totalDistance += distForExercise
-                    } else {
-                        // Используем новое сохраненное свойство
-                        totalDistance += (exercise.firstSetDistance ?? 0.0)
-                    }
-                }
-            }
-        }
-        
-        var earlyWorkouts = 0
-        var nightWorkouts = 0
-        var weekendWorkouts = 0
-        var lunchWorkouts = 0
-        
-        let calendar = Calendar.current
-        
-        for workout in workouts {
-            let hour = calendar.component(.hour, from: workout.date)
-            let weekday = calendar.component(.weekday, from: workout.date)
-            
-            if hour >= 4 && hour < 8 {
-                earlyWorkouts += 1
-            }
-            if hour >= 22 || hour < 4 {
-                nightWorkouts += 1
-            }
-            if hour >= 11 && hour <= 14 {
-                lunchWorkouts += 1
-            }
-            if weekday == 1 || weekday == 7 { // 1 = Sunday, 7 = Saturday
-                weekendWorkouts += 1
-            }
-        }
-        
-        return calculateAchievements(
-            totalWorkouts: workouts.count,
-            totalVolume: totalVolume,
-            totalDistance: totalDistance,
-            earlyWorkouts: earlyWorkouts,
-            nightWorkouts: nightWorkouts,
-            streak: streak,
-            weekendWorkouts: weekendWorkouts,
-            lunchWorkouts: lunchWorkouts
-        )
     }
 }

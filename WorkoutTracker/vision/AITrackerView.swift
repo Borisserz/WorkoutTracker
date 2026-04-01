@@ -180,12 +180,12 @@ struct AITrackerView: View {
                     .frame(width: 10, height: 10)
                     .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
                 
-                Text(engine.feedbackMessage)
-                    .font(.title3)
-                    .fontWeight(.bold)
-                    .foregroundColor(feedbackColor(for: engine.feedbackMessage))
-                    .animation(.easeInOut(duration: 0.2), value: engine.feedbackMessage)
-            }
+                Text(LocalizedStringKey(engine.feedbackMessage))
+                                    .font(.title3)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(feedbackColor(for: engine.feedbackMessage))
+                                    .animation(.easeInOut(duration: 0.2), value: engine.feedbackMessage)
+                            }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .background(Color.black.opacity(0.4))

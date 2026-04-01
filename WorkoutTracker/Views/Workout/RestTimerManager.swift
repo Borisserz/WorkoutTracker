@@ -1,3 +1,7 @@
+//
+//  RestTimerManager.swift
+//  WorkoutTracker
+//
 
 internal import SwiftUI
 import Combine
@@ -6,14 +10,24 @@ import AudioToolbox
 @MainActor
 class RestTimerManager: ObservableObject {
     
-    @Published var restTimeRemaining: Int = 0
+    // 🎼 МАЭСТРО: Убрали @Published, чтобы не вызывать глобальный рендер 10 раз в секунду.
+    // Вместо этого используем CurrentValueSubject. Подписчики смогут слушать только изменения цифр.
+    let timeRemainingSubject = CurrentValueSubject<Int, Never>(0)
+    
+    // Оставляем @Published только для флагов состояний интерфейса (меняются редко)
     @Published var isRestTimerActive: Bool = false
     @Published var restTimerFinished: Bool = false
-    @Published var isHidden: Bool = false 
+    @Published var isHidden: Bool = false
     
     private var restEndTime: Date?
     private var restTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
+    
+    // Удобный геттер/сеттер для обновления сабджекта
+    var restTimeRemaining: Int {
+        get { timeRemainingSubject.value }
+        set { timeRemainingSubject.send(newValue) }
+    }
     
     private var defaultRestTime: Int {
         let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
@@ -84,18 +98,22 @@ class RestTimerManager: ObservableObject {
     private func startTicker() {
         restTimer?.invalidate()
         
+        // ОПТИМИЗАЦИЯ SWIFT 6: Оборачиваем логику обновления в MainActor,
+        // чтобы компилятор не ругался на доступ к MainActor-изолированным свойствам (restEndTime, restTimeRemaining)
         let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self = self, let endTime = self.restEndTime else { return }
-            let timeRemaining = endTime.timeIntervalSinceNow
-            
-            if timeRemaining > 0 {
-                let secondsLeft = Int(ceil(timeRemaining))
-                if self.restTimeRemaining != secondsLeft {
-                    self.restTimeRemaining = secondsLeft
+            Task { @MainActor [weak self] in
+                guard let self = self, let endTime = self.restEndTime else { return }
+                let timeRemaining = endTime.timeIntervalSinceNow
+                
+                if timeRemaining > 0 {
+                    let secondsLeft = Int(ceil(timeRemaining))
+                    if self.restTimeRemaining != secondsLeft {
+                        self.restTimeRemaining = secondsLeft
+                    }
+                } else {
+                    self.restTimeRemaining = 0
+                    self.finishTimer()
                 }
-            } else {
-                self.restTimeRemaining = 0
-                self.finishTimer()
             }
         }
         RunLoop.main.add(timer, forMode: .common)

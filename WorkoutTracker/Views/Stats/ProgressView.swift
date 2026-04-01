@@ -135,43 +135,35 @@ struct StatsView: View {
     // MARK: - Data Loading Logic
     
     @MainActor
-    private func loadPeriodData() async {
-        let container = context.container
-        let period = selectedPeriod
-        let metric = selectedMetric
-        let prCache = viewModel.personalRecordsCache
-        let currentInterval = calculateCurrentInterval()
-        let previousInterval = calculatePreviousInterval()
-        let minDate = previousInterval.start
-        let maxDate = currentInterval.end
-        
-        let result = await Task.detached(priority: .userInitiated) {
-            let bgContext = ModelContext(container)
-            var descriptor = FetchDescriptor<Workout>(
-                predicate: #Predicate<Workout> { $0.date >= minDate && $0.date <= maxDate },
-                sortBy: [SortDescriptor(\.date, order: .reverse)]
+        private func loadPeriodData() async {
+            let container = context.container
+            let period = selectedPeriod
+            let metric = selectedMetric
+            let prCache = viewModel.personalRecordsCache
+            let currentInterval = calculateCurrentInterval()
+            let previousInterval = calculatePreviousInterval()
+            
+            // Создаем ModelActor который сам создаст нужный контекст в своем потоке
+            let repository = WorkoutRepository(modelContainer: container)
+            
+            // Вся тяжелая работа произойдет в изоляции Repository
+            let result = await repository.fetchStatsData(
+                period: period,
+                metric: metric,
+                currentInterval: currentInterval,
+                previousInterval: previousInterval,
+                prCache: prCache
             )
-            descriptor.relationshipKeyPathsForPrefetching = [\.exercises]
-            let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
             
-            let currentStats = StatisticsManager.getStats(for: currentInterval, workouts: bgWorkouts)
-            let previousStats = StatisticsManager.getStats(for: previousInterval, workouts: bgWorkouts)
-            let recentPRs = StatisticsManager.getRecentPRs(in: currentInterval, workouts: bgWorkouts, allTimePRs: prCache)
-            let detailedComparison = AnalyticsManager.getDetailedComparison(workouts: bgWorkouts, period: period)
-            let chartData = StatisticsManager.getChartData(for: period, metric: metric, workouts: bgWorkouts)
-            
-            return (currentStats, previousStats, recentPRs, detailedComparison, chartData)
-        }.value
-        
-        withAnimation {
-            self.currentStats = result.0
-            self.previousStats = result.1
-            self.recentPRs = result.2
-            self.detailedComparison = result.3
-            self.chartData = result.4
-            self.isDataLoaded = true
+            withAnimation {
+                self.currentStats = result.currentStats
+                self.previousStats = result.previousStats
+                self.recentPRs = result.recentPRs
+                self.detailedComparison = result.detailedComparison
+                self.chartData = result.chartData
+                self.isDataLoaded = true
+            }
         }
-    }
     
     // MARK: - Date Logic
     

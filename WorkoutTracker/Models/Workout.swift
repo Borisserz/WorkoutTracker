@@ -213,6 +213,7 @@ class Workout: Identifiable {
     var endTime: Date? = nil
     var icon: String = "figure.run"
     var isFavorite: Bool = false
+    @Attribute var aiChatHistoryData: Data? = nil // ИСПРАВЛЕНИЕ: Хранилище чата внутри тренировки
     
     // MARK: - Stored Aggregates (Performance Optimization)
     @Attribute var durationSeconds: Int = 0
@@ -223,7 +224,7 @@ class Workout: Identifiable {
     @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
     var exercises: [Exercise] = []
     
-    init(id: UUID = UUID(), title: String, date: Date, endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false) {
+    init(id: UUID = UUID(), title: String, date: Date, endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false, aiChatHistoryData: Data? = nil) {
         self.id = id
         self.title = title
         self.date = date
@@ -231,6 +232,7 @@ class Workout: Identifiable {
         self.icon = icon
         self.isFavorite = isFavorite
         self.exercises = exercises
+        self.aiChatHistoryData = aiChatHistoryData
         
         self.durationSeconds = 0
         self.effortPercentage = 0
@@ -251,8 +253,6 @@ class ExerciseNote {
         self.text = text
     }
 }
-
-
 
 // MARK: - Aggregated Stats (Protects from OOM)
 

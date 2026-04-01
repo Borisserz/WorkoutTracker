@@ -12,7 +12,7 @@ import UIKit
 struct WorkoutView: View {
     @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // ОПТИМИЗАЦИЯ: Грузим только последние 30 тренировок для проверки на пустоту и анализа дисбаланса (защита от OOM)
     @Query(sort: \Workout.date, order: .reverse) private var recentWorkoutsForImbalance: [Workout]
@@ -427,13 +427,19 @@ struct ImbalanceDetailSheet: View {
 // --- ИНДИКАТОР ТЕКУЩЕЙ ТРЕНИРОВКИ ---
 struct ActiveWorkoutIndicator: View {
     @State private var isBlinking = false
+    
     var body: some View {
         Circle()
             .fill(Color.blue)
             .frame(width: 8, height: 8)
             .opacity(isBlinking ? 0.2 : 1.0)
             .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isBlinking)
-            .onAppear { isBlinking = true }
+            .onAppear {
+                isBlinking = true
+            }
+            .onDisappear {
+                isBlinking = false
+            }
     }
 }
 

@@ -29,20 +29,26 @@ struct ChatMessageView: View {
             }
             
             VStack(alignment: message.isUser ? .trailing : .leading, spacing: 8) {
-                // Текст сообщения с поддержкой Markdown (LocalizedStringKey автоматически парсит **bold**, *italic* и списки)
-                Text(LocalizedStringKey(message.text))
-                    .font(.body)
-                    .foregroundColor(message.isUser ? .white : .primary)
-                    .multilineTextAlignment(.leading) // Важно для корректного отображения списков
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(
-                        message.isUser
-                        ? Color.accentColor
-                        : Color(UIColor.secondarySystemBackground)
-                    )
-                    .clipShape(ChatBubbleShape(isUser: message.isUser))
-                    .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                // Текст сообщения
+                Group {
+                    if message.isUser {
+                        Text(LocalizedStringKey(message.text))
+                    } else {
+                        TypewriterTextView(fullText: message.text, isAnimating: message.isAnimating)
+                    }
+                }
+                .font(.body)
+                .foregroundColor(message.isUser ? .white : .primary)
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    message.isUser
+                    ? Color.accentColor
+                    : Color(UIColor.secondarySystemBackground)
+                )
+                .clipShape(ChatBubbleShape(isUser: message.isUser))
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                 
                 // Карточка тренировки (если есть)
                 if let workout = message.proposedWorkout {
@@ -58,6 +64,54 @@ struct ChatMessageView: View {
             }
         }
         .transition(.move(edge: message.isUser ? .trailing : .leading).combined(with: .opacity))
+    }
+}
+
+// MARK: - Typewriter Text View
+// 🎼 ОПТИМИЗАЦИЯ: Локальная анимация текста. Защищает ScrollView от перерисовок
+struct TypewriterTextView: View {
+    let fullText: String
+    let isAnimating: Bool
+    
+    @State private var displayedText: String = ""
+    @State private var timer: Timer?
+    
+    var body: some View {
+        // Использование .init позволяет SwiftUI парсить Markdown налету
+        Text(.init(displayedText))
+            .onAppear {
+                if isAnimating {
+                    startAnimating()
+                } else {
+                    displayedText = fullText
+                }
+            }
+            .onChange(of: fullText) { _, newText in
+                if !isAnimating {
+                    displayedText = newText
+                }
+            }
+            .onDisappear {
+                timer?.invalidate()
+                timer = nil
+            }
+    }
+    
+    private func startAnimating() {
+        displayedText = ""
+        let chars = Array(fullText)
+        var currentIndex = 0
+        
+        timer?.invalidate()
+        // Оптимизированный таймер (15мс на символ)
+        timer = Timer.scheduledTimer(withTimeInterval: 0.015, repeats: true) { t in
+            if currentIndex < chars.count {
+                displayedText.append(chars[currentIndex])
+                currentIndex += 1
+            } else {
+                t.invalidate()
+            }
+        }
     }
 }
 
@@ -99,7 +153,6 @@ struct AILoadingIndicator: View {
                     Circle()
                         .fill(Color.gray.opacity(0.6))
                         .frame(width: 8, height: 8)
-                        // Анимация волны (Wave Effect)
                         .offset(y: isAnimating ? -5 : 0)
                         .animation(
                             Animation.easeInOut(duration: 0.4)
