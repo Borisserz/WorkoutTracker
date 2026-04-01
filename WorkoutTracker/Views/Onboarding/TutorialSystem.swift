@@ -184,9 +184,12 @@ struct PulsatingEffect: ViewModifier {
                     opacity = 0.6
                 }
             }
+            .onDisappear {
+                scale = 1.0
+                opacity = 1.0
+            }
     }
 }
-
 enum TooltipArrowDirection {
     case up
     case down

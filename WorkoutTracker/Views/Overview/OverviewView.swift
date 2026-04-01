@@ -11,7 +11,6 @@ import Charts
 import ActivityKit
 
 struct OverviewView: View {
-    @AppStorage("use3DHeatmap") private var use3DHeatmap = false
     // MARK: - Environment & State
     @Environment(\.modelContext) private var context
     @EnvironmentObject var tutorialManager: TutorialManager
@@ -71,35 +70,35 @@ struct OverviewView: View {
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
                                     .padding(.horizontal)
-                                
                                 Button {
-                                    showAddWorkout = true
-                                    if tutorialManager.currentStep == .tapPlus {
-                                        tutorialManager.nextStep()
-                                    }
-                                } label: {
-                                    Text(LocalizedStringKey("Start Your First Workout"))
-                                        .font(.title3)
-                                        .bold()
-                                        .foregroundColor(.white)
-                                        .padding(.vertical, 20)
-                                        .frame(maxWidth: .infinity)
-                                        .background(Color.blue)
-                                        .cornerRadius(16)
-                                        .shadow(color: .blue.opacity(0.6), radius: isPulsing ? 15 : 5, x: 0, y: isPulsing ? 8 : 2)
-                                        .scaleEffect(isPulsing ? 1.03 : 0.97)
-                                        // ИСПРАВЛЕНИЕ: Анимация только для визуала кнопки, а не её позиции
-                                        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isPulsing)
-                                }
-                                .padding(.top, 10)
-                                .onAppear {
-                                    // ИСПРАВЛЕНИЕ: Минимальная задержка, чтобы UI успел отрендерить фрейм до старта анимации
-                                    Task { @MainActor in
-                                        try? await Task.sleep(nanoseconds: 100_000_000)
-                                        isPulsing = true
-                                    }
-                                }
-                                .spotlight(
+                                                                    showAddWorkout = true
+                                                                    if tutorialManager.currentStep == .tapPlus {
+                                                                        tutorialManager.nextStep()
+                                                                    }
+                                                                } label: {
+                                                                    Text(LocalizedStringKey("Start Your First Workout"))
+                                                                        .font(.title3)
+                                                                        .bold()
+                                                                        .foregroundColor(.white)
+                                                                        .padding(.vertical, 20)
+                                                                        .frame(maxWidth: .infinity)
+                                                                        .background(Color.blue)
+                                                                        .cornerRadius(16)
+                                                                        .shadow(color: .blue.opacity(0.6), radius: isPulsing ? 15 : 5, x: 0, y: isPulsing ? 8 : 2)
+                                                                        .scaleEffect(isPulsing ? 1.03 : 0.97)
+                                                                        .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isPulsing)
+                                                                }
+                                                                .padding(.top, 10)
+                                                                .onAppear {
+                                                                    Task { @MainActor in
+                                                                        try? await Task.sleep(nanoseconds: 100_000_000)
+                                                                        isPulsing = true
+                                                                    }
+                                                                }
+                                                                .onDisappear {
+                                                                    isPulsing = false
+                                                                }
+                                                                .spotlight(
                                     step: .tapPlus,
                                     manager: tutorialManager,
                                     text: "Tap here to create your first workout!",
@@ -152,7 +151,7 @@ struct OverviewView: View {
             .navigationTitle(LocalizedStringKey("Overview"))
             .onAppear {
                 // Инициируем обновление кэша (выполняется в фоне)
-                viewModel.refreshAllCaches(container: context.container)
+                viewModel.refreshAllCaches()
             }
             // --- НАВИГАЦИЯ ---
             .navigationDestination(isPresented: $navigateToNewWorkout) {
@@ -373,10 +372,8 @@ struct OverviewView: View {
     // --- Subviews ---
     
 
-
     private var recoverySection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            // Заголовок работает как кнопка "Перейти"
             Button {
                 navigateToDetailedRecovery = true
             } label: {
@@ -407,23 +404,8 @@ struct OverviewView: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
             } else {
-                // Переключатель между 2D и 3D видами
-                Picker(LocalizedStringKey("View Mode"), selection: $use3DHeatmap.animation(.easeInOut)) {
-                    Text("2D").tag(false)
-                    Text("3D").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .padding(.bottom, 8)
-                
-                Group {
-                    if use3DHeatmap {
-                        Body3DHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
-                            .frame(height: 500)
-                    } else {
-                        BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
-                    }
-                }
-                .transition(.opacity) // Добавлена анимация растворения при переключении
+                // Оставляем только 2D версию, убрав Picker переключения
+                BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true)
             }
         }
         .padding()

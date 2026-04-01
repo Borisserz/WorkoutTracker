@@ -1,15 +1,19 @@
-//
 //  RestTimerView.swift
 //  WorkoutTracker
 //
 
 internal import SwiftUI
+import Combine // 🎼 ИСПРАВЛЕНИЕ: Добавлен импорт фреймворка Combine
 
 struct RestTimerView: View {
     @EnvironmentObject var timerManager: RestTimerManager
     
     // Анимация пульсации для завершения
     @State private var isPulsing = false
+    
+    // 🎼 МАЭСТРО: Локальное состояние для отображения времени.
+    // Теперь только этот View будет обновляться каждую секунду, спасая остальные экраны.
+    @State private var localTimeRemaining: Int = 0
     
     var body: some View {
         if timerManager.isRestTimerActive {
@@ -21,7 +25,8 @@ struct RestTimerView: View {
                         .foregroundColor(timerManager.restTimerFinished ? .green : .white)
                         .symbolEffect(.bounce, value: timerManager.restTimerFinished)
                     
-                    Text(timerManager.restTimerFinished ? "DONE" : timeString(time: timerManager.restTimeRemaining))
+                    // ИСПРАВЛЕНИЕ: Берем время из локального стейта
+                    Text(timerManager.restTimerFinished ? "DONE" : timeString(time: localTimeRemaining))
                         .font(.title3.monospacedDigit())
                         .bold()
                         .foregroundColor(.white)
@@ -94,6 +99,15 @@ struct RestTimerView: View {
                 } else {
                     isPulsing = false
                 }
+            }
+            // 🎼 МАЭСТРО: Подписываемся на Publisher времени здесь.
+            // Это вызывает инвалидацию только RestTimerView, а не всего приложения.
+            .onReceive(timerManager.timeRemainingSubject) { time in
+                self.localTimeRemaining = time
+            }
+            .onAppear {
+                // Присваиваем начальное значение при появлении View
+                self.localTimeRemaining = timerManager.timeRemainingSubject.value
             }
         }
     }

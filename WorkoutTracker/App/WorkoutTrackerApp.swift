@@ -1,3 +1,4 @@
+//
 //  WorkoutTrackerApp.swift
 //  WorkoutTracker
 //
@@ -18,6 +19,9 @@ struct WorkoutTrackerApp: App {
     // НОВЫЙ МЕНЕДЖЕР ТАЙМЕРА
     @StateObject private var timerManager = RestTimerManager()
     
+    // ИСПРАВЛЕНИЕ: Менеджер единиц измерения. Создаем его 1 раз на уровне приложения
+    @StateObject private var unitsManager = UnitsManager.shared
+    
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("appearanceMode") private var appearanceMode: String = "system"
     
@@ -36,8 +40,8 @@ struct WorkoutTrackerApp: App {
     
     init() {
         do {
-            // ИСПРАВЛЕНИЕ: Добавлены WeightEntry и MuscleColorPreference в единый контейнер данных
-            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self)
+            // ИСПРАВЛЕНИЕ: Добавлен BodyMeasurement в контейнер данных
+            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self, BodyMeasurement.self)
             databaseLoadError = nil
         } catch {
             print("Could not create ModelContainer: \(error)")
@@ -62,30 +66,54 @@ struct WorkoutTrackerApp: App {
                 .environmentObject(viewModel)
                 .environmentObject(tutorialManager)
                 .environmentObject(timerManager)
+                .environmentObject(unitsManager)
                 .onAppear {
-                                    // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ
-                                    LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
-                                    
-                                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                                    viewModel.checkAndGenerateDefaultPresets(container: container)
-                                    
-                                    // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
-                                    MuscleColorManager.shared.load(context: container.mainContext)
+                    // ОПТИМИЗАЦИЯ SWIFT 6: Оборачиваем в Task для безопасной инициализации
+                    Task {
+                        // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ (MainActor, так как метод требует этого)
+                        await MainActor.run {
+                            LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
+                        }
+                        
+                        // ИЗМЕНЕНО: Инъекция ModelContainer в ViewModel
+                        await MainActor.run {
+                            viewModel.modelContainer = container
+                            
+                            // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
+                            viewModel.checkAndGenerateDefaultPresets()
+                            
+                            // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
+                            MuscleColorManager.shared.load(context: container.mainContext)
+                        }
+                        
+                        // 3. ПРОГРЕВ КЭША SVG (Выполняем на MainActor, но асинхронно, с паузами, чтобы не фризить UI)
+                        // Так как Path должен создаваться на MainActor.
+                        let allMuscles = BodyData.frontMuscles + BodyData.backMuscles + BodyData.frontMusclesFemale + BodyData.backMusclesFemale
+                        for muscle in allMuscles {
+                            for pathStr in muscle.paths {
+                                await MainActor.run {
+                                    _ = SVGParser.path(from: pathStr) // Кэшируем
                                 }
-                                .onOpenURL { url in
-                                    // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                                    if viewModel.importPreset(from: url, container: container) {
-                                        showImportAlert = true
-                                    }
-                                }
-                                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
-                                    if let url = userActivity.webpageURL {
-                                        // ИСПРАВЛЕНИЕ: Передаем container напрямую
-                                        if viewModel.importPreset(from: url, container: container) {
-                                            showImportAlert = true
-                                        }
-                                    }
-                                }
+                                // Небольшая пауза, чтобы дать UI возможность перерисоваться (избегаем фризов)
+                                try? await Task.sleep(nanoseconds: 1_000_000)
+                            }
+                        }
+                    }
+                }
+                .onOpenURL { url in
+                    // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
+                    if viewModel.importPreset(from: url) {
+                        showImportAlert = true
+                    }
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                    if let url = userActivity.webpageURL {
+                        // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
+                        if viewModel.importPreset(from: url) {
+                            showImportAlert = true
+                        }
+                    }
+                }
                 .alert("Template Imported!", isPresented: $showImportAlert) {
                     Button("OK", role: .cancel) { }
                 } message: {
@@ -93,9 +121,10 @@ struct WorkoutTrackerApp: App {
                 }
                 .animation(.default, value: hasCompletedOnboarding)
                 .preferredColorScheme(colorScheme)
-                .onChange(of: scenePhase) { newPhase in
+                .onChange(of: scenePhase) { _, newPhase in
                     if newPhase == .active {
-                        UIApplication.shared.applicationIconBadgeNumber = 0
+                        // ОПТИМИЗАЦИЯ SWIFT 6: Использование нового API для бейджей
+                        UNUserNotificationCenter.current().setBadgeCount(0)
                         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
                     }
                 }

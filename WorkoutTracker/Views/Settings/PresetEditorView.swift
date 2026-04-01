@@ -23,7 +23,7 @@ struct PresetEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @EnvironmentObject private var viewModel: WorkoutViewModel
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     @State var preset: WorkoutPreset?
     
@@ -296,7 +296,7 @@ struct PresetExerciseEditor: View {
     let exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
-    @StateObject private var unitsManager = UnitsManager.shared
+@EnvironmentObject var unitsManager: UnitsManager
     
     // Локальное состояние для редактирования
     @State private var setsCount: Int = 1
@@ -487,6 +487,7 @@ struct PresetExerciseEditor: View {
         
         // ИСПРАВЛЕНИЕ SwiftData: Удаляем старые сеты из контекста, чтобы не создавать сиротские объекты
         if let context = exercise.modelContext {
+         
             for set in exercise.setsList {
                 context.delete(set)
             }
@@ -509,6 +510,7 @@ struct PresetExerciseEditor: View {
             
             // ИСПРАВЛЕНИЕ SwiftData: Сначала вставляем в контекст (если он доступен)
             if let context = exercise.modelContext {
+           
                 context.insert(newSet)
             }
             
@@ -517,6 +519,9 @@ struct PresetExerciseEditor: View {
         
         exercise.setsList = newSets
         exercise.updateAggregates() // Обновляем агрегаты сразу, чтобы UI отрисовал изменения
+        if let context = exercise.modelContext {
+               try? context.save() // <--- ПРИНУДИТЕЛЬНОЕ СОХРАНЕНИЕ
+           }
         onSave(exercise)
         dismiss()
     }

@@ -2,7 +2,6 @@
 //  Constants.swift
 //  WorkoutTracker
 //
-
 import Foundation
 
 public enum Constants {
@@ -20,7 +19,17 @@ public enum Constants {
         case hasSeenTutorial_Final_v8
         case hasMigratedToSwiftData_v2
         case widget_data
-        case restEndTime // Used for Rest Timer persistence
+        case restEndTime
+        case aiCoachTone
+        case hasCompletedOnboarding
+        case userAvatar
+        case exerciseNotes = "ExerciseNotes"
+        case muscleColors = "MuscleColors"
+    }
+    
+    /// Default values and keys for AI integrations
+    public enum AIConstants {
+        public static let defaultTone = "Мотивационный"
     }
     
     /// Identifiers for local notifications and notification center events

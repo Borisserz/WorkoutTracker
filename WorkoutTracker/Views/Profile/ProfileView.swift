@@ -2,6 +2,10 @@
 //  ProfileView.swift
 //  WorkoutTracker
 //
+//
+//  ProfileView.swift
+//  WorkoutTracker
+//
 
 internal import SwiftUI
 import SwiftData
@@ -17,15 +21,17 @@ struct ProfileView: View {
     // Вытягиваем историю веса напрямую из БД
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     
-    @AppStorage("userName") private var userName = "Fitness Enthusiast"
-    @AppStorage("userAvatar") private var userAvatar = "🦍"
-    @AppStorage("userBodyWeight") private var userBodyWeight = 75.0  // Хранится в кг
-    @AppStorage("userGender") private var userGender = "male" // "male" or "female"
+    // ИСПРАВЛЕНИЕ: Храним пустые значения, чтобы не засорять БД дефолтным хардкодом
+    @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
+    @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = ""
+    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 0.0
+    @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
     
-    @ObservedObject private var unitsManager = UnitsManager.shared
+    @EnvironmentObject var unitsManager: UnitsManager
     
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false
+    @State private var showingMeasurements = false
     
     // State для редактирования веса
     @State private var showEditWeight = false
@@ -55,7 +61,8 @@ struct ProfileView: View {
             totalDistance: stats.totalDistance,
             earlyWorkouts: stats.earlyWorkouts,
             nightWorkouts: stats.nightWorkouts,
-            streak: currentStreak
+            streak: currentStreak,
+            unitsManager: unitsManager
         )
         
         let container = modelContext.container
@@ -66,7 +73,7 @@ struct ProfileView: View {
             )
             
             let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
-            let records = StatisticsManager.getAllPersonalRecords(workouts: bgWorkouts)
+            let records = StatisticsManager.getAllPersonalRecords(workouts: bgWorkouts, unitsManager: UnitsManager.shared)
             
             // Вычисляем AI прогноз
             let forecasts = AnalyticsManager.getProgressForecast(workouts: bgWorkouts)
@@ -103,7 +110,8 @@ struct ProfileView: View {
                                         .clipShape(Circle())
                                         .overlay(Circle().stroke(Color.blue, lineWidth: 3))
                                 } else {
-                                    Text(userAvatar)
+                                    // ИСПРАВЛЕНИЕ: Плейсхолдер 🦍 показывается только если строка пустая
+                                    Text(userAvatar.isEmpty ? "🦍" : userAvatar)
                                         .font(.system(size: 60))
                                         .frame(width: 100, height: 100)
                                         .background(Color.gray.opacity(0.1))
@@ -124,14 +132,16 @@ struct ProfileView: View {
                             }
                             
                             VStack(spacing: 8) {
-                                // ИМЯ (Editable)
-                                TextField("Name", text: $userName)
+                                // ИМЯ (Editable) - ИСПРАВЛЕНИЕ: Добавлен плейсхолдер
+                                TextField("Fitness Enthusiast", text: $userName)
                                     .font(.title2)
                                     .bold()
                                     .multilineTextAlignment(.center)
                                 
-                                // ВЕС под ником (Editable)
-                                let convertedWeight = unitsManager.convertFromKilograms(userBodyWeight)
+                                // ВЕС под ником (Editable) - ИСПРАВЛЕНИЕ: Отображаем 75.0 если вес 0.0
+                                let displayWeight = userBodyWeight == 0.0 ? 75.0 : userBodyWeight
+                                let convertedWeight = unitsManager.convertFromKilograms(displayWeight)
+                                
                                 HStack(spacing: 8) {
                                     Text("\(LocalizationHelper.shared.formatDecimal(convertedWeight)) \(unitsManager.weightUnitString())")
                                         .font(.title3)
@@ -151,20 +161,37 @@ struct ProfileView: View {
                                 .background(Color.blue.opacity(0.1))
                                 .cornerRadius(8)
                                 
-                                // Кнопка просмотра истории веса
-                                Button {
-                                    showingWeightHistory = true
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "chart.line.uptrend.xyaxis")
-                                        Text(LocalizedStringKey("View Weight History"))
+                                // Кнопка просмотра истории веса и замеров
+                                HStack(spacing: 12) {
+                                    Button {
+                                        showingWeightHistory = true
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "scalemass")
+                                            Text(LocalizedStringKey("Weight Tracking"))
+                                        }
+                                        .font(.caption)
+                                        .foregroundColor(.blue)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(8)
                                     }
-                                    .font(.caption)
-                                    .foregroundColor(.blue)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(Color.blue.opacity(0.1))
-                                    .cornerRadius(8)
+                                    
+                                    Button {
+                                        showingMeasurements = true
+                                    } label: {
+                                        HStack {
+                                            Image(systemName: "ruler")
+                                            Text(LocalizedStringKey("Body Measurements"))
+                                        }
+                                        .font(.caption)
+                                        .foregroundColor(.purple)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 6)
+                                        .background(Color.blue.opacity(0.1))
+                                        .cornerRadius(8)
+                                    }
                                 }
                             }
                         }
@@ -186,7 +213,7 @@ struct ProfileView: View {
                                         .foregroundColor(.white)
                                 }
                                 
-                                Text("In \(forecast.timeframe) your \(forecast.exerciseName) is predicted to reach \(weightStr) \(unitStr)!")
+                                Text(String(localized: "In \(forecast.timeframe) your \(forecast.exerciseName) is predicted to reach \(weightStr) \(unitStr)!"))
                                     .font(.subheadline)
                                     .foregroundColor(.white.opacity(0.9))
                                     .minimumScaleFactor(0.8)
@@ -271,25 +298,29 @@ struct ProfileView: View {
                 .sheet(isPresented: $showingWeightHistory) {
                     WeightHistoryView()
                 }
+                .sheet(isPresented: $showingMeasurements) {
+                    BodyMeasurementsView()
+                }
                 .alert(LocalizedStringKey("Update Body Weight"), isPresented: $showEditWeight) {
                     TextField("Weight", text: $newWeightString)
                         .keyboardType(.decimalPad)
                     Button("Save") {
-                        if let val = Double(newWeightString.replacingOccurrences(of: ",", with: ".")) {
-                            userBodyWeight = unitsManager.convertToKilograms(val)
-                            let newEntry = WeightEntry(date: Date(), weight: userBodyWeight)
-                            modelContext.insert(newEntry)
-                        }
-                    }
+                           let formatter = NumberFormatter()
+                           formatter.numberStyle = .decimal
+                           if let number = formatter.number(from: newWeightString)?.doubleValue ?? Double(newWeightString.replacingOccurrences(of: ",", with: ".")) {
+                               userBodyWeight = unitsManager.convertToKilograms(number)
+                               let newEntry = WeightEntry(date: Date(), weight: userBodyWeight)
+                               modelContext.insert(newEntry)
+                           }
+                       }
                     Button("Cancel", role: .cancel) { }
                 } message: {
                     Text("Enter your current weight in \(unitsManager.weightUnitString())")
                 }
                 .onAppear {
-                    // Загружаем картинку профиля
                     profileImage = ProfileImageManager.shared.loadImage()
                     
-                    if weightHistory.isEmpty {
+                    if weightHistory.isEmpty && userBodyWeight > 0.0 {
                         let initialEntry = WeightEntry(date: Date(), weight: userBodyWeight)
                         modelContext.insert(initialEntry)
                     }
@@ -313,6 +344,14 @@ struct ProfileView: View {
         }
     }
     
+    func getColor(for type: ExerciseType) -> Color {
+        switch type {
+        case .strength: return .blue
+        case .cardio: return .orange
+        case .duration: return .purple
+        }
+    }
+}
     func getIcon(for type: ExerciseType) -> String {
         switch type {
         case .strength: return "dumbbell.fill"
@@ -328,7 +367,7 @@ struct ProfileView: View {
         case .duration: return .purple
         }
     }
-}
+
 
 // MARK: - Медаль-Ачивка с Градацией (Матовый дизайн)
 struct AchievementBadge: View {
@@ -574,7 +613,7 @@ struct AchievementPopupView: View {
             let renderer = ImageRenderer(content: MilestoneShareCard(
                 title: LocalizedStringKey("Unlocked Achievements"),
                 subtitle: achievement.title,
-                descriptionText: achievement.description, // ПЕРЕДАЕМ ОПИСАНИЕ СЮДА
+                descriptionText: achievement.description,
                 icon: achievement.icon,
                 colors: angularColors
             ))

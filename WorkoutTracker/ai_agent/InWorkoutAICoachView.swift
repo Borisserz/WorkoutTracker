@@ -1,11 +1,16 @@
+//
+//  InWorkoutAICoachView.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import SwiftData
 
 struct InWorkoutAICoachView: View {
     @Bindable var workout: Workout
-    @StateObject private var viewModel = InWorkoutAICoachViewModel()
+    @ObservedObject var viewModel: InWorkoutAICoachViewModel // <-- ТЕПЕРЬ ОН ПРИХОДИТ СНАРУЖИ
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var workoutViewModel: WorkoutViewModel // Нужен для доступа к каталогу
+    @EnvironmentObject var workoutViewModel: WorkoutViewModel
     
     @FocusState private var isInputFocused: Bool
     
@@ -52,7 +57,7 @@ struct InWorkoutAICoachView: View {
                 }
                 .onTapGesture { isInputFocused = false }
                 .scrollDismissesKeyboard(.interactively)
-                .onChange(of: viewModel.chatHistory.count) { _ in scrollToBottom(proxy: proxy) }
+                .onChange(of: viewModel.chatHistory.count) { _, _ in scrollToBottom(proxy: proxy) }
                 .onChange(of: isInputFocused) { _, focused in
                     if focused {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { scrollToBottom(proxy: proxy) }
@@ -67,7 +72,6 @@ struct InWorkoutAICoachView: View {
     // MARK: - Input Area
     private var inputArea: some View {
         VStack(spacing: 0) {
-            // ДИНАМИЧЕСКИЕ ЧИПСЫ В ЗАВИСИМОСТИ ОТ СТАТУСА
             let quickActions = workout.isActive ? [
                 "Замени следующее упражнение",
                 "Тяжело, снизь веса",
@@ -169,7 +173,6 @@ struct InWorkoutChatBubble: View {
                     .background(message.isUser ? Color.accentColor : Color(UIColor.secondarySystemBackground))
                     .clipShape(ChatBubbleShape(isUser: message.isUser))
                 
-                // ПОКАЗЫВАЕМ КАРТОЧКУ ЭКШЕНА ТОЛЬКО ЕСЛИ ТРЕНИРОВКА АКТИВНА
                 if let adjustment = message.adjustment, workout.isActive {
                     WorkoutAdjustmentCardView(adjustment: adjustment, workout: workout)
                         .padding(.top, 4)
@@ -181,13 +184,13 @@ struct InWorkoutChatBubble: View {
     }
 }
 
-// MARK: - ПРОДВИНУТАЯ ЛОГИКА МУТАЦИИ ТРЕНИРОВКИ
 struct WorkoutAdjustmentCardView: View {
     let adjustment: InWorkoutResponseDTO
     @Bindable var workout: Workout
     
     @State private var isApplied = false
     @Environment(\.modelContext) private var context
+    @EnvironmentObject var workoutViewModel: WorkoutViewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -223,7 +226,7 @@ struct WorkoutAdjustmentCardView: View {
                 .foregroundColor(.white)
                 .cornerRadius(12)
             }
-            .disabled(isApplied || !workout.isActive) // Блокируем если тренировка завершена
+            .disabled(isApplied || !workout.isActive)
         }
         .padding()
         .background(.ultraThinMaterial).environment(\.colorScheme, .dark)
@@ -244,108 +247,11 @@ struct WorkoutAdjustmentCardView: View {
         }
     }
     
-    // САМОЕ ВАЖНОЕ: ПРАВИЛЬНАЯ МУТАЦИЯ ДЕРЕВА ОБЪЕКТОВ
     private func applyChanges() {
-        guard !isApplied, workout.isActive else { return }
-        
-        switch adjustment.actionType {
-        case "reduceRemainingLoad":
-            let percentage = adjustment.valuePercentage ?? 10.0
-            let multiplier = 1.0 - (percentage / 100.0)
-            for ex in workout.exercises where !ex.isCompleted {
-                for set in ex.setsList where !set.isCompleted {
-                    if let currentW = set.weight, currentW > 0 {
-                        let newWeight = currentW * multiplier
-                        set.weight = round(newWeight / 2.5) * 2.5
-                    }
-                }
-                ex.updateAggregates()
-            }
-            
-        case "skipExercise":
-            guard let targetName = adjustment.targetExerciseName,
-                  let targetEx = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() && !$0.isCompleted }) else { break }
-            
-            let hasCompletedSets = targetEx.setsList.contains(where: { $0.isCompleted })
-            
-            if hasCompletedSets {
-                // Удаляем только невыполненные
-                for set in targetEx.setsList where !set.isCompleted { context.delete(set) }
-                targetEx.setsList.removeAll(where: { !$0.isCompleted })
-                targetEx.isCompleted = true
-            } else {
-                // Если ничего не делали, удаляем полностью
-                if let idx = workout.exercises.firstIndex(of: targetEx) {
-                    workout.exercises.remove(at: idx)
-                    context.delete(targetEx)
-                }
-            }
-            
-        case "dropWeight":
-            guard let targetName = adjustment.targetExerciseName,
-                  let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }) else { break }
-            
-            if let nextSet = targetExercise.setsList.sorted(by: { $0.index < $1.index }).first(where: { !$0.isCompleted }) {
-                if let currentWeight = nextSet.weight, let percentage = adjustment.valuePercentage {
-                    let newWeight = currentWeight * (1.0 - (percentage / 100.0))
-                    nextSet.weight = round(newWeight / 2.5) * 2.5
-                }
-            }
-            targetExercise.updateAggregates()
-            
-        case "addSet":
-            guard let targetName = adjustment.targetExerciseName,
-                  let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }) else { break }
-            
-            let newIndex = (targetExercise.setsList.map { $0.index }.max() ?? 0) + 1
-            let newSet = WorkoutSet(index: newIndex, weight: adjustment.valueWeightKg ?? targetExercise.firstSetWeight, reps: adjustment.valueReps ?? targetExercise.firstSetReps, isCompleted: false, type: .failure)
-            context.insert(newSet)
-            targetExercise.setsList.append(newSet)
-            targetExercise.updateAggregates()
-            
-        case "replaceExercise":
-            guard let targetName = adjustment.targetExerciseName,
-                  let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }),
-                  let newName = adjustment.replacementExerciseName else { break }
-            
-            let completedSetsCount = targetExercise.setsList.filter({ $0.isCompleted }).count
-            let totalSetsCount = targetExercise.setsList.count
-            let remainingSets = totalSetsCount - completedSetsCount
-            
-            // Создаем новое упражнение
-            let newExWeight = adjustment.valueWeightKg ?? targetExercise.firstSetWeight
-            let newExReps = adjustment.valueReps ?? targetExercise.firstSetReps
-            let newExSets = remainingSets > 0 ? remainingSets : 3
-            
-            let newExercise = Exercise(name: newName, muscleGroup: targetExercise.muscleGroup, type: targetExercise.type, sets: newExSets, reps: newExReps, weight: newExWeight)
-            context.insert(newExercise)
-            
-            if completedSetsCount == 0 {
-                // Если не сделали ни одного подхода — просто заменяем текущее в массиве и удаляем старое
-                if let idx = workout.exercises.firstIndex(of: targetExercise) {
-                    workout.exercises[idx] = newExercise
-                    context.delete(targetExercise)
-                }
-            } else {
-                // Если уже начали делать, обрезаем старое и ставим новое после него
-                for set in targetExercise.setsList where !set.isCompleted { context.delete(set) }
-                targetExercise.setsList.removeAll(where: { !$0.isCompleted })
-                targetExercise.isCompleted = true
-                targetExercise.updateAggregates()
-                
-                if let idx = workout.exercises.firstIndex(of: targetExercise) {
-                    workout.exercises.insert(newExercise, at: idx + 1)
-                }
-            }
-            
-        default:
-            break
+            guard !isApplied, workout.isActive else { return }
+        workoutViewModel.applyAIAdjustment(adjustment, to: workout)
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+            withAnimation { isApplied = true }
         }
-        
-        try? context.save()
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-        
-        withAnimation { isApplied = true }
-    }
 }

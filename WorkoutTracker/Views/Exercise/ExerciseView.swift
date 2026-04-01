@@ -317,7 +317,7 @@ struct ExerciseView: View {
            withAnimation {
                for item in exercisesToDelete {
                    // ИСПРАВЛЕНИЕ: Передаем container вместо context
-                   viewModel.deleteExercise(name: item.name, category: item.category, container: context.container)
+                   viewModel.deleteExercise(name: item.name, category: item.category) 
                }
                exercisesToDelete = []
            }

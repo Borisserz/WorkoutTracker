@@ -2,8 +2,6 @@
 //  DetailedRecoveryView.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 26.12.25.
-//
 
 internal import SwiftUI
 import SwiftData
@@ -19,11 +17,9 @@ struct MuscleStatusItem: Identifiable {
 struct DetailedRecoveryView: View {
     
     // MARK: - Environment & Storage
-    @Environment(\.modelContext) private var context // ДОБАВЛЕНО: Для доступа к базе в фоне
+    @Environment(\.modelContext) private var context
     @EnvironmentObject var viewModel: WorkoutViewModel
     @EnvironmentObject var tutorialManager: TutorialManager
-    
-    // ИСПРАВЛЕНИЕ: Убрали @Query! Нам не нужно грузить 5 лет тренировок в оперативную память UI-потока.
     
     // 1. Долгосрочное хранилище
     @AppStorage("userRecoveryHours") private var storedRecoveryHours: Double = 48.0
@@ -31,8 +27,8 @@ struct DetailedRecoveryView: View {
     // 2. Локальное состояние для плавности интерфейса
     @State private var localRecoveryHours: Double = 48.0
     
-    // 3. Задача для фонового пересчета
-    @State private var calculationTask: Task<Void, Never>?
+    // 🎼 МАЭСТРО: Кэшируем тренировки в оперативной памяти, чтобы не насиловать базу данных при скролле ползунка
+    @State private var inMemoryWorkouts: [Workout] = []
     
     // MARK: - Data Source
     private var musclesData: [MuscleStatusItem] {
@@ -59,106 +55,93 @@ struct DetailedRecoveryView: View {
         // Инициализация при открытии экрана
         .onAppear {
             localRecoveryHours = storedRecoveryHours
-            recalculateRecoveryInBackground(hours: localRecoveryHours, debounce: false)
+            
+            // 🎼 Загружаем ОДИН раз
+            loadWorkoutsIntoMemory()
+            
+            // Считаем первичное состояние из ОЗУ
+            recalculateRecoveryLocal(hours: localRecoveryHours)
         }
         
-        // СЛЕЖЕНИЕ ЗА ИЗМЕНЕНИЯМИ (Live Update)
+        // СЛЕЖЕНИЕ ЗА ИЗМЕНЕНИЯМИ (Live Update из ОЗУ)
         .onChange(of: localRecoveryHours) { _, newValue in
-            recalculateRecoveryInBackground(hours: newValue, debounce: true)
+            recalculateRecoveryLocal(hours: newValue)
         }
     }
     
-    // MARK: - Background Calculation
+    // MARK: - Local Memory Calculation
     
-    private func recalculateRecoveryInBackground(hours: Double, debounce: Bool) {
-        // Отменяем предыдущую задачу, если слайдер все еще двигается
-        calculationTask?.cancel()
+    /// Загружает тренировки за максимально возможный период (96 часов + 24 часа запас)
+    private func loadWorkoutsIntoMemory() {
+        // Максимальное значение слайдера (96) + запас на длительность самой тренировки (24)
+        let cutoffDate = Date.now.addingTimeInterval(-((96.0 + 24.0) * 3600))
         
-        let container = context.container // Берем контейнер для фона
+        let descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= cutoffDate },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
         
-        calculationTask = Task.detached(priority: .userInitiated) {
-            // Дебаунс: ждем 150мс, чтобы не спамить базу данных при каждом пикселе движения слайдера
-            if debounce {
-                try? await Task.sleep(nanoseconds: 150_000_000)
-            }
-            guard !Task.isCancelled else { return }
-            
-            // Создаем фоновый контекст
-            let bgContext = ModelContext(container)
-            
-            // ОПТИМИЗАЦИЯ: Отсекаем старые тренировки. 
-            // Добавляем запас в 24 часа на длительность самой тренировки.
-            let cutoffDate = Date.now.addingTimeInterval(-((hours + 24) * 3600))
-            
-            let descriptor = FetchDescriptor<Workout>(
-                predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= cutoffDate },
-                sortBy: [SortDescriptor(\.date, order: .reverse)]
-            )
-            
-            guard let fetchedWorkouts = try? bgContext.fetch(descriptor) else { return }
-            guard !Task.isCancelled else { return }
-            
-            // Вычисляем восстановление на основе фоновых данных
-            let newRecoveryStatus = RecoveryCalculator.calculate(hours: hours, workouts: fetchedWorkouts)
-            
-            // Возвращаем результат на главный поток
-            await MainActor.run {
-                viewModel.recoveryStatus = newRecoveryStatus
-            }
-        }
+        inMemoryWorkouts = (try? context.fetch(descriptor)) ?? []
+    }
+    
+    /// 🎼 Быстрая математика в памяти, никаких обращений к диску
+    private func recalculateRecoveryLocal(hours: Double) {
+        // Калькулятор берет данные напрямую из inMemoryWorkouts (0 задержек, 0 I/O)
+        let newRecoveryStatus = RecoveryCalculator.calculate(hours: hours, workouts: inMemoryWorkouts)
+        viewModel.recoveryStatus = newRecoveryStatus
     }
     
     // MARK: - View Components
     private var settingsSection: some View {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(LocalizedStringKey("Recovery Settings")).font(.headline)
+        VStack(alignment: .leading, spacing: 10) {
+            Text(LocalizedStringKey("Recovery Settings")).font(.headline)
+            
+            VStack {
+                HStack {
+                    Text(LocalizedStringKey("Full Recovery Time:"))
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(LocalizedStringKey("\(Int(localRecoveryHours)) hours"))
+                        .bold()
+                        .foregroundColor(.blue)
+                }
                 
-                VStack {
-                    HStack {
-                        Text(LocalizedStringKey("Full Recovery Time:"))
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(LocalizedStringKey("\(Int(localRecoveryHours)) hours"))
-                            .bold()
-                            .foregroundColor(.blue)
-                    }
-                    
-                    Slider(
-                        value: $localRecoveryHours,
-                        in: 12...96,
-                        step: 4,
-                        onEditingChanged: { isEditing in
-                            if !isEditing {
-                                storedRecoveryHours = localRecoveryHours
-                            }
+                Slider(
+                    value: $localRecoveryHours,
+                    in: 12...96,
+                    step: 4,
+                    onEditingChanged: { isEditing in
+                        if !isEditing {
+                            storedRecoveryHours = localRecoveryHours
                         }
-                    )
-                    .tint(.blue)
-                }
-                .padding()
-                .background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(12)
-                
-                Text(LocalizedStringKey("Adjust this based on how fast you recover. Standard is 48h."))
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .padding(.horizontal, 5)
+                    }
+                )
+                .tint(.blue)
             }
-            .padding(.horizontal)
-            .padding(.top)
-            .spotlight(
-                step: .recoverySlider,
-                manager: tutorialManager,
-                text: "Adjust your recovery speed here. Tap to finish.",
-                alignment: .top,
-                yOffset: -20
-            )
-            .onTapGesture {
-                if tutorialManager.currentStep == .recoverySlider {
-                    tutorialManager.complete()
-                }
+            .padding()
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
+            
+            Text(LocalizedStringKey("Adjust this based on how fast you recover. Standard is 48h."))
+                .font(.caption)
+                .foregroundColor(.gray)
+                .padding(.horizontal, 5)
+        }
+        .padding(.horizontal)
+        .padding(.top)
+        .spotlight(
+            step: .recoverySlider,
+            manager: tutorialManager,
+            text: "Adjust your recovery speed here. Tap to finish.",
+            alignment: .top,
+            yOffset: -20
+        )
+        .onTapGesture {
+            if tutorialManager.currentStep == .recoverySlider {
+                tutorialManager.complete()
             }
         }
+    }
     
     private var muscleListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -232,15 +215,5 @@ struct MuscleStatusRow: View {
         if percentage >= 80 { return NSLocalizedString("Ready to Train", comment: "") }
         if percentage >= 50 { return NSLocalizedString("Recovering...", comment: "") }
         return NSLocalizedString("Exhausted", comment: "")
-    }
-}
-
-// MARK: - Preview
-
-#Preview {
-    NavigationStack {
-        DetailedRecoveryView()
-            .environmentObject(WorkoutViewModel())
-            .environmentObject(TutorialManager())
     }
 }

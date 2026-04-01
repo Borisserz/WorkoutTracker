@@ -1,8 +1,10 @@
 import Foundation
 
-@MainActor
-class DataManager {
+// 🎼 Убран @MainActor. Класс сделан final и Sendable, так как не имеет изменяемого состояния.
+// Теперь сложные операции экспорта честно отрабатывают в фоновых потоках.
+final class DataManager: Sendable {
     static let shared = DataManager()
+    
     private init() {}
     
     // Заглушки, чтобы не ломать старые вызовы
@@ -76,7 +78,6 @@ class DataManager {
         for workout in workouts {
             let workoutDate = dateFormatter.string(from: workout.date)
             let endTimeStr = workout.endTime != nil ? dateFormatter.string(from: workout.endTime!) : ""
-            // ИСПРАВЛЕНИЕ: Используем durationSeconds / 60
             csvLines.append("\(workout.id.uuidString),\"\(escapeCSV(workout.title))\",\(workoutDate),\(endTimeStr),\(workout.durationSeconds / 60),\(workout.icon),\(workout.isFavorite),\(workout.exercises.count)")
         }
         csvLines.append("")
