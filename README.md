@@ -1,12 +1,15 @@
+# WorkoutTracker 🏋
 
-# WorkoutTracker
-
-![iOS](https://img.shields.io/badge/iOS-16.1+-blue.svg)
-![Swift](https://img.shields.io/badge/Swift-5.9-orange.svg)
+![iOS](https://img.shields.io/badge/iOS-17.0+-blue.svg)
+![Swift](https://img.shields.io/badge/Swift-5.10-orange.svg)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-Framework-red.svg)
+![SwiftData](https://img.shields.io/badge/SwiftData-Database-blue.svg)
+![CoreML](https://img.shields.io/badge/CoreML_%26_Vision-AI-purple.svg)
 ![Architecture](https://img.shields.io/badge/Architecture-MVVM-green.svg)
 
-**WorkoutTracker** is a professional iOS application designed for physical activity monitoring, in-depth progress analytics, and muscle group recovery visualization. The project leverages modern Apple technologies (Live Activities, ActivityKit) combined with own engineering solutions, such as a own SVG parser.
+**WorkoutTracker** is a professional, AI-powered iOS application designed for physical activity monitoring, in-depth progress analytics, and muscle group recovery visualization. 
+
+Going beyond standard tracking, the app features a **Generative AI Coach** (powered by Gemini) and **Real-Time Computer Vision** to automatically count reps, analyze form, and control the app using hand gestures.
 
 ---
 
@@ -15,23 +18,23 @@
 <table>
   <tr>
     <td align="center"><b>Dashboard & Heatmap</b></td>
-    <td align="center"><b>Live Activity</b></td>
-    <td align="center"><b>Active Workout</b></td>
+  <td align="center"><b>Live Activity</b></td>
+    <td align="center"><b>Generative AI Coach</b></td>
   </tr>
   <tr>
     <td><img src="Screenshots/heatmap.png" width="250"></td>
     <td><img src="Screenshots/live_activity.png" width="250"></td>
-    <td><img src="Screenshots/workout_active.png" width="250"></td>
+    <td><img src="Screenshots/ai_coach.png" width="250" alt="Needs AI Screenshot"></td>
   </tr>
   <tr>
+    <td align="center"><b>Active Workout & Live Activity</b></td>
     <td align="center"><b>Progress Analytics</b></td>
-    <td align="center"><b>Muscle Recovery</b></td>
-    <td align="center"><b>Recomendations</b></td>
+    <td align="center"><b>Social Share Cards</b></td>
   </tr>
   <tr>
+    <td><img src="Screenshots/workout_active2.png" width="250"></td>
     <td><img src="Screenshots/stats.png" width="250"></td>
-    <td><img src="Screenshots/overview_chart.png" width="250"></td>
-    <td><img src="Screenshots/analytics_smart.png" width="250"></td>
+    <td><img src="Screenshots/share_card.png" width="250" alt="Needs Share Card Screenshot"></td>
   </tr>
 </table>
 
@@ -39,73 +42,74 @@
 
 ## Core Features
 
-### 1. Smart Body Heatmap
-* **Custom Rendering:** Utilizes a proprietary SVG path parser to render an interactive anatomical model.
-* **Dynamic Indicators:** Muscles are shaded in various gradients based on cumulative training volume and current fatigue levels.
-* **Gender Models:** Supports toggling between male and female anatomical models.
+### 1. AI-Powered Rep Tracking (CoreML & Vision)
+* **Real-time Pose Estimation:** Utilizes `VNHumanBodyPoseObservation` to track body mechanics, automatically counting reps for exercises like Squats, Bicep Curls, and Bench Presses.
+* **Gesture Controls:** Hands-free workout management. Show a "Victory" (✌️) gesture to complete a set or an "Open Palm" (✋) to cancel, powered by custom hand-pose heuristics.
+* **Voice Coach:** Integrated `AVSpeechSynthesizer` smoothly ducks background music (Spotify/Apple Music) to speak your reps and provide audio feedback ("Ready. Let's go!").
+* **Live Muscle Tension:** The anatomical heatmap updates in real-time, highlighting the specific muscles engaged during the current camera-tracked movement.
 
-### 2. Advanced Workout Tracking
-* **Real-time Logging:** Streamlined input for weights, repetitions, and RPE (Rate of Perceived Exertion).
-* **Supersets:** Ability to group exercises into supersets or circuits.
-* **Ghost Text:** Hints from previous sessions for every set to help maintain progressive overload.
-* **Rest Timer:** Interactive floating timer with quick adjustment controls (+30/-30 sec).
+### 2. Generative AI Coach (Gemini API)
+* **Smart Workout Builder:** Ask the AI to build a routine (e.g., "I have 45 mins and dumbbells, hit my chest") and instantly convert it into a trackable workout.
+* **In-Workout Adjustments:** Chat with the AI during your workout to swap exercises, drop weight, or add sets. The AI directly modifies your live workout state.
+* **Weekly Performance Reviews:** The AI analyzes your volume, PRs, and weak points over the last 7 days to generate personalized markdown reports.
+* **Proactive Feedback:** Hits a new PR? The AI automatically congratulates you and provides form tips based on the exact exercise.
 
-### 3. iOS Ecosystem Integration (Live Activities & Widgets)
-* **Dynamic Island:** Workout status and rest timers are displayed in the "Island" on iPhone 14 Pro and newer.
-* **Lock Screen Widgets:** View current progress at a glance without unlocking the device.
-* **Home Screen Widgets:** Dedicated widgets for workout streaks and activity charts.
+### 3. Smart Body Heatmap
+* **Custom Rendering:** Utilizes a proprietary SVG path parser to render interactive male and female anatomical models.
+* **Fatigue & Recovery:** Muscles are dynamically shaded based on cumulative training volume, RPE (Effort), and time decay (48h-96h recovery windows).
 
-### 4. Deep Analytics
-* **Weak Point Analysis:** The system automatically identifies under-trained muscle groups based on the last 30 days of history.
-* **Progress Forecasting:** Utilizes linear regression algorithms to predict future strength metrics (1RM).
-* **Weight History:** Built-in body mass tracker with intuitive trend charts.
-* **Interactive Calendar:** Visualizes workout frequency and consistency by month.
+### 4. Advanced Tracking & Analytics
+* **Rich Data Input:** Streamlined input for weights, reps, distance, time, and RPE. Full support for supersets and circuits.
+* **Body Measurements:** Track weight, biceps, chest, waist, and more with interactive `Swift Charts`.
+* **Progress Forecasting:** Linear regression algorithms predict future 1RM metrics over 30/90 day periods.
+* **Weak Point Analysis:** Identifies under-trained muscle groups and suggests frequency or volume adjustments.
 
-### 5. Gamification
-* **XP & Levels:** Experience point system awarded for every completed workout.
-* **Achievements:** Over 20 unlockable achievements (from "First Step" to "100kg Club").
-* **Streaks:** Tracks training regularity to boost user motivation.
+### 5. Gamification & Ecosystem
+* **Live Activities & Dynamic Island:** Real-time rest timers and workout status right on the Lock Screen.
+* **Achievements System:** Unlockable badges (Bronze to Diamond) with custom confetti animations and shareable Image-Rendered social cards.
+* **Widgets:** Home screen widgets displaying weekly consistency and current streaks.
 
 ---
 
 ## Technical Stack
 
-* **SwiftUI:** Entire UI is built using a declarative approach.
-* **Combine:** Reactive data processing, including debounce implementation to minimize disk I/O when saving notes.
-* **ActivityKit & WidgetKit:** Powering Live Activities and Home/Lock Screen widgets.
-* **Swift Charts:** Complex visualizations for load distribution and weight history.
-* **Foundation (JSON/Codable):** Robust local data storage system (Privacy First) without external database dependencies.
-* **MVVM:** Clean architecture with a strict separation between business logic and views.
+Built with a strict adherence to modern Apple development paradigms:
+
+* **UI Framework:** 100% `SwiftUI` with custom view modifiers and advanced animations.
+* **Data Persistence:** `SwiftData` with background `@ModelActor` operations to prevent main-thread blocking and OOM crashes during heavy analytical calculations.
+* **Machine Learning:** `Vision` framework for pose estimation and `CoreML` for custom action classification windowing.
+* **Concurrency:** Swift 6 Concurrency (`async/await`, `Task`, `Actor`, `Sendable` structs) replacing GCD.
+* **State Management:** Clean `MVVM` Architecture, utilizing `Combine` for debounced search and sensor updates.
+* **System Integrations:** `ActivityKit` (Live Activities), `WidgetKit`, `AVFoundation` (Audio session management for Voice Coach), and `PhotosUI`.
+* **Localization:** Fully localized in English and Russian via `Localizable.xcstrings`.
 
 ---
 
-## Installation & Setup
+##  Installation & Setup
 
-To run this project, you will need **macOS** and **Xcode 15.0+**.
+To run this project, you will need **macOS** and **Xcode 15.0+** (iOS 17.0+ Simulator/Device required for SwiftData and Vision features).
 
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/Borisserz/WorkoutTracker.git
-   ```
-2. **Open the project:**
-   Locate `WorkoutTracker.xcodeproj` in the project folder and launch it.
-3. **Configure Signing & Capabilities:**
-   Select your Apple ID in the target settings to enable running the app on a physical device or simulator.
+
+2. **Setup API Keys:**
+   Locate `Secrets.swift` in the project and add your Google Gemini API Key:
+   ```swift
+   enum Secrets {
+       static let geminiApiKey = "YOUR_API_KEY_HERE"
+   }
+3. **Configure Signing:**
+   Open `WorkoutTracker.xcodeproj`, select your Apple ID in the target settings, and ensure the App Group (`group.com.borisdev.WorkoutTracker`) matches your developer account for WidgetKit support.
+
 4. **Run:**
-   Select a simulator (iPhone 14 or newer is recommended for Dynamic Island support) and press `Cmd + R`.
+   Select a physical device (recommended for Camera/Vision features) or simulator and press `Cmd + R`.
 
----
 
-## Data Import & Export
-The app supports full data portability:
-* **Export:** Save your entire history in JSON or CSV formats.
-* **Templates:** Share workout plans via custom Deep Links (URL Schemes).
-* **Backups:** Built-in automated local backup system.
+## License & Copyright
 
----
-
-## ⚖️ License & Copyright
-
-Copyright (c) 2025 [Boris Serzhanovich]. All rights reserved.
+Copyright (c) 2026 [Boris Serzhanovich]. All rights reserved.
 
 This project is for portfolio demonstration purposes only. The source code is not licensed for public or commercial use, redistribution, or modification without explicit permission from the author.
+
+
