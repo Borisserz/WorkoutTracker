@@ -174,10 +174,10 @@ struct MuscleMapping {
         "Chest":     ["chest"],
         "Back":      ["upper-back", "lower-back", "trapezius"],
         "Legs":      ["quadriceps", "hamstring", "gluteal", "calves", "adductors"],
-        "Shoulders": ["deltoids", "trapezius"],
+        "Shoulders": ["deltoids"],
         "Arms":      ["biceps", "triceps", "forearm"],
         "Core":      ["abs", "obliques"],
-        "Cardio":    ["quadriceps", "hamstring", "calves"]
+        "Cardio":    ["quadriceps", "hamstring", "calves", "cardio"]
     ]
     
     // MARK: - Logic

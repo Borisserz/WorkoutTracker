@@ -210,8 +210,7 @@ struct OverviewView: View {
     private var recoveryDict: [String: Int] {
         var dict = [String: Int]()
         for status in viewModel.recoveryStatus {
-            let slug = mapToSlug(status.muscleGroup)
-            dict[slug] = status.recoveryPercentage
+            dict[status.muscleGroup] = status.recoveryPercentage // Already a slug now
         }
         return dict
     }

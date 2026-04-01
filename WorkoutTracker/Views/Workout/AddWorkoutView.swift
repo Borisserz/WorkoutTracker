@@ -274,41 +274,40 @@ struct AddWorkoutView: View {
         }
     }
     
-    // 2. Логика запуска перенесена сюда
     private func startWorkout() {
         var exercisesToAdd: [Exercise] = []
-        
-        // ВАЖНО: Делаем глубокое копирование (duplicate), чтобы не изменять сам пресет
         if let preset = selectedPreset {
             exercisesToAdd = preset.exercises.map { $0.duplicate() }
         }
         
         let newWorkout = Workout(
-            title: title.isEmpty ? "New Workout" : title,
+            title: title.isEmpty ? LocalizationHelper.shared.formatWorkoutDateName() : title,
             date: Date(),
             exercises: exercisesToAdd
         )
         
-        // Вставляем прямо в SwiftData context
         context.insert(newWorkout)
-        
-        // РЕШЕНИЕ КРАША: Обязательно сохраняем контекст СРАЗУ, чтобы Workout получил
-        // постоянный ID (PersistentIdentifier) перед тем, как откроется WorkoutDetailView.
         try? context.save()
         
-        startLiveActivity()
+        // PASS THE ACTUAL WORKOUT TITLE
+        startLiveActivity(with: newWorkout.title)
+        
         dismiss()
         
-        // ЛОГИКА ТУТОРИАЛА:
         if tutorialManager.currentStep == .tapStartNow {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 tutorialManager.setStep(.addExercise)
             }
         }
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             onWorkoutCreated?()
         }
+    }
+
+    private func startLiveActivity(with title: String) {
+        let attributes = WorkoutActivityAttributes(workoutTitle: title)
+        let state = WorkoutActivityAttributes.ContentState(startTime: Date())
+        _ = try? Activity<WorkoutActivityAttributes>.request(attributes: attributes, content: .init(state: state, staleDate: nil), pushType: nil)
     }
     
     private func startLiveActivity() {

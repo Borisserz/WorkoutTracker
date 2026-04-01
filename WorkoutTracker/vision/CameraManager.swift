@@ -97,8 +97,6 @@ final class CameraManager: NSObject, ObservableObject {
         }
     }
 }
-
-// MARK: - Safe Camera Delegate
 final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
     private let onUpdate: @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void
     private let onBodyPoseUpdate: @Sendable (VNHumanBodyPoseObservation?) -> Void
@@ -112,8 +110,9 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         return req
     }()
     
-    // Счетчик кадров для троттлинга
+    // 🛠 ИСПРАВЛЕНИЕ: Добавляем блокировку для потокобезопасного счетчика кадров
     private var frameCount = 0
+    private let frameLock = NSLock()
     
     init(
         onUpdate: @escaping @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void,
@@ -128,9 +127,14 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         
-        // 🎼 Пропускаем кадры. Обрабатываем каждый 3-й кадр (получаем ~10 FPS)
+        // 🛠 ИСПРАВЛЕНИЕ: Потокобезопасное увеличение счетчика
+        frameLock.lock()
         frameCount += 1
-        guard frameCount % 3 == 0 else { return }
+        let currentFrame = frameCount
+        frameLock.unlock()
+        
+        // 🎼 Пропускаем кадры. Обрабатываем каждый 3-й кадр (получаем ~10 FPS)
+        guard currentFrame % 3 == 0 else { return }
         
         // 🛡 Обертка autoreleasepool немедленно очищает память от тяжелых
         // объектов Vision и буферов камеры сразу после завершения скоупа
@@ -166,7 +170,6 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         }
     }
 }
-
 // MARK: - Camera Preview
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession

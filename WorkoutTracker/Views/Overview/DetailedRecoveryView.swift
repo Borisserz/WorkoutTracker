@@ -33,7 +33,9 @@ struct DetailedRecoveryView: View {
     // MARK: - Data Source
     private var musclesData: [MuscleStatusItem] {
         return viewModel.recoveryStatus.map {
-            MuscleStatusItem(name: $0.muscleGroup, percent: $0.recoveryPercentage)
+            // Fallback translation if not found in helper
+            let displayName = MuscleDisplayHelper.getDisplayName(for: $0.muscleGroup)
+            return MuscleStatusItem(name: displayName, percent: $0.recoveryPercentage)
         }.sorted { lhs, rhs in
             if lhs.percent != rhs.percent { return lhs.percent < rhs.percent }
             else { return lhs.name < rhs.name }

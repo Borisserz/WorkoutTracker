@@ -119,11 +119,11 @@ final class WorkoutDetailViewModel: ObservableObject {
         NotificationManager.shared.scheduleNotifications(after: workout)
         
         Task {
-            for activity in Activity<WorkoutActivityAttributes>.activities {
-                await activity.end(dismissalPolicy: .after(Date().addingTimeInterval(5)))
-            }
-        }
-        
+               for activity in Activity<WorkoutActivityAttributes>.activities {
+                   let finalState = WorkoutActivityAttributes.ContentState(startTime: Date())
+                   await activity.end(ActivityContent(state: finalState, staleDate: nil), dismissalPolicy: .after(Date().addingTimeInterval(5)))
+               }
+           }
         viewModel.finishWorkoutAndCalculateAchievements(workout) { [weak self] newUnlocks, totalCount in
             let oldCount = updateAchievementsCount(totalCount)
             if let firstUnlock = newUnlocks.first {

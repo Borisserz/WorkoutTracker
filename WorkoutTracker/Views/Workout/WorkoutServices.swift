@@ -24,7 +24,7 @@ struct StatisticsManager {
                 let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                 
                 for ex in targetExercises {
-                    for set in ex.setsList where set.isCompleted {
+                    for set in ex.setsList where set.isCompleted && set.type != .warmup {
                         var currentValue: Double = 0
                         switch ex.type {
                         case .strength: currentValue = set.weight ?? 0
@@ -536,21 +536,15 @@ struct RecoveryCalculator {
         for workout in workouts.filter({ $0.date >= cutoffDate && !$0.isActive }).sorted(by: { $0.date < $1.date }) {
             let hoursSince = max(0, Date().timeIntervalSince(workout.date) / 3600)
             if hoursSince >= fullRecoveryHours { continue }
-            
             let timeDecay = hoursSince / fullRecoveryHours
             
             for exercise in workout.exercises {
                 let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                
                 for ex in targetExercises {
                     var initialFatigue = Double(ex.effort) / 10.0
                     let completedSets = ex.setsList.filter { $0.isCompleted }.count
                     let actualSetsCount = completedSets > 0 ? completedSets : ex.setsCount
-                    
-                    if actualSetsCount < 3 {
-                        initialFatigue *= 0.7
-                    }
-                    
+                    if actualSetsCount < 3 { initialFatigue *= 0.7 }
                     let currentFatigue = max(0.0, initialFatigue - timeDecay)
                     
                     for slug in MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup) {
@@ -560,28 +554,20 @@ struct RecoveryCalculator {
             }
         }
         
-        let names: [String: String] = [
-            "chest": String(localized: "Chest"),
-            "upper-back": String(localized: "Back"),
-            "lower-back": String(localized: "Lower Back"),
-            "deltoids": String(localized: "Shoulders"),
-            "biceps": String(localized: "Biceps"),
-            "triceps": String(localized: "Triceps"),
-            "abs": String(localized: "Abs"),
-            "gluteal": String(localized: "Glutes"),
-            "hamstring": String(localized: "Hamstrings"),
-            "quadriceps": String(localized: "Legs"),
-            "calves": String(localized: "Calves")
-        ]
+        let allSlugs = [
+                    "chest", "obliques", "abs", "biceps", "triceps", "neck", "trapezius",
+                    "deltoids", "adductors", "quadriceps", "knees", "tibialis", "calves",
+                    "forearm", "hands", "ankles", "feet", "head", "hair", "upper-back",
+                    "lower-back", "gluteal", "hamstring"
+                ]
+                
+                var displayFatigueMap: [String: Double] = [:]
+                for slug in allSlugs {
+                    displayFatigueMap[slug] = rawFatigueMap[slug] ?? 0.0
+                }
         
-        var displayFatigueMap: [String: Double] = [:]
-        for (slug, fatigue) in rawFatigueMap {
-            if let name = names[slug] { displayFatigueMap[name] = max(displayFatigueMap[name] ?? 0.0, fatigue) }
-        }
-        for name in Set(names.values) where displayFatigueMap[name] == nil { displayFatigueMap[name] = 0.0 }
-        
-        return displayFatigueMap.map { name, fatigue in
-            WorkoutViewModel.MuscleRecoveryStatus(muscleGroup: name, recoveryPercentage: max(0, min(100, Int((1.0 - fatigue) * 100))))
+        return displayFatigueMap.map { slug, fatigue in
+            WorkoutViewModel.MuscleRecoveryStatus(muscleGroup: slug, recoveryPercentage: max(0, min(100, Int((1.0 - fatigue) * 100))))
         }
     }
 }

@@ -35,16 +35,6 @@ actor TestDataGenerator {
     }
     
     func clearAllDataAsync() async {
-        // Мы уже внутри контекста ModelActor'а
-        try? modelContext.delete(model: WorkoutSet.self)
-        try? modelContext.delete(model: Exercise.self)
-        try? modelContext.delete(model: Workout.self)
-        try? modelContext.delete(model: WeightEntry.self)
-        try? modelContext.delete(model: UserStats.self)
-        try? modelContext.delete(model: ExerciseStat.self)
-        try? modelContext.delete(model: MuscleStat.self)
-        try? modelContext.delete(model: ExerciseNote.self)
-        
         do {
             if let items = try? modelContext.fetch(FetchDescriptor<Workout>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<Exercise>()) { items.forEach { modelContext.delete($0) } }
@@ -53,12 +43,12 @@ actor TestDataGenerator {
             if let items = try? modelContext.fetch(FetchDescriptor<UserStats>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<ExerciseStat>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<MuscleStat>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<ExerciseNote>()) { items.forEach { modelContext.delete($0) } }
             try modelContext.save()
         } catch {
-            print("Ошибка fallback удаления: \(error)")
+            print("Fallback deletion error: \(error)")
         }
     }
-    
     // MARK: - Workouts Generation
     
     private func generateWorkouts(from startDate: Date, to endDate: Date) async {

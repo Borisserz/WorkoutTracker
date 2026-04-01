@@ -376,23 +376,25 @@ public actor AILogicService {
         return prompt
     }
     
-    // --- ПАРСЕР СТРОГОГО JSON ОТВЕТА ---
-    // Функция стала асинхронной, так как использует MainActor.run
+
     private func parseCoachResponse(from rawContent: String) async throws -> AICoachResponseDTO {
-        var text = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
-        else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
-        if text.hasSuffix("```") { text = String(text.dropLast(3)) }
+        let text = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
         
-        guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
+        // Robustly extract the JSON object bounded by { and }
+        guard let startIndex = text.firstIndex(of: "{"),
+              let endIndex = text.lastIndex(of: "}") else {
+            throw AILogicError.invalidData
+        }
+        
+        let jsonString = String(text[startIndex...endIndex])
+        guard let jsonData = jsonString.data(using: .utf8) else { throw AILogicError.noDataReturned }
         
         do {
-            // ОПТИМИЗАЦИЯ СОВМЕСТИМОСТИ SWIFT 6: Прыгаем в MainActor
             let workoutDTO = try await MainActor.run {
                 try JSONDecoder().decode(GeneratedWorkoutDTO.self, from: jsonData)
             }
             
-            if workoutDTO.exercises.isEmpty && (workoutDTO.title.isEmpty || workoutDTO.title == "") {
+            if workoutDTO.exercises.isEmpty && workoutDTO.title.isEmpty {
                 return AICoachResponseDTO(text: workoutDTO.aiMessage, workout: nil)
             } else {
                 return AICoachResponseDTO(text: workoutDTO.aiMessage, workout: workoutDTO)

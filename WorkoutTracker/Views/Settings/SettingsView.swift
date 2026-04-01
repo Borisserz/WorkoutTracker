@@ -198,32 +198,42 @@ struct SettingsView: View {
     }
     
     private func generateTestData() {
-         isProcessing = true
-         let container = modelContext.container
-         Task.detached {
-             let generator = TestDataGenerator(modelContainer: container)
-             await generator.generateAllData()
-             await MainActor.run {
-                 isProcessing = false
-                 testDataAlertMessage = "Test data generated successfully!\n\nCreated workouts and weight tracking history from 2021 to 2026."
-                 showTestDataAlert = true
-             }
-         }
-     }
-     
-     private func clearAllWorkouts() {
-         isProcessing = true
-         let container = modelContext.container
-         Task.detached {
-             let generator = TestDataGenerator(modelContainer: container)
-             await generator.clearAllDataAsync()
-             await MainActor.run {
-                 isProcessing = false
-                 testDataAlertMessage = "All workouts and weight history cleared."
-                 showTestDataAlert = true
-             }
-         }
-     }
+        isProcessing = true
+        let container = modelContext.container
+        Task.detached {
+            let generator = TestDataGenerator(modelContainer: container)
+            await generator.generateAllData()
+            
+            let repo = WorkoutRepository(modelContainer: container)
+            await repo.rebuildAllStats()
+            
+            await MainActor.run {
+                self.viewModel.refreshAllCaches()
+                self.isProcessing = false
+                self.testDataAlertMessage = "Test data generated successfully!\n\nCreated workouts and weight tracking history from 2021 to 2026."
+                self.showTestDataAlert = true
+            }
+        }
+    }
+
+    private func clearAllWorkouts() {
+        isProcessing = true
+        let container = modelContext.container
+        Task.detached {
+            let generator = TestDataGenerator(modelContainer: container)
+            await generator.clearAllDataAsync()
+            
+            let repo = WorkoutRepository(modelContainer: container)
+            await repo.rebuildAllStats()
+            
+            await MainActor.run {
+                self.viewModel.refreshAllCaches()
+                self.isProcessing = false
+                self.testDataAlertMessage = "All workouts and weight history cleared."
+                self.showTestDataAlert = true
+            }
+        }
+    }
     
     private enum ExportFormat { case json, csv }
     

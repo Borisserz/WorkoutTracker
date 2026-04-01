@@ -211,6 +211,9 @@ struct MuscleDisplayHelper {
         "tibialis": "Tibialis", "hands": "Hands", "ankles": "Ankles", "feet": "Feet"
     ]
     
+    static func getDisplayName(for slug: String) -> String {
+        return slugToDisplayName[slug] ?? slug.capitalized
+    }
     static func getTargetMuscleNames(for exerciseName: String, muscleGroup: String) -> [String] {
         let muscleSlugs = MuscleMapping.getMuscles(for: exerciseName, group: muscleGroup)
         return muscleSlugs.compactMap { slugToDisplayName[$0] ?? $0.capitalized }
