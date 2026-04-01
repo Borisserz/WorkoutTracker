@@ -1,3 +1,7 @@
+//
+//  AICoachViewModel.swift
+//  WorkoutTracker
+//
 
 internal import SwiftUI
 import Combine
@@ -12,7 +16,10 @@ final class AIChatSession {
     var messages: [AIChatMessage]
     
     init(id: UUID = UUID(), title: String = "New Chat", date: Date = Date(), messages: [AIChatMessage] = []) {
-        self.id = id; self.title = title; self.date = date; self.messages = messages
+        self.id = id
+        self.title = title
+        self.date = date
+        self.messages = messages
     }
 }
 
@@ -29,6 +36,10 @@ struct AIChatMessage: Identifiable, Equatable, Codable {
 
 @MainActor
 final class AICoachViewModel: ObservableObject {
+    // ✅ ПОСЛЕ: Строгая зависимость. Никаких Optional и никаких .onAppear
+    private let modelContainer: ModelContainer
+    private var context: ModelContext { modelContainer.mainContext }
+    
     @Published var chatHistory: [AIChatMessage] = []
     @Published var isGenerating: Bool = false
     @Published var inputText: String = ""
@@ -37,7 +48,11 @@ final class AICoachViewModel: ObservableObject {
     private var currentTask: Task<Void, Never>? = nil
     private let aiService = AILogicService(apiKey: Secrets.geminiApiKey)
     
-    init() {}
+    // ✅ Инициализатор требует базу данных
+    init(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
+    }
+    
     deinit { currentTask?.cancel() }
     
     func loadSession(_ session: AIChatSession) {
@@ -57,7 +72,10 @@ final class AICoachViewModel: ObservableObject {
         self.inputText = ""
     }
     
-    func sendMessage(workoutViewModel: WorkoutViewModel, userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil, context: ModelContext) {
+    // Убрали context из параметров, добавили catalogViewModel
+    func sendMessage(workoutViewModel: WorkoutViewModel, catalogViewModel: CatalogViewModel, userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil) {
+    
+        
         guard NetworkManager.shared.checkConnection() else {
             let noNetMessage = AIChatMessage(isUser: false, text: String(localized: "Internet connection required. Please check your network."), proposedWorkout: nil, isAnimating: false)
             chatHistory.append(noNetMessage)
@@ -70,6 +88,7 @@ final class AICoachViewModel: ObservableObject {
         
         let userMessage = AIChatMessage(isUser: true, text: displayText, proposedWorkout: nil, isAnimating: false)
         var isFirstMessage = false
+        
         if currentSession == nil {
             isFirstMessage = true
             let newSession = AIChatSession(title: "Новый чат...", date: Date(), messages: [])
@@ -98,17 +117,22 @@ final class AICoachViewModel: ObservableObject {
                 }
             }
         }
-        requestWorkout(prompt: actualPrompt, workoutViewModel: workoutViewModel, userWeight: userWeight, context: context)
+        
+        // Передаем правильные вью-модели
+        requestWorkout(prompt: actualPrompt, workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userWeight)
     }
     
-    private func requestWorkout(prompt: String, workoutViewModel: WorkoutViewModel, userWeight: Double, context: ModelContext) {
+    private func requestWorkout(prompt: String, workoutViewModel: WorkoutViewModel, catalogViewModel: CatalogViewModel, userWeight: Double) {
+  
+        
         isGenerating = true
-        // ИСПРАВЛЕНИЕ: Магическая строка для Tone заменена
         let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
         let workoutsThisWeek = workoutViewModel.bestWeekStats.workoutCount
         let currentStreak = workoutViewModel.streakCount
         let fatiguedMuscles = workoutViewModel.recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup }
-        let allAvailableExercises = workoutViewModel.combinedCatalog.values.flatMap { $0 }
+        
+        // Берем каталог из нужной вью-модели
+        let allAvailableExercises = catalogViewModel.combinedCatalog.values.flatMap { $0 }
         
         let userContext = UserProfileContext(
             weightKg: UnitsManager.shared.convertToKilograms(userWeight),
@@ -157,8 +181,9 @@ final class AICoachViewModel: ObservableObject {
         }
     }
     
-    func acceptWorkout(dto: GeneratedWorkoutDTO, container: ModelContainer, onStart: @escaping (Workout) -> Void) {
-        let context = ModelContext(container)
+    // Убрали ModelContainer, берем context напрямую
+    func acceptWorkout(dto: GeneratedWorkoutDTO, onStart: @escaping (Workout) -> Void) {
+     
         var exercises: [Exercise] = []
         
         for exDTO in dto.exercises {
@@ -172,17 +197,15 @@ final class AICoachViewModel: ObservableObject {
             for i in 1...max(1, exDTO.sets) {
                 let set = WorkoutSet(index: i, weight: exDTO.recommendedWeightKg, reps: exerciseType == .strength ? exDTO.reps : nil, distance: exerciseType == .cardio ? (exDTO.recommendedWeightKg ?? 0) : nil, time: exerciseType == .duration ? exDTO.reps : nil, isCompleted: false, type: .normal)
                 
-                set.exercise = newExercise // Explicitly link relationship
+                set.exercise = newExercise
                 context.insert(set)
                 setsList.append(set)
             }
             
             newExercise.setsList = setsList
-            // FIX: Update aggregates so volume and counts appear immediately
             newExercise.updateAggregates()
             exercises.append(newExercise)
         }
-        
         
         let newWorkout = Workout(title: dto.title, date: Date(), icon: "brain.head.profile", exercises: exercises)
         context.insert(newWorkout)

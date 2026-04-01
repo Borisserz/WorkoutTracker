@@ -5,7 +5,7 @@ import SwiftData
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var viewModel
     
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 0.0
@@ -16,7 +16,7 @@ struct SettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.autoStartTimer.rawValue) private var autoStartTimer: Bool = true
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     
-    @EnvironmentObject var unitsManager: UnitsManager
+    @Environment(UnitsManager.self) var unitsManager
     
     @FocusState private var isProfileFocused: Bool
     

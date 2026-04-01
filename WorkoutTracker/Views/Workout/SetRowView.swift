@@ -12,7 +12,7 @@ struct SetRowView: View {
     
     @Bindable var set: WorkoutSet
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
-@EnvironmentObject var unitsManager: UnitsManager
+@Environment(UnitsManager.self) var unitsManager
     
     @State private var showAITracker: Bool = false
     

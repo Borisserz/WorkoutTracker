@@ -21,8 +21,8 @@ struct SupersetBuilderView: View {
     // MARK: - Environment & State
     
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var viewModel: WorkoutViewModel
-@EnvironmentObject var unitsManager: UnitsManager
+    @Environment(WorkoutViewModel.self) private var viewModel
+@Environment(UnitsManager.self) var unitsManager
     
     // Если редактируем — передаем сюда существующий супер-сет
     @State var existingSuperset: Exercise?
@@ -207,11 +207,11 @@ struct SupersetBuilderView: View {
 // MARK: - Inner Exercise Editor
 
 struct EditSupersetItemView: View {
-    
+    @Environment(WorkoutViewModel.self) var viewModel
     @Bindable var exercise: Exercise // ДОБАВЛЕНО: SwiftData Bindable
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
-@EnvironmentObject var unitsManager: UnitsManager
+@Environment(UnitsManager.self) var unitsManager
     
     // Валидация
     @State private var showValidationAlert = false
@@ -390,27 +390,13 @@ struct EditSupersetItemView: View {
         let newIndex = (lastSet?.index ?? 0) + 1
         let newSet = WorkoutSet(index: newIndex, weight: lastSet?.weight, reps: lastSet?.reps)
         
-        // ИСПРАВЛЕНИЕ SwiftData: Вставляем в контекст ДО добавления в массив для избежания дублирования
-        if let context = exercise.modelContext {
-       
-            context.insert(newSet)
-        }
-        
-        exercise.setsList.append(newSet)
+        viewModel.addSetToDraftExercise(exercise, set: newSet)
     }
-    
+
     private func removeSet() {
         if exercise.setsList.count > 1, let last = sortedSets.last {
-            if let index = exercise.setsList.firstIndex(where: { $0.id == last.id }) {
-                let setToDelete = exercise.setsList[index]
-                
-                // ИСПРАВЛЕНИЕ SwiftData: Явно удаляем объект
-                if let context = exercise.modelContext {
-           
-                    context.delete(setToDelete)
-                }
-                
-                exercise.setsList.remove(at: index)
+            if let setToDelete = exercise.setsList.first(where: { $0.id == last.id }) {
+                viewModel.removeSetFromDraftExercise(exercise, set: setToDelete)
             }
         }
     }

@@ -1,3 +1,4 @@
+
 internal import SwiftUI
 import Foundation
 import SwiftData
@@ -11,9 +12,8 @@ extension URL: Identifiable {
 
 struct PresetListView: View {
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var viewModel
     
-    // Получаем шаблоны напрямую из базы
     @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
     
     @State private var showCreatePreset = false
@@ -29,7 +29,7 @@ struct PresetListView: View {
                     presetToEdit = preset
                 } label: {
                     HStack {
-                        Image(preset.icon) // Если в Assets
+                        Image(preset.icon)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 40, height: 40)
@@ -45,21 +45,23 @@ struct PresetListView: View {
                         }
                         Spacer()
                         
-                        // --- КНОПКА ПОДЕЛИТЬСЯ (меню с выбором) ---
                         Menu {
-                            // Экспорт в файл - подменю с выбором формата
                             Menu {
                                 Button {
-                                    if let fileURL = viewModel.exportPresetToFile(preset) {
-                                        fileToShare = fileURL
+                                    Task {
+                                        if let fileURL = await viewModel.exportPresetToFile(preset) {
+                                            await MainActor.run { fileToShare = fileURL }
+                                        }
                                     }
                                 } label: {
                                     Label(LocalizedStringKey("Export as JSON"), systemImage: "doc.text")
                                 }
                                 
                                 Button {
-                                    if let fileURL = viewModel.exportPresetToCSV(preset) {
-                                        fileToShare = fileURL
+                                    Task {
+                                        if let fileURL = await viewModel.exportPresetToCSV(preset) {
+                                            await MainActor.run { fileToShare = fileURL }
+                                        }
                                     }
                                 } label: {
                                     Label(LocalizedStringKey("Export as CSV"), systemImage: "tablecells")
@@ -68,7 +70,7 @@ struct PresetListView: View {
                                 Label(LocalizedStringKey("Export as File"), systemImage: "square.and.arrow.down")
                             }
                             
-                            // Поделиться ссылкой
+                            // ShareLink остается синхронным на MainActor (работает молниеносно, так как нет File IO)
                             if let shareURL = viewModel.generateShareLink(for: preset) {
                                 ShareLink(item: shareURL) {
                                     Label(LocalizedStringKey("Share Link"), systemImage: "link")
@@ -80,9 +82,7 @@ struct PresetListView: View {
                                 .font(.body)
                         }
                         .buttonStyle(BorderlessButtonStyle())
-                        // -------------------------
                         
-                        // Кнопку редактирования можно перенести в swipeActions или оставить
                         Image(systemName: "pencil")
                             .foregroundColor(.secondary)
                             .font(.body)
@@ -122,7 +122,8 @@ struct PresetListView: View {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
                 if let indexSet = presetsToDelete {
                     for index in indexSet {
-                        context.delete(presets[index])
+                        let presetToDelete = presets[index]
+                        viewModel.deletePreset(presetToDelete) // MVVM соблюден
                     }
                     presetsToDelete = nil
                 }

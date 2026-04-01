@@ -11,8 +11,8 @@ import UIKit
 
 struct WorkoutView: View {
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
-@EnvironmentObject var unitsManager: UnitsManager
+    @Environment(WorkoutViewModel.self) var viewModel
+@Environment(UnitsManager.self) var unitsManager
     
     // ОПТИМИЗАЦИЯ: Грузим только последние 30 тренировок для проверки на пустоту и анализа дисбаланса (защита от OOM)
     @Query(sort: \Workout.date, order: .reverse) private var recentWorkoutsForImbalance: [Workout]
@@ -248,7 +248,7 @@ struct DynamicWorkoutListView: View {
     
     @Binding var calculatedAvgDuration: Int
     @Binding var calculatedAvgVolume: Int
-    
+    @Environment(WorkoutViewModel.self) var viewModel 
     init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, avgDuration: Binding<Int>, avgVolume: Binding<Int>) {
         self._calculatedAvgDuration = avgDuration
         self._calculatedAvgVolume = avgVolume
@@ -323,7 +323,8 @@ struct DynamicWorkoutListView: View {
             .onDelete { indexSet in
                 withAnimation {
                     for index in indexSet {
-                        context.delete(workouts[index])
+                        let workoutToDelete = workouts[index]
+                        viewModel.deleteWorkout(workoutToDelete) // ЧИСТО! Логика во ViewModel
                     }
                 }
             }

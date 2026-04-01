@@ -21,9 +21,8 @@ struct PresetEditorView: View {
     // MARK: - Environment & State
     
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @EnvironmentObject private var viewModel: WorkoutViewModel
-@EnvironmentObject var unitsManager: UnitsManager
+    @Environment(WorkoutViewModel.self) private var viewModel
+@Environment(UnitsManager.self) var unitsManager
     
     @State var preset: WorkoutPreset?
     
@@ -78,7 +77,7 @@ struct PresetEditorView: View {
             .alert(String(localized: "Delete Template?"), isPresented: $showDeleteAlert) {
                 Button(String(localized: "Delete"), role: .destructive) {
                     if let p = preset {
-                        context.delete(p)
+                        viewModel.deletePreset(p)
                         dismiss()
                     }
                 }
@@ -251,36 +250,9 @@ struct PresetEditorView: View {
     // MARK: - Logic Helpers
     
     private func savePreset() {
-            if let existingPreset = preset {
-                // Обновляем существующий
-                existingPreset.name = name
-                existingPreset.icon = selectedIcon
-                
-                // Очищаем старые и добавляем новые, чтобы SwiftData понял изменения
-                existingPreset.exercises.removeAll()
-                for ex in exercises {
-                    if ex.modelContext == nil { context.insert(ex) }
-                    ex.preset = existingPreset
-                    existingPreset.exercises.append(ex)
-                }
-            } else {
-                // Создаем новый
-                let newPreset = WorkoutPreset(
-                    id: UUID(),
-                    name: name,
-                    icon: selectedIcon,
-                    exercises: []
-                )
-                context.insert(newPreset)
-                
-                for ex in exercises {
-                    context.insert(ex)
-                    ex.preset = newPreset
-                    newPreset.exercises.append(ex)
-                }
-            }
-            dismiss()
-        }
+        viewModel.savePreset(preset: preset, name: name, icon: selectedIcon, exercises: exercises)
+        dismiss()
+    }
     
     private func formatTime(_ totalSeconds: Int) -> String {
         let m = totalSeconds / 60
@@ -292,11 +264,11 @@ struct PresetEditorView: View {
 // MARK: - Inner Exercise Editor
 
 struct PresetExerciseEditor: View {
-    // ИСПРАВЛЕНИЕ: Используем let для объекта SwiftData, чтобы избежать конфликтов Binding.
+    @Environment(WorkoutViewModel.self) var viewModel
     let exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
-@EnvironmentObject var unitsManager: UnitsManager
+    @Environment(UnitsManager.self) var unitsManager
     
     // Локальное состояние для редактирования
     @State private var setsCount: Int = 1
@@ -388,8 +360,8 @@ struct PresetExerciseEditor: View {
             }, set: { newValue in
                 distanceValue = unitsManager.convertToMeters(newValue)
             }), format: .number)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
+            .keyboardType(.decimalPad)
+            .multilineTextAlignment(.trailing)
         }
         timePickerRow(label: "Duration")
     }
@@ -487,13 +459,8 @@ struct PresetExerciseEditor: View {
         
         // ИСПРАВЛЕНИЕ SwiftData: Удаляем старые сеты из контекста, чтобы не создавать сиротские объекты
         if let context = exercise.modelContext {
-         
-            for set in exercise.setsList {
-                context.delete(set)
-            }
+            for set in exercise.setsList { context.delete(set) }
         }
-        
-        // Генерация нового setsList
         var newSets: [WorkoutSet] = []
         let finalSetsCount = exercise.type == .cardio ? 1 : max(1, setsCount)
         
@@ -508,21 +475,29 @@ struct PresetExerciseEditor: View {
                 type: .normal
             )
             
-            // ИСПРАВЛЕНИЕ SwiftData: Сначала вставляем в контекст (если он доступен)
-            if let context = exercise.modelContext {
-           
-                context.insert(newSet)
+            if let context = exercise.modelContext { try? context.save() }
+            onSave(exercise)
+            dismiss()
+            
+            var newSets: [WorkoutSet] = []
+            let finalSetsCount = exercise.type == .cardio ? 1 : max(1, setsCount)
+            
+            for i in 1...finalSetsCount {
+                let newSet = WorkoutSet(
+                    index: i,
+                    weight: exercise.type == .strength ? weightValue : nil,
+                    reps: exercise.type == .strength ? repsCount : nil,
+                    distance: exercise.type == .cardio ? distanceValue : nil,
+                    time: total > 0 ? total : nil,
+                    isCompleted: false,
+                    type: .normal
+                )
+                newSets.append(newSet)
             }
             
-            newSets.append(newSet)
+            viewModel.updateExerciseSets(exercise: exercise, newSets: newSets)
+            onSave(exercise)
+            dismiss()
         }
-        
-        exercise.setsList = newSets
-        exercise.updateAggregates() // Обновляем агрегаты сразу, чтобы UI отрисовал изменения
-        if let context = exercise.modelContext {
-               try? context.save() // <--- ПРИНУДИТЕЛЬНОЕ СОХРАНЕНИЕ
-           }
-        onSave(exercise)
-        dismiss()
     }
 }

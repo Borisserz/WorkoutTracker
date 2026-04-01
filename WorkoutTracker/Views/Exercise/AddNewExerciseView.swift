@@ -17,8 +17,7 @@ struct AddNewExerciseView: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @EnvironmentObject private var viewModel: WorkoutViewModel
-    
+    @EnvironmentObject private var catalogViewModel: CatalogViewModel
     // Данные формы
     @State private var name: String = ""
     @State private var selectedCategory: String = "Chest"
@@ -125,20 +124,9 @@ struct AddNewExerciseView: View {
     }
     
     private func saveExercise() {
-        viewModel.addCustomExercise(
-            name: name,
-            category: selectedCategory,
-            muscles: Array(selectedMuscles),
-            type: selectedType
-        )
+        catalogViewModel.addCustomExercise(name: name, category: selectedCategory, muscles: Array(selectedMuscles), type: selectedType)
         dismiss()
     }
     
 }
 
-// MARK: - Preview
-
-#Preview {
-    AddNewExerciseView()
-        .environmentObject(WorkoutViewModel())
-}

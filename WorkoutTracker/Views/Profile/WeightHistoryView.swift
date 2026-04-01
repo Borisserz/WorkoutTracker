@@ -10,11 +10,9 @@ import SwiftData
 import Charts
 
 struct WeightHistoryView: View {
-    // ИСПРАВЛЕНИЕ: Удаляем weightManager, используем нативные инструменты SwiftData
-    @Environment(\.modelContext) private var context
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
-    
-@EnvironmentObject var unitsManager: UnitsManager
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
+    @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
     
     @State private var selectedPeriod: PeriodFilter = .month
@@ -48,7 +46,7 @@ struct WeightHistoryView: View {
     }
     
     var stats: (startWeight: Double?, currentWeight: Double?, change: Double?) {
-        guard let firstEntryWeight = weightHistory.last?.weight, // Массив отсортирован по убыванию, поэтому oldest это last
+        guard let firstEntryWeight = weightHistory.last?.weight,
               let currentEntryWeight = weightHistory.first?.weight else {
             return (nil, nil, nil)
         }
@@ -185,7 +183,7 @@ struct WeightHistoryView: View {
                                     WeightEntryRow(entry: entry, unitsManager: unitsManager)
                                         .contextMenu {
                                             Button(role: .destructive) {
-                                                context.delete(entry)
+                                                userStatsViewModel.deleteWeightEntry(entry)
                                             } label: {
                                                 Label(LocalizedStringKey("Delete"), systemImage: "trash")
                                             }
@@ -232,22 +230,12 @@ struct WeightHistoryView: View {
                 Button(LocalizedStringKey("Save")) {
                     if let weight = Double(newWeightText.replacingOccurrences(of: ",", with: ".")) {
                         let weightInKg = unitsManager.convertToKilograms(weight)
-                        let newEntry = WeightEntry(date: newWeightDate, weight: weightInKg)
-                        context.insert(newEntry)
-                        
-                        // Sync to Global AppStorage so ProfileView updates instantly
-                        UserDefaults.standard.set(weightInKg, forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+                        userStatsViewModel.addWeightEntry(weight: weightInKg, date: newWeightDate)
                     }
                 }
                 Button(LocalizedStringKey("Cancel"), role: .cancel) { }
             }
         }
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        return formatter.string(from: date)
     }
 }
 
@@ -312,4 +300,3 @@ struct WeightEntryRow: View {
         return formatter.string(from: date)
     }
 }
-

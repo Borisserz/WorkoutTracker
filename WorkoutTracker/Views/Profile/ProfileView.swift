@@ -2,32 +2,31 @@
 //  ProfileView.swift
 //  WorkoutTracker
 //
-//
-//  ProfileView.swift
-//  WorkoutTracker
-//
 
 internal import SwiftUI
 import SwiftData
 import PhotosUI
 
 struct ProfileView: View {
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var viewModel
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
-    
     @Query private var userStats: [UserStats]
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
     
     // Вытягиваем историю веса напрямую из БД
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     
-    // ИСПРАВЛЕНИЕ: Храним пустые значения, чтобы не засорять БД дефолтным хардкодом
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
     @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = ""
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 0.0
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
     
-    @EnvironmentObject var unitsManager: UnitsManager
+    // ИСПРАВЛЕНИЕ: Инъекция UnitsManager через @Environment
+    @Environment(UnitsManager.self) var unitsManager
+    
+    // ИСПРАВЛЕНИЕ: Новая чистая Вью-Модель
+    @State private var profileVM = ProfileViewModel()
     
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false
@@ -41,55 +40,7 @@ struct ProfileView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: UIImage?
     
-    // Кешированные значения для производительности
-    @State private var cachedAchievements: [Achievement] = []
-    @State private var cachedPersonalRecords: [WorkoutViewModel.BestResult] = []
-    
-    // AI Forecast
-    @State private var topForecast: WorkoutViewModel.ProgressForecast?
-    
     let columns = [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())]
-    
-    // Функция для обновления кеша
-    private func updateCache() {
-        let stats = userStats.first ?? UserStats()
-        let currentStreak = viewModel.streakCount
-        
-        cachedAchievements = AchievementCalculator.calculateAchievements(
-            totalWorkouts: stats.totalWorkouts,
-            totalVolume: stats.totalVolume,
-            totalDistance: stats.totalDistance,
-            earlyWorkouts: stats.earlyWorkouts,
-            nightWorkouts: stats.nightWorkouts,
-            streak: currentStreak,
-            unitsManager: unitsManager
-        )
-        
-        let container = modelContext.container
-        Task.detached(priority: .userInitiated) {
-            let bgContext = ModelContext(container)
-            let descriptor = FetchDescriptor<Workout>(
-                predicate: #Predicate<Workout> { $0.endTime != nil }
-            )
-            
-            let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
-            let records = StatisticsManager.getAllPersonalRecords(workouts: bgWorkouts, unitsManager: UnitsManager.shared)
-            
-            // Вычисляем AI прогноз
-            let forecasts = AnalyticsManager.getProgressForecast(workouts: bgWorkouts)
-            let topF = forecasts.first
-            
-            await MainActor.run {
-                self.cachedPersonalRecords = records
-                self.topForecast = topF
-            }
-        }
-    }
-    
-    private var cacheTrigger: String {
-        guard let stats = userStats.first else { return "0-0.0" }
-        return "\(stats.totalWorkouts)-\(stats.totalVolume)"
-    }
     
     var body: some View {
         ZStack {
@@ -110,7 +61,6 @@ struct ProfileView: View {
                                         .clipShape(Circle())
                                         .overlay(Circle().stroke(Color.blue, lineWidth: 3))
                                 } else {
-                                    // ИСПРАВЛЕНИЕ: Плейсхолдер 🦍 показывается только если строка пустая
                                     Text(userAvatar.isEmpty ? "🦍" : userAvatar)
                                         .font(.system(size: 60))
                                         .frame(width: 100, height: 100)
@@ -132,13 +82,13 @@ struct ProfileView: View {
                             }
                             
                             VStack(spacing: 8) {
-                                // ИМЯ (Editable) - ИСПРАВЛЕНИЕ: Добавлен плейсхолдер
+                                // ИМЯ (Editable)
                                 TextField("Fitness Enthusiast", text: $userName)
                                     .font(.title2)
                                     .bold()
                                     .multilineTextAlignment(.center)
                                 
-                                // ВЕС под ником (Editable) - ИСПРАВЛЕНИЕ: Отображаем 75.0 если вес 0.0
+                                // ВЕС под ником (Editable)
                                 let displayWeight = userBodyWeight == 0.0 ? 75.0 : userBodyWeight
                                 let convertedWeight = unitsManager.convertFromKilograms(displayWeight)
                                 
@@ -161,7 +111,7 @@ struct ProfileView: View {
                                 .background(Color.blue.opacity(0.1))
                                 .cornerRadius(8)
                                 
-                                // Кнопка просмотра истории веса и замеров
+                                // Кнопки истории веса и замеров
                                 HStack(spacing: 12) {
                                     Button {
                                         showingWeightHistory = true
@@ -198,7 +148,7 @@ struct ProfileView: View {
                         .padding(.top, 20)
                         
                         // AI FORECAST BANNER
-                        if let forecast = topForecast {
+                        if let forecast = profileVM.topForecast {
                             let convertedWeight = unitsManager.convertFromKilograms(forecast.predictedMax)
                             let weightStr = convertedWeight.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", convertedWeight) : String(format: "%.1f", convertedWeight)
                             let unitStr = unitsManager.weightUnitString()
@@ -233,7 +183,7 @@ struct ProfileView: View {
                             Text(LocalizedStringKey("Achievements")).font(.title3).bold().padding(.horizontal)
                             
                             LazyVGrid(columns: columns, spacing: 20) {
-                                ForEach(cachedAchievements) { achievement in
+                                ForEach(profileVM.cachedAchievements) { achievement in
                                     AchievementBadge(achievement: achievement)
                                         .onTapGesture {
                                             let generator = UIImpactFeedbackGenerator(style: .medium)
@@ -251,12 +201,12 @@ struct ProfileView: View {
                         Divider()
                         
                         // 3. РЕКОРДЫ
-                        if !cachedPersonalRecords.isEmpty {
+                        if !profileVM.cachedPersonalRecords.isEmpty {
                             VStack(alignment: .leading, spacing: 15) {
                                 Text(LocalizedStringKey("Personal Records")).font(.title3).bold().padding(.horizontal)
                                 
                                 VStack(spacing: 0) {
-                                    ForEach(cachedPersonalRecords) { record in
+                                    ForEach(profileVM.cachedPersonalRecords) { record in
                                         HStack {
                                             Image(systemName: getIcon(for: record.type))
                                                 .foregroundColor(getColor(for: record.type))
@@ -273,7 +223,7 @@ struct ProfileView: View {
                                         }
                                         .padding()
                                         
-                                        if record.id != cachedPersonalRecords.last?.id {
+                                        if record.id != profileVM.cachedPersonalRecords.last?.id {
                                             Divider().padding(.leading, 50)
                                         }
                                     }
@@ -305,14 +255,14 @@ struct ProfileView: View {
                     TextField("Weight", text: $newWeightString)
                         .keyboardType(.decimalPad)
                     Button("Save") {
-                           let formatter = NumberFormatter()
-                           formatter.numberStyle = .decimal
-                           if let number = formatter.number(from: newWeightString)?.doubleValue ?? Double(newWeightString.replacingOccurrences(of: ",", with: ".")) {
-                               userBodyWeight = unitsManager.convertToKilograms(number)
-                               let newEntry = WeightEntry(date: Date(), weight: userBodyWeight)
-                               modelContext.insert(newEntry)
-                           }
-                       }
+                        let formatter = NumberFormatter()
+                        formatter.numberStyle = .decimal
+                        if let number = formatter.number(from: newWeightString)?.doubleValue ?? Double(newWeightString.replacingOccurrences(of: ",", with: ".")) {
+                            let weightKg = unitsManager.convertToKilograms(number)
+                            userBodyWeight = weightKg
+                            userStatsViewModel.addWeightEntry(weight: weightKg)
+                        }
+                    }
                     Button("Cancel", role: .cancel) { }
                 } message: {
                     Text("Enter your current weight in \(unitsManager.weightUnitString())")
@@ -321,13 +271,16 @@ struct ProfileView: View {
                     profileImage = ProfileImageManager.shared.loadImage()
                     
                     if weightHistory.isEmpty && userBodyWeight > 0.0 {
-                        let initialEntry = WeightEntry(date: Date(), weight: userBodyWeight)
-                        modelContext.insert(initialEntry)
+                        userStatsViewModel.addWeightEntry(weight: userBodyWeight)
                     }
-                    updateCache()
-                }
-                .onChange(of: cacheTrigger) { _, _ in
-                    updateCache()
+                    
+                    // Вызываем чистый метод из ViewModel
+                    profileVM.loadProfileData(
+                        stats: userStats.first ?? UserStats(),
+                        currentStreak: viewModel.streakCount,
+                        unitsManager: unitsManager,
+                        modelContainer: modelContext.container
+                    )
                 }
             }
             
@@ -344,14 +297,6 @@ struct ProfileView: View {
         }
     }
     
-    func getColor(for type: ExerciseType) -> Color {
-        switch type {
-        case .strength: return .blue
-        case .cardio: return .orange
-        case .duration: return .purple
-        }
-    }
-}
     func getIcon(for type: ExerciseType) -> String {
         switch type {
         case .strength: return "dumbbell.fill"
@@ -367,7 +312,7 @@ struct ProfileView: View {
         case .duration: return .purple
         }
     }
-
+}
 
 // MARK: - Медаль-Ачивка с Градацией (Матовый дизайн)
 struct AchievementBadge: View {
@@ -610,18 +555,18 @@ struct AchievementPopupView: View {
     
     @MainActor
     private func share() {
-            let renderer = ImageRenderer(content: MilestoneShareCard(
-                title: LocalizedStringKey("Unlocked Achievements"),
-                subtitle: achievement.title,
-                descriptionText: achievement.description,
-                icon: achievement.icon,
-                colors: angularColors
-            ))
-            renderer.scale = 3.0
-            if let image = renderer.uiImage {
-                shareItem = SharedImageWrapper(image: image)
-            }
+        let renderer = ImageRenderer(content: MilestoneShareCard(
+            title: LocalizedStringKey("Unlocked Achievements"),
+            subtitle: achievement.title,
+            descriptionText: achievement.description,
+            icon: achievement.icon,
+            colors: angularColors
+        ))
+        renderer.scale = 3.0
+        if let image = renderer.uiImage {
+            shareItem = SharedImageWrapper(image: image)
         }
+    }
 }
 
 struct AchievementConfetti: View {

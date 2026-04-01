@@ -114,7 +114,7 @@ struct PRCelebrationView: View {
 struct SupersetCardView: View {
     @Bindable var superset: Exercise
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var viewModel
     
     var currentWorkoutId: UUID
     var onDelete: () -> Void

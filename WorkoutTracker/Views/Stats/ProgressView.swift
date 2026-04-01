@@ -49,7 +49,7 @@ struct StatsView: View {
     // MARK: - Environment & State
     
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var viewModel
     
     @Query private var dbTrigger: [Workout]
     
@@ -196,8 +196,12 @@ struct StatsView: View {
 
 // MARK: - 2. Dumb Content View
 
+// MARK: - 2. Dumb Content View
+
 struct StatsContentView: View {
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var viewModel
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel // ✅ ДОБАВЛЕНО
+    
     @Binding var selectedPeriod: StatsView.Period
     @Binding var selectedMetric: StatsView.GraphMetric
     
@@ -258,9 +262,9 @@ struct StatsContentView: View {
         }
         .sheet(isPresented: $showProfile) {
             ProfileView()
-                .environmentObject(viewModel.progressManager)
+                // ✅ ИСПРАВЛЕНО: Берем progressManager из правильной ViewModel
+                .environmentObject(userStatsViewModel.progressManager)
         }
-        // ИСПРАВЛЕНИЕ ЗДЕСЬ: Передаем все необходимые данные
         .sheet(isPresented: $showAIReviewSheet) {
             AIWeeklyReviewSheet(
                 currentStats: currentStats,

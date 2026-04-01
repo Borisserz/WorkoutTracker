@@ -1,14 +1,23 @@
+//
+//  AICoachView.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import SwiftData
 
 struct AICoachView: View {
-    @EnvironmentObject var workoutViewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var workoutViewModel
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
+    @EnvironmentObject var catalogViewModel: CatalogViewModel
+    
     @Environment(\.modelContext) private var modelContext
     
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
     @AppStorage(Constants.UserDefaultsKeys.aiCoachTone.rawValue) private var aiCoachTone = Constants.AIConstants.defaultTone
     
-    @StateObject private var viewModel = AICoachViewModel()
+    // 2. Локальная вью-модель осталась нетронутой
+    @EnvironmentObject var viewModel: AICoachViewModel
     @FocusState private var isInputFocused: Bool
     
     @State private var navigateToWorkout: Workout?
@@ -52,6 +61,8 @@ struct AICoachView: View {
                     } label: { Image(systemName: "slider.horizontal.3").foregroundColor(.primary) }
                 }
             }
+            .onAppear {
+            }
             .sheet(isPresented: $showHistorySheet) {
                 ChatHistorySheetView { selectedSession in withAnimation { viewModel.loadSession(selectedSession) } }
             }
@@ -73,17 +84,18 @@ struct AICoachView: View {
             }
             .sheet(isPresented: $showSmartBuilder) {
                 SmartWorkoutBuilderSheet { generatedPrompt in
-                    viewModel.sendMessage(workoutViewModel: workoutViewModel, userWeight: userBodyWeight, uiText: "Составь план по моим параметрам", aiPrompt: generatedPrompt, context: modelContext)
+                    // Вызовы стали короче (без context)
+                    viewModel.sendMessage(workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Составь план по моим параметрам", aiPrompt: generatedPrompt)
                 }
             }
             .sheet(isPresented: $showProgressSheet) {
                 ProgressAnalysisSheet { generatedPrompt in
-                    viewModel.sendMessage(workoutViewModel: workoutViewModel, userWeight: userBodyWeight, uiText: "Оцени мой прогресс", aiPrompt: generatedPrompt, context: modelContext)
+                    viewModel.sendMessage(workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Оцени мой прогресс", aiPrompt: generatedPrompt)
                 }
             }
             .sheet(isPresented: $showRecoverySheet) {
                 RecoveryAdvisorSheet { generatedPrompt in
-                    viewModel.sendMessage(workoutViewModel: workoutViewModel, userWeight: userBodyWeight, uiText: "Что рекомендуешь сделать?", aiPrompt: generatedPrompt, context: modelContext)
+                    viewModel.sendMessage(workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Что рекомендуешь сделать?", aiPrompt: generatedPrompt)
                 }
             }
         }
@@ -103,7 +115,8 @@ struct AICoachView: View {
                 VStack(spacing: 16) {
                     ForEach(viewModel.chatHistory) { message in
                         ChatMessageView(message: message, onAcceptWorkout: { dto in
-                            viewModel.acceptWorkout(dto: dto, container: modelContext.container) { workout in self.navigateToWorkout = workout }
+                            // Убрали container, логика теперь полностью инкапсулирована
+                            viewModel.acceptWorkout(dto: dto) { workout in self.navigateToWorkout = workout }
                         }).id(message.id)
                     }
                     if viewModel.isGenerating { AILoadingIndicator().id("loading_indicator").frame(maxWidth: .infinity, alignment: .leading).transition(.opacity.combined(with: .scale(scale: 0.9))) }
@@ -135,7 +148,8 @@ struct AICoachView: View {
                 if viewModel.isGenerating { ProgressView().frame(width: 34, height: 34).padding(.trailing, 4) } else {
                     Button {
                         isInputFocused = false
-                        viewModel.sendMessage(workoutViewModel: workoutViewModel, userWeight: userBodyWeight, context: modelContext)
+                        // Передаем catalogViewModel для каталога упражнений
+                        viewModel.sendMessage(workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight)
                     } label: { Image(systemName: "arrow.up.circle.fill").font(.system(size: 34)).foregroundColor(isSendDisabled ? .gray.opacity(0.5) : .accentColor) }.disabled(isSendDisabled)
                 }
             }.padding(.horizontal).padding(.vertical, 12).background(.ultraThinMaterial)
@@ -147,9 +161,9 @@ struct AICoachView: View {
 
 // MARK: - Chat History Sheet
 struct ChatHistorySheetView: View {
-    @Environment(\.modelContext) private var context
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
     @Environment(\.dismiss) private var dismiss
-    
+    @Environment(WorkoutViewModel.self) var viewModel
     @Query(sort: \AIChatSession.date, order: .reverse) private var sessions: [AIChatSession]
     
     let onSelect: (AIChatSession) -> Void
@@ -162,7 +176,6 @@ struct ChatHistorySheetView: View {
         var id: String { self.rawValue }
     }
     
-    // ИСПРАВЛЕНИЕ: Скрыты по умолчанию
     @State private var expandedSections: [String: Bool] = [
         "Сегодня": false, "Вчера": false, "Последние 7 дней": false, "Старые": false
     ]
@@ -262,9 +275,8 @@ struct ChatHistorySheetView: View {
     private func deleteSessions(offsets: IndexSet, from groupSessions: [AIChatSession]) {
         withAnimation {
             for index in offsets {
-                context.delete(groupSessions[index])
+                userStatsViewModel.deleteChatSession(groupSessions[index])
             }
-            try? context.save()
         }
     }
 }

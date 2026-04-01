@@ -529,3 +529,41 @@ extension Workout {
         ]
     }
 }
+// MARK: - UI Display Helpers
+extension Exercise {
+    
+    /// Генерирует красивую строку с деталями упражнения для списков
+    func formattedDetails(unitsManager: UnitsManager) -> String {
+        switch type {
+        case .strength:
+            if firstSetWeight > 0 {
+                let weightStr = unitsManager.displayWeightWithUnit(forKg: firstSetWeight)
+                return "\(setsCount)s x \(firstSetReps)r • \(weightStr)"
+            } else {
+                return "\(setsCount)s x \(firstSetReps)r"
+            }
+            
+        case .cardio:
+            if let dist = firstSetDistance, dist > 0 {
+                let distStr = unitsManager.displayDistanceWithUnit(forMeters: dist)
+                let timeStr = formatTime(firstSetTimeSeconds ?? 0)
+                return "\(distStr) in \(timeStr)"
+            } else {
+                return "\(setsCount) sets"
+            }
+            
+        case .duration:
+            if let timeSeconds = firstSetTimeSeconds, timeSeconds > 0 {
+                return "\(setsCount) sets x \(formatTime(timeSeconds))"
+            } else {
+                return "\(setsCount) sets"
+            }
+        }
+    }
+    
+    private func formatTime(_ totalSeconds: Int) -> String {
+        let m = totalSeconds / 60
+        let s = totalSeconds % 60
+        return String(format: "%d:%02d", m, s)
+    }
+}

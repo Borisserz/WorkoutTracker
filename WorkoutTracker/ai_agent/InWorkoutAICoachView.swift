@@ -8,9 +8,10 @@ import SwiftData
 
 struct InWorkoutAICoachView: View {
     @Bindable var workout: Workout
+    @EnvironmentObject var catalogViewModel: CatalogViewModel
     @ObservedObject var viewModel: InWorkoutAICoachViewModel // <-- ТЕПЕРЬ ОН ПРИХОДИТ СНАРУЖИ
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var workoutViewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var workoutViewModel
     
     @FocusState private var isInputFocused: Bool
     
@@ -89,7 +90,7 @@ struct InWorkoutAICoachView: View {
                         Button {
                             isInputFocused = false
                             viewModel.inputText = action
-                            viewModel.sendMessage(currentWorkout: workout, catalog: workoutViewModel.combinedCatalog)
+                            viewModel.sendMessage(currentWorkout: workout, catalog: catalogViewModel.combinedCatalog)
                         } label: {
                             Text(LocalizedStringKey(action))
                                 .font(.caption)
@@ -121,7 +122,7 @@ struct InWorkoutAICoachView: View {
                     .disabled(viewModel.isGenerating)
                     .onSubmit {
                         isInputFocused = false
-                        viewModel.sendMessage(currentWorkout: workout, catalog: workoutViewModel.combinedCatalog)
+                        viewModel.sendMessage(currentWorkout: workout, catalog: catalogViewModel.combinedCatalog)
                     }
                 
                 if viewModel.isGenerating {
@@ -129,7 +130,7 @@ struct InWorkoutAICoachView: View {
                 } else {
                     Button {
                         isInputFocused = false
-                        viewModel.sendMessage(currentWorkout: workout, catalog: workoutViewModel.combinedCatalog)
+                        viewModel.sendMessage(currentWorkout: workout, catalog: catalogViewModel.combinedCatalog)
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 34))
@@ -190,7 +191,7 @@ struct WorkoutAdjustmentCardView: View {
     
     @State private var isApplied = false
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var workoutViewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var workoutViewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {

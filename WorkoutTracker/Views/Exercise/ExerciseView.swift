@@ -18,7 +18,7 @@ struct ExerciseView: View {
     // MARK: - Environment & State
     
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @EnvironmentObject var catalogViewModel: CatalogViewModel
     @State private var showAddSheet = false
     @State private var selectedGroups: Set<String>
     @State private var searchText: String
@@ -179,7 +179,7 @@ struct ExerciseView: View {
     
     /// Получить категорию упражнения
     private func getCategory(for exerciseName: String) -> String? {
-        for (category, exercises) in viewModel.combinedCatalog {
+        for (category, exercises) in catalogViewModel.combinedCatalog {
             if exercises.contains(exerciseName) {
                 return category
             }
@@ -267,7 +267,7 @@ struct ExerciseView: View {
     
     /// Список отсортированных категорий
     private var sortedCategories: [String] {
-        viewModel.combinedCatalog.keys.sorted()
+        catalogViewModel.combinedCatalog.keys.sorted()
     }
     
     /// Отфильтрованные категории (если есть выбранные группы, показываем только их)
@@ -281,7 +281,7 @@ struct ExerciseView: View {
     
     /// Получить отсортированный список упражнений для группы
     private func sortedExercises(for group: String) -> [String] {
-        viewModel.combinedCatalog[group]?.sorted() ?? []
+        catalogViewModel.combinedCatalog[group]?.sorted() ?? []
     }
     
     /// Получить отфильтрованный список упражнений для группы (с учетом поиска)
@@ -309,7 +309,7 @@ struct ExerciseView: View {
     
     /// Проверяет, является ли упражнение созданным пользователем
     private func isCustom(name: String) -> Bool {
-        return viewModel.isCustomExercise(name: name)
+        return catalogViewModel.isCustomExercise(name: name)
     }
     
     /// Логика удаления (работает для всех упражнений - пользовательских и стандартных)
@@ -317,7 +317,7 @@ struct ExerciseView: View {
            withAnimation {
                for item in exercisesToDelete {
                    // ИСПРАВЛЕНИЕ: Передаем container вместо context
-                   viewModel.deleteExercise(name: item.name, category: item.category) 
+                   catalogViewModel.deleteExercise(name: item.name, category: item.category) 
                }
                exercisesToDelete = []
            }

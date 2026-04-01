@@ -10,9 +10,9 @@ struct ExerciseCardView: View {
     
     @Environment(\.modelContext) private var context
     @EnvironmentObject var tutorialManager: TutorialManager
-    @EnvironmentObject var viewModel: WorkoutViewModel
-    @EnvironmentObject var timerManager: RestTimerManager
-    @EnvironmentObject var unitsManager: UnitsManager
+    @Environment(WorkoutViewModel.self) var viewModel
+   @Environment(RestTimerManager.self) var timerManager
+    @Environment(UnitsManager.self) var unitsManager
     
     @Bindable var exercise: Exercise
     

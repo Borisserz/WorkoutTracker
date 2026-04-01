@@ -96,8 +96,21 @@ final class CameraManager: NSObject, ObservableObject {
             Task.detached { [weak self] in self?.session.stopRunning() }
         }
     }
+}// MARK: - Frame Counter Actor (Concurrency Safe)
+/// ОПТИМИЗАЦИЯ: Изолированный актор для безопасного инкремента счетчика кадров
+/// в многопоточной среде (заменяет устаревший NSLock).
+actor FrameCounter {
+    private var count = 0
+    
+    func incrementAndCheck(stride: Int) -> Bool {
+        count += 1
+        return count % stride == 0
+    }
 }
-final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, @unchecked Sendable {
+
+// MARK: - Camera Delegate
+/// Удалили @unchecked Sendable, так как делегат теперь полностью безопасен (Strict Concurrency).
+final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Sendable {
     private let onUpdate: @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void
     private let onBodyPoseUpdate: @Sendable (VNHumanBodyPoseObservation?) -> Void
     private let onHandUpdate: @Sendable (VNHumanHandPoseObservation?) -> Void
@@ -110,9 +123,8 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         return req
     }()
     
-    // 🛠 ИСПРАВЛЕНИЕ: Добавляем блокировку для потокобезопасного счетчика кадров
-    private var frameCount = 0
-    private let frameLock = NSLock()
+    // Используем актор вместо NSLock
+    private let frameCounter = FrameCounter()
     
     init(
         onUpdate: @escaping @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void,
@@ -125,51 +137,49 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         super.init()
     }
     
+    // Метод делегата не является async, поэтому оборачиваем логику в Task
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         
-        // 🛠 ИСПРАВЛЕНИЕ: Потокобезопасное увеличение счетчика
-        frameLock.lock()
-        frameCount += 1
-        let currentFrame = frameCount
-        frameLock.unlock()
-        
-        // 🎼 Пропускаем кадры. Обрабатываем каждый 3-й кадр (получаем ~10 FPS)
-        guard currentFrame % 3 == 0 else { return }
-        
-        // 🛡 Обертка autoreleasepool немедленно очищает память от тяжелых
-        // объектов Vision и буферов камеры сразу после завершения скоупа
-        autoreleasepool {
-            // Выполняем предварительно созданные реквесты на текущем кадре
-            let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
+        Task {
+            // Безопасно проверяем счетчик через актор (обрабатываем каждый 3-й кадр)
+            let shouldProcess = await frameCounter.incrementAndCheck(stride: 3)
+            guard shouldProcess else { return }
             
-            do {
-                try handler.perform([bodyRequest, handRequest])
+            // 🛡 Обертка autoreleasepool очищает память от тяжелых
+            // объектов Vision сразу после завершения скоупа.
+            autoreleasepool {
+                let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
                 
-                // --- 1. Обработка Body (Скелет тела) ---
-                if let bodyObservation = bodyRequest.results?.first {
-                    self.onBodyPoseUpdate(bodyObservation)
+                do {
+                    try handler.perform([bodyRequest, handRequest])
                     
-                    if let recognizedPoints = try? bodyObservation.recognizedPoints(.all) {
-                        var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-                        for (key, point) in recognizedPoints where point.confidence > 0.3 {
-                            normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                    // --- 1. Обработка Body (Скелет тела) ---
+                    if let bodyObservation = bodyRequest.results?.first {
+                        self.onBodyPoseUpdate(bodyObservation)
+                        
+                        if let recognizedPoints = try? bodyObservation.recognizedPoints(.all) {
+                            var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+                            for (key, point) in recognizedPoints where point.confidence > 0.3 {
+                                normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                            }
+                            self.onUpdate(normalizedJoints)
                         }
-                        self.onUpdate(normalizedJoints)
+                    } else {
+                        self.onBodyPoseUpdate(nil)
+                        self.onUpdate([:])
                     }
-                } else {
-                    self.onBodyPoseUpdate(nil)
-                    self.onUpdate([:])
+                    
+                    // --- 2. Обработка Hand (Кисть для жестов) ---
+                    self.onHandUpdate(handRequest.results?.first)
+                    
+                } catch {
+                    print("Vision request failed: \(error)")
                 }
-                
-                // --- 2. Обработка Hand (Кисть для жестов) ---
-                self.onHandUpdate(handRequest.results?.first)
-                
-            } catch {
-                print("Vision request failed: \(error)")
             }
         }
     }
 }
+
 // MARK: - Camera Preview
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession

@@ -16,7 +16,7 @@ struct ExerciseSelectionView: View {
     // MARK: - Environment & Bindings
     @EnvironmentObject var tutorialManager: TutorialManager
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var viewModel: WorkoutViewModel
+    @EnvironmentObject private var catalogViewModel: CatalogViewModel
     
     /// Замыкание для добавления нового упражнения
     var onAdd: (Exercise) -> Void
@@ -156,7 +156,7 @@ struct ExerciseSelectionView: View {
                 )
                 
                 // Кнопки для каждой группы мышц
-                ForEach(sortedGroups, id: \.self) { group in
+                ForEach(sortedCategories, id: \.self) { group in
                     filterButton(
                         title: LocalizedStringKey(group),
                         isSelected: selectedGroups.contains(group),
@@ -232,7 +232,7 @@ struct ExerciseSelectionView: View {
     
     /// Определить группу мышц для упражнения
     private func detectGroup(name: String) -> String {
-        for (group, exercises) in viewModel.combinedCatalog {
+        for (group, exercises) in catalogViewModel.combinedCatalog {
             if exercises.contains(name) {
                 return group
             }
@@ -242,21 +242,25 @@ struct ExerciseSelectionView: View {
     
     // MARK: - Helpers (Logic)
     
-    private var sortedGroups: [String] {
-        viewModel.combinedCatalog.keys.sorted()
-    }
+    private var sortedCategories: [String] {
+           catalogViewModel.combinedCatalog.keys.sorted()
+       }
+       
+       private func isCustom(name: String) -> Bool {
+           return catalogViewModel.isCustomExercise(name: name)
+       }
     
     /// Отфильтрованные группы (если есть выбранные группы, показываем только их)
     private var filteredGroups: [String] {
         if selectedGroups.isEmpty {
-            return sortedGroups
+            return sortedCategories
         } else {
-            return sortedGroups.filter { selectedGroups.contains($0) }
+            return sortedCategories.filter { selectedGroups.contains($0) }
         }
     }
     
     private func getSortedExercises(for group: String) -> [String] {
-        viewModel.combinedCatalog[group]?.sorted() ?? []
+        catalogViewModel.combinedCatalog[group]?.sorted() ?? []
     }
     
     /// Получить отфильтрованный список упражнений для группы (с учетом поиска)
@@ -282,14 +286,12 @@ struct ExerciseSelectionView: View {
         return false
     }
     
-    private func isCustom(name: String) -> Bool {
-        return viewModel.isCustomExercise(name: name)
-    }
+    
     
     /// Логика автоматического определения типа упражнения
     private func detectType(name: String, group: String) -> ExerciseType {
         // 1. Проверяем пользовательские (там тип задан явно)
-        if let custom = viewModel.customExercises.first(where: { $0.name == name }) {
+        if let custom = catalogViewModel.customExercises.first(where: { $0.name == name }) {
             return custom.type
         }
         

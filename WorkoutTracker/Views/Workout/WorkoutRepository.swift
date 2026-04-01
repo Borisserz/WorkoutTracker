@@ -75,9 +75,39 @@ struct StatsDataResultDTO: Sendable {
     let chartData: [WorkoutViewModel.ChartDataPoint]
 }
 
+struct ExerciseChartDTO: Sendable, Identifiable {
+    let id = UUID()
+    let name: String
+    let maxWeight: Double
+}
+
 // MARK: - Workout Repository (@ModelActor)
 @ModelActor
 actor WorkoutRepository {
+    
+    // MARK: - Workout Creation
+    
+    func createWorkout(title: String, fromPresetID presetID: PersistentIdentifier?) throws -> PersistentIdentifier {
+        var exercises: [Exercise] = []
+        
+        if let pid = presetID, let preset = modelContext.model(for: pid) as? WorkoutPreset {
+            for ex in preset.exercises {
+                let dup = ex.duplicate()
+                modelContext.insert(dup)
+                for set in dup.setsList { modelContext.insert(set) }
+                for sub in dup.subExercises {
+                    modelContext.insert(sub)
+                    for set in sub.setsList { modelContext.insert(set) }
+                }
+                exercises.append(dup)
+            }
+        }
+        
+        let newWorkout = Workout(title: title, date: Date(), exercises: exercises)
+        modelContext.insert(newWorkout)
+        try modelContext.save()
+        return newWorkout.persistentModelID
+    }
     
     // MARK: - Explicit CRUD Operations for WorkoutViewModel
     
@@ -163,6 +193,43 @@ actor WorkoutRepository {
             recentPRs: recentPRs,
             detailedComparison: detailedComparison,
             chartData: chartData
+        )
+    }
+    
+    func fetchWorkoutAnalytics(workoutID: PersistentIdentifier) throws -> WorkoutViewModel.WorkoutAnalyticsData {
+        guard let workout = modelContext.model(for: workoutID) as? Workout else { throw WorkoutRepositoryError.modelNotFound }
+        
+        var counts = [String: Int]()
+        var volume = 0.0
+        var chartExercises: [ExerciseChartDTO] = []
+        
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            for sub in targets {
+                if sub.type != .cardio && sub.setsList.contains(where: { $0.isCompleted }) {
+                    let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
+                    for muscleSlug in muscles { counts[muscleSlug, default: 0] += 1 }
+                }
+            }
+            volume += exercise.exerciseVolume
+        }
+        
+        let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
+        let forChart = flattened.filter { ex in
+            ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
+        }
+        
+        for ex in forChart {
+            let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+            if maxW > 0 {
+                chartExercises.append(ExerciseChartDTO(name: ex.name, maxWeight: maxW))
+            }
+        }
+        
+        return WorkoutViewModel.WorkoutAnalyticsData(
+            intensity: counts,
+            volume: volume,
+            chartExercises: chartExercises
         )
     }
 
@@ -392,9 +459,23 @@ actor WorkoutRepository {
         modelContext.insert(item)
         try modelContext.save()
     }
+    
+    // MARK: - Import / Export Operations
+    
+    func exportPresetToFile(presetID: PersistentIdentifier) throws -> URL {
+        guard let preset = modelContext.model(for: presetID) as? WorkoutPreset else { throw WorkoutRepositoryError.modelNotFound }
+        return try WorkoutExportService.exportPresetToFile(preset.toDTO())
+    }
+    
+    func exportPresetToCSV(presetID: PersistentIdentifier) throws -> URL {
+        guard let preset = modelContext.model(for: presetID) as? WorkoutPreset else { throw WorkoutRepositoryError.modelNotFound }
+        return try WorkoutExportService.exportPresetToCSV(preset.toDTO())
+    }
 
-    func importPreset(dto: WorkoutPresetDTO) throws {
-        let preset = WorkoutPreset(from: dto)
+    func importPreset(from url: URL) throws {
+        let presetDTO = try WorkoutExportService.importPreset(from: url)
+        let finalDTO = WorkoutPresetDTO(name: presetDTO.name + " (Imported)", icon: presetDTO.icon, exercises: presetDTO.exercises)
+        let preset = WorkoutPreset(from: finalDTO)
         modelContext.insert(preset)
         try modelContext.save()
     }
@@ -486,10 +567,8 @@ actor WorkoutRepository {
     // MARK: - Safe Backend Operations
         
     func finishWorkoutAndCalculateAchievements(workoutID: PersistentIdentifier) async throws -> (newUnlocks: [Achievement], totalCount: Int) {
-        // 1. Процессим тренировку (сохраняем время, тоннаж и тд)
         try await processCompletedWorkout(workoutID: workoutID)
         
-        // 2. Достаем статистику
         let stats = (try? modelContext.fetch(FetchDescriptor<UserStats>()))?.first ?? UserStats()
         
         let descriptor = FetchDescriptor<Workout>(
@@ -498,7 +577,6 @@ actor WorkoutRepository {
         )
         let workouts = (try? modelContext.fetch(descriptor)) ?? []
         
-        // 3. Считаем ДО (прямо здесь, без MainActor)
         let oldWorkouts = workouts.count > 1 ? Array(workouts.dropFirst()) : []
         let oldStreak = StatisticsManager.calculateWorkoutStreak(workouts: oldWorkouts)
         
@@ -512,7 +590,6 @@ actor WorkoutRepository {
             weekendWorkouts: oldWeekendWorkouts, lunchWorkouts: oldLunchWorkouts, unitsManager: UnitsManager.shared
         )
         
-        // 4. Считаем ПОСЛЕ
         let newStreak = StatisticsManager.calculateWorkoutStreak(workouts: workouts)
         let newWeekendWorkouts = workouts.filter { cal.component(.weekday, from: $0.date) == 1 || cal.component(.weekday, from: $0.date) == 7 }.count
         let newLunchWorkouts = workouts.filter { let h = cal.component(.hour, from: $0.date); return h >= 11 && h <= 14 }.count
@@ -523,7 +600,6 @@ actor WorkoutRepository {
             weekendWorkouts: newWeekendWorkouts, lunchWorkouts: newLunchWorkouts, unitsManager: UnitsManager.shared
         )
         
-        // 5. Ищем разницу
         var newUnlocks: [Achievement] = []
         for i in 0..<newAchievements.count {
             guard i < oldAchievements.count else { break }

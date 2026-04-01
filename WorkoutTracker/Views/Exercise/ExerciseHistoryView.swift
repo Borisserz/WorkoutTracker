@@ -65,8 +65,8 @@ struct ExerciseHistoryView: View {
     
     let exerciseName: String
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
-@EnvironmentObject var unitsManager: UnitsManager
+    @Environment(WorkoutViewModel.self) var viewModel
+@Environment(UnitsManager.self) var unitsManager
     @FocusState private var isInputActive: Bool
     
     // MARK: - State
@@ -919,6 +919,7 @@ struct ExerciseNoteEditor: View {
     
     @Environment(\.modelContext) private var context
     @Query private var notes: [ExerciseNote]
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
     
     @State private var exerciseNote: String = ""
     @State private var saveTask: Task<Void, Never>?
@@ -975,11 +976,6 @@ struct ExerciseNoteEditor: View {
     }
     
     private func saveNote(_ text: String) {
-        if let existingNote = notes.first {
-            existingNote.text = text
-        } else if !text.isEmpty {
-            let newNote = ExerciseNote(exerciseName: exerciseName, text: text)
-            context.insert(newNote)
-        }
+        userStatsViewModel.saveExerciseNote(exerciseName: exerciseName, text: text, existingNote: notes.first)
     }
 }

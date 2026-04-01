@@ -7,7 +7,7 @@ internal import SwiftUI
 import Vision
 import CoreML
 import Combine
-import AVFoundation
+
 @MainActor
 final class MLWorkoutEngine: ObservableObject {
     
@@ -18,19 +18,16 @@ final class MLWorkoutEngine: ObservableObject {
     // MARK: - Configuration
     private let predictionWindowSize = 60
     private let stride = 5
+    private let predictionCooldown: TimeInterval = 1.5
     
     // MARK: - Internal State
     private var multiArraysWindow: [MLMultiArray] = []
     private var frameCounter = 0
     private var isPredicting = false
-    
     private var lastConfidentPredictionTime: Date = .distantPast
-    private let predictionCooldown: TimeInterval = 1.5
     
-    // МОДИФИЦИРОВАНО: Опциональная модель
     private var actionClassifier: MLModel?
-    
-    private var predictionTask: Task<Void, Never>? = nil
+    private var predictionTask: Task<Void, Never>?
     
     init() {
         loadModel()
@@ -42,12 +39,10 @@ final class MLWorkoutEngine: ObservableObject {
     }
     
     private func loadModel() {
-        Task.detached(priority: .userInitiated) {
+        Task {
             let config = MLModelConfiguration()
             if let model = try? WorkoutClassifier(configuration: config).model {
-                await MainActor.run { [weak self] in
-                    self?.actionClassifier = model
-                }
+                self.actionClassifier = model
             } else {
                 print("❌ MLWorkoutEngine: Failed to load WorkoutClassifier")
             }
@@ -60,7 +55,6 @@ final class MLWorkoutEngine: ObservableObject {
         guard let multiArray = try? observation.keypointsMultiArray() else { return }
         
         multiArraysWindow.append(multiArray)
-        
         if multiArraysWindow.count > predictionWindowSize {
             multiArraysWindow.removeFirst()
         }
@@ -72,69 +66,60 @@ final class MLWorkoutEngine: ObservableObject {
         }
     }
     
-    // MARK: - ML Prediction (Background)
+    // MARK: - ML Prediction (Structured Concurrency)
     
     private func predictAction() {
         guard !isPredicting, let model = actionClassifier else { return }
         
         let windowToPredict = multiArraysWindow
         isPredicting = true
-        
         predictionTask?.cancel()
         
-        // 🚩 Используем [weak self] в Task.detached
-        predictionTask = Task.detached(priority: .userInitiated) { [weak self] in
-            defer {
-                Task { @MainActor [weak self] in
-                    self?.isPredicting = false
-                }
+        // Обычный Task наследует контекст, но мы вызываем nonisolated метод для снятия нагрузки с MainActor
+        predictionTask = Task {
+            let result = await performPrediction(on: windowToPredict, model: model)
+            
+            // Защита от отмены задачи
+            guard !Task.isCancelled else {
+                self.isPredicting = false
+                return
             }
             
-            guard let self else { return }
-            
-            do {
-                guard windowToPredict.count == self.predictionWindowSize else { return }
-                
-                let combinedArray = try MLMultiArray(
-                    concatenating: windowToPredict,
-                    axis: 0,
-                    dataType: .float32
-                )
-                
-                let input = try MLDictionaryFeatureProvider(dictionary: ["poses": combinedArray])
-                let prediction = try await model.prediction(from: input)
-                
-                guard let labelFeature = prediction.featureValue(for: "label"),
-                      let probabilitiesFeature = prediction.featureValue(for: "labelProbabilities") else {
-                    return
-                }
-                
-                let label = labelFeature.stringValue
-                
-                guard let probabilities = probabilitiesFeature.dictionaryValue as? [String: Double],
-                      let conf = probabilities[label],
-                      !Task.isCancelled else {
-                    return
-                }
-                
-                await MainActor.run { [weak self] in
-                    guard let self else { return }
-                    if conf > 0.45 {
-                        self.currentAction = label
-                        self.confidence = conf
-                        self.lastConfidentPredictionTime = Date()
-                    } else {
-                        if Date().timeIntervalSince(self.lastConfidentPredictionTime) > self.predictionCooldown {
-                            self.currentAction = "Idle"
-                            self.confidence = 0.0
-                        }
+            // Обновляем состояние безопасно на MainActor
+            if let res = result {
+                if res.confidence > 0.45 {
+                    self.currentAction = res.label
+                    self.confidence = res.confidence
+                    self.lastConfidentPredictionTime = Date()
+                } else {
+                    if Date().timeIntervalSince(self.lastConfidentPredictionTime) > self.predictionCooldown {
+                        self.currentAction = "Idle"
+                        self.confidence = 0.0
                     }
                 }
-                
-            } catch {
-                guard !Task.isCancelled else { return }
-                print("⚠️ Action classification failed: \(error.localizedDescription)")
             }
+            self.isPredicting = false
+        }
+    }
+    
+    // Тяжелая математика вынесена из MainActor. Передаем только Sendable или изолированные параметры.
+    nonisolated private func performPrediction(on window: [MLMultiArray], model: MLModel) async -> (label: String, confidence: Double)? {
+        do {
+            let combinedArray = try MLMultiArray(concatenating: window, axis: 0, dataType: .float32)
+            let input = try MLDictionaryFeatureProvider(dictionary: ["poses": combinedArray])
+            let prediction = try await model.prediction(from: input)
+            
+            guard let labelFeature = prediction.featureValue(for: "label"),
+                  let probabilitiesFeature = prediction.featureValue(for: "labelProbabilities"),
+                  let probabilities = probabilitiesFeature.dictionaryValue as? [String: Double],
+                  let conf = probabilities[labelFeature.stringValue] else {
+                return nil
+            }
+            
+            return (labelFeature.stringValue, conf)
+        } catch {
+            print("⚠️ Action classification failed: \(error.localizedDescription)")
+            return nil
         }
     }
     

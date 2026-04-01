@@ -18,7 +18,7 @@ struct DetailedRecoveryView: View {
     
     // MARK: - Environment & Storage
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(WorkoutViewModel.self) var viewModel
     @EnvironmentObject var tutorialManager: TutorialManager
     
     // 1. Долгосрочное хранилище

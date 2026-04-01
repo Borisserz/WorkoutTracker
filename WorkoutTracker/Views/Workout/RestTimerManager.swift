@@ -4,30 +4,21 @@
 //
 
 internal import SwiftUI
-import Combine
+import Observation
 import AudioToolbox
 
+@Observable
 @MainActor
-class RestTimerManager: ObservableObject {
+final class RestTimerManager {
     
-    // 🎼 МАЭСТРО: Убрали @Published, чтобы не вызывать глобальный рендер 10 раз в секунду.
-    // Вместо этого используем CurrentValueSubject. Подписчики смогут слушать только изменения цифр.
-    let timeRemainingSubject = CurrentValueSubject<Int, Never>(0)
-    
-    // Оставляем @Published только для флагов состояний интерфейса (меняются редко)
-    @Published var isRestTimerActive: Bool = false
-    @Published var restTimerFinished: Bool = false
-    @Published var isHidden: Bool = false
+    // Никаких @Published и Combine! SwiftUI сам подпишется только на нужные свойства.
+    var restTimeRemaining: Int = 0
+    var isRestTimerActive: Bool = false
+    var restTimerFinished: Bool = false
+    var isHidden: Bool = false
     
     private var restEndTime: Date?
     private var restTimer: Timer?
-    private var cancellables = Set<AnyCancellable>()
-    
-    // Удобный геттер/сеттер для обновления сабджекта
-    var restTimeRemaining: Int {
-        get { timeRemainingSubject.value }
-        set { timeRemainingSubject.send(newValue) }
-    }
     
     private var defaultRestTime: Int {
         let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
@@ -37,23 +28,21 @@ class RestTimerManager: ObservableObject {
     init() {
         restoreTimerState()
         
-        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
-            .sink { [weak self] _ in
-                self?.checkTimerStateOnForeground()
+        // Современный Swift Concurrency подход для прослушивания нотификаций (вместо Combine)
+        Task {
+            for await _ in NotificationCenter.default.notifications(named: UIApplication.willEnterForegroundNotification) {
+                checkTimerStateOnForeground()
             }
-            .store(in: &cancellables)
+        }
         
-        NotificationCenter.default.publisher(for: NSNotification.Name(Constants.NotificationIdentifiers.restTimerFinishedNotification.rawValue))
-            .sink { [weak self] _ in
-                self?.stopRestTimer()
+        Task {
+            let timerFinishedName = NSNotification.Name(Constants.NotificationIdentifiers.restTimerFinishedNotification.rawValue)
+            for await _ in NotificationCenter.default.notifications(named: timerFinishedName) {
+                stopRestTimer()
             }
-            .store(in: &cancellables)
+        }
     }
     
-    deinit {
-        restTimer?.invalidate()
-        restTimer = nil
-    }
     
     private func saveTimerState() {
         guard let endTime = restEndTime else { return }
@@ -98,8 +87,6 @@ class RestTimerManager: ObservableObject {
     private func startTicker() {
         restTimer?.invalidate()
         
-        // ОПТИМИЗАЦИЯ SWIFT 6: Оборачиваем логику обновления в MainActor,
-        // чтобы компилятор не ругался на доступ к MainActor-изолированным свойствам (restEndTime, restTimeRemaining)
         let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self = self, let endTime = self.restEndTime else { return }
@@ -126,7 +113,7 @@ class RestTimerManager: ObservableObject {
         
         if timeRemaining <= 0 {
             self.restTimeRemaining = 0
-            finishTimer(suppressAudio: true) // Mute the jump-scare
+            finishTimer(suppressAudio: true)
         } else {
             self.restTimeRemaining = Int(ceil(timeRemaining))
             startTicker()
@@ -165,7 +152,6 @@ class RestTimerManager: ObservableObject {
         restEndTime = nil
         clearTimerState()
         
-        // Only play audio/haptic if it legitimately finished while actively using the app
         if !suppressAudio {
             let generator = UINotificationFeedbackGenerator()
             generator.prepare()

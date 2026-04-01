@@ -8,11 +8,12 @@ import SwiftData
 import Charts
 
 struct BodyMeasurementsView: View {
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
     @Environment(\.modelContext) private var context
     @Query(sort: \BodyMeasurement.date, order: .reverse) private var measurements: [BodyMeasurement]
-    @EnvironmentObject var unitsManager: UnitsManager
+    @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
-    
+
     @State private var selectedMetric: MeasurementType = .chest
     @State private var showingAddMeasurement = false
     
@@ -134,7 +135,7 @@ struct BodyMeasurementsView: View {
                                     MeasurementEntryRow(entry: entry, selectedMetric: selectedMetric, unitsManager: unitsManager)
                                         .contextMenu {
                                             Button(role: .destructive) {
-                                                context.delete(entry)
+                                                userStatsViewModel.deleteBodyMeasurement(entry)
                                             } label: {
                                                 Label(LocalizedStringKey("Delete"), systemImage: "trash")
                                             }
@@ -205,10 +206,10 @@ struct MeasurementEntryRow: View {
 }
 
 struct AddMeasurementSheet: View {
-    @Environment(\.modelContext) private var context
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var unitsManager: UnitsManager
-    
+    @Environment(UnitsManager.self) var unitsManager
+
     @State private var date = Date()
     
     @State private var neckStr = ""
@@ -289,8 +290,7 @@ struct AddMeasurementSheet: View {
     }
     
     private func save() {
-        let entry = BodyMeasurement(
-            date: date,
+        userStatsViewModel.addBodyMeasurement(
             neck: parse(neckStr),
             shoulders: parse(shouldersStr),
             chest: parse(chestStr),
@@ -298,9 +298,9 @@ struct AddMeasurementSheet: View {
             pelvis: parse(pelvisStr),
             biceps: parse(bicepsStr),
             thigh: parse(thighStr),
-            calves: parse(calvesStr)
+            calves: parse(calvesStr),
+            date: date
         )
-        context.insert(entry)
         dismiss()
     }
 }

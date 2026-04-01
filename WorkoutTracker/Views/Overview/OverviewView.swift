@@ -14,8 +14,8 @@ struct OverviewView: View {
     // MARK: - Environment & State
     @Environment(\.modelContext) private var context
     @EnvironmentObject var tutorialManager: TutorialManager
-    @EnvironmentObject var viewModel: WorkoutViewModel
-    
+    @Environment(WorkoutViewModel.self) var viewModel
+    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
     // ОПТИМИЗАЦИЯ: Загружаем строго ОДНУ тренировку для проверки на пустоту.
     // Это полностью устраняет лаги при переходе на этот экран.
     @Query private var recentWorkouts: [Workout]
@@ -183,7 +183,7 @@ struct OverviewView: View {
                         }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
-                    .environmentObject(viewModel)
+                    .environment(viewModel)
             }
             .sheet(isPresented: $showAddWorkout) {
                 AddWorkoutView(onWorkoutCreated: {
@@ -194,9 +194,9 @@ struct OverviewView: View {
                 MuscleColorSettingsView()
             }
             .sheet(isPresented: $showProfile) {
-                ProfileView()
-                    .environmentObject(viewModel.progressManager)
-            }
+                            ProfileView()
+                                .environmentObject(userStatsViewModel.progressManager) 
+                        }
             .sheet(item: $generatedFreshWorkout) { generated in
                 FreshWorkoutPreviewSheet(generatedWorkout: generated) {
                     startGeneratedWorkout(generated)
