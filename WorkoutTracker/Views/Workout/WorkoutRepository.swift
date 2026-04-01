@@ -175,18 +175,22 @@ actor WorkoutRepository {
         var totalEffort = 0, exercisesWithCompletedSets = 0, strengthVol = 0.0, cardioDist = 0.0
         
         for exercise in workout.exercises {
-            exercise.updateAggregates()
             let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
             var hasCompletedSet = false
+            
+            // 1. UPDATE CHILDREN FIRST
             for sub in targets {
                 sub.updateAggregates()
                 if sub.setsList.contains(where: { $0.isCompleted }) { hasCompletedSet = true }
                 if sub.type == .strength { strengthVol += sub.exerciseVolume }
                 else if sub.type == .cardio { cardioDist += sub.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0.0, +) }
             }
+            
+            // 2. UPDATE PARENT SECOND (so it can read children's correct volumes)
+            exercise.updateAggregates()
+            
             if hasCompletedSet { totalEffort += exercise.effort; exercisesWithCompletedSets += 1 }
         }
-        
         workout.effortPercentage = exercisesWithCompletedSets > 0 ? Int((Double(totalEffort) / Double(exercisesWithCompletedSets)) * 10) : 0
         workout.totalStrengthVolume = strengthVol
         workout.totalCardioDistance = cardioDist
@@ -227,7 +231,40 @@ actor WorkoutRepository {
     }
     
     func deleteWorkout(workoutID: PersistentIdentifier) throws {
-        guard let workout = modelContext.model(for: workoutID) as? Workout else { throw WorkoutRepositoryError.modelNotFound }
+        guard let workout = modelContext.model(for: workoutID) as? Workout else {
+            throw WorkoutRepositoryError.modelNotFound
+        }
+        
+        // 1. Deduct stats from UserStats BEFORE deleting the workout
+        if let uStats = (try? modelContext.fetch(FetchDescriptor<UserStats>()))?.first {
+            uStats.totalWorkouts = max(0, uStats.totalWorkouts - 1)
+            uStats.totalVolume = max(0, uStats.totalVolume - workout.totalStrengthVolume)
+            uStats.totalDistance = max(0, uStats.totalDistance - workout.totalCardioDistance)
+            
+            let hour = Calendar.current.component(.hour, from: workout.date)
+            if hour < 9 { uStats.earlyWorkouts = max(0, uStats.earlyWorkouts - 1) }
+            if hour >= 20 { uStats.nightWorkouts = max(0, uStats.nightWorkouts - 1) }
+        }
+        
+        // 2. Deduct from MuscleStats and ExerciseStats
+        let exStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<ExerciseStat>())) ?? []).map { ($0.exerciseName, $0) })
+        let mStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<MuscleStat>())) ?? []).map { ($0.muscleName, $0) })
+        
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            for ex in targets {
+                if let exStat = exStatsDict[ex.name] {
+                    exStat.totalCount = max(0, exStat.totalCount - 1)
+                }
+                if ex.type != .cardio && ex.type != .duration {
+                    if let mStat = mStatsDict[ex.muscleGroup] {
+                        mStat.totalCount = max(0, mStat.totalCount - 1)
+                    }
+                }
+            }
+        }
+        
+        // 3. Delete and save
         modelContext.delete(workout)
         try modelContext.save()
     }

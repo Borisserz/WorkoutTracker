@@ -160,25 +160,35 @@ final class AICoachViewModel: ObservableObject {
     func acceptWorkout(dto: GeneratedWorkoutDTO, container: ModelContainer, onStart: @escaping (Workout) -> Void) {
         let context = ModelContext(container)
         var exercises: [Exercise] = []
+        
         for exDTO in dto.exercises {
             let exerciseType = ExerciseType(rawValue: exDTO.type) ?? .strength
             let category = ExerciseCategory.determine(from: exDTO.name)
-            var setsList: [WorkoutSet] = []
             
+            let newExercise = Exercise(name: exDTO.name, muscleGroup: exDTO.muscleGroup, type: exerciseType, category: category, sets: exDTO.sets, reps: exDTO.reps, weight: exDTO.recommendedWeightKg ?? 0, effort: 5, setsList: [], isCompleted: false)
+            context.insert(newExercise)
+            
+            var setsList: [WorkoutSet] = []
             for i in 1...max(1, exDTO.sets) {
                 let set = WorkoutSet(index: i, weight: exDTO.recommendedWeightKg, reps: exerciseType == .strength ? exDTO.reps : nil, distance: exerciseType == .cardio ? (exDTO.recommendedWeightKg ?? 0) : nil, time: exerciseType == .duration ? exDTO.reps : nil, isCompleted: false, type: .normal)
+                
+                set.exercise = newExercise // Explicitly link relationship
                 context.insert(set)
                 setsList.append(set)
             }
-            let newExercise = Exercise(name: exDTO.name, muscleGroup: exDTO.muscleGroup, type: exerciseType, category: category, sets: exDTO.sets, reps: exDTO.reps, weight: exDTO.recommendedWeightKg ?? 0, effort: 5, setsList: setsList, isCompleted: false)
-            context.insert(newExercise)
+            
+            newExercise.setsList = setsList
+            // FIX: Update aggregates so volume and counts appear immediately
+            newExercise.updateAggregates()
             exercises.append(newExercise)
         }
+        
         
         let newWorkout = Workout(title: dto.title, date: Date(), icon: "brain.head.profile", exercises: exercises)
         context.insert(newWorkout)
         try? context.save()
         
+        // Start Live Activity
         let attributes = WorkoutActivityAttributes(workoutTitle: newWorkout.title)
         let state = WorkoutActivityAttributes.ContentState(startTime: Date())
         _ = try? Activity<WorkoutActivityAttributes>.request(attributes: attributes, content: .init(state: state, staleDate: nil), pushType: nil)

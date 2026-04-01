@@ -215,6 +215,18 @@ struct WorkoutDetailView: View {
     fileprivate func handleOnDisappear() {
         timerManager.isHidden = false
         detailVM.commitSnackbar()
+        
+        // Auto-delete Ghost Workouts to prevent data pollution
+        if workout.isActive {
+            let hasCompletedSets = workout.exercises.contains { ex in
+                let targets = ex.isSuperset ? ex.subExercises : [ex]
+                return targets.contains { sub in sub.setsList.contains { $0.isCompleted } }
+            }
+            
+            if !hasCompletedSets {
+                viewModel.deleteWorkout(workout)
+            }
+        }
     }
     
     fileprivate func handleExercisesChanged() {

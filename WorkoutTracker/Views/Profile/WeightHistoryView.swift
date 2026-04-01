@@ -225,19 +225,18 @@ struct WeightHistoryView: View {
             }
             .alert(LocalizedStringKey("Add Weight"), isPresented: $showingAddWeight) {
                 VStack {
-                    DatePicker("", selection: $newWeightDate, displayedComponents: .date)
-                        .datePickerStyle(.compact)
-                    TextField(
-                        LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"),
-                        text: $newWeightText
-                    )
-                    .keyboardType(.decimalPad)
+                    DatePicker("", selection: $newWeightDate, displayedComponents: .date).datePickerStyle(.compact)
+                    TextField(LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"), text: $newWeightText)
+                        .keyboardType(.decimalPad)
                 }
                 Button(LocalizedStringKey("Save")) {
                     if let weight = Double(newWeightText.replacingOccurrences(of: ",", with: ".")) {
                         let weightInKg = unitsManager.convertToKilograms(weight)
                         let newEntry = WeightEntry(date: newWeightDate, weight: weightInKg)
                         context.insert(newEntry)
+                        
+                        // Sync to Global AppStorage so ProfileView updates instantly
+                        UserDefaults.standard.set(weightInKg, forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
                     }
                 }
                 Button(LocalizedStringKey("Cancel"), role: .cancel) { }

@@ -431,34 +431,38 @@ struct SliderInputView: View {
     private func validateAndCommit(_ num: Double, immediate: Bool = false) {
         let isValid: Bool
         let errMsg: String?
+        let clampedValue: Double
         
         switch fieldType {
         case .weight:
             let kg = unitsManager.convertToKilograms(num)
             let v = InputValidator.validateWeight(kg)
-            isValid = v.isValid; errMsg = v.errorMessage
+            isValid = v.isValid; errMsg = v.errorMessage; clampedValue = unitsManager.convertFromKilograms(v.clampedValue)
         case .reps:
             let v = InputValidator.validateReps(Int(num))
-            isValid = v.isValid; errMsg = v.errorMessage
+            isValid = v.isValid; errMsg = v.errorMessage; clampedValue = Double(v.clampedValue)
         case .distance:
             let m = unitsManager.convertToMeters(num)
             let v = InputValidator.validateDistance(m)
-            isValid = v.isValid; errMsg = v.errorMessage
+            isValid = v.isValid; errMsg = v.errorMessage; clampedValue = unitsManager.convertFromMeters(v.clampedValue)
         case .timeMin:
             let v = InputValidator.validateTime(Int(num) * 60)
-            isValid = v.isValid; errMsg = v.errorMessage
+            isValid = v.isValid; errMsg = v.errorMessage; clampedValue = Double(v.clampedValue / 60)
         case .timeSec:
             let v = InputValidator.validateTime(Int(num))
-            isValid = v.isValid; errMsg = v.errorMessage
+            isValid = v.isValid; errMsg = v.errorMessage; clampedValue = Double(v.clampedValue)
         }
         
         self.errorMessage = errMsg
         
-        if isValid {
-            commitValueWithDebounce(num, immediate: immediate)
-        } else {
-            updateTask?.cancel() // Отменяем сохранение невалидного значения
+        // Auto-correct the UI state to the clamped value if invalid
+        if !isValid {
+            self.sliderDoubleValue = clampedValue
+            self.textValue = formatValue(clampedValue)
         }
+        
+        // ALWAYS commit the clamped/valid value
+        commitValueWithDebounce(clampedValue, immediate: immediate)
     }
     
     // Сохранение с задержкой, чтобы не лагало при быстром кликаньи "плюсов"

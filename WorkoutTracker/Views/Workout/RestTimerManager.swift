@@ -126,7 +126,7 @@ class RestTimerManager: ObservableObject {
         
         if timeRemaining <= 0 {
             self.restTimeRemaining = 0
-            finishTimer()
+            finishTimer(suppressAudio: true) // Mute the jump-scare
         } else {
             self.restTimeRemaining = Int(ceil(timeRemaining))
             startTicker()
@@ -158,17 +158,20 @@ class RestTimerManager: ObservableObject {
         }
     }
     
-    func finishTimer() {
+    func finishTimer(suppressAudio: Bool = false) {
         restTimer?.invalidate()
         restTimer = nil
         restTimerFinished = true
         restEndTime = nil
         clearTimerState()
         
-        let generator = UINotificationFeedbackGenerator()
-        generator.prepare()
-        generator.notificationOccurred(.success)
-        AudioServicesPlaySystemSound(1005)
+        // Only play audio/haptic if it legitimately finished while actively using the app
+        if !suppressAudio {
+            let generator = UINotificationFeedbackGenerator()
+            generator.prepare()
+            generator.notificationOccurred(.success)
+            AudioServicesPlaySystemSound(1005)
+        }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             guard let self = self else { return }

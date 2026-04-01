@@ -277,12 +277,19 @@ struct ConfigureExerciseView: View {
             Text(LocalizedStringKey(label))
             Spacer()
             HStack(spacing: 5) {
-                ClearableTextField(placeholder: "0", value: minutesBinding)
-                    .frame(width: 50)
+                // Bind directly to the state variables. Let the user type freely.
+                ClearableTextField(placeholder: "0", value: Binding(
+                    get: { minutes == 0 ? nil : Double(minutes ?? 0) },
+                    set: { minutes = Int($0 ?? 0) }
+                ))
+                .frame(width: 50)
                 Text("min")
                 
-                ClearableTextField(placeholder: "0", value: secondsBinding)
-                    .frame(width: 50)
+                ClearableTextField(placeholder: "0", value: Binding(
+                    get: { seconds == 0 ? nil : Double(seconds ?? 0) },
+                    set: { seconds = Int($0 ?? 0) }
+                ))
+                .frame(width: 50)
                 Text("sec")
             }
         }

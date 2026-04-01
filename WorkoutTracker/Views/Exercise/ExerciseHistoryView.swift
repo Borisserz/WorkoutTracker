@@ -233,26 +233,22 @@ struct ExerciseHistoryView: View {
                         .compactMap { $0.weight }
                         .max()
                     // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetWeight вместо weight
-                    let kgValue = maxSetWeight ?? exercise.firstSetWeight
-                    value = unitsManager.convertFromKilograms(kgValue)
-                    
-                case .cardio:
-                    let totalDist = exercise.setsList
-                        .filter { $0.isCompleted }
-                        .compactMap { $0.distance }
-                        .reduce(0, +)
-                    // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetDistance вместо distance
-                    let finalDist = (totalDist > 0) ? totalDist : (exercise.firstSetDistance ?? 0.0)
-                    value = unitsManager.convertFromMeters(finalDist)
-                    
-                case .duration:
-                    let totalSeconds = exercise.setsList
-                        .filter { $0.isCompleted }
-                        .compactMap { $0.time }
-                        .reduce(0, +)
-                    // ИСПРАВЛЕНИЕ ЗДЕСЬ: используем firstSetTimeSeconds вместо timeSeconds
-                    let finalSeconds = (totalSeconds > 0) ? totalSeconds : (exercise.firstSetTimeSeconds ?? 0)
-                    value = Double(finalSeconds) / 60.0
+                    let kgValue = maxSetWeight ?? 0.0
+                        value = unitsManager.convertFromKilograms(kgValue)
+
+                    case .cardio:
+                        let totalDist = exercise.setsList
+                            .filter { $0.isCompleted }
+                            .compactMap { $0.distance }
+                            .reduce(0, +)
+                        value = unitsManager.convertFromMeters(totalDist) // Drop firstSetDistance fallback
+
+                    case .duration:
+                        let totalSeconds = exercise.setsList
+                            .filter { $0.isCompleted }
+                            .compactMap { $0.time }
+                            .reduce(0, +)
+                        value = Double(totalSeconds) / 60.0
                 }
                 
                 if value == 0 { return nil }

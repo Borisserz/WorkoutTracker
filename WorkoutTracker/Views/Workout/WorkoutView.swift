@@ -341,11 +341,28 @@ struct DynamicWorkoutListView: View {
             return
         }
         
-        let totalDur = workouts.reduce(0) { $0 + ($1.durationSeconds / 60) }
-        let totalVol = workouts.reduce(0.0) { $0 + $1.exercises.reduce(0.0) { $0 + $1.exerciseVolume } }
-        
-        self.calculatedAvgDuration = totalDur / totalWorkouts
-        self.calculatedAvgVolume = Int(totalVol / Double(totalWorkouts))
+        // Move heavy aggregation to a background thread
+        Task.detached(priority: .userInitiated) {
+            var totalDur = 0
+            var totalVol = 0.0
+            
+            // Iterate safely in the background
+            for workout in workouts {
+                totalDur += (workout.durationSeconds / 60)
+                for exercise in workout.exercises {
+                    totalVol += exercise.exerciseVolume
+                }
+            }
+            
+            let avgDur = totalDur / totalWorkouts
+            let avgVol = Int(totalVol / Double(totalWorkouts))
+            
+            // Return to MainActor to update UI bindings
+            await MainActor.run {
+                self.calculatedAvgDuration = avgDur
+                self.calculatedAvgVolume = avgVol
+            }
+        }
     }
 }
 
