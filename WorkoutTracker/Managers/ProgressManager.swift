@@ -10,34 +10,30 @@
 //  2. Расчет уровней (Level Up) по геометрической прогрессии.
 //  3. Сохранение прогресса игрока.
 //
-
-import Combine
 import Foundation
 internal import SwiftUI
+import Observation
 
-class ProgressManager: ObservableObject {
+@Observable
+class ProgressManager {
     
-    // MARK: - Published State
-    
-    @Published private(set) var level: Int = 1
-    @Published private(set) var totalXP: Int = 0
+    // MARK: - State
+    // Убираем @Published, Observation делает это под капотом
+    private(set) var level: Int = 1
+    private(set) var totalXP: Int = 0
     
     // MARK: - Constants & Keys
-    
     private let levelKey = "userLevel"
     private let xpKey = "userTotalXP"
     
-    // Баланс уровней
-    private let baseXP = 1000.0    // Опыт для первого уровня
-    private let multiplier = 1.2   // Коэффициент сложности следующего уровня
+    private let baseXP = 1000.0
+    private let multiplier = 1.2
     
     // MARK: - Init
-    
     init() {
         loadProgress()
         recalculateLevelFromXP()
     }
-    
     // MARK: - Level Math
     
     /// Вычисляет суммарный XP, необходимый для достижения уровня `n`.

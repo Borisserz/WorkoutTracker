@@ -4,8 +4,6 @@
 //
 //  Created by Boris Serzhanovich on 24.12.25.
 //
-
-
 internal import SwiftUI
 import SwiftData
 import Charts
@@ -50,6 +48,8 @@ struct StatsView: View {
     
     @Environment(\.modelContext) private var context
     @Environment(WorkoutViewModel.self) var viewModel
+    // ✅ ИЗМЕНЕНИЕ: Добавляем DashboardViewModel
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     
     @Query private var dbTrigger: [Workout]
     
@@ -87,15 +87,16 @@ struct StatsView: View {
                     StatsContentView(
                         selectedPeriod: $selectedPeriod,
                         selectedMetric: $selectedMetric,
-                        streakCount: viewModel.streakCount,
+                        // ✅ ИЗМЕНЕНИЕ: Данные берутся из dashboardViewModel
+                        streakCount: dashboardViewModel.streakCount,
                         currentStats: currentStats,
                         previousStats: previousStats,
                         chartData: chartData,
                         recentPRs: recentPRs,
-                        bestWeek: viewModel.bestWeekStats,
-                        bestMonth: viewModel.bestMonthStats,
-                        weakPoints: viewModel.weakPoints,
-                        recommendations: viewModel.recommendations,
+                        bestWeek: dashboardViewModel.bestWeekStats,
+                        bestMonth: dashboardViewModel.bestMonthStats,
+                        weakPoints: dashboardViewModel.weakPoints,
+                        recommendations: dashboardViewModel.recommendations,
                         detailedComparison: detailedComparison
                     )
                     
@@ -116,55 +117,50 @@ struct StatsView: View {
             }
         }
         .onChange(of: selectedPeriod) { _, _ in
-            Task {
-                await loadPeriodData()
-            }
+            Task { await loadPeriodData() }
         }
         .onChange(of: selectedMetric) { _, _ in
-            Task {
-                await loadPeriodData()
-            }
+            Task { await loadPeriodData() }
         }
         .onChange(of: dbTriggerHash) { _, _ in
-            Task {
-                await loadPeriodData()
-            }
+            Task { await loadPeriodData() }
         }
     }
     
     // MARK: - Data Loading Logic
     
     @MainActor
-        private func loadPeriodData() async {
-            let container = context.container
-            let period = selectedPeriod
-            let metric = selectedMetric
-            let prCache = viewModel.personalRecordsCache
-            let currentInterval = calculateCurrentInterval()
-            let previousInterval = calculatePreviousInterval()
-            
-            // Создаем ModelActor который сам создаст нужный контекст в своем потоке
-            let repository = WorkoutRepository(modelContainer: container)
-            
-            // Вся тяжелая работа произойдет в изоляции Repository
-            let result = await repository.fetchStatsData(
-                period: period,
-                metric: metric,
-                currentInterval: currentInterval,
-                previousInterval: previousInterval,
-                prCache: prCache
-            )
-            
-            withAnimation {
-                self.currentStats = result.currentStats
-                self.previousStats = result.previousStats
-                self.recentPRs = result.recentPRs
-                self.detailedComparison = result.detailedComparison
-                self.chartData = result.chartData
-                self.isDataLoaded = true
-            }
+    private func loadPeriodData() async {
+        let container = context.container
+        let period = selectedPeriod
+        let metric = selectedMetric
+        // ✅ ИЗМЕНЕНИЕ: Кэш PR берем из dashboardViewModel
+        let prCache = dashboardViewModel.personalRecordsCache
+        let currentInterval = calculateCurrentInterval()
+        let previousInterval = calculatePreviousInterval()
+        
+        let repository = WorkoutRepository(modelContainer: container)
+        
+        let result = await repository.fetchStatsData(
+            period: period,
+            metric: metric,
+            currentInterval: currentInterval,
+            previousInterval: previousInterval,
+            prCache: prCache
+        )
+        
+        withAnimation {
+            self.currentStats = result.currentStats
+            self.previousStats = result.previousStats
+            self.recentPRs = result.recentPRs
+            self.detailedComparison = result.detailedComparison
+            self.chartData = result.chartData
+            self.isDataLoaded = true
         }
+    }
     
+
+
     // MARK: - Date Logic
     
     private func calculateCurrentInterval() -> DateInterval {
@@ -200,7 +196,7 @@ struct StatsView: View {
 
 struct StatsContentView: View {
     @Environment(WorkoutViewModel.self) var viewModel
-    @EnvironmentObject var userStatsViewModel: UserStatsViewModel // ✅ ДОБАВЛЕНО
+    @Environment(UserStatsViewModel.self) var userStatsViewModel // ✅ ДОБАВЛЕНО
     
     @Binding var selectedPeriod: StatsView.Period
     @Binding var selectedMetric: StatsView.GraphMetric
@@ -262,8 +258,7 @@ struct StatsContentView: View {
         }
         .sheet(isPresented: $showProfile) {
             ProfileView()
-                // ✅ ИСПРАВЛЕНО: Берем progressManager из правильной ViewModel
-                .environmentObject(userStatsViewModel.progressManager)
+                .environment(userStatsViewModel.progressManager)
         }
         .sheet(isPresented: $showAIReviewSheet) {
             AIWeeklyReviewSheet(

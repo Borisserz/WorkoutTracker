@@ -3,7 +3,6 @@
 //  WorkoutTracker
 //
 
-
 internal import SwiftUI
 import SwiftData
 import Charts
@@ -25,17 +24,17 @@ struct WorkoutDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
+    @Environment(DashboardViewModel.self) private var dashboardViewModel
     @Environment(WorkoutViewModel.self) private var globalViewModel
-    @EnvironmentObject var catalogViewModel: CatalogViewModel
-    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
-    @EnvironmentObject var tutorialManager: TutorialManager
+    
+    @Environment(CatalogViewModel.self) var catalogViewModel
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
+    @Environment(TutorialManager.self) var tutorialManager
     @Environment(RestTimerManager.self) var timerManager
     @Environment(UnitsManager.self) var unitsManager
     
     @Bindable var workout: Workout
-    
-    // ЕДИНСТВЕННЫЙ ЛОКАЛЬНЫЙ ИСТОЧНИК ПРАВДЫ ДЛЯ ЭКРАНА
-    @StateObject private var viewModel = WorkoutDetailViewModel()
+    @State private var viewModel = WorkoutDetailViewModel()
     
     // MARK: - UI State
     @State private var selectedTab: Tab = .workout
@@ -79,8 +78,56 @@ struct WorkoutDetailView: View {
                 .onChange(of: workout.exercises.count) { _, _ in handleExercisesChanged() }
                 .onChange(of: scrollToExerciseId) { _, newId in handleScrollTo(newId: newId, proxy: proxy) }
                 .onChange(of: tutorialManager.currentStep) { _, newStep in handleTutorialStep(newStep) }
+                
+                // ✅ ЧИСТАЯ НАВИГАЦИЯ ЧЕРЕЗ ENUM
+                .sheet(item: $viewModel.activeSheet) { destination in
+                    switch destination {
+                    case .shareSheet:
+                        ActivityViewController(activityItems: viewModel.shareItems)
+                            .presentationDetents([.medium, .large])
+                    case .exerciseSelection:
+                        ExerciseSelectionView { newExercise in
+                            viewModel.addExercise(newExercise, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 })
+                        }
+                    case .supersetBuilder(let existing):
+                        SupersetBuilderView(existingSuperset: existing) { newSuperset in
+                            if existing == nil {
+                                viewModel.addExercise(newSuperset, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 })
+                            }
+                        } onDelete: {
+                            if let ex = existing {
+                                withAnimation { globalViewModel.removeExercise(ex, from: workout) }
+                            }
+                        }
+                    case .swapExercise(let oldEx):
+                        ExerciseSelectionView { newEx in
+                            viewModel.performSwap(old: oldEx, new: newEx, workout: workout, globalViewModel: globalViewModel, modelContainer: modelContext.container)
+                        }
+                    default: EmptyView()
+                    }
+                }
+                // ✅ АЛЕРТЫ
+                .alert(LocalizedStringKey("Empty Workout"), isPresented: $viewModel.isShowingEmptyAlert) {
+                    Button(LocalizedStringKey("Delete"), role: .destructive) {
+                        viewModel.deleteEmptyWorkout(workout: workout, globalViewModel: globalViewModel, timerManager: timerManager, dismiss: dismiss)
+                    }
+                    Button(LocalizedStringKey("Continue"), role: .cancel) { }
+                } message: {
+                    Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
+                }
+                // ✅ ПОЛНОЭКРАННЫЕ ПОПАПЫ
+                .fullScreenCover(item: $viewModel.activeFullScreen) { destination in
+                    switch destination {
+                    case .prCelebration(let level):
+                        PRCelebrationView(prLevel: level, onClose: { viewModel.activeDestination = nil })
+                            .presentationBackground(.clear)
+                    case .achievementPopup(let achievement):
+                        AchievementPopupView(achievement: achievement) { viewModel.activeDestination = nil }
+                            .presentationBackground(.clear)
+                    default: EmptyView()
+                    }
+                }
         }
-        .modifier(ViewModifiersGroup(parent: self))
     }
     
     @ViewBuilder
@@ -103,17 +150,16 @@ struct WorkoutDetailView: View {
                             if selectedTab == .workout {
                                 exercisesToolbarSection
                                 ExerciseListView(
-                                    workout: workout,
-                                    expandedExercises: $expandedExercises,
-                                    draggedExercise: $draggedExercise,
-                                    globalViewModel: globalViewModel,
-                                    viewModel: viewModel,
-                                    scrollToExerciseId: { id in self.scrollToExerciseId = id }
-                                )
+                                        workout: workout,
+                                        expandedExercises: $expandedExercises,
+                                        draggedExercise: $draggedExercise,
+                                        scrollToExerciseId: { id in self.scrollToExerciseId = id } 
+                                    )
+                                    .environment(viewModel)
                             } else if selectedTab == .analytics {
                                 chartSection
                                 muscleHeatmapSection
-                                if !workout.exercises.isEmpty { FunFactView(totalStrengthVolume: globalViewModel.workoutAnalytics.volume) }
+                                if !workout.exercises.isEmpty { FunFactView(totalStrengthVolume: viewModel.workoutAnalytics.volume) }
                             }
                             Spacer(minLength: timerManager.isRestTimerActive ? 180 : 100)
                         }
@@ -132,7 +178,7 @@ struct WorkoutDetailView: View {
                 workout: workout,
                 modelContainer: modelContext.container,
                 progressManager: userStatsViewModel.progressManager,
-                onRefreshGlobalCaches: { globalViewModel.refreshAllCaches() },
+                onRefreshGlobalCaches: { dashboardViewModel.refreshAllCaches() },
                 updateAchievementsCount: { newTotal in
                     let old = unlockedAchievementsCount
                     unlockedAchievementsCount = newTotal
@@ -173,33 +219,9 @@ struct WorkoutDetailView: View {
         .zIndex(100)
     }
 
-    struct ViewModifiersGroup: ViewModifier {
-        var parent: WorkoutDetailView
-        func body(content: Content) -> some View {
-            content
-                .sheet(isPresented: parent.$viewModel.showShareSheet) { ActivityViewController(activityItems: parent.viewModel.shareItems).presentationDetents([.medium, .large]) }
-                .sheet(isPresented: parent.$viewModel.showExerciseSelection) { ExerciseSelectionView { newExercise in parent.viewModel.addExercise(newExercise, workout: parent.workout, scrollToExerciseId: { parent.scrollToExerciseId = $0 }) } }
-                .sheet(isPresented: parent.$viewModel.showSupersetBuilder) { SupersetBuilderView { newSuperset in parent.viewModel.addExercise(newSuperset, workout: parent.workout, scrollToExerciseId: { parent.scrollToExerciseId = $0 }) } }
-                .sheet(item: parent.$viewModel.supersetToEdit) { superset in
-                    SupersetBuilderView(existingSuperset: superset, onSave: { _ in parent.viewModel.supersetToEdit = nil }, onDelete: {
-                        withAnimation { parent.globalViewModel.removeExercise(superset, from: parent.workout) }
-                        parent.viewModel.supersetToEdit = nil
-                    })
-                }
-                .sheet(isPresented: parent.$viewModel.showSwapSheet) { ExerciseSelectionView { newEx in if let oldEx = parent.viewModel.exerciseToSwap { parent.viewModel.performSwap(old: oldEx, new: newEx, workout: parent.workout, globalViewModel: parent.globalViewModel) }; parent.viewModel.exerciseToSwap = nil } }
-                .alert(LocalizedStringKey("Empty Workout"), isPresented: parent.$viewModel.showEmptyWorkoutAlert) {
-                    Button(LocalizedStringKey("Delete"), role: .destructive) { parent.viewModel.deleteEmptyWorkout(workout: parent.workout, globalViewModel: parent.globalViewModel, timerManager: parent.timerManager, dismiss: parent.dismiss) }
-                    Button(LocalizedStringKey("Continue"), role: .cancel) { }
-                } message: { Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?")) }
-                .fullScreenCover(isPresented: parent.$viewModel.showPRCelebration) { PRCelebrationView(prLevel: parent.viewModel.prLevel, onClose: { parent.viewModel.showPRCelebration = false }).presentationBackground(.clear) }
-                .fullScreenCover(item: parent.$viewModel.newlyUnlockedAchievement) { achievement in AchievementPopupView(achievement: achievement) { parent.viewModel.newlyUnlockedAchievement = nil }.presentationBackground(.clear) }
-        }
-    }
-    
     // MARK: - Lifecycle Handlers
-    
     fileprivate func handleOnAppear() {
-        globalViewModel.updateWorkoutAnalytics(for: workout)
+        viewModel.updateWorkoutAnalytics(for: workout, modelContainer: modelContext.container)
         for (index, exercise) in workout.exercises.enumerated() {
             if expandedExercises[exercise.id] == nil {
                 expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
@@ -224,7 +246,7 @@ struct WorkoutDetailView: View {
     }
     
     fileprivate func handleExercisesChanged() {
-        globalViewModel.updateWorkoutAnalytics(for: workout)
+        viewModel.updateWorkoutAnalytics(for: workout, modelContainer: modelContext.container)
         for (index, exercise) in workout.exercises.enumerated() {
             if expandedExercises[exercise.id] == nil {
                 expandedExercises[exercise.id] = index == 0
@@ -250,7 +272,6 @@ struct WorkoutDetailView: View {
     }
     
     // MARK: - View Sections
-    
     private var actionButtonSection: some View {
         Group {
             if !workout.isActive {
@@ -278,11 +299,11 @@ struct WorkoutDetailView: View {
                 }
             }
             
-            Button { viewModel.showSupersetBuilder = true } label: {
+            Button { viewModel.activeDestination = .supersetBuilder(nil) } label: {
                 Label(LocalizedStringKey("Superset"), systemImage: "plus").font(.caption).bold().padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
             }.disabled(!workout.isActive)
             
-            Button { viewModel.showExerciseSelection = true } label: {
+            Button { viewModel.activeDestination = .exerciseSelection } label: {
                 Label(LocalizedStringKey("Exercise"), systemImage: "plus").font(.caption).bold().padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
             }
             .disabled(!workout.isActive)
@@ -292,54 +313,53 @@ struct WorkoutDetailView: View {
     }
     
     private var chartSection: some View {
-            Group {
-                if !globalViewModel.workoutAnalytics.chartExercises.isEmpty {
-                    VStack(alignment: .leading) {
-                        Text(LocalizedStringKey("Analysis (Max Weight)")).font(.title2).bold().padding(.top)
-                        if let selected = selectedChartExerciseName {
-                            Text(LocalizedStringKey(selected.trimmingCharacters(in: .whitespaces))).font(.subheadline).foregroundColor(.accentColor).padding(.bottom, 4).frame(minHeight: 20)
-                        } else {
-                            Text(LocalizedStringKey("Tap a bar to see full name")).font(.subheadline).foregroundColor(.secondary).padding(.bottom, 4).frame(minHeight: 20)
+        Group {
+            if !viewModel.workoutAnalytics.chartExercises.isEmpty {
+                VStack(alignment: .leading) {
+                    Text(LocalizedStringKey("Analysis (Max Weight)")).font(.title2).bold().padding(.top)
+                    if let selected = selectedChartExerciseName {
+                        Text(LocalizedStringKey(selected.trimmingCharacters(in: .whitespaces))).font(.subheadline).foregroundColor(.accentColor).padding(.bottom, 4).frame(minHeight: 20)
+                    } else {
+                        Text(LocalizedStringKey("Tap a bar to see full name")).font(.subheadline).foregroundColor(.secondary).padding(.bottom, 4).frame(minHeight: 20)
+                    }
+                    
+                    Chart {
+                        ForEach(Array(viewModel.workoutAnalytics.chartExercises.enumerated()), id: \.element.id) { index, exercise in
+                            let maxWeight = exercise.maxWeight
+                            let convertedWeight = unitsManager.convertFromKilograms(maxWeight)
+                            let uniqueName = exercise.name + String(repeating: " ", count: index)
+                            
+                            BarMark(
+                                x: .value("Exercise", uniqueName),
+                                y: .value("Weight", convertedWeight)
+                            )
+                            .foregroundStyle(selectedChartExerciseName == uniqueName ? Color.orange.gradient : Color.accentColor.gradient)
+                            .cornerRadius(4)
+                            .annotation(position: .top) { Text("\(Int(convertedWeight))").font(.caption2).foregroundColor(selectedChartExerciseName == uniqueName ? .orange : .secondary) }
                         }
-                        
-                        Chart {
-                            ForEach(Array(globalViewModel.workoutAnalytics.chartExercises.enumerated()), id: \.element.id) { index, exercise in
-                                // ОПТИМИЗАЦИЯ: exercise теперь Sendable DTO, а не @Model, используем готовый maxWeight
-                                let maxWeight = exercise.maxWeight
-                                let convertedWeight = unitsManager.convertFromKilograms(maxWeight)
-                                let uniqueName = exercise.name + String(repeating: " ", count: index)
-                                
-                                BarMark(
-                                    x: .value("Exercise", uniqueName),
-                                    y: .value("Weight", convertedWeight)
-                                )
-                                .foregroundStyle(selectedChartExerciseName == uniqueName ? Color.orange.gradient : Color.accentColor.gradient)
-                                .cornerRadius(4)
-                                .annotation(position: .top) { Text("\(Int(convertedWeight))").font(.caption2).foregroundColor(selectedChartExerciseName == uniqueName ? .orange : .secondary) }
-                            }
-                        }
-                        .frame(height: 250).padding(.bottom, 10).chartXSelection(value: $selectedChartExerciseName)
-                        .chartXAxis {
-                            AxisMarks(values: .automatic) { value in
-                                AxisTick()
-                                AxisValueLabel {
-                                    if let uniqueName = value.as(String.self) {
-                                        Text(abbreviateName(uniqueName.trimmingCharacters(in: .whitespaces))).font(.caption2)
-                                    }
+                    }
+                    .frame(height: 250).padding(.bottom, 10).chartXSelection(value: $selectedChartExerciseName)
+                    .chartXAxis {
+                        AxisMarks(values: .automatic) { value in
+                            AxisTick()
+                            AxisValueLabel {
+                                if let uniqueName = value.as(String.self) {
+                                    Text(abbreviateName(uniqueName.trimmingCharacters(in: .whitespaces))).font(.caption2)
                                 }
                             }
                         }
                     }
-                    .spotlight(step: .highlightChart, manager: tutorialManager, text: "Track progress here.\nTap chart to continue.", alignment: .bottom)
-                    .onTapGesture { if tutorialManager.currentStep == .highlightChart { tutorialManager.nextStep() } }
                 }
+                .spotlight(step: .highlightChart, manager: tutorialManager, text: "Track progress here.\nTap chart to continue.", alignment: .bottom)
+                .onTapGesture { if tutorialManager.currentStep == .highlightChart { tutorialManager.nextStep() } }
             }
         }
-    
+    }
+      
     private var muscleHeatmapSection: some View {
         VStack(alignment: .leading) {
             Text(LocalizedStringKey("Body Status")).font(.title2).bold().padding(.top)
-            VStack { BodyHeatmapView(muscleIntensities: globalViewModel.workoutAnalytics.intensity) }
+            VStack { BodyHeatmapView(muscleIntensities: viewModel.workoutAnalytics.intensity) }
             .padding(.vertical).frame(maxWidth: .infinity).background(Color(UIColor.secondarySystemBackground)).cornerRadius(16)
             .spotlight(step: .highlightBody, manager: tutorialManager, text: "See targeted muscles.\nTap heatmap to continue.", alignment: .top)
             .onTapGesture { if tutorialManager.currentStep == .highlightBody { tutorialManager.nextStep() } }

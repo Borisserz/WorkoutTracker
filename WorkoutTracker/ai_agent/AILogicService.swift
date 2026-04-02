@@ -2,7 +2,6 @@
 //  AILogicService.swift
 //  WorkoutTracker
 //
-
 import Foundation
 
 // MARK: - App DTOs
@@ -12,9 +11,26 @@ public struct AICoachResponseDTO: Sendable {
     let workout: GeneratedWorkoutDTO?
 }
 
+// ✅ РЕФАКТОРИНГ: Строгий Enum вместо Stringly Typed API
+public enum AIActionType: String, Codable, Sendable {
+    case dropWeight
+    case addSet
+    case replaceExercise
+    case skipExercise
+    case reduceRemainingLoad
+    case none
+    case unknown
+    
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let rawValue = try container.decode(String.self)
+        self = AIActionType(rawValue: rawValue) ?? .unknown
+    }
+}
+
 public struct InWorkoutResponseDTO: Codable, Sendable {
     let explanation: String
-    let actionType: String // "dropWeight", "addSet", "replaceExercise", "skipExercise", "reduceRemainingLoad", "none"
+    let actionType: AIActionType // ✅ РЕФАКТОРИНГ: Используем строгий тип
     let targetExerciseName: String?
     let valuePercentage: Double?
     let valueReps: Int?
@@ -92,6 +108,8 @@ public enum AILogicError: Error, LocalizedError, Sendable {
         }
     }
 }
+
+
 
 // MARK: - Gemini API Private Models
 

@@ -19,7 +19,7 @@ struct OnboardingItem: Identifiable {
 // MARK: - Главный контейнер анбординга
 struct OnboardingFlowView: View {
     @Binding var isOnboardingCompleted: Bool
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(TutorialManager.self) var tutorialManager
     
     // Используем TabView для навигации между шагами
     @State private var currentTab = 0
@@ -386,7 +386,7 @@ struct PermissionsView: View {
 // MARK: - ШАГ 4: Выбор обучения
 struct TutorialChoiceView: View {
     var onFinish: () -> Void
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(TutorialManager.self) var tutorialManager
     
     var body: some View {
         VStack(spacing: 30) {

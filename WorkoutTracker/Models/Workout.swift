@@ -1,9 +1,9 @@
-//
+////
 //  Workout.swift
 //  WorkoutTracker
 //
 //  Main Data Models (SwiftData):
-//  Optimized to prevent OOM/N+1 performance issues by using stored aggregates.
+//  Optimized with Encapsulation to prevent Data Inconsistency.
 //
 
 import Foundation
@@ -35,7 +35,6 @@ enum ExerciseType: String, Codable, CaseIterable, Identifiable {
 }
 
 enum ExerciseCategory: String, Codable, CaseIterable {
-    // Note: Raw values for enums must be literals, so we don't use Constants here.
     case squat = "Squat"
     case press = "Press"
     case deadlift = "Deadlift"
@@ -99,12 +98,12 @@ class Exercise: Identifiable {
     var isCompleted: Bool = false
     
     // MARK: - Stored Aggregates (Performance Optimization)
-    @Attribute var setsCount: Int = 0
-    @Attribute var firstSetReps: Int = 0
-    @Attribute var firstSetWeight: Double = 0.0
-    @Attribute var firstSetDistance: Double? = nil
-    @Attribute var firstSetTimeSeconds: Int? = nil
-    @Attribute var exerciseVolume: Double = 0.0
+    @Attribute private(set) var setsCount: Int = 0
+    @Attribute private(set) var firstSetReps: Int = 0
+    @Attribute private(set) var firstSetWeight: Double = 0.0
+    @Attribute private(set) var firstSetDistance: Double? = nil
+    @Attribute private(set) var firstSetTimeSeconds: Int? = nil
+    @Attribute private(set) var exerciseVolume: Double = 0.0
     
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise)
     var setsList: [WorkoutSet] = []
@@ -152,7 +151,34 @@ class Exercise: Identifiable {
     
     var isSuperset: Bool { !subExercises.isEmpty }
     
-    /// To be called by the ViewModel when a set is modified, deleted, or added
+    // ✅ РЕФАКТОРИНГ: Безопасное добавление сета с авто-пересчетом
+    func addSafeSet(_ newSet: WorkoutSet) {
+        self.setsList.append(newSet)
+        newSet.exercise = self
+        self.updateAggregates()
+    }
+    
+    // ✅ РЕФАКТОРИНГ: Безопасное удаление сета с переиндексацией
+    func removeSafeSet(_ set: WorkoutSet) {
+        self.setsList.removeAll(where: { $0.id == set.id })
+        // Переиндексируем оставшиеся сеты, чтобы не было дыр (1, 3, 4 -> 1, 2, 3)
+        let sorted = self.sortedSets
+        for (i, s) in sorted.enumerated() {
+            s.index = i + 1
+        }
+        self.updateAggregates()
+    }
+    
+    // ✅ РЕФАКТОРИНГ: Безопасная замена всех сетов
+    func replaceAllSets(with newSets: [WorkoutSet]) {
+        self.setsList = newSets
+        for set in newSets {
+            set.exercise = self
+        }
+        self.updateAggregates()
+    }
+    
+    /// To be called internally or when a set property (weight/reps) is modified directly from UI
     func updateAggregates() {
         self.setsCount = setsList.count
         
@@ -179,6 +205,9 @@ class Exercise: Identifiable {
                 }
             }
         }
+        
+        // Рекурсивно обновляем родителя, если мы внутри суперсета
+        self.parentExercise?.updateAggregates()
     }
     
     func duplicate() -> Exercise {
@@ -187,6 +216,7 @@ class Exercise: Identifiable {
         return Exercise(id: UUID(), name: name, muscleGroup: muscleGroup, type: type, category: category, sets: 0, effort: effort, subExercises: copiedSubs, setsList: copiedSets, isCompleted: isCompleted)
     }
 }
+
 
 @Model
 class WorkoutPreset: Identifiable {

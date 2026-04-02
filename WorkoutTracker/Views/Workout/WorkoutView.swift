@@ -1,8 +1,3 @@
-//
-//  WorkoutView.swift
-//  WorkoutTracker
-//
-
 internal import SwiftUI
 import SwiftData
 import UIKit
@@ -12,9 +7,9 @@ import UIKit
 struct WorkoutView: View {
     @Environment(\.modelContext) private var context
     @Environment(WorkoutViewModel.self) var viewModel
-@Environment(UnitsManager.self) var unitsManager
+    @Environment(UnitsManager.self) var unitsManager
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     
-    // ОПТИМИЗАЦИЯ: Грузим только последние 30 тренировок для проверки на пустоту и анализа дисбаланса (защита от OOM)
     @Query(sort: \Workout.date, order: .reverse) private var recentWorkoutsForImbalance: [Workout]
     
     @State private var showImbalanceInfo = false
@@ -26,8 +21,8 @@ struct WorkoutView: View {
     @State private var sortOption: SortOption = .dateDescending
     @State private var showFavoritesOnly = false
     
-    @State private var calculatedAvgDuration: Int = 0
-    @State private var calculatedAvgVolume: Int = 0
+    // ✅ ИСПРАВЛЕНИЕ: Внедряем чистую ViewModel для списка вместо примитивных переменных
+    @State private var listViewModel = WorkoutListViewModel()
     
     enum FilterPeriod: String, CaseIterable {
         case all = "All Time"
@@ -57,7 +52,6 @@ struct WorkoutView: View {
             content
                 .navigationTitle(LocalizedStringKey("History"))
                 .navigationDestination(isPresented: $navigateToNewWorkout) {
-                    // Переход к новой тренировке
                     if let first = recentWorkoutsForImbalance.first {
                         WorkoutDetailView(workout: first)
                     }
@@ -131,14 +125,13 @@ struct WorkoutView: View {
                 .listRowBackground(Color.clear)
                 
                 Section {
-                    // ОПТИМИЗАЦИЯ: Передаем параметры фильтрации в динамический компонент
+                    // ✅ ИСПРАВЛЕНИЕ: Передаем listViewModel, а не примитивные binding-и
                     DynamicWorkoutListView(
                         searchText: searchText,
                         filter: selectedFilter,
                         sort: sortOption,
                         favoritesOnly: showFavoritesOnly,
-                        avgDuration: $calculatedAvgDuration,
-                        avgVolume: $calculatedAvgVolume
+                        listViewModel: listViewModel
                     )
                 }
                 .listRowInsets(EdgeInsets())
@@ -151,16 +144,17 @@ struct WorkoutView: View {
     private var statsSection: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
+                // ✅ ИСПРАВЛЕНИЕ: Читаем данные из ViewModel
                 StatCard(
                     title: LocalizedStringKey("Avg Duration"),
-                    value: "\(calculatedAvgDuration)",
+                    value: "\(listViewModel.calculatedAvgDuration)",
                     subtitle: LocalizedStringKey("min"),
                     icon: "stopwatch"
                 )
                 
                 StatCard(
                     title: LocalizedStringKey("Avg Volume"),
-                    value: "\(Int(unitsManager.convertFromKilograms(Double(calculatedAvgVolume))))",
+                    value: "\(Int(unitsManager.convertFromKilograms(Double(listViewModel.calculatedAvgVolume))))",
                     subtitle: LocalizedStringKey(unitsManager.weightUnitString()),
                     icon: "scalemass"
                 )
@@ -245,13 +239,14 @@ struct WorkoutView: View {
 struct DynamicWorkoutListView: View {
     @Environment(\.modelContext) private var context
     @Query private var workouts: [Workout]
+    @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(WorkoutViewModel.self) var viewModel
     
-    @Binding var calculatedAvgDuration: Int
-    @Binding var calculatedAvgVolume: Int
-    @Environment(WorkoutViewModel.self) var viewModel 
-    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, avgDuration: Binding<Int>, avgVolume: Binding<Int>) {
-        self._calculatedAvgDuration = avgDuration
-        self._calculatedAvgVolume = avgVolume
+    // ✅ ИСПРАВЛЕНИЕ: Используем ViewModel
+    var listViewModel: WorkoutListViewModel
+    
+    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, listViewModel: WorkoutListViewModel) {
+        self.listViewModel = listViewModel
         
         let calendar = Calendar.current
         let now = Date()
@@ -265,7 +260,6 @@ struct DynamicWorkoutListView: View {
         case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now) ?? .distantPast
         }
         
-        // Построение Предиката с поддержкой локального поиска
         let predicate: Predicate<Workout>
         if favoritesOnly {
             if searchText.isEmpty {
@@ -324,44 +318,13 @@ struct DynamicWorkoutListView: View {
                 withAnimation {
                     for index in indexSet {
                         let workoutToDelete = workouts[index]
-                        viewModel.deleteWorkout(workoutToDelete) // ЧИСТО! Логика во ViewModel
+                        viewModel.deleteWorkout(workoutToDelete)
                     }
                 }
             }
             .onChange(of: workouts, initial: true) { _, newWorkouts in
-                calculateStatsAsync(workouts: newWorkouts)
-            }
-        }
-    }
-    
-    private func calculateStatsAsync(workouts: [Workout]) {
-        let totalWorkouts = workouts.count
-        guard totalWorkouts > 0 else {
-            calculatedAvgDuration = 0
-            calculatedAvgVolume = 0
-            return
-        }
-        
-        // Move heavy aggregation to a background thread
-        Task.detached(priority: .userInitiated) {
-            var totalDur = 0
-            var totalVol = 0.0
-            
-            // Iterate safely in the background
-            for workout in workouts {
-                totalDur += (workout.durationSeconds / 60)
-                for exercise in workout.exercises {
-                    totalVol += exercise.exerciseVolume
-                }
-            }
-            
-            let avgDur = totalDur / totalWorkouts
-            let avgVol = Int(totalVol / Double(totalWorkouts))
-            
-            // Return to MainActor to update UI bindings
-            await MainActor.run {
-                self.calculatedAvgDuration = avgDur
-                self.calculatedAvgVolume = avgVol
+                // ✅ ИСПРАВЛЕНИЕ: Делегируем вычисление в ViewModel
+                listViewModel.calculateStatsAsync(workouts: newWorkouts)
             }
         }
     }
@@ -404,8 +367,7 @@ struct DebouncedSearchBar: View {
 }
 
 // MARK: - Helper Views
-
-// --- ВСПЛЫВАЮЩЕЕ ОКНО СОВЕТА ---
+// (ImbalanceDetailSheet, ActiveWorkoutIndicator, WorkoutRow, StatCard остаются без изменений)
 struct ImbalanceDetailSheet: View {
     let advice: (title: String, message: String)
     @Environment(\.dismiss) var dismiss
@@ -442,35 +404,26 @@ struct ImbalanceDetailSheet: View {
     }
 }
 
-// --- ИНДИКАТОР ТЕКУЩЕЙ ТРЕНИРОВКИ ---
 struct ActiveWorkoutIndicator: View {
     @State private var isBlinking = false
-    
     var body: some View {
         Circle()
             .fill(Color.blue)
             .frame(width: 8, height: 8)
             .opacity(isBlinking ? 0.2 : 1.0)
             .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isBlinking)
-            .onAppear {
-                isBlinking = true
-            }
-            .onDisappear {
-                isBlinking = false
-            }
+            .onAppear { isBlinking = true }
+            .onDisappear { isBlinking = false }
     }
 }
 
-// --- ДИЗАЙН ЯЧЕЙКИ ТРЕНИРОВКИ ---
 struct WorkoutRow: View {
     let workout: Workout
-    
     func effortColor(percentage: Int) -> Color {
         if percentage > 80 { return .red }
         if percentage > 50 { return .orange }
         return .green
     }
-    
     var safeIcon: String { UIImage(systemName: workout.icon) != nil ? workout.icon : "figure.run" }
     
     var body: some View {
@@ -524,7 +477,6 @@ struct WorkoutRow: View {
     }
 }
 
-// --- КАРТОЧКА СТАТИСТИКИ ---
 struct StatCard: View {
     let title: LocalizedStringKey
     let value: String

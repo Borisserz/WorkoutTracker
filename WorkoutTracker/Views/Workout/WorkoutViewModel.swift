@@ -1,16 +1,22 @@
+//
+//  WorkoutViewModel.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import SwiftData
 import AudioToolbox
 import WidgetKit
 internal import UniformTypeIdentifiers
 import Observation
+import ActivityKit
 
 // MARK: - Main ViewModel
 @Observable
 @MainActor
 final class WorkoutViewModel {
     
-    // MARK: - Nested Types
+    // (Nested Types остаются без изменений: BestResult, ChartDataPoint и т.д.)
     struct BestResult: Identifiable, Sendable { let id = UUID(); let exerciseName: String; let value: String; let date: Date; let type: ExerciseType }
     struct ChartDataPoint: Identifiable, Sendable { let id = UUID(); let label: String; let value: Double }
     struct PersonalRecord: Identifiable, Hashable, Sendable { let id = UUID(); let exerciseName: String; let weight: Double; let date: Date }
@@ -31,35 +37,26 @@ final class WorkoutViewModel {
     }
     struct AppError: Identifiable { let id = UUID(); let title: String; let message: String }
     
-    struct WorkoutAnalyticsData: Sendable {
-        var intensity: [String: Int] = [:]
-        var volume: Double = 0.0
-        var chartExercises: [ExerciseChartDTO] = []
-    }
-    
-    // MARK: - Published Properties (State)
-    var lastPerformancesCache: [String: Exercise] = [:]
-    var personalRecordsCache: [String: Double] = [:]
-    var recoveryStatus: [MuscleRecoveryStatus] = []
-    var dashboardMuscleData: [MuscleCountDTO] = []
-    var dashboardTotalExercises: Int = 0
-    var dashboardTopExercises: [ExerciseCountDTO] = []
-    var streakCount: Int = 0
-    var bestWeekStats: PeriodStats = PeriodStats()
-    var bestMonthStats: PeriodStats = PeriodStats()
-    var weakPoints: [WeakPoint] = []
-    var recommendations: [Recommendation] = []
     var activeWorkoutToResume: Workout?
     var currentError: AppError?
-    var workoutAnalytics = WorkoutAnalyticsData()
     
-    // MARK: - Data Layer
+    // MARK: - Dependencies (DI)
+    // Оставляем modelContainer только для тех операций, которые еще не переведены в Repository.
+    // В идеале он тоже отсюда уйдет.
     private let modelContainer: ModelContainer
     private var context: ModelContext { modelContainer.mainContext }
     
+    // Строгая абстракция слоя данных
+    private let repository: any WorkoutRepositoryProtocol
+    
+    // Прямая связь с Dashboard (не нужно прокидывать через аргументы функций)
+    private let dashboardViewModel: DashboardViewModel
+    
     // MARK: - Init
-    init(modelContainer: ModelContainer) {
+    init(modelContainer: ModelContainer, repository: any WorkoutRepositoryProtocol, dashboardViewModel: DashboardViewModel) {
         self.modelContainer = modelContainer
+        self.repository = repository
+        self.dashboardViewModel = dashboardViewModel
         MuscleMapping.preload()
     }
     
@@ -68,12 +65,10 @@ final class WorkoutViewModel {
     }
     
     // MARK: - Active Workout Management
-    
     func createWorkout(title: String, presetID: PersistentIdentifier?) async -> PersistentIdentifier? {
-        let repository = WorkoutRepository(modelContainer: modelContainer)
         do {
             let id = try await repository.createWorkout(title: title, fromPresetID: presetID)
-            self.refreshAllCaches()
+            dashboardViewModel.refreshAllCaches()
             return id
         } catch {
             showError(title: String(localized: "Error"), message: error.localizedDescription)
@@ -87,8 +82,7 @@ final class WorkoutViewModel {
         return count > 0
     }
     
-    // MARK: - Presets & Drafts Operations (MainActor)
-    
+    // MARK: - Presets Operations
     func savePreset(preset: WorkoutPreset?, name: String, icon: String, exercises: [Exercise]) {
         if let existingPreset = preset {
             existingPreset.name = name
@@ -110,51 +104,32 @@ final class WorkoutViewModel {
                 newPreset.exercises.append(ex)
             }
         }
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            showError(title: "Save Failed", message: "Failed to save template: \(error.localizedDescription)")
+        }
     }
     
     func deletePreset(_ preset: WorkoutPreset) {
         context.delete(preset)
-        try? context.save()
-    }
-    
-    func updateExerciseSets(exercise: Exercise, newSets: [WorkoutSet]) {
-        for set in exercise.setsList {
-            if set.modelContext != nil { context.delete(set) }
-        }
-        for set in newSets {
-            if set.modelContext == nil { context.insert(set) }
-        }
-        exercise.setsList = newSets
-        exercise.updateAggregates()
-        try? context.save()
-    }
-    
-    func addSetToDraftExercise(_ exercise: Exercise, set: WorkoutSet) {
-        if exercise.modelContext != nil && set.modelContext == nil {
-            context.insert(set)
-        }
-        exercise.setsList.append(set)
-        try? context.save()
-    }
-    
-    func removeSetFromDraftExercise(_ exercise: Exercise, set: WorkoutSet) {
-        if let idx = exercise.setsList.firstIndex(where: { $0.id == set.id }) {
-            exercise.setsList.remove(at: idx)
-            if set.modelContext != nil {
-                context.delete(set)
-            }
-            try? context.save()
+        do {
+            try context.save()
+        } catch {
+            showError(title: "Delete Failed", message: "Failed to delete template: \(error.localizedDescription)")
         }
     }
     
-    // MARK: - MVVM Entity Manipulation (Delegated to Repository)
+    // MARK: - Entity Manipulation (Delegated to Repository)
     
     func addSet(to exercise: Exercise, index: Int, weight: Double?, reps: Int?, distance: Double?, time: Int?, type: SetType, isCompleted: Bool) {
         let exerciseID = exercise.persistentModelID
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.addSet(toExerciseID: exerciseID, index: index, weight: weight, reps: reps, distance: distance, time: time, type: type, isCompleted: isCompleted)
+            do {
+                try await repository.addSet(toExerciseID: exerciseID, index: index, weight: weight, reps: reps, distance: distance, time: time, type: type, isCompleted: isCompleted)
+            } catch {
+                showError(title: "Error", message: "Could not add set: \(error.localizedDescription)")
+            }
         }
     }
     
@@ -162,8 +137,11 @@ final class WorkoutViewModel {
         let setID = set.persistentModelID
         let exerciseID = exercise.persistentModelID
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.deleteSet(setID: setID, fromExerciseID: exerciseID)
+            do {
+                try await repository.deleteSet(setID: setID, fromExerciseID: exerciseID)
+            } catch {
+                showError(title: "Error", message: "Could not delete set: \(error.localizedDescription)")
+            }
         }
     }
     
@@ -171,8 +149,11 @@ final class WorkoutViewModel {
         let subID = subExercise.persistentModelID
         let supersetID = superset.persistentModelID
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.removeSubExercise(subID: subID, fromSupersetID: supersetID)
+            do {
+                try await repository.removeSubExercise(subID: subID, fromSupersetID: supersetID)
+            } catch {
+                showError(title: "Error", message: "Could not remove sub-exercise: \(error.localizedDescription)")
+            }
         }
     }
     
@@ -180,106 +161,51 @@ final class WorkoutViewModel {
         let exerciseID = exercise.persistentModelID
         let workoutID = workout.persistentModelID
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.removeExercise(exerciseID: exerciseID, fromWorkoutID: workoutID)
+            do {
+                try await repository.removeExercise(exerciseID: exerciseID, fromWorkoutID: workoutID)
+            } catch {
+                showError(title: "Error", message: "Could not remove exercise: \(error.localizedDescription)")
+            }
         }
     }
     
     func cleanupAndFindActiveWorkouts() {
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            if let _ = try? await repository.cleanupAndFindActiveWorkouts() { }
+            do {
+                _ = try await repository.cleanupAndFindActiveWorkouts()
+            } catch {
+                print("Cleanup failed: \(error.localizedDescription)")
+            }
         }
     }
     
     func deleteWorkout(_ workout: Workout) {
         let workoutID = workout.persistentModelID
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.deleteWorkout(workoutID: workoutID)
-            await repository.rebuildAllStats()
-            self.refreshAllCaches()
+            do {
+                try await repository.deleteWorkout(workoutID: workoutID)
+                await repository.rebuildAllStats()
+                dashboardViewModel.refreshAllCaches()
+            } catch {
+                showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
+            }
         }
     }
     
     func processCompletedWorkout(_ workout: Workout) {
         let workoutID = workout.persistentModelID
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.processCompletedWorkout(workoutID: workoutID)
-            self.refreshAllCaches()
-        }
-    }
-    
-    func finishWorkoutAndCalculateAchievements(_ workout: Workout, completion: @escaping ([Achievement], Int) -> Void) {
-        let workoutID = workout.persistentModelID
-        Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            if let result = try? await repository.finishWorkoutAndCalculateAchievements(workoutID: workoutID) {
-                await MainActor.run {
-                    self.refreshAllCaches()
-                    completion(result.newUnlocks, result.totalCount)
-                }
-            }
-        }
-    }
-    
-    // MARK: - Background Cache Refresh
-    
-    func refreshAllCaches() {
-        Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
             do {
-                let cacheDTO = try await repository.fetchDashboardCache()
-                
-                self.personalRecordsCache = cacheDTO.personalRecords
-                self.dashboardTotalExercises = cacheDTO.dashboardTotalExercises
-                self.dashboardTopExercises = cacheDTO.dashboardTopExercises
-                self.dashboardMuscleData = cacheDTO.dashboardMuscleData
-                self.streakCount = cacheDTO.streakCount
-                
-                var newPerformancesCache: [String: Exercise] = [:]
-                for (name, data) in cacheDTO.lastPerformances {
-                    if let dto = try? JSONDecoder().decode(ExerciseDTO.self, from: data) {
-                        newPerformancesCache[name] = Exercise(from: dto)
-                    }
-                }
-                self.lastPerformancesCache = newPerformancesCache
-                
-                self.recoveryStatus = cacheDTO.recoveryStatus.map { MuscleRecoveryStatus(muscleGroup: $0.muscleGroup, recoveryPercentage: $0.recoveryPercentage) }
-                self.bestWeekStats = PeriodStats(workoutCount: cacheDTO.bestWeekStats.workoutCount, totalReps: cacheDTO.bestWeekStats.totalReps, totalDuration: cacheDTO.bestWeekStats.totalDuration, totalVolume: cacheDTO.bestWeekStats.totalVolume, totalDistance: cacheDTO.bestWeekStats.totalDistance)
-                self.bestMonthStats = PeriodStats(workoutCount: cacheDTO.bestMonthStats.workoutCount, totalReps: cacheDTO.bestMonthStats.totalReps, totalDuration: cacheDTO.bestMonthStats.totalDuration, totalVolume: cacheDTO.bestMonthStats.totalVolume, totalDistance: cacheDTO.bestMonthStats.totalDistance)
-                self.weakPoints = cacheDTO.weakPoints.map { WeakPoint(muscleGroup: $0.muscleGroup, frequency: $0.frequency, averageVolume: $0.averageVolume, recommendation: $0.recommendation) }
-                
-                self.recommendations = cacheDTO.recommendations.compactMap { dto in
-                    let type: RecommendationType
-                    switch dto.typeRawValue {
-                    case "frequency": type = .frequency; case "volume": type = .volume; case "balance": type = .balance
-                    case "recovery": type = .recovery; case "progression": type = .progression; case "positive": type = .positive
-                    default: return nil
-                    }
-                    return Recommendation(type: type, title: dto.title, message: dto.message, priority: dto.priority)
-                }
+                try await repository.processCompletedWorkout(workoutID: workoutID)
+                dashboardViewModel.refreshAllCaches()
             } catch {
-                print("Failed to refresh caches via Repository: \(error)")
+                showError(title: "Process Failed", message: "Could not process completed workout: \(error.localizedDescription)")
             }
         }
     }
-    
-    func rebuildAllStats() {
-        Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            await repository.rebuildAllStats()
-            self.refreshAllCaches()
-        }
-    }
-    
-    func getLastPerformance(for exerciseName: String) -> Exercise? { lastPerformancesCache[exerciseName] }
     
     // MARK: - Import/Export (Delegated to Repo)
-    
     func generateShareLink(for preset: WorkoutPreset) -> URL? {
-        // Выполняется на MainActor, так как DTO сериализуется быстро, а ShareLink требует синхронного URL
         do {
             return try WorkoutExportService.generateShareLink(for: preset.toDTO())
         } catch {
@@ -290,7 +216,6 @@ final class WorkoutViewModel {
     
     func exportPresetToFile(_ preset: WorkoutPreset) async -> URL? {
         let presetID = preset.persistentModelID
-        let repository = WorkoutRepository(modelContainer: modelContainer)
         do {
             return try await repository.exportPresetToFile(presetID: presetID)
         } catch {
@@ -301,7 +226,6 @@ final class WorkoutViewModel {
     
     func exportPresetToCSV(_ preset: WorkoutPreset) async -> URL? {
         let presetID = preset.persistentModelID
-        let repository = WorkoutRepository(modelContainer: modelContainer)
         do {
             return try await repository.exportPresetToCSV(presetID: presetID)
         } catch {
@@ -311,10 +235,9 @@ final class WorkoutViewModel {
     }
     
     func importPreset(from url: URL) async -> Bool {
-        let repository = WorkoutRepository(modelContainer: modelContainer)
         do {
             try await repository.importPreset(from: url)
-            self.refreshAllCaches()
+            dashboardViewModel.refreshAllCaches()
             return true
         } catch {
             showError(title: String(localized: "Import Failed"), message: error.localizedDescription)
@@ -323,36 +246,64 @@ final class WorkoutViewModel {
     }
     
     // MARK: - Utilities
-    
     func checkAndGenerateDefaultPresets() {
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.checkAndGenerateDefaultPresets()
+            do {
+                try await repository.checkAndGenerateDefaultPresets()
+            } catch {
+                print("Failed to generate default presets: \(error.localizedDescription)")
+            }
         }
     }
     
     func updateWidgetData() {
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.updateWidgetData()
+            do {
+                try await repository.updateWidgetData()
+            } catch {
+                print("Failed to update widget: \(error.localizedDescription)")
+            }
         }
     }
     
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, to workout: Workout) {
         let workoutID = workout.persistentModelID
         Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.applyAIAdjustment(adjustment, workoutID: workoutID)
-        }
-    }
-    
-    func updateWorkoutAnalytics(for workout: Workout) {
-        let workoutID = workout.persistentModelID
-        Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            if let analytics = try? await repository.fetchWorkoutAnalytics(workoutID: workoutID) {
-                self.workoutAnalytics = analytics
+            do {
+                try await repository.applyAIAdjustment(adjustment, workoutID: workoutID)
+            } catch {
+                showError(title: "AI Update Failed", message: "Could not apply AI recommendations: \(error.localizedDescription)")
             }
         }
     }
+    
+    // MARK: - Workout Generation
+        
+        func startGeneratedWorkout(_ generated: GeneratedWorkout, dashboardViewModel: DashboardViewModel) {
+            let newWorkout = Workout(
+                title: generated.title,
+                date: Date(),
+                icon: "bolt.fill",
+                exercises: generated.exercises
+            )
+            
+            // Временно используем контекст ViewModel (позже это тоже уйдет в репозиторий)
+            context.insert(newWorkout)
+            
+            do {
+                    try context.save()
+                    self.dashboardViewModel.refreshAllCaches() // Вызываем через self
+                // Запускаем Live Activity
+                let attributes = WorkoutActivityAttributes(workoutTitle: generated.title)
+                let state = WorkoutActivityAttributes.ContentState(startTime: Date())
+                _ = try? Activity<WorkoutActivityAttributes>.request(
+                    attributes: attributes,
+                    content: .init(state: state, staleDate: nil),
+                    pushType: nil
+                )
+                
+            } catch {
+                showError(title: "Save Failed", message: "Failed to save generated workout: \(error.localizedDescription)")
+            }
+        }
 }

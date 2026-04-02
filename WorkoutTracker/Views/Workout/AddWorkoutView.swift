@@ -4,10 +4,10 @@ import ActivityKit
 
 struct AddWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(TutorialManager.self) var tutorialManager
     @Environment(WorkoutViewModel.self) private var viewModel
     @Environment(UnitsManager.self) var unitsManager
-    
+    @Environment(DashboardViewModel.self) private var dashboardViewModel
     @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
     var onWorkoutCreated: (() -> Void)?
     

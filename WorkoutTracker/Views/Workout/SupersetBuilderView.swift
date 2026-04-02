@@ -207,17 +207,18 @@ struct SupersetBuilderView: View {
 // MARK: - Inner Exercise Editor
 
 struct EditSupersetItemView: View {
-    @Environment(WorkoutViewModel.self) var viewModel
-    @Bindable var exercise: Exercise // ДОБАВЛЕНО: SwiftData Bindable
+    // ✅ РЕФАКТОРИНГ: Удалили зависимость WorkoutViewModel
+    @Environment(\.modelContext) private var context
+    
+    @Bindable var exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
-@Environment(UnitsManager.self) var unitsManager
+    @Environment(UnitsManager.self) var unitsManager
     
     // Валидация
     @State private var showValidationAlert = false
     @State private var validationErrorMessage = ""
     
-    // Сортированные сеты
     private var sortedSets: [WorkoutSet] {
         exercise.setsList.sorted(by: { $0.index < $1.index })
     }
@@ -317,98 +318,89 @@ struct EditSupersetItemView: View {
     }
     
     // MARK: - Body
-    
     var body: some View {
-        NavigationStack {
-            Form {
-                Section(header: Text(exercise.name)) {
-                    if !exercise.setsList.isEmpty {
-                        
-                        Stepper(LocalizedStringKey("Sets: \(exercise.setsList.count)"), onIncrement: addSet, onDecrement: removeSet)
-                        
-                        // Поля ввода в зависимости от типа
-                        switch exercise.type {
-                        case .strength:
-                            inputRow(label: LocalizedStringKey("Weight (\(unitsManager.weightUnitString())):"), placeholder: unitsManager.weightUnitString(), binding: weightBindingAdapter)
-                            inputRow(label: LocalizedStringKey("Reps:"), placeholder: "reps", binding: repsBinding)
-                            
-                        case .cardio:
-                            inputRow(label: LocalizedStringKey("Distance (\(unitsManager.distanceUnitString())):"), placeholder: unitsManager.distanceUnitString(), binding: distanceBindingAdapter)
-                            inputRow(label: LocalizedStringKey("Time (min):"), placeholder: "min", binding: timeBinding)
-                            
-                        case .duration:
-                            inputRow(label: LocalizedStringKey("Time (sec):"), placeholder: "sec", binding: timeBinding)
-                        }
-                    } else {
-                        Button(LocalizedStringKey("Create First Set"), action: addSet)
-                    }
-                }
-                
-                Button(LocalizedStringKey("Save")) {
-                    let weight = sortedSets.first?.weight ?? 0.0
-                    if exercise.type == .strength && weight <= 0 {
-                        validationErrorMessage = String(localized: "Please enter a weight greater than 0.")
-                        showValidationAlert = true
-                    } else {
-                        propagateFirstSetData()
-                        onSave(exercise)
-                        dismiss()
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .buttonStyle(.borderedProminent)
-            }
-            .navigationTitle(LocalizedStringKey("Edit Details"))
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Cancel")) { dismiss() }
-                }
-            }
-            .alert(LocalizedStringKey("Invalid Input"), isPresented: $showValidationAlert) {
-                Button(LocalizedStringKey("OK"), role: .cancel) { }
-            } message: {
-                Text(validationErrorMessage)
-            }
-        }
-    }
-    
-    // MARK: - Helper Views
-    
-    private func inputRow(label: LocalizedStringKey, placeholder: String, binding: Binding<Double?>) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            ClearableTextField(placeholder: placeholder, value: binding)
-                .frame(width: 80)
-        }
-    }
-    
-    // MARK: - Logic
-    
-    private func addSet() {
-        let lastSet = sortedSets.last
-        let newIndex = (lastSet?.index ?? 0) + 1
-        let newSet = WorkoutSet(index: newIndex, weight: lastSet?.weight, reps: lastSet?.reps)
-        
-        viewModel.addSetToDraftExercise(exercise, set: newSet)
-    }
+          NavigationStack {
+              Form {
+                  Section(header: Text(exercise.name)) {
+                      if !exercise.setsList.isEmpty {
+                          Stepper(LocalizedStringKey("Sets: \(exercise.setsList.count)"), onIncrement: addSet, onDecrement: removeSet)
+                          switch exercise.type {
+                          case .strength:
+                              inputRow(label: LocalizedStringKey("Weight (\(unitsManager.weightUnitString())):"), placeholder: unitsManager.weightUnitString(), binding: weightBindingAdapter)
+                              inputRow(label: LocalizedStringKey("Reps:"), placeholder: "reps", binding: repsBinding)
+                          case .cardio:
+                              inputRow(label: LocalizedStringKey("Distance (\(unitsManager.distanceUnitString())):"), placeholder: unitsManager.distanceUnitString(), binding: distanceBindingAdapter)
+                              inputRow(label: LocalizedStringKey("Time (min):"), placeholder: "min", binding: timeBinding)
+                          case .duration:
+                              inputRow(label: LocalizedStringKey("Time (sec):"), placeholder: "sec", binding: timeBinding)
+                          }
+                      } else {
+                          Button(LocalizedStringKey("Create First Set"), action: addSet)
+                      }
+                  }
+                  
+                  Button(LocalizedStringKey("Save")) {
+                      let weight = sortedSets.first?.weight ?? 0.0
+                      if exercise.type == .strength && weight <= 0 {
+                          validationErrorMessage = String(localized: "Please enter a weight greater than 0.")
+                          showValidationAlert = true
+                      } else {
+                          propagateFirstSetData()
+                          onSave(exercise)
+                          dismiss()
+                      }
+                  }
+                  .frame(maxWidth: .infinity)
+                  .buttonStyle(.borderedProminent)
+              }
+              .navigationTitle(LocalizedStringKey("Edit Details"))
+              .toolbar {
+                  ToolbarItem(placement: .cancellationAction) {
+                      Button(LocalizedStringKey("Cancel")) { dismiss() }
+                  }
+              }
+              .alert(LocalizedStringKey("Invalid Input"), isPresented: $showValidationAlert) {
+                  Button(LocalizedStringKey("OK"), role: .cancel) { }
+              } message: { Text(validationErrorMessage) }
+          }
+      }
+      
+      private func inputRow(label: LocalizedStringKey, placeholder: String, binding: Binding<Double?>) -> some View {
+          HStack {
+              Text(label)
+              Spacer()
+              ClearableTextField(placeholder: placeholder, value: binding).frame(width: 80)
+          }
+      }
+      
+      // MARK: - Logic
+      private func addSet() {
+          let lastSet = sortedSets.last
+          let newIndex = (lastSet?.index ?? 0) + 1
+          let newSet = WorkoutSet(index: newIndex, weight: lastSet?.weight, reps: lastSet?.reps)
+          
+          // ✅ РЕФАКТОРИНГ: Работаем с контекстом и безопасным методом напрямую
+          if exercise.modelContext != nil { context.insert(newSet) }
+          exercise.addSafeSet(newSet)
+          try? context.save()
+      }
 
-    private func removeSet() {
-        if exercise.setsList.count > 1, let last = sortedSets.last {
-            if let setToDelete = exercise.setsList.first(where: { $0.id == last.id }) {
-                viewModel.removeSetFromDraftExercise(exercise, set: setToDelete)
-            }
-        }
-    }
-    
-    /// Копирует данные из первого сета во все остальные (для удобства)
-    private func propagateFirstSetData() {
-        guard let firstSet = sortedSets.first else { return }
-        for set in exercise.setsList where set.id != firstSet.id {
-            set.weight = firstSet.weight
-            set.reps = firstSet.reps
-            set.distance = firstSet.distance
-            set.time = firstSet.time
-        }
-    }
-}
+      private func removeSet() {
+          if exercise.setsList.count > 1, let last = sortedSets.last {
+              // ✅ РЕФАКТОРИНГ: Безопасное удаление
+              exercise.removeSafeSet(last)
+              if last.modelContext != nil { context.delete(last) }
+              try? context.save()
+          }
+      }
+      
+      private func propagateFirstSetData() {
+          guard let firstSet = sortedSets.first else { return }
+          for set in exercise.setsList where set.id != firstSet.id {
+              set.weight = firstSet.weight
+              set.reps = firstSet.reps
+              set.distance = firstSet.distance
+              set.time = firstSet.time
+          }
+      }
+  }

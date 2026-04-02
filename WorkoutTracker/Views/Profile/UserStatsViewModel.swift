@@ -5,18 +5,19 @@
 //  Created by Boris Serzhanovich on 1.04.26.
 //
 
-
 internal import SwiftUI
 import SwiftData
-import Combine
+import Observation
 
+@Observable
 @MainActor
-final class UserStatsViewModel: ObservableObject {
+final class UserStatsViewModel {
     
     private let modelContainer: ModelContainer
     private var context: ModelContext { modelContainer.mainContext }
     
-    @Published var progressManager = ProgressManager()
+    // @Published удалено
+    var progressManager = ProgressManager()
     
     init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer

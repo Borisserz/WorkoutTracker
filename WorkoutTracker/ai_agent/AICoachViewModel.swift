@@ -7,6 +7,7 @@ internal import SwiftUI
 import Combine
 import SwiftData
 import ActivityKit
+import Observation
 
 @Model
 final class AIChatSession {
@@ -34,26 +35,23 @@ struct AIChatMessage: Identifiable, Equatable, Codable {
     static func == (lhs: AIChatMessage, rhs: AIChatMessage) -> Bool { lhs.id == rhs.id }
 }
 
+@Observable
 @MainActor
-final class AICoachViewModel: ObservableObject {
-    // ✅ ПОСЛЕ: Строгая зависимость. Никаких Optional и никаких .onAppear
-    private let modelContainer: ModelContainer
-    private var context: ModelContext { modelContainer.mainContext }
-    
-    @Published var chatHistory: [AIChatMessage] = []
-    @Published var isGenerating: Bool = false
-    @Published var inputText: String = ""
-    @Published var currentSession: AIChatSession? = nil
+final class AICoachViewModel {
+    var chatHistory: [AIChatMessage] = []
+    var isGenerating: Bool = false
+    var inputText: String = ""
+    var currentSession: AIChatSession? = nil
     
     private var currentTask: Task<Void, Never>? = nil
     private let aiService = AILogicService(apiKey: Secrets.geminiApiKey)
     
-    // ✅ Инициализатор требует базу данных
+    private let modelContainer: ModelContainer
+    private var context: ModelContext { modelContainer.mainContext }
+    
     init(modelContainer: ModelContainer) {
         self.modelContainer = modelContainer
     }
-    
-    deinit { currentTask?.cancel() }
     
     func loadSession(_ session: AIChatSession) {
         currentTask?.cancel()
@@ -72,9 +70,8 @@ final class AICoachViewModel: ObservableObject {
         self.inputText = ""
     }
     
-    // Убрали context из параметров, добавили catalogViewModel
-    func sendMessage(workoutViewModel: WorkoutViewModel, catalogViewModel: CatalogViewModel, userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil) {
-    
+    // ✅ ИЗМЕНЕНИЕ: Теперь принимаем dashboardViewModel
+    func sendMessage(workoutViewModel: WorkoutViewModel, dashboardViewModel: DashboardViewModel, catalogViewModel: CatalogViewModel, userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil) {
         
         guard NetworkManager.shared.checkConnection() else {
             let noNetMessage = AIChatMessage(isUser: false, text: String(localized: "Internet connection required. Please check your network."), proposedWorkout: nil, isAnimating: false)
@@ -118,27 +115,28 @@ final class AICoachViewModel: ObservableObject {
             }
         }
         
-        // Передаем правильные вью-модели
-        requestWorkout(prompt: actualPrompt, workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userWeight)
+        // ✅ Передаем dashboardViewModel дальше
+        requestWorkout(prompt: actualPrompt, workoutViewModel: workoutViewModel, dashboardViewModel: dashboardViewModel, catalogViewModel: catalogViewModel, userWeight: userWeight)
     }
     
-    private func requestWorkout(prompt: String, workoutViewModel: WorkoutViewModel, catalogViewModel: CatalogViewModel, userWeight: Double) {
-  
+    // ✅ ИЗМЕНЕНИЕ: Параметры берутся из dashboardViewModel
+    private func requestWorkout(prompt: String, workoutViewModel: WorkoutViewModel, dashboardViewModel: DashboardViewModel, catalogViewModel: CatalogViewModel, userWeight: Double) {
         
         isGenerating = true
         let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
-        let workoutsThisWeek = workoutViewModel.bestWeekStats.workoutCount
-        let currentStreak = workoutViewModel.streakCount
-        let fatiguedMuscles = workoutViewModel.recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup }
         
-        // Берем каталог из нужной вью-модели
+        // ✅ ДАННЫЕ ТЕПЕРЬ ИЗ dashboardViewModel
+        let workoutsThisWeek = dashboardViewModel.bestWeekStats.workoutCount
+        let currentStreak = dashboardViewModel.streakCount
+        let fatiguedMuscles = dashboardViewModel.recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup }
+        
         let allAvailableExercises = catalogViewModel.combinedCatalog.values.flatMap { $0 }
         
         let userContext = UserProfileContext(
             weightKg: UnitsManager.shared.convertToKilograms(userWeight),
             experienceLevel: "Intermediate",
             favoriteMuscles: [],
-            recentPRs: workoutViewModel.personalRecordsCache,
+            recentPRs: dashboardViewModel.personalRecordsCache, // ✅
             language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
             workoutsThisWeek: workoutsThisWeek,
             currentStreak: currentStreak,
@@ -181,9 +179,7 @@ final class AICoachViewModel: ObservableObject {
         }
     }
     
-    // Убрали ModelContainer, берем context напрямую
     func acceptWorkout(dto: GeneratedWorkoutDTO, onStart: @escaping (Workout) -> Void) {
-     
         var exercises: [Exercise] = []
         
         for exDTO in dto.exercises {
@@ -211,7 +207,6 @@ final class AICoachViewModel: ObservableObject {
         context.insert(newWorkout)
         try? context.save()
         
-        // Start Live Activity
         let attributes = WorkoutActivityAttributes(workoutTitle: newWorkout.title)
         let state = WorkoutActivityAttributes.ContentState(startTime: Date())
         _ = try? Activity<WorkoutActivityAttributes>.request(attributes: attributes, content: .init(state: state, staleDate: nil), pushType: nil)

@@ -83,7 +83,7 @@ struct ExerciseChartDTO: Sendable, Identifiable {
 
 // MARK: - Workout Repository (@ModelActor)
 @ModelActor
-actor WorkoutRepository {
+actor WorkoutRepository: WorkoutRepositoryProtocol {
     
     // MARK: - Workout Creation
     
@@ -110,32 +110,28 @@ actor WorkoutRepository {
     }
     
     // MARK: - Explicit CRUD Operations for WorkoutViewModel
-    
     func addSet(toExerciseID: PersistentIdentifier, index: Int, weight: Double?, reps: Int?, distance: Double?, time: Int?, type: SetType, isCompleted: Bool) throws {
-        guard let exercise = modelContext.model(for: toExerciseID) as? Exercise else { throw WorkoutRepositoryError.modelNotFound }
-        let newSet = WorkoutSet(index: index, weight: weight, reps: reps, distance: distance, time: time, isCompleted: isCompleted, type: type)
-        modelContext.insert(newSet)
-        exercise.setsList.append(newSet)
-        exercise.updateAggregates()
-        try modelContext.save()
-    }
-    
-    func deleteSet(setID: PersistentIdentifier, fromExerciseID: PersistentIdentifier) throws {
-        guard let exercise = modelContext.model(for: fromExerciseID) as? Exercise,
-              let set = modelContext.model(for: setID) as? WorkoutSet else { throw WorkoutRepositoryError.modelNotFound }
-        
-        if let index = exercise.setsList.firstIndex(where: { $0.persistentModelID == setID }) {
-            exercise.setsList.remove(at: index)
+            guard let exercise = modelContext.model(for: toExerciseID) as? Exercise else { throw WorkoutRepositoryError.modelNotFound }
+            let newSet = WorkoutSet(index: index, weight: weight, reps: reps, distance: distance, time: time, isCompleted: isCompleted, type: type)
+            
+            modelContext.insert(newSet)
+            
+            // ✅ СТАЛО: Используем безопасный метод
+            exercise.addSafeSet(newSet)
+            
+            try modelContext.save()
         }
-        modelContext.delete(set)
         
-        let remainingSets = exercise.sortedSets
-        for (i, remainingSet) in remainingSets.enumerated() {
-            remainingSet.index = i + 1
+        func deleteSet(setID: PersistentIdentifier, fromExerciseID: PersistentIdentifier) throws {
+            guard let exercise = modelContext.model(for: fromExerciseID) as? Exercise,
+                  let set = modelContext.model(for: setID) as? WorkoutSet else { throw WorkoutRepositoryError.modelNotFound }
+            
+            // ✅ СТАЛО: Используем безопасный метод, он сам переиндексирует и обновит агрегаты
+            exercise.removeSafeSet(set)
+            modelContext.delete(set)
+            
+            try modelContext.save()
         }
-        exercise.updateAggregates()
-        try modelContext.save()
-    }
     
     func removeSubExercise(subID: PersistentIdentifier, fromSupersetID: PersistentIdentifier) throws {
         guard let superset = modelContext.model(for: fromSupersetID) as? Exercise,
@@ -196,42 +192,43 @@ actor WorkoutRepository {
         )
     }
     
-    func fetchWorkoutAnalytics(workoutID: PersistentIdentifier) throws -> WorkoutViewModel.WorkoutAnalyticsData {
-        guard let workout = modelContext.model(for: workoutID) as? Workout else { throw WorkoutRepositoryError.modelNotFound }
-        
-        var counts = [String: Int]()
-        var volume = 0.0
-        var chartExercises: [ExerciseChartDTO] = []
-        
-        for exercise in workout.exercises {
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-            for sub in targets {
-                if sub.type != .cardio && sub.setsList.contains(where: { $0.isCompleted }) {
-                    let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
-                    for muscleSlug in muscles { counts[muscleSlug, default: 0] += 1 }
-                }
-            }
-            volume += exercise.exerciseVolume
-        }
-        
-        let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
-        let forChart = flattened.filter { ex in
-            ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
-        }
-        
-        for ex in forChart {
-            let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-            if maxW > 0 {
-                chartExercises.append(ExerciseChartDTO(name: ex.name, maxWeight: maxW))
-            }
-        }
-        
-        return WorkoutViewModel.WorkoutAnalyticsData(
-            intensity: counts,
-            volume: volume,
-            chartExercises: chartExercises
-        )
-    }
+    func fetchWorkoutAnalytics(workoutID: PersistentIdentifier) throws -> WorkoutAnalyticsData {
+           guard let workout = modelContext.model(for: workoutID) as? Workout else { throw WorkoutRepositoryError.modelNotFound }
+           
+           var counts = [String: Int]()
+           var volume = 0.0
+           var chartExercises: [ExerciseChartDTO] = []
+           
+           for exercise in workout.exercises {
+               let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+               for sub in targets {
+                   if sub.type != .cardio && sub.setsList.contains(where: { $0.isCompleted }) {
+                       let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
+                       for muscleSlug in muscles { counts[muscleSlug, default: 0] += 1 }
+                   }
+               }
+               volume += exercise.exerciseVolume
+           }
+           
+           let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
+           let forChart = flattened.filter { ex in
+               ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
+           }
+           
+           for ex in forChart {
+               let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+               if maxW > 0 {
+                   chartExercises.append(ExerciseChartDTO(name: ex.name, maxWeight: maxW))
+               }
+           }
+           
+           // ✅ ИСПРАВЛЕНИЕ: Возвращаем без префикса
+           return WorkoutAnalyticsData(
+               intensity: counts,
+               volume: volume,
+               chartExercises: chartExercises
+           )
+       }
 
     // MARK: - Core Database Mutations
     
@@ -613,90 +610,179 @@ actor WorkoutRepository {
     }
 
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, workoutID: PersistentIdentifier) throws {
-        guard let workout = modelContext.model(for: workoutID) as? Workout, workout.isActive else { return }
-        
-        switch adjustment.actionType {
-        case "reduceRemainingLoad":
-            let percentage = adjustment.valuePercentage ?? 10.0
-            let multiplier = 1.0 - (percentage / 100.0)
-            for ex in workout.exercises where !ex.isCompleted {
-                for set in ex.setsList where !set.isCompleted {
-                    if let currentW = set.weight, currentW > 0 {
-                        set.weight = round((currentW * multiplier) / 2.5) * 2.5
-                    }
-                }
-                ex.updateAggregates()
-            }
-            
-        case "skipExercise":
-            guard let targetName = adjustment.targetExerciseName,
-                  let targetEx = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() && !$0.isCompleted }) else { break }
-            
-            if targetEx.setsList.contains(where: { $0.isCompleted }) {
-                for set in targetEx.setsList where !set.isCompleted { modelContext.delete(set) }
-                targetEx.setsList.removeAll(where: { !$0.isCompleted })
-                targetEx.isCompleted = true
-            } else {
-                if let idx = workout.exercises.firstIndex(of: targetEx) {
-                    workout.exercises.remove(at: idx)
-                    modelContext.delete(targetEx)
-                }
-            }
-            
-        case "dropWeight":
-            guard let targetName = adjustment.targetExerciseName,
-                  let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }) else { break }
-            if let nextSet = targetExercise.setsList.sorted(by: { $0.index < $1.index }).first(where: { !$0.isCompleted }) {
-                if let currentWeight = nextSet.weight, let percentage = adjustment.valuePercentage {
-                    nextSet.weight = round((currentWeight * (1.0 - (percentage / 100.0))) / 2.5) * 2.5
-                }
-            }
-            targetExercise.updateAggregates()
-            
-        case "addSet":
-            guard let targetName = adjustment.targetExerciseName,
-                  let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }) else { break }
-            
-            let newIndex = (targetExercise.setsList.map { $0.index }.max() ?? 0) + 1
-            let newSet = WorkoutSet(
-                index: newIndex, weight: adjustment.valueWeightKg ?? targetExercise.firstSetWeight,
-                reps: adjustment.valueReps ?? targetExercise.firstSetReps, isCompleted: false, type: .failure
-            )
-            modelContext.insert(newSet)
-            targetExercise.setsList.append(newSet)
-            targetExercise.updateAggregates()
-            
-        case "replaceExercise":
-            guard let targetName = adjustment.targetExerciseName,
-                  let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }),
-                  let newName = adjustment.replacementExerciseName else { break }
-            
-            let completedSetsCount = targetExercise.setsList.filter({ $0.isCompleted }).count
-            let remainingSets = targetExercise.setsList.count - completedSetsCount
-            let newExercise = Exercise(
-                name: newName, muscleGroup: targetExercise.muscleGroup, type: targetExercise.type,
-                sets: remainingSets > 0 ? remainingSets : 3,
-                reps: adjustment.valueReps ?? targetExercise.firstSetReps,
-                weight: adjustment.valueWeightKg ?? targetExercise.firstSetWeight
-            )
-            modelContext.insert(newExercise)
-            
-            if completedSetsCount == 0 {
-                if let idx = workout.exercises.firstIndex(of: targetExercise) {
-                    workout.exercises[idx] = newExercise
-                    modelContext.delete(targetExercise)
-                }
-            } else {
-                for set in targetExercise.setsList where !set.isCompleted { modelContext.delete(set) }
-                targetExercise.setsList.removeAll(where: { !$0.isCompleted })
-                targetExercise.isCompleted = true
-                targetExercise.updateAggregates()
-                if let idx = workout.exercises.firstIndex(of: targetExercise) {
-                    workout.exercises.insert(newExercise, at: idx + 1)
-                }
-            }
-        default: break
+           guard let workout = modelContext.model(for: workoutID) as? Workout, workout.isActive else { return }
+           
+           switch adjustment.actionType {
+           case .reduceRemainingLoad:
+               let percentage = adjustment.valuePercentage ?? 10.0
+               let multiplier = 1.0 - (percentage / 100.0)
+               for ex in workout.exercises where !ex.isCompleted {
+                   for set in ex.setsList where !set.isCompleted {
+                       if let currentW = set.weight, currentW > 0 {
+                           set.weight = round((currentW * multiplier) / 2.5) * 2.5
+                       }
+                   }
+                   ex.updateAggregates()
+               }
+               
+           case .skipExercise:
+               guard let targetName = adjustment.targetExerciseName,
+                     let targetEx = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() && !$0.isCompleted }) else { break }
+               
+               if targetEx.setsList.contains(where: { $0.isCompleted }) {
+                   for set in targetEx.setsList where !set.isCompleted { modelContext.delete(set) }
+                   targetEx.setsList.removeAll(where: { !$0.isCompleted })
+                   targetEx.isCompleted = true
+               } else {
+                   if let idx = workout.exercises.firstIndex(of: targetEx) {
+                       workout.exercises.remove(at: idx)
+                       modelContext.delete(targetEx)
+                   }
+               }
+               
+           case .dropWeight:
+               guard let targetName = adjustment.targetExerciseName,
+                     let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }) else { break }
+               if let nextSet = targetExercise.setsList.sorted(by: { $0.index < $1.index }).first(where: { !$0.isCompleted }) {
+                   if let currentWeight = nextSet.weight, let percentage = adjustment.valuePercentage {
+                       nextSet.weight = round((currentWeight * (1.0 - (percentage / 100.0))) / 2.5) * 2.5
+                   }
+               }
+               targetExercise.updateAggregates()
+               
+           case .addSet:
+               guard let targetName = adjustment.targetExerciseName,
+                     let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }) else { break }
+               
+               let newIndex = (targetExercise.setsList.map { $0.index }.max() ?? 0) + 1
+               let newSet = WorkoutSet(
+                   index: newIndex, weight: adjustment.valueWeightKg ?? targetExercise.firstSetWeight,
+                   reps: adjustment.valueReps ?? targetExercise.firstSetReps, isCompleted: false, type: .failure
+               )
+               modelContext.insert(newSet)
+               targetExercise.setsList.append(newSet)
+               targetExercise.updateAggregates()
+               
+           case .replaceExercise:
+               guard let targetName = adjustment.targetExerciseName,
+                     let targetExercise = workout.exercises.first(where: { $0.name.lowercased() == targetName.lowercased() }),
+                     let newName = adjustment.replacementExerciseName else { break }
+               
+               let completedSetsCount = targetExercise.setsList.filter({ $0.isCompleted }).count
+               let remainingSets = targetExercise.setsList.count - completedSetsCount
+               let newExercise = Exercise(
+                   name: newName, muscleGroup: targetExercise.muscleGroup, type: targetExercise.type,
+                   sets: remainingSets > 0 ? remainingSets : 3,
+                   reps: adjustment.valueReps ?? targetExercise.firstSetReps,
+                   weight: adjustment.valueWeightKg ?? targetExercise.firstSetWeight
+               )
+               modelContext.insert(newExercise)
+               
+               if completedSetsCount == 0 {
+                   if let idx = workout.exercises.firstIndex(of: targetExercise) {
+                       workout.exercises[idx] = newExercise
+                       modelContext.delete(targetExercise)
+                   }
+               } else {
+                   for set in targetExercise.setsList where !set.isCompleted { modelContext.delete(set) }
+                   targetExercise.setsList.removeAll(where: { !$0.isCompleted })
+                   targetExercise.isCompleted = true
+                   targetExercise.updateAggregates()
+                   if let idx = workout.exercises.firstIndex(of: targetExercise) {
+                       workout.exercises.insert(newExercise, at: idx + 1)
+                   }
+               }
+           case .none, .unknown:
+               break
+           }
+           try modelContext.save()
+       }
+}// Безопасный контейнер для передачи данных на MainActor
+struct ExerciseHistoryPayload: Sendable {
+    let type: ExerciseType
+    let category: ExerciseCategory
+    let muscleGroup: String
+    let dataPoints: [ExerciseHistoryViewModel.DataPoint]
+    let trend: WorkoutViewModel.ExerciseTrend?
+    let forecast: WorkoutViewModel.ProgressForecast?
+}
+
+extension WorkoutRepository {
+    
+    func fetchExerciseHistoryData(exerciseName: String) async -> ExerciseHistoryPayload? {
+        let filter = #Predicate<Exercise> { ex in
+            ex.name == exerciseName && ex.preset == nil
         }
-        try modelContext.save()
+        let descriptor = FetchDescriptor<Exercise>(predicate: filter)
+        
+        guard let fetchedExercises = try? modelContext.fetch(descriptor), !fetchedExercises.isEmpty else {
+            return nil
+        }
+        
+        var foundType: ExerciseType = .strength
+        var foundCategory: ExerciseCategory = .other
+        var foundMuscle: String = "Other"
+        
+        // Ключ - UUID (w.id)
+        var workoutMap: [UUID: (workout: Workout, exercises: [Exercise])] = [:]
+        
+        // Группируем по тренировкам
+        for ex in fetchedExercises {
+            let targetWorkout = ex.workout ?? ex.parentExercise?.workout
+            if let w = targetWorkout, w.endTime != nil {
+                // ИСПОЛЬЗУЕМ w.id ВМЕСТО hashValue
+                if workoutMap[w.id] == nil {
+                    workoutMap[w.id] = (w, [ex])
+                } else {
+                    workoutMap[w.id]?.exercises.append(ex)
+                }
+            }
+            foundType = ex.type
+            foundCategory = ex.category
+            foundMuscle = ex.muscleGroup
+        }
+        
+        var filteredWorkouts: [Workout] = []
+        var rawDataPoints: [ExerciseHistoryViewModel.DataPoint] = []
+        
+        // Отбираем лучшие результаты
+        for (_, data) in workoutMap {
+            let bestExercise = data.exercises.max { e1, e2 in
+                let max1 = e1.setsList.compactMap { $0.weight }.max() ?? 0
+                let max2 = e2.setsList.compactMap { $0.weight }.max() ?? 0
+                return max1 < max2
+            } ?? data.exercises.first!
+            
+            filteredWorkouts.append(data.workout)
+            
+            var rawValue: Double = 0.0
+            switch foundType {
+            case .strength:
+                rawValue = bestExercise.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0.0
+            case .cardio:
+                rawValue = bestExercise.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
+            case .duration:
+                let sec = bestExercise.setsList.filter { $0.isCompleted }.compactMap { $0.time }.reduce(0, +)
+                rawValue = Double(sec)
+            }
+            
+            if rawValue > 0 {
+                // Отдаем сырые значения (кг, метры, секунды). ViewModel сама их конвертирует.
+                rawDataPoints.append(ExerciseHistoryViewModel.DataPoint(date: data.workout.date, value: rawValue, rawWorkoutID: data.workout.persistentModelID))
+            }
+        }
+        
+        // Считаем аналитику прямо здесь, в фоне!
+        let trend = AnalyticsManager.getExerciseTrends(workouts: filteredWorkouts, period: .month).first(where: { $0.exerciseName == exerciseName })
+        let forecast = AnalyticsManager.getProgressForecast(workouts: filteredWorkouts).first(where: { $0.exerciseName == exerciseName })
+        
+        return ExerciseHistoryPayload(
+            type: foundType,
+            category: foundCategory,
+            muscleGroup: foundMuscle,
+            dataPoints: rawDataPoints.sorted { $0.date < $1.date },
+            trend: trend,
+            forecast: forecast
+        )
     }
 }

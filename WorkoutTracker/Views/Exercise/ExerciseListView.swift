@@ -15,13 +15,13 @@ struct ExerciseListView: View {
     @Binding var expandedExercises: [UUID: Bool]
     @Binding var draggedExercise: Exercise?
     
-    @EnvironmentObject var catalogViewModel: CatalogViewModel
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(CatalogViewModel.self) var catalogViewModel
+    @Environment(TutorialManager.self) var tutorialManager
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.modelContext) private var context
-        
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     var globalViewModel: WorkoutViewModel
-    @ObservedObject var viewModel: WorkoutDetailViewModel
+    var viewModel: WorkoutDetailViewModel 
     
     var scrollToExerciseId: (UUID?) -> Void
     
@@ -55,12 +55,13 @@ struct ExerciseListView: View {
                                 isWorkoutCompleted: !workout.isActive,
                                 isExpanded: isExpandedBinding,
                                 onExerciseFinished: {
+                                    // ✅ ПОРЯДОК АРГУМЕНТОВ ИСПРАВЛЕН
                                     viewModel.handleExerciseFinished(
                                         exerciseId: exercise.id,
                                         workout: workout,
                                         modelContainer: context.container,
                                         tutorialManager: tutorialManager,
-                                        prCache: globalViewModel.personalRecordsCache,
+                                        dashboardViewModel: dashboardViewModel, // Переместили сюда
                                         catalog: catalogViewModel.combinedCatalog,
                                         weightUnit: unitsManager.weightUnitString(),
                                         onExpandNext: { id in
@@ -69,7 +70,7 @@ struct ExerciseListView: View {
                                         }
                                     )
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expandedExercises[exercise.id] = false }
-                                    globalViewModel.updateWorkoutAnalytics(for: workout)
+                                    viewModel.updateWorkoutAnalytics(for: workout, modelContainer: context.container)
                                 },
                                 isCurrentExercise: isCurrentExercise,
                                 onPRSet: { level in
@@ -88,12 +89,13 @@ struct ExerciseListView: View {
                                 isWorkoutCompleted: !workout.isActive,
                                 isExpanded: isExpandedBinding,
                                 onExerciseFinished: {
+                                    // ✅ ПОРЯДОК АРГУМЕНТОВ ИСПРАВЛЕН
                                     viewModel.handleExerciseFinished(
                                         exerciseId: exercise.id,
                                         workout: workout,
                                         modelContainer: context.container,
                                         tutorialManager: tutorialManager,
-                                        prCache: globalViewModel.personalRecordsCache,
+                                        dashboardViewModel: dashboardViewModel, // Переместили сюда
                                         catalog: catalogViewModel.combinedCatalog,
                                         weightUnit: unitsManager.weightUnitString(),
                                         onExpandNext: { id in
@@ -102,7 +104,7 @@ struct ExerciseListView: View {
                                         }
                                     )
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expandedExercises[exercise.id] = false }
-                                    globalViewModel.updateWorkoutAnalytics(for: workout)
+                                    viewModel.updateWorkoutAnalytics(for: workout, modelContainer: context.container)
                                 },
                                 isCurrentExercise: isCurrentExercise,
                                 onPRSet: { level in

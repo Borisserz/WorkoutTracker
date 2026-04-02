@@ -10,7 +10,7 @@ internal import SwiftUI
 struct EffortInputView: View {
     @Binding var effort: Int
     @Environment(\.dismiss) var dismiss
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(TutorialManager.self) var tutorialManager
     
     // Локальное состояние для слайдера - обновляется мгновенно без задержек
     @State private var localEffort: Int = 5

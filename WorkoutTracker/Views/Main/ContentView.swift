@@ -8,10 +8,10 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(WorkoutViewModel.self) var viewModel
     @Environment(RestTimerManager.self) var timerManager
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(TutorialManager.self) var tutorialManager
     
     @State private var selectedTab = 0
   
@@ -47,7 +47,7 @@ struct ContentView: View {
                 }
             }
             .onAppear {
-                viewModel.refreshAllCaches()
+                dashboardViewModel.refreshAllCaches()
             }
             // ИСПРАВЛЕНИЕ: Используем $bindableViewModel
             .alert(item: $bindableViewModel.currentError) { error in

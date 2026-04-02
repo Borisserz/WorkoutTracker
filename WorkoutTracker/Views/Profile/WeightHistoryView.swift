@@ -11,7 +11,7 @@ import Charts
 
 struct WeightHistoryView: View {
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
-    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
     

@@ -6,6 +6,8 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(WorkoutViewModel.self) var viewModel
+    // ✅ ИЗМЕНЕНИЕ: Добавляем доступ к DashboardViewModel
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 0.0
@@ -180,7 +182,7 @@ struct SettingsView: View {
             .onChange(of: isProfileFocused) { _, isFocused in if !isFocused { triggerLightHaptic() } }
             .navigationTitle(LocalizedStringKey("Settings"))
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(LocalizedStringKey("Done")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(LocalizedStringKey("Done")) { dismiss() } }
                 ToolbarItemGroup(placement: .keyboard) { Spacer(); Button(LocalizedStringKey("Done")) { isProfileFocused = false }.bold() }
             }
             .alert(LocalizedStringKey("Test Data"), isPresented: $showTestDataAlert) { Button(LocalizedStringKey("OK"), role: .cancel) { } } message: { Text(testDataAlertMessage) }
@@ -200,38 +202,36 @@ struct SettingsView: View {
     private func generateTestData() {
         isProcessing = true
         let container = modelContext.container
-        Task.detached {
+        Task {
             let generator = TestDataGenerator(modelContainer: container)
             await generator.generateAllData()
             
             let repo = WorkoutRepository(modelContainer: container)
             await repo.rebuildAllStats()
             
-            await MainActor.run {
-                self.viewModel.refreshAllCaches()
-                self.isProcessing = false
-                self.testDataAlertMessage = "Test data generated successfully!\n\nCreated workouts and weight tracking history from 2021 to 2026."
-                self.showTestDataAlert = true
-            }
+            // ✅ ИЗМЕНЕНИЕ: Обновляем кэш в DashboardViewModel
+            self.dashboardViewModel.refreshAllCaches()
+            self.isProcessing = false
+            self.testDataAlertMessage = "Test data generated successfully!\n\nCreated workouts and weight tracking history from 2021 to 2026."
+            self.showTestDataAlert = true
         }
     }
 
     private func clearAllWorkouts() {
         isProcessing = true
         let container = modelContext.container
-        Task.detached {
+        Task {
             let generator = TestDataGenerator(modelContainer: container)
             await generator.clearAllDataAsync()
             
             let repo = WorkoutRepository(modelContainer: container)
             await repo.rebuildAllStats()
             
-            await MainActor.run {
-                self.viewModel.refreshAllCaches()
-                self.isProcessing = false
-                self.testDataAlertMessage = "All workouts and weight history cleared."
-                self.showTestDataAlert = true
-            }
+            // ✅ ИЗМЕНЕНИЕ: Обновляем кэш в DashboardViewModel
+            self.dashboardViewModel.refreshAllCaches()
+            self.isProcessing = false
+            self.testDataAlertMessage = "All workouts and weight history cleared."
+            self.showTestDataAlert = true
         }
     }
     
@@ -240,7 +240,7 @@ struct SettingsView: View {
     private func exportAllData(format: ExportFormat) {
         isProcessing = true
         let container = modelContext.container
-        Task.detached(priority: .userInitiated) {
+        Task(priority: .userInitiated) {
             let bgContext = ModelContext(container)
             let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
             let workouts = (try? bgContext.fetch(descriptor)) ?? []
@@ -249,12 +249,11 @@ struct SettingsView: View {
             case .json: fileURL = DataManager.shared.exportAllDataAsJSON(workouts: workouts)
             case .csv: fileURL = DataManager.shared.exportAllDataToCSV(workouts: workouts)
             }
-            await MainActor.run {
-                self.isProcessing = false
-                if let fileURL = fileURL { self.fileToShare = fileURL } else {
-                    self.testDataAlertMessage = "Failed to export data. Please try again."
-                    self.showTestDataAlert = true
-                }
+            
+            self.isProcessing = false
+            if let fileURL = fileURL { self.fileToShare = fileURL } else {
+                self.testDataAlertMessage = "Failed to export data. Please try again."
+                self.showTestDataAlert = true
             }
         }
     }

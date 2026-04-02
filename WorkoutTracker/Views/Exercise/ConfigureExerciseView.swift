@@ -8,7 +8,7 @@
 internal import SwiftUI
 
 struct ConfigureExerciseView: View {
-    
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     // MARK: - Environment
     @Environment(\.dismiss) var dismiss
     @Environment(WorkoutViewModel.self) var viewModel
@@ -180,9 +180,13 @@ struct ConfigureExerciseView: View {
     // MARK: - Logic
     
     private func loadLastPerformance() {
-        guard let lastPerf = viewModel.lastPerformancesCache[exerciseName] else { return }
-        let lastSets = lastPerf.sortedSets.filter { $0.type != .warmup && $0.isCompleted }
-        guard !lastSets.isEmpty else { return }
+           // ✅ ИЗМЕНИТЬ: Берем из dashboardViewModel
+           guard let lastPerf = dashboardViewModel.lastPerformancesCache[exerciseName] else { return }
+           
+           // ✅ ИЗМЕНИТЬ: Используем явный тип SetType.warmup для надежности компилятора
+           let lastSets = lastPerf.sortedSets.filter { $0.type != SetType.warmup && $0.isCompleted }
+           
+           guard !lastSets.isEmpty else { return }
         
         if exerciseType == .strength {
             form.sets = lastSets.count

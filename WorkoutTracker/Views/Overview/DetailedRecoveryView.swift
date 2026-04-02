@@ -19,8 +19,8 @@ struct DetailedRecoveryView: View {
     // MARK: - Environment & Storage
     @Environment(\.modelContext) private var context
     @Environment(WorkoutViewModel.self) var viewModel
-    @EnvironmentObject var tutorialManager: TutorialManager
-    
+    @Environment(TutorialManager.self) var tutorialManager
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     // 1. Долгосрочное хранилище
     @AppStorage("userRecoveryHours") private var storedRecoveryHours: Double = 48.0
     
@@ -32,7 +32,7 @@ struct DetailedRecoveryView: View {
     
     // MARK: - Data Source
     private var musclesData: [MuscleStatusItem] {
-        return viewModel.recoveryStatus.map {
+        return dashboardViewModel.recoveryStatus.map {
             // Fallback translation if not found in helper
             let displayName = MuscleDisplayHelper.getDisplayName(for: $0.muscleGroup)
             return MuscleStatusItem(name: displayName, percent: $0.recoveryPercentage)
@@ -90,7 +90,7 @@ struct DetailedRecoveryView: View {
     private func recalculateRecoveryLocal(hours: Double) {
         // Калькулятор берет данные напрямую из inMemoryWorkouts (0 задержек, 0 I/O)
         let newRecoveryStatus = RecoveryCalculator.calculate(hours: hours, workouts: inMemoryWorkouts)
-        viewModel.recoveryStatus = newRecoveryStatus
+        dashboardViewModel.recoveryStatus = newRecoveryStatus
     }
     
     // MARK: - View Components

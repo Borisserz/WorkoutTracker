@@ -17,7 +17,7 @@ struct AddNewExerciseView: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
-    @EnvironmentObject private var catalogViewModel: CatalogViewModel
+    @Environment(CatalogViewModel.self) private var catalogViewModel
     // Данные формы
     @State private var name: String = ""
     @State private var selectedCategory: String = "Chest"

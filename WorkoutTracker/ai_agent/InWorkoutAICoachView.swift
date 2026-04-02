@@ -1,15 +1,13 @@
-//
-//  InWorkoutAICoachView.swift
-//  WorkoutTracker
-//
-
 internal import SwiftUI
 import SwiftData
 
 struct InWorkoutAICoachView: View {
     @Bindable var workout: Workout
-    @EnvironmentObject var catalogViewModel: CatalogViewModel
-    @ObservedObject var viewModel: InWorkoutAICoachViewModel // <-- ТЕПЕРЬ ОН ПРИХОДИТ СНАРУЖИ
+    @Environment(CatalogViewModel.self) var catalogViewModel
+    
+    // ✅ ИСПРАВЛЕНИЕ: Используем @Bindable вместо @ObservedObject
+    @Bindable var viewModel: InWorkoutAICoachViewModel
+    
     @Environment(\.modelContext) private var context
     @Environment(WorkoutViewModel.self) var workoutViewModel
     
@@ -237,22 +235,29 @@ struct WorkoutAdjustmentCardView: View {
         .frame(maxWidth: 320)
     }
     
+    // ✅ ИСПРАВЛЕНИЕ: Используем Enum вместо строковых значений
     private var actionDescription: String {
         switch adjustment.actionType {
-        case "dropWeight": return "Снизить вес на \(Int(adjustment.valuePercentage ?? 0))%"
-        case "reduceRemainingLoad": return "Снизить оставшиеся веса на \(Int(adjustment.valuePercentage ?? 0))%"
-        case "addSet": return "Добавить добивочный подход: \(adjustment.valueReps ?? 0) повт."
-        case "replaceExercise": return "Заменить на: \(adjustment.replacementExerciseName ?? "другое упражнение")"
-        case "skipExercise": return "Пропустить оставшиеся подходы"
-        default: return "Обновить план тренировки"
+        case .dropWeight:
+            return "Снизить вес на \(Int(adjustment.valuePercentage ?? 0))%"
+        case .reduceRemainingLoad:
+            return "Снизить оставшиеся веса на \(Int(adjustment.valuePercentage ?? 0))%"
+        case .addSet:
+            return "Добавить добивочный подход: \(adjustment.valueReps ?? 0) повт."
+        case .replaceExercise:
+            return "Заменить на: \(adjustment.replacementExerciseName ?? "другое упражнение")"
+        case .skipExercise:
+            return "Пропустить оставшиеся подходы"
+        case .none, .unknown:
+            return "Обновить план тренировки"
         }
     }
     
     private func applyChanges() {
-            guard !isApplied, workout.isActive else { return }
+        guard !isApplied, workout.isActive else { return }
         workoutViewModel.applyAIAdjustment(adjustment, to: workout)
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-            withAnimation { isApplied = true }
-        }
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        withAnimation { isApplied = true }
+    }
 }

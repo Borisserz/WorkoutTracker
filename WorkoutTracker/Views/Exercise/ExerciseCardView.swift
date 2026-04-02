@@ -9,13 +9,13 @@ import SwiftData
 struct ExerciseCardView: View {
     
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(TutorialManager.self) var tutorialManager
     @Environment(WorkoutViewModel.self) var viewModel
    @Environment(RestTimerManager.self) var timerManager
     @Environment(UnitsManager.self) var unitsManager
-    
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     @Bindable var exercise: Exercise
-    
+
     let currentWorkoutId: UUID
     var onDelete: () -> Void
     var onSwap: (() -> Void)? = nil
@@ -114,7 +114,7 @@ struct ExerciseCardView: View {
     
     @ViewBuilder
     private var setsSection: some View {
-        let lastExerciseData = viewModel.lastPerformancesCache[exercise.name]
+        let lastExerciseData = dashboardViewModel.lastPerformancesCache[exercise.name]
         let sortedSets = exercise.sortedSets
         let sortedPrevSets: [WorkoutSet] = lastExerciseData?.sortedSets ?? []
         
@@ -131,7 +131,8 @@ struct ExerciseCardView: View {
             SetRowView(
                 set: set,
                 exerciseName: exercise.name,
-                cached1RM: viewModel.personalRecordsCache[exercise.name] ?? 0.0,
+                cached1RM: dashboardViewModel.personalRecordsCache[exercise.name] ?? 0.0,
+
                 effort: exercise.effort,
                 exerciseType: exercise.type,
                 isLastSet: isLast,

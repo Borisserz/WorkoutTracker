@@ -8,7 +8,7 @@ import SwiftData
 import Charts
 
 struct BodyMeasurementsView: View {
-    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(\.modelContext) private var context
     @Query(sort: \BodyMeasurement.date, order: .reverse) private var measurements: [BodyMeasurement]
     @Environment(UnitsManager.self) var unitsManager
@@ -206,7 +206,7 @@ struct MeasurementEntryRow: View {
 }
 
 struct AddMeasurementSheet: View {
-    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(UnitsManager.self) var unitsManager
 

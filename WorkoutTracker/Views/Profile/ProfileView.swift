@@ -12,8 +12,8 @@ struct ProfileView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
     @Query private var userStats: [UserStats]
-    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
-    
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     // Вытягиваем историю веса напрямую из БД
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     
@@ -277,7 +277,7 @@ struct ProfileView: View {
                     // Вызываем чистый метод из ViewModel
                     profileVM.loadProfileData(
                         stats: userStats.first ?? UserStats(),
-                        currentStreak: viewModel.streakCount,
+                        currentStreak: dashboardViewModel.streakCount,
                         unitsManager: unitsManager,
                         modelContainer: modelContext.container
                     )

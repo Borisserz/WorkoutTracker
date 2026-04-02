@@ -6,15 +6,17 @@
 //
 
 
-
 internal import SwiftUI
 import SwiftData
-import Combine
+import Observation
+
+@Observable
 @MainActor
-final class CatalogViewModel: ObservableObject {
+final class CatalogViewModel {
     
-    @Published var customExercises: [CustomExerciseDefinition] = []
-    @Published var deletedDefaultExercises: Set<String> = []
+    // @Published удалено
+    var customExercises: [CustomExerciseDefinition] = []
+    var deletedDefaultExercises: Set<String> = []
     
     private let modelContainer: ModelContainer
     

@@ -14,9 +14,9 @@ internal import SwiftUI
 struct ExerciseSelectionView: View {
     
     // MARK: - Environment & Bindings
-    @EnvironmentObject var tutorialManager: TutorialManager
+    @Environment(TutorialManager.self) var tutorialManager
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var catalogViewModel: CatalogViewModel
+    @Environment(CatalogViewModel.self) private var catalogViewModel
     
     /// Замыкание для добавления нового упражнения
     var onAdd: (Exercise) -> Void

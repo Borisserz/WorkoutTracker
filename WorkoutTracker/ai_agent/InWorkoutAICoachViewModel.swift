@@ -1,8 +1,7 @@
 internal import SwiftUI
 import SwiftData
-import Combine
+import Observation // ✅ РЕФАКТОРИНГ: Добавлено
 
-// ИСПРАВЛЕНИЕ: Добавлен Codable для сохранения истории в Data
 struct InWorkoutChatMessage: Identifiable, Equatable, Codable {
     var id = UUID()
     let isUser: Bool
@@ -17,14 +16,19 @@ struct InWorkoutChatMessage: Identifiable, Equatable, Codable {
     static func == (lhs: InWorkoutChatMessage, rhs: InWorkoutChatMessage) -> Bool { lhs.id == rhs.id }
 }
 
+@Observable // ✅ РЕФАКТОРИНГ: Заменяем ObservableObject
 @MainActor
-final class InWorkoutAICoachViewModel: ObservableObject {
-    @Published var chatHistory: [InWorkoutChatMessage] = []
-    @Published var isGenerating: Bool = false
-    @Published var inputText: String = ""
-    @Published var focusedExerciseName: String? = nil
+final class InWorkoutAICoachViewModel {
+    // ✅ РЕФАКТОРИНГ: Удалены все @Published
+    var chatHistory: [InWorkoutChatMessage] = []
+    var isGenerating: Bool = false
+    var inputText: String = ""
+    var focusedExerciseName: String? = nil
     
+    @ObservationIgnored // Игнорируем внутреннее состояние для UI
     private var currentTask: Task<Void, Never>? = nil
+    
+    @ObservationIgnored
     private let aiService = AILogicService(apiKey: Secrets.geminiApiKey)
     
     deinit { currentTask?.cancel() }
@@ -96,7 +100,11 @@ final class InWorkoutAICoachViewModel: ObservableObject {
             do {
                 let dto = try await self.aiService.analyzeActiveWorkout(userMessage: prompt, workoutContext: workoutContext, catalogContext: catalogContext, tone: tone, weightUnit: weightUnit)
                 guard !Task.isCancelled else { return }
-                let aiMessage = InWorkoutChatMessage(isUser: false, text: dto.explanation, adjustment: dto.actionType == "none" ? nil : dto, isAnimating: true)
+                
+                // ✅ РЕФАКТОРИНГ: Безопасная проверка Enum
+                let isNone = dto.actionType == .none || dto.actionType == .unknown
+                let aiMessage = InWorkoutChatMessage(isUser: false, text: dto.explanation, adjustment: isNone ? nil : dto, isAnimating: true)
+                
                 await MainActor.run { [weak self] in
                     guard let self else { return }
                     withAnimation(.spring()) { self.chatHistory.append(aiMessage); self.isGenerating = false }

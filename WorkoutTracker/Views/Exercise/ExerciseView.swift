@@ -18,7 +18,7 @@ struct ExerciseView: View {
     // MARK: - Environment & State
     
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var catalogViewModel: CatalogViewModel
+    @Environment(CatalogViewModel.self) var catalogViewModel
     @State private var showAddSheet = false
     @State private var selectedGroups: Set<String>
     @State private var searchText: String

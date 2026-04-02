@@ -2,22 +2,27 @@
 //  AICoachView.swift
 //  WorkoutTracker
 //
+//
+//  AICoachView.swift
+//  WorkoutTracker
+//
 
 internal import SwiftUI
 import SwiftData
 
 struct AICoachView: View {
     @Environment(WorkoutViewModel.self) var workoutViewModel
-    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
-    @EnvironmentObject var catalogViewModel: CatalogViewModel
+    // ✅ ИЗМЕНЕНИЕ: Добавляем DashboardViewModel во Environment
+    @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(CatalogViewModel.self) var catalogViewModel
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
     
     @Environment(\.modelContext) private var modelContext
     
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
     @AppStorage(Constants.UserDefaultsKeys.aiCoachTone.rawValue) private var aiCoachTone = Constants.AIConstants.defaultTone
     
-    // 2. Локальная вью-модель осталась нетронутой
-    @EnvironmentObject var viewModel: AICoachViewModel
+    @Environment(AICoachViewModel.self) var viewModel
     @FocusState private var isInputFocused: Bool
     
     @State private var navigateToWorkout: Workout?
@@ -35,11 +40,16 @@ struct AICoachView: View {
     private let quickActions: [String] = ["Тренировка", "Прогресс", "Отдых"]
     
     var body: some View {
+        // ✅ Создаем биндинг локально
+        @Bindable var viewModel = viewModel
+        
         NavigationStack {
             ZStack(alignment: .bottom) {
                 Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 if viewModel.chatHistory.isEmpty { emptyStateView } else { chatScrollView }
-                inputArea
+                
+                // ✅ Передаем биндинг
+                inputArea(viewModel: $viewModel)
             }
             .navigationTitle(viewModel.currentSession?.title ?? "AI Тренер")
             .navigationBarTitleDisplayMode(.inline)
@@ -60,8 +70,6 @@ struct AICoachView: View {
                         generator.impactOccurred()
                     } label: { Image(systemName: "slider.horizontal.3").foregroundColor(.primary) }
                 }
-            }
-            .onAppear {
             }
             .sheet(isPresented: $showHistorySheet) {
                 ChatHistorySheetView { selectedSession in withAnimation { viewModel.loadSession(selectedSession) } }
@@ -84,18 +92,20 @@ struct AICoachView: View {
             }
             .sheet(isPresented: $showSmartBuilder) {
                 SmartWorkoutBuilderSheet { generatedPrompt in
-                    // Вызовы стали короче (без context)
-                    viewModel.sendMessage(workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Составь план по моим параметрам", aiPrompt: generatedPrompt)
+                    // ✅ ИЗМЕНЕНИЕ: Передаем dashboardViewModel
+                    viewModel.sendMessage(workoutViewModel: workoutViewModel, dashboardViewModel: dashboardViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Составь план по моим параметрам", aiPrompt: generatedPrompt)
                 }
             }
             .sheet(isPresented: $showProgressSheet) {
                 ProgressAnalysisSheet { generatedPrompt in
-                    viewModel.sendMessage(workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Оцени мой прогресс", aiPrompt: generatedPrompt)
+                    // ✅ ИЗМЕНЕНИЕ: Передаем dashboardViewModel
+                    viewModel.sendMessage(workoutViewModel: workoutViewModel, dashboardViewModel: dashboardViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Оцени мой прогресс", aiPrompt: generatedPrompt)
                 }
             }
             .sheet(isPresented: $showRecoverySheet) {
                 RecoveryAdvisorSheet { generatedPrompt in
-                    viewModel.sendMessage(workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Что рекомендуешь сделать?", aiPrompt: generatedPrompt)
+                    // ✅ ИЗМЕНЕНИЕ: Передаем dashboardViewModel
+                    viewModel.sendMessage(workoutViewModel: workoutViewModel, dashboardViewModel: dashboardViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight, uiText: "Что рекомендуешь сделать?", aiPrompt: generatedPrompt)
                 }
             }
         }
@@ -115,7 +125,6 @@ struct AICoachView: View {
                 VStack(spacing: 16) {
                     ForEach(viewModel.chatHistory) { message in
                         ChatMessageView(message: message, onAcceptWorkout: { dto in
-                            // Убрали container, логика теперь полностью инкапсулирована
                             viewModel.acceptWorkout(dto: dto) { workout in self.navigateToWorkout = workout }
                         }).id(message.id)
                     }
@@ -130,7 +139,7 @@ struct AICoachView: View {
         }
     }
     
-    private var inputArea: some View {
+    private func inputArea(viewModel: Bindable<AICoachViewModel>) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 8) {
                 ForEach(quickActions, id: \.self) { action in
@@ -141,15 +150,15 @@ struct AICoachView: View {
                         if action == "Тренировка" { showSmartBuilder = true } else if action == "Прогресс" { showProgressSheet = true } else if action == "Отдых" { showRecoverySheet = true }
                     }) { Text(action).font(.caption).fontWeight(.medium).lineLimit(1).minimumScaleFactor(0.8).padding(.horizontal, 6).padding(.vertical, 10).frame(maxWidth: .infinity).background(Color(UIColor.systemBackground)).foregroundColor(.primary).cornerRadius(16).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.3), lineWidth: 1)) }
                 }
-            }.padding(.horizontal, 12).padding(.bottom, 12).disabled(viewModel.isGenerating).opacity(viewModel.isGenerating ? 0.5 : 1.0)
+            }.padding(.horizontal, 12).padding(.bottom, 12).disabled(viewModel.wrappedValue.isGenerating).opacity(viewModel.wrappedValue.isGenerating ? 0.5 : 1.0)
             Divider().background(Color.gray.opacity(0.3))
             HStack(alignment: .bottom, spacing: 12) {
-                TextField("Спроси AI Тренера...", text: $viewModel.inputText, axis: .vertical).lineLimit(1...5).padding(.horizontal, 16).padding(.vertical, 10).background(Color(UIColor.secondarySystemBackground)).cornerRadius(20).focused($isInputFocused).disabled(viewModel.isGenerating).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.gray.opacity(0.2), lineWidth: 1))
-                if viewModel.isGenerating { ProgressView().frame(width: 34, height: 34).padding(.trailing, 4) } else {
+                TextField("Спроси AI Тренера...", text: viewModel.inputText, axis: .vertical).lineLimit(1...5).padding(.horizontal, 16).padding(.vertical, 10).background(Color(UIColor.secondarySystemBackground)).cornerRadius(20).focused($isInputFocused).disabled(viewModel.wrappedValue.isGenerating).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.gray.opacity(0.2), lineWidth: 1))
+                if viewModel.wrappedValue.isGenerating { ProgressView().frame(width: 34, height: 34).padding(.trailing, 4) } else {
                     Button {
                         isInputFocused = false
-                        // Передаем catalogViewModel для каталога упражнений
-                        viewModel.sendMessage(workoutViewModel: workoutViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight)
+                        // ✅ ИЗМЕНЕНИЕ: Добавлен dashboardViewModel
+                        viewModel.wrappedValue.sendMessage(workoutViewModel: workoutViewModel, dashboardViewModel: dashboardViewModel, catalogViewModel: catalogViewModel, userWeight: userBodyWeight)
                     } label: { Image(systemName: "arrow.up.circle.fill").font(.system(size: 34)).foregroundColor(isSendDisabled ? .gray.opacity(0.5) : .accentColor) }.disabled(isSendDisabled)
                 }
             }.padding(.horizontal).padding(.vertical, 12).background(.ultraThinMaterial)
@@ -158,10 +167,9 @@ struct AICoachView: View {
     
     private func scrollToBottom(proxy: ScrollViewProxy) { withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo("bottom_spacer", anchor: .bottom) } }
 }
-
 // MARK: - Chat History Sheet
 struct ChatHistorySheetView: View {
-    @EnvironmentObject var userStatsViewModel: UserStatsViewModel
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(WorkoutViewModel.self) var viewModel
     @Query(sort: \AIChatSession.date, order: .reverse) private var sessions: [AIChatSession]

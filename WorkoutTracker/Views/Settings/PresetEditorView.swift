@@ -22,7 +22,7 @@ struct PresetEditorView: View {
     
     @Environment(\.dismiss) private var dismiss
     @Environment(WorkoutViewModel.self) private var viewModel
-@Environment(UnitsManager.self) var unitsManager
+    @Environment(UnitsManager.self) var unitsManager
     
     @State var preset: WorkoutPreset?
     
@@ -264,7 +264,9 @@ struct PresetEditorView: View {
 // MARK: - Inner Exercise Editor
 
 struct PresetExerciseEditor: View {
-    @Environment(WorkoutViewModel.self) var viewModel
+    // ✅ РЕФАКТОРИНГ: Удалили зависимость от WorkoutViewModel
+    @Environment(\.modelContext) private var context
+    
     let exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
@@ -457,13 +459,11 @@ struct PresetExerciseEditor: View {
             return
         }
         
-        // ИСПРАВЛЕНИЕ SwiftData: Удаляем старые сеты из контекста, чтобы не создавать сиротские объекты
-        if let context = exercise.modelContext {
-            for set in exercise.setsList { context.delete(set) }
-        }
+        // ✅ РЕФАКТОРИНГ: Чистый, безопасный блок создания сетов
         var newSets: [WorkoutSet] = []
         let finalSetsCount = exercise.type == .cardio ? 1 : max(1, setsCount)
         
+        // 1. Создаем новые сеты
         for i in 1...finalSetsCount {
             let newSet = WorkoutSet(
                 index: i,
@@ -474,30 +474,26 @@ struct PresetExerciseEditor: View {
                 isCompleted: false,
                 type: .normal
             )
-            
-            if let context = exercise.modelContext { try? context.save() }
-            onSave(exercise)
-            dismiss()
-            
-            var newSets: [WorkoutSet] = []
-            let finalSetsCount = exercise.type == .cardio ? 1 : max(1, setsCount)
-            
-            for i in 1...finalSetsCount {
-                let newSet = WorkoutSet(
-                    index: i,
-                    weight: exercise.type == .strength ? weightValue : nil,
-                    reps: exercise.type == .strength ? repsCount : nil,
-                    distance: exercise.type == .cardio ? distanceValue : nil,
-                    time: total > 0 ? total : nil,
-                    isCompleted: false,
-                    type: .normal
-                )
-                newSets.append(newSet)
+            // Добавляем в контекст БД, если родитель уже там есть
+            if exercise.modelContext != nil {
+                context.insert(newSet)
             }
-            
-            viewModel.updateExerciseSets(exercise: exercise, newSets: newSets)
-            onSave(exercise)
-            dismiss()
+            newSets.append(newSet)
         }
+        
+        // 2. Очищаем старые сиротские сеты
+        if let ctx = exercise.modelContext {
+            for set in exercise.setsList {
+                ctx.delete(set)
+            }
+        }
+        
+        // 3. Безопасно заменяем все сеты и обновляем агрегаты
+        exercise.replaceAllSets(with: newSets)
+        try? exercise.modelContext?.save()
+        
+        // 4. ОДИН раз вызываем коллбек и закрываем шторку
+        onSave(exercise)
+        dismiss()
     }
 }
