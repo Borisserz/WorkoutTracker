@@ -9,7 +9,7 @@
 internal import SwiftUI
 
 struct ExerciseTrendsView: View {
-    let trends: [WorkoutViewModel.ExerciseTrend]
+    let trends: [ExerciseTrend]
     
     var body: some View {
         if trends.isEmpty {
@@ -28,12 +28,12 @@ struct ExerciseTrendsView: View {
     }
     
     /// Выбирает топ трендов: приоритет растущим, но также включает значимые падения
-    private func selectTopTrends(_ trends: [WorkoutViewModel.ExerciseTrend], limit: Int) -> [WorkoutViewModel.ExerciseTrend] {
+    private func selectTopTrends(_ trends: [ExerciseTrend], limit: Int) -> [ExerciseTrend] {
         let growing = trends.filter { $0.trend == .growing }
         let declining = trends.filter { $0.trend == .declining }
         let stable = trends.filter { $0.trend == .stable }
         
-        var selected: [WorkoutViewModel.ExerciseTrend] = []
+        var selected: [ExerciseTrend] = []
         
         // Сначала добавляем растущие (до 3 штук или пока не заполним лимит)
         selected.append(contentsOf: Array(growing.prefix(min(3, limit))))
@@ -55,7 +55,7 @@ struct ExerciseTrendsView: View {
 }
 
 struct ExerciseTrendRow: View {
-    let trend: WorkoutViewModel.ExerciseTrend
+    let trend: ExerciseTrend
     
     var body: some View {
         HStack {

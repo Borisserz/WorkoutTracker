@@ -12,8 +12,8 @@ struct ExerciseListView: View {
     @Binding var expandedExercises: [UUID: Bool]
     @Binding var draggedExercise: Exercise?
     
-    // Зависимости теперь берутся из Environment
-    @Environment(WorkoutViewModel.self) var globalViewModel
+    // ✅ ИСПРАВЛЕНИЕ: Изменен тип на WorkoutService
+    @Environment(WorkoutService.self) var workoutService
     @Environment(WorkoutDetailViewModel.self) var viewModel
     @Environment(CatalogViewModel.self) var catalogViewModel
     @Environment(DashboardViewModel.self) var dashboardViewModel
@@ -78,7 +78,6 @@ struct ExerciseListView: View {
         }
     }
     
-    // ✅ Локальный хелпер для разворачивания следующего упражнения
     private func handleExpandNext(currentExerciseId: UUID) {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             expandedExercises[currentExerciseId] = false
@@ -96,6 +95,7 @@ struct ExerciseListView: View {
             }
         }
         
-        viewModel.updateWorkoutAnalytics(for: workout, modelContainer: context.container)
+        // ✅ ИСПРАВЛЕНИЕ: Удален аргумент `modelContainer`, теперь он не нужен
+        viewModel.updateWorkoutAnalytics(for: workout)
     }
 }

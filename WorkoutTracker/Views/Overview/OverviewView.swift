@@ -1,9 +1,6 @@
-//
-//  OverviewView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Overview/OverviewView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -14,9 +11,8 @@ struct OverviewView: View {
     // MARK: - Environment & State
     @Environment(\.modelContext) private var context
     
-    // ✅ ИСПРАВЛЕНИЕ: Все @EnvironmentObject заменены на @Environment
     @Environment(TutorialManager.self) var tutorialManager
-    @Environment(WorkoutViewModel.self) var viewModel
+    @Environment(WorkoutService.self) var workoutService
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     
@@ -80,9 +76,6 @@ struct OverviewView: View {
                 }
             }
             .navigationTitle(LocalizedStringKey("Overview"))
-            .onAppear {
-                dashboardViewModel.refreshAllCaches()
-            }
             .navigationDestination(isPresented: $navigateToNewWorkout) {
                 if let firstWorkout = recentWorkouts.first {
                     WorkoutDetailView(workout: firstWorkout)
@@ -112,7 +105,6 @@ struct OverviewView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
-                    .environment(viewModel)
             }
             .sheet(isPresented: $showAddWorkout) {
                 AddWorkoutView(onWorkoutCreated: {
@@ -124,7 +116,6 @@ struct OverviewView: View {
             }
             .sheet(isPresented: $showProfile) {
                 ProfileView()
-                // ✅ ИСПРАВЛЕНИЕ: Передаем оба объекта
                     .environment(userStatsViewModel)
                     .environment(userStatsViewModel.progressManager)
             }
@@ -133,11 +124,30 @@ struct OverviewView: View {
                     let generator = UINotificationFeedbackGenerator()
                     generator.notificationOccurred(.success)
                     
-                    // Передаем сохранение в ViewModel
-                    viewModel.startGeneratedWorkout(generated, dashboardViewModel: dashboardViewModel)
+                    // Конвертируем GeneratedWorkout в GeneratedWorkoutDTO для сервиса
+                    let dto = GeneratedWorkoutDTO(
+                        title: generated.title,
+                        aiMessage: "",
+                        exercises: generated.exercises.map { ex in
+                            GeneratedExerciseDTO(
+                                name: ex.name,
+                                muscleGroup: ex.muscleGroup,
+                                type: ex.type.rawValue,
+                                sets: ex.setsCount,
+                                reps: ex.firstSetReps,
+                                recommendedWeightKg: ex.firstSetWeight > 0 ? ex.firstSetWeight : nil,
+                                restSeconds: nil
+                            )
+                        }
+                    )
                     
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                        navigateToNewWorkout = true
+                    Task {
+                        await workoutService.startGeneratedWorkout(dto)
+                        await MainActor.run {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                navigateToNewWorkout = true
+                            }
+                        }
                     }
                 }
             }
@@ -159,8 +169,6 @@ struct OverviewView: View {
         return dashboardViewModel.dashboardMuscleData.first(where: { $0.muscle == selectedChartMuscle })
     }
     
-
-
     // MARK: - View Sections
     
     private var emptyStateView: some View {
@@ -380,43 +388,41 @@ struct OverviewView: View {
      }
     
     private var generateFreshWorkoutBanner: some View {
-            Button(action: {
-                handleGenerateFreshWorkout()
-            }) {
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle().fill(Color.yellow.opacity(0.2)).frame(width: 44, height: 44)
-                        Image(systemName: "bolt.fill").foregroundColor(.yellow).font(.title2)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStringKey("Fresh Muscle Workout"))
-                            .font(.headline).foregroundColor(.primary)
-                        Text(LocalizedStringKey("Generate a routine for fully recovered muscles"))
-                            .font(.caption).foregroundColor(.secondary).lineLimit(1)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
+        Button(action: {
+            handleGenerateFreshWorkout()
+        }) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle().fill(Color.yellow.opacity(0.2)).frame(width: 44, height: 44)
+                    Image(systemName: "bolt.fill").foregroundColor(.yellow).font(.title2)
                 }
-                .padding().background(Color(UIColor.secondarySystemBackground))
-                .cornerRadius(16).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("Fresh Muscle Workout"))
+                        .font(.headline).foregroundColor(.primary)
+                    Text(LocalizedStringKey("Generate a routine for fully recovered muscles"))
+                        .font(.caption).foregroundColor(.secondary).lineLimit(1)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding().background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(16).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
         }
+        .buttonStyle(PlainButtonStyle())
+    }
         
-        // Чистый метод делегирования работы сервису
-        private func handleGenerateFreshWorkout() {
-            do {
-                let generated = try WorkoutGenerationService.generateFreshWorkout(
-                    recoveryStatus: dashboardViewModel.recoveryStatus,
-                    catalog: Exercise.catalog // Или catalogViewModel.combinedCatalog
-                )
-                generatedFreshWorkout = generated
-            } catch {
-                viewModel.showError(title: String(localized: "Too Tired!"), message: error.localizedDescription)
-            }
+    private func handleGenerateFreshWorkout() {
+        do {
+            let generated = try WorkoutGenerationService.generateFreshWorkout(
+                recoveryStatus: dashboardViewModel.recoveryStatus,
+                catalog: Exercise.catalog
+            )
+            generatedFreshWorkout = generated
+        } catch {
+            workoutService.showError(title: String(localized: "Too Tired!"), message: error.localizedDescription)
         }
-
+    }
     
     @ViewBuilder
     private func rankIcon(rank: Int) -> some View {

@@ -8,7 +8,9 @@
 //  Используется для отрисовки тепловой карты (Heatmap) тела.
 //
 
+
 import Foundation
+import SwiftData // Для PersistentIdentifier, если понадобится
 
 struct MuscleMapping {
     
@@ -29,7 +31,7 @@ struct MuscleMapping {
     
     // MARK: - Standard Mappings
     
-    /// Словарь: Название упражнения 
+    /// Словарь: Название упражнения
     static let exerciseToMuscles: [String: [String]] = [
         
         // --- Chest ---
@@ -204,7 +206,7 @@ struct MuscleMapping {
         if let data = try? Data(contentsOf: customMappingsFileURL),
            let decoded = try? JSONDecoder().decode([String: [String]].self, from: data) {
             loaded = decoded
-        } 
+        }
         // Фоллбэк (миграция): если файла нет, пробуем прочитать из UserDefaults
         else if let dict = UserDefaults.standard.dictionary(forKey: customMappingKey) as? [String: [String]] {
             loaded = dict
@@ -225,10 +227,14 @@ struct MuscleMapping {
         return loaded
     }
     
-    /// Обновляет кэш и сохраняет изменения в файл асинхронно. Вызывается из WorkoutViewModel.
+    /// Обновляет кэш и сохраняет изменения в файл асинхронно. Вызывается из ExerciseCatalogService.
     static func updateCustomMapping(name: String, muscles: [String]?) {
         var currentMap = getCustomMappings()
-        currentMap[name] = muscles
+        if let muscles = muscles {
+            currentMap[name] = muscles
+        } else {
+            currentMap.removeValue(forKey: name)
+        }
         
         cacheLock.lock()
         _cachedCustomMappings = currentMap

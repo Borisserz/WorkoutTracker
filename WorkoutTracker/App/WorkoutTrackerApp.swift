@@ -1,9 +1,7 @@
-//
-//  WorkoutTrackerApp.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
+// ============================================================
+// FILE: WorkoutTracker/App/WorkoutTrackerApp.swift
+// ============================================================
+
 internal import SwiftUI
 import SwiftData
 import UserNotifications
@@ -13,23 +11,22 @@ import ActivityKit
 struct WorkoutTrackerApp: App {
     @Environment(\.scenePhase) private var scenePhase
     
-    let sharedModelContainer: ModelContainer?
-    let databaseLoadError: Error?
+    // DIContainer теперь единственный источник правды для сервисов
+    let diContainer: DIContainer
     
-    // ViewModels
-    @State private var viewModel: WorkoutViewModel?
-    @State private var userStatsViewModel: UserStatsViewModel?
-    @State private var catalogViewModel: CatalogViewModel?
-    @State private var aiCoachViewModel: AICoachViewModel?
-    @State private var dashboardViewModel: DashboardViewModel?
-    
-    @State private var tutorialManager = TutorialManager()
-    @State private var timerManager = RestTimerManager()
-    @State private var unitsManager = UnitsManager.shared
+    @State private var databaseLoadError: Error?
     
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("appearanceMode") private var appearanceMode: String = "system"
     @State private var showImportAlert = false
+    
+    // ViewModels & Managers needed globally in Environment
+    @State private var dashboardViewModel: DashboardViewModel
+    @State private var userStatsViewModel: UserStatsViewModel
+    @State private var catalogViewModel: CatalogViewModel
+    @State private var restTimerManager = RestTimerManager()
+    @State private var tutorialManager = TutorialManager()
+    @State private var unitsManager = UnitsManager.shared
     
     private var colorScheme: ColorScheme? {
         switch appearanceMode {
@@ -41,39 +38,46 @@ struct WorkoutTrackerApp: App {
     
     init() {
         do {
-            let container = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self, BodyMeasurement.self)
-            sharedModelContainer = container
-            databaseLoadError = nil
+            let container = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self)
+            let di = DIContainer(modelContainer: container)
+            self.diContainer = di
+            
+            // Инициализируем ViewModels используя DIContainer
+            self._dashboardViewModel = State(wrappedValue: di.makeDashboardViewModel())
+            self._userStatsViewModel = State(wrappedValue: di.makeUserStatsViewModel())
+            self._catalogViewModel = State(wrappedValue: di.makeCatalogViewModel())
+            self.databaseLoadError = nil
         } catch {
             print("Could not create ModelContainer: \(error)")
-            sharedModelContainer = nil
-            databaseLoadError = error
+            // Fallback: Создаем временный контейнер в памяти чтобы избежать краша инициализации
+            let tempConfig = ModelConfiguration(isStoredInMemoryOnly: true)
+            let tempContainer = try! ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, configurations: tempConfig)
+            let tempDi = DIContainer(modelContainer: tempContainer)
+            
+            self.diContainer = tempDi
+            self._dashboardViewModel = State(wrappedValue: tempDi.makeDashboardViewModel())
+            self._userStatsViewModel = State(wrappedValue: tempDi.makeUserStatsViewModel())
+            self._catalogViewModel = State(wrappedValue: tempDi.makeCatalogViewModel())
+            self.databaseLoadError = error
         }
     }
     
-    
     var body: some Scene {
         WindowGroup {
-            if let container = sharedModelContainer {
-                mainContent(container: container)
+            if databaseLoadError == nil {
+                mainContent()
                     .onOpenURL { url in
                         Task {
-                            // ✅ ИЗМЕНЕНИЕ: Безопасно распаковываем dashVm перед импортом
-                            if let dashVm = dashboardViewModel {
-                                if await viewModel?.importPreset(from: url) == true {
-                                    await MainActor.run { showImportAlert = true }
-                                }
+                            if await diContainer.workoutService.importPreset(from: url) {
+                                await MainActor.run { showImportAlert = true }
                             }
                         }
                     }
                     .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
                         if let url = userActivity.webpageURL {
                             Task {
-                                // ✅ ИЗМЕНЕНИЕ: Безопасно распаковываем dashVm перед импортом
-                                if let dashVm = dashboardViewModel {
-                                    if await viewModel?.importPreset(from: url) == true {
-                                        await MainActor.run { showImportAlert = true }
-                                    }
+                                if await diContainer.workoutService.importPreset(from: url) {
+                                    await MainActor.run { showImportAlert = true }
                                 }
                             }
                         }
@@ -90,7 +94,16 @@ struct WorkoutTrackerApp: App {
                             UNUserNotificationCenter.current().removeAllDeliveredNotifications()
                         }
                     }
-                    .modelContainer(container)
+                    .modelContainer(diContainer.modelContainer)
+                    // 👇 ПРОБРАСЫВАЕМ ВСЕ НЕОБХОДИМЫЕ ЗАВИСИМОСТИ В ENVIRONMENT
+                    .environment(diContainer)
+                    .environment(diContainer.workoutService)
+                    .environment(dashboardViewModel)
+                    .environment(userStatsViewModel)
+                    .environment(catalogViewModel)
+                    .environment(restTimerManager)
+                    .environment(tutorialManager)
+                    .environment(unitsManager)
             } else {
                 DatabaseErrorView(error: databaseLoadError)
                     .preferredColorScheme(colorScheme)
@@ -99,61 +112,31 @@ struct WorkoutTrackerApp: App {
     }
     
     @ViewBuilder
-       private func mainContent(container: ModelContainer) -> some View {
-           if let vm = viewModel,
-              let usVm = userStatsViewModel,
-              let catVm = catalogViewModel,
-              let aiVm = aiCoachViewModel,
-              let dashVm = dashboardViewModel {
-               
-               Group {
-                   if hasCompletedOnboarding {
-                       ContentView().transition(.opacity)
-                   } else {
-                       OnboardingFlowView(isOnboardingCompleted: $hasCompletedOnboarding)
-                   }
-               }
-               .animation(.default, value: hasCompletedOnboarding)
-               .environment(vm)
-               .environment(usVm)
-               .environment(catVm)
-               .environment(aiVm)
-               .environment(dashVm)
-               .environment(tutorialManager)
-               .environment(timerManager)
-               .environment(unitsManager)
-               
-           } else {
-               ProgressView("Initializing Systems...")
-                   .onAppear { setupDependencies(container: container) }
-           }
-       }
-       
-       @MainActor
-       private func setupDependencies(container: ModelContainer) {
-           // ✅ ВНЕДРЕНИЕ ЗАВИСИМОСТЕЙ (DI)
-           // 1. Создаем абстракцию репозитория
-           let repository = WorkoutRepository(modelContainer: container)
-           
-           // 2. Инжектируем репозиторий в ViewModels
-           let dashVM = DashboardViewModel(repository: repository)
-           self.dashboardViewModel = dashVM
-           
-           // Передаем dashboardViewModel прямо сюда, чтобы не прокидывать его в каждый метод!
-           self.viewModel = WorkoutViewModel(modelContainer: container, repository: repository, dashboardViewModel: dashVM)
-           
-           // Остальные ViewModels (позже тоже переведем на RepositoryProtocol)
-           self.userStatsViewModel = UserStatsViewModel(modelContainer: container)
-           self.catalogViewModel = CatalogViewModel(modelContainer: container)
-           self.aiCoachViewModel = AICoachViewModel(modelContainer: container)
-           
-           Task {
-               LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
-               self.viewModel?.checkAndGenerateDefaultPresets()
-               MuscleColorManager.shared.load(context: container.mainContext)
-           }
-       }
-   }
+    private func mainContent() -> some View {
+        Group {
+            if hasCompletedOnboarding {
+                ContentView().transition(.opacity)
+            } else {
+                OnboardingFlowView(isOnboardingCompleted: $hasCompletedOnboarding)
+            }
+        }
+        .animation(.default, value: hasCompletedOnboarding)
+        .onAppear { setupDependencies() }
+    }
+    
+    @MainActor
+    private func setupDependencies() {
+        Task {
+            let migrator = LegacyDataMigrator(modelContainer: diContainer.modelContainer)
+            await migrator.migrateAllIfNeeded()
+            
+            try? await diContainer.exerciseCatalogService.checkAndGenerateDefaultPresets()
+            MuscleColorManager.shared.load(context: diContainer.modelContainer.mainContext)
+            
+            await catalogViewModel.loadDictionary()
+        }
+    }
+}
 
 struct DatabaseErrorView: View {
     let error: Error?

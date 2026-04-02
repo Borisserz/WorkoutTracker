@@ -1,24 +1,16 @@
-
 internal import SwiftUI
 import Foundation
 import SwiftData
 
-// Расширение для использования URL в sheet(item:)
-extension URL: Identifiable {
-    public var id: String {
-        self.absoluteString
-    }
-}
-
 struct PresetListView: View {
     @Environment(\.modelContext) private var context
-    @Environment(WorkoutViewModel.self) var viewModel
+    @Environment(WorkoutService.self) var workoutService
     
     @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
     
     @State private var showCreatePreset = false
     @State private var presetToEdit: WorkoutPreset?
-    @State private var fileToShare: URL?
+    @State private var fileToShare: SharedFileWrapper? // Используем обертку
     @State private var showDeleteAlert = false
     @State private var presetsToDelete: IndexSet?
     
@@ -29,6 +21,7 @@ struct PresetListView: View {
                     presetToEdit = preset
                 } label: {
                     HStack {
+                        // Иконка шаблона
                         Image(preset.icon)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
@@ -39,18 +32,21 @@ struct PresetListView: View {
                             Text(preset.name)
                                 .font(.headline)
                                 .foregroundColor(.primary)
-                            Text(LocalizedStringKey("\(preset.exercises.count) exercises"))
+                            Text("\(preset.exercises.count) exercises")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
+                        
                         Spacer()
                         
+                        // Кнопка экспорта и шаринга
                         Menu {
+                            // Вложенное меню для файлов
                             Menu {
                                 Button {
                                     Task {
-                                        if let fileURL = await viewModel.exportPresetToFile(preset) {
-                                            await MainActor.run { fileToShare = fileURL }
+                                        if let fileURL = try? await workoutService.exportPresetToFile(preset) {
+                                            await MainActor.run { fileToShare = SharedFileWrapper(url: fileURL) }
                                         }
                                     }
                                 } label: {
@@ -59,8 +55,8 @@ struct PresetListView: View {
                                 
                                 Button {
                                     Task {
-                                        if let fileURL = await viewModel.exportPresetToCSV(preset) {
-                                            await MainActor.run { fileToShare = fileURL }
+                                        if let fileURL = try? await workoutService.exportPresetToCSV(preset) {
+                                            await MainActor.run { fileToShare = SharedFileWrapper(url: fileURL) }
                                         }
                                     }
                                 } label: {
@@ -70,16 +66,17 @@ struct PresetListView: View {
                                 Label(LocalizedStringKey("Export as File"), systemImage: "square.and.arrow.down")
                             }
                             
-                            // ShareLink остается синхронным на MainActor (работает молниеносно, так как нет File IO)
-                            if let shareURL = viewModel.generateShareLink(for: preset) {
+                            // Ссылка для шаринга
+                            if let shareURL = try? workoutService.generateShareLink(for: preset) {
                                 ShareLink(item: shareURL) {
                                     Label(LocalizedStringKey("Share Link"), systemImage: "link")
                                 }
                             }
                         } label: {
                             Image(systemName: "square.and.arrow.up")
-                                .foregroundColor(.secondary)
+                                .foregroundColor(.blue)
                                 .font(.body)
+                                .padding(8)
                         }
                         .buttonStyle(BorderlessButtonStyle())
                         
@@ -94,10 +91,6 @@ struct PresetListView: View {
                 showDeleteAlert = true
             }
         }
-        .sheet(item: $fileToShare) { url in
-            ActivityViewController(activityItems: [url])
-                .presentationDetents([.medium, .large])
-        }
         .navigationTitle(LocalizedStringKey("Templates"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -105,16 +98,17 @@ struct PresetListView: View {
                     showCreatePreset = true
                 } label: {
                     Image(systemName: "plus")
-                        .foregroundColor(.primary)
-                        .font(.body)
                 }
             }
         }
-        // Создание нового
+        // Модальные окна и алерты
+        .sheet(item: $fileToShare) { wrapper in
+            ActivityViewController(activityItems: [wrapper.url])
+                .presentationDetents([.medium, .large])
+        }
         .sheet(isPresented: $showCreatePreset) {
             PresetEditorView(preset: nil)
         }
-        // Редактирование существующего
         .sheet(item: $presetToEdit) { preset in
             PresetEditorView(preset: preset)
         }
@@ -123,7 +117,7 @@ struct PresetListView: View {
                 if let indexSet = presetsToDelete {
                     for index in indexSet {
                         let presetToDelete = presets[index]
-                        viewModel.deletePreset(presetToDelete) // MVVM соблюден
+                        Task { await workoutService.deletePreset(presetToDelete) }
                     }
                     presetsToDelete = nil
                 }
@@ -132,20 +126,7 @@ struct PresetListView: View {
                 presetsToDelete = nil
             }
         } message: {
-            if let indexSet = presetsToDelete {
-                let count = indexSet.count
-                if count == 1 {
-                    if let firstIndex = indexSet.first, firstIndex < presets.count {
-                        Text(LocalizedStringKey("Are you sure you want to delete '\(presets[firstIndex].name)'? This action cannot be undone."))
-                    } else {
-                        Text(LocalizedStringKey("Are you sure you want to delete this template? This action cannot be undone."))
-                    }
-                } else {
-                    Text(LocalizedStringKey("Are you sure you want to delete \(count) templates? This action cannot be undone."))
-                }
-            } else {
-                Text(LocalizedStringKey("Are you sure you want to delete this template? This action cannot be undone."))
-            }
+            Text(LocalizedStringKey("Are you sure you want to delete this template? This action cannot be undone."))
         }
     }
 }

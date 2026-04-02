@@ -1,3 +1,7 @@
+// ============================================================
+// FILE: WorkoutTracker/Views/Workout/AddWorkoutView.swift
+// ============================================================
+
 internal import SwiftUI
 import SwiftData
 import ActivityKit
@@ -5,7 +9,7 @@ import ActivityKit
 struct AddWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(TutorialManager.self) var tutorialManager
-    @Environment(WorkoutViewModel.self) private var viewModel
+    @Environment(WorkoutService.self) private var viewModel
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) private var dashboardViewModel
     @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
@@ -173,10 +177,15 @@ struct AddWorkoutView: View {
     }
     
     private func checkAndStartWorkout() {
-        if viewModel.hasActiveWorkout() {
-            showActiveWorkoutAlert = true
-        } else {
-            startWorkout()
+        Task {
+            let hasActive = await viewModel.hasActiveWorkout()
+            await MainActor.run {
+                if hasActive {
+                    showActiveWorkoutAlert = true
+                } else {
+                    startWorkout()
+                }
+            }
         }
     }
     
@@ -185,7 +194,7 @@ struct AddWorkoutView: View {
         let presetID = selectedPreset?.persistentModelID
         
         Task {
-            if let _ = await viewModel.createWorkout(title: finalTitle, presetID: presetID) {
+            if let _ = await viewModel.createWorkout(title: finalTitle, presetID: presetID, isAIGenerated: false) {
                 await MainActor.run {
                     startLiveActivity(with: finalTitle)
                     dismiss()

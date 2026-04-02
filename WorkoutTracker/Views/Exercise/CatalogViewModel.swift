@@ -2,33 +2,35 @@
 //  CatalogViewModel.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 1.04.26.
+//  Created by Boris Serzhanovich on 05.04.26.
 //
 
-
 internal import SwiftUI
-import SwiftData
 import Observation
 
 @Observable
 @MainActor
 final class CatalogViewModel {
     
-    // @Published удалено
     var customExercises: [CustomExerciseDefinition] = []
     var deletedDefaultExercises: Set<String> = []
     
-    private let modelContainer: ModelContainer
+    private let exerciseCatalogService: ExerciseCatalogService
     
-    init(modelContainer: ModelContainer) {
-        self.modelContainer = modelContainer
+    init(exerciseCatalogService: ExerciseCatalogService) {
+        self.exerciseCatalogService = exerciseCatalogService
     }
     
     var combinedCatalog: [String: [String]] {
+        // Базовый хардкодный каталог
         var catalog = Exercise.catalog
+        
+        // Удаляем скрытые дефолтные упражнения
         for (category, exercises) in catalog {
             catalog[category] = exercises.filter { !deletedDefaultExercises.contains($0) }
         }
+        
+        // Добавляем кастомные
         for custom in customExercises {
             var list = catalog[custom.category] ?? []
             if !list.contains(custom.name) { list.append(custom.name) }
@@ -37,16 +39,15 @@ final class CatalogViewModel {
         return catalog
     }
     
-    func loadDictionary() {
-        Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            let custom = (try? await repository.fetchCustomExercises()) ?? []
-            let deleted = (try? await repository.fetchDeletedDefaultExercises()) ?? []
+    func loadDictionary() async {
+        do {
+            let custom = try await exerciseCatalogService.fetchCustomExercises()
+            let deleted = try await exerciseCatalogService.fetchDeletedDefaultExercises()
             
-            await MainActor.run {
-                self.customExercises = custom
-                self.deletedDefaultExercises = deleted
-            }
+            self.customExercises = custom
+            self.deletedDefaultExercises = deleted
+        } catch {
+            print("Failed to load catalog dictionary: \(error.localizedDescription)")
         }
     }
     
@@ -54,36 +55,36 @@ final class CatalogViewModel {
         customExercises.contains { $0.name == name }
     }
     
-    func addCustomExercise(name: String, category: String, muscles: [String], type: ExerciseType = .strength) {
-        Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.addCustomExercise(name: name, category: category, muscles: muscles, type: type)
-            await MainActor.run {
-                MuscleMapping.updateCustomMapping(name: name, muscles: muscles)
-                self.loadDictionary()
-            }
+    func addCustomExercise(name: String, category: String, muscles: [String], type: ExerciseType = .strength) async {
+        do {
+            try await exerciseCatalogService.addCustomExercise(name: name, category: category, muscles: muscles, type: type)
+            // Синхронно обновляем маппинг в памяти
+            MuscleMapping.updateCustomMapping(name: name, muscles: muscles)
+            await loadDictionary()
+        } catch {
+            print("Failed to add custom exercise: \(error.localizedDescription)")
         }
     }
     
-    func deleteCustomExercise(name: String, category: String) {
-        Task {
-            let repository = WorkoutRepository(modelContainer: modelContainer)
-            try? await repository.deleteCustomExercise(name: name, category: category)
-            await MainActor.run {
-                MuscleMapping.updateCustomMapping(name: name, muscles: nil)
-                self.loadDictionary()
-            }
+    func deleteCustomExercise(name: String, category: String) async {
+        do {
+            try await exerciseCatalogService.deleteCustomExercise(name: name, category: category)
+            MuscleMapping.updateCustomMapping(name: name, muscles: nil)
+            await loadDictionary()
+        } catch {
+            print("Failed to delete custom exercise: \(error.localizedDescription)")
         }
     }
     
-    func deleteExercise(name: String, category: String) {
+    func deleteExercise(name: String, category: String) async {
         if isCustomExercise(name: name) {
-            deleteCustomExercise(name: name, category: category)
+            await deleteCustomExercise(name: name, category: category)
         } else {
-            Task {
-                let repository = WorkoutRepository(modelContainer: modelContainer)
-                try? await repository.hideDefaultExercise(name: name, category: category)
-                await MainActor.run { self.loadDictionary() }
+            do {
+                try await exerciseCatalogService.hideDefaultExercise(name: name, category: category)
+                await loadDictionary()
+            } catch {
+                print("Failed to hide default exercise: \(error.localizedDescription)")
             }
         }
     }

@@ -9,13 +9,13 @@
 internal import SwiftUI
 
 struct RecommendationsView: View {
-    let recommendations: [WorkoutViewModel.Recommendation]
-       var onTap: ((WorkoutViewModel.Recommendation) -> Void)?
+    let recommendations: [Recommendation]
+       var onTap: ((Recommendation) -> Void)?
        
        // ДОБАВЛЕН ЯВНЫЙ ИНИЦИАЛИЗАТОР
        init(
-           recommendations: [WorkoutViewModel.Recommendation],
-           onTap: ((WorkoutViewModel.Recommendation) -> Void)? = nil
+           recommendations: [Recommendation],
+           onTap: ((Recommendation) -> Void)? = nil
        ) {
            self.recommendations = recommendations
            self.onTap = onTap
@@ -40,7 +40,7 @@ struct RecommendationsView: View {
 }
 
 struct RecommendationRow: View {
-    let recommendation: WorkoutViewModel.Recommendation
+    let recommendation: Recommendation
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {

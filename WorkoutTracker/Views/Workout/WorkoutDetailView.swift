@@ -1,7 +1,6 @@
-//
-//  WorkoutDetailView.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Workout/WorkoutDetailView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -11,6 +10,27 @@ import ActivityKit
 internal import UniformTypeIdentifiers
 
 struct WorkoutDetailView: View {
+    @Environment(DIContainer.self) private var di
+    @Bindable var workout: Workout
+    @State private var viewModel: WorkoutDetailViewModel?
+
+    var body: some View {
+        Group {
+            if let vm = viewModel {
+                WorkoutDetailContentView(workout: workout, viewModel: vm)
+            } else {
+                ProgressView()
+            }
+        }
+        .task {
+            if viewModel == nil {
+                viewModel = di.makeWorkoutDetailViewModel()
+            }
+        }
+    }
+}
+
+struct WorkoutDetailContentView: View {
     
     enum Tab: String, CaseIterable {
         case workout = "Workout"
@@ -25,7 +45,7 @@ struct WorkoutDetailView: View {
     @Environment(\.dismiss) private var dismiss
     
     @Environment(DashboardViewModel.self) private var dashboardViewModel
-    @Environment(WorkoutViewModel.self) private var globalViewModel
+    @Environment(WorkoutService.self) private var globalViewModel
     
     @Environment(CatalogViewModel.self) var catalogViewModel
     @Environment(UserStatsViewModel.self) var userStatsViewModel
@@ -34,7 +54,7 @@ struct WorkoutDetailView: View {
     @Environment(UnitsManager.self) var unitsManager
     
     @Bindable var workout: Workout
-    @State private var viewModel = WorkoutDetailViewModel()
+    @Bindable var viewModel: WorkoutDetailViewModel
     
     // MARK: - UI State
     @State private var selectedTab: Tab = .workout
@@ -81,35 +101,12 @@ struct WorkoutDetailView: View {
                 
                 // ✅ ЧИСТАЯ НАВИГАЦИЯ ЧЕРЕЗ ENUM
                 .sheet(item: $viewModel.activeSheet) { destination in
-                    switch destination {
-                    case .shareSheet:
-                        ActivityViewController(activityItems: viewModel.shareItems)
-                            .presentationDetents([.medium, .large])
-                    case .exerciseSelection:
-                        ExerciseSelectionView { newExercise in
-                            viewModel.addExercise(newExercise, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 })
-                        }
-                    case .supersetBuilder(let existing):
-                        SupersetBuilderView(existingSuperset: existing) { newSuperset in
-                            if existing == nil {
-                                viewModel.addExercise(newSuperset, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 })
-                            }
-                        } onDelete: {
-                            if let ex = existing {
-                                withAnimation { globalViewModel.removeExercise(ex, from: workout) }
-                            }
-                        }
-                    case .swapExercise(let oldEx):
-                        ExerciseSelectionView { newEx in
-                            viewModel.performSwap(old: oldEx, new: newEx, workout: workout, globalViewModel: globalViewModel, modelContainer: modelContext.container)
-                        }
-                    default: EmptyView()
-                    }
+                    renderSheetContent(for: destination)
                 }
                 // ✅ АЛЕРТЫ
                 .alert(LocalizedStringKey("Empty Workout"), isPresented: $viewModel.isShowingEmptyAlert) {
                     Button(LocalizedStringKey("Delete"), role: .destructive) {
-                        viewModel.deleteEmptyWorkout(workout: workout, globalViewModel: globalViewModel, timerManager: timerManager, dismiss: dismiss)
+                        viewModel.deleteEmptyWorkout(workout: workout, timerManager: timerManager, dismiss: dismiss)
                     }
                     Button(LocalizedStringKey("Continue"), role: .cancel) { }
                 } message: {
@@ -153,7 +150,7 @@ struct WorkoutDetailView: View {
                                         workout: workout,
                                         expandedExercises: $expandedExercises,
                                         draggedExercise: $draggedExercise,
-                                        scrollToExerciseId: { id in self.scrollToExerciseId = id } 
+                                        scrollToExerciseId: { id in self.scrollToExerciseId = id }
                                     )
                                     .environment(viewModel)
                             } else if selectedTab == .analytics {
@@ -176,7 +173,6 @@ struct WorkoutDetailView: View {
         Button {
             viewModel.finishWorkout(
                 workout: workout,
-                modelContainer: modelContext.container,
                 progressManager: userStatsViewModel.progressManager,
                 onRefreshGlobalCaches: { dashboardViewModel.refreshAllCaches() },
                 updateAchievementsCount: { newTotal in
@@ -221,7 +217,7 @@ struct WorkoutDetailView: View {
 
     // MARK: - Lifecycle Handlers
     fileprivate func handleOnAppear() {
-        viewModel.updateWorkoutAnalytics(for: workout, modelContainer: modelContext.container)
+        viewModel.updateWorkoutAnalytics(for: workout)
         for (index, exercise) in workout.exercises.enumerated() {
             if expandedExercises[exercise.id] == nil {
                 expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
@@ -240,13 +236,13 @@ struct WorkoutDetailView: View {
             }
             
             if !hasCompletedSets {
-                globalViewModel.deleteWorkout(workout)
+                Task { await globalViewModel.deleteWorkout(workout) }
             }
         }
     }
     
     fileprivate func handleExercisesChanged() {
-        viewModel.updateWorkoutAnalytics(for: workout, modelContainer: modelContext.container)
+        viewModel.updateWorkoutAnalytics(for: workout)
         for (index, exercise) in workout.exercises.enumerated() {
             if expandedExercises[exercise.id] == nil {
                 expandedExercises[exercise.id] = index == 0
@@ -371,111 +367,41 @@ struct WorkoutDetailView: View {
         if words.count > 1 { return words.prefix(2).compactMap { $0.first }.map { String($0) }.joined().uppercased() }
         else { return String(name.prefix(3)).capitalized }
     }
-}
-
-// MARK: - Subviews & Helpers
-
-struct WorkoutTimerView: View {
-    let startDate: Date
-    @State private var timeElapsed: String = "0:00"
-    let timer = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()
     
-    var body: some View {
-        Text(timeElapsed)
-            .font(.title2).monospacedDigit().bold()
-            .onReceive(timer) { _ in updateTime() }
-            .onAppear(perform: updateTime)
-    }
-    
-    private func updateTime() {
-        let diff = Date().timeIntervalSince(startDate)
-        let hours = Int(diff) / 3600
-        let minutes = (Int(diff) / 60) % 60
-        let seconds = Int(diff) % 60
-        timeElapsed = hours > 0 ? String(format: "%d:%02d:%02d", hours, minutes, seconds) : String(format: "%d:%02d", minutes, seconds)
-    }
-}
-
-struct ComparisonItem { let name: String; let weight: Double; let icon: String }
-
-struct FunFactView: View {
-    let totalStrengthVolume: Double
-    @Environment(UnitsManager.self) var unitsManager
-    @State private var selectedComparison: ComparisonItem?
-    
-    private let allComparisons: [ComparisonItem] = [
-        ComparisonItem(name: "Pizzas", weight: 0.5, icon: "🍕"),
-        ComparisonItem(name: "Chihuahuas", weight: 2.5, icon: "🐕"),
-        ComparisonItem(name: "Watermelons", weight: 8.0, icon: "🍉"),
-        ComparisonItem(name: "Microwaves", weight: 15.0, icon: "🍲"),
-        ComparisonItem(name: "Adult Pandas", weight: 100.0, icon: "🐼"),
-        ComparisonItem(name: "Grand Pianos", weight: 400.0, icon: "🎹"),
-        ComparisonItem(name: "Toyota Camrys", weight: 1500.0, icon: "🚗"),
-        ComparisonItem(name: "African Elephants", weight: 6000.0, icon: "🐘")
-    ]
-    
-    var body: some View {
-        VStack {
-            if totalStrengthVolume > 0, let comparison = selectedComparison {
-                let count = totalStrengthVolume / comparison.weight
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(LocalizedStringKey("🏋️ Total Lifted")).font(.caption).fontWeight(.bold).foregroundColor(.secondary).textCase(.uppercase)
-                    let convertedVolume = unitsManager.convertFromKilograms(totalStrengthVolume)
-                    Text(LocalizedStringKey("You lifted \(Int(convertedVolume)) \(unitsManager.weightUnitString())!")).font(.title2).bold()
-                    Divider()
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(LocalizedStringKey("That's approximately")).foregroundColor(.secondary).font(.subheadline)
-                            HStack(alignment: .lastTextBaseline, spacing: 6) {
-                                Text("\(count, format: .number.precision(.fractionLength(1)))").font(.title3).fontWeight(.heavy).foregroundColor(.primary)
-                                (Text(LocalizedStringKey(comparison.name)) + Text(" \(comparison.icon)")).font(.headline).foregroundColor(.primary).lineLimit(1)
-                            }
-                            Text(LocalizedStringKey("Way to go, champion! 🥇")).font(.caption).foregroundColor(.gray).padding(.top, 2)
-                        }
-                        Spacer()
-                    }
-                }
-                .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(16).padding(.top, 10)
+    @ViewBuilder
+    private func renderSheetContent(for destination: DetailDestination) -> some View {
+        switch destination {
+        case .shareSheet:
+            if let image = viewModel.shareItems.first as? UIImage {
+                ActivityViewController(activityItems: [image])
+                    .presentationDetents([.medium, .large])
+            } else {
+                EmptyView()
             }
-        }
-        .onAppear { pickRandomComparison() }
-        .onChange(of: totalStrengthVolume) { _, _ in pickRandomComparison() }
-    }
-    
-    private func pickRandomComparison() {
-        guard totalStrengthVolume > 0 else { return }
-        let validComparisons = allComparisons.filter { totalStrengthVolume / $0.weight >= 1.0 }
-        if let random = validComparisons.randomElement() { selectedComparison = random } else { selectedComparison = allComparisons.min(by: { $0.weight < $1.weight }) }
-    }
-}
-
-struct ExerciseRowView: View {
-    let exercise: Exercise
-    @Environment(UnitsManager.self) var unitsManager
-    
-    var body: some View {
-        HStack {
-            Rectangle().frame(width: 4).foregroundColor(effortColor(value: exercise.effort)).cornerRadius(2)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(LocalizedStringKey(exercise.name)).font(.headline).foregroundColor(.primary)
-                HStack {
-                    Text(exercise.formattedDetails(unitsManager: unitsManager))
-                    Spacer()
-                    rpeBadge
-                }
-                .font(.subheadline).foregroundColor(.secondary)
+            
+        case .exerciseSelection:
+            ExerciseSelectionView { newExercise in
+                viewModel.addExercise(newExercise, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 })
             }
-            Spacer()
+            
+        case .supersetBuilder(let existing):
+            SupersetBuilderView(existingSuperset: existing) { newSuperset in
+                if existing == nil {
+                    viewModel.addExercise(newSuperset, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 })
+                }
+            } onDelete: {
+                if let ex = existing {
+                    Task { await globalViewModel.removeExercise(ex, from: workout) }
+                }
+            }
+            
+        case .swapExercise(let oldEx):
+            ExerciseSelectionView { newEx in
+                viewModel.performSwap(old: oldEx, new: newEx, workout: workout)
+            }
+            
+        default:
+            EmptyView()
         }
-        .padding(.vertical, 8).contentShape(Rectangle())
     }
-    
-    private var rpeBadge: some View { Text(LocalizedStringKey("RPE \(exercise.effort)")).font(.caption2).bold().padding(4).background(effortColor(value: exercise.effort).opacity(0.2)).foregroundColor(effortColor(value: exercise.effort)).cornerRadius(4) }
-    private func effortColor(value: Int) -> Color { switch value { case 1...4: return .green; case 5...7: return .orange; case 8...10: return .red; default: return .blue } }
 }
-
-struct Blinking: ViewModifier {
-    @State private var isOn = false
-    func body(content: Content) -> some View { content.opacity(isOn ? 1 : 0.5).onAppear { withAnimation(Animation.easeInOut(duration: 1).repeatForever()) { isOn = true } }.onDisappear { isOn = false } }
-}
-extension View { func blinking() -> some View { modifier(Blinking()) } }

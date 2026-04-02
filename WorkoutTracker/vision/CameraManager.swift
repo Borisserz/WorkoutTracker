@@ -9,6 +9,7 @@ import Vision
 import Combine
 
 // MARK: - Camera Manager
+
 @MainActor
 final class CameraManager: NSObject, ObservableObject {
     @Published var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
@@ -18,18 +19,20 @@ final class CameraManager: NSObject, ObservableObject {
     
     let session = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
+    
+    // Очередь для получения кадров с камеры
     private let cameraQueue = DispatchQueue(label: "com.workouttracker.cameraQueue", qos: .userInitiated)
     private var cameraDelegate: CameraDelegate?
     
     override init() { super.init() }
     
     deinit {
-            videoOutput.setSampleBufferDelegate(nil, queue: nil)
-            if session.isRunning {
-                session.stopRunning()
-            }
-            print("♻️ CameraManager deallocated, Vision pipeline cleared")
+        videoOutput.setSampleBufferDelegate(nil, queue: nil)
+        if session.isRunning {
+            session.stopRunning()
         }
+        print("♻️ CameraManager deallocated, Vision pipeline cleared")
+    }
     
     func checkPermission() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
@@ -88,6 +91,8 @@ final class CameraManager: NSObject, ObservableObject {
             }
         }
         session.commitConfiguration()
+        
+        // Запуск сессии тоже уводим в фон, чтобы не блокировать MainActor
         Task.detached { [weak self] in self?.session.startRunning() }
     }
     
@@ -96,8 +101,11 @@ final class CameraManager: NSObject, ObservableObject {
             Task.detached { [weak self] in self?.session.stopRunning() }
         }
     }
-}// MARK: - Frame Counter Actor (Concurrency Safe)
-/// ОПТИМИЗАЦИЯ: Изолированный актор для безопасного инкремента счетчика кадров
+}
+
+// MARK: - Frame Counter Actor (Concurrency Safe)
+
+/// Изолированный актор для безопасного инкремента счетчика кадров
 /// в многопоточной среде (заменяет устаревший NSLock).
 actor FrameCounter {
     private var count = 0
@@ -109,7 +117,8 @@ actor FrameCounter {
 }
 
 // MARK: - Camera Delegate
-/// Удалили @unchecked Sendable, так как делегат теперь полностью безопасен (Strict Concurrency).
+
+/// Делегат камеры. Потокобезопасен (Sendable).
 final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Sendable {
     private let onUpdate: @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void
     private let onBodyPoseUpdate: @Sendable (VNHumanBodyPoseObservation?) -> Void
@@ -123,8 +132,12 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         return req
     }()
     
-    // Используем актор вместо NSLock
+    // Используем актор для счетчика кадров
     private let frameCounter = FrameCounter()
+    
+    // 🚨 ГЛАВНАЯ ОПТИМИЗАЦИЯ: Выделенная очередь для тяжелых задач Vision 🚨
+    // Это предотвращает истощение (starvation) кооперативного пула потоков Swift Concurrency.
+    private let visionProcessingQueue = DispatchQueue(label: "com.workouttracker.visionProcessing", qos: .userInitiated)
     
     init(
         onUpdate: @escaping @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void,
@@ -137,43 +150,47 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         super.init()
     }
     
-    // Метод делегата не является async, поэтому оборачиваем логику в Task
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         
+        // Быстрая асинхронная проверка счетчика (не блокирует)
         Task {
-            // Безопасно проверяем счетчик через актор (обрабатываем каждый 3-й кадр)
             let shouldProcess = await frameCounter.incrementAndCheck(stride: 3)
             guard shouldProcess else { return }
             
-            // 🛡 Обертка autoreleasepool очищает память от тяжелых
-            // объектов Vision сразу после завершения скоупа.
-            autoreleasepool {
-                let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
+            // 🛡 Передаем тяжелую СИНХРОННУЮ работу с Vision на выделенную GCD очередь.
+            // Это спасает Swift Concurrency Thread Pool от исчерпания.
+            visionProcessingQueue.async {
                 
-                do {
-                    try handler.perform([bodyRequest, handRequest])
+                // Обертка autoreleasepool очищает память от тяжелых
+                // объектов Vision сразу после завершения скоупа.
+                autoreleasepool {
+                    let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
                     
-                    // --- 1. Обработка Body (Скелет тела) ---
-                    if let bodyObservation = bodyRequest.results?.first {
-                        self.onBodyPoseUpdate(bodyObservation)
+                    do {
+                        try handler.perform([self.bodyRequest, self.handRequest])
                         
-                        if let recognizedPoints = try? bodyObservation.recognizedPoints(.all) {
-                            var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-                            for (key, point) in recognizedPoints where point.confidence > 0.3 {
-                                normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                        // --- 1. Обработка Body (Скелет тела) ---
+                        if let bodyObservation = self.bodyRequest.results?.first {
+                            self.onBodyPoseUpdate(bodyObservation)
+                            
+                            if let recognizedPoints = try? bodyObservation.recognizedPoints(.all) {
+                                var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+                                for (key, point) in recognizedPoints where point.confidence > 0.3 {
+                                    normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+                                }
+                                self.onUpdate(normalizedJoints)
                             }
-                            self.onUpdate(normalizedJoints)
+                        } else {
+                            self.onBodyPoseUpdate(nil)
+                            self.onUpdate([:])
                         }
-                    } else {
-                        self.onBodyPoseUpdate(nil)
-                        self.onUpdate([:])
+                        
+                        // --- 2. Обработка Hand (Кисть для жестов) ---
+                        self.onHandUpdate(self.handRequest.results?.first)
+                        
+                    } catch {
+                        print("Vision request failed: \(error)")
                     }
-                    
-                    // --- 2. Обработка Hand (Кисть для жестов) ---
-                    self.onHandUpdate(handRequest.results?.first)
-                    
-                } catch {
-                    print("Vision request failed: \(error)")
                 }
             }
         }
@@ -181,24 +198,30 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
 }
 
 // MARK: - Camera Preview
+
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
+    
     class VideoPreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var videoPreviewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
     }
+    
     func makeUIView(context: Context) -> VideoPreviewView {
         let view = VideoPreviewView()
         view.videoPreviewLayer.session = session
         view.videoPreviewLayer.videoGravity = .resizeAspectFill
         return view
     }
+    
     func updateUIView(_ uiView: VideoPreviewView, context: Context) {}
 }
 
 // MARK: - Pose Overlay View
+
 struct PoseOverlayView: View {
     let joints: [VNHumanBodyPoseObservation.JointName: CGPoint]
+    
     private static let lines: [(VNHumanBodyPoseObservation.JointName, VNHumanBodyPoseObservation.JointName)] = [
         (.neck, .leftShoulder), (.neck, .rightShoulder), (.leftShoulder, .rightShoulder),
         (.leftShoulder, .leftHip), (.rightShoulder, .rightHip), (.leftHip, .rightHip),
@@ -206,6 +229,7 @@ struct PoseOverlayView: View {
         (.leftHip, .leftKnee), (.leftKnee, .leftAnkle), (.rightHip, .rightKnee), (.rightKnee, .rightAnkle),
         (.neck, .nose), (.nose, .leftEye), (.nose, .rightEye), (.leftEye, .leftEar), (.rightEye, .rightEar)
     ]
+    
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -218,9 +242,12 @@ struct PoseOverlayView: View {
                     }
                 }
                 .stroke(Color.green.opacity(0.8), style: StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                
                 ForEach(Array(joints.keys), id: \.self) { key in
                     if let point = joints[key] {
-                        Circle().fill(Color.red).frame(width: 8, height: 8)
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 8, height: 8)
                             .position(x: point.x * geometry.size.width, y: point.y * geometry.size.height)
                     }
                 }

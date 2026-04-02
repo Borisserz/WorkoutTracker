@@ -135,7 +135,7 @@ struct BodyMeasurementsView: View {
                                     MeasurementEntryRow(entry: entry, selectedMetric: selectedMetric, unitsManager: unitsManager)
                                         .contextMenu {
                                             Button(role: .destructive) {
-                                                userStatsViewModel.deleteBodyMeasurement(entry)
+                                                Task { await userStatsViewModel.deleteBodyMeasurement(entry.persistentModelID) }
                                             } label: {
                                                 Label(LocalizedStringKey("Delete"), systemImage: "trash")
                                             }
@@ -290,17 +290,19 @@ struct AddMeasurementSheet: View {
     }
     
     private func save() {
-        userStatsViewModel.addBodyMeasurement(
-            neck: parse(neckStr),
-            shoulders: parse(shouldersStr),
-            chest: parse(chestStr),
-            waist: parse(waistStr),
-            pelvis: parse(pelvisStr),
-            biceps: parse(bicepsStr),
-            thigh: parse(thighStr),
-            calves: parse(calvesStr),
-            date: date
-        )
+        Task {
+            await userStatsViewModel.addBodyMeasurement(
+                neck: parse(neckStr),
+                shoulders: parse(shouldersStr),
+                chest: parse(chestStr),
+                waist: parse(waistStr),
+                pelvis: parse(pelvisStr),
+                biceps: parse(bicepsStr),
+                thigh: parse(thighStr),
+                calves: parse(calvesStr),
+                date: date
+            )
+        }
         dismiss()
     }
 }

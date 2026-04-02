@@ -1,80 +1,53 @@
+//
+//  ExerciseHistoryViewModel.swift
+//  WorkoutTracker
+//
+
 import Foundation
 import SwiftData
 internal import SwiftUI
 import Observation
-
 @Observable
 @MainActor
 final class ExerciseHistoryViewModel {
     
-    // MARK: - Enums
     enum Tab: String, CaseIterable {
-        case summary = "Summary"
-        case technique = "Technique"
-        case history = "History"
+        case summary = "Summary", technique = "Technique", history = "History"
         var localizedName: LocalizedStringKey { LocalizedStringKey(self.rawValue) }
     }
     
-    enum GraphMetric: String, CaseIterable {
-        case none = "None"
-        case max = "Max"
-        case average = "Average"
-    }
+    enum GraphMetric: String, CaseIterable { case none = "None", max = "Max", average = "Average" }
+    enum TimeRange: String, CaseIterable { case month = "1M", threeMonths = "3M", sixMonths = "6M", year = "1Y", all = "All" }
     
-    enum TimeRange: String, CaseIterable {
-        case month = "1M"
-        case threeMonths = "3M"
-        case sixMonths = "6M"
-        case year = "1Y"
-        case all = "All"
-    }
-    
-    enum TrendPeriod: String, CaseIterable, Identifiable {
-        case month = "Month"
-        case threeMonths = "3 Months"
-        case year = "Year"
-        var id: Self { self }
-        var displayName: String {
-            switch self { case .month: return "1M"; case .threeMonths: return "3M"; case .year: return "1Y" }
-        }
-    }
-    
-    struct DataPoint: Identifiable, Sendable {
-        let id = UUID()
-        let date: Date
-        let value: Double
-        let rawWorkoutID: PersistentIdentifier // Чтобы открыть тренировку по тапу
-    }
-    
-    // MARK: - UI State
     var isDataLoaded: Bool = false
     var selectedTab: Tab = .summary
     var selectedTimeRange: TimeRange = .all
     var selectedMetric: GraphMetric = .none
-    var selectedTrendPeriod: TrendPeriod = .month
     
-    // MARK: - Data State
     var exerciseType: ExerciseType = .strength
     var exerciseCategory: ExerciseCategory = .other
     var muscleGroup: String = "Unknown"
     
-    var exerciseTrend: WorkoutViewModel.ExerciseTrend?
-    var exerciseForecast: WorkoutViewModel.ProgressForecast?
+    var exerciseTrend: ExerciseTrend?
+    var exerciseForecast: ProgressForecast?
     
-    var displayedGraphData: [DataPoint] = []
+    var displayedGraphData: [ExerciseHistoryDataPoint] = []
+    
+    // ВОТ ЭТА СТРОКА БЫЛА ПРОПУЩЕНА:
     var currentMetricValue: Double? = nil
     
-    private var allDataPoints: [DataPoint] = []
-    let exerciseName: String
+    private var allDataPoints: [ExerciseHistoryDataPoint] = []
     
-    init(exerciseName: String) {
+    let exerciseName: String
+    private let analyticsService: AnalyticsService
+    
+    init(exerciseName: String, analyticsService: AnalyticsService) {
         self.exerciseName = exerciseName
+        self.analyticsService = analyticsService
     }
     
-    // MARK: - Loading
-    func loadData(modelContainer: ModelContainer, unitsManager: UnitsManager) async {
-        let repository = WorkoutRepository(modelContainer: modelContainer)
-        guard let payload = await repository.fetchExerciseHistoryData(exerciseName: exerciseName) else {
+    func loadData(unitsManager: UnitsManager) async {
+        guard let payload = await analyticsService.fetchExerciseHistoryData(exerciseName: exerciseName) else {
             self.isDataLoaded = true
             return
         }
@@ -85,36 +58,31 @@ final class ExerciseHistoryViewModel {
         self.exerciseTrend = payload.trend
         self.exerciseForecast = payload.forecast
         
-        // Применяем конвертацию единиц (kg -> lbs, m -> mi) на MainActor
+        // Маппим данные, используя глобальный тип ExerciseHistoryDataPoint
         self.allDataPoints = payload.dataPoints.map { dp in
             var convertedValue = dp.value
             switch payload.type {
             case .strength: convertedValue = unitsManager.convertFromKilograms(dp.value)
             case .cardio: convertedValue = unitsManager.convertFromMeters(dp.value)
-            case .duration: convertedValue = dp.value / 60.0 // sec to min
+            case .duration: convertedValue = dp.value / 60.0
             }
-            return DataPoint(date: dp.date, value: convertedValue, rawWorkoutID: dp.rawWorkoutID)
+            return ExerciseHistoryDataPoint(date: dp.date, value: convertedValue, rawWorkoutID: dp.rawWorkoutID)
         }
         
         self.updateGraphData()
         self.isDataLoaded = true
     }
     
-    // MARK: - Logic
     func updateGraphData() {
         let calendar = Calendar.current
-        let filteredByDate: [DataPoint]
+        let filteredByDate: [ExerciseHistoryDataPoint]
         
         if selectedTimeRange == .all {
             filteredByDate = allDataPoints
         } else {
             let days: Int
             switch selectedTimeRange {
-            case .month: days = 30
-            case .threeMonths: days = 90
-            case .sixMonths: days = 180
-            case .year: days = 365
-            case .all: days = 0
+            case .month: days = 30; case .threeMonths: days = 90; case .sixMonths: days = 180; case .year: days = 365; case .all: days = 0
             }
             let cutoff = calendar.date(byAdding: .day, value: -days, to: Date()) ?? Date.distantPast
             filteredByDate = allDataPoints.filter { $0.date >= cutoff }
@@ -131,28 +99,7 @@ final class ExerciseHistoryViewModel {
         self.currentMetricValue = newMetric
     }
     
-    // Helper accessors for View
-    var unitLabel: String {
-        switch exerciseType {
-        case .strength: return UnitsManager.shared.weightUnitString()
-        case .cardio: return UnitsManager.shared.distanceUnitString()
-        case .duration: return "min"
-        }
-    }
-    
-    var chartTitle: LocalizedStringKey {
-        switch exerciseType {
-        case .strength: return "Progress (Weight)"
-        case .cardio: return "Progress (Distance)"
-        case .duration: return "Progress (Time)"
-        }
-    }
-    
-    var chartColor: Color {
-        switch exerciseType {
-        case .strength: return .blue
-        case .cardio: return .orange
-        case .duration: return .purple
-        }
-    }
+    var unitLabel: String { switch exerciseType { case .strength: return UnitsManager.shared.weightUnitString(); case .cardio: return UnitsManager.shared.distanceUnitString(); case .duration: return "min" } }
+    var chartTitle: LocalizedStringKey { switch exerciseType { case .strength: return "Progress (Weight)"; case .cardio: return "Progress (Distance)"; case .duration: return "Progress (Time)" } }
+    var chartColor: Color { switch exerciseType { case .strength: return .blue; case .cardio: return .orange; case .duration: return .purple } }
 }

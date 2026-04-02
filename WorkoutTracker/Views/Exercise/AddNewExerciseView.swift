@@ -18,6 +18,7 @@ struct AddNewExerciseView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(CatalogViewModel.self) private var catalogViewModel
+    
     // Данные формы
     @State private var name: String = ""
     @State private var selectedCategory: String = "Chest"
@@ -69,27 +70,27 @@ struct AddNewExerciseView: View {
     // MARK: - View Components
     
     private var basicInfoSection: some View {
-            Section(header: Text(LocalizedStringKey("Basic Info"))) {
-                TextField(LocalizedStringKey("Exercise Name"), text: $name)
-                
-                Picker(LocalizedStringKey("Category"), selection: $selectedCategory) {
-                    ForEach(categories, id: \.self) { cat in
-                        Text(cat).tag(cat)
-                    }
+        Section(header: Text(LocalizedStringKey("Basic Info"))) {
+            TextField(LocalizedStringKey("Exercise Name"), text: $name)
+            
+            Picker(LocalizedStringKey("Category"), selection: $selectedCategory) {
+                ForEach(categories, id: \.self) { cat in
+                    Text(cat).tag(cat)
                 }
-                
-                // На будущее: скрыли выбор типа упражнения по запросу,
-                // но переменная $selectedType остается дефолтной (.strength)
-                /*
-                Picker(LocalizedStringKey("Exercise Type"), selection: $selectedType) {
-                    ForEach(ExerciseType.allCases) { type in
-                        Text(type.rawValue).tag(type)
-                    }
-                }
-                .pickerStyle(.segmented)
-                */
             }
+            
+            // На будущее: скрыли выбор типа упражнения по запросу,
+            // но переменная $selectedType остается дефолтной (.strength)
+            /*
+            Picker(LocalizedStringKey("Exercise Type"), selection: $selectedType) {
+                ForEach(ExerciseType.allCases) { type in
+                    Text(type.rawValue).tag(type)
+                }
+            }
+            .pickerStyle(.segmented)
+            */
         }
+    }
     
     private var muscleSelectionSection: some View {
         Section(header: Text(LocalizedStringKey("Affected Muscles (for Heatmap)"))) {
@@ -102,7 +103,9 @@ struct AddNewExerciseView: View {
                         Image(systemName: "checkmark")
                             .foregroundColor(.blue)
                     }
-                }  .onTapGesture {
+                }
+                .contentShape(Rectangle()) // Чтобы область нажатия была по всей ширине строки
+                .onTapGesture {
                     if selectedMuscles.contains(muscle.slug) {
                         selectedMuscles.remove(muscle.slug)
                     } else {
@@ -124,9 +127,17 @@ struct AddNewExerciseView: View {
     }
     
     private func saveExercise() {
-        catalogViewModel.addCustomExercise(name: name, category: selectedCategory, muscles: Array(selectedMuscles), type: selectedType)
-        dismiss()
+        // ИСПРАВЛЕНИЕ: Вызываем асинхронную функцию из синхронного контекста через Task
+        Task {
+            await catalogViewModel.addCustomExercise(
+                name: name,
+                category: selectedCategory,
+                muscles: Array(selectedMuscles),
+                type: selectedType
+            )
+            
+            // Так как мы находимся внутри SwiftUI View, dismiss() безопасно вызывается тут
+            dismiss()
+        }
     }
-    
 }
-

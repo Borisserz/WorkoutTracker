@@ -1,7 +1,6 @@
-//
-//  AICoachViewModel.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/ai_agent/AICoachViewModel.swift
+// ============================================================
 
 internal import SwiftUI
 import Combine
@@ -44,13 +43,20 @@ final class AICoachViewModel {
     var currentSession: AIChatSession? = nil
     
     private var currentTask: Task<Void, Never>? = nil
-    private let aiService = AILogicService(apiKey: Secrets.geminiApiKey)
     
-    private let modelContainer: ModelContainer
-    private var context: ModelContext { modelContainer.mainContext }
+    // ✅ ИСПРАВЛЕНИЕ: Зависимости через DI
+    private let workoutService: WorkoutService
+    private let aiLogicService: AILogicService
+    private let analyticsService: AnalyticsService
+    private let exerciseCatalogService: ExerciseCatalogService
+    private let progressManager: ProgressManager
     
-    init(modelContainer: ModelContainer) {
-        self.modelContainer = modelContainer
+    init(workoutService: WorkoutService, aiLogicService: AILogicService, analyticsService: AnalyticsService, exerciseCatalogService: ExerciseCatalogService, progressManager: ProgressManager) {
+        self.workoutService = workoutService
+        self.aiLogicService = aiLogicService
+        self.analyticsService = analyticsService
+        self.exerciseCatalogService = exerciseCatalogService
+        self.progressManager = progressManager
     }
     
     func loadSession(_ session: AIChatSession) {
@@ -70,8 +76,7 @@ final class AICoachViewModel {
         self.inputText = ""
     }
     
-    // ✅ ИЗМЕНЕНИЕ: Теперь принимаем dashboardViewModel
-    func sendMessage(workoutViewModel: WorkoutViewModel, dashboardViewModel: DashboardViewModel, catalogViewModel: CatalogViewModel, userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil) {
+    func sendMessage(userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil) async {
         
         guard NetworkManager.shared.checkConnection() else {
             let noNetMessage = AIChatMessage(isUser: false, text: String(localized: "Internet connection required. Please check your network."), proposedWorkout: nil, isAnimating: false)
@@ -89,12 +94,15 @@ final class AICoachViewModel {
         if currentSession == nil {
             isFirstMessage = true
             let newSession = AIChatSession(title: "Новый чат...", date: Date(), messages: [])
-            context.insert(newSession)
+            await workoutService.saveAIChatSession(newSession) // Делегировано сервису
             currentSession = newSession
         }
         currentSession?.messages.append(userMessage)
-        currentSession?.date = Date()
-        try? context.save()
+        
+        // Синхронизируем состояние сессии в БД
+        if let session = currentSession {
+            await workoutService.saveAIChatSession(session)
+        }
         
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
             chatHistory.append(userMessage)
@@ -104,44 +112,41 @@ final class AICoachViewModel {
         if isFirstMessage {
             Task.detached { [weak self] in
                 guard let self else { return }
-                if let newTitle = try? await self.aiService.generateChatTitle(for: actualPrompt) {
+                if let newTitle = try? await self.aiLogicService.generateChatTitle(for: actualPrompt) {
                     await MainActor.run { [weak self] in
                         if let session = self?.currentSession {
                             session.title = newTitle.replacingOccurrences(of: "\"", with: "")
-                            try? context.save()
+                            // Синхронизируем обновленное название
+                            Task { await self?.workoutService.saveAIChatSession(session) }
                         }
                     }
                 }
             }
         }
         
-        // ✅ Передаем dashboardViewModel дальше
-        requestWorkout(prompt: actualPrompt, workoutViewModel: workoutViewModel, dashboardViewModel: dashboardViewModel, catalogViewModel: catalogViewModel, userWeight: userWeight)
+        await requestWorkout(prompt: actualPrompt, userWeight: userWeight)
     }
     
-    // ✅ ИЗМЕНЕНИЕ: Параметры берутся из dashboardViewModel
-    private func requestWorkout(prompt: String, workoutViewModel: WorkoutViewModel, dashboardViewModel: DashboardViewModel, catalogViewModel: CatalogViewModel, userWeight: Double) {
-        
+    private func requestWorkout(prompt: String, userWeight: Double) async {
         isGenerating = true
         let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
         
-        // ✅ ДАННЫЕ ТЕПЕРЬ ИЗ dashboardViewModel
-        let workoutsThisWeek = dashboardViewModel.bestWeekStats.workoutCount
-        let currentStreak = dashboardViewModel.streakCount
-        let fatiguedMuscles = dashboardViewModel.recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup }
-        
-        let allAvailableExercises = catalogViewModel.combinedCatalog.values.flatMap { $0 }
+        // Получаем данные через AnalyticsService
+        let workouts = await analyticsService.fetchRecentWorkoutsForAnalytics()
+        let recoveryStatus = await analyticsService.calculateRecovery(hours: nil, workouts: workouts)
+        let prCache = await analyticsService.getAllPersonalRecords(workouts: workouts, unitsManager: UnitsManager.shared).reduce(into: [String:Double]()) { $0[$1.exerciseName] = Double($1.value.filter("0123456789.".contains)) ?? 0 }
+        let allAvailableExercises = (try? await exerciseCatalogService.fetchCustomExercises())?.map { $0.name } ?? []
         
         let userContext = UserProfileContext(
             weightKg: UnitsManager.shared.convertToKilograms(userWeight),
             experienceLevel: "Intermediate",
             favoriteMuscles: [],
-            recentPRs: dashboardViewModel.personalRecordsCache, // ✅
+            recentPRs: prCache,
             language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
-            workoutsThisWeek: workoutsThisWeek,
-            currentStreak: currentStreak,
-            fatiguedMuscles: fatiguedMuscles,
-            availableExercises: allAvailableExercises,
+            workoutsThisWeek: await analyticsService.getStats(for: Calendar.current.dateInterval(of: .weekOfYear, for: Date())!, workouts: workouts).workoutCount,
+            currentStreak: await analyticsService.calculateWorkoutStreak(workouts: workouts),
+            fatiguedMuscles: recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup },
+            availableExercises: Exercise.catalog.values.flatMap { $0 } + allAvailableExercises,
             aiCoachTone: savedTone,
             weightUnit: UnitsManager.shared.weightUnitString()
         )
@@ -149,7 +154,7 @@ final class AICoachViewModel {
         currentTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let response = try await self.aiService.generateWorkoutPlan(userRequest: prompt, userProfile: userContext)
+                let response = try await self.aiLogicService.generateWorkoutPlan(userRequest: prompt, userProfile: userContext)
                 guard !Task.isCancelled else { return }
                 
                 let aiMessage = AIChatMessage(isUser: false, text: response.text, proposedWorkout: response.workout, isAnimating: true)
@@ -160,7 +165,9 @@ final class AICoachViewModel {
                         self.currentSession?.messages.append(aiMessage)
                         self.isGenerating = false
                     }
-                    try? context.save()
+                    if let session = self.currentSession {
+                        Task { await self.workoutService.saveAIChatSession(session) }
+                    }
                 }
             } catch {
                 guard !Task.isCancelled else { return }
@@ -171,7 +178,9 @@ final class AICoachViewModel {
                     withAnimation {
                         self.chatHistory.append(errorMessage)
                         self.currentSession?.messages.append(errorMessage)
-                        try? context.save()
+                        if let session = self.currentSession {
+                            Task { await self.workoutService.saveAIChatSession(session) }
+                        }
                         self.isGenerating = false
                     }
                 }
@@ -179,40 +188,14 @@ final class AICoachViewModel {
         }
     }
     
-    func acceptWorkout(dto: GeneratedWorkoutDTO, onStart: @escaping (Workout) -> Void) {
-        var exercises: [Exercise] = []
+    func acceptWorkout(dto: GeneratedWorkoutDTO, onStart: @escaping (Workout) -> Void) async {
+        await workoutService.startGeneratedWorkout(dto)
         
-        for exDTO in dto.exercises {
-            let exerciseType = ExerciseType(rawValue: exDTO.type) ?? .strength
-            let category = ExerciseCategory.determine(from: exDTO.name)
-            
-            let newExercise = Exercise(name: exDTO.name, muscleGroup: exDTO.muscleGroup, type: exerciseType, category: category, sets: exDTO.sets, reps: exDTO.reps, weight: exDTO.recommendedWeightKg ?? 0, effort: 5, setsList: [], isCompleted: false)
-            context.insert(newExercise)
-            
-            var setsList: [WorkoutSet] = []
-            for i in 1...max(1, exDTO.sets) {
-                let set = WorkoutSet(index: i, weight: exDTO.recommendedWeightKg, reps: exerciseType == .strength ? exDTO.reps : nil, distance: exerciseType == .cardio ? (exDTO.recommendedWeightKg ?? 0) : nil, time: exerciseType == .duration ? exDTO.reps : nil, isCompleted: false, type: .normal)
-                
-                set.exercise = newExercise
-                context.insert(set)
-                setsList.append(set)
-            }
-            
-            newExercise.setsList = setsList
-            newExercise.updateAggregates()
-            exercises.append(newExercise)
+        // После старта, нам нужно получить последнюю тренировку, чтобы вернуть ее в onStart
+        if let latestWorkout = await workoutService.fetchLatestWorkout() {
+            onStart(latestWorkout)
+        } else {
+            workoutService.showError(title: "Error", message: "Failed to retrieve the generated workout.")
         }
-        
-        let newWorkout = Workout(title: dto.title, date: Date(), icon: "brain.head.profile", exercises: exercises)
-        context.insert(newWorkout)
-        try? context.save()
-        
-        let attributes = WorkoutActivityAttributes(workoutTitle: newWorkout.title)
-        let state = WorkoutActivityAttributes.ContentState(startTime: Date())
-        _ = try? Activity<WorkoutActivityAttributes>.request(attributes: attributes, content: .init(state: state, staleDate: nil), pushType: nil)
-        
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-        onStart(newWorkout)
     }
 }

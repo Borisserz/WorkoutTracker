@@ -1,24 +1,51 @@
+//
+//  ExerciseHistoryView.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import SwiftData
 import Charts
 
 struct ExerciseHistoryView: View {
-    @Environment(\.modelContext) private var context
+    @Environment(DIContainer.self) private var di // Добавили DI для инициализации VM
     @Environment(UnitsManager.self) var unitsManager
     @FocusState private var isInputActive: Bool
     
-    @State private var viewModel: ExerciseHistoryViewModel
+    let exerciseName: String // Сохраняем имя
+    @State private var viewModel: ExerciseHistoryViewModel? // VM теперь опциональна до инициализации
     
     init(exerciseName: String) {
-        // Инициализируем ViewModel легким состоянием
-        _viewModel = State(wrappedValue: ExerciseHistoryViewModel(exerciseName: exerciseName))
+        self.exerciseName = exerciseName
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            tabBar
+        Group {
+            if let viewModel = viewModel {
+                mainContent(vm: viewModel)
+            } else {
+                ProgressView() // Заглушка до инициализации VM
+            }
+        }
+        .navigationTitle(exerciseName)
+        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            // 1. Инициализируем ViewModel через DIContainer
+            if viewModel == nil {
+                viewModel = di.makeExerciseHistoryViewModel(exerciseName: exerciseName)
+            }
             
-            if !viewModel.isDataLoaded {
+            // 2. Загружаем данные (убрали лишний аргумент modelContainer)
+            await viewModel?.loadData(unitsManager: unitsManager)
+        }
+    }
+    
+    @ViewBuilder
+    private func mainContent(vm: ExerciseHistoryViewModel) -> some View {
+        VStack(spacing: 0) {
+            tabBar(vm: vm)
+            
+            if !vm.isDataLoaded {
                 Spacer()
                 ProgressView(LocalizedStringKey("Loading data..."))
                     .controlSize(.large)
@@ -27,10 +54,10 @@ struct ExerciseHistoryView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         VStack(spacing: 30) {
-                            switch viewModel.selectedTab {
-                            case .summary: summaryContent
-                            case .technique: techniqueContent
-                            case .history: historyContent
+                            switch vm.selectedTab {
+                            case .summary: summaryContent(vm: vm)
+                            case .technique: techniqueContent(vm: vm)
+                            case .history: historyContent(vm: vm)
                             }
                         }
                         .padding()
@@ -45,31 +72,25 @@ struct ExerciseHistoryView: View {
                 }
             }
         }
-        .navigationTitle(viewModel.exerciseName)
-        .navigationBarTitleDisplayMode(.inline)
-        .task {
-            // При появлении экрана просим ViewModel асинхронно стянуть данные
-            await viewModel.loadData(modelContainer: context.container, unitsManager: unitsManager)
-        }
-        .onChange(of: viewModel.selectedTimeRange) { _, _ in withAnimation { viewModel.updateGraphData() } }
-        .onChange(of: viewModel.selectedMetric) { _, _ in withAnimation { viewModel.updateGraphData() } }
+        .onChange(of: vm.selectedTimeRange) { _, _ in withAnimation { vm.updateGraphData() } }
+        .onChange(of: vm.selectedMetric) { _, _ in withAnimation { vm.updateGraphData() } }
     }
     
     // MARK: - Tab Bar
-    private var tabBar: some View {
+    private func tabBar(vm: ExerciseHistoryViewModel) -> some View {
         VStack(spacing: 0) {
             HStack(spacing: 0) {
                 ForEach(ExerciseHistoryViewModel.Tab.allCases, id: \.self) { tab in
                     Button {
-                        withAnimation(.easeInOut(duration: 0.2)) { viewModel.selectedTab = tab }
+                        withAnimation(.easeInOut(duration: 0.2)) { vm.selectedTab = tab }
                     } label: {
                         VStack(spacing: 8) {
                             Text(tab.localizedName)
                                 .font(.subheadline)
-                                .fontWeight(viewModel.selectedTab == tab ? .semibold : .regular)
-                                .foregroundColor(viewModel.selectedTab == tab ? .blue : .secondary)
+                                .fontWeight(vm.selectedTab == tab ? .semibold : .regular)
+                                .foregroundColor(vm.selectedTab == tab ? .blue : .secondary)
                             Rectangle()
-                                .fill(viewModel.selectedTab == tab ? Color.blue : Color.clear)
+                                .fill(vm.selectedTab == tab ? Color.blue : Color.clear)
                                 .frame(height: 2)
                         }
                         .frame(maxWidth: .infinity)
@@ -85,36 +106,36 @@ struct ExerciseHistoryView: View {
     }
     
     // MARK: - Tab Contents
-    private var summaryContent: some View {
+    private func summaryContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(spacing: 30) {
-            chartContainerView
+            chartContainerView(vm: vm)
             
-            if let trend = viewModel.exerciseTrend {
+            if let trend = vm.exerciseTrend {
                 exerciseTrendSection(trend: trend)
             }
-            if let forecast = viewModel.exerciseForecast {
+            if let forecast = vm.exerciseForecast {
                 exerciseForecastSection(forecast: forecast)
             }
             
-            ExerciseNoteEditor(exerciseName: viewModel.exerciseName, isInputActive: $isInputActive)
+            ExerciseNoteEditor(exerciseName: vm.exerciseName, isInputActive: $isInputActive)
                 .id("notesSection")
                 .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).shadow(radius: 5)
         }
     }
     
-    private var techniqueContent: some View {
+    private func techniqueContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading, spacing: 20) {
             Text(LocalizedStringKey("Exercise Technique")).font(.title2).bold().padding(.bottom, 10)
             
             VStack(alignment: .leading, spacing: 15) {
                 Text(LocalizedStringKey("How to Perform")).font(.headline).foregroundColor(.secondary)
-                Text(TechniqueHelper.getDescription(for: viewModel.exerciseCategory)).font(.body).lineSpacing(4)
+                Text(TechniqueHelper.getDescription(for: vm.exerciseCategory)).font(.body).lineSpacing(4)
             }
             .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).shadow(radius: 5)
             
             VStack(alignment: .leading, spacing: 15) {
                 Text(LocalizedStringKey("Key Tips")).font(.headline).foregroundColor(.secondary)
-                ForEach(TechniqueHelper.getTips(for: viewModel.exerciseCategory), id: \.self) { tip in
+                ForEach(TechniqueHelper.getTips(for: vm.exerciseCategory), id: \.self) { tip in
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "checkmark.circle.fill").foregroundColor(.blue).font(.caption).padding(.top, 4)
                         Text(tip).font(.body).lineSpacing(4)
@@ -123,7 +144,7 @@ struct ExerciseHistoryView: View {
             }
             .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).shadow(radius: 5)
             
-            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: viewModel.exerciseName, muscleGroup: viewModel.muscleGroup)
+            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: vm.exerciseName, muscleGroup: vm.muscleGroup)
             if !targetMuscles.isEmpty {
                 VStack(alignment: .leading, spacing: 15) {
                     HStack {
@@ -132,7 +153,7 @@ struct ExerciseHistoryView: View {
                     }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 8)], spacing: 8) {
                         ForEach(targetMuscles, id: \.self) { muscle in
-                            NavigationLink(destination: ExerciseView(preselectedCategory: viewModel.muscleGroup)) {
+                            NavigationLink(destination: ExerciseView(preselectedCategory: vm.muscleGroup)) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "figure.strengthtraining.traditional").font(.caption2)
                                     Text(muscle).font(.subheadline)
@@ -148,11 +169,11 @@ struct ExerciseHistoryView: View {
         }
     }
     
-    private var historyContent: some View {
+    private func historyContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading) {
             Text(LocalizedStringKey("History")).font(.title2).bold()
             
-            if viewModel.displayedGraphData.isEmpty {
+            if vm.displayedGraphData.isEmpty {
                 EmptyStateView(
                     icon: "clock.fill",
                     title: LocalizedStringKey("No history yet"),
@@ -160,8 +181,8 @@ struct ExerciseHistoryView: View {
                 )
                 .padding(.top, 20)
             } else {
-                ForEach(viewModel.displayedGraphData.reversed()) { dataPoint in
-                    historyRowContent(dataPoint: dataPoint)
+                ForEach(vm.displayedGraphData.reversed()) { dataPoint in
+                    historyRowContent(dataPoint: dataPoint, vm: vm)
                 }
             }
         }
@@ -169,12 +190,12 @@ struct ExerciseHistoryView: View {
     
     // MARK: - Components
     
-    private var chartContainerView: some View {
+    private func chartContainerView(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading, spacing: 15) {
             HStack {
-                Text(viewModel.chartTitle).font(.headline).foregroundColor(.secondary)
+                Text(vm.chartTitle).font(.headline).foregroundColor(.secondary)
                 Spacer()
-                Picker(LocalizedStringKey("Range"), selection: $viewModel.selectedTimeRange) {
+                Picker(LocalizedStringKey("Range"), selection: Binding(get: { vm.selectedTimeRange }, set: { vm.selectedTimeRange = $0 })) {
                     ForEach(ExerciseHistoryViewModel.TimeRange.allCases, id: \.self) { range in
                         Text(LocalizedStringKey(range.rawValue)).tag(range)
                     }
@@ -183,16 +204,16 @@ struct ExerciseHistoryView: View {
                 .frame(width: 200)
             }
             
-            if viewModel.displayedGraphData.isEmpty {
+            if vm.displayedGraphData.isEmpty {
                 Text(LocalizedStringKey("Not enough data"))
                     .padding().frame(maxWidth: .infinity).background(Color.gray.opacity(0.1)).cornerRadius(8)
             } else {
-                chartView
+                chartView(vm: vm)
                 Divider()
-                if viewModel.displayedGraphData.count > 1 {
+                if vm.displayedGraphData.count > 1 {
                     HStack {
                         Text(LocalizedStringKey("Show line:")).font(.caption).foregroundColor(.secondary)
-                        Picker(LocalizedStringKey("Metric"), selection: $viewModel.selectedMetric) {
+                        Picker(LocalizedStringKey("Metric"), selection: Binding(get: { vm.selectedMetric }, set: { vm.selectedMetric = $0 })) {
                             ForEach(ExerciseHistoryViewModel.GraphMetric.allCases, id: \.self) { metric in
                                 Text(LocalizedStringKey(metric.rawValue)).tag(metric)
                             }
@@ -205,27 +226,27 @@ struct ExerciseHistoryView: View {
         .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).shadow(radius: 5)
     }
     
-    private var chartView: some View {
+    private func chartView(vm: ExerciseHistoryViewModel) -> some View {
         Chart {
-            ForEach(viewModel.displayedGraphData) { dataPoint in
-                if viewModel.displayedGraphData.count > 1 {
+            ForEach(vm.displayedGraphData) { dataPoint in
+                if vm.displayedGraphData.count > 1 {
                     LineMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
-                        .interpolationMethod(.linear).foregroundStyle(viewModel.chartColor).lineStyle(StrokeStyle(lineWidth: 3))
+                        .interpolationMethod(.linear).foregroundStyle(vm.chartColor).lineStyle(StrokeStyle(lineWidth: 3))
                 }
                 PointMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
-                    .foregroundStyle(viewModel.chartColor).symbolSize(viewModel.displayedGraphData.count == 1 ? 50 : 30)
+                    .foregroundStyle(vm.chartColor).symbolSize(vm.displayedGraphData.count == 1 ? 50 : 30)
                     .annotation(position: .top) {
-                        if viewModel.displayedGraphData.count < 10 {
+                        if vm.displayedGraphData.count < 10 {
                             Text(LocalizationHelper.shared.formatInteger(dataPoint.value)).font(.caption2).foregroundColor(.secondary)
                         }
                     }
             }
             
-            if let val = viewModel.currentMetricValue, viewModel.displayedGraphData.count > 1 {
+            if let val = vm.currentMetricValue, vm.displayedGraphData.count > 1 {
                 RuleMark(y: .value("Metric", val))
                     .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5])).foregroundStyle(.secondary)
                     .annotation(position: .top, alignment: .leading) {
-                        Text("\(viewModel.selectedMetric.rawValue): \(val, format: .number.precision(.fractionLength(1))) \(viewModel.unitLabel)")
+                        Text("\(vm.selectedMetric.rawValue): \(val, format: .number.precision(.fractionLength(1))) \(vm.unitLabel)")
                             .font(.caption).bold().foregroundColor(.secondary)
                     }
             }
@@ -237,27 +258,23 @@ struct ExerciseHistoryView: View {
     }
     
     @ViewBuilder
-    private func historyRowContent(dataPoint: ExerciseHistoryViewModel.DataPoint) -> some View {
-        // Мы не можем открыть WorkoutDetailView без самой модели Workout.
-        // Чтобы не грузить модель в память, мы можем отрендерить просто строку текста.
-        // Если нужен переход, потребуется реализовать FetchDescriptor по dataPoint.rawWorkoutID.
-        HStack {
-            VStack(alignment: .leading) {
-                Text(dataPoint.date, style: .date).font(.headline).foregroundColor(.primary)
-            }
-            Spacer()
-            VStack(alignment: .trailing) {
-                Text("\(LocalizationHelper.shared.formatDecimal(dataPoint.value)) \(viewModel.unitLabel)")
-                    .bold().foregroundColor(viewModel.chartColor)
-            }
-        }
-        .padding()
-        .background(Color.gray.opacity(0.05))
-        .cornerRadius(10)
-    }
-    
+       private func historyRowContent(dataPoint: ExerciseHistoryDataPoint, vm: ExerciseHistoryViewModel) -> some View {
+           HStack {
+               VStack(alignment: .leading) {
+                   Text(dataPoint.date, style: .date).font(.headline).foregroundColor(.primary)
+               }
+               Spacer()
+               VStack(alignment: .trailing) {
+                   Text("\(LocalizationHelper.shared.formatDecimal(dataPoint.value)) \(vm.unitLabel)")
+                       .bold().foregroundColor(vm.chartColor)
+               }
+           }
+           .padding()
+           .background(Color.gray.opacity(0.05))
+           .cornerRadius(10)
+       }
     @ViewBuilder
-    private func exerciseTrendSection(trend: WorkoutViewModel.ExerciseTrend) -> some View {
+    private func exerciseTrendSection(trend: ExerciseTrend) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(LocalizedStringKey("Exercise Trend")).font(.headline).foregroundColor(.secondary)
@@ -286,7 +303,7 @@ struct ExerciseHistoryView: View {
     }
     
     @ViewBuilder
-    private func exerciseForecastSection(forecast: WorkoutViewModel.ProgressForecast) -> some View {
+    private func exerciseForecastSection(forecast: ProgressForecast) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text(LocalizedStringKey("Progress Forecast")).font(.headline).foregroundColor(.secondary)
@@ -327,7 +344,6 @@ struct ExerciseNoteEditor: View {
     var isInputActive: FocusState<Bool>.Binding
     
     @Environment(\.modelContext) private var context
-    // ИСПРАВЛЕНИЕ: Обязательно импортируем SwiftData в файле, чтобы работал @Query
     @Query private var notes: [ExerciseNote]
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     
@@ -382,6 +398,10 @@ struct ExerciseNoteEditor: View {
     }
     
     private func saveNote(_ text: String) {
-        userStatsViewModel.saveExerciseNote(exerciseName: exerciseName, text: text, existingNote: notes.first)
+        // ИСПРАВЛЕНИЕ: Передаем persistentModelID и оборачиваем в Task
+        let noteID = notes.first?.persistentModelID
+        Task {
+            await userStatsViewModel.saveExerciseNote(exerciseName: exerciseName, text: text, existingNoteID: noteID)
+        }
     }
 }

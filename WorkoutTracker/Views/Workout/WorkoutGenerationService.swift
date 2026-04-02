@@ -30,7 +30,7 @@ struct WorkoutGenerationService: Sendable {
     
     /// Генерирует тренировку на основе восстановившихся мышц
     static func generateFreshWorkout(
-        recoveryStatus: [WorkoutViewModel.MuscleRecoveryStatus],
+        recoveryStatus: [MuscleRecoveryStatus],
         catalog: [String: [String]]
     ) throws -> GeneratedWorkout {
         

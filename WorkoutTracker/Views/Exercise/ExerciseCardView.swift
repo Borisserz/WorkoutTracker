@@ -12,9 +12,9 @@ struct ExerciseCardView: View {
     @Environment(RestTimerManager.self) var timerManager
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
-    @Environment(WorkoutViewModel.self) var globalViewModel
     
-    // ✅ ПОЛУЧАЕМ VIEWMODEL ИЗ ОКРУЖЕНИЯ
+    // ✅ ИСПРАВЛЕНИЕ: Меняем WorkoutViewModel на WorkoutService
+    @Environment(WorkoutService.self) var workoutService
     @Environment(WorkoutDetailViewModel.self) var viewModel
     
     @Bindable var exercise: Exercise
@@ -24,20 +24,14 @@ struct ExerciseCardView: View {
     @Binding var isExpanded: Bool
     var isCurrentExercise: Bool = false
     
-    // Коллбэк для UI-скролла
     var onExpandNext: ((UUID) -> Void)? = nil
     
     @State private var showEffortSheet = false
     @State private var showTechniqueSheet = false
     @State private var newlyAddedSetId: UUID? = nil
     
-    private var isActiveExercise: Bool {
-        isCurrentExercise && !exercise.isCompleted
-    }
-    
-    private var isWorkoutCompleted: Bool {
-        !workout.isActive
-    }
+    private var isActiveExercise: Bool { isCurrentExercise && !exercise.isCompleted }
+    private var isWorkoutCompleted: Bool { !workout.isActive }
     
     var body: some View {
         ZStack {
@@ -94,7 +88,6 @@ struct ExerciseCardView: View {
                         if let duration = suggestedDuration { timerManager.startRestTimer(duration: duration) }
                         else { timerManager.startRestTimer() }
                     }
-                    // ✅ ПРЯМОЙ ВЫЗОВ ВМЕСТО ЗАМЫКАНИЯ
                     viewModel.handleSetCompleted(set: checkedSet, isLast: isLast, exerciseName: exercise.name, workout: workout, catalog: Exercise.catalog, weightUnit: unitsManager.weightUnitString())
                 },
                 prevWeight: prevSet?.weight,
@@ -141,7 +134,10 @@ struct ExerciseCardView: View {
                     if !isEmbeddedInSuperset {
                         Button { viewModel.activeDestination = .swapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") }
                     }
-                    Button(role: .destructive) { withAnimation { globalViewModel.removeExercise(exercise, from: workout) } } label: { Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash") }
+                    Button(role: .destructive) {
+                        // ✅ ИСПРАВЛЕНИЕ: Вызов через Task
+                        Task { await workoutService.removeExercise(exercise, from: workout) }
+                    } label: { Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis").foregroundColor(.gray).padding(10) }
                 .highPriorityGesture(TapGesture().onEnded { })
             }
@@ -208,7 +204,8 @@ struct ExerciseCardView: View {
         let lastSet = sortedSets.last
         let newIndex = (lastSet?.index ?? 0) + 1
         withAnimation {
-            globalViewModel.addSet(to: exercise, index: newIndex, weight: lastSet?.weight, reps: lastSet?.reps, distance: lastSet?.distance, time: lastSet?.time, type: .normal, isCompleted: false)
+            // ✅ ИСПРАВЛЕНИЕ: Вызов через Task
+            Task { await workoutService.addSet(to: exercise, index: newIndex, weight: lastSet?.weight, reps: lastSet?.reps, distance: lastSet?.distance, time: lastSet?.time, type: .normal, isCompleted: false) }
             newlyAddedSetId = exercise.setsList.last?.id
         }
     }
@@ -217,27 +214,26 @@ struct ExerciseCardView: View {
         guard !exercise.isCompleted && !isWorkoutCompleted else { return }
         withAnimation {
             if let setToDelete = exercise.setsList.first(where: { $0.id == id }) {
-                globalViewModel.deleteSet(setToDelete, from: exercise)
+                // ✅ ИСПРАВЛЕНИЕ: Вызов через Task
+                Task { await workoutService.deleteSet(setToDelete, from: exercise) }
             }
         }
     }
-    
     private func finishExerciseAction() {
-        // ✅ ПРЯМОЙ ВЫЗОВ ВМЕСТО ЗАМЫКАНИЯ
-        viewModel.handleExerciseFinished(
-            exerciseId: exercise.id,
-            workout: workout,
-            modelContainer: context.container,
-            tutorialManager: tutorialManager,
-            dashboardViewModel: dashboardViewModel,
-            catalog: Exercise.catalog,
-            weightUnit: unitsManager.weightUnitString(),
-            onExpandNext: { nextId in
-                onExpandNext?(nextId)
-            }
-        )
-    }
-    
+            viewModel.handleExerciseFinished(
+                exerciseId: exercise.id,
+                workout: workout,
+                modelContainer: context.container, // <-- Тот самый недостающий аргумент
+                tutorialManager: tutorialManager,
+                dashboardViewModel: dashboardViewModel,
+                catalog: Exercise.catalog,
+                weightUnit: unitsManager.weightUnitString(),
+                onExpandNext: { nextId in
+                    onExpandNext?(nextId)
+                }
+            )
+        }
+
     private func getIcon() -> String {
         switch exercise.type {
         case .strength: return "dumbbell.fill"
@@ -252,5 +248,8 @@ struct ExerciseCardView: View {
         case .cardio: return .orange
         case .duration: return .purple
         }
+ 
     }
+
 }
+

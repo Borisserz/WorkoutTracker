@@ -2,9 +2,6 @@
 //  ProfileViewModel.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 1.04.26.
-//
-
 
 internal import SwiftUI
 import SwiftData
@@ -14,21 +11,26 @@ import Observation
 @MainActor
 final class ProfileViewModel {
     
-    // Стейты, которые раньше засоряли View
     var cachedAchievements: [Achievement] = []
-    var cachedPersonalRecords: [WorkoutViewModel.BestResult] = []
-    var topForecast: WorkoutViewModel.ProgressForecast?
+    var cachedPersonalRecords: [BestResult] = []
+    var topForecast: ProgressForecast?
     var isLoading: Bool = false
+    
+    private let analyticsService: AnalyticsService
+    
+    init(analyticsService: AnalyticsService) {
+        self.analyticsService = analyticsService
+    }
     
     func loadProfileData(
         stats: UserStats,
         currentStreak: Int,
         unitsManager: UnitsManager,
         modelContainer: ModelContainer
-    ) {
+    ) async {
         self.isLoading = true
         
-        // 1. Быстрые синхронные вычисления ачивок
+        // 1. Ачивки считаются синхронно (логика внутри AchievementCalculator)
         self.cachedAchievements = AchievementCalculator.calculateAchievements(
             totalWorkouts: stats.totalWorkouts,
             totalVolume: stats.totalVolume,
@@ -39,26 +41,19 @@ final class ProfileViewModel {
             unitsManager: unitsManager
         )
         
-        // 2. Тяжелые асинхронные запросы (Рекорды и ИИ Прогнозы) выносим в фон
-        Task.detached(priority: .userInitiated) {
-            let bgContext = ModelContext(modelContainer)
-            let descriptor = FetchDescriptor<Workout>(
-                predicate: #Predicate<Workout> { $0.endTime != nil }
-            )
-            
-            let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
-            
-            // В фоновом потоке считаем тяжелую математику
-            let records = StatisticsManager.getAllPersonalRecords(workouts: bgWorkouts, unitsManager: UnitsManager.shared)
-            let forecasts = AnalyticsManager.getProgressForecast(workouts: bgWorkouts)
-            let topF = forecasts.first
-            
-            // Возвращаем результат в MainActor (UI)
-            await MainActor.run {
-                self.cachedPersonalRecords = records
-                self.topForecast = topF
-                self.isLoading = false
-            }
-        }
+        // 2. Раньше мы вызывали StatisticsManager / AnalyticsManager.
+        // Теперь мы вызываем AnalyticsService (актор), что гораздо безопаснее.
+        
+        let bgContext = ModelContext(modelContainer)
+        let descriptor = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime != nil })
+        let allWorkouts = (try? bgContext.fetch(descriptor)) ?? []
+
+        // Вызываем методы актора (функционал тот же самый, просто теперь он внутри сервиса)
+        let records = await analyticsService.getAllPersonalRecords(workouts: allWorkouts, unitsManager: unitsManager)
+        let forecasts = await analyticsService.getProgressForecast(workouts: allWorkouts)
+        
+        self.cachedPersonalRecords = records
+        self.topForecast = forecasts.first
+        self.isLoading = false
     }
 }

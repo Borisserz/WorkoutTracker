@@ -1,15 +1,15 @@
+
 internal import SwiftUI
 import SwiftData
 
 struct InWorkoutAICoachView: View {
     @Bindable var workout: Workout
-    @Environment(CatalogViewModel.self) var catalogViewModel
     
-    // ✅ ИСПРАВЛЕНИЕ: Используем @Bindable вместо @ObservedObject
+    // ✅ ИСПРАВЛЕНИЕ: Используем ViewModel, созданный в WorkoutDetailView
     @Bindable var viewModel: InWorkoutAICoachViewModel
     
     @Environment(\.modelContext) private var context
-    @Environment(WorkoutViewModel.self) var workoutViewModel
+    // Удалены прямые зависимости от WorkoutViewModel и CatalogViewModel
     
     @FocusState private var isInputFocused: Bool
     
@@ -39,7 +39,7 @@ struct InWorkoutAICoachView: View {
                             .padding(.top, 60)
                         } else {
                             ForEach(viewModel.chatHistory) { message in
-                                InWorkoutChatBubble(message: message, workout: workout)
+                                InWorkoutChatBubble(message: message, workout: workout, viewModel: viewModel) // Передаем viewModel
                                     .id(message.id)
                             }
                         }
@@ -88,7 +88,7 @@ struct InWorkoutAICoachView: View {
                         Button {
                             isInputFocused = false
                             viewModel.inputText = action
-                            viewModel.sendMessage(currentWorkout: workout, catalog: catalogViewModel.combinedCatalog)
+                            Task { await viewModel.sendMessage(currentWorkout: workout) } // Отправляем сообщение
                         } label: {
                             Text(LocalizedStringKey(action))
                                 .font(.caption)
@@ -120,7 +120,7 @@ struct InWorkoutAICoachView: View {
                     .disabled(viewModel.isGenerating)
                     .onSubmit {
                         isInputFocused = false
-                        viewModel.sendMessage(currentWorkout: workout, catalog: catalogViewModel.combinedCatalog)
+                        Task { await viewModel.sendMessage(currentWorkout: workout) }
                     }
                 
                 if viewModel.isGenerating {
@@ -128,7 +128,7 @@ struct InWorkoutAICoachView: View {
                 } else {
                     Button {
                         isInputFocused = false
-                        viewModel.sendMessage(currentWorkout: workout, catalog: catalogViewModel.combinedCatalog)
+                        Task { await viewModel.sendMessage(currentWorkout: workout) }
                     } label: {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.system(size: 34))
@@ -152,6 +152,7 @@ struct InWorkoutAICoachView: View {
 struct InWorkoutChatBubble: View {
     let message: InWorkoutChatMessage
     @Bindable var workout: Workout
+    @Bindable var viewModel: InWorkoutAICoachViewModel // Передаем ViewModel
     
     var body: some View {
         HStack(alignment: .bottom) {
@@ -173,7 +174,7 @@ struct InWorkoutChatBubble: View {
                     .clipShape(ChatBubbleShape(isUser: message.isUser))
                 
                 if let adjustment = message.adjustment, workout.isActive {
-                    WorkoutAdjustmentCardView(adjustment: adjustment, workout: workout)
+                    WorkoutAdjustmentCardView(adjustment: adjustment, workout: workout, inWorkoutAICoachViewModel: viewModel) // Передаем ViewModel
                         .padding(.top, 4)
                 }
             }
@@ -186,10 +187,10 @@ struct InWorkoutChatBubble: View {
 struct WorkoutAdjustmentCardView: View {
     let adjustment: InWorkoutResponseDTO
     @Bindable var workout: Workout
+    @Bindable var inWorkoutAICoachViewModel: InWorkoutAICoachViewModel // Получаем ViewModel
     
     @State private var isApplied = false
     @Environment(\.modelContext) private var context
-    @Environment(WorkoutViewModel.self) var workoutViewModel
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -255,7 +256,9 @@ struct WorkoutAdjustmentCardView: View {
     
     private func applyChanges() {
         guard !isApplied, workout.isActive else { return }
-        workoutViewModel.applyAIAdjustment(adjustment, to: workout)
+        Task {
+            await inWorkoutAICoachViewModel.applyAIAdjustment(adjustment, to: workout) // Делегируем ViewModel
+        }
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
         withAnimation { isApplied = true }

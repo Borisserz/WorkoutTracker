@@ -44,7 +44,7 @@ struct WorkoutCalendarView: View {
     
     // MARK: - Environment & State
     @Environment(\.modelContext) private var context
-    @Environment(WorkoutViewModel.self) var viewModel
+   @Environment(WorkoutService.self) var workoutService
     
     @State private var selectedTimeRange: TimeRange = .month
     @State private var totalWorkoutCount: Int = 0

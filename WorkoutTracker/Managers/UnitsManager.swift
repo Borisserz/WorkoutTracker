@@ -1,13 +1,11 @@
-//
-//  UnitsManager.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Managers/UnitsManager.swift
+// ============================================================
 
 import Foundation
 internal import SwiftUI
-import Observation // ДОБАВЛЕНО
+import Observation
 
-// Enums (WeightUnit, DistanceUnit, SizeUnit) остаются без изменений!
 enum WeightUnit: String, Codable, CaseIterable {
     case kilograms = "kg"
     case pounds = "lbs"
@@ -18,20 +16,21 @@ enum WeightUnit: String, Codable, CaseIterable {
 enum DistanceUnit: String, Codable, CaseIterable {
     case meters = "m"
     case miles = "mi"
-    var displayName: String { self == .meters ? "Meters (m)" : "Miles (mi)" }
+    // ✅ ИСПРАВЛЕНО: Тип изменен на LocalizedStringKey
+    var displayName: LocalizedStringKey { self == .meters ? "Meters (m)" : "Miles (mi)" }
     var shortName: String { self.rawValue }
 }
 
 enum SizeUnit: String, Codable, CaseIterable {
     case centimeters = "cm"
     case inches = "in"
-    var displayName: String { self == .centimeters ? "Centimeters (cm)" : "Inches (in)" }
+    // ✅ ИСПРАВЛЕНО: Тип изменен на LocalizedStringKey
+    var displayName: LocalizedStringKey { self == .centimeters ? "Centimeters (cm)" : "Inches (in)" }
     var shortName: String { self.rawValue }
 }
 
-@Observable // ДОБАВЛЕНО
+@Observable
 final class UnitsManager {
-    // Убрали ObservableObject и все @Published
     static let shared = UnitsManager()
     
     private(set) var weightUnit: WeightUnit {

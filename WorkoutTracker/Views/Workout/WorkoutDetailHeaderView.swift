@@ -53,3 +53,19 @@ struct WorkoutDetailHeaderView: View {
         return .green
     }
 }
+extension View {
+    func blinking() -> some View {
+        self.modifier(BlinkingTextModifier())
+    }
+}
+struct WorkoutTimerView: View {
+    let startDate: Date
+    
+    var body: some View {
+        Text(startDate, style: .timer)
+            .font(.title2)
+            .bold()
+            .monospacedDigit()
+            .foregroundColor(.primary)
+    }
+}

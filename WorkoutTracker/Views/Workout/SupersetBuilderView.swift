@@ -21,7 +21,7 @@ struct SupersetBuilderView: View {
     // MARK: - Environment & State
     
     @Environment(\.dismiss) private var dismiss
-    @Environment(WorkoutViewModel.self) private var viewModel
+    @Environment(WorkoutService.self) private var viewModel
 @Environment(UnitsManager.self) var unitsManager
     
     // Если редактируем — передаем сюда существующий супер-сет

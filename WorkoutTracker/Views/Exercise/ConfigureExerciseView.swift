@@ -11,7 +11,7 @@ struct ConfigureExerciseView: View {
     @Environment(DashboardViewModel.self) var dashboardViewModel
     // MARK: - Environment
     @Environment(\.dismiss) var dismiss
-    @Environment(WorkoutViewModel.self) var viewModel
+   @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
     
     // MARK: - Input Parameters

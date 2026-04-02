@@ -1,3 +1,4 @@
+
 internal import SwiftUI
 import SwiftData
 import UIKit
@@ -6,11 +7,9 @@ import UIKit
 
 struct WorkoutView: View {
     @Environment(\.modelContext) private var context
-    @Environment(WorkoutViewModel.self) var viewModel
+    @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
-    
-    @Query(sort: \Workout.date, order: .reverse) private var recentWorkoutsForImbalance: [Workout]
     
     @State private var showImbalanceInfo = false
     @State private var showAddWorkout = false
@@ -21,8 +20,12 @@ struct WorkoutView: View {
     @State private var sortOption: SortOption = .dateDescending
     @State private var showFavoritesOnly = false
     
-    // ✅ ИСПРАВЛЕНИЕ: Внедряем чистую ViewModel для списка вместо примитивных переменных
+    // Внедряем чистую ViewModel для списка
     @State private var listViewModel = WorkoutListViewModel()
+    
+    // Состояние для хранения рекомендаций об дисбалансе
+    @State private var imbalanceAdvice: (title: String, message: String)? = nil
+    @State private var recentWorkoutForNavigation: Workout? = nil
     
     enum FilterPeriod: String, CaseIterable {
         case all = "All Time"
@@ -41,29 +44,21 @@ struct WorkoutView: View {
         case effortAscending = "Lowest Effort"
     }
     
-    init() {
-        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        descriptor.fetchLimit = 30 // Для дисбаланса нужны только свежие данные
-        _recentWorkoutsForImbalance = Query(descriptor)
-    }
-    
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle(LocalizedStringKey("History"))
                 .navigationDestination(isPresented: $navigateToNewWorkout) {
-                    if let first = recentWorkoutsForImbalance.first {
-                        WorkoutDetailView(workout: first)
+                    if let workout = recentWorkoutForNavigation {
+                        WorkoutDetailView(workout: workout)
                     }
                 }
                 .toolbar {
-                    if !recentWorkoutsForImbalance.isEmpty {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            EditButton()
-                        }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        EditButton()
                     }
                     
-                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: recentWorkoutsForImbalance) {
+                    if imbalanceAdvice != nil {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
                                 showImbalanceInfo = true
@@ -81,70 +76,75 @@ struct WorkoutView: View {
                     })
                 }
                 .sheet(isPresented: $showImbalanceInfo) {
-                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: recentWorkoutsForImbalance) {
+                    if let advice = imbalanceAdvice {
                         ImbalanceDetailSheet(advice: advice)
                             .presentationDetents([.fraction(0.35)])
                             .presentationDragIndicator(.visible)
                     }
                 }
         }
+        .onAppear {
+            loadImbalanceData()
+        }
+        // Обновляем дисбаланс, когда меняются данные на дашборде
+        .onChange(of: dashboardViewModel.dashboardTotalExercises) { _, _ in
+            loadImbalanceData()
+        }
     }
     
     @ViewBuilder
     var content: some View {
-        if recentWorkoutsForImbalance.isEmpty {
-            emptyState
-        } else {
-            List {
-                Section {
-                    Button {
-                        showAddWorkout = true
-                    } label: {
-                        Text(LocalizedStringKey("Start Workout"))
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                    }
+        // Мы используем DynamicWorkoutListView всегда. Если тренировок нет, он сам покажет EmptyState.
+        List {
+            Section {
+                Button {
+                    showAddWorkout = true
+                } label: {
+                    Text(LocalizedStringKey("Start Workout"))
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(12)
                 }
-                .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-                
-                Section {
-                    statsSection
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                
-                Section {
-                    searchAndFiltersSection
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                
-                Section {
-                    // ✅ ИСПРАВЛЕНИЕ: Передаем listViewModel, а не примитивные binding-и
-                    DynamicWorkoutListView(
-                        searchText: searchText,
-                        filter: selectedFilter,
-                        sort: sortOption,
-                        favoritesOnly: showFavoritesOnly,
-                        listViewModel: listViewModel
-                    )
-                }
-                .listRowInsets(EdgeInsets())
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+            
+            Section {
+                statsSection
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            
+            Section {
+                searchAndFiltersSection
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            
+            Section {
+                DynamicWorkoutListView(
+                    searchText: searchText,
+                    filter: selectedFilter,
+                    sort: sortOption,
+                    favoritesOnly: showFavoritesOnly,
+                    listViewModel: listViewModel,
+                    onFirstWorkoutLoaded: { workout in
+                        self.recentWorkoutForNavigation = workout
+                    }
+                )
+            }
+            .listRowInsets(EdgeInsets())
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
     
     private var statsSection: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
-                // ✅ ИСПРАВЛЕНИЕ: Читаем данные из ViewModel
                 StatCard(
                     title: LocalizedStringKey("Avg Duration"),
                     value: "\(listViewModel.calculatedAvgDuration)",
@@ -218,18 +218,12 @@ struct WorkoutView: View {
         }
     }
     
-    var emptyState: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "dumbbell.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.gray.opacity(0.3))
-            Text(LocalizedStringKey("No workouts yet"))
-                .font(.title2)
-                .bold()
-                .foregroundColor(.secondary)
-            Text(LocalizedStringKey("Start your first workout from the Overview tab!"))
-                .font(.caption)
-                .foregroundColor(.gray)
+    private func loadImbalanceData() {
+        // Мы уже имеем рекомендации, рассчитанные в DashboardViewModel
+        if let balanceRec = dashboardViewModel.recommendations.first(where: { $0.type == .balance }) {
+            imbalanceAdvice = (title: balanceRec.title, message: balanceRec.message)
+        } else {
+            imbalanceAdvice = nil
         }
     }
 }
@@ -240,13 +234,14 @@ struct DynamicWorkoutListView: View {
     @Environment(\.modelContext) private var context
     @Query private var workouts: [Workout]
     @Environment(DashboardViewModel.self) var dashboardViewModel
-    @Environment(WorkoutViewModel.self) var viewModel
+    @Environment(WorkoutService.self) var workoutService
     
-    // ✅ ИСПРАВЛЕНИЕ: Используем ViewModel
     var listViewModel: WorkoutListViewModel
+    var onFirstWorkoutLoaded: ((Workout) -> Void)?
     
-    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, listViewModel: WorkoutListViewModel) {
+    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, listViewModel: WorkoutListViewModel, onFirstWorkoutLoaded: ((Workout) -> Void)? = nil) {
         self.listViewModel = listViewModel
+        self.onFirstWorkoutLoaded = onFirstWorkoutLoaded
         
         let calendar = Calendar.current
         let now = Date()
@@ -305,6 +300,9 @@ struct DynamicWorkoutListView: View {
             .frame(maxWidth: .infinity)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets())
+            .onAppear {
+                onFirstWorkoutLoaded?(Workout(title: "", date: Date())) // Очищаем ссылку
+            }
         } else {
             ForEach(workouts) { workout in
                 ZStack {
@@ -318,13 +316,17 @@ struct DynamicWorkoutListView: View {
                 withAnimation {
                     for index in indexSet {
                         let workoutToDelete = workouts[index]
-                        viewModel.deleteWorkout(workoutToDelete)
+                        Task {
+                            await workoutService.deleteWorkout(workoutToDelete)
+                        }
                     }
                 }
             }
             .onChange(of: workouts, initial: true) { _, newWorkouts in
-                // ✅ ИСПРАВЛЕНИЕ: Делегируем вычисление в ViewModel
                 listViewModel.calculateStatsAsync(workouts: newWorkouts)
+                if let first = newWorkouts.first {
+                    onFirstWorkoutLoaded?(first)
+                }
             }
         }
     }
@@ -367,7 +369,7 @@ struct DebouncedSearchBar: View {
 }
 
 // MARK: - Helper Views
-// (ImbalanceDetailSheet, ActiveWorkoutIndicator, WorkoutRow, StatCard остаются без изменений)
+
 struct ImbalanceDetailSheet: View {
     let advice: (title: String, message: String)
     @Environment(\.dismiss) var dismiss
