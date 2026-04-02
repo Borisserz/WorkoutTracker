@@ -1,9 +1,6 @@
-
 //
-//  ExerciseListView..swift
+//  ExerciseListView.swift
 //  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 1.04.26.
 //
 
 internal import SwiftUI
@@ -15,13 +12,14 @@ struct ExerciseListView: View {
     @Binding var expandedExercises: [UUID: Bool]
     @Binding var draggedExercise: Exercise?
     
+    // Зависимости теперь берутся из Environment
+    @Environment(WorkoutViewModel.self) var globalViewModel
+    @Environment(WorkoutDetailViewModel.self) var viewModel
     @Environment(CatalogViewModel.self) var catalogViewModel
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.modelContext) private var context
-    @Environment(DashboardViewModel.self) var dashboardViewModel
-    var globalViewModel: WorkoutViewModel
-    var viewModel: WorkoutDetailViewModel 
     
     var scrollToExerciseId: (UUID?) -> Void
     
@@ -50,69 +48,19 @@ struct ExerciseListView: View {
                         if exercise.isSuperset {
                             SupersetCardView(
                                 superset: exercise,
-                                currentWorkoutId: workout.id,
-                                onDelete: { withAnimation { globalViewModel.removeExercise(exercise, from: workout) } },
-                                isWorkoutCompleted: !workout.isActive,
+                                workout: workout,
                                 isExpanded: isExpandedBinding,
-                                onExerciseFinished: {
-                                    // ✅ ПОРЯДОК АРГУМЕНТОВ ИСПРАВЛЕН
-                                    viewModel.handleExerciseFinished(
-                                        exerciseId: exercise.id,
-                                        workout: workout,
-                                        modelContainer: context.container,
-                                        tutorialManager: tutorialManager,
-                                        dashboardViewModel: dashboardViewModel, // Переместили сюда
-                                        catalog: catalogViewModel.combinedCatalog,
-                                        weightUnit: unitsManager.weightUnitString(),
-                                        onExpandNext: { id in
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expandedExercises[id] = true }
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { scrollToExerciseId(id) }
-                                        }
-                                    )
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expandedExercises[exercise.id] = false }
-                                    viewModel.updateWorkoutAnalytics(for: workout, modelContainer: context.container)
-                                },
                                 isCurrentExercise: isCurrentExercise,
-                                onPRSet: { level in
-                                    viewModel.handlePRSet(level: level, exerciseName: exercise.name, workout: workout, catalog: catalogViewModel.combinedCatalog, weightUnit: unitsManager.weightUnitString())
-                                },
-                                onSetCompleted: { set, isLast, name in
-                                    viewModel.handleSetCompleted(set: set, isLast: isLast, exerciseName: name, workout: workout, catalog: catalogViewModel.combinedCatalog, weightUnit: unitsManager.weightUnitString())
-                                }
+                                onExpandNext: handleExpandNext
                             )
                         } else {
                             ExerciseCardView(
                                 exercise: exercise,
-                                currentWorkoutId: workout.id,
-                                onDelete: { withAnimation { globalViewModel.removeExercise(exercise, from: workout) } },
-                                onSwap: { viewModel.exerciseToSwap = exercise; viewModel.showSwapSheet = true },
-                                isWorkoutCompleted: !workout.isActive,
+                                workout: workout,
+                                isEmbeddedInSuperset: false,
                                 isExpanded: isExpandedBinding,
-                                onExerciseFinished: {
-                                    // ✅ ПОРЯДОК АРГУМЕНТОВ ИСПРАВЛЕН
-                                    viewModel.handleExerciseFinished(
-                                        exerciseId: exercise.id,
-                                        workout: workout,
-                                        modelContainer: context.container,
-                                        tutorialManager: tutorialManager,
-                                        dashboardViewModel: dashboardViewModel, // Переместили сюда
-                                        catalog: catalogViewModel.combinedCatalog,
-                                        weightUnit: unitsManager.weightUnitString(),
-                                        onExpandNext: { id in
-                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expandedExercises[id] = true }
-                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { scrollToExerciseId(id) }
-                                        }
-                                    )
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { expandedExercises[exercise.id] = false }
-                                    viewModel.updateWorkoutAnalytics(for: workout, modelContainer: context.container)
-                                },
                                 isCurrentExercise: isCurrentExercise,
-                                onPRSet: { level in
-                                    viewModel.handlePRSet(level: level, exerciseName: exercise.name, workout: workout, catalog: catalogViewModel.combinedCatalog, weightUnit: unitsManager.weightUnitString())
-                                },
-                                onSetCompleted: { set, isLast, name in
-                                    viewModel.handleSetCompleted(set: set, isLast: isLast, exerciseName: name, workout: workout, catalog: catalogViewModel.combinedCatalog, weightUnit: unitsManager.weightUnitString())
-                                }
+                                onExpandNext: handleExpandNext
                             )
                         }
                     }
@@ -128,5 +76,26 @@ struct ExerciseListView: View {
                 }
             }
         }
+    }
+    
+    // ✅ Локальный хелпер для разворачивания следующего упражнения
+    private func handleExpandNext(currentExerciseId: UUID) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            expandedExercises[currentExerciseId] = false
+        }
+        
+        guard let currentIndex = workout.exercises.firstIndex(where: { $0.id == currentExerciseId }) else { return }
+        
+        if let nextIndex = workout.exercises.indices.first(where: { $0 > currentIndex && !workout.exercises[$0].isCompleted }) {
+            let nextId = workout.exercises[nextIndex].id
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                expandedExercises[nextId] = true
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                scrollToExerciseId(nextId)
+            }
+        }
+        
+        viewModel.updateWorkoutAnalytics(for: workout, modelContainer: context.container)
     }
 }

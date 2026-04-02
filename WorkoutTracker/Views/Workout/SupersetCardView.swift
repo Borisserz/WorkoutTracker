@@ -5,10 +5,11 @@
 
 internal import SwiftUI
 import SwiftData
+
+// MARK: - PR Celebration Models
 enum PRLevel {
     case bronze, silver, gold, diamond
     
-    // Твои старые свойства
     var angularColors: [Color] {
         switch self {
         case .bronze: return [.brown, .orange, .brown, .orange, .brown]
@@ -37,6 +38,7 @@ enum PRLevel {
     }
 }
 
+// MARK: - PR Celebration View
 struct PRCelebrationView: View {
     let prLevel: PRLevel
     let onClose: () -> Void
@@ -111,25 +113,25 @@ struct PRCelebrationView: View {
     }
 }
 
+// MARK: - Superset Card View
 struct SupersetCardView: View {
-    @Bindable var superset: Exercise
     @Environment(\.modelContext) private var context
-    @Environment(WorkoutViewModel.self) var viewModel
+    @Environment(WorkoutViewModel.self) var globalViewModel
+    @Environment(WorkoutDetailViewModel.self) var viewModel
+    @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(TutorialManager.self) var tutorialManager
+    @Environment(UnitsManager.self) var unitsManager
     
-    var currentWorkoutId: UUID
-    var onDelete: () -> Void
-    var isWorkoutCompleted: Bool = false
-    
+    @Bindable var superset: Exercise
+    var workout: Workout
     @Binding var isExpanded: Bool
-    var onExerciseFinished: (() -> Void)? = nil
     var isCurrentExercise: Bool = false
-    
-    var onPRSet: ((PRLevel) -> Void)? = nil
-    var onSetCompleted: ((WorkoutSet, Bool, String) -> Void)? = nil // <-- ДОБАВЛЕНО
+    var onExpandNext: ((UUID) -> Void)? = nil
     
     @State private var showEffortSheet = false
     
     private var isActiveExercise: Bool { isCurrentExercise && !superset.isCompleted }
+    private var isWorkoutCompleted: Bool { !workout.isActive }
     
     var body: some View {
         ZStack {
@@ -148,7 +150,7 @@ struct SupersetCardView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(isActiveExercise ? Color.blue.opacity(0.5) : Color.clear, lineWidth: isActiveExercise ? 2 : 0))
             .shadow(color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear, radius: isActiveExercise ? 8 : 0, x: 0, y: 2)
         }
-        .sheet(isPresented: $showEffortSheet, onDismiss: { if superset.isCompleted { onExerciseFinished?() } }) {
+        .sheet(isPresented: $showEffortSheet, onDismiss: { if superset.isCompleted { finishSupersetAction() } }) {
             EffortInputView(effort: $superset.effort)
         }
     }
@@ -162,7 +164,12 @@ struct SupersetCardView: View {
             }
             Spacer()
             Menu {
-                Button(role: .destructive) { onDelete() } label: { Label(String(localized: "Remove Superset"), systemImage: "trash") }
+                // ✅ Удалили замыкание, дергаем глобальную вьюмодель напрямую
+                Button(role: .destructive) {
+                    withAnimation { globalViewModel.removeExercise(superset, from: workout) }
+                } label: {
+                    Label(String(localized: "Remove Superset"), systemImage: "trash")
+                }
             } label: {
                 Image(systemName: "ellipsis").foregroundColor(.gray).padding(10)
             }
@@ -181,40 +188,62 @@ struct SupersetCardView: View {
     }
     
     var exerciseListView: some View {
-        // Используем индексы для корректной работы
         ForEach(superset.subExercises.indices, id: \.self) { index in
             let isLast = index == superset.subExercises.count - 1
             
             VStack(spacing: 0) {
-                // ИСПРАВЛЕНИЕ: Передаем объект без знака '$'
+                // ✅ Обновили вызов ExerciseCardView на новую сигнатуру
                 ExerciseCardView(
                     exercise: superset.subExercises[index],
-                    currentWorkoutId: currentWorkoutId,
-                    onDelete: {
-                        withAnimation {
-                            viewModel.removeSubExercise(superset.subExercises[index], from: superset)
-                        }
-                    },
+                    workout: workout,
                     isEmbeddedInSuperset: true,
-                    isWorkoutCompleted: isWorkoutCompleted,
-                    isExpanded: .constant(true),
-                    onExerciseFinished: onExerciseFinished,
-                    isCurrentExercise: false,
-                    onPRSet: onPRSet,
-                    onSetCompleted: onSetCompleted
+                    isExpanded: .constant(true), // Внутри суперсета упражнения всегда раскрыты
+                    isCurrentExercise: false // Фокус управляется суперсетом целиком
                 )
-                .background(Color.clear).shadow(color: .clear, radius: 0).padding(.horizontal, -16).padding(.vertical, -8)
+                .background(Color.clear)
+                .shadow(color: .clear, radius: 0)
+                .padding(.horizontal, -16)
+                .padding(.vertical, -8)
                 
                 if !isLast { Divider().padding(.leading, 16).padding(.vertical, 8) }
             }
         }
     }
+    
     var finishButton: some View {
-            Button(action: {
-                onExerciseFinished?() 
-            }) {
-                Text(String(localized: "Finish Superset")).font(.subheadline).bold().frame(maxWidth: .infinity).padding(.vertical, 10).background(Color.green.opacity(0.1)).foregroundColor(.green).cornerRadius(8)
+        Button(action: {
+            if superset.isCompleted {
+                withAnimation { superset.isCompleted = false }
+            } else {
+                finishSupersetAction()
+            }
+        }) {
+            Text(superset.isCompleted ? String(localized: "Continue") : String(localized: "Finish Superset"))
+                .font(.subheadline)
+                .bold()
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.green.opacity(0.1))
+                .foregroundColor(.green)
+                .cornerRadius(8)
         }
-        .padding(.top, 12).buttonStyle(BorderlessButtonStyle()).disabled(superset.isCompleted || isWorkoutCompleted)
+        .padding(.top, 12)
+        .buttonStyle(BorderlessButtonStyle())
+        .disabled(isWorkoutCompleted)
+    }
+    
+    private func finishSupersetAction() {
+        viewModel.handleExerciseFinished(
+            exerciseId: superset.id,
+            workout: workout,
+            modelContainer: context.container,
+            tutorialManager: tutorialManager,
+            dashboardViewModel: dashboardViewModel,
+            catalog: Exercise.catalog,
+            weightUnit: unitsManager.weightUnitString(),
+            onExpandNext: { nextId in
+                onExpandNext?(nextId)
+            }
+        )
     }
 }
