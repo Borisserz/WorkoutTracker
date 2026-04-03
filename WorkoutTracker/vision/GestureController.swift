@@ -17,32 +17,27 @@ enum RecognizedGesture {
     case openPalm
 }
 
-/// Контроллер для распознавания жестов без использования CoreML (на базе эвристики точек кисти)
-final class GestureController: ObservableObject, @unchecked Sendable {
+@MainActor
+final class GestureController: ObservableObject {
     
-    // MARK: - Published State (Main Thread only)
-    @MainActor @Published var activeGesture: RecognizedGesture = .none
-    @MainActor @Published var gestureProgress: Double = 0.0
+    @Published var activeGesture: RecognizedGesture = .none
+    @Published var gestureProgress: Double = 0.0
+    @Published var didConfirmSet: Bool = false
+    @Published var didCancelSet: Bool = false
     
-    @MainActor @Published var didConfirmSet: Bool = false
-    @MainActor @Published var didCancelSet: Bool = false
-    
-    // MARK: - Internal State
     private var currentTrackingGesture: RecognizedGesture = .none
     private var gestureStartTime: Date?
     private let dwellTimeRequired: TimeInterval = 1.0
     private let confidenceThreshold: Float = 0.5
     
-    // MARK: - Processing (Can be called from background Video queue)
-    
-    /// Анализирует кадр из Vision
-    func processHandPose(observation: VNHumanHandPoseObservation) {
+    /// Анализирует кадр из Vision (Вызывается из фонового потока камеры)
+    /// Nonisolated позволяет вызывать метод из фона, а внутренняя таска прыгнет на MainActor
+    nonisolated func processHandPose(observation: VNHumanHandPoseObservation) {
         guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
-        
         let detectedGesture = detectGesture(from: recognizedPoints)
         
         Task { @MainActor in
-            updateGestureState(detected: detectedGesture)
+            self.updateGestureState(detected: detectedGesture)
         }
     }
     
@@ -102,7 +97,7 @@ final class GestureController: ObservableObject, @unchecked Sendable {
     // MARK: - Heuristics & Math
     
     /// Математическое определение жеста
-    private func detectGesture(from points: [VNHumanHandPoseObservation.JointName: VNRecognizedPoint]) -> RecognizedGesture {
+    nonisolated private func detectGesture(from points: [VNHumanHandPoseObservation.JointName: VNRecognizedPoint]) -> RecognizedGesture {
             guard let wrist = getValidPoint(points, .wrist) else { return .none }
             
             func isFingerExtended(tip: VNHumanHandPoseObservation.JointName, pip: VNHumanHandPoseObservation.JointName) -> Bool {
@@ -133,12 +128,11 @@ final class GestureController: ObservableObject, @unchecked Sendable {
             return .none
         }
     
-    private func getValidPoint(_ points: [VNHumanHandPoseObservation.JointName: VNRecognizedPoint], _ name: VNHumanHandPoseObservation.JointName) -> CGPoint? {
-        guard let point = points[name], point.confidence > confidenceThreshold else { return nil }
-        return point.location
-    }
-}
-
+    nonisolated private func getValidPoint(_ points: [VNHumanHandPoseObservation.JointName: VNRecognizedPoint], _ name: VNHumanHandPoseObservation.JointName) -> CGPoint? {
+           guard let point = points[name], point.confidence > confidenceThreshold else { return nil }
+           return point.location
+       }
+   }
 // MARK: - Math Extension
 
 extension CGPoint {

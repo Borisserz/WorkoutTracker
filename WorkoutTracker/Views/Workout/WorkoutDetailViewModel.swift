@@ -1,238 +1,313 @@
-//
-//  WorkoutDetailViewModel 2.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 31.03.26.
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Workout/WorkoutDetailViewModel.swift
+// ============================================================
+
 internal import SwiftUI
 import SwiftData
-import Charts
-import Combine
-import ActivityKit
-internal import UniformTypeIdentifiers
+import Observation
 
-// MARK: - Dedicated ViewModel for Detail View (CLEAN MVVM)
+/// События, которые ViewModel отправляет во View для управления навигацией и алертами
+enum WorkoutDetailEvent: Equatable {
+    case showPR(PRLevel)
+    case showShareSheet(UIImage)
+    case showEmptyAlert
+    case showAchievement(Achievement)
+    case showSwapExercise(Exercise)
+    case workoutSuccessfullyFinished
+    
+    // Упрощенная проверка на равенство для SwiftUI .onChange
+    static func == (lhs: WorkoutDetailEvent, rhs: WorkoutDetailEvent) -> Bool {
+        String(describing: lhs) == String(describing: rhs)
+    }
+}
+
+@Observable
 @MainActor
-final class WorkoutDetailViewModel: ObservableObject {
-    @Published var showShareSheet = false
-    @Published var showEmptyWorkoutAlert = false
-    @Published var showPRCelebration = false
-    @Published var prLevel: PRLevel = .bronze
-    @Published var newlyUnlockedAchievement: Achievement?
+final class WorkoutDetailViewModel {
     
-    @Published var snackbarMessage: LocalizedStringKey?
-    @Published var shareItems: [UIImage] = []
+    // MARK: - Business Data
+    var aiCoach: InWorkoutAICoachViewModel
+    var workoutAnalytics = WorkoutAnalyticsDataDTO()
     
-    private var snackbarCommitAction: (() -> Void)?
-    private var snackbarUndoAction: (() -> Void)?
-    private var snackbarTask: Task<Void, Never>?
+    // Локальные кэши
+    var personalRecordsCache: [String: Double] = [:]
+    var lastPerformancesCache: [String: Exercise] = [:]
+    var newlyAddedSetId: UUID? = nil
     
-    func executeWithUndo(message: LocalizedStringKey, optimisticUpdate: @escaping () -> Void, commit: @escaping () -> Void, undo: @escaping () -> Void) {
-        commitSnackbar()
+    // MARK: - UI State & Events
+    /// Текущее активное событие для View
+    var activeEvent: WorkoutDetailEvent? = nil
+    
+    // Состояние Снекбара (Отмена завершения тренировки)
+    var isShowingSnackbar: Bool = false
+    @ObservationIgnored private var finishWorkoutTask: Task<Void, Never>? = nil
+    
+    // MARK: - Services
+    private let workoutService: WorkoutService
+    private let analyticsService: AnalyticsService
+    private let exerciseCatalogService: ExerciseCatalogService
+
+    init(workoutService: WorkoutService, analyticsService: AnalyticsService, exerciseCatalogService: ExerciseCatalogService) {
+        self.workoutService = workoutService
+        self.analyticsService = analyticsService
+        self.exerciseCatalogService = exerciseCatalogService
+        
+        self.aiCoach = InWorkoutAICoachViewModel(
+            workoutService: workoutService,
+            aiLogicService: workoutService.aiLogicService,
+            analyticsService: analyticsService,
+            exerciseCatalogService: exerciseCatalogService
+        )
+    }
+    
+    // MARK: - Data Loading
+    
+    func loadCaches(from dashboard: DashboardViewModel) {
+        self.personalRecordsCache = dashboard.personalRecordsCache
+        self.lastPerformancesCache = dashboard.lastPerformancesCache
+    }
+    
+    func updateWorkoutAnalytics(for workout: Workout) {
+        let workoutID = workout.persistentModelID
+        Task {
+            if let analytics = try? await analyticsService.fetchWorkoutAnalytics(workoutID: workoutID) {
+                await MainActor.run { self.workoutAnalytics = analytics }
+            }
+        }
+    }
+    
+    // MARK: - Set & Exercise Management
+    
+    func addSet(to exercise: Exercise) {
+        let lastSet = exercise.sortedSets.last
+        let newIndex = (lastSet?.index ?? 0) + 1
+        
+        Task {
+            await workoutService.addSet(
+                to: exercise,
+                index: newIndex,
+                weight: lastSet?.weight,
+                reps: lastSet?.reps,
+                distance: lastSet?.distance,
+                time: lastSet?.time,
+                type: .normal,
+                isCompleted: false
+            )
+            await MainActor.run {
+                self.newlyAddedSetId = exercise.setsList.last?.id
+            }
+        }
+    }
+    
+    func removeSet(withId id: UUID, from exercise: Exercise) {
+        if let setToDelete = exercise.setsList.first(where: { $0.id == id }) {
+            Task { await workoutService.deleteSet(setToDelete, from: exercise) }
+        }
+    }
+    
+    func removeExercise(_ exercise: Exercise, from workout: Workout) {
+        Task { await workoutService.removeExercise(exercise, from: workout) }
+    }
+    
+    func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
+        withAnimation { workout.exercises.insert(newExercise, at: 0) }
+        
+        // Микро-задержка для UI обновления перед скроллом
+        Task {
+            try? await Task.sleep(for: .seconds(0.3))
+            guard !Task.isCancelled else { return }
+            scrollToExerciseId(newExercise.id)
+        }
+    }
+
+    func performSwap(old: Exercise, new: Exercise, workout: Workout) {
+        guard let index = workout.exercises.firstIndex(where: { $0.id == old.id }) else { return }
         withAnimation {
-            optimisticUpdate()
-            snackbarMessage = message
+            workout.exercises.insert(new, at: index)
+            Task { await workoutService.removeExercise(old, from: workout) }
         }
-        snackbarCommitAction = commit
-        snackbarUndoAction = undo
-        snackbarTask?.cancel()
-        snackbarTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 3_500_000_000)
-            if !Task.isCancelled { self.commitSnackbar() }
+        updateWorkoutAnalytics(for: workout)
+    }
+    
+    func deleteEmptyWorkout(workout: Workout) async {
+        await workoutService.deleteWorkout(workout)
+    }
+    
+    // MARK: - Workout Flow Logic
+    
+    func startTimerIfNeeded(shouldStartTimer: Bool, suggestedDuration: Int?) {
+        guard shouldStartTimer else { return }
+        NotificationCenter.default.post(
+            name: NSNotification.Name("ForceStartRestTimer"),
+            object: nil,
+            userInfo: ["duration": suggestedDuration as Any]
+        )
+    }
+    
+    func handleSetCompleted(set: WorkoutSet, isLast: Bool, exerciseName: String, workout: Workout, weightUnit: String) {
+        Task {
+            await aiCoach.triggerProactiveFeedback(
+                for: set,
+                isLastSet: isLast,
+                isPR: false,
+                prLevel: nil,
+                in: exerciseName,
+                currentWorkout: workout,
+                weightUnit: weightUnit
+            )
+        }
+    }
+
+    func handleExerciseFinished(exerciseId: UUID, workout: Workout, weightUnit: String, onExpandNext: @escaping (UUID) -> Void) {
+        guard let exercise = workout.exercises.first(where: { $0.id == exerciseId }) else { return }
+        let exerciseIndex = workout.exercises.firstIndex(of: exercise) ?? 0
+
+        if exercise.isSuperset {
+            finishSuperset(exercise, workout: workout, weightUnit: weightUnit)
+        } else {
+            finishExercise(exercise, workout: workout, weightUnit: weightUnit)
+        }
+
+        if let nextIndex = workout.exercises.indices.first(where: { $0 > exerciseIndex && !workout.exercises[$0].isCompleted }) {
+            onExpandNext(workout.exercises[nextIndex].id)
         }
     }
     
-    func commitSnackbar() {
-        guard snackbarMessage != nil else { return }
-        snackbarCommitAction?()
-        withAnimation { snackbarMessage = nil }
-        snackbarCommitAction = nil
-        snackbarUndoAction = nil
-        snackbarTask?.cancel()
-        snackbarTask = nil
-    }
-    
-    func undoAction() {
-        snackbarTask?.cancel()
-        snackbarTask = nil
-        withAnimation {
-            snackbarUndoAction?()
-            snackbarMessage = nil
+    private func finishExercise(_ exercise: Exercise, workout: Workout, weightUnit: String) {
+        guard !exercise.isCompleted && workout.isActive else { return }
+        
+        let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
+        if !uncompletedSets.isEmpty {
+            Task { await workoutService.deleteSets(uncompletedSets, from: exercise) }
         }
-        snackbarCommitAction = nil
-        snackbarUndoAction = nil
+        
+        exercise.isCompleted = true
+        
+        if let prLevel = calculatePRLevel(for: exercise, prCache: self.personalRecordsCache) {
+            handlePRSet(level: prLevel, exerciseName: exercise.name, workout: workout, weightUnit: weightUnit)
+        }
+    }
+        
+    private func finishSuperset(_ superset: Exercise, workout: Workout, weightUnit: String) {
+        guard !superset.isCompleted && workout.isActive else { return }
+        
+        for sub in superset.subExercises {
+            let uncompleted = sub.setsList.filter { !$0.isCompleted }
+            if !uncompleted.isEmpty {
+                Task { await workoutService.deleteSets(uncompleted, from: sub) }
+            }
+            sub.isCompleted = true
+        }
+        
+        superset.isCompleted = true
+   
+        var highestPR: PRLevel? = nil
+        for sub in superset.subExercises {
+            if let pr = calculatePRLevel(for: sub, prCache: self.personalRecordsCache) {
+                if highestPR == nil || pr.rank > highestPR!.rank { highestPR = pr }
+            }
+        }
+        
+        if let pr = highestPR {
+            handlePRSet(level: pr, exerciseName: superset.name, workout: workout, weightUnit: weightUnit)
+        }
     }
     
+    private func handlePRSet(level: PRLevel, exerciseName: String, workout: Workout, weightUnit: String) {
+        self.activeEvent = .showPR(level)
+        Task {
+            await self.aiCoach.triggerProactiveFeedback(for: nil, isLastSet: false, isPR: true, prLevel: level.title, in: exerciseName, currentWorkout: workout, weightUnit: weightUnit)
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
     func generateAndShare(workout: Workout) {
         let renderer = ImageRenderer(content: WorkoutShareCard(workout: workout))
         renderer.scale = 3.0
         if let uiImage = renderer.uiImage {
-            self.shareItems = [uiImage]
-            self.showShareSheet = true
+            self.activeEvent = .showShareSheet(uiImage)
         }
     }
     
-    func finishWorkout(workout: Workout, timerManager: RestTimerManager, viewModel: WorkoutViewModel, tutorialManager: TutorialManager, updateAchievementsCount: @escaping (Int) -> Int) {
-            var hasAnyCompletedSet = false
-            for exercise in workout.exercises {
-                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                if targets.contains(where: { $0.setsList.contains(where: { $0.isCompleted }) }) {
-                    hasAnyCompletedSet = true
-                    break
-                }
-            }
-            
-            guard hasAnyCompletedSet else {
-                showEmptyWorkoutAlert = true
-                return
-            }
-            
-            // ИСПРАВЛЕНИЕ: Явно указываем тип замыкания, чтобы Swift не вывел тип () -> Void?
-            let commitAction: () -> Void = { [weak self] in
-                self?.executeFinishWorkoutBackend(
-                    workout: workout,
-                    viewModel: viewModel,
-                    tutorialManager: tutorialManager,
-                    updateAchievementsCount: updateAchievementsCount
-                )
-            }
-            
-            executeWithUndo(
-                message: "Workout finished",
-                optimisticUpdate: {
-                    workout.endTime = Date()
-                    timerManager.stopRestTimer()
-                },
-                commit: commitAction,
-                undo: {
-                    workout.endTime = nil
-                }
-            )
-        }
+    // MARK: - Finish Workout (Snackbar Flow)
     
-    private func executeFinishWorkoutBackend(workout: Workout, viewModel: WorkoutViewModel, tutorialManager: TutorialManager, updateAchievementsCount: @escaping (Int) -> Int) {
-        if tutorialManager.currentStep == .finishWorkout {
-            tutorialManager.setStep(.recoveryCheck)
+    func requestFinishWorkout(workout: Workout, progressManager: ProgressManager) {
+        // 1. Проверка на наличие завершенных сетов
+        let hasAnyCompletedSet = workout.exercises.contains { exercise in
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            return targets.contains { sub in sub.setsList.contains { $0.isCompleted } }
         }
         
-        viewModel.progressManager.addXP(for: workout)
-        NotificationManager.shared.scheduleNotifications(after: workout)
+        guard hasAnyCompletedSet else {
+            self.activeEvent = .showEmptyAlert
+            return
+        }
         
-        Task {
-               for activity in Activity<WorkoutActivityAttributes>.activities {
-                   let finalState = WorkoutActivityAttributes.ContentState(startTime: Date())
-                   await activity.end(ActivityContent(state: finalState, staleDate: nil), dismissalPolicy: .after(Date().addingTimeInterval(5)))
-               }
-           }
-        viewModel.finishWorkoutAndCalculateAchievements(workout) { [weak self] newUnlocks, totalCount in
-            let oldCount = updateAchievementsCount(totalCount)
-            if let firstUnlock = newUnlocks.first {
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
-                self?.newlyUnlockedAchievement = firstUnlock
-            } else if totalCount > oldCount {
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
+        // 2. Временная заморозка (UI показывает что тренировка завершена)
+        workout.endTime = Date()
+        
+        withAnimation {
+            self.isShowingSnackbar = true
+        }
+        
+        // 3. Запуск отменяемой задачи таймера
+        finishWorkoutTask?.cancel()
+        finishWorkoutTask = Task {
+            try? await Task.sleep(for: .seconds(3.5))
+            
+            // Если задачу не отменили кнопкой Undo — коммитим в базу
+            guard !Task.isCancelled else { return }
+            await commitFinishWorkout(workout: workout, progressManager: progressManager)
+        }
+    }
+    
+    func undoFinishWorkout(workout: Workout) {
+        finishWorkoutTask?.cancel()
+        finishWorkoutTask = nil
+        
+        withAnimation {
+            self.isShowingSnackbar = false
+        }
+        // Возвращаем статус "Активна"
+        workout.endTime = nil
+    }
+    
+    private func commitFinishWorkout(workout: Workout, progressManager: ProgressManager) async {
+        withAnimation {
+            self.isShowingSnackbar = false
+        }
+        
+        progressManager.addXP(for: workout)
+        NotificationCenter.default.post(name: .workoutCompletedEvent, object: workout.persistentModelID, userInfo: ["modelContainer": analyticsService.modelContainer])
+        
+        let workoutID = workout.persistentModelID
+        
+        if let result = try? await analyticsService.finishWorkoutAndCalculateAchievements(workoutID: workoutID) {
+            // Эмитим финальное событие для View (чтобы обновить Dashboard и т.д.)
+            self.activeEvent = .workoutSuccessfullyFinished
+            
+            if let firstUnlock = result.newUnlocks.first {
+                // Если есть ачивка, показываем её с небольшой задержкой
+                try? await Task.sleep(for: .seconds(0.5))
+                self.activeEvent = .showAchievement(firstUnlock)
             }
         }
     }
     
-    // MARK: - Exercise & Superset Completion Logic
+    // MARK: - Math Logic
+    
+    private func calculatePRLevel(for exercise: Exercise, prCache: [String: Double]) -> PRLevel? {
+        guard exercise.type == .strength else { return nil }
+        let maxWeight = exercise.setsList.filter { $0.isCompleted }.compactMap { $0.weight }.max() ?? 0.0
+        let oldRecord = prCache[exercise.name] ?? 0.0
         
-        /// Завершение одиночного упражнения
-        func finishExercise(
-            _ exercise: Exercise,
-            workout: Workout,
-            globalViewModel: WorkoutViewModel,
-            tutorialManager: TutorialManager,
-            onPRSet: @escaping (PRLevel) -> Void,
-            onShowEffort: @escaping () -> Void
-        ) {
-            guard !exercise.isCompleted && workout.isActive else { return }
-            
-            // 1. Очистка пустых сетов
-            let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
-            for set in uncompletedSets {
-                globalViewModel.deleteSet(set, from: exercise)
-            }
-            
-            // 2. Смена статуса
-            exercise.isCompleted = true
-            
-            // 3. Туториал
-            if tutorialManager.currentStep == .finishExercise {
-                tutorialManager.setStep(.explainEffort)
-            }
-            
-            // 4. Проверка на рекорд
-            if let prLevel = calculatePRLevel(for: exercise, globalViewModel: globalViewModel) {
-                onPRSet(prLevel)
-            } else {
-                onShowEffort()
-            }
+        if maxWeight > oldRecord && oldRecord > 0 {
+            let increase = (maxWeight - oldRecord) / oldRecord
+            if increase >= 0.20 { return .diamond }
+            if increase >= 0.10 { return .gold }
+            if increase >= 0.05 { return .silver }
+            return .bronze
         }
-        
-        /// Завершение Суперсета
-        func finishSuperset(
-            _ superset: Exercise,
-            workout: Workout,
-            globalViewModel: WorkoutViewModel,
-            onPRSet: @escaping (PRLevel) -> Void,
-            onShowEffort: @escaping () -> Void
-        ) {
-            guard !superset.isCompleted && workout.isActive else { return }
-            
-            // 1. Очистка всех вложенных упражнений
-            for sub in superset.subExercises {
-                let uncompletedSets = sub.setsList.filter { !$0.isCompleted }
-                for set in uncompletedSets {
-                    globalViewModel.deleteSet(set, from: sub)
-                }
-                sub.isCompleted = true
-            }
-            
-            superset.isCompleted = true
-            superset.updateAggregates()
-            
-            // 2. Ищем наивысший рекорд среди всех упражнений суперсета
-            var highestPR: PRLevel? = nil
-            
-            for subExercise in superset.subExercises {
-                if let pr = calculatePRLevel(for: subExercise, globalViewModel: globalViewModel) {
-                    if highestPR == nil || pr.rank > highestPR!.rank {
-                        highestPR = pr
-                    }
-                }
-            }
-            
-            if let pr = highestPR {
-                onPRSet(pr)
-            } else {
-                onShowEffort()
-            }
-        }
-        
-        // MARK: - Private Helpers
-        
-        /// Математика: расчет уровня личного рекорда
-        private func calculatePRLevel(for exercise: Exercise, globalViewModel: WorkoutViewModel) -> PRLevel? {
-            guard exercise.type == .strength else { return nil }
-            
-            let maxWeightInWorkout = exercise.setsList
-                .filter { $0.isCompleted }
-                .compactMap { $0.weight }
-                .max() ?? 0.0
-            
-            let oldRecord = globalViewModel.personalRecordsCache[exercise.name] ?? 0.0
-            
-            if maxWeightInWorkout > oldRecord && oldRecord > 0 {
-                let increasePercent = (maxWeightInWorkout - oldRecord) / oldRecord
-                
-                if increasePercent >= 0.20 { return .diamond }
-                if increasePercent >= 0.10 { return .gold }
-                if increasePercent >= 0.05 { return .silver }
-                return .bronze
-            }
-            return nil
-        }
+        return nil
+    }
 }

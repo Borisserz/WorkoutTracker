@@ -7,16 +7,16 @@
 
 internal import SwiftUI
 import Combine
-
+import Observation
 // 1. ШАГИ (Без изменений)
 enum TutorialStep: Int, CaseIterable, Equatable {
     case tapPlus = 0, createEmpty,tapStartNow, addExercise, finishExercise, explainEffort, highlightChart, highlightBody, finishWorkout, recoveryCheck, recoverySlider, historyTab, exercisesTab, createCustom, progressTab, completed
 }
 
-// 2. МЕНЕДЖЕР (Без изменений)
-class TutorialManager: ObservableObject {
-    @Published var currentStep: TutorialStep
-    private let kHasSeenTutorial = "hasSeenTutorial_Final_v8" // Обновил версию ключа
+@Observable
+class TutorialManager {
+    var currentStep: TutorialStep
+    private let kHasSeenTutorial = "hasSeenTutorial_Final_v8"
 
     init() {
         if UserDefaults.standard.bool(forKey: kHasSeenTutorial) {

@@ -1,24 +1,19 @@
-internal import SwiftUI
-import Foundation
-import SwiftData
+// ============================================================
+// FILE: WorkoutTracker/Views/Settings/PresetListView.swift
+// ============================================================
 
-// Расширение для использования URL в sheet(item:)
-extension URL: Identifiable {
-    public var id: String {
-        self.absoluteString
-    }
-}
+internal import SwiftUI
+import SwiftData
 
 struct PresetListView: View {
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(PresetService.self) var presetService // ✅ ИСПРАВЛЕНИЕ: Используем новый сервис
     
-    // Получаем шаблоны напрямую из базы
     @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
     
     @State private var showCreatePreset = false
     @State private var presetToEdit: WorkoutPreset?
-    @State private var fileToShare: URL?
+    @State private var fileToShare: SharedFileWrapper?
     @State private var showDeleteAlert = false
     @State private var presetsToDelete: IndexSet?
     
@@ -29,63 +24,47 @@ struct PresetListView: View {
                     presetToEdit = preset
                 } label: {
                     HStack {
-                        Image(preset.icon) // Если в Assets
+                        Image(preset.icon)
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .frame(width: 40, height: 40)
                             .cornerRadius(6)
                         
                         VStack(alignment: .leading) {
-                            Text(preset.name)
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                            Text(LocalizedStringKey("\(preset.exercises.count) exercises"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                            Text(preset.name).font(.headline).foregroundColor(.primary)
+                            Text("\(preset.exercises.count) exercises").font(.caption).foregroundColor(.secondary)
                         }
+                        
                         Spacer()
                         
-                        // --- КНОПКА ПОДЕЛИТЬСЯ (меню с выбором) ---
                         Menu {
-                            // Экспорт в файл - подменю с выбором формата
                             Menu {
                                 Button {
-                                    if let fileURL = viewModel.exportPresetToFile(preset) {
-                                        fileToShare = fileURL
+                                    Task {
+                                        if let fileURL = try? await presetService.exportPresetToFile(preset) {
+                                            await MainActor.run { fileToShare = SharedFileWrapper(url: fileURL) }
+                                        }
                                     }
-                                } label: {
-                                    Label(LocalizedStringKey("Export as JSON"), systemImage: "doc.text")
-                                }
+                                } label: { Label(LocalizedStringKey("Export as JSON"), systemImage: "doc.text") }
                                 
                                 Button {
-                                    if let fileURL = viewModel.exportPresetToCSV(preset) {
-                                        fileToShare = fileURL
+                                    Task {
+                                        if let fileURL = try? await presetService.exportPresetToCSV(preset) {
+                                            await MainActor.run { fileToShare = SharedFileWrapper(url: fileURL) }
+                                        }
                                     }
-                                } label: {
-                                    Label(LocalizedStringKey("Export as CSV"), systemImage: "tablecells")
-                                }
-                            } label: {
-                                Label(LocalizedStringKey("Export as File"), systemImage: "square.and.arrow.down")
-                            }
+                                } label: { Label(LocalizedStringKey("Export as CSV"), systemImage: "tablecells") }
+                            } label: { Label(LocalizedStringKey("Export as File"), systemImage: "square.and.arrow.down") }
                             
-                            // Поделиться ссылкой
-                            if let shareURL = viewModel.generateShareLink(for: preset) {
-                                ShareLink(item: shareURL) {
-                                    Label(LocalizedStringKey("Share Link"), systemImage: "link")
-                                }
+                            if let shareURL = try? presetService.generateShareLink(for: preset) {
+                                ShareLink(item: shareURL) { Label(LocalizedStringKey("Share Link"), systemImage: "link") }
                             }
                         } label: {
-                            Image(systemName: "square.and.arrow.up")
-                                .foregroundColor(.secondary)
-                                .font(.body)
+                            Image(systemName: "square.and.arrow.up").foregroundColor(.blue).font(.body).padding(8)
                         }
                         .buttonStyle(BorderlessButtonStyle())
-                        // -------------------------
                         
-                        // Кнопку редактирования можно перенести в swipeActions или оставить
-                        Image(systemName: "pencil")
-                            .foregroundColor(.secondary)
-                            .font(.body)
+                        Image(systemName: "pencil").foregroundColor(.secondary).font(.body)
                     }
                 }
             }
@@ -94,57 +73,30 @@ struct PresetListView: View {
                 showDeleteAlert = true
             }
         }
-        .sheet(item: $fileToShare) { url in
-            ActivityViewController(activityItems: [url])
-                .presentationDetents([.medium, .large])
-        }
         .navigationTitle(LocalizedStringKey("Templates"))
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    showCreatePreset = true
-                } label: {
-                    Image(systemName: "plus")
-                        .foregroundColor(.primary)
-                        .font(.body)
-                }
+                Button { showCreatePreset = true } label: { Image(systemName: "plus") }
             }
         }
-        // Создание нового
-        .sheet(isPresented: $showCreatePreset) {
-            PresetEditorView(preset: nil)
+        .sheet(item: $fileToShare) { wrapper in
+            ActivityViewController(activityItems: [wrapper.url]).presentationDetents([.medium, .large])
         }
-        // Редактирование существующего
-        .sheet(item: $presetToEdit) { preset in
-            PresetEditorView(preset: preset)
-        }
+        .sheet(isPresented: $showCreatePreset) { PresetEditorView(preset: nil) }
+        .sheet(item: $presetToEdit) { preset in PresetEditorView(preset: preset) }
         .alert(LocalizedStringKey("Delete Template?"), isPresented: $showDeleteAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
                 if let indexSet = presetsToDelete {
                     for index in indexSet {
-                        context.delete(presets[index])
+                        let presetToDelete = presets[index]
+                        Task { await presetService.deletePreset(presetToDelete) }
                     }
                     presetsToDelete = nil
                 }
             }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) {
-                presetsToDelete = nil
-            }
+            Button(LocalizedStringKey("Cancel"), role: .cancel) { presetsToDelete = nil }
         } message: {
-            if let indexSet = presetsToDelete {
-                let count = indexSet.count
-                if count == 1 {
-                    if let firstIndex = indexSet.first, firstIndex < presets.count {
-                        Text(LocalizedStringKey("Are you sure you want to delete '\(presets[firstIndex].name)'? This action cannot be undone."))
-                    } else {
-                        Text(LocalizedStringKey("Are you sure you want to delete this template? This action cannot be undone."))
-                    }
-                } else {
-                    Text(LocalizedStringKey("Are you sure you want to delete \(count) templates? This action cannot be undone."))
-                }
-            } else {
-                Text(LocalizedStringKey("Are you sure you want to delete this template? This action cannot be undone."))
-            }
+            Text(LocalizedStringKey("Are you sure you want to delete this template? This action cannot be undone."))
         }
     }
 }

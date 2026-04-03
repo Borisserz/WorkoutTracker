@@ -3,6 +3,11 @@
 //  WorkoutTracker
 //
 
+//
+//  DetailedRecoveryView.swift
+//  WorkoutTracker
+//
+
 internal import SwiftUI
 import SwiftData
 
@@ -18,22 +23,16 @@ struct DetailedRecoveryView: View {
     
     // MARK: - Environment & Storage
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
-    @EnvironmentObject var tutorialManager: TutorialManager
-    
-    // 1. Долгосрочное хранилище
+    @Environment(DIContainer.self) private var di // ✅ Заменили WorkoutViewModel на DIContainer
+    @Environment(TutorialManager.self) var tutorialManager
+    @Environment(DashboardViewModel.self) var dashboardViewModel
+    @AppStorage("userGender") private var userGender = "male"
     @AppStorage("userRecoveryHours") private var storedRecoveryHours: Double = 48.0
-    
-    // 2. Локальное состояние для плавности интерфейса
     @State private var localRecoveryHours: Double = 48.0
-    
-    // 🎼 МАЭСТРО: Кэшируем тренировки в оперативной памяти, чтобы не насиловать базу данных при скролле ползунка
     @State private var inMemoryWorkouts: [Workout] = []
     
-    // MARK: - Data Source
     private var musclesData: [MuscleStatusItem] {
-        return viewModel.recoveryStatus.map {
-            // Fallback translation if not found in helper
+        return dashboardViewModel.recoveryStatus.map {
             let displayName = MuscleDisplayHelper.getDisplayName(for: $0.muscleGroup)
             return MuscleStatusItem(name: displayName, percent: $0.recoveryPercentage)
         }.sorted { lhs, rhs in
@@ -42,7 +41,6 @@ struct DetailedRecoveryView: View {
         }
     }
     
-    // MARK: - Body
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -53,59 +51,44 @@ struct DetailedRecoveryView: View {
         }
         .navigationTitle(LocalizedStringKey("Muscle Status"))
         .background(Color(UIColor.systemGroupedBackground))
-        
-        // Инициализация при открытии экрана
         .onAppear {
             localRecoveryHours = storedRecoveryHours
-            
-            // 🎼 Загружаем ОДИН раз
             loadWorkoutsIntoMemory()
-            
-            // Считаем первичное состояние из ОЗУ
             recalculateRecoveryLocal(hours: localRecoveryHours)
         }
-        
-        // СЛЕЖЕНИЕ ЗА ИЗМЕНЕНИЯМИ (Live Update из ОЗУ)
         .onChange(of: localRecoveryHours) { _, newValue in
             recalculateRecoveryLocal(hours: newValue)
         }
     }
     
-    // MARK: - Local Memory Calculation
-    
-    /// Загружает тренировки за максимально возможный период (96 часов + 24 часа запас)
     private func loadWorkoutsIntoMemory() {
-        // Максимальное значение слайдера (96) + запас на длительность самой тренировки (24)
         let cutoffDate = Date.now.addingTimeInterval(-((96.0 + 24.0) * 3600))
-        
         let descriptor = FetchDescriptor<Workout>(
             predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= cutoffDate },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
-        
         inMemoryWorkouts = (try? context.fetch(descriptor)) ?? []
     }
     
-    /// 🎼 Быстрая математика в памяти, никаких обращений к диску
     private func recalculateRecoveryLocal(hours: Double) {
-        // Калькулятор берет данные напрямую из inMemoryWorkouts (0 задержек, 0 I/O)
-        let newRecoveryStatus = RecoveryCalculator.calculate(hours: hours, workouts: inMemoryWorkouts)
-        viewModel.recoveryStatus = newRecoveryStatus
+        // ✅ ИСПРАВЛЕНИЕ: Вызов асинхронного сервиса
+        Task {
+            let newRecoveryStatus = await di.analyticsService.calculateRecovery(hours: hours, workouts: inMemoryWorkouts)
+            await MainActor.run {
+                dashboardViewModel.recoveryStatus = newRecoveryStatus
+            }
+        }
     }
     
-    // MARK: - View Components
     private var settingsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(LocalizedStringKey("Recovery Settings")).font(.headline)
             
             VStack {
                 HStack {
-                    Text(LocalizedStringKey("Full Recovery Time:"))
-                        .foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Full Recovery Time:")).foregroundColor(.secondary)
                     Spacer()
-                    Text(LocalizedStringKey("\(Int(localRecoveryHours)) hours"))
-                        .bold()
-                        .foregroundColor(.blue)
+                    Text(LocalizedStringKey("\(Int(localRecoveryHours)) hours")).bold().foregroundColor(.blue)
                 }
                 
                 Slider(
@@ -113,51 +96,26 @@ struct DetailedRecoveryView: View {
                     in: 12...96,
                     step: 4,
                     onEditingChanged: { isEditing in
-                        if !isEditing {
-                            storedRecoveryHours = localRecoveryHours
-                        }
+                        if !isEditing { storedRecoveryHours = localRecoveryHours }
                     }
                 )
                 .tint(.blue)
             }
-            .padding()
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(12)
+            .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
             
-            Text(LocalizedStringKey("Adjust this based on how fast you recover. Standard is 48h."))
-                .font(.caption)
-                .foregroundColor(.gray)
-                .padding(.horizontal, 5)
+            Text(LocalizedStringKey("Adjust this based on how fast you recover. Standard is 48h.")).font(.caption).foregroundColor(.gray).padding(.horizontal, 5)
         }
-        .padding(.horizontal)
-        .padding(.top)
-        .spotlight(
-            step: .recoverySlider,
-            manager: tutorialManager,
-            text: "Adjust your recovery speed here. Tap to finish.",
-            alignment: .top,
-            yOffset: -20
-        )
-        .onTapGesture {
-            if tutorialManager.currentStep == .recoverySlider {
-                tutorialManager.complete()
-            }
-        }
+        .padding(.horizontal).padding(.top)
+        .spotlight(step: .recoverySlider, manager: tutorialManager, text: "Adjust your recovery speed here. Tap to finish.", alignment: .top, yOffset: -20)
+        .onTapGesture { if tutorialManager.currentStep == .recoverySlider { tutorialManager.complete() } }
     }
     
     private var muscleListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(LocalizedStringKey("Full Muscle Breakdown"))
-                .font(.headline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
-            
+            Text(LocalizedStringKey("Full Muscle Breakdown")).font(.headline).foregroundColor(.secondary).padding(.horizontal)
             LazyVStack(spacing: 12) {
-                ForEach(musclesData) { item in
-                    MuscleStatusRow(name: item.name, percentage: item.percent)
-                }
-            }
-            .padding(.horizontal)
+                ForEach(musclesData) { item in MuscleStatusRow(name: item.name, percentage: item.percent) }
+            }.padding(.horizontal)
         }
     }
 }

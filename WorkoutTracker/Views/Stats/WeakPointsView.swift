@@ -9,7 +9,7 @@
 internal import SwiftUI
 
 struct WeakPointsView: View {
-    let weakPoints: [WorkoutViewModel.WeakPoint]
+    let weakPoints: [WeakPoint]
     
     var body: some View {
         if weakPoints.isEmpty {
@@ -30,7 +30,7 @@ struct WeakPointsView: View {
 }
 
 struct WeakPointRow: View {
-    let weakPoint: WorkoutViewModel.WeakPoint
+    let weakPoint: WeakPoint
     
     var body: some View {
         HStack {

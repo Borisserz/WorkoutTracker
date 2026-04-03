@@ -2,32 +2,20 @@
 //  RestTimerManager.swift
 //  WorkoutTracker
 //
-
 internal import SwiftUI
-import Combine
+import Observation
 import AudioToolbox
 
+@Observable
 @MainActor
-class RestTimerManager: ObservableObject {
-    
-    // 🎼 МАЭСТРО: Убрали @Published, чтобы не вызывать глобальный рендер 10 раз в секунду.
-    // Вместо этого используем CurrentValueSubject. Подписчики смогут слушать только изменения цифр.
-    let timeRemainingSubject = CurrentValueSubject<Int, Never>(0)
-    
-    // Оставляем @Published только для флагов состояний интерфейса (меняются редко)
-    @Published var isRestTimerActive: Bool = false
-    @Published var restTimerFinished: Bool = false
-    @Published var isHidden: Bool = false
+final class RestTimerManager {
+    var restTimeRemaining: Int = 0
+    var isRestTimerActive: Bool = false
+    var restTimerFinished: Bool = false
+    var isHidden: Bool = false
     
     private var restEndTime: Date?
-    private var restTimer: Timer?
-    private var cancellables = Set<AnyCancellable>()
-    
-    // Удобный геттер/сеттер для обновления сабджекта
-    var restTimeRemaining: Int {
-        get { timeRemainingSubject.value }
-        set { timeRemainingSubject.send(newValue) }
-    }
+    private var tickerTask: Task<Void, Never>? // ✅ ЗАМЕНИЛИ Timer на Task
     
     private var defaultRestTime: Int {
         let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
@@ -35,25 +23,28 @@ class RestTimerManager: ObservableObject {
     }
     
     init() {
+        Task {
+            for await notification in NotificationCenter.default.notifications(named: NSNotification.Name("ForceStartRestTimer")) {
+                let duration = notification.userInfo?["duration"] as? Int
+                self.startRestTimer(duration: duration)
+            }
+        }
         restoreTimerState()
         
-        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
-            .sink { [weak self] _ in
-                self?.checkTimerStateOnForeground()
+        Task {
+            for await _ in NotificationCenter.default.notifications(named: UIApplication.willEnterForegroundNotification) {
+                checkTimerStateOnForeground()
             }
-            .store(in: &cancellables)
+        }
         
-        NotificationCenter.default.publisher(for: NSNotification.Name(Constants.NotificationIdentifiers.restTimerFinishedNotification.rawValue))
-            .sink { [weak self] _ in
-                self?.stopRestTimer()
+        Task {
+            let timerFinishedName = NSNotification.Name(Constants.NotificationIdentifiers.restTimerFinishedNotification.rawValue)
+            for await _ in NotificationCenter.default.notifications(named: timerFinishedName) {
+                stopRestTimer()
             }
-            .store(in: &cancellables)
+        }
     }
     
-    deinit {
-        restTimer?.invalidate()
-        restTimer = nil
-    }
     
     private func saveTimerState() {
         guard let endTime = restEndTime else { return }
@@ -83,42 +74,41 @@ class RestTimerManager: ObservableObject {
     }
     
     func startRestTimer(duration: Int? = nil) {
-        let seconds = duration ?? defaultRestTime
-        self.restEndTime = Date().addingTimeInterval(Double(seconds))
-        self.restTimeRemaining = seconds
-        self.isRestTimerActive = true
-        self.restTimerFinished = false
-        
-        saveTimerState()
-        
-        NotificationManager.shared.scheduleRestTimerNotification(seconds: Double(seconds))
-        startTicker()
-    }
-    
-    private func startTicker() {
-        restTimer?.invalidate()
-        
-        // ОПТИМИЗАЦИЯ SWIFT 6: Оборачиваем логику обновления в MainActor,
-        // чтобы компилятор не ругался на доступ к MainActor-изолированным свойствам (restEndTime, restTimeRemaining)
-        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor [weak self] in
-                guard let self = self, let endTime = self.restEndTime else { return }
-                let timeRemaining = endTime.timeIntervalSinceNow
-                
-                if timeRemaining > 0 {
-                    let secondsLeft = Int(ceil(timeRemaining))
-                    if self.restTimeRemaining != secondsLeft {
-                        self.restTimeRemaining = secondsLeft
-                    }
-                } else {
-                    self.restTimeRemaining = 0
-                    self.finishTimer()
-                }
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        restTimer = timer
-    }
+          let seconds = duration ?? defaultRestTime
+          self.restEndTime = Date().addingTimeInterval(Double(seconds))
+          self.restTimeRemaining = seconds
+          self.isRestTimerActive = true
+          self.restTimerFinished = false
+          
+          saveTimerState()
+          NotificationManager.shared.scheduleRestTimerNotification(seconds: Double(seconds))
+          startTicker()
+      }
+      
+      // ✅ НОВЫЙ ЧИСТЫЙ TICKER НА БАЗЕ CONCURRENCY
+      private func startTicker() {
+          tickerTask?.cancel()
+          
+          tickerTask = Task {
+              while !Task.isCancelled {
+                  guard let endTime = self.restEndTime else { break }
+                  let timeRemaining = endTime.timeIntervalSinceNow
+                  
+                  if timeRemaining > 0 {
+                      let secondsLeft = Int(ceil(timeRemaining))
+                      if self.restTimeRemaining != secondsLeft {
+                          self.restTimeRemaining = secondsLeft
+                      }
+                      // Спим 100 миллисекунд (не блокируя Main Thread)
+                      try? await Task.sleep(nanoseconds: 100_000_000)
+                  } else {
+                      self.restTimeRemaining = 0
+                      self.finishTimer()
+                      break
+                  }
+              }
+          }
+      }
     
     private func checkTimerStateOnForeground() {
         guard isRestTimerActive, let endTime = restEndTime else { return }
@@ -126,7 +116,7 @@ class RestTimerManager: ObservableObject {
         
         if timeRemaining <= 0 {
             self.restTimeRemaining = 0
-            finishTimer(suppressAudio: true) // Mute the jump-scare
+            finishTimer(suppressAudio: true)
         } else {
             self.restTimeRemaining = Int(ceil(timeRemaining))
             startTicker()
@@ -159,36 +149,36 @@ class RestTimerManager: ObservableObject {
     }
     
     func finishTimer(suppressAudio: Bool = false) {
-        restTimer?.invalidate()
-        restTimer = nil
-        restTimerFinished = true
-        restEndTime = nil
-        clearTimerState()
-        
-        // Only play audio/haptic if it legitimately finished while actively using the app
-        if !suppressAudio {
-            let generator = UINotificationFeedbackGenerator()
-            generator.prepare()
-            generator.notificationOccurred(.success)
-            AudioServicesPlaySystemSound(1005)
-        }
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            guard let self = self else { return }
-            if self.restTimerFinished {
-                withAnimation { self.stopRestTimer() }
-            }
-        }
-    }
-    
-    func stopRestTimer() {
-        isRestTimerActive = false
-        restTimerFinished = false
-        restEndTime = nil
-        clearTimerState()
-        
-        restTimer?.invalidate()
-        restTimer = nil
-        NotificationManager.shared.cancelRestTimerNotification()
-    }
-}
+          tickerTask?.cancel() // ✅
+          tickerTask = nil
+          restTimerFinished = true
+          restEndTime = nil
+          clearTimerState()
+          
+          if !suppressAudio {
+              let generator = UINotificationFeedbackGenerator()
+              generator.prepare()
+              generator.notificationOccurred(.success)
+              AudioServicesPlaySystemSound(1005)
+          }
+          
+          Task {
+              try? await Task.sleep(nanoseconds: 3_000_000_000)
+              guard !Task.isCancelled else { return }
+              if self.restTimerFinished {
+                  withAnimation { self.stopRestTimer() }
+              }
+          }
+      }
+      
+      func stopRestTimer() {
+          isRestTimerActive = false
+          restTimerFinished = false
+          restEndTime = nil
+          clearTimerState()
+          
+          tickerTask?.cancel() // ✅
+          tickerTask = nil
+          NotificationManager.shared.cancelRestTimerNotification()
+      }
+  }

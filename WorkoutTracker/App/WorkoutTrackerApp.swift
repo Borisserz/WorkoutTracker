@@ -1,34 +1,22 @@
-//
-//  WorkoutTrackerApp.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-
 internal import SwiftUI
 import SwiftData
 import UserNotifications
-import UIKit
 
 @main
 struct WorkoutTrackerApp: App {
     @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var viewModel = WorkoutViewModel()
-    @StateObject private var tutorialManager = TutorialManager()
     
-    // НОВЫЙ МЕНЕДЖЕР ТАЙМЕРА
-    @StateObject private var timerManager = RestTimerManager()
-    
-    // ИСПРАВЛЕНИЕ: Менеджер единиц измерения. Создаем его 1 раз на уровне приложения
-    @StateObject private var unitsManager = UnitsManager.shared
+    // 1. DI-контейнер теперь опциональный и инициализируется асинхронно
+    @State private var diContainer: DIContainer?
+    @State private var databaseLoadError: Error?
     
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     @AppStorage("appearanceMode") private var appearanceMode: String = "system"
-    
     @State private var showImportAlert = false
     
-    let sharedModelContainer: ModelContainer?
-    let databaseLoadError: Error?
+    // 2. Глобальные менеджеры (оставляем только легковесные State)
+    @State private var restTimerManager = RestTimerManager()
+    @State private var tutorialManager = TutorialManager()
     
     private var colorScheme: ColorScheme? {
         switch appearanceMode {
@@ -38,102 +26,83 @@ struct WorkoutTrackerApp: App {
         }
     }
     
-    init() {
-        do {
-            // ИСПРАВЛЕНИЕ: Добавлен BodyMeasurement в контейнер данных
-            sharedModelContainer = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self, BodyMeasurement.self)
-            databaseLoadError = nil
-        } catch {
-            print("Could not create ModelContainer: \(error)")
-            // Оставляем контейнер пустым и сохраняем ошибку, чтобы показать её в UI.
-            // Ни в коем случае не удаляем и не подменяем файлы базы данных.
-            sharedModelContainer = nil
-            databaseLoadError = error
-        }
-    }
-
     var body: some Scene {
         WindowGroup {
-            if let container = sharedModelContainer {
-                Group {
-                    if hasCompletedOnboarding {
-                        ContentView()
-                            .transition(.opacity)
-                    } else {
-                        OnboardingFlowView(isOnboardingCompleted: $hasCompletedOnboarding)
-                    }
+            Group {
+                if let error = databaseLoadError {
+                    DatabaseErrorView(error: error)
+                        .preferredColorScheme(colorScheme)
+                } else if let di = diContainer {
+                    // 3. Запускаем основной контент ТОЛЬКО когда БД готова
+                    mainContent(di: di)
+                } else {
+                    // Экран загрузки (Splash Screen) во время инициализации БД
+                    ProgressView("Инициализация...")
+                        .controlSize(.large)
+                        .preferredColorScheme(colorScheme)
                 }
-                .environmentObject(viewModel)
-                .environmentObject(tutorialManager)
-                .environmentObject(timerManager)
-                .environmentObject(unitsManager)
-                .onAppear {
-                    // ОПТИМИЗАЦИЯ SWIFT 6: Оборачиваем в Task для безопасной инициализации
-                    Task {
-                        // 1. ЗАПУСКАЕМ МИГРАЦИЮ СТАРЫХ ДАННЫХ (MainActor, так как метод требует этого)
-                        await MainActor.run {
-                            LegacyDataMigrator.migrateAllIfNeeded(context: container.mainContext)
-                        }
-                        
-                        // ИЗМЕНЕНО: Инъекция ModelContainer в ViewModel
-                        await MainActor.run {
-                            viewModel.modelContainer = container
-                            
-                            // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
-                            viewModel.checkAndGenerateDefaultPresets()
-                            
-                            // 2. ЗАГРУЖАЕМ ЦВЕТА ИЗ SWIFTDATA В ПАМЯТЬ
-                            MuscleColorManager.shared.load(context: container.mainContext)
-                        }
-                        
-                        // 3. ПРОГРЕВ КЭША SVG (Выполняем на MainActor, но асинхронно, с паузами, чтобы не фризить UI)
-                        // Так как Path должен создаваться на MainActor.
-                        let allMuscles = BodyData.frontMuscles + BodyData.backMuscles + BodyData.frontMusclesFemale + BodyData.backMusclesFemale
-                        for muscle in allMuscles {
-                            for pathStr in muscle.paths {
-                                await MainActor.run {
-                                    _ = SVGParser.path(from: pathStr) // Кэшируем
-                                }
-                                // Небольшая пауза, чтобы дать UI возможность перерисоваться (избегаем фризов)
-                                try? await Task.sleep(nanoseconds: 1_000_000)
-                            }
-                        }
-                    }
-                }
-                .onOpenURL { url in
-                    // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
-                    if viewModel.importPreset(from: url) {
-                        showImportAlert = true
-                    }
-                }
-                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
-                    if let url = userActivity.webpageURL {
-                        // ИЗМЕНЕНО: viewModel теперь знает о контейнере, параметр не нужен
-                        if viewModel.importPreset(from: url) {
-                            showImportAlert = true
-                        }
-                    }
-                }
-                .alert("Template Imported!", isPresented: $showImportAlert) {
-                    Button("OK", role: .cancel) { }
-                } message: {
-                    Text("A new workout template has been added to your collection.")
-                }
-                .animation(.default, value: hasCompletedOnboarding)
-                .preferredColorScheme(colorScheme)
-                .onChange(of: scenePhase) { _, newPhase in
-                    if newPhase == .active {
-                        // ОПТИМИЗАЦИЯ SWIFT 6: Использование нового API для бейджей
-                        UNUserNotificationCenter.current().setBadgeCount(0)
-                        UNUserNotificationCenter.current().removeAllDeliveredNotifications()
-                    }
-                }
-                .modelContainer(container)
-            } else {
-                // Если база данных не загрузилась, показываем заглушку с ошибкой
-                DatabaseErrorView(error: databaseLoadError)
-                    .preferredColorScheme(colorScheme)
             }
+            .task {
+                await setupDependencies()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    UNUserNotificationCenter.current().setBadgeCount(0)
+                    UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func mainContent(di: DIContainer) -> some View {
+        Group {
+            if hasCompletedOnboarding {
+                ContentView()
+                    .transition(.opacity)
+            } else {
+                OnboardingFlowView(isOnboardingCompleted: $hasCompletedOnboarding)
+            }
+        }
+        .animation(.default, value: hasCompletedOnboarding)
+        .modelContainer(di.modelContainer)
+        .environment(di)
+        .environment(di.workoutService)
+        .environment(di.presetService)
+        // ВАЖНО: Вьюмодели передаются только туда, где они реально нужны, или создаются локально
+        .environment(restTimerManager)
+        .environment(tutorialManager)
+        .environment(UnitsManager.shared)
+        .preferredColorScheme(colorScheme)
+        // Обработчики URL оставляем здесь
+        .onOpenURL { url in
+            Task {
+                if await di.presetService.importPreset(from: url) {
+                    await MainActor.run { showImportAlert = true }
+                }
+            }
+        }
+        .alert("Template Imported!", isPresented: $showImportAlert) {
+            Button("OK", role: .cancel) { }
+        }
+    }
+    
+    @MainActor
+    private func setupDependencies() async {
+        do {
+            let container = try ModelContainer(for: Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self, ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self, AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self)
+            
+            let di = DIContainer(modelContainer: container)
+            
+            // Фоновые миграции
+            let migrator = LegacyDataMigrator(modelContainer: container)
+            await migrator.migrateAllIfNeeded()
+            try? await di.exerciseCatalogService.checkAndGenerateDefaultPresets()
+            MuscleColorManager.shared.initialize(modelContainer: container)
+            
+            self.diContainer = di
+        } catch {
+            self.databaseLoadError = error
         }
     }
 }
@@ -156,6 +125,7 @@ struct DatabaseErrorView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.secondary)
                 .padding(.horizontal)
+            
             if let error = error {
                 ScrollView {
                     Text(error.localizedDescription)

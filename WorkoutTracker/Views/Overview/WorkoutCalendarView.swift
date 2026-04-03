@@ -1,20 +1,10 @@
-
-//  WorkoutCalendarView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 25.12.25.
-//
-//  Экран календаря.
-//  Отображает:
-//  1. Статистику количества тренировок за выбранный период.
-//  2. Вертикальный скролл месяцев.
-//  3. Визуальную индикацию дней с тренировками (зеленые ячейки).
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Overview/WorkoutCalendarView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
 
-// 🎼 ОПТИМИЗАЦИЯ: Легкая структура для передачи между потоками (Background -> Main)
 struct MiniWorkout: Sendable {
     let date: Date
     let id: PersistentIdentifier
@@ -24,13 +14,11 @@ struct MiniWorkout: Sendable {
 
 struct WorkoutCalendarView: View {
     
-    // MARK: - Nested Types
-    
     enum TimeRange: String, CaseIterable {
         case month = "Month"
         case threeMonths = "3 Months"
         case year = "Year"
-        case all = "All Time" // ДОБАВЛЕНО: Опция за все время
+        case all = "All Time"
         
         var days: Int {
             switch self {
@@ -42,22 +30,17 @@ struct WorkoutCalendarView: View {
         }
     }
     
-    // MARK: - Environment & State
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(WorkoutService.self) var workoutService
     
     @State private var selectedTimeRange: TimeRange = .month
     @State private var totalWorkoutCount: Int = 0
     
-    // 🎼 ОПТИМИЗАЦИЯ: Храним сгруппированные данные в оперативной памяти
-    @State private var workoutsByMonth: [Int: [MiniWorkout]] = [:] // Ключ: (Год * 100) + Месяц
+    @State private var workoutsByMonth: [Int: [MiniWorkout]] = [:]
     @State private var allMiniWorkouts: [MiniWorkout] = []
     @State private var oldestWorkoutDate: Date? = nil
     @State private var isLoaded: Bool = false
     
-    // MARK: - Computed Properties
-    
-    /// Список дат (первые числа месяцев) для отображения в календаре
     private var monthsToDisplay: [Date] {
         let calendar = Calendar.current
         let today = Date()
@@ -93,8 +76,6 @@ struct WorkoutCalendarView: View {
         return months
     }
 
-    // MARK: - Body
-    
     var body: some View {
         VStack(spacing: 0) {
             statsHeader
@@ -115,26 +96,20 @@ struct WorkoutCalendarView: View {
         }
     }
     
-    // MARK: - Data Loading (Background Task)
-    
     private func loadCalendarData() {
         let container = context.container
         
         Task.detached(priority: .userInitiated) {
             let bgContext = ModelContext(container)
-            
-            // 🎼 ОПТИМИЗАЦИЯ: Извлекаем все тренировки ОДНИМ легким запросом в фоновом потоке
             let desc = FetchDescriptor<Workout>()
             let allWorkouts = (try? bgContext.fetch(desc)) ?? []
             
-            // Маппим в безопасные для потоков (Sendable) легковесные структуры
             let miniWorkouts = allWorkouts.map { MiniWorkout(date: $0.date, id: $0.persistentModelID) }
             let oldest = miniWorkouts.min(by: { $0.date < $1.date })?.date
             
             var dict: [Int: [MiniWorkout]] = [:]
             let calendar = Calendar.current
             
-            // Группируем по месяцам: Ключ = Год*100 + Месяц (например, 202512)
             for mw in miniWorkouts {
                 let comps = calendar.dateComponents([.year, .month], from: mw.date)
                 if let y = comps.year, let m = comps.month {
@@ -161,12 +136,8 @@ struct WorkoutCalendarView: View {
         } else {
             cutoff = calendar.date(byAdding: .day, value: -selectedTimeRange.days, to: Date()) ?? Date()
         }
-        
-        // Быстрая фильтрация в оперативной памяти (без обращения к базе)
         totalWorkoutCount = allMiniWorkouts.filter { $0.date >= cutoff }.count
     }
-    
-    // MARK: - View Components
     
     private var statsHeader: some View {
         VStack(spacing: 10) {
@@ -212,8 +183,6 @@ struct WorkoutCalendarView: View {
                             let monthDate = monthsToDisplay[index]
                             let comps = Calendar.current.dateComponents([.year, .month], from: monthDate)
                             let key = (comps.year! * 100) + comps.month!
-                            
-                            // Передаем только тренировки для этого конкретного месяца
                             let monthWorkouts = workoutsByMonth[key] ?? []
                             
                             MonthView(monthDate: monthDate, monthWorkouts: monthWorkouts)
@@ -239,6 +208,8 @@ struct MonthView: View {
     let monthWorkouts: [MiniWorkout]
     
     @Environment(\.modelContext) private var context
+    // ✅ ИСПРАВЛЕНИЕ: Инжектим контейнер зависимостей
+    @Environment(DIContainer.self) private var di
     
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
@@ -306,11 +277,11 @@ struct MonthView: View {
     
     @ViewBuilder
     private func dayView(for date: Date) -> some View {
-        // Поиск в массиве локальных данных происходит мгновенно
         if let mw = monthWorkouts.first(where: { calendar.isDate($0.date, inSameDayAs: date) }),
            let workout = context.model(for: mw.id) as? Workout {
             
-            NavigationLink(destination: WorkoutDetailView(workout: workout)) {
+            // ✅ ИСПРАВЛЕНИЕ: Передаем viewModel через DIContainer
+            NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
                 DayCell(date: date, isWorkout: true)
             }
             .buttonStyle(PlainButtonStyle())

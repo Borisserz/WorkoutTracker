@@ -1,7 +1,3 @@
-//
-//  WorkoutView.swift
-//  WorkoutTracker
-//
 
 internal import SwiftUI
 import SwiftData
@@ -10,24 +6,29 @@ import UIKit
 // MARK: - Main View
 
 struct WorkoutView: View {
+    @Environment(DIContainer.self) private var di
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
-@EnvironmentObject var unitsManager: UnitsManager
-    
-    // ОПТИМИЗАЦИЯ: Грузим только последние 30 тренировок для проверки на пустоту и анализа дисбаланса (защита от OOM)
-    @Query(sort: \Workout.date, order: .reverse) private var recentWorkoutsForImbalance: [Workout]
+    @Environment(WorkoutService.self) var workoutService
+    @Environment(UnitsManager.self) var unitsManager
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     
     @State private var showImbalanceInfo = false
     @State private var showAddWorkout = false
     @State private var navigateToNewWorkout = false
     
-    @State private var searchText = ""
+    // ✅ ИСПОЛЬЗУЕМ НОВЫЙ DEBOUNCER
+    @State private var searchDebouncer = SearchDebouncer()
+    
     @State private var selectedFilter: FilterPeriod = .all
     @State private var sortOption: SortOption = .dateDescending
     @State private var showFavoritesOnly = false
     
-    @State private var calculatedAvgDuration: Int = 0
-    @State private var calculatedAvgVolume: Int = 0
+    // Внедряем чистую ViewModel для списка
+    @State private var listViewModel = WorkoutListViewModel()
+    
+    // Состояние для хранения рекомендаций об дисбалансе
+    @State private var imbalanceAdvice: (title: String, message: String)? = nil
+    @State private var recentWorkoutForNavigation: Workout? = nil
     
     enum FilterPeriod: String, CaseIterable {
         case all = "All Time"
@@ -46,30 +47,21 @@ struct WorkoutView: View {
         case effortAscending = "Lowest Effort"
     }
     
-    init() {
-        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        descriptor.fetchLimit = 30 // Для дисбаланса нужны только свежие данные
-        _recentWorkoutsForImbalance = Query(descriptor)
-    }
-    
     var body: some View {
         NavigationStack {
             content
                 .navigationTitle(LocalizedStringKey("History"))
                 .navigationDestination(isPresented: $navigateToNewWorkout) {
-                    // Переход к новой тренировке
-                    if let first = recentWorkoutsForImbalance.first {
-                        WorkoutDetailView(workout: first)
+                    if let workout = recentWorkoutForNavigation {
+                        WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
                     }
                 }
                 .toolbar {
-                    if !recentWorkoutsForImbalance.isEmpty {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            EditButton()
-                        }
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        EditButton()
                     }
                     
-                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: recentWorkoutsForImbalance) {
+                    if imbalanceAdvice != nil {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
                                 showImbalanceInfo = true
@@ -87,65 +79,70 @@ struct WorkoutView: View {
                     })
                 }
                 .sheet(isPresented: $showImbalanceInfo) {
-                    if let advice = AnalyticsManager.getImbalanceRecommendation(recentWorkouts: recentWorkoutsForImbalance) {
+                    if let advice = imbalanceAdvice {
                         ImbalanceDetailSheet(advice: advice)
                             .presentationDetents([.fraction(0.35)])
                             .presentationDragIndicator(.visible)
                     }
                 }
         }
+        .onAppear {
+            loadImbalanceData()
+        }
+        // Обновляем дисбаланс, когда меняются данные на дашборде
+        .onChange(of: dashboardViewModel.dashboardTotalExercises) { _, _ in
+            loadImbalanceData()
+        }
     }
     
     @ViewBuilder
     var content: some View {
-        if recentWorkoutsForImbalance.isEmpty {
-            emptyState
-        } else {
-            List {
-                Section {
-                    Button {
-                        showAddWorkout = true
-                    } label: {
-                        Text(LocalizedStringKey("Start Workout"))
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(12)
-                    }
+        // Мы используем DynamicWorkoutListView всегда. Если тренировок нет, он сам покажет EmptyState.
+        List {
+            Section {
+                Button {
+                    showAddWorkout = true
+                } label: {
+                    Text(LocalizedStringKey("Start Workout"))
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.blue)
+                        .cornerRadius(12)
                 }
-                .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
-                .listRowBackground(Color.clear)
-                
-                Section {
-                    statsSection
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                
-                Section {
-                    searchAndFiltersSection
-                }
-                .listRowInsets(EdgeInsets())
-                .listRowBackground(Color.clear)
-                
-                Section {
-                    // ОПТИМИЗАЦИЯ: Передаем параметры фильтрации в динамический компонент
-                    DynamicWorkoutListView(
-                        searchText: searchText,
-                        filter: selectedFilter,
-                        sort: sortOption,
-                        favoritesOnly: showFavoritesOnly,
-                        avgDuration: $calculatedAvgDuration,
-                        avgVolume: $calculatedAvgVolume
-                    )
-                }
-                .listRowInsets(EdgeInsets())
             }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
+            .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
+            .listRowBackground(Color.clear)
+            
+            Section {
+                statsSection
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            
+            Section {
+                searchAndFiltersSection
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowBackground(Color.clear)
+            
+            Section {
+                DynamicWorkoutListView(
+                    searchText: searchDebouncer.debouncedText, // ✅ ПЕРЕДАЕМ ТОЛЬКО ОЧИЩЕННЫЙ ТЕКСТ
+                    filter: selectedFilter,
+                    sort: sortOption,
+                    favoritesOnly: showFavoritesOnly,
+                    listViewModel: listViewModel,
+                    onFirstWorkoutLoaded: { workout in
+                        self.recentWorkoutForNavigation = workout
+                    }
+                )
+            }
+            .listRowInsets(EdgeInsets())
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
     
     private var statsSection: some View {
@@ -153,14 +150,14 @@ struct WorkoutView: View {
             HStack(spacing: 12) {
                 StatCard(
                     title: LocalizedStringKey("Avg Duration"),
-                    value: "\(calculatedAvgDuration)",
+                    value: "\(listViewModel.calculatedAvgDuration)",
                     subtitle: LocalizedStringKey("min"),
                     icon: "stopwatch"
                 )
                 
                 StatCard(
                     title: LocalizedStringKey("Avg Volume"),
-                    value: "\(Int(unitsManager.convertFromKilograms(Double(calculatedAvgVolume))))",
+                    value: "\(Int(unitsManager.convertFromKilograms(Double(listViewModel.calculatedAvgVolume))))",
                     subtitle: LocalizedStringKey(unitsManager.weightUnitString()),
                     icon: "scalemass"
                 )
@@ -180,7 +177,8 @@ struct WorkoutView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal)
             
-            DebouncedSearchBar(text: $searchText)
+            // ✅ ИСПОЛЬЗУЕМ НОВЫЙ КОМПОНЕНТ
+            DebouncedSearchBar(debouncer: searchDebouncer)
                 .padding()
                 .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(12)
@@ -224,18 +222,11 @@ struct WorkoutView: View {
         }
     }
     
-    var emptyState: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "dumbbell.fill")
-                .font(.system(size: 80))
-                .foregroundColor(.gray.opacity(0.3))
-            Text(LocalizedStringKey("No workouts yet"))
-                .font(.title2)
-                .bold()
-                .foregroundColor(.secondary)
-            Text(LocalizedStringKey("Start your first workout from the Overview tab!"))
-                .font(.caption)
-                .foregroundColor(.gray)
+    private func loadImbalanceData() {
+        if let balanceRec = dashboardViewModel.recommendations.first(where: { $0.type == .balance }) {
+            imbalanceAdvice = (title: balanceRec.title, message: balanceRec.message)
+        } else {
+            imbalanceAdvice = nil
         }
     }
 }
@@ -245,13 +236,15 @@ struct WorkoutView: View {
 struct DynamicWorkoutListView: View {
     @Environment(\.modelContext) private var context
     @Query private var workouts: [Workout]
+    @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(WorkoutService.self) var workoutService
+    @Environment(DIContainer.self) private var di
+    var listViewModel: WorkoutListViewModel
+    var onFirstWorkoutLoaded: ((Workout) -> Void)?
     
-    @Binding var calculatedAvgDuration: Int
-    @Binding var calculatedAvgVolume: Int
-    
-    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, avgDuration: Binding<Int>, avgVolume: Binding<Int>) {
-        self._calculatedAvgDuration = avgDuration
-        self._calculatedAvgVolume = avgVolume
+    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, listViewModel: WorkoutListViewModel, onFirstWorkoutLoaded: ((Workout) -> Void)? = nil) {
+        self.listViewModel = listViewModel
+        self.onFirstWorkoutLoaded = onFirstWorkoutLoaded
         
         let calendar = Calendar.current
         let now = Date()
@@ -265,7 +258,6 @@ struct DynamicWorkoutListView: View {
         case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now) ?? .distantPast
         }
         
-        // Построение Предиката с поддержкой локального поиска
         let predicate: Predicate<Workout>
         if favoritesOnly {
             if searchText.isEmpty {
@@ -311,10 +303,13 @@ struct DynamicWorkoutListView: View {
             .frame(maxWidth: .infinity)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets())
+            .onAppear {
+                onFirstWorkoutLoaded?(Workout(title: "", date: Date())) // Очищаем ссылку
+            }
         } else {
             ForEach(workouts) { workout in
                 ZStack {
-                    NavigationLink(destination: WorkoutDetailView(workout: workout)) { EmptyView() }.opacity(0)
+                    NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) { EmptyView() }.opacity(0)
                     WorkoutRow(workout: workout)
                 }
                 .listRowSeparator(.hidden)
@@ -323,78 +318,37 @@ struct DynamicWorkoutListView: View {
             .onDelete { indexSet in
                 withAnimation {
                     for index in indexSet {
-                        context.delete(workouts[index])
+                        let workoutToDelete = workouts[index]
+                        Task {
+                            await workoutService.deleteWorkout(workoutToDelete)
+                        }
                     }
                 }
             }
             .onChange(of: workouts, initial: true) { _, newWorkouts in
-                calculateStatsAsync(workouts: newWorkouts)
-            }
-        }
-    }
-    
-    private func calculateStatsAsync(workouts: [Workout]) {
-        let totalWorkouts = workouts.count
-        guard totalWorkouts > 0 else {
-            calculatedAvgDuration = 0
-            calculatedAvgVolume = 0
-            return
-        }
-        
-        // Move heavy aggregation to a background thread
-        Task.detached(priority: .userInitiated) {
-            var totalDur = 0
-            var totalVol = 0.0
-            
-            // Iterate safely in the background
-            for workout in workouts {
-                totalDur += (workout.durationSeconds / 60)
-                for exercise in workout.exercises {
-                    totalVol += exercise.exerciseVolume
+                listViewModel.calculateStatsAsync(workouts: newWorkouts)
+                if let first = newWorkouts.first {
+                    onFirstWorkoutLoaded?(first)
                 }
-            }
-            
-            let avgDur = totalDur / totalWorkouts
-            let avgVol = Int(totalVol / Double(totalWorkouts))
-            
-            // Return to MainActor to update UI bindings
-            await MainActor.run {
-                self.calculatedAvgDuration = avgDur
-                self.calculatedAvgVolume = avgVol
             }
         }
     }
 }
 
-// MARK: - Debounced Search Bar
+// MARK: - Clean Debounced Search Bar
 
 struct DebouncedSearchBar: View {
-    @Binding var text: String
-    @State private var localText: String
-    @State private var debounceTask: Task<Void, Never>? = nil
-    
-    init(text: Binding<String>) {
-        self._text = text
-        self._localText = State(initialValue: text.wrappedValue)
-    }
+    @Bindable var debouncer: SearchDebouncer
     
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-            TextField(LocalizedStringKey("Search workouts..."), text: $localText)
+            
+            TextField(LocalizedStringKey("Search workouts..."), text: $debouncer.inputText)
                 .textFieldStyle(.plain)
-                .onChange(of: localText) { oldValue, newValue in
-                    debounceTask?.cancel()
-                    debounceTask = Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 300_000_000)
-                        if !Task.isCancelled { text = newValue }
-                    }
-                }
-                .onChange(of: text) { oldValue, newValue in
-                    if localText != newValue { localText = newValue }
-                }
-            if !localText.isEmpty {
-                Button(action: { localText = ""; text = "" }) {
+            
+            if !debouncer.inputText.isEmpty {
+                Button(action: { debouncer.inputText = "" }) {
                     Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
                 }
             }
@@ -404,7 +358,6 @@ struct DebouncedSearchBar: View {
 
 // MARK: - Helper Views
 
-// --- ВСПЛЫВАЮЩЕЕ ОКНО СОВЕТА ---
 struct ImbalanceDetailSheet: View {
     let advice: (title: String, message: String)
     @Environment(\.dismiss) var dismiss
@@ -441,26 +394,19 @@ struct ImbalanceDetailSheet: View {
     }
 }
 
-// --- ИНДИКАТОР ТЕКУЩЕЙ ТРЕНИРОВКИ ---
 struct ActiveWorkoutIndicator: View {
     @State private var isBlinking = false
-    
     var body: some View {
         Circle()
             .fill(Color.blue)
             .frame(width: 8, height: 8)
             .opacity(isBlinking ? 0.2 : 1.0)
             .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isBlinking)
-            .onAppear {
-                isBlinking = true
-            }
-            .onDisappear {
-                isBlinking = false
-            }
+            .onAppear { isBlinking = true }
+            .onDisappear { isBlinking = false }
     }
 }
 
-// --- ДИЗАЙН ЯЧЕЙКИ ТРЕНИРОВКИ ---
 struct WorkoutRow: View {
     let workout: Workout
     
@@ -523,7 +469,6 @@ struct WorkoutRow: View {
     }
 }
 
-// --- КАРТОЧКА СТАТИСТИКИ ---
 struct StatCard: View {
     let title: LocalizedStringKey
     let value: String

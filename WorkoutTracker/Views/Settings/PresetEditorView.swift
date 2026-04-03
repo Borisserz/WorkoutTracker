@@ -1,18 +1,41 @@
-//
-//  PresetEditorView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 27.12.25.
-//
-//  Редактор шаблона тренировки (Preset).
-//  Позволяет:
-//  1. Задать имя и иконку шаблона.
-//  2. Добавить/удалить упражнения.
-//  3. Настроить параметры упражнений (целевые сеты, повторы).
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Settings/PresetEditorView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
+
+// MARK: - PresetFormViewModel (New DTO for form state)
+@Observable
+final class PresetFormViewModel {
+    var name: String = ""
+    var selectedIcon: String = "img_default"
+    var exercises: [Exercise] = [] // This will hold copies of exercises
+    
+    // For validation
+    var nameIsValid: Bool = false
+    var exercisesAreValid: Bool = false
+    
+    func load(from preset: WorkoutPreset?) {
+            if let p = preset {
+                self.name = p.name
+                self.selectedIcon = p.icon
+                // ✅ ИСПРАВЛЕНИЕ: Безопасное глубокое копирование через DTO
+                self.exercises = p.exercises.map { Exercise(from: $0.toDTO()) }
+            } else {
+                self.name = ""
+                self.selectedIcon = "img_default"
+                self.exercises = []
+            }
+            validate()
+        }
+    
+    func validate() {
+        nameIsValid = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        exercisesAreValid = !exercises.isEmpty
+    }
+}
+
 
 // MARK: - Main Editor View
 
@@ -21,16 +44,15 @@ struct PresetEditorView: View {
     // MARK: - Environment & State
     
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var context
-    @EnvironmentObject private var viewModel: WorkoutViewModel
-@EnvironmentObject var unitsManager: UnitsManager
     
-    @State var preset: WorkoutPreset?
+    // ✅ ИСПРАВЛЕНИЕ: Используем новый PresetService вместо WorkoutService
+    @Environment(PresetService.self) private var presetService
+    @Environment(UnitsManager.self) var unitsManager
     
-    // Локальный стейт формы
-    @State private var name: String = ""
-    @State private var selectedIcon: String = "img_default"
-    @State private var exercises: [Exercise] = []
+    var preset: WorkoutPreset? // Existing preset (if editing)
+    
+    // Local ViewModel for form state
+    @State private var vm = PresetFormViewModel()
     
     // Управление модальными окнами
     @State private var showExerciseSelector = false
@@ -69,28 +91,30 @@ struct PresetEditorView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(String(localized: "Save")) {
-                        savePreset()
+                        Task { await savePreset() }
                     }
-                    .disabled(name.isEmpty || exercises.isEmpty)
+                    .disabled(!vm.nameIsValid || !vm.exercisesAreValid)
                 }
             }
             // Алерт удаления шаблона
             .alert(String(localized: "Delete Template?"), isPresented: $showDeleteAlert) {
                 Button(String(localized: "Delete"), role: .destructive) {
                     if let p = preset {
-                        context.delete(p)
+                        // ✅ ИСПРАВЛЕНИЕ: Удаляем через presetService
+                        Task { await presetService.deletePreset(p) }
                         dismiss()
                     }
                 }
                 Button(String(localized: "Cancel"), role: .cancel) { }
             } message: {
-                Text(String(localized: "Are you sure you want to delete '\(name)'? This action cannot be undone."))
+                Text(String(localized: "Are you sure you want to delete '\(vm.name)'? This action cannot be undone."))
             }
             // Алерт удаления упражнения
             .alert(String(localized: "Delete Exercise?"), isPresented: $showDeleteExerciseAlert) {
                 Button(String(localized: "Delete"), role: .destructive) {
                     if let indexSet = exercisesToDelete {
-                        exercises.remove(atOffsets: indexSet)
+                        vm.exercises.remove(atOffsets: indexSet)
+                        vm.validate() // Revalidate after removal
                         exercisesToDelete = nil
                     }
                 }
@@ -100,8 +124,8 @@ struct PresetEditorView: View {
             } message: {
                 if let indexSet = exercisesToDelete {
                     let count = indexSet.count
-                    if count == 1, let firstIndex = indexSet.first, firstIndex < exercises.count {
-                        let exName = exercises[firstIndex].name
+                    if count == 1, let firstIndex = indexSet.first, firstIndex < vm.exercises.count {
+                        let exName = vm.exercises[firstIndex].name
                         Text(String(localized: "Are you sure you want to delete '\(exName)'? This action cannot be undone."))
                     } else {
                         Text(String(localized: "Are you sure you want to delete \(count) exercises? This action cannot be undone."))
@@ -110,30 +134,29 @@ struct PresetEditorView: View {
                     Text(String(localized: "Are you sure you want to delete this exercise? This action cannot be undone."))
                 }
             }
-            // Инициализация
+            // Инициализация ViewModel
             .onAppear {
-                if let p = preset {
-                    name = p.name
-                    selectedIcon = p.icon
-                    exercises = p.exercises
-                }
+                vm.load(from: preset)
             }
             // Добавление упражнения
             .sheet(isPresented: $showExerciseSelector) {
                 ExerciseSelectionView { newExercise in
-                    exercises.append(newExercise)
+                    vm.exercises.append(newExercise)
+                    vm.validate() // Revalidate after addition
                 }
             }
             // Редактирование упражнения
             .sheet(item: $exerciseToEdit) { ex in
-                PresetExerciseEditor(exercise: ex) { updatedEx in
-                    if let index = exercises.firstIndex(where: { $0.id == ex.id }) {
-                        exercises[index] = updatedEx
-                    }
-                    exerciseToEdit = nil
-                }
-                .presentationDetents([.medium])
-            }
+                          // ✅ ИСПРАВЛЕНИЕ: Передаем копию через DTO
+                          PresetExerciseEditor(exercise: Exercise(from: ex.toDTO())) { updatedEx in
+                              if let index = vm.exercises.firstIndex(where: { $0.id == ex.id }) {
+                                  vm.exercises[index] = updatedEx
+                              }
+                              exerciseToEdit = nil
+                              vm.validate() // Revalidate after edit
+                          }
+                          .presentationDetents([.medium])
+                      }
         }
     }
     
@@ -141,7 +164,8 @@ struct PresetEditorView: View {
     
     private var headerSection: some View {
         Section(header: Text(String(localized: "Template Info"))) {
-            TextField(String(localized: "Template Name"), text: $name)
+            TextField(String(localized: "Template Name"), text: $vm.name)
+                .onChange(of: vm.name) { _, _ in vm.validate() }
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 15) {
@@ -153,11 +177,11 @@ struct PresetEditorView: View {
                             .cornerRadius(8)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .stroke(selectedIcon == iconName ? Color.blue : Color.clear, lineWidth: 3)
+                                    .stroke(vm.selectedIcon == iconName ? Color.blue : Color.clear, lineWidth: 3)
                             )
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                withAnimation { selectedIcon = iconName }
+                                withAnimation { vm.selectedIcon = iconName }
                             }
                     }
                 }
@@ -168,7 +192,7 @@ struct PresetEditorView: View {
     
     private var exerciseListSection: some View {
         Section(header: Text(String(localized: "Exercises"))) {
-            if exercises.isEmpty {
+            if vm.exercises.isEmpty {
                 VStack(spacing: 12) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 50))
@@ -187,7 +211,7 @@ struct PresetEditorView: View {
                 .padding(.vertical, 30)
             }
             
-            ForEach(exercises) { exercise in
+            ForEach(vm.exercises) { exercise in
                 HStack {
                     VStack(alignment: .leading) {
                         Text(exercise.name).font(.headline)
@@ -250,37 +274,11 @@ struct PresetEditorView: View {
     
     // MARK: - Logic Helpers
     
-    private func savePreset() {
-            if let existingPreset = preset {
-                // Обновляем существующий
-                existingPreset.name = name
-                existingPreset.icon = selectedIcon
-                
-                // Очищаем старые и добавляем новые, чтобы SwiftData понял изменения
-                existingPreset.exercises.removeAll()
-                for ex in exercises {
-                    if ex.modelContext == nil { context.insert(ex) }
-                    ex.preset = existingPreset
-                    existingPreset.exercises.append(ex)
-                }
-            } else {
-                // Создаем новый
-                let newPreset = WorkoutPreset(
-                    id: UUID(),
-                    name: name,
-                    icon: selectedIcon,
-                    exercises: []
-                )
-                context.insert(newPreset)
-                
-                for ex in exercises {
-                    context.insert(ex)
-                    ex.preset = newPreset
-                    newPreset.exercises.append(ex)
-                }
-            }
-            dismiss()
-        }
+    private func savePreset() async {
+        // ✅ ИСПРАВЛЕНИЕ: Сохраняем через presetService
+        await presetService.savePreset(preset: preset, name: vm.name, icon: vm.selectedIcon, exercises: vm.exercises)
+        dismiss()
+    }
     
     private func formatTime(_ totalSeconds: Int) -> String {
         let m = totalSeconds / 60
@@ -291,36 +289,86 @@ struct PresetEditorView: View {
 
 // MARK: - Inner Exercise Editor
 
+// New ViewModel for Preset Exercise Editor
+@Observable
+final class PresetExerciseFormViewModel {
+    var setsCount: Int = 1
+    var repsCount: Int = 0
+    var weightValue: Double = 0
+    var distanceValue: Double? = nil
+    var minutes: Int = 0
+    var seconds: Int = 0
+    
+    var validationErrorMessage: String? = nil
+    
+    func load(from exercise: Exercise) {
+        setsCount = exercise.setsList.count > 0 ? exercise.setsList.count : 1
+        repsCount = exercise.firstSetReps
+        weightValue = exercise.firstSetWeight
+        distanceValue = exercise.firstSetDistance
+        
+        let total = exercise.firstSetTimeSeconds ?? 0
+        minutes = total / 60
+        seconds = total % 60
+    }
+    
+    func validate(for type: ExerciseType, unitsManager: UnitsManager) -> Bool {
+        var errorMessages: [String] = []
+        
+        if type == .strength {
+            let actualWeight = weightValue
+            let weightValidation = InputValidator.validateWeight(actualWeight)
+            if !weightValidation.isValid {
+                errorMessages.append(weightValidation.errorMessage ?? "Invalid weight")
+                weightValue = weightValidation.clampedValue
+            }
+            
+            let repsValidation = InputValidator.validateReps(repsCount)
+            if !repsValidation.isValid {
+                errorMessages.append(repsValidation.errorMessage ?? "Invalid reps")
+                repsCount = repsValidation.clampedValue
+            }
+        }
+        
+        if type == .cardio {
+            let actualDistance = distanceValue ?? 0.0
+            let distValidation = InputValidator.validateDistance(actualDistance)
+            if !distValidation.isValid {
+                errorMessages.append(distValidation.errorMessage ?? "Invalid distance")
+                distanceValue = distValidation.clampedValue
+            }
+        }
+        
+        let totalSeconds = (minutes * 60) + seconds
+        if totalSeconds > 0 {
+            let timeValidation = InputValidator.validateTime(totalSeconds)
+            if !timeValidation.isValid {
+                errorMessages.append(timeValidation.errorMessage ?? "Invalid time")
+                minutes = timeValidation.clampedValue / 60
+                seconds = timeValidation.clampedValue % 60
+            }
+        }
+        
+        if errorMessages.isEmpty {
+            validationErrorMessage = nil
+            return true
+        } else {
+            validationErrorMessage = errorMessages.joined(separator: "\n")
+            return false
+        }
+    }
+}
+
 struct PresetExerciseEditor: View {
-    // ИСПРАВЛЕНИЕ: Используем let для объекта SwiftData, чтобы избежать конфликтов Binding.
-    let exercise: Exercise
+    @Environment(\.modelContext) private var context
+    
+    var exercise: Exercise // Now passed as a copy
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
-@EnvironmentObject var unitsManager: UnitsManager
+    @Environment(UnitsManager.self) var unitsManager
     
-    // Локальное состояние для редактирования
-    @State private var setsCount: Int = 1
-    @State private var repsCount: Int = 0
-    @State private var weightValue: Double = 0
-    @State private var distanceValue: Double? = nil
-    
-    // Локальное время
-    @State private var minutes: Int = 0
-    @State private var seconds: Int = 0
-    
-    // Validation alerts (will only show on Save)
+    @State private var vm = PresetExerciseFormViewModel() // Local ViewModel
     @State private var showValidationAlert = false
-    @State private var validationErrorMessage = ""
-    
-    // Binding адаптер для веса
-    private var weightBindingAdapter: Binding<Double> {
-        Binding<Double>(
-            get: { unitsManager.convertFromKilograms(weightValue) },
-            set: { newValue in
-                weightValue = unitsManager.convertToKilograms(newValue)
-            }
-        )
-    }
     
     var body: some View {
         NavigationStack {
@@ -346,20 +394,12 @@ struct PresetExerciseEditor: View {
                 }
             }
             .onAppear {
-                // Инициализация локальных состояний при открытии из новых агрегатов
-                setsCount = exercise.setsCount > 0 ? exercise.setsCount : 1
-                repsCount = exercise.firstSetReps
-                weightValue = exercise.firstSetWeight
-                distanceValue = exercise.firstSetDistance
-                
-                let total = exercise.firstSetTimeSeconds ?? 0
-                minutes = total / 60
-                seconds = total % 60
+                vm.load(from: exercise)
             }
             .alert(String(localized: "Invalid Input"), isPresented: $showValidationAlert) {
                 Button(String(localized: "OK"), role: .cancel) { }
             } message: {
-                Text(validationErrorMessage)
+                Text(vm.validationErrorMessage ?? "Unknown error")
             }
         }
     }
@@ -368,11 +408,11 @@ struct PresetExerciseEditor: View {
     
     @ViewBuilder
     private var strengthConfig: some View {
-        Stepper(String(localized: "Sets: \(setsCount)"), value: $setsCount, in: 1...20)
-        Stepper(String(localized: "Reps: \(repsCount)"), value: $repsCount, in: 0...100)
+        Stepper(String(localized: "Sets: \(vm.setsCount)"), value: $vm.setsCount, in: 1...20)
+        Stepper(String(localized: "Reps: \(vm.repsCount)"), value: $vm.repsCount, in: 0...100)
         HStack {
             Text(String(localized: "Weight (\(unitsManager.weightUnitString())):"))
-            TextField("0", value: weightBindingAdapter, format: .number)
+            TextField("0", value: Binding(get: { unitsManager.convertFromKilograms(vm.weightValue) }, set: { vm.weightValue = unitsManager.convertToKilograms($0) }), format: .number)
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
         }
@@ -383,40 +423,40 @@ struct PresetExerciseEditor: View {
         HStack {
             Text(String(localized: "Distance (\(unitsManager.distanceUnitString())):"))
             TextField("0", value: Binding(get: {
-                if let d = distanceValue { return unitsManager.convertFromMeters(d) }
+                if let d = vm.distanceValue { return unitsManager.convertFromMeters(d) }
                 return 0
             }, set: { newValue in
-                distanceValue = unitsManager.convertToMeters(newValue)
+                vm.distanceValue = unitsManager.convertToMeters(newValue)
             }), format: .number)
-                .keyboardType(.decimalPad)
-                .multilineTextAlignment(.trailing)
+            .keyboardType(.decimalPad)
+            .multilineTextAlignment(.trailing)
         }
         timePickerRow(label: "Duration")
     }
     
     @ViewBuilder
     private var durationConfig: some View {
-        Stepper(String(localized: "Sets: \(setsCount)"), value: $setsCount, in: 1...10)
+        Stepper(String(localized: "Sets: \(vm.setsCount)"), value: $vm.setsCount, in: 1...10)
         timePickerRow(label: "Time per set")
     }
     
     private func timePickerRow(label: String) -> some View {
         HStack {
-            Text(String(localized: String.LocalizationValue(label)))
+            Text(LocalizedStringKey(label))
             Spacer()
-            TextField("0", value: $minutes, format: .number)
+            TextField("0", value: $vm.minutes, format: .number)
                 .frame(width: 40).multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
                 .background(Color.gray.opacity(0.1)).cornerRadius(5)
             Text(String(localized: "min"))
-            TextField("0", value: $seconds, format: .number)
+            TextField("0", value: $vm.seconds, format: .number)
                 .frame(width: 40).multilineTextAlignment(.center)
                 .keyboardType(.numberPad)
                 .background(Color.gray.opacity(0.1)).cornerRadius(5)
-                .onChange(of: seconds) { oldValue, newValue in
+                .onChange(of: vm.seconds) { oldValue, newValue in
                     let clampedSeconds = max(0, min(newValue, 59))
                     if clampedSeconds != newValue {
-                        seconds = clampedSeconds
+                        vm.seconds = clampedSeconds
                     }
                 }
             Text(String(localized: "sec"))
@@ -426,103 +466,32 @@ struct PresetExerciseEditor: View {
     // MARK: - Logic
     
     private func save() {
-        var hasError = false
-        var errorMessages: [String] = []
-        
-        if exercise.type == .strength {
-            if weightValue <= 0 {
-                hasError = true
-                errorMessages.append(String(localized: "Please enter a weight greater than 0."))
-            } else {
-                let weightValidation = InputValidator.validateWeight(weightValue)
-                if !weightValidation.isValid {
-                    hasError = true
-                    if let error = weightValidation.errorMessage {
-                        errorMessages.append(error)
-                    }
-                    weightValue = weightValidation.clampedValue
-                }
-            }
-            
-            let repsValidation = InputValidator.validateReps(repsCount)
-            if !repsValidation.isValid {
-                hasError = true
-                if let error = repsValidation.errorMessage {
-                    errorMessages.append(error)
-                }
-                repsCount = repsValidation.clampedValue
-            }
-        }
-        
-        if exercise.type == .cardio, let distance = distanceValue {
-            let distanceValidation = InputValidator.validateDistance(distance)
-            if !distanceValidation.isValid {
-                hasError = true
-                if let error = distanceValidation.errorMessage {
-                    errorMessages.append(error)
-                }
-                distanceValue = distanceValidation.clampedValue
-            }
-        }
-        
-        let total = (minutes * 60) + seconds
-        if total > 0 {
-            let timeValidation = InputValidator.validateTime(total)
-            if !timeValidation.isValid {
-                hasError = true
-                if let error = timeValidation.errorMessage {
-                    errorMessages.append(error)
-                }
-                let validSeconds = timeValidation.clampedValue
-                minutes = validSeconds / 60
-                seconds = validSeconds % 60
-            }
-        }
-        
-        if hasError {
-            validationErrorMessage = errorMessages.joined(separator: "\n")
+        guard vm.validate(for: exercise.type, unitsManager: unitsManager) else {
             showValidationAlert = true
             return
         }
         
-        // ИСПРАВЛЕНИЕ SwiftData: Удаляем старые сеты из контекста, чтобы не создавать сиротские объекты
-        if let context = exercise.modelContext {
-         
-            for set in exercise.setsList {
-                context.delete(set)
-            }
-        }
+        // Update the copy of the exercise
+        let finalSetsCount = exercise.type == .cardio ? 1 : max(1, vm.setsCount)
+        let totalSeconds = (vm.minutes * 60) + vm.seconds
         
-        // Генерация нового setsList
         var newSets: [WorkoutSet] = []
-        let finalSetsCount = exercise.type == .cardio ? 1 : max(1, setsCount)
-        
         for i in 1...finalSetsCount {
-            let newSet = WorkoutSet(
+            newSets.append(WorkoutSet(
                 index: i,
-                weight: exercise.type == .strength ? weightValue : nil,
-                reps: exercise.type == .strength ? repsCount : nil,
-                distance: exercise.type == .cardio ? distanceValue : nil,
-                time: total > 0 ? total : nil,
+                weight: exercise.type == .strength ? vm.weightValue : nil,
+                reps: exercise.type == .strength ? vm.repsCount : nil,
+                distance: exercise.type == .cardio ? vm.distanceValue : nil,
+                time: totalSeconds > 0 ? totalSeconds : nil,
                 isCompleted: false,
                 type: .normal
-            )
-            
-            // ИСПРАВЛЕНИЕ SwiftData: Сначала вставляем в контекст (если он доступен)
-            if let context = exercise.modelContext {
-           
-                context.insert(newSet)
-            }
-            
-            newSets.append(newSet)
+            ))
         }
         
-        exercise.setsList = newSets
-        exercise.updateAggregates() // Обновляем агрегаты сразу, чтобы UI отрисовал изменения
-        if let context = exercise.modelContext {
-               try? context.save() // <--- ПРИНУДИТЕЛЬНОЕ СОХРАНЕНИЕ
-           }
-        onSave(exercise)
+        // Replace sets in the local copy of the exercise
+        exercise.replaceAllSets(with: newSets)
+        
+        onSave(exercise) // Pass the updated copy back
         dismiss()
     }
 }

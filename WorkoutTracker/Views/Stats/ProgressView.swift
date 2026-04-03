@@ -1,16 +1,82 @@
-//
-//  StatsView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-
+// ============================================================
+// FILE: WorkoutTracker/Views/Stats/ProgressView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
 import Charts
 
-// MARK: - 1. Smart Container View
+// MARK: - 1. View Model (Чистая бизнес-логика)
+
+@Observable
+@MainActor
+final class StatsViewModel {
+    var selectedPeriod: StatsView.Period = .week
+    var selectedMetric: StatsView.GraphMetric = .count
+    
+    var isDataLoaded = false
+    
+    var currentStats: PeriodStats?
+    var previousStats: PeriodStats?
+    var chartData: [ChartDataPoint] = []
+    var recentPRs: [PersonalRecord] = []
+    var detailedComparison: [DetailedComparison] = []
+    
+    private let analyticsService: AnalyticsService
+    
+    init(analyticsService: AnalyticsService) {
+        self.analyticsService = analyticsService
+    }
+    
+    // Загрузка данных полностью вынесена из View
+    func loadPeriodData(prCache: [String: Double]) async {
+        let currentInterval = calculateCurrentInterval()
+        let previousInterval = calculatePreviousInterval()
+        
+        let result = await analyticsService.fetchStatsData(
+            period: selectedPeriod,
+            metric: selectedMetric,
+            currentInterval: currentInterval,
+            previousInterval: previousInterval,
+            prCache: prCache
+        )
+        
+        self.currentStats = result.currentStats
+        self.previousStats = result.previousStats
+        self.recentPRs = result.recentPRs
+        self.detailedComparison = result.detailedComparison
+        self.chartData = result.chartData
+        self.isDataLoaded = true
+    }
+    
+    private func calculateCurrentInterval() -> DateInterval {
+        let now = Date()
+        let calendar = Calendar.current
+        switch selectedPeriod {
+        case .week: return calendar.dateInterval(of: .weekOfYear, for: now)!
+        case .month: return calendar.dateInterval(of: .month, for: now)!
+        case .year: return calendar.dateInterval(of: .year, for: now)!
+        }
+    }
+    
+    private func calculatePreviousInterval() -> DateInterval {
+        let now = Date()
+        let calendar = Calendar.current
+        switch selectedPeriod {
+        case .week:
+            let lastWeek = calendar.date(byAdding: .day, value: -7, to: now)!
+            return calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
+        case .month:
+            let lastMonth = calendar.date(byAdding: .month, value: -1, to: now)!
+            return calendar.dateInterval(of: .month, for: lastMonth)!
+        case .year:
+            let lastYear = calendar.date(byAdding: .year, value: -1, to: now)!
+            return calendar.dateInterval(of: .year, for: lastYear)!
+        }
+    }
+}
+
+// MARK: - 2. Smart Container View
 
 struct StatsView: View {
     
@@ -49,168 +115,77 @@ struct StatsView: View {
     // MARK: - Environment & State
     
     @Environment(\.modelContext) private var context
-    @EnvironmentObject var viewModel: WorkoutViewModel
+    @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(DIContainer.self) private var di
     
-    @Query private var dbTrigger: [Workout]
-    
-    @State private var selectedPeriod: Period = .week
-    @State private var selectedMetric: GraphMetric = .count
-    
-    @State private var isDataLoaded = false
-    
-    @State private var currentStats: WorkoutViewModel.PeriodStats?
-    @State private var previousStats: WorkoutViewModel.PeriodStats?
-    @State private var chartData: [WorkoutViewModel.ChartDataPoint] = []
-    @State private var recentPRs: [WorkoutViewModel.PersonalRecord] = []
-    @State private var detailedComparison: [WorkoutViewModel.DetailedComparison] = []
-    
-    private var dbTriggerHash: String {
-        guard let latest = dbTrigger.first else { return "empty" }
-        return "\(latest.id.uuidString)-\(latest.endTime?.timeIntervalSince1970 ?? 0)-\(latest.exercises.count)"
-    }
-    
-    init() {
-        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        descriptor.fetchLimit = 1
-        _dbTrigger = Query(descriptor)
-    }
+    // Наш новый чистый стейт
+    @State private var viewModel: StatsViewModel?
     
     // MARK: - Body
     
     var body: some View {
         NavigationStack {
             Group {
-                if isDataLoaded,
-                   let currentStats = currentStats,
-                   let previousStats = previousStats {
-                    
-                    StatsContentView(
-                        selectedPeriod: $selectedPeriod,
-                        selectedMetric: $selectedMetric,
-                        streakCount: viewModel.streakCount,
-                        currentStats: currentStats,
-                        previousStats: previousStats,
-                        chartData: chartData,
-                        recentPRs: recentPRs,
-                        bestWeek: viewModel.bestWeekStats,
-                        bestMonth: viewModel.bestMonthStats,
-                        weakPoints: viewModel.weakPoints,
-                        recommendations: viewModel.recommendations,
-                        detailedComparison: detailedComparison
-                    )
-                    
+                if let vm = viewModel {
+                    if vm.isDataLoaded,
+                       let currentStats = vm.currentStats,
+                       let previousStats = vm.previousStats {
+                        
+                        StatsContentView(
+                            viewModel: vm,
+                            currentStats: currentStats,
+                            previousStats: previousStats
+                        )
+                        
+                    } else {
+                        VStack {
+                            Spacer()
+                            ProgressView(LocalizedStringKey("Loading stats..."))
+                                .controlSize(.large)
+                            Spacer()
+                        }
+                        .navigationTitle(LocalizedStringKey("Progress"))
+                    }
                 } else {
                     VStack {
                         Spacer()
-                        ProgressView("Loading stats...")
+                        ProgressView(LocalizedStringKey("Loading stats..."))
                             .controlSize(.large)
                         Spacer()
                     }
-                    .navigationTitle("Progress")
+                    .navigationTitle(LocalizedStringKey("Progress"))
                 }
             }
         }
         .task {
-            if !isDataLoaded {
-                await loadPeriodData()
+            if viewModel == nil {
+                viewModel = di.makeStatsViewModel()
+                await viewModel?.loadPeriodData(prCache: dashboardViewModel.personalRecordsCache)
             }
         }
-        .onChange(of: selectedPeriod) { _, _ in
-            Task {
-                await loadPeriodData()
-            }
+        .onChange(of: viewModel?.selectedPeriod) { _, _ in
+            Task { await viewModel?.loadPeriodData(prCache: dashboardViewModel.personalRecordsCache) }
         }
-        .onChange(of: selectedMetric) { _, _ in
-            Task {
-                await loadPeriodData()
-            }
+        .onChange(of: viewModel?.selectedMetric) { _, _ in
+            Task { await viewModel?.loadPeriodData(prCache: dashboardViewModel.personalRecordsCache) }
         }
-        .onChange(of: dbTriggerHash) { _, _ in
-            Task {
-                await loadPeriodData()
-            }
-        }
-    }
-    
-    // MARK: - Data Loading Logic
-    
-    @MainActor
-        private func loadPeriodData() async {
-            let container = context.container
-            let period = selectedPeriod
-            let metric = selectedMetric
-            let prCache = viewModel.personalRecordsCache
-            let currentInterval = calculateCurrentInterval()
-            let previousInterval = calculatePreviousInterval()
-            
-            // Создаем ModelActor который сам создаст нужный контекст в своем потоке
-            let repository = WorkoutRepository(modelContainer: container)
-            
-            // Вся тяжелая работа произойдет в изоляции Repository
-            let result = await repository.fetchStatsData(
-                period: period,
-                metric: metric,
-                currentInterval: currentInterval,
-                previousInterval: previousInterval,
-                prCache: prCache
-            )
-            
-            withAnimation {
-                self.currentStats = result.currentStats
-                self.previousStats = result.previousStats
-                self.recentPRs = result.recentPRs
-                self.detailedComparison = result.detailedComparison
-                self.chartData = result.chartData
-                self.isDataLoaded = true
-            }
-        }
-    
-    // MARK: - Date Logic
-    
-    private func calculateCurrentInterval() -> DateInterval {
-        let now = Date()
-        let calendar = Calendar.current
-        switch selectedPeriod {
-        case .week: return calendar.dateInterval(of: .weekOfYear, for: now)!
-        case .month: return calendar.dateInterval(of: .month, for: now)!
-        case .year: return calendar.dateInterval(of: .year, for: now)!
-        }
-    }
-    
-    private func calculatePreviousInterval() -> DateInterval {
-        let now = Date()
-        let calendar = Calendar.current
-        switch selectedPeriod {
-        case .week:
-            let lastWeek = calendar.date(byAdding: .day, value: -7, to: now)!
-            return calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
-        case .month:
-            let lastMonth = calendar.date(byAdding: .month, value: -1, to: now)!
-            return calendar.dateInterval(of: .month, for: lastMonth)!
-        case .year:
-            let lastYear = calendar.date(byAdding: .year, value: -1, to: now)!
-            return calendar.dateInterval(of: .year, for: lastYear)!
+        .onChange(of: dashboardViewModel.dashboardTotalExercises) { _, _ in
+            Task { await viewModel?.loadPeriodData(prCache: dashboardViewModel.personalRecordsCache) }
         }
     }
 }
 
-// MARK: - 2. Dumb Content View
+// MARK: - 3. Dumb Content View
 
 struct StatsContentView: View {
-    @EnvironmentObject var viewModel: WorkoutViewModel
-    @Binding var selectedPeriod: StatsView.Period
-    @Binding var selectedMetric: StatsView.GraphMetric
+    @Bindable var viewModel: StatsViewModel
     
-    let streakCount: Int
-    let currentStats: WorkoutViewModel.PeriodStats
-    let previousStats: WorkoutViewModel.PeriodStats
-    let chartData: [WorkoutViewModel.ChartDataPoint]
-    let recentPRs: [WorkoutViewModel.PersonalRecord]
-    let bestWeek: WorkoutViewModel.PeriodStats
-    let bestMonth: WorkoutViewModel.PeriodStats
-    let weakPoints: [WorkoutViewModel.WeakPoint]
-    let recommendations: [WorkoutViewModel.Recommendation]
-    let detailedComparison: [WorkoutViewModel.DetailedComparison]
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
+    @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(DIContainer.self) private var di
+    
+    let currentStats: PeriodStats
+    let previousStats: PeriodStats
     
     @State private var showProfile = false
     @State private var showAIReviewSheet = false
@@ -218,27 +193,26 @@ struct StatsContentView: View {
     var body: some View {
         List {
             streakSection
-            
             aiReviewButtonSection
             
             periodPicker
             highlightsSection
             chartSection
             
-            if !detailedComparison.isEmpty {
-                Section(header: Text("Detailed Comparison")) {
-                    DetailedComparisonView(comparisons: detailedComparison, period: selectedPeriod.rawValue)
+            if !viewModel.detailedComparison.isEmpty {
+                Section(header: Text(LocalizedStringKey("Detailed Comparison"))) {
+                    DetailedComparisonView(comparisons: viewModel.detailedComparison, period: viewModel.selectedPeriod.rawValue)
                 }
             }
             
-            if !weakPoints.isEmpty {
-                Section(header: Text("Weak Points Analysis")) {
-                    WeakPointsView(weakPoints: weakPoints)
+            if !dashboardViewModel.weakPoints.isEmpty {
+                Section(header: Text(LocalizedStringKey("Weak Points Analysis"))) {
+                    WeakPointsView(weakPoints: dashboardViewModel.weakPoints)
                 }
             }
             
-            Section(header: Text("Recommendations")) {
-                RecommendationsView(recommendations: recommendations, onTap: { selectedRec in
+            Section(header: Text(LocalizedStringKey("Recommendations"))) {
+                RecommendationsView(recommendations: dashboardViewModel.recommendations, onTap: { selectedRec in
                     if selectedRec.type == .recovery {
                         showProfile = true
                     }
@@ -248,7 +222,7 @@ struct StatsContentView: View {
             prSection
             bestStatsSection
         }
-        .navigationTitle("Progress")
+        .navigationTitle(LocalizedStringKey("Progress"))
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showProfile = true } label: {
@@ -258,15 +232,15 @@ struct StatsContentView: View {
         }
         .sheet(isPresented: $showProfile) {
             ProfileView()
-                .environmentObject(viewModel.progressManager)
+                .environment(userStatsViewModel.progressManager)
         }
-        // ИСПРАВЛЕНИЕ ЗДЕСЬ: Передаем все необходимые данные
         .sheet(isPresented: $showAIReviewSheet) {
             AIWeeklyReviewSheet(
                 currentStats: currentStats,
                 previousStats: previousStats,
-                weakPoints: weakPoints,
-                recentPRs: recentPRs
+                weakPoints: dashboardViewModel.weakPoints,
+                recentPRs: viewModel.recentPRs,
+                aiLogicService: di.aiLogicService
             )
         }
     }
@@ -281,9 +255,9 @@ struct StatsContentView: View {
                     .foregroundColor(.orange)
                 
                 VStack(alignment: .leading) {
-                    Text("\(streakCount) Day Streak")
+                    Text(LocalizedStringKey("\(dashboardViewModel.streakCount) Day Streak"))
                         .font(.headline)
-                    let streakMessage: LocalizedStringKey = streakCount > 0 ? "Keep the fire burning!" : "Start your streak today!"
+                    let streakMessage: LocalizedStringKey = dashboardViewModel.streakCount > 0 ? "Keep the fire burning!" : "Start your streak today!"
                     Text(streakMessage)
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -334,7 +308,7 @@ struct StatsContentView: View {
     }
     
     private var periodPicker: some View {
-        Picker("Period", selection: $selectedPeriod) {
+        Picker(LocalizedStringKey("Period"), selection: $viewModel.selectedPeriod) {
             ForEach(StatsView.Period.allCases) { Text($0.localizedName).tag($0) }
         }
         .pickerStyle(.segmented)
@@ -343,7 +317,7 @@ struct StatsContentView: View {
     }
     
     private var highlightsTitle: LocalizedStringKey {
-        switch selectedPeriod {
+        switch viewModel.selectedPeriod {
         case .week: return "Highlights for this Week"
         case .month: return "Highlights for this Month"
         case .year: return "Highlights for this Year"
@@ -367,8 +341,8 @@ struct StatsContentView: View {
     }
     
     private var chartSection: some View {
-        Section(header: Text(selectedMetric.title)) {
-            if chartData.isEmpty || chartData.reduce(0, { $0 + $1.value }) == 0 {
+        Section(header: Text(viewModel.selectedMetric.title)) {
+            if viewModel.chartData.isEmpty || viewModel.chartData.reduce(0, { $0 + $1.value }) == 0 {
                 EmptyStateView(
                     icon: "chart.bar.fill",
                     title: "No data for this period",
@@ -376,14 +350,14 @@ struct StatsContentView: View {
                 )
                 .frame(height: 180)
             } else {
-                let useLineChart = selectedMetric == .distance && selectedPeriod == .year && chartData.count > 1
-                let maxValue = chartData.map { $0.value }.max() ?? 0
-                let minValue = chartData.map { $0.value }.min() ?? 0
+                let useLineChart = viewModel.selectedMetric == .distance && viewModel.selectedPeriod == .year && viewModel.chartData.count > 1
+                let maxValue = viewModel.chartData.map { $0.value }.max() ?? 0
+                let minValue = viewModel.chartData.map { $0.value }.min() ?? 0
                 let valueRange = maxValue - minValue
                 let shouldExcludeZero = valueRange > 0 && (maxValue / valueRange < 0.1 || maxValue < 1.0)
                 
                 if useLineChart {
-                    Chart(chartData) { dataPoint in
+                    Chart(viewModel.chartData) { dataPoint in
                         LineMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
                             .foregroundStyle(Color.blue).interpolationMethod(.linear).lineStyle(StrokeStyle(lineWidth: 3))
                         PointMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
@@ -392,7 +366,7 @@ struct StatsContentView: View {
                     .frame(height: 180)
                     .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
                 } else {
-                    Chart(chartData) { dataPoint in
+                    Chart(viewModel.chartData) { dataPoint in
                         BarMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
                             .foregroundStyle(Color.blue.gradient).cornerRadius(6)
                     }
@@ -405,17 +379,17 @@ struct StatsContentView: View {
     
     @ViewBuilder
     private var prSection: some View {
-        if !recentPRs.isEmpty {
-            Section(header: Text("New Personal Records")) {
-                ForEach(recentPRs) { pr in
+        if !viewModel.recentPRs.isEmpty {
+            Section(header: Text(LocalizedStringKey("New Personal Records"))) {
+                ForEach(viewModel.recentPRs) { pr in
                     HStack {
                         Image(systemName: "trophy.fill").foregroundColor(.orange)
                         VStack(alignment: .leading) {
-                            Text(pr.exerciseName).fontWeight(.bold)
+                            Text(LocalizedStringKey(pr.exerciseName)).fontWeight(.bold)
                             Text(pr.date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()
-                        Text("\(Int(pr.weight)) kg").font(.headline).foregroundColor(.blue)
+                        Text(LocalizedStringKey("\(Int(pr.weight)) kg")).font(.headline).foregroundColor(.blue)
                     }
                 }
             }
@@ -423,18 +397,18 @@ struct StatsContentView: View {
     }
     
     private var bestStatsSection: some View {
-        Section(header: Text("All-Time Bests")) {
+        Section(header: Text(LocalizedStringKey("All-Time Bests"))) {
             HStack {
                 Image(systemName: "calendar.badge.exclamationmark").foregroundColor(.green)
-                Text("Best Week:")
+                Text(LocalizedStringKey("Best Week:"))
                 Spacer()
-                Text("\(bestWeek.workoutCount) workouts, \(Int(bestWeek.totalVolume)) kg").bold()
+                Text(LocalizedStringKey("\(dashboardViewModel.bestWeekStats.workoutCount) workouts, \(Int(dashboardViewModel.bestWeekStats.totalVolume)) kg")).bold()
             }
             HStack {
                 Image(systemName: "calendar").foregroundColor(.green)
-                Text("Best Month:")
+                Text(LocalizedStringKey("Best Month:"))
                 Spacer()
-                Text("\(bestMonth.workoutCount) workouts, \(Int(bestMonth.totalVolume)) kg").bold()
+                Text(LocalizedStringKey("\(dashboardViewModel.bestMonthStats.workoutCount) workouts, \(Int(dashboardViewModel.bestMonthStats.totalVolume)) kg")).bold()
             }
         }
     }
@@ -443,9 +417,9 @@ struct StatsContentView: View {
     
     private func metricButton(metric: StatsView.GraphMetric, title: LocalizedStringKey, value: String, icon: String, prevValue: Double, currValue: Double) -> some View {
         Button {
-            withAnimation { selectedMetric = metric }
+            withAnimation { viewModel.selectedMetric = metric }
         } label: {
-            HighlightCard(title: title, value: value, icon: icon, isSelected: selectedMetric == metric, change: calculateChange(current: currValue, previous: prevValue))
+            HighlightCard(title: title, value: value, icon: icon, isSelected: viewModel.selectedMetric == metric, change: calculateChange(current: currValue, previous: prevValue))
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -455,8 +429,6 @@ struct StatsContentView: View {
         return ((current - previous) / previous) * 100.0
     }
 }
-
-// MARK: - 3. Helper Components
 
 struct HighlightCard: View {
     let title: LocalizedStringKey

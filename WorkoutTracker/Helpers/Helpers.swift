@@ -67,22 +67,34 @@ struct InputValidator {
     }
 }
 
-// MARK: - SVG Parser
-struct SVGParser {
+import os // Необходим для OSAllocatedUnfairLock
+
+// Помечаем структуру как Sendable, чтобы Swift 6 понимал её потокобезопасность
+struct SVGParser: Sendable {
     
-    private static let cacheLock = NSLock()
-    private static var pathCache: [String: Path] = [:]
+    // 1. Современный, сверхбыстрый лок (замена NSLock), который хранит состояние внутри себя
+    private static let cache = OSAllocatedUnfairLock(initialState: [String: Path]())
     
     static func path(from string: String) -> Path {
-        cacheLock.lock()
-        // 1. Сначала проверяем кэш по исходной строке
-        if let cachedPath = pathCache[string] {
-            cacheLock.unlock()
+        // 2. Быстрое чтение из кэша с блокировкой
+        if let cachedPath = cache.withLock({ $0[string] }) {
             return cachedPath
         }
-        cacheLock.unlock()
         
-        // 2. Если в кэше нет — только тогда выполняем тяжелые операции
+        // 3. Если в кэше нет — выполняем тяжелый парсинг ВНЕ блокировки,
+        // чтобы не стопить другие потоки, если они обращаются к кэшу
+        let newPath = parseString(string)
+        
+        // 4. Безопасно сохраняем результат в кэш
+        cache.withLock { state in
+            state[string] = newPath
+        }
+        
+        return newPath
+    }
+    
+    // Вся логика вынесена в приватный статический метод
+    private static func parseString(_ string: String) -> Path {
         var path = Path()
         let formatted = string
             .replacingOccurrences(of: "([a-zA-Z])", with: " $1 ", options: .regularExpression)
@@ -192,11 +204,7 @@ struct SVGParser {
             }
         }
         
-        cacheLock.lock()
-            pathCache[string] = path
-            cacheLock.unlock()
-            
-            return path
+        return path
     }
 }
 

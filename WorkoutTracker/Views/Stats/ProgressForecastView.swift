@@ -9,7 +9,7 @@
 internal import SwiftUI
 
 struct ProgressForecastView: View {
-    let forecasts: [WorkoutViewModel.ProgressForecast]
+    let forecasts: [ProgressForecast]
     
     var body: some View {
         if forecasts.isEmpty {
@@ -27,7 +27,7 @@ struct ProgressForecastView: View {
 }
 
 struct ProgressForecastRow: View {
-    let forecast: WorkoutViewModel.ProgressForecast
+    let forecast: ProgressForecast
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

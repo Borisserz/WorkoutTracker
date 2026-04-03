@@ -1,15 +1,6 @@
-//
-//  SupersetBuilderView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 27.12.25.
-//
-//  Экран создания и редактирования Супер-сета (комбинации из нескольких упражнений).
-//  Позволяет:
-//  1. Добавить упражнения в суперсет.
-//  2. Отредактировать параметры каждого упражнения (через EditSupersetItemView).
-//  3. Сохранить или удалить суперсет.
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Workout/SupersetBuilderView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -21,8 +12,8 @@ struct SupersetBuilderView: View {
     // MARK: - Environment & State
     
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var viewModel: WorkoutViewModel
-@EnvironmentObject var unitsManager: UnitsManager
+    @Environment(WorkoutService.self) private var workoutService
+    @Environment(UnitsManager.self) var unitsManager
     
     // Если редактируем — передаем сюда существующий супер-сет
     @State var existingSuperset: Exercise?
@@ -207,17 +198,17 @@ struct SupersetBuilderView: View {
 // MARK: - Inner Exercise Editor
 
 struct EditSupersetItemView: View {
-    
-    @Bindable var exercise: Exercise // ДОБАВЛЕНО: SwiftData Bindable
+    @Environment(\.modelContext) private var context
+    @Environment(WorkoutService.self) var workoutService
+    @Bindable var exercise: Exercise
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
-@EnvironmentObject var unitsManager: UnitsManager
+    @Environment(UnitsManager.self) var unitsManager
     
     // Валидация
     @State private var showValidationAlert = false
     @State private var validationErrorMessage = ""
     
-    // Сортированные сеты
     private var sortedSets: [WorkoutSet] {
         exercise.setsList.sorted(by: { $0.index < $1.index })
     }
@@ -323,24 +314,20 @@ struct EditSupersetItemView: View {
             Form {
                 Section(header: Text(exercise.name)) {
                     if !exercise.setsList.isEmpty {
+                        Stepper(LocalizedStringKey("Sets: \(exercise.setsList.count)"), onIncrement: addSetLocally, onDecrement: removeSetLocally)
                         
-                        Stepper(LocalizedStringKey("Sets: \(exercise.setsList.count)"), onIncrement: addSet, onDecrement: removeSet)
-                        
-                        // Поля ввода в зависимости от типа
                         switch exercise.type {
                         case .strength:
                             inputRow(label: LocalizedStringKey("Weight (\(unitsManager.weightUnitString())):"), placeholder: unitsManager.weightUnitString(), binding: weightBindingAdapter)
                             inputRow(label: LocalizedStringKey("Reps:"), placeholder: "reps", binding: repsBinding)
-                            
                         case .cardio:
                             inputRow(label: LocalizedStringKey("Distance (\(unitsManager.distanceUnitString())):"), placeholder: unitsManager.distanceUnitString(), binding: distanceBindingAdapter)
                             inputRow(label: LocalizedStringKey("Time (min):"), placeholder: "min", binding: timeBinding)
-                            
                         case .duration:
                             inputRow(label: LocalizedStringKey("Time (sec):"), placeholder: "sec", binding: timeBinding)
                         }
                     } else {
-                        Button(LocalizedStringKey("Create First Set"), action: addSet)
+                        Button(LocalizedStringKey("Create First Set"), action: addSetLocally)
                     }
                 }
                 
@@ -366,56 +353,46 @@ struct EditSupersetItemView: View {
             }
             .alert(LocalizedStringKey("Invalid Input"), isPresented: $showValidationAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
-            } message: {
-                Text(validationErrorMessage)
-            }
+            } message: { Text(validationErrorMessage) }
         }
     }
-    
-    // MARK: - Helper Views
     
     private func inputRow(label: LocalizedStringKey, placeholder: String, binding: Binding<Double?>) -> some View {
         HStack {
             Text(label)
             Spacer()
-            ClearableTextField(placeholder: placeholder, value: binding)
-                .frame(width: 80)
+            ClearableTextField(placeholder: placeholder, value: binding).frame(width: 80)
         }
     }
     
     // MARK: - Logic
     
-    private func addSet() {
+    private func addSetLocally() {
         let lastSet = sortedSets.last
         let newIndex = (lastSet?.index ?? 0) + 1
-        let newSet = WorkoutSet(index: newIndex, weight: lastSet?.weight, reps: lastSet?.reps)
         
-        // ИСПРАВЛЕНИЕ SwiftData: Вставляем в контекст ДО добавления в массив для избежания дублирования
-        if let context = exercise.modelContext {
-       
-            context.insert(newSet)
+        Task {
+            await workoutService.addSet(
+                to: exercise,
+                index: newIndex,
+                weight: lastSet?.weight,
+                reps: lastSet?.reps,
+                distance: lastSet?.distance,
+                time: lastSet?.time,
+                type: .normal,
+                isCompleted: false
+            )
         }
-        
-        exercise.setsList.append(newSet)
     }
-    
-    private func removeSet() {
+
+    private func removeSetLocally() {
         if exercise.setsList.count > 1, let last = sortedSets.last {
-            if let index = exercise.setsList.firstIndex(where: { $0.id == last.id }) {
-                let setToDelete = exercise.setsList[index]
-                
-                // ИСПРАВЛЕНИЕ SwiftData: Явно удаляем объект
-                if let context = exercise.modelContext {
-           
-                    context.delete(setToDelete)
-                }
-                
-                exercise.setsList.remove(at: index)
+            Task {
+                await workoutService.deleteSet(last, from: exercise)
             }
         }
     }
     
-    /// Копирует данные из первого сета во все остальные (для удобства)
     private func propagateFirstSetData() {
         guard let firstSet = sortedSets.first else { return }
         for set in exercise.setsList where set.id != firstSet.id {

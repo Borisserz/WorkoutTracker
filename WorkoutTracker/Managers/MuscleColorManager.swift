@@ -1,3 +1,4 @@
+
 internal import SwiftUI
 import SwiftData
 import Combine
@@ -19,7 +20,15 @@ class MuscleColorManager: ObservableObject {
         "Cardio": .teal
     ]
     
+    private var modelContainer: ModelContainer?
+    
     private init() {}
+    
+    // Новая функция инициализации с ModelContainer
+    func initialize(modelContainer: ModelContainer) {
+        self.modelContainer = modelContainer
+        load(context: modelContainer.mainContext)
+    }
     
     func load(context: ModelContext) {
         let descriptor = FetchDescriptor<MuscleColorPreference>()

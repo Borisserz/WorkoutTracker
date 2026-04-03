@@ -9,7 +9,7 @@
 internal import SwiftUI
 
 struct DetailedComparisonView: View {
-    let comparisons: [WorkoutViewModel.DetailedComparison]
+    let comparisons: [DetailedComparison]
     let period: String
     
     var body: some View {
@@ -31,7 +31,7 @@ struct DetailedComparisonView: View {
 }
 
 struct DetailedComparisonRow: View {
-    let comparison: WorkoutViewModel.DetailedComparison
+    let comparison: DetailedComparison
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

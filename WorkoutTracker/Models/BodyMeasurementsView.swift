@@ -8,11 +8,12 @@ import SwiftData
 import Charts
 
 struct BodyMeasurementsView: View {
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(\.modelContext) private var context
     @Query(sort: \BodyMeasurement.date, order: .reverse) private var measurements: [BodyMeasurement]
-    @EnvironmentObject var unitsManager: UnitsManager
+    @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
-    
+
     @State private var selectedMetric: MeasurementType = .chest
     @State private var showingAddMeasurement = false
     
@@ -134,7 +135,7 @@ struct BodyMeasurementsView: View {
                                     MeasurementEntryRow(entry: entry, selectedMetric: selectedMetric, unitsManager: unitsManager)
                                         .contextMenu {
                                             Button(role: .destructive) {
-                                                context.delete(entry)
+                                                Task { await userStatsViewModel.deleteBodyMeasurement(entry.persistentModelID) }
                                             } label: {
                                                 Label(LocalizedStringKey("Delete"), systemImage: "trash")
                                             }
@@ -205,10 +206,10 @@ struct MeasurementEntryRow: View {
 }
 
 struct AddMeasurementSheet: View {
-    @Environment(\.modelContext) private var context
+    @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject var unitsManager: UnitsManager
-    
+    @Environment(UnitsManager.self) var unitsManager
+
     @State private var date = Date()
     
     @State private var neckStr = ""
@@ -289,18 +290,19 @@ struct AddMeasurementSheet: View {
     }
     
     private func save() {
-        let entry = BodyMeasurement(
-            date: date,
-            neck: parse(neckStr),
-            shoulders: parse(shouldersStr),
-            chest: parse(chestStr),
-            waist: parse(waistStr),
-            pelvis: parse(pelvisStr),
-            biceps: parse(bicepsStr),
-            thigh: parse(thighStr),
-            calves: parse(calvesStr)
-        )
-        context.insert(entry)
+        Task {
+            await userStatsViewModel.addBodyMeasurement(
+                neck: parse(neckStr),
+                shoulders: parse(shouldersStr),
+                chest: parse(chestStr),
+                waist: parse(waistStr),
+                pelvis: parse(pelvisStr),
+                biceps: parse(bicepsStr),
+                thigh: parse(thighStr),
+                calves: parse(calvesStr),
+                date: date
+            )
+        }
         dismiss()
     }
 }
