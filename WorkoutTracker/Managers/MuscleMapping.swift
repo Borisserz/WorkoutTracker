@@ -271,4 +271,14 @@ struct MuscleMapping {
         // 3. Если совсем ничего нет, возвращаем дефолт по группе
         return groupToMuscles[group] ?? []
     }
+    
+    static func isBackFacing(exerciseName: String) -> Bool {
+            let name = exerciseName.lowercased()
+            let backKeywords = [
+                "deadlift", "row", "pull", "chin", "tricep",
+                "glute", "hamstring", "calf", "calves", "back",
+                "good morning", "shrug"
+            ]
+            return backKeywords.contains { name.contains($0) }
+        }
 }

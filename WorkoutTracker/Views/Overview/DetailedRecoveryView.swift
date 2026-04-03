@@ -26,7 +26,7 @@ struct DetailedRecoveryView: View {
     @Environment(DIContainer.self) private var di // ✅ Заменили WorkoutViewModel на DIContainer
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
-    
+    @AppStorage("userGender") private var userGender = "male"
     @AppStorage("userRecoveryHours") private var storedRecoveryHours: Double = 48.0
     @State private var localRecoveryHours: Double = 48.0
     @State private var inMemoryWorkouts: [Workout] = []

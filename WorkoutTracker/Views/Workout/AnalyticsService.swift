@@ -17,40 +17,53 @@ actor AnalyticsService {
     
     // MARK: - Dashboard Caching
     func fetchDashboardCache() async throws -> DashboardCacheDTO {
-        let bgContext = ModelContext(modelContainer)
-        let exStats = (try? bgContext.fetch(FetchDescriptor<ExerciseStat>())) ?? []
-        let mStats = (try? bgContext.fetch(FetchDescriptor<MuscleStat>())) ?? []
-        
-        var partialLastPerformances: [String: Data] = [:]
-        var partialPRs: [String: Double] = [:]
-        var exerciseCounts: [String: Int] = [:]
-        var stats: [String: Int] = [:]
-        
-        for ex in exStats {
-            partialPRs[ex.exerciseName] = ex.maxWeight
-            exerciseCounts[ex.exerciseName] = ex.totalCount
-            if let data = ex.lastPerformanceDTO { partialLastPerformances[ex.exerciseName] = data }
-        }
-        for m in mStats { stats[m.muscleName] = m.totalCount }
-        
-        let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date())!
-        var recentDesc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= threeMonthsAgo }, sortBy: [SortDescriptor(\.date, order: .reverse)])
-        recentDesc.fetchLimit = 150
-        let recentWorkouts = (try? bgContext.fetch(recentDesc)) ?? []
-        
-        let recovery = calculateRecovery(hours: nil, workouts: recentWorkouts)
-        let sortedMuscleData = stats.map { MuscleCountDTO(muscle: $0.key, count: $0.value) }.filter { $0.count > 0 }.sorted { $0.count > $1.count }
-        let totalExCount = sortedMuscleData.reduce(0) { $0 + $1.count }
-        let topExercises = Array(exerciseCounts.sorted { $0.value > $1.value || ($0.value == $1.value && $0.key < $1.key) }.prefix(5)).map { ExerciseCountDTO(name: $0.key, count: $0.value) }
-        
-        let streak = calculateWorkoutStreak(workouts: recentWorkouts)
-        let bWeek = getBestStats(for: .week, workouts: recentWorkouts)
-        let bMonth = getBestStats(for: .month, workouts: recentWorkouts)
-        let weakPts = getWeakPoints(recentWorkouts: recentWorkouts)
-        let recs = getRecommendations(workouts: recentWorkouts, recoveryStatus: recovery)
-        
-        return DashboardCacheDTO(personalRecords: partialPRs, lastPerformances: partialLastPerformances, recoveryStatus: recovery, dashboardMuscleData: sortedMuscleData, dashboardTotalExercises: totalExCount, dashboardTopExercises: topExercises, streakCount: streak, bestWeekStats: bWeek, bestMonthStats: bMonth, weakPoints: weakPts, recommendations: recs)
-    }
+           let bgContext = ModelContext(modelContainer)
+           
+           // 1. Легковесная статистика (быстрые запросы)
+           let exStats = (try? bgContext.fetch(FetchDescriptor<ExerciseStat>())) ?? []
+           let mStats = (try? bgContext.fetch(FetchDescriptor<MuscleStat>())) ?? []
+           
+           var partialLastPerformances: [String: Data] = [:]
+           var partialPRs: [String: Double] = [:]
+           var exerciseCounts: [String: Int] = [:]
+           var stats: [String: Int] = [:]
+           
+           for ex in exStats {
+               partialPRs[ex.exerciseName] = ex.maxWeight
+               exerciseCounts[ex.exerciseName] = ex.totalCount
+               if let data = ex.lastPerformanceDTO { partialLastPerformances[ex.exerciseName] = data }
+           }
+           for m in mStats { stats[m.muscleName] = m.totalCount }
+           
+           // 2. Получаем тренировки за 3 месяца (для трендов и стрейков)
+           let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date())!
+           var recentDesc = FetchDescriptor<Workout>(
+               predicate: #Predicate<Workout> { $0.endTime != nil && $0.date >= threeMonthsAgo },
+               sortBy: [SortDescriptor(\.date, order: .reverse)]
+           )
+           recentDesc.fetchLimit = 150
+           // ОПТИМИЗАЦИЯ: НЕ подгружаем exercises сразу, чтобы не забить память
+           let recentWorkouts = (try? bgContext.fetch(recentDesc)) ?? []
+           
+           // 3. Выделяем срез только за последние 96 часов для Recovery (чтобы не парсить сеты за 3 месяца!)
+           let fullRecoveryHours = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue) > 0 ? UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue) : 48.0
+           let recoveryCutoffDate = Date().addingTimeInterval(-fullRecoveryHours * 3600)
+           let recoveryWorkouts = recentWorkouts.filter { $0.date >= recoveryCutoffDate }
+           
+           let recovery = calculateRecovery(hours: fullRecoveryHours, workouts: recoveryWorkouts)
+           
+           let sortedMuscleData = stats.map { MuscleCountDTO(muscle: $0.key, count: $0.value) }.filter { $0.count > 0 }.sorted { $0.count > $1.count }
+           let totalExCount = sortedMuscleData.reduce(0) { $0 + $1.count }
+           let topExercises = Array(exerciseCounts.sorted { $0.value > $1.value || ($0.value == $1.value && $0.key < $1.key) }.prefix(5)).map { ExerciseCountDTO(name: $0.key, count: $0.value) }
+           
+           let streak = calculateWorkoutStreak(workouts: recentWorkouts)
+           let bWeek = getBestStats(for: .week, workouts: recentWorkouts)
+           let bMonth = getBestStats(for: .month, workouts: recentWorkouts)
+           let weakPts = getWeakPoints(recentWorkouts: recentWorkouts)
+           let recs = getRecommendations(workouts: recentWorkouts, recoveryStatus: recovery)
+           
+           return DashboardCacheDTO(personalRecords: partialPRs, lastPerformances: partialLastPerformances, recoveryStatus: recovery, dashboardMuscleData: sortedMuscleData, dashboardTotalExercises: totalExCount, dashboardTopExercises: topExercises, streakCount: streak, bestWeekStats: bWeek, bestMonthStats: bMonth, weakPoints: weakPts, recommendations: recs)
+       }
 
     // MARK: - Stats View Data Fetching
     func fetchStatsData(
@@ -219,7 +232,6 @@ actor AnalyticsService {
                         var hasComp = false
                         
                         for sub in targets {
-                            sub.updateAggregates()
                             let completedSets = sub.setsList.filter { $0.isCompleted }
                             if !completedSets.isEmpty { hasComp = true }
                             
@@ -248,7 +260,7 @@ actor AnalyticsService {
                                 mStatsDict[sub.muscleGroup, default: 0] += 1
                             }
                         }
-                        exercise.updateAggregates()
+                        
                         if hasComp { totEff += exercise.effort; exComp += 1 }
                     }
                     
@@ -286,96 +298,75 @@ actor AnalyticsService {
     // MARK: - Internal Calculators
     
     func getAllPersonalRecords(workouts: [Workout], unitsManager: UnitsManager) -> [BestResult] {
-        var bests: [String: (result: Double, date: Date, type: ExerciseType)] = [:]
-        
-        for workout in workouts {
-            for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targetExercises {
-                    for set in ex.setsList where set.isCompleted && set.type != .warmup {
+            var bests: [String: (result: Double, date: Date, type: ExerciseType)] = [:]
+            
+            for workout in workouts {
+                for exercise in workout.exercises {
+                    let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targetExercises {
                         var currentValue: Double = 0
+                        
                         switch ex.type {
-                        case .strength: currentValue = set.weight ?? 0
-                        case .cardio:   currentValue = set.distance ?? 0
-                        case .duration: currentValue = Double(set.time ?? 0)
+                        case .strength:
+                            // 🚀 ОПТИМИЗАЦИЯ: Больше не дергаем setsList, берем закэшированный максимум!
+                            currentValue = ex.cachedMaxWeight
+                        case .cardio:
+                            // Кардио обычно состоит из 1 сета, но для надежности можно агрегировать безопасно
+                            currentValue = ex.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
+                        case .duration:
+                            currentValue = Double(ex.setsList.filter { $0.isCompleted }.compactMap { $0.time }.reduce(0, +))
                         }
+                        
                         if currentValue > (bests[ex.name]?.result ?? 0) {
                             bests[ex.name] = (result: currentValue, date: workout.date, type: ex.type)
                         }
                     }
                 }
             }
+            
+            return bests.map { name, data in
+                var valString = ""
+                switch data.type {
+                case .strength: valString = String(localized: "\(Int(data.result)) \(unitsManager.weightUnitString())")
+                case .cardio:
+                    let converted = unitsManager.convertFromMeters(data.result)
+                    valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(converted)) \(unitsManager.distanceUnitString())")
+                case .duration:
+                    let m = Int(data.result) / 60
+                    let s = Int(data.result) % 60
+                    let sStr = String(format: "%02d", s)
+                    valString = String(localized: "\(m):\(sStr) min")
+                }
+                return BestResult(exerciseName: name, value: valString, date: data.date, type: data.type)
+            }.sorted { $0.exerciseName < $1.exerciseName }
         }
-        return bests.map { name, data in
-            var valString = ""
-            switch data.type {
-            case .strength: valString = String(localized: "\(Int(data.result)) \(unitsManager.weightUnitString())")
-            case .cardio:
-                let converted = unitsManager.convertFromMeters(data.result)
-                valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(converted)) \(unitsManager.distanceUnitString())")
-            case .duration:
-                let m = Int(data.result) / 60
-                let s = Int(data.result) % 60
-                let sStr = String(format: "%02d", s)
-                valString = String(localized: "\(m):\(sStr) min")
-            }
-            return BestResult(exerciseName: name, value: valString, date: data.date, type: data.type)
-        }.sorted { $0.exerciseName < $1.exerciseName }
-    }
     
-    func calculateWorkoutStreak(workouts: [Workout]) -> Int {
-        guard !workouts.isEmpty else { return 0 }
-        let maxRestDaysAllowed = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue)
-        let maxRestDays = maxRestDaysAllowed > 0 ? maxRestDaysAllowed : 2
-        
-        let sortedWorkouts = workouts.sorted(by: { $0.date > $1.date })
-        let calendar = Calendar.current
-        var uniqueWorkoutDays: [Date] = []
-        
-        for workout in sortedWorkouts {
-            if !uniqueWorkoutDays.contains(where: { calendar.isDate($0, inSameDayAs: workout.date) }) {
-                uniqueWorkoutDays.append(workout.date)
-            }
+    // Теперь Actor просто собирает даты и делегирует расчет:
+        func calculateWorkoutStreak(workouts: [Workout]) -> Int {
+            let maxRestDaysAllowed = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue)
+            let maxRestDays = maxRestDaysAllowed > 0 ? maxRestDaysAllowed : 2
+            
+            // Маппим только даты, снижая нагрузку на память (избегаем загрузки графов отношений)
+            let workoutDates = workouts.map { $0.date }
+            
+            return StreakCalculator.calculate(from: workoutDates, maxRestDays: maxRestDays)
         }
-        
-        if uniqueWorkoutDays.isEmpty { return 0 }
-        let mostRecentWorkoutDate = uniqueWorkoutDays[0]
-        if calendar.dateComponents([.day], from: mostRecentWorkoutDate, to: Date()).day ?? 0 > maxRestDays { return 0 }
-        
-        var currentStreak = 1
-        var lastDate = mostRecentWorkoutDate
-        guard uniqueWorkoutDays.count > 1 else { return 1 }
-        
-        for i in 1..<uniqueWorkoutDays.count {
-            let currentDate = uniqueWorkoutDays[i]
-            let daysBetween = calendar.dateComponents([.day], from: currentDate, to: lastDate).day ?? 0
-            if daysBetween <= maxRestDays + 1 {
-                currentStreak += 1; lastDate = currentDate
-            } else { break }
-        }
-        return currentStreak
-    }
     
     func getStats(for dateInterval: DateInterval, workouts: [Workout]) -> PeriodStats {
-        var stats = PeriodStats()
-        let relevantWorkouts = workouts.filter { dateInterval.contains($0.date) }
-        stats.workoutCount = relevantWorkouts.count
-        for workout in relevantWorkouts {
-            stats.totalDuration += (workout.durationSeconds / 60)
-            for exercise in workout.exercises {
-                stats.totalVolume += exercise.exerciseVolume
-                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targetExercises {
-                    let reps = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.reps }.reduce(0, +)
-                    stats.totalReps += reps
-                    let dist = ex.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
-                    stats.totalDistance += dist
-                }
+            var stats = PeriodStats()
+            let relevantWorkouts = workouts.filter { dateInterval.contains($0.date) }
+            stats.workoutCount = relevantWorkouts.count
+            
+            for workout in relevantWorkouts {
+                stats.totalDuration += (workout.durationSeconds / 60)
+                
+                // ✅ ИСПОЛЬЗУЕМ КЭШ: Доступ к данным теперь O(1)
+                stats.totalVolume += workout.totalStrengthVolume
+                stats.totalDistance += workout.totalCardioDistance
+                stats.totalReps += workout.totalReps
             }
+            return stats
         }
-        return stats
-    }
-    
     func getBestStats(for periodType: StatsView.Period, workouts: [Workout]) -> PeriodStats {
         guard !workouts.isEmpty else { return PeriodStats() }
         var bestStats = PeriodStats()
@@ -396,27 +387,28 @@ actor AnalyticsService {
     }
     
     func getRecentPRs(in interval: DateInterval, workouts: [Workout], allTimePRs: [String: Double]) -> [PersonalRecord] {
-        var records: [PersonalRecord] = []
-        let workoutsInPeriod = workouts.filter { interval.contains($0.date) }.sorted(by: { $0.date < $1.date })
-        
-        for workout in workoutsInPeriod {
-            for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targetExercises where ex.type == .strength {
-                    let maxWeight = ex.setsList.filter { $0.type != .warmup && $0.isCompleted }.compactMap { $0.weight }.max() ?? 0
-                    if maxWeight > 0 {
-                        let currentPR = allTimePRs[ex.name] ?? 0
-                        if maxWeight >= currentPR {
-                            let newPR = PersonalRecord(exerciseName: ex.name, weight: maxWeight, date: workout.date)
-                            records.removeAll { $0.exerciseName == newPR.exerciseName }
-                            records.append(newPR)
+            var records: [PersonalRecord] = []
+            let workoutsInPeriod = workouts.filter { interval.contains($0.date) }.sorted(by: { $0.date < $1.date })
+            
+            for workout in workoutsInPeriod {
+                for exercise in workout.exercises {
+                    let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targetExercises where ex.type == .strength {
+                        // ✅ ИСПОЛЬЗУЕМ КЭШ: Не дергаем setsList!
+                        let maxWeight = ex.cachedMaxWeight
+                        if maxWeight > 0 {
+                            let currentPR = allTimePRs[ex.name] ?? 0
+                            if maxWeight >= currentPR {
+                                let newPR = PersonalRecord(exerciseName: ex.name, weight: maxWeight, date: workout.date)
+                                records.removeAll { $0.exerciseName == newPR.exerciseName }
+                                records.append(newPR)
+                            }
                         }
                     }
                 }
             }
+            return records.sorted(by: { $0.date > $1.date })
         }
-        return records.sorted(by: { $0.date > $1.date })
-    }
     
     func getChartData(for period: StatsView.Period, metric: StatsView.GraphMetric, workouts: [Workout]) -> [ChartDataPoint] {
         let calendar = Calendar.current
@@ -501,139 +493,153 @@ actor AnalyticsService {
     }
     
     func getExerciseTrends(workouts: [Workout], period: StatsView.Period = .month) -> [ExerciseTrend] {
-        let calendar = Calendar.current
-        let now = Date()
-        var currentInterval: DateInterval, previousInterval: DateInterval
-        switch period {
-        case .week:
-            currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
-            previousInterval = calendar.dateInterval(of: .weekOfYear, for: calendar.date(byAdding: .day, value: -7, to: now)!)!
-        case .month:
-            currentInterval = calendar.dateInterval(of: .month, for: now)!
-            previousInterval = calendar.dateInterval(of: .month, for: calendar.date(byAdding: .month, value: -1, to: now)!)!
-        case .year:
-            currentInterval = calendar.dateInterval(of: .year, for: now)!
-            previousInterval = calendar.dateInterval(of: .year, for: calendar.date(byAdding: .year, value: -1, to: now)!)!
-        }
-        let currentWorkouts = workouts.filter { currentInterval.contains($0.date) }
-        let previousWorkouts = workouts.filter { previousInterval.contains($0.date) }
-        var exerciseData: [String: (current: Double, previous: Double, count: Int)] = [:]
-        
-        let processWorkouts = { (works: [Workout], isCurrent: Bool) in
-            for workout in works {
-                for exercise in workout.exercises {
-                    let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                    for ex in targetExercises where ex.type == .strength {
-                        let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-                        if maxWeight > 0 {
-                            let existing = exerciseData[ex.name] ?? (0, 0, 0)
-                            if isCurrent { exerciseData[ex.name] = (max(existing.current, maxWeight), existing.previous, existing.count + 1) } else { exerciseData[ex.name] = (existing.current, max(existing.previous, maxWeight), existing.count) }
+            let calendar = Calendar.current
+            let now = Date()
+            var currentInterval: DateInterval, previousInterval: DateInterval
+            
+            switch period {
+            case .week:
+                currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
+                previousInterval = calendar.dateInterval(of: .weekOfYear, for: calendar.date(byAdding: .day, value: -7, to: now)!)!
+            case .month:
+                currentInterval = calendar.dateInterval(of: .month, for: now)!
+                previousInterval = calendar.dateInterval(of: .month, for: calendar.date(byAdding: .month, value: -1, to: now)!)!
+            case .year:
+                currentInterval = calendar.dateInterval(of: .year, for: now)!
+                previousInterval = calendar.dateInterval(of: .year, for: calendar.date(byAdding: .year, value: -1, to: now)!)!
+            }
+            
+            let currentWorkouts = workouts.filter { currentInterval.contains($0.date) }
+            let previousWorkouts = workouts.filter { previousInterval.contains($0.date) }
+            var exerciseData: [String: (current: Double, previous: Double, count: Int)] = [:]
+            
+            let processWorkouts = { (works: [Workout], isCurrent: Bool) in
+                for workout in works {
+                    for exercise in workout.exercises {
+                        let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                        for ex in targetExercises where ex.type == .strength {
+                            // 🚀 ОПТИМИЗАЦИЯ: Моментальное чтение закэшированного максимума
+                            let maxWeight = ex.cachedMaxWeight
+                            if maxWeight > 0 {
+                                let existing = exerciseData[ex.name] ?? (0, 0, 0)
+                                if isCurrent {
+                                    exerciseData[ex.name] = (max(existing.current, maxWeight), existing.previous, existing.count + 1)
+                                } else {
+                                    exerciseData[ex.name] = (existing.current, max(existing.previous, maxWeight), existing.count)
+                                }
+                            }
                         }
                     }
                 }
             }
+            
+            processWorkouts(currentWorkouts, true)
+            processWorkouts(previousWorkouts, false)
+            
+            var trends: [ExerciseTrend] = []
+            for (name, data) in exerciseData where data.current > 0 || data.previous > 0 {
+                let change: Double
+                let direction: TrendDirection
+                if data.previous == 0 { change = 100.0; direction = .growing }
+                else if data.current == 0 { change = -100.0; direction = .declining }
+                else {
+                    change = ((data.current - data.previous) / data.previous) * 100.0
+                    direction = abs(change) < 2.0 ? .stable : (change > 0 ? .growing : .declining)
+                }
+                trends.append(ExerciseTrend(exerciseName: name, trend: direction, changePercentage: change, currentValue: data.current, previousValue: data.previous, period: period.rawValue))
+            }
+            
+            return trends.sorted { t1, t2 in
+                if t1.trend == .growing && t2.trend != .growing { return true }
+                if t1.trend != .growing && t2.trend == .growing { return false }
+                return abs(t1.changePercentage) > abs(t2.changePercentage)
+            }
         }
-        processWorkouts(currentWorkouts, true)
-        processWorkouts(previousWorkouts, false)
-        
-        var trends: [ExerciseTrend] = []
-        for (name, data) in exerciseData where data.current > 0 || data.previous > 0 {
-            let change: Double
-            let direction: TrendDirection
-            if data.previous == 0 { change = 100.0; direction = .growing }
-            else if data.current == 0 { change = -100.0; direction = .declining }
-            else { change = ((data.current - data.previous) / data.previous) * 100.0; direction = abs(change) < 2.0 ? .stable : (change > 0 ? .growing : .declining) }
-            trends.append(ExerciseTrend(exerciseName: name, trend: direction, changePercentage: change, currentValue: data.current, previousValue: data.previous, period: period.rawValue))
-        }
-        return trends.sorted { t1, t2 in
-            if t1.trend == .growing && t2.trend != .growing { return true }
-            if t1.trend != .growing && t2.trend == .growing { return false }
-            return abs(t1.changePercentage) > abs(t2.changePercentage)
-        }
-    }
-    
     func getProgressForecast(workouts: [Workout], daysAhead: Int = 30) -> [ProgressForecast] {
-        let now = Date()
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -90, to: now)!
-        let recentWorkouts = workouts.filter { $0.date >= cutoffDate }
-        var history: [String: [(date: Date, maxWeight: Double)]] = [:]
-        
-        for workout in recentWorkouts {
-            for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targetExercises where ex.type == .strength {
-                    let maxWeight = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-                    if maxWeight > 0 { history[ex.name, default: []].append((date: workout.date, maxWeight: maxWeight)) }
-                }
-            }
-        }
-        return history.compactMap { name, data -> ProgressForecast? in
-            guard data.count >= 3 else { return nil }
-            let sorted = data.sorted { $0.date < $1.date }
-            let currentMax = sorted.last!.maxWeight
-            let daysFromStart = sorted.map { now.timeIntervalSince($0.date) / 86400 }
-            let weights = sorted.map { $0.maxWeight }
+            let now = Date()
+            let cutoffDate = Calendar.current.date(byAdding: .day, value: -90, to: now)!
+            let recentWorkouts = workouts.filter { $0.date >= cutoffDate }
+            var history: [String: [(date: Date, maxWeight: Double)]] = [:]
             
-            var totalInc = 0.0, totalDays = 0.0, posChanges = 0, negChanges = 0
-            for i in 1..<sorted.count {
-                let daysDiff = abs(daysFromStart[i] - daysFromStart[i-1])
-                if daysDiff > 0 {
-                    let wDiff = weights[i] - weights[i-1]
-                    totalInc += wDiff; totalDays += daysDiff
-                    if wDiff > 0 { posChanges += 1 } else if wDiff < 0 { negChanges += 1 }
-                }
-            }
-            let avgInc = totalDays > 0 ? totalInc / totalDays : 0
-            let predMax = max(currentMax, currentMax + (avgInc * Double(daysAhead)))
-            let dataScore = min(70, max(30, sorted.count * 8))
-            let trendBonus = avgInc > 0 ? 15 : 0
-            let totalChanges = posChanges + negChanges
-            let consistencyBonus = totalChanges > 0 ? (Double(posChanges)/Double(totalChanges) >= 0.7 ? 15 : (Double(posChanges)/Double(totalChanges) >= 0.5 ? 5 : -10)) : 0
-            let timeSpanBonus = min(10, Int((daysFromStart.first! - daysFromStart.last!) / 30))
-            
-            let confidence = min(100, max(30, dataScore + trendBonus + consistencyBonus + timeSpanBonus))
-            return ProgressForecast(exerciseName: name, currentMax: currentMax, predictedMax: predMax, confidence: confidence, timeframe: String(localized: "\(daysAhead) days"))
-        }.sorted { $0.predictedMax > $1.predictedMax }
-    }
-    
-    func getWeakPoints(recentWorkouts: [Workout]) -> [WeakPoint] {
-        if recentWorkouts.isEmpty { return [] }
-        var muscleData: [String: (frequency: Int, totalVolume: Double)] = [:]
-        for workout in recentWorkouts {
-            var uniqueMuscles = Set<String>()
-            for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targetExercises where ex.type == .strength {
-                    let muscles = MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup)
-                    for muscle in muscles {
-                        uniqueMuscles.insert(muscle)
-                        let existing = muscleData[muscle] ?? (0, 0)
-                        muscleData[muscle] = (existing.frequency, existing.totalVolume + ex.exerciseVolume)
+            for workout in recentWorkouts {
+                for exercise in workout.exercises {
+                    let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targetExercises where ex.type == .strength {
+                        // 🚀 ОПТИМИЗАЦИЯ: И снова берем вес из кэша
+                        let maxWeight = ex.cachedMaxWeight
+                        if maxWeight > 0 {
+                            history[ex.name, default: []].append((date: workout.date, maxWeight: maxWeight))
+                        }
                     }
                 }
             }
-            for muscle in uniqueMuscles {
-                let existing = muscleData[muscle] ?? (0, 0)
-                muscleData[muscle] = (existing.frequency + 1, existing.totalVolume)
-            }
+            
+            return history.compactMap { name, data -> ProgressForecast? in
+                guard data.count >= 3 else { return nil }
+                let sorted = data.sorted { $0.date < $1.date }
+                let currentMax = sorted.last!.maxWeight
+                let daysFromStart = sorted.map { now.timeIntervalSince($0.date) / 86400 }
+                let weights = sorted.map { $0.maxWeight }
+                
+                var totalInc = 0.0, totalDays = 0.0, posChanges = 0, negChanges = 0
+                for i in 1..<sorted.count {
+                    let daysDiff = abs(daysFromStart[i] - daysFromStart[i-1])
+                    if daysDiff > 0 {
+                        let wDiff = weights[i] - weights[i-1]
+                        totalInc += wDiff; totalDays += daysDiff
+                        if wDiff > 0 { posChanges += 1 } else if wDiff < 0 { negChanges += 1 }
+                    }
+                }
+                
+                let avgInc = totalDays > 0 ? totalInc / totalDays : 0
+                let predMax = max(currentMax, currentMax + (avgInc * Double(daysAhead)))
+                let dataScore = min(70, max(30, sorted.count * 8))
+                let trendBonus = avgInc > 0 ? 15 : 0
+                let totalChanges = posChanges + negChanges
+                let consistencyBonus = totalChanges > 0 ? (Double(posChanges)/Double(totalChanges) >= 0.7 ? 15 : (Double(posChanges)/Double(totalChanges) >= 0.5 ? 5 : -10)) : 0
+                let timeSpanBonus = min(10, Int((daysFromStart.first! - daysFromStart.last!) / 30))
+                
+                let confidence = min(100, max(30, dataScore + trendBonus + consistencyBonus + timeSpanBonus))
+                return ProgressForecast(exerciseName: name, currentMax: currentMax, predictedMax: predMax, confidence: confidence, timeframe: String(localized: "\(daysAhead) days"))
+            }.sorted { $0.predictedMax > $1.predictedMax }
         }
-        let count = Double(max(muscleData.count, 1))
-        let avgFreq = muscleData.values.map { Double($0.frequency) }.reduce(0, +) / count
-        let avgVol = muscleData.values.map { $0.totalVolume }.reduce(0, +) / count
-        
-        let names: [String: String] = ["chest": String(localized: "Chest"), "upper-back": String(localized: "Back"), "lower-back": String(localized: "Lower Back"), "deltoids": String(localized: "Shoulders"), "biceps": String(localized: "Biceps"), "triceps": String(localized: "Triceps"), "abs": String(localized: "Abs"), "gluteal": String(localized: "Glutes"), "hamstring": String(localized: "Hamstrings"), "quadriceps": String(localized: "Legs"), "calves": String(localized: "Calves")]
-        
-        var weakPoints: [WeakPoint] = []
-        for (slug, data) in muscleData {
-            let freq = data.frequency
-            let vol = data.totalVolume / Double(max(freq, 1))
-            if Double(freq) < avgFreq * 0.7 || vol < avgVol * 0.7 {
-                let rec = freq == 0 ? String(localized: "Start training this muscle group") : (Double(freq) < avgFreq * 0.5 ? String(localized: "Increase training frequency") : String(localized: "Increase training volume"))
-                weakPoints.append(WeakPoint(id: UUID(), muscleGroup: names[slug] ?? slug.capitalized, frequency: freq, averageVolume: vol, recommendation: rec))
+    
+    func getWeakPoints(recentWorkouts: [Workout]) -> [WeakPoint] {
+            if recentWorkouts.isEmpty { return [] }
+            
+            // 1. Только агрегация сырых данных в памяти (быстро и безопасно)
+            var muscleMap: [String: (freq: Int, vol: Double)] = [:]
+            
+            for workout in recentWorkouts {
+                var uniqueMusclesForWorkout = Set<String>()
+                
+                for exercise in workout.exercises {
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targets where ex.type == .strength {
+                        let muscles = MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup)
+                        for muscle in muscles {
+                            uniqueMusclesForWorkout.insert(muscle)
+                            let current = muscleMap[muscle] ?? (0, 0.0)
+                            muscleMap[muscle] = (current.freq, current.vol + ex.cachedVolume)
+                        }
+                    }
+                }
+                
+                // Увеличиваем частоту (frequency) тренировки мышцы на 1 за саму тренировку
+                for muscle in uniqueMusclesForWorkout {
+                    let current = muscleMap[muscle] ?? (0, 0.0)
+                    muscleMap[muscle] = (current.freq + 1, current.vol)
+                }
             }
+            
+            // 2. Преобразуем в DTO
+            let rawData = muscleMap.map {
+                WeakPointCalculator.MuscleRawData(slug: $0.key, frequency: $0.value.freq, totalVolume: $0.value.vol)
+            }
+            
+            // 3. Делегируем математику чистой функции
+            return WeakPointCalculator.calculate(from: rawData)
         }
-        return weakPoints.sorted { $0.frequency < $1.frequency }
-    }
     
     func getRecommendations(workouts: [Workout], recoveryStatus: [MuscleRecoveryStatus]) -> [Recommendation] {
         var recs: [Recommendation] = []
@@ -682,34 +688,39 @@ actor AnalyticsService {
         return comp
     }
     
-    func calculateRecovery(hours: Double?, workouts: [Workout]) -> [MuscleRecoveryStatus] {
-        var rawFatigueMap: [String: Double] = [:]
-        let fullRecoveryHours = hours ?? (UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue) > 0 ? UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue) : 48.0)
-        let cutoffDate = Date().addingTimeInterval(-fullRecoveryHours * 3600)
-        
-        for workout in workouts.filter({ $0.date >= cutoffDate && !$0.isActive }).sorted(by: { $0.date < $1.date }) {
-            let hoursSince = max(0, Date().timeIntervalSince(workout.date) / 3600)
-            if hoursSince >= fullRecoveryHours { continue }
-            let timeDecay = hoursSince / fullRecoveryHours
+    func calculateRecovery(hours: Double, workouts: [Workout]) -> [MuscleRecoveryStatus] {
+            var rawFatigueMap: [String: Double] = [:]
             
-            for exercise in workout.exercises {
-                let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for ex in targetExercises {
-                    var initialFatigue = Double(ex.effort) / 10.0
-                    let completedSets = ex.setsList.filter { $0.isCompleted }.count
-                    let actualSetsCount = completedSets > 0 ? completedSets : ex.setsCount
-                    if actualSetsCount < 3 { initialFatigue *= 0.7 }
-                    let currentFatigue = max(0.0, initialFatigue - timeDecay)
-                    for slug in MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup) { rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, currentFatigue) }
+            for workout in workouts.filter({ !$0.isActive }).sorted(by: { $0.date < $1.date }) {
+                let hoursSince = max(0, Date().timeIntervalSince(workout.date) / 3600)
+                if hoursSince >= hours { continue }
+                let timeDecay = hoursSince / hours
+                
+                for exercise in workout.exercises {
+                    let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targetExercises {
+                        var initialFatigue = Double(ex.effort) / 10.0
+                        
+                        // 🚀 ОПТИМИЗАЦИЯ N+1: Берем кэшированное количество сетов (не дергая связи!)
+                        let completedSets = ex.setsCount
+                        
+                        if completedSets < 3 { initialFatigue *= 0.7 }
+                        let currentFatigue = max(0.0, initialFatigue - timeDecay)
+                        for slug in MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup) {
+                            rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, currentFatigue)
+                        }
+                    }
                 }
             }
+            
+            let allSlugs = ["chest", "obliques", "abs", "biceps", "triceps", "neck", "trapezius", "deltoids", "adductors", "quadriceps", "knees", "tibialis", "calves", "forearm", "hands", "ankles", "feet", "head", "hair", "upper-back", "lower-back", "gluteal", "hamstring"]
+            var displayFatigueMap: [String: Double] = [:]
+            for slug in allSlugs { displayFatigueMap[slug] = rawFatigueMap[slug] ?? 0.0 }
+            
+            return displayFatigueMap.map { slug, fatigue in
+                MuscleRecoveryStatus(muscleGroup: slug, recoveryPercentage: max(0, min(100, Int((1.0 - fatigue) * 100))))
+            }
         }
-        let allSlugs = ["chest", "obliques", "abs", "biceps", "triceps", "neck", "trapezius", "deltoids", "adductors", "quadriceps", "knees", "tibialis", "calves", "forearm", "hands", "ankles", "feet", "head", "hair", "upper-back", "lower-back", "gluteal", "hamstring"]
-        var displayFatigueMap: [String: Double] = [:]
-        for slug in allSlugs { displayFatigueMap[slug] = rawFatigueMap[slug] ?? 0.0 }
-        
-        return displayFatigueMap.map { slug, fatigue in MuscleRecoveryStatus(muscleGroup: slug, recoveryPercentage: max(0, min(100, Int((1.0 - fatigue) * 100)))) }
-    }
     
     // В файле AnalyticsService.swift, внутри `actor AnalyticsService`
 

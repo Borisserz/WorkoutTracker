@@ -1,4 +1,3 @@
-
 internal import SwiftUI
 import SwiftData
 import PhotosUI
@@ -18,8 +17,9 @@ struct ProfileView: View {
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
     
-    @State private var profileVM: ProfileViewModel?
-    @State private var userStatsViewModel: UserStatsViewModel?
+    // ✅ ИСПОЛЬЗУЕМ СТРОГИЕ НЕ-ОПЦИОНАЛЬНЫЕ ЗАВИСИМОСТИ
+    @Environment(ProfileViewModel.self) private var profileVM
+    @Environment(UserStatsViewModel.self) private var userStatsViewModel
     
     @State private var selectedAchievement: Achievement?
     @State private var showingWeightHistory = false
@@ -30,47 +30,39 @@ struct ProfileView: View {
     @State private var profileImage: UIImage?
     
     var body: some View {
-        ZStack {
-            NavigationStack {
-                mainContent
-            }
-            if let achievement = selectedAchievement {
-                AchievementPopupView(achievement: achievement) { withAnimation { selectedAchievement = nil } }
-                    .transition(.opacity.combined(with: .scale(scale: 0.9))).zIndex(100)
+            ZStack {
+                NavigationStack {
+                    mainContent
+                }
+                if let achievement = selectedAchievement {
+                    AchievementPopupView(achievement: achievement) { withAnimation { selectedAchievement = nil } }
+                        .transition(.opacity.combined(with: .scale(scale: 0.9))).zIndex(100)
+                }
             }
         }
-    }
-    
-    @ViewBuilder
-    private var mainContent: some View {
-        if let pVM = profileVM, let usVM = userStatsViewModel {
+        
+        @ViewBuilder
+        private var mainContent: some View {
             ScrollView {
                 VStack(spacing: 25) {
-                    headerSection(usVM: usVM)
-                    if let forecast = pVM.topForecast { forecastBanner(forecast) }
-                    achievementsSection(pVM: pVM)
+                    headerSection(usVM: userStatsViewModel)
+                    if let forecast = profileVM.topForecast { forecastBanner(forecast) }
+                    achievementsSection(pVM: profileVM)
                     Divider()
-                    recordsSection(pVM: pVM)
+                    recordsSection(pVM: profileVM)
                 }.padding(.bottom, 40)
             }
             .navigationTitle(LocalizedStringKey("Profile"))
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(LocalizedStringKey("Close")) { dismiss() } } }
-            .sheet(isPresented: $showingWeightHistory) { WeightHistoryView().environment(usVM) }
-            .sheet(isPresented: $showingMeasurements) { BodyMeasurementsView().environment(usVM) }
+            .sheet(isPresented: $showingWeightHistory) { WeightHistoryView() }
+            .sheet(isPresented: $showingMeasurements) { BodyMeasurementsView() }
             .alert(LocalizedStringKey("Update Body Weight"), isPresented: $showEditWeight) {
                 TextField("Weight", text: $newWeightString).keyboardType(.decimalPad)
-                Button("Save") { saveNewWeight(usVM: usVM) }
+                Button("Save") { saveNewWeight(usVM: userStatsViewModel) }
                 Button("Cancel", role: .cancel) { }
             } message: { Text("Enter your current weight in \(unitsManager.weightUnitString())") }
-            .onAppear { loadInitialData(pVM: pVM, usVM: usVM) }
-        } else {
-            ProgressView("Loading Profile...")
-                .task {
-                    self.profileVM = di.makeProfileViewModel()
-                    self.userStatsViewModel = di.makeUserStatsViewModel()
-                }
+            .onAppear { loadInitialData(pVM: profileVM, usVM: userStatsViewModel) }
         }
-    }
     
     @ViewBuilder
     private func headerSection(usVM: UserStatsViewModel) -> some View {

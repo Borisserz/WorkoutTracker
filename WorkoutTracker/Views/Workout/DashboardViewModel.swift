@@ -29,9 +29,10 @@ final class DashboardViewModel {
     private let analyticsService: AnalyticsService
     
     init(analyticsService: AnalyticsService) {
-        self.analyticsService = analyticsService
-        Task { for await _ in await WorkoutEventBus.shared.updates { self.refreshAllCaches() } }
-    }
+            self.analyticsService = analyticsService
+            // ❌ УДАЛИЛ: Task { for await _ in await WorkoutEventBus.shared.updates ... }
+        }
+        
     
     func refreshAllCaches() {
         Task {

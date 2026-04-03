@@ -1,25 +1,17 @@
-//
-//  ExerciseListView.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Exercise/ExerciseListView.swift
+// ============================================================
 
 internal import SwiftUI
 internal import UniformTypeIdentifiers
-import SwiftData
 
 struct ExerciseListView: View {
     @Bindable var workout: Workout
     @Binding var expandedExercises: [UUID: Bool]
     @Binding var draggedExercise: Exercise?
     
-    // ✅ ИСПРАВЛЕНИЕ: Изменен тип на WorkoutService
-    @Environment(WorkoutService.self) var workoutService
+    // ✅ ИСПРАВЛЕНИЕ: Оставляем только локальный ViewModel
     @Environment(WorkoutDetailViewModel.self) var viewModel
-    @Environment(CatalogViewModel.self) var catalogViewModel
-    @Environment(DashboardViewModel.self) var dashboardViewModel
-    @Environment(TutorialManager.self) var tutorialManager
-    @Environment(UnitsManager.self) var unitsManager
-    @Environment(\.modelContext) private var context
     
     var scrollToExerciseId: (UUID?) -> Void
     
@@ -95,7 +87,6 @@ struct ExerciseListView: View {
             }
         }
         
-        // ✅ ИСПРАВЛЕНИЕ: Удален аргумент `modelContainer`, теперь он не нужен
         viewModel.updateWorkoutAnalytics(for: workout)
     }
 }

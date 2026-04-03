@@ -106,7 +106,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				Views/Workout/Untitled.swift,
 			);
 			target = ACE68CD82EFBFD1900FD186D /* WorkoutTracker */;
 		};

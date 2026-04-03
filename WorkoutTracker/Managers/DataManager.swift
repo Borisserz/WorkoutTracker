@@ -1,65 +1,37 @@
+// ============================================================
+// FILE: WorkoutTracker/Managers/DataManager.swift
+// ============================================================
+
 import Foundation
 
-// 🎼 Убран @MainActor. Класс сделан final и Sendable, так как не имеет изменяемого состояния.
-// Теперь сложные операции экспорта честно отрабатывают в фоновых потоках.
+/// Очищенный и оптимизированный DataManager.
+/// Использует встроенный Codable вместо ручного маппинга словарей.
 final class DataManager: Sendable {
     static let shared = DataManager()
     
     private init() {}
     
-    // Заглушки, чтобы не ломать старые вызовы
-    func saveWorkouts(_ workouts: [Workout], onError: ((Error) -> Void)? = nil) { }
-    func loadWorkouts(onComplete: @escaping (Result<[Workout], Error>) -> Void) {
-        onComplete(.success([]))
-    }
-    
-    // MARK: - Export to JSON (Manual mapping for @Model objects)
+    // MARK: - Export to JSON
     func exportAllDataAsJSON(workouts: [Workout]) -> URL? {
-        // Поскольку объекты @Model не поддерживают Codable автоматически,
-        // маппим их в обычные словари (DTO - Data Transfer Objects).
-        let workoutsDictArray = workouts.map { workout -> [String: Any] in
-            return [
-                "id": workout.id.uuidString,
-                "title": workout.title,
-                "date": workout.date.timeIntervalSince1970,
-                "endTime": workout.endTime?.timeIntervalSince1970 ?? NSNull(),
-                "icon": workout.icon,
-                "isFavorite": workout.isFavorite,
-                "exercises": workout.exercises.map { exercise in
-                    return [
-                        "id": exercise.id.uuidString,
-                        "name": exercise.name,
-                        "muscleGroup": exercise.muscleGroup,
-                        "type": exercise.type.rawValue,
-                        "effort": exercise.effort,
-                        "isCompleted": exercise.isCompleted,
-                        "sets": exercise.setsList.map { set in
-                            return [
-                                "id": set.id.uuidString,
-                                "index": set.index,
-                                "weight": set.weight ?? NSNull(),
-                                "reps": set.reps ?? NSNull(),
-                                "distance": set.distance ?? NSNull(),
-                                "time": set.time ?? NSNull(),
-                                "isCompleted": set.isCompleted,
-                                "type": set.type.rawValue
-                            ]
-                        }
-                    ]
-                }
-            ]
-        }
+        let dtos = workouts.map { $0.toDTO() }
+        
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .prettyPrinted
+        encoder.dateEncodingStrategy = .iso8601
         
         do {
-            let jsonData = try JSONSerialization.data(withJSONObject: workoutsDictArray, options: .prettyPrinted)
+            let jsonData = try encoder.encode(dtos)
+            
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
             let fileName = "WorkoutTracker_Export_\(dateFormatter.string(from: Date())).json"
+            
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try jsonData.write(to: tempURL)
+            
             return tempURL
         } catch {
-            print("Failed to encode JSON: \(error.localizedDescription)")
+            print("❌ Failed to encode JSON: \(error.localizedDescription)")
             return nil
         }
     }
@@ -92,7 +64,7 @@ final class DataManager: Sendable {
         csvLines.append("")
         
         // 3. Сеты
-        csvLines.append("## SETS\nSet ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (km),Time (sec),Is Completed,Set Type")
+        csvLines.append("## SETS\nSet ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (m),Time (sec),Is Completed,Set Type")
         for workout in workouts {
             for exercise in workout.exercises {
                 for set in exercise.setsList {
@@ -114,13 +86,14 @@ final class DataManager: Sendable {
             try csvData.write(to: tempURL)
             return tempURL
         } catch {
+            print("❌ Failed to encode CSV: \(error.localizedDescription)")
             return nil
         }
     }
     
     private func escapeCSV(_ string: String) -> String {
         if string.contains(",") || string.contains("\"") || string.contains("\n") {
-            return string.replacingOccurrences(of: "\"", with: "\"\"")
+            return "\"\(string.replacingOccurrences(of: "\"", with: "\"\""))\""
         }
         return string
     }

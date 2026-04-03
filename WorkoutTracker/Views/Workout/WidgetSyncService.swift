@@ -1,7 +1,6 @@
-
 import Foundation
 import SwiftData
-import WidgetKit // Для обновления виджетов
+import WidgetKit
 
 actor WidgetSyncService {
     private let workoutStore: WorkoutStoreProtocol
@@ -10,16 +9,11 @@ actor WidgetSyncService {
     init(workoutStore: WorkoutStoreProtocol, modelContainer: ModelContainer) {
         self.workoutStore = workoutStore
         self.modelContainer = modelContainer
-        
-        Task { await listenForUpdates() }
     }
     
-    private func listenForUpdates() async {
-        for await _ in await WorkoutEventBus.shared.updates {
-            await updateWidgetData()
-        }
-    }
+    // ❌ УДАЛЕНА ФУНКЦИЯ listenForUpdates()
     
+    // ✅ ЭТОТ МЕТОД ТЕПЕРЬ БУДЕТ ВЫЗЫВАТЬСЯ ВРУЧНУЮ ПРИ НЕОБХОДИМОСТИ
     func updateWidgetData() async {
         let bgContext = ModelContext(modelContainer)
         let sixWeeksAgo = Calendar.current.date(byAdding: .weekOfYear, value: -6, to: Date())!
@@ -44,6 +38,7 @@ actor WidgetSyncService {
         WidgetCenter.shared.reloadAllTimelines()
     }
     
+    // (calculateWorkoutStreak остается без изменений)
     private func calculateWorkoutStreak(workouts: [Workout]) -> Int {
         guard !workouts.isEmpty else { return 0 }
         let maxRestDaysAllowed = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue)

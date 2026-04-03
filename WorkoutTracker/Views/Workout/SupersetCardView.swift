@@ -1,20 +1,12 @@
-//
-//  SupersetCardView.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Workout/SupersetCardView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
 
-// (PRCelebrationView и структуры оставляем как есть, меняем только сам SupersetCardView)
-
-// ... Весь код до SupersetCardView включительно остается без изменений ...
-
 struct SupersetCardView: View {
-    @Environment(\.modelContext) private var context
-    @Environment(WorkoutService.self) var workoutService // ✅ Заменили WorkoutViewModel
     @Environment(WorkoutDetailViewModel.self) var viewModel
-    @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(UnitsManager.self) var unitsManager
     
@@ -61,9 +53,7 @@ struct SupersetCardView: View {
             Spacer()
             Menu {
                 Button(role: .destructive) {
-                    // The Task is correct, but wrapping it in `withAnimation` is ambiguous for the compiler.
-                    // The UI will still animate because the parent list observes the data change.
-                    Task { await workoutService.removeExercise(superset, from: workout) }
+                    viewModel.removeExercise(superset, from: workout)
                 } label: {
                     Label(String(localized: "Remove Superset"), systemImage: "trash")
                 }
@@ -111,7 +101,7 @@ struct SupersetCardView: View {
             if superset.isCompleted {
                 withAnimation { superset.isCompleted = false }
             } else {
-                finishSupersetAction()
+                showEffortSheet = true
             }
         }) {
             Text(superset.isCompleted ? String(localized: "Continue") : String(localized: "Finish Superset"))
@@ -128,14 +118,11 @@ struct SupersetCardView: View {
         .disabled(isWorkoutCompleted)
     }
     
+    // ✅ ИСПРАВЛЕНИЕ: Убрали tutorialManager, используем новый чистый API
     private func finishSupersetAction() {
         viewModel.handleExerciseFinished(
             exerciseId: superset.id,
             workout: workout,
-            modelContainer: context.container,
-            tutorialManager: tutorialManager,
-            dashboardViewModel: dashboardViewModel,
-            catalog: Exercise.catalog,
             weightUnit: unitsManager.weightUnitString(),
             onExpandNext: { nextId in
                 onExpandNext?(nextId)

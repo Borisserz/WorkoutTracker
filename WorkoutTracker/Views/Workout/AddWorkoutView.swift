@@ -4,20 +4,19 @@
 
 internal import SwiftUI
 import SwiftData
-import ActivityKit
 
 struct AddWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(TutorialManager.self) var tutorialManager
-    @Environment(WorkoutService.self) private var viewModel
+    @Environment(DIContainer.self) private var di
     @Environment(UnitsManager.self) var unitsManager
-    @Environment(DashboardViewModel.self) private var dashboardViewModel
-    @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
-    var onWorkoutCreated: (() -> Void)?
     
-    @State private var title = ""
-    @State private var selectedPreset: WorkoutPreset?
-    @State private var showActiveWorkoutAlert = false
+    @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
+    
+    // ✅ Инициализируем ViewModel чисто и просто
+    @State private var viewModel = AddWorkoutViewModel()
+    
+    var onWorkoutCreated: (() -> Void)?
     
     var body: some View {
         NavigationStack {
@@ -27,7 +26,7 @@ struct AddWorkoutView: View {
                     templateSelectionSection
                 }
                 
-                if !title.isEmpty {
+                if !viewModel.title.isEmpty {
                     Color.clear
                         .frame(width: 100, height: 45)
                         .spotlight(
@@ -51,15 +50,24 @@ struct AddWorkoutView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Start Now")) {
-                        checkAndStartWorkout()
+                        Task {
+                            // Передаем сервисы из Environment прямо в метод
+                            await viewModel.checkAndStartWorkout(
+                                workoutService: di.workoutService,
+                                liveActivityManager: di.liveActivityManager
+                            ) {
+                                dismiss()
+                                if tutorialManager.currentStep == .tapStartNow {
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { tutorialManager.setStep(.addExercise) }
+                                }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onWorkoutCreated?() }
+                            }
+                        }
                     }
-                    .disabled(title.isEmpty)
+                    .disabled(viewModel.title.isEmpty)
                 }
             }
-            .onAppear {
-                if title.isEmpty { setFormattedDateName() }
-            }
-            .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
+            .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $viewModel.showActiveWorkoutAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { dismiss() }
             } message: {
                 Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one."))
@@ -69,7 +77,7 @@ struct AddWorkoutView: View {
     
     private var nameSection: some View {
         Section(header: Text(LocalizedStringKey("Workout Name"))) {
-            TextField(LocalizedStringKey("E.g. Evening Pump"), text: $title)
+            TextField(LocalizedStringKey("E.g. Evening Pump"), text: $viewModel.title)
         }
     }
     
@@ -79,14 +87,17 @@ struct AddWorkoutView: View {
             footer: Text(LocalizedStringKey("You can change your prepared workouts in the settings.."))
         ) {
             Button {
-                selectPreset(nil)
+                withAnimation {
+                    viewModel.selectPreset(nil)
+                    if tutorialManager.currentStep == .createEmpty { tutorialManager.setStep(.tapStartNow) }
+                }
             } label: {
                 templateRow(
                     iconName: "plus.square.dashed",
                     title: LocalizedStringKey("Empty Workout"),
                     subtitle: LocalizedStringKey("Start from scratch"),
                     isSystemIcon: true,
-                    isSelected: selectedPreset == nil
+                    isSelected: viewModel.selectedPreset == nil
                 )
             }
             .buttonStyle(.plain)
@@ -101,19 +112,22 @@ struct AddWorkoutView: View {
             ForEach(presets) { preset in
                 VStack(alignment: .leading, spacing: 0) {
                     Button {
-                        selectPreset(preset)
+                        withAnimation {
+                            viewModel.selectPreset(preset)
+                            if tutorialManager.currentStep == .createEmpty { tutorialManager.setStep(.tapStartNow) }
+                        }
                     } label: {
                         templateRow(
                             iconName: preset.icon,
                             title: LocalizedStringKey(preset.name),
                             subtitle: LocalizedStringKey("\(preset.exercises.count) exercises"),
                             isSystemIcon: false,
-                            isSelected: selectedPreset?.id == preset.id
+                            isSelected: viewModel.selectedPreset?.id == preset.id
                         )
                     }
                     .buttonStyle(.plain)
                     
-                    if selectedPreset?.id == preset.id {
+                    if viewModel.selectedPreset?.id == preset.id {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(preset.exercises) { ex in
                                 exercisePreviewRow(exercise: ex)
@@ -162,55 +176,5 @@ struct AddWorkoutView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
-    }
-    
-    private func selectPreset(_ preset: WorkoutPreset?) {
-        withAnimation {
-            selectedPreset = preset
-            if let p = preset { title = p.name } else { setFormattedDateName() }
-            if tutorialManager.currentStep == .createEmpty { tutorialManager.setStep(.tapStartNow) }
-        }
-    }
-    
-    private func setFormattedDateName() {
-        title = LocalizationHelper.shared.formatWorkoutDateName()
-    }
-    
-    private func checkAndStartWorkout() {
-        Task {
-            let hasActive = await viewModel.hasActiveWorkout()
-            await MainActor.run {
-                if hasActive {
-                    showActiveWorkoutAlert = true
-                } else {
-                    startWorkout()
-                }
-            }
-        }
-    }
-    
-    private func startWorkout() {
-        let finalTitle = title.isEmpty ? LocalizationHelper.shared.formatWorkoutDateName() : title
-        let presetID = selectedPreset?.persistentModelID
-        
-        Task {
-            if let _ = await viewModel.createWorkout(title: finalTitle, presetID: presetID, isAIGenerated: false) {
-                await MainActor.run {
-                    startLiveActivity(with: finalTitle)
-                    dismiss()
-                    
-                    if tutorialManager.currentStep == .tapStartNow {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { tutorialManager.setStep(.addExercise) }
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { onWorkoutCreated?() }
-                }
-            }
-        }
-    }
-
-    private func startLiveActivity(with title: String) {
-        let attributes = WorkoutActivityAttributes(workoutTitle: title)
-        let state = WorkoutActivityAttributes.ContentState(startTime: Date())
-        _ = try? Activity<WorkoutActivityAttributes>.request(attributes: attributes, content: .init(state: state, staleDate: nil), pushType: nil)
     }
 }

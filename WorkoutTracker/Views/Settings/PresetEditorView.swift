@@ -1,3 +1,6 @@
+// ============================================================
+// FILE: WorkoutTracker/Views/Settings/PresetEditorView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -14,18 +17,18 @@ final class PresetFormViewModel {
     var exercisesAreValid: Bool = false
     
     func load(from preset: WorkoutPreset?) {
-        if let p = preset {
-            self.name = p.name
-            self.selectedIcon = p.icon
-            // IMPORTANT: Create copies of exercises to avoid direct mutation of @Model
-            self.exercises = p.exercises.map { $0.duplicate() }
-        } else {
-            self.name = ""
-            self.selectedIcon = "img_default"
-            self.exercises = []
+            if let p = preset {
+                self.name = p.name
+                self.selectedIcon = p.icon
+                // ✅ ИСПРАВЛЕНИЕ: Безопасное глубокое копирование через DTO
+                self.exercises = p.exercises.map { Exercise(from: $0.toDTO()) }
+            } else {
+                self.name = ""
+                self.selectedIcon = "img_default"
+                self.exercises = []
+            }
+            validate()
         }
-        validate()
-    }
     
     func validate() {
         nameIsValid = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -41,7 +44,9 @@ struct PresetEditorView: View {
     // MARK: - Environment & State
     
     @Environment(\.dismiss) private var dismiss
-    @Environment(WorkoutService.self) private var workoutService
+    
+    // ✅ ИСПРАВЛЕНИЕ: Используем новый PresetService вместо WorkoutService
+    @Environment(PresetService.self) private var presetService
     @Environment(UnitsManager.self) var unitsManager
     
     var preset: WorkoutPreset? // Existing preset (if editing)
@@ -95,7 +100,8 @@ struct PresetEditorView: View {
             .alert(String(localized: "Delete Template?"), isPresented: $showDeleteAlert) {
                 Button(String(localized: "Delete"), role: .destructive) {
                     if let p = preset {
-                        Task { await workoutService.deletePreset(p) }
+                        // ✅ ИСПРАВЛЕНИЕ: Удаляем через presetService
+                        Task { await presetService.deletePreset(p) }
                         dismiss()
                     }
                 }
@@ -141,15 +147,16 @@ struct PresetEditorView: View {
             }
             // Редактирование упражнения
             .sheet(item: $exerciseToEdit) { ex in
-                PresetExerciseEditor(exercise: ex.duplicate()) { updatedEx in // Pass a copy
-                    if let index = vm.exercises.firstIndex(where: { $0.id == ex.id }) {
-                        vm.exercises[index] = updatedEx
-                    }
-                    exerciseToEdit = nil
-                    vm.validate() // Revalidate after edit
-                }
-                .presentationDetents([.medium])
-            }
+                          // ✅ ИСПРАВЛЕНИЕ: Передаем копию через DTO
+                          PresetExerciseEditor(exercise: Exercise(from: ex.toDTO())) { updatedEx in
+                              if let index = vm.exercises.firstIndex(where: { $0.id == ex.id }) {
+                                  vm.exercises[index] = updatedEx
+                              }
+                              exerciseToEdit = nil
+                              vm.validate() // Revalidate after edit
+                          }
+                          .presentationDetents([.medium])
+                      }
         }
     }
     
@@ -268,7 +275,8 @@ struct PresetEditorView: View {
     // MARK: - Logic Helpers
     
     private func savePreset() async {
-        await workoutService.savePreset(preset: preset, name: vm.name, icon: vm.selectedIcon, exercises: vm.exercises)
+        // ✅ ИСПРАВЛЕНИЕ: Сохраняем через presetService
+        await presetService.savePreset(preset: preset, name: vm.name, icon: vm.selectedIcon, exercises: vm.exercises)
         dismiss()
     }
     
@@ -352,7 +360,6 @@ final class PresetExerciseFormViewModel {
 }
 
 struct PresetExerciseEditor: View {
-    // ✅ РЕФАКТОРИНГ: Удалили зависимость от WorkoutViewModel
     @Environment(\.modelContext) private var context
     
     var exercise: Exercise // Now passed as a copy

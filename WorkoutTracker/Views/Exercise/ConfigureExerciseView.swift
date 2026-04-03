@@ -1,77 +1,58 @@
-//
-//  ConfigureExerciseView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-
 internal import SwiftUI
 
 struct ConfigureExerciseView: View {
-    @Environment(DashboardViewModel.self) var dashboardViewModel
-    // MARK: - Environment
     @Environment(\.dismiss) var dismiss
-   @Environment(WorkoutService.self) var workoutService
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(UnitsManager.self) var unitsManager
     
-    // MARK: - Input Parameters
-    let exerciseName: String
-    let muscleGroup: String
-    var exerciseType: ExerciseType = .strength
     var onAdd: (Exercise) -> Void
     
-    // MARK: - State
-    @State private var form = ExerciseFormState()
-    @State private var showValidationAlert = false
+    @State private var viewModel: ConfigureExerciseViewModel
     
-    @State private var hasAutoFilled = false
-    @State private var showOverloadBanner = false
-    @State private var recommendedWeight: Double = 0.0
+    init(exerciseName: String, muscleGroup: String, exerciseType: ExerciseType = .strength, onAdd: @escaping (Exercise) -> Void) {
+        self.onAdd = onAdd
+        _viewModel = State(initialValue: ConfigureExerciseViewModel(
+            exerciseName: exerciseName,
+            muscleGroup: muscleGroup,
+            exerciseType: exerciseType
+        ))
+    }
     
-    // MARK: - Binding Adapters
-    // Адаптеры остаются, так как они связывают FormState с UI и UnitsManager
+    // Биндинги (Остаются здесь, так как зависят от UnitsManager из Environment)
     private var weightBinding: Binding<Double?> {
         Binding(
-            get: { form.weight.map { unitsManager.convertFromKilograms($0) } },
-            set: { form.weight = $0.map { unitsManager.convertToKilograms($0) } }
+            get: { viewModel.form.weight.map { unitsManager.convertFromKilograms($0) } },
+            set: { viewModel.form.weight = $0.map { unitsManager.convertToKilograms($0) } }
         )
     }
     
     private var distanceBinding: Binding<Double?> {
         Binding(
-            get: { form.distance.map { unitsManager.convertFromMeters($0) } },
-            set: { form.distance = $0.map { unitsManager.convertToMeters($0) } }
+            get: { viewModel.form.distance.map { unitsManager.convertFromMeters($0) } },
+            set: { viewModel.form.distance = $0.map { unitsManager.convertToMeters($0) } }
         )
     }
     
     private var minutesBinding: Binding<Double?> {
-        Binding(
-            get: { form.minutes.map { Double($0) } },
-            set: { form.minutes = $0.map { Int($0) } }
-        )
+        Binding(get: { viewModel.form.minutes.map { Double($0) } }, set: { viewModel.form.minutes = $0.map { Int($0) } })
     }
     
     private var secondsBinding: Binding<Double?> {
-        Binding(
-            get: { form.seconds.map { Double($0) } },
-            set: { form.seconds = $0.map { Int($0) } }
-        )
+        Binding(get: { viewModel.form.seconds.map { Double($0) } }, set: { viewModel.form.seconds = $0.map { Int($0) } })
     }
-    
-    // MARK: - Body
     
     var body: some View {
         NavigationStack {
             Form {
-                if showOverloadBanner { overloadBannerSection }
+                if viewModel.showOverloadBanner { overloadBannerSection }
                 
                 Section(header: Text("Configuration")) {
                     HStack {
                         Text("Exercise"); Spacer()
-                        Text(exerciseName).bold()
+                        Text(viewModel.exerciseName).bold()
                     }
                     
-                    switch exerciseType {
+                    switch viewModel.exerciseType {
                     case .strength: strengthConfig
                     case .cardio: cardioConfig
                     case .duration: durationConfig
@@ -83,16 +64,14 @@ struct ConfigureExerciseView: View {
                     .buttonStyle(.borderedProminent)
             }
             .navigationTitle("Configure")
-            .alert("Invalid Input", isPresented: $showValidationAlert) {
+            .alert("Invalid Input", isPresented: $viewModel.showValidationAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text(form.validationErrorMessage ?? "Unknown error")
+                Text(viewModel.form.validationErrorMessage ?? "Unknown error")
             }
             .onAppear {
-                if !hasAutoFilled {
-                    loadLastPerformance()
-                    hasAutoFilled = true
-                }
+                // Передаем закэшированные данные во ViewModel
+                viewModel.loadLastPerformance(from: dashboardViewModel.lastPerformancesCache)
             }
         }
     }
@@ -107,23 +86,19 @@ struct ConfigureExerciseView: View {
                     Text("Progressive Overload").font(.headline).foregroundColor(.green)
                 }
                 
-                let convertedWeight = unitsManager.convertFromKilograms(recommendedWeight)
-                let weightStr = convertedWeight.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", convertedWeight) : String(format: "%.1f", convertedWeight)
+                let convertedWeight = unitsManager.convertFromKilograms(viewModel.recommendedWeight)
+                let weightStr = LocalizationHelper.shared.formatFlexible(convertedWeight)
                 
                 Text("Your forecast allows it! Try **\(weightStr) \(unitsManager.weightUnitString())** today for better results.")
                     .font(.subheadline).foregroundColor(.primary)
                 
                 HStack(spacing: 12) {
-                    Button("Discard") { withAnimation { showOverloadBanner = false } }
+                    Button("Discard") { withAnimation { viewModel.showOverloadBanner = false } }
                         .buttonStyle(.bordered).tint(.gray).frame(maxWidth: .infinity)
                     
                     Button("Apply") {
-                        withAnimation {
-                            form.weight = recommendedWeight
-                            showOverloadBanner = false
-                        }
-                        let generator = UINotificationFeedbackGenerator()
-                        generator.notificationOccurred(.success)
+                        withAnimation { viewModel.applyOverload() }
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
                     }
                     .buttonStyle(.borderedProminent).tint(.green).frame(maxWidth: .infinity)
                 }
@@ -134,8 +109,8 @@ struct ConfigureExerciseView: View {
     }
     
     @ViewBuilder private var strengthConfig: some View {
-        Stepper("Sets: \(form.sets)", value: $form.sets, in: 1...20)
-        Stepper("Reps: \(form.reps)", value: $form.reps, in: 1...100)
+        Stepper("Sets: \(viewModel.form.sets)", value: $viewModel.form.sets, in: 1...20)
+        Stepper("Reps: \(viewModel.form.reps)", value: $viewModel.form.reps, in: 1...100)
         HStack {
             Text("Weight (\(unitsManager.weightUnitString())):")
             Spacer()
@@ -155,7 +130,7 @@ struct ConfigureExerciseView: View {
     }
     
     @ViewBuilder private var durationConfig: some View {
-        Stepper("Sets: \(form.sets)", value: $form.sets, in: 1...10)
+        Stepper("Sets: \(viewModel.form.sets)", value: $viewModel.form.sets, in: 1...10)
         timePickerRow(label: "Time per set")
     }
     
@@ -164,92 +139,22 @@ struct ConfigureExerciseView: View {
             Text(LocalizedStringKey(label))
             Spacer()
             HStack(spacing: 5) {
-                ClearableTextField(placeholder: "0", value: minutesBinding)
-                    .frame(width: 50)
+                ClearableTextField(placeholder: "0", value: minutesBinding).frame(width: 50)
                 Text("min")
-                ClearableTextField(placeholder: "0", value: secondsBinding)
-                    .frame(width: 50)
-                    .onChange(of: form.seconds) { _, newValue in
-                        if let s = newValue, s > 59 { form.seconds = 59 }
+                ClearableTextField(placeholder: "0", value: secondsBinding).frame(width: 50)
+                    .onChange(of: viewModel.form.seconds) { _, newValue in
+                        if let s = newValue, s > 59 { viewModel.form.seconds = 59 }
                     }
                 Text("sec")
             }
         }
     }
     
-    // MARK: - Logic
-    
-    private func loadLastPerformance() {
-           // ✅ ИЗМЕНИТЬ: Берем из dashboardViewModel
-           guard let lastPerf = dashboardViewModel.lastPerformancesCache[exerciseName] else { return }
-           
-           // ✅ ИЗМЕНИТЬ: Используем явный тип SetType.warmup для надежности компилятора
-           let lastSets = lastPerf.sortedSets.filter { $0.type != SetType.warmup && $0.isCompleted }
-           
-           guard !lastSets.isEmpty else { return }
-        
-        if exerciseType == .strength {
-            form.sets = lastSets.count
-            form.reps = lastSets.first?.reps ?? 10
-            let lastMax = lastSets.compactMap { $0.weight }.max() ?? 0.0
-            form.weight = lastMax > 0 ? lastMax : nil
-            
-            if lastMax > 0 {
-                self.recommendedWeight = lastMax + 2.5
-                withAnimation { self.showOverloadBanner = true }
-            }
-        } else if exerciseType == .cardio, let firstSet = lastSets.first {
-            form.distance = firstSet.distance
-            let t = firstSet.time ?? 0
-            form.minutes = t / 60
-            form.seconds = t % 60
-        } else if exerciseType == .duration, let firstSet = lastSets.first {
-            form.sets = lastSets.count
-            let t = firstSet.time ?? 0
-            form.minutes = t / 60
-            form.seconds = t % 60
-        }
-    }
-    
     private func handleSave() {
-        guard form.validate(for: exerciseType, unitsManager: unitsManager) else {
-            showValidationAlert = true
-            return
+        if let newExercise = viewModel.generateExercise(unitsManager: unitsManager) {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onAdd(newExercise)
+            dismiss()
         }
-        
-        let setsCount = (exerciseType == .cardio) ? 1 : form.sets
-        let totalSeconds = ((form.minutes ?? 0) * 60) + (form.seconds ?? 0)
-        
-        var generatedSets: [WorkoutSet] = []
-        for i in 1...setsCount {
-            generatedSets.append(WorkoutSet(
-                index: i,
-                weight: (exerciseType == .strength) ? form.weight : nil,
-                reps: (exerciseType == .strength) ? form.reps : nil,
-                distance: (exerciseType == .cardio) ? form.distance : nil,
-                time: (totalSeconds > 0) ? totalSeconds : nil,
-                isCompleted: false,
-                type: .normal
-            ))
-        }
-        
-        let newExercise = Exercise(
-            name: exerciseName,
-            muscleGroup: muscleGroup,
-            type: exerciseType,
-            sets: setsCount,
-            reps: form.reps,
-            weight: form.weight ?? 0.0,
-            distance: form.distance,
-            timeSeconds: totalSeconds > 0 ? totalSeconds : nil,
-            effort: 5,
-            setsList: generatedSets
-        )
-        
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
-        
-        onAdd(newExercise)
-        dismiss()
     }
 }

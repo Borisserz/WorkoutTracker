@@ -11,7 +11,7 @@ struct AITrackerView: View {
     
     @StateObject private var cameraManager = CameraManager()
     @StateObject private var engine: AITrackerEngine
-    
+    @AppStorage("userGender") private var userGender = "male"
     @StateObject private var gestureCtrl = GestureController()
     @StateObject private var coach = VoiceCoach()
     
@@ -23,11 +23,10 @@ struct AITrackerView: View {
     let exerciseName: String
     
     // 2. ИСПОЛЬЗУЕМ СОХРАНЕННОЕ ИМЯ (а не engine.exerciseName)
-    private var isBackExercise: Bool {
-        let name = exerciseName.lowercased()
-        let backKeywords = ["deadlift", "row", "pull", "chin", "tricep", "glute", "hamstring", "calf", "calves", "back", "good morning", "shrug"]
-        return backKeywords.contains { name.contains($0) }
-    }
+    // 2. ИСПОЛЬЗУЕМ ДОМЕННУЮ МОДЕЛЬ
+        private var isBackExercise: Bool {
+            MuscleMapping.isBackFacing(exerciseName: exerciseName)
+        }
     
     init(exerciseName: String, onFinish: ((Int) -> Void)? = nil) {
         // 3. СОХРАНЯЕМ ИМЯ ПРИ ИНИЦИАЛИЗАЦИИ
@@ -93,34 +92,44 @@ struct AITrackerView: View {
             coach.speak("\(engine.repsCount)")
         }
         .onChange(of: gestureCtrl.didConfirmSet) { confirmed in
-            if confirmed {
-                coach.speak("Set completed! Great job.")
-                onFinish?(engine.repsCount)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    dismiss()
+                    if confirmed {
+                        coach.speak("Set completed! Great job.")
+                        onFinish?(engine.repsCount)
+                        
+                        // ✅ Рефакторинг: Использование Task и проверки на отмену
+                        Task { @MainActor in
+                            // Используем iOS 16+ синтаксис (поскольку таргет iOS 17+)
+                            try? await Task.sleep(for: .seconds(1.5))
+                            guard !Task.isCancelled else { return }
+                            dismiss()
+                        }
+                    }
                 }
-            }
-        }
-        .onChange(of: gestureCtrl.didCancelSet) { canceled in
-            if canceled {
-                coach.speak("Tracker canceled.")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    dismiss()
+                .onChange(of: gestureCtrl.didCancelSet) { canceled in
+                    if canceled {
+                        coach.speak("Tracker canceled.")
+                        
+                        // ✅ Рефакторинг: Использование Task
+                        Task { @MainActor in
+                            try? await Task.sleep(for: .seconds(1.0))
+                            guard !Task.isCancelled else { return }
+                            dismiss()
+                        }
+                    }
                 }
-            }
-        }
     }
     
     // MARK: - Live Muscle Activation UI
 
         @ViewBuilder
-        private var liveMusclePiP: some View {
-            BodyHeatmapView(
-                muscleIntensities: engine.liveMuscleTension,
-                isRecoveryMode: false,
-                isCompactMode: true,
-                defaultToBack: isBackExercise // ДОБАВЛЕНО: Передаем вычисленную сторону
-            )
+    private var liveMusclePiP: some View {
+          BodyHeatmapView(
+              muscleIntensities: engine.liveMuscleTension,
+              isRecoveryMode: false,
+              isCompactMode: true,
+              defaultToBack: isBackExercise,
+              userGender: userGender
+          )
             .frame(width: 100, height: 220)
             .cornerRadius(16)
             .overlay(

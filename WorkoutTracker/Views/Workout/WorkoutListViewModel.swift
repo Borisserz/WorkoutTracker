@@ -1,9 +1,6 @@
-//
-//  WorkoutListViewModel.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 2.04.26.
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Workout/WorkoutListViewModel.swift
+// ============================================================
 
 import Foundation
 import Observation
@@ -23,7 +20,7 @@ final class WorkoutListViewModel {
             return
         }
         
-        // Извлекаем нужные данные в DTO, чтобы безопасно передать в фоновый поток (без утечек SwiftData Models)
+        // Извлекаем нужные данные в DTO, чтобы безопасно передать в фоновый поток
         struct WorkoutStatsDTO: Sendable {
             let duration: Int
             let volume: Double
@@ -32,7 +29,8 @@ final class WorkoutListViewModel {
         let statsData = workouts.map { workout in
             WorkoutStatsDTO(
                 duration: workout.durationSeconds,
-                volume: workout.exercises.reduce(0.0) { $0 + $1.exerciseVolume }
+                // 🔥 ИСПРАВЛЕНИЕ N+1: Берем готовое значение, а не дергаем базу через .reduce()
+                volume: workout.totalStrengthVolume
             )
         }
         

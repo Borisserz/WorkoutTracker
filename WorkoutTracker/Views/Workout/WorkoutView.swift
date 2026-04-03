@@ -6,6 +6,7 @@ import UIKit
 // MARK: - Main View
 
 struct WorkoutView: View {
+    @Environment(DIContainer.self) private var di
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
@@ -15,7 +16,9 @@ struct WorkoutView: View {
     @State private var showAddWorkout = false
     @State private var navigateToNewWorkout = false
     
-    @State private var searchText = ""
+    // ✅ ИСПОЛЬЗУЕМ НОВЫЙ DEBOUNCER
+    @State private var searchDebouncer = SearchDebouncer()
+    
     @State private var selectedFilter: FilterPeriod = .all
     @State private var sortOption: SortOption = .dateDescending
     @State private var showFavoritesOnly = false
@@ -50,7 +53,7 @@ struct WorkoutView: View {
                 .navigationTitle(LocalizedStringKey("History"))
                 .navigationDestination(isPresented: $navigateToNewWorkout) {
                     if let workout = recentWorkoutForNavigation {
-                        WorkoutDetailView(workout: workout)
+                        WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
                     }
                 }
                 .toolbar {
@@ -126,7 +129,7 @@ struct WorkoutView: View {
             
             Section {
                 DynamicWorkoutListView(
-                    searchText: searchText,
+                    searchText: searchDebouncer.debouncedText, // ✅ ПЕРЕДАЕМ ТОЛЬКО ОЧИЩЕННЫЙ ТЕКСТ
                     filter: selectedFilter,
                     sort: sortOption,
                     favoritesOnly: showFavoritesOnly,
@@ -174,7 +177,8 @@ struct WorkoutView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal)
             
-            DebouncedSearchBar(text: $searchText)
+            // ✅ ИСПОЛЬЗУЕМ НОВЫЙ КОМПОНЕНТ
+            DebouncedSearchBar(debouncer: searchDebouncer)
                 .padding()
                 .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(12)
@@ -219,7 +223,6 @@ struct WorkoutView: View {
     }
     
     private func loadImbalanceData() {
-        // Мы уже имеем рекомендации, рассчитанные в DashboardViewModel
         if let balanceRec = dashboardViewModel.recommendations.first(where: { $0.type == .balance }) {
             imbalanceAdvice = (title: balanceRec.title, message: balanceRec.message)
         } else {
@@ -235,7 +238,7 @@ struct DynamicWorkoutListView: View {
     @Query private var workouts: [Workout]
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(WorkoutService.self) var workoutService
-    
+    @Environment(DIContainer.self) private var di
     var listViewModel: WorkoutListViewModel
     var onFirstWorkoutLoaded: ((Workout) -> Void)?
     
@@ -306,7 +309,7 @@ struct DynamicWorkoutListView: View {
         } else {
             ForEach(workouts) { workout in
                 ZStack {
-                    NavigationLink(destination: WorkoutDetailView(workout: workout)) { EmptyView() }.opacity(0)
+                    NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) { EmptyView() }.opacity(0)
                     WorkoutRow(workout: workout)
                 }
                 .listRowSeparator(.hidden)
@@ -332,35 +335,20 @@ struct DynamicWorkoutListView: View {
     }
 }
 
-// MARK: - Debounced Search Bar
+// MARK: - Clean Debounced Search Bar
 
 struct DebouncedSearchBar: View {
-    @Binding var text: String
-    @State private var localText: String
-    @State private var debounceTask: Task<Void, Never>? = nil
-    
-    init(text: Binding<String>) {
-        self._text = text
-        self._localText = State(initialValue: text.wrappedValue)
-    }
+    @Bindable var debouncer: SearchDebouncer
     
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass").foregroundColor(.secondary)
-            TextField(LocalizedStringKey("Search workouts..."), text: $localText)
+            
+            TextField(LocalizedStringKey("Search workouts..."), text: $debouncer.inputText)
                 .textFieldStyle(.plain)
-                .onChange(of: localText) { oldValue, newValue in
-                    debounceTask?.cancel()
-                    debounceTask = Task { @MainActor in
-                        try? await Task.sleep(nanoseconds: 300_000_000)
-                        if !Task.isCancelled { text = newValue }
-                    }
-                }
-                .onChange(of: text) { oldValue, newValue in
-                    if localText != newValue { localText = newValue }
-                }
-            if !localText.isEmpty {
-                Button(action: { localText = ""; text = "" }) {
+            
+            if !debouncer.inputText.isEmpty {
+                Button(action: { debouncer.inputText = "" }) {
                     Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
                 }
             }
@@ -421,11 +409,13 @@ struct ActiveWorkoutIndicator: View {
 
 struct WorkoutRow: View {
     let workout: Workout
+    
     func effortColor(percentage: Int) -> Color {
         if percentage > 80 { return .red }
         if percentage > 50 { return .orange }
         return .green
     }
+    
     var safeIcon: String { UIImage(systemName: workout.icon) != nil ? workout.icon : "figure.run" }
     
     var body: some View {

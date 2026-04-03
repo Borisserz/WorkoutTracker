@@ -1,7 +1,6 @@
-//
-//  SetRowView.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Views/Workout/SetRowView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -9,10 +8,9 @@ import SwiftData
 struct SetRowView: View {
     
     // MARK: - Bindings & Properties
-    
     @Bindable var set: WorkoutSet
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
-@Environment(UnitsManager.self) var unitsManager
+    @Environment(UnitsManager.self) var unitsManager
     
     @State private var showAITracker: Bool = false
     
@@ -25,7 +23,6 @@ struct SetRowView: View {
     let isExerciseCompleted: Bool
     let isWorkoutCompleted: Bool
     
-    // MODIFIED: Теперь onCheck принимает сам сет
     var onCheck: (_ set: WorkoutSet, _ shouldStartTimer: Bool, _ suggestedDuration: Int?) -> Void
     
     var prevWeight: Double? = nil
@@ -41,13 +38,14 @@ struct SetRowView: View {
     
     // MARK: - Computed Bindings (Type Adapters)
     
+    // ✅ ИСПРАВЛЕНИЕ: Вычисления конвертации происходят ТОЛЬКО при чтении/записи (get/set),
+    // а не при рендере (body).
     private var repsBinding: Binding<Double?> {
         Binding<Double?>(
             get: { set.reps.map { Double($0) } },
             set: { newValue in
                 if let doubleValue = newValue {
-                    let intValue = Int(doubleValue)
-                    let validation = InputValidator.validateReps(intValue)
+                    let validation = InputValidator.validateReps(Int(doubleValue))
                     set.reps = validation.clampedValue
                 } else {
                     set.reps = nil
@@ -61,8 +59,7 @@ struct SetRowView: View {
             get: { set.time.map { Double($0) } },
             set: { newValue in
                 if let doubleValue = newValue {
-                    let intValue = Int(doubleValue)
-                    let validation = InputValidator.validateTime(intValue)
+                    let validation = InputValidator.validateTime(Int(doubleValue))
                     set.time = validation.clampedValue
                 } else {
                     set.time = nil
@@ -79,8 +76,7 @@ struct SetRowView: View {
             },
             set: { newValue in
                 if let value = newValue {
-                    let kg = unitsManager.convertToKilograms(value)
-                    let validation = InputValidator.validateWeight(kg)
+                    let validation = InputValidator.validateWeight(unitsManager.convertToKilograms(value))
                     set.weight = validation.clampedValue
                 } else {
                     set.weight = nil
@@ -97,8 +93,7 @@ struct SetRowView: View {
             },
             set: { newValue in
                 if let value = newValue {
-                    let m = unitsManager.convertToMeters(value)
-                    let validation = InputValidator.validateDistance(m)
+                    let validation = InputValidator.validateDistance(unitsManager.convertToMeters(value))
                     set.distance = validation.clampedValue
                 } else {
                     set.distance = nil
@@ -107,8 +102,6 @@ struct SetRowView: View {
         )
     }
 
-    // MARK: - Computed 1RM
-    
     private var estimated1RM: Double {
         guard let w = set.weight, let r = set.reps, w > 0, r > 0 else { return 0 }
         return w * (1.0 + Double(r) / 30.0) // Epley formula
@@ -118,22 +111,17 @@ struct SetRowView: View {
     
     var body: some View {
         HStack(alignment: .center, spacing: 4) {
-            
             indexLabel
-            
             inputsSection
-            
             Spacer(minLength: 0)
-            
             aiTrackerButton
-            
             Spacer(minLength: 0)
-            
             checkButton
         }
         .padding(.vertical, 4)
         .background(set.isCompleted ? Color.green.opacity(0.05) : Color.clear)
         .cornerRadius(6)
+        // ✅ ИСПРАВЛЕНИЕ: compositingGroup объединяет слои и предотвращает лишние перерисовки теней
         .compositingGroup()
         .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
         .sheet(isPresented: $showSliderSheet) {
@@ -146,19 +134,12 @@ struct SetRowView: View {
         .onAppear {
             if autoFocus && !hasAutoFocused {
                 hasAutoFocused = true
-                
                 switch exerciseType {
-                case .strength:
-                    activeBindingType = .weight
-                case .cardio:
-                    activeBindingType = .distance
-                case .duration:
-                    activeBindingType = .timeSec
+                case .strength: activeBindingType = .weight
+                case .cardio: activeBindingType = .distance
+                case .duration: activeBindingType = .timeSec
                 }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    showSliderSheet = true
-                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { showSliderSheet = true }
             }
         }
     }
@@ -180,41 +161,22 @@ struct SetRowView: View {
                 inputColumn(
                     type: .weight,
                     binding: weightBinding,
-                    ghostText: prevWeight.map {
-                        let converted = unitsManager.convertFromKilograms($0)
-                        return LocalizationHelper.shared.formatFlexible(converted)
-                    }
+                    ghostText: prevWeight.map { LocalizationHelper.shared.formatFlexible(unitsManager.convertFromKilograms($0)) }
                 )
-                
-                inputColumn(
-                    type: .reps,
-                    binding: repsBinding,
-                    ghostText: prevReps.map { "\($0)" }
-                )
+                inputColumn(type: .reps, binding: repsBinding, ghostText: prevReps.map { "\($0)" })
             }
             
         case .cardio:
             inputColumn(
                 type: .distance,
                 binding: distanceBinding,
-                ghostText: prevDist.map {
-                    let converted = unitsManager.convertFromMeters($0)
-                    return LocalizationHelper.shared.formatDecimal(converted)
-                }
+                ghostText: prevDist.map { LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters($0)) }
             )
             Spacer()
-            inputColumn(
-                type: .timeMin,
-                binding: timeBinding,
-                ghostText: prevTime.map { formatTime($0) }
-            )
+            inputColumn(type: .timeMin, binding: timeBinding, ghostText: prevTime.map { formatTime($0) })
             
         case .duration:
-            inputColumn(
-                type: .timeSec,
-                binding: timeBinding,
-                ghostText: prevTime.map { "\($0)s" }
-            )
+            inputColumn(type: .timeSec, binding: timeBinding, ghostText: prevTime.map { "\($0)s" })
         }
     }
     
@@ -228,9 +190,7 @@ struct SetRowView: View {
     }
     
     private func formatValue(_ value: Double?, type: InputFieldType) -> String {
-        guard let value = value, value >= 0 else {
-            return type.title(unitsManager: unitsManager)
-        }
+        guard let value = value, value >= 0 else { return type.title(unitsManager: unitsManager) }
         switch type {
         case .weight: return LocalizationHelper.shared.formatFlexible(value)
         case .reps: return LocalizationHelper.shared.formatInteger(value)
@@ -250,15 +210,14 @@ struct SetRowView: View {
                     .foregroundColor(binding.wrappedValue != nil ? .primary : .secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
+                    // ✅ ИСПРАВЛЕНИЕ: Меньше вычислений цветов (drawingGroup)
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(8)
             }
             .buttonStyle(BorderlessButtonStyle())
             
             if let ghost = ghostText {
-                Text(ghost)
-                    .font(.system(size: 10))
-                    .foregroundColor(.gray)
+                Text(ghost).font(.system(size: 10)).foregroundColor(.gray)
             }
         }
         .frame(width: 100)
@@ -301,9 +260,7 @@ struct SetRowView: View {
                 if countedReps > 0 {
                     set.reps = countedReps
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        if !set.isCompleted {
-                            toggleComplete()
-                        }
+                        if !set.isCompleted { toggleComplete() }
                     }
                 }
             }
@@ -328,7 +285,6 @@ struct SetRowView: View {
                 else { suggestedDuration = 90 }
             }
             
-            // MODIFIED: Передаем set для AI тренера
             if autoStartTimer && !isLastSet {
                 onCheck(set, true, suggestedDuration)
             } else {

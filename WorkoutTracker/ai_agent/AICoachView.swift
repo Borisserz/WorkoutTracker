@@ -1,17 +1,18 @@
 // ============================================================
 // FILE: WorkoutTracker/ai_agent/AICoachView.swift
 // ============================================================
-
 internal import SwiftUI
 import SwiftData
 
 struct AICoachView: View {
     @Environment(DIContainer.self) private var di
     
+    // ✅ ПОЛУЧАЕМ ГОТОВУЮ ВЬЮМОДЕЛЬ БЕЗ ОПЦИОНАЛОВ И ЗАГРУЗОК
+    @Environment(AICoachViewModel.self) private var viewModel
+    
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
     @AppStorage(Constants.UserDefaultsKeys.aiCoachTone.rawValue) private var aiCoachTone = Constants.AIConstants.defaultTone
     
-    @State private var viewModel: AICoachViewModel?
     @FocusState private var isInputFocused: Bool
     
     @State private var navigateToWorkout: Workout?
@@ -22,84 +23,81 @@ struct AICoachView: View {
     @State private var showRecoverySheet = false
     
     private var isSendDisabled: Bool {
-        guard let vm = viewModel else { return true }
-        let textIsEmpty = vm.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        return textIsEmpty || vm.isGenerating
+        let textIsEmpty = viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return textIsEmpty || viewModel.isGenerating
     }
     
     private let quickActions: [String] = ["Тренировка", "Прогресс", "Отдых"]
     
     var body: some View {
         NavigationStack {
-            Group {
-                if let vm = viewModel {
-                    ZStack(alignment: .bottom) {
-                        Color(UIColor.systemGroupedBackground).ignoresSafeArea()
-                        if vm.chatHistory.isEmpty { emptyStateView } else { chatScrollView(viewModel: vm) }
-                        
-                        inputArea(viewModel: vm)
-                    }
-                    .navigationTitle(vm.currentSession?.title ?? "AI Тренер")
-                    .navigationDestination(item: $navigateToWorkout) { workout in WorkoutDetailView(workout: workout) }
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button { showHistorySheet = true } label: { Image(systemName: "clock.arrow.circlepath").foregroundColor(.primary) }
-                        }
-                        ToolbarItemGroup(placement: .topBarTrailing) {
-                            Button {
-                                withAnimation(.easeInOut) { vm.clearChat() }
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
-                            } label: { Image(systemName: "square.and.pencil").foregroundColor(.primary) }
-                            Button {
-                                showAISettings = true
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
-                            } label: { Image(systemName: "slider.horizontal.3").foregroundColor(.primary) }
-                        }
-                    }
-                    .sheet(isPresented: $showHistorySheet) {
-                        // ✅ ИСПРАВЛЕНИЕ: Используем глобальный workoutStore из DI контейнера
-                        ChatHistorySheetView(workoutStore: di.workoutStore) { selectedSession in withAnimation { vm.loadSession(selectedSession) } }
-                    }
-                    .sheet(isPresented: $showAISettings) {
-                        NavigationStack {
-                            Form {
-                                Section(header: Text("Стиль общения"), footer: Text("Выбранный тон будет использоваться во всех ответах ИИ-тренера.")) {
-                                    Picker("Тон общения", selection: $aiCoachTone) {
-                                        Text("Мотивационный").tag("Мотивационный")
-                                        Text("Строгий (Армейский)").tag("Строгий")
-                                        Text("Дружелюбный").tag("Дружелюбный")
-                                        Text("Научный / Сухой").tag("Научный")
-                                    }.pickerStyle(.menu)
-                                }
-                            }
-                            .navigationTitle("Настройки ИИ").navigationBarTitleDisplayMode(.inline)
-                            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { showAISettings = false } } }
-                        }.presentationDetents([.medium])
-                    }
-                    .sheet(isPresented: $showSmartBuilder) {
-                        SmartWorkoutBuilderSheet { generatedPrompt in
-                            Task { await vm.sendMessage(userWeight: userBodyWeight, uiText: "Составь план по моим параметрам", aiPrompt: generatedPrompt) }
-                        }
-                    }
-                    .sheet(isPresented: $showProgressSheet) {
-                        ProgressAnalysisSheet { generatedPrompt in
-                            Task { await vm.sendMessage(userWeight: userBodyWeight, uiText: "Оцени мой прогресс", aiPrompt: generatedPrompt) }
-                        }
-                    }
-                    .sheet(isPresented: $showRecoverySheet) {
-                        RecoveryAdvisorSheet { generatedPrompt in
-                            Task { await vm.sendMessage(userWeight: userBodyWeight, uiText: "Что рекомендуешь сделать?", aiPrompt: generatedPrompt) }
-                        }
-                    }
+            ZStack(alignment: .bottom) {
+                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                
+                // Сразу рисуем UI!
+                if viewModel.chatHistory.isEmpty {
+                    emptyStateView
                 } else {
-                    ProgressView("Initializing AI Coach...") // Заглушка, пока ViewModel инициализируется
+                    chatScrollView(viewModel: viewModel)
+                }
+                
+                inputArea(viewModel: viewModel)
+            }
+            .navigationTitle(viewModel.currentSession?.title ?? "AI Тренер")
+            .navigationDestination(item: $navigateToWorkout) { workout in
+                WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
+            }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showHistorySheet = true } label: { Image(systemName: "clock.arrow.circlepath").foregroundColor(.primary) }
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation(.easeInOut) { viewModel.clearChat() }
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                    } label: { Image(systemName: "square.and.pencil").foregroundColor(.primary) }
+                    Button {
+                        showAISettings = true
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                    } label: { Image(systemName: "slider.horizontal.3").foregroundColor(.primary) }
                 }
             }
-            .task {
-                if viewModel == nil {
-                    self.viewModel = di.makeAICoachViewModel()
+            .sheet(isPresented: $showHistorySheet) {
+                ChatHistorySheetView(userRepository: di.userRepository) { selectedSession in
+                    withAnimation { viewModel.loadSession(selectedSession) }
+                }
+            }
+            .sheet(isPresented: $showAISettings) {
+                NavigationStack {
+                    Form {
+                        Section(header: Text("Стиль общения"), footer: Text("Выбранный тон будет использоваться во всех ответах ИИ-тренера.")) {
+                            Picker("Тон общения", selection: $aiCoachTone) {
+                                Text("Мотивационный").tag("Мотивационный")
+                                Text("Строгий (Армейский)").tag("Строгий")
+                                Text("Дружелюбный").tag("Дружелюбный")
+                                Text("Научный / Сухой").tag("Научный")
+                            }.pickerStyle(.menu)
+                        }
+                    }
+                    .navigationTitle("Настройки ИИ").navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { showAISettings = false } } }
+                }.presentationDetents([.medium])
+            }
+            .sheet(isPresented: $showSmartBuilder) {
+                SmartWorkoutBuilderSheet { generatedPrompt in
+                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "Составь план по моим параметрам", aiPrompt: generatedPrompt) }
+                }
+            }
+            .sheet(isPresented: $showProgressSheet) {
+                ProgressAnalysisSheet { generatedPrompt in
+                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "Оцени мой прогресс", aiPrompt: generatedPrompt) }
+                }
+            }
+            .sheet(isPresented: $showRecoverySheet) {
+                RecoveryAdvisorSheet { generatedPrompt in
+                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "Что рекомендуешь сделать?", aiPrompt: generatedPrompt) }
                 }
             }
         }
@@ -126,7 +124,6 @@ struct AICoachView: View {
                     Color.clear.frame(height: 140).id("bottom_spacer")
                 }.padding(.horizontal).padding(.top, 20)
             }
-            // ✅ ИСПРАВЛЕНИЕ: Слушаем изменения из конкретного экземпляра vm
             .onChange(of: vm.chatHistory) { _, _ in scrollToBottom(proxy: proxy) }
             .onChange(of: vm.isGenerating) { _, _ in scrollToBottom(proxy: proxy) }
             .onChange(of: isInputFocused) { _, focused in if focused { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { scrollToBottom(proxy: proxy) } } }
@@ -148,9 +145,20 @@ struct AICoachView: View {
             }.padding(.horizontal, 12).padding(.bottom, 12).disabled(vm.isGenerating).opacity(vm.isGenerating ? 0.5 : 1.0)
             Divider().background(Color.gray.opacity(0.3))
             HStack(alignment: .bottom, spacing: 12) {
-                // ✅ ИСПРАВЛЕНИЕ: Биндинг к конкретному экземпляру vm
-                @Bindable var bindableVM = vm
-                TextField("Спроси AI Тренера...", text: $bindableVM.inputText, axis: .vertical).lineLimit(1...5).padding(.horizontal, 16).padding(.vertical, 10).background(Color(UIColor.secondarySystemBackground)).cornerRadius(20).focused($isInputFocused).disabled(vm.isGenerating).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.gray.opacity(0.2), lineWidth: 1))
+                
+                TextField("Спроси AI Тренера...", text: Binding(
+                    get: { vm.inputText },
+                    set: { vm.inputText = $0 }
+                ), axis: .vertical)
+                    .lineLimit(1...5)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(20)
+                    .focused($isInputFocused)
+                    .disabled(vm.isGenerating)
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.gray.opacity(0.2), lineWidth: 1))
+                
                 if vm.isGenerating { ProgressView().frame(width: 34, height: 34).padding(.trailing, 4) } else {
                     Button {
                         isInputFocused = false
@@ -166,7 +174,8 @@ struct AICoachView: View {
 
 // MARK: - Chat History Sheet
 struct ChatHistorySheetView: View {
-    let workoutStore: WorkoutStoreProtocol
+    let userRepository: UserRepositoryProtocol
+    
     @Environment(\.dismiss) private var dismiss
     
     @State private var sessions: [AIChatSession] = []
@@ -280,7 +289,7 @@ struct ChatHistorySheetView: View {
     
     private func fetchSessions() async {
         do {
-            sessions = try await workoutStore.fetchAIChatSessions()
+            sessions = try await userRepository.fetchAIChatSessions()
         } catch {
             print("Error fetching chat sessions: \(error)")
         }
@@ -291,7 +300,7 @@ struct ChatHistorySheetView: View {
             for index in offsets {
                 let sessionToDelete = groupSessions[index]
                 Task {
-                    try? await workoutStore.deleteAIChatSession(sessionToDelete.persistentModelID)
+                    try? await userRepository.deleteAIChatSession(sessionToDelete.persistentModelID)
                     await fetchSessions()
                 }
             }

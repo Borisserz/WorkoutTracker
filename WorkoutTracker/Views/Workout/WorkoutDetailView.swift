@@ -7,31 +7,46 @@ import SwiftData
 import Charts
 import Combine
 import ActivityKit
-internal import UniformTypeIdentifiers
 
 struct WorkoutDetailView: View {
-    @Environment(DIContainer.self) private var di
     @Bindable var workout: Workout
-    @State private var viewModel: WorkoutDetailViewModel?
+    @Bindable var viewModel: WorkoutDetailViewModel
 
     var body: some View {
-        Group {
-            if let vm = viewModel {
-                WorkoutDetailContentView(workout: workout, viewModel: vm)
-            } else {
-                ProgressView()
-            }
+        WorkoutDetailContentView(workout: workout, viewModel: viewModel)
+    }
+}
+
+// Вспомогательные Enum'ы для локального UI-роутинга
+enum DetailSheetDestination: Identifiable {
+    case exerciseSelection
+    case supersetBuilder(Exercise?)
+    case swapExercise(Exercise)
+    case shareSheet(UIImage)
+    
+    var id: String {
+        switch self {
+        case .exerciseSelection: return "exSel"
+        case .supersetBuilder(let ex): return "super_\(ex?.id.uuidString ?? "new")"
+        case .swapExercise(let ex): return "swap_\(ex.id.uuidString)"
+        case .shareSheet: return "share"
         }
-        .task {
-            if viewModel == nil {
-                viewModel = di.makeWorkoutDetailViewModel()
-            }
+    }
+}
+
+enum DetailFullScreenDestination: Identifiable {
+    case prCelebration(PRLevel)
+    case achievementPopup(Achievement)
+    
+    var id: String {
+        switch self {
+        case .prCelebration(let lvl): return "pr_\(lvl.rank)"
+        case .achievementPopup(let ach): return "ach_\(ach.id)"
         }
     }
 }
 
 struct WorkoutDetailContentView: View {
-    
     enum Tab: String, CaseIterable {
         case workout = "Workout"
         case analytics = "Analytics"
@@ -39,15 +54,10 @@ struct WorkoutDetailContentView: View {
         var localizedName: LocalizedStringKey { LocalizedStringKey(self.rawValue) }
     }
     
-    // MARK: - Environment & State
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
     @Environment(DashboardViewModel.self) private var dashboardViewModel
-    @Environment(WorkoutService.self) private var globalViewModel
-    
-    @Environment(CatalogViewModel.self) var catalogViewModel
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(RestTimerManager.self) var timerManager
@@ -56,13 +66,17 @@ struct WorkoutDetailContentView: View {
     @Bindable var workout: Workout
     @Bindable var viewModel: WorkoutDetailViewModel
     
-    // MARK: - UI State
+    // MARK: - Presentation State
+    @State private var activeSheet: DetailSheetDestination?
+    @State private var activeFullScreen: DetailFullScreenDestination?
+    @State private var showEmptyAlert = false
+    
+    // MARK: - Local UI State
     @State private var selectedTab: Tab = .workout
     @State private var draggedExercise: Exercise?
     @State private var expandedExercises: [UUID: Bool] = [:]
     @State private var scrollToExerciseId: UUID?
     @State private var selectedChartExerciseName: String?
-    @AppStorage("unlockedAchievementsCount") private var unlockedAchievementsCount = 0
     
     var isNewWorkout: Bool {
         guard !workout.exercises.isEmpty else { return true }
@@ -78,7 +92,6 @@ struct WorkoutDetailContentView: View {
         .pickerStyle(.segmented)
     }
 
-    // MARK: - Body
     var body: some View {
         ScrollViewReader { proxy in
             mainLayout(proxy: proxy)
@@ -91,38 +104,36 @@ struct WorkoutDetailContentView: View {
                         }
                     }
                 }
-                .onAppear(perform: handleOnAppear)
+                .onAppear { handleOnAppear() }
                 .onDisappear(perform: handleOnDisappear)
                 .onChange(of: selectedTab) { _, newTab in withAnimation { timerManager.isHidden = (newTab == .aiCoach) } }
-                .onChange(of: scenePhase) { _, newPhase in if newPhase != .active { viewModel.commitSnackbar() } }
                 .onChange(of: workout.exercises.count) { _, _ in handleExercisesChanged() }
                 .onChange(of: scrollToExerciseId) { _, newId in handleScrollTo(newId: newId, proxy: proxy) }
                 .onChange(of: tutorialManager.currentStep) { _, newStep in handleTutorialStep(newStep) }
-                
-                // ✅ ЧИСТАЯ НАВИГАЦИЯ ЧЕРЕЗ ENUM
-                .sheet(item: $viewModel.activeSheet) { destination in
-                    renderSheetContent(for: destination)
+            
+                // ✅ РЕАКТИВНАЯ ОБРАБОТКА СОБЫТИЙ ОТ VIEWMODEL
+                .onChange(of: viewModel.activeEvent) { _, event in
+                    handleViewModelEvent(event)
                 }
-                // ✅ АЛЕРТЫ
-                .alert(LocalizedStringKey("Empty Workout"), isPresented: $viewModel.isShowingEmptyAlert) {
+            
+                // ✅ ШТОРКИ И АЛЕРТЫ
+                .sheet(item: $activeSheet) { sheet in
+                    renderSheetContent(for: sheet)
+                }
+                .fullScreenCover(item: $activeFullScreen) { fullScreen in
+                    renderFullScreenContent(for: fullScreen)
+                }
+                .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
                     Button(LocalizedStringKey("Delete"), role: .destructive) {
-                        viewModel.deleteEmptyWorkout(workout: workout, timerManager: timerManager, dismiss: dismiss)
+                        Task {
+                            await viewModel.deleteEmptyWorkout(workout: workout)
+                            timerManager.stopRestTimer()
+                            dismiss()
+                        }
                     }
                     Button(LocalizedStringKey("Continue"), role: .cancel) { }
                 } message: {
                     Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
-                }
-                // ✅ ПОЛНОЭКРАННЫЕ ПОПАПЫ
-                .fullScreenCover(item: $viewModel.activeFullScreen) { destination in
-                    switch destination {
-                    case .prCelebration(let level):
-                        PRCelebrationView(prLevel: level, onClose: { viewModel.activeDestination = nil })
-                            .presentationBackground(.clear)
-                    case .achievementPopup(let achievement):
-                        AchievementPopupView(achievement: achievement) { viewModel.activeDestination = nil }
-                            .presentationBackground(.clear)
-                    default: EmptyView()
-                    }
                 }
         }
     }
@@ -147,12 +158,13 @@ struct WorkoutDetailContentView: View {
                             if selectedTab == .workout {
                                 exercisesToolbarSection
                                 ExerciseListView(
-                                        workout: workout,
-                                        expandedExercises: $expandedExercises,
-                                        draggedExercise: $draggedExercise,
-                                        scrollToExerciseId: { id in self.scrollToExerciseId = id }
-                                    )
-                                    .environment(viewModel)
+                                    workout: workout,
+                                    expandedExercises: $expandedExercises,
+                                    draggedExercise: $draggedExercise,
+                                    scrollToExerciseId: { id in self.scrollToExerciseId = id }
+                                )
+                                .environment(viewModel)
+                                
                             } else if selectedTab == .analytics {
                                 chartSection
                                 muscleHeatmapSection
@@ -165,28 +177,59 @@ struct WorkoutDetailContentView: View {
                 }
             }
             if workout.isActive && selectedTab != .aiCoach { finishWorkoutButton }
-            if let message = viewModel.snackbarMessage { snackbarOverlay(message: message) }
+            if viewModel.isShowingSnackbar { snackbarOverlay }
         }
     }
     
+    // MARK: - Event Handling
+    
+    private func handleViewModelEvent(_ event: WorkoutDetailEvent?) {
+        guard let event = event else { return }
+        
+        switch event {
+        case .showPR(let level):
+            activeFullScreen = .prCelebration(level)
+            // Закрываем окно празднования через 3 секунды
+            Task {
+                try? await Task.sleep(for: .seconds(3.5))
+                if case .prCelebration = activeFullScreen { activeFullScreen = nil }
+            }
+            
+        case .showShareSheet(let image):
+            activeSheet = .shareSheet(image)
+            
+        case .showEmptyAlert:
+            showEmptyAlert = true
+            
+        case .showAchievement(let ach):
+            activeFullScreen = .achievementPopup(ach)
+            
+        case .showSwapExercise(let ex):
+            activeSheet = .swapExercise(ex)
+            
+        case .workoutSuccessfullyFinished:
+            // Финальные действия после сохранения в БД
+            dashboardViewModel.refreshAllCaches()
+            timerManager.stopRestTimer()
+            if tutorialManager.currentStep == .finishWorkout {
+                tutorialManager.setStep(.recoveryCheck)
+            }
+        }
+        
+        // Сбрасываем событие после его обработки
+        viewModel.activeEvent = nil
+    }
+    
+    // MARK: - Sections & Buttons
+    
     private var finishWorkoutButton: some View {
         Button {
-            viewModel.finishWorkout(
-                workout: workout,
-                progressManager: userStatsViewModel.progressManager,
-                onRefreshGlobalCaches: { dashboardViewModel.refreshAllCaches() },
-                updateAchievementsCount: { newTotal in
-                    let old = unlockedAchievementsCount
-                    unlockedAchievementsCount = newTotal
-                    return old
-                },
-                onSuccessUI: {
-                    timerManager.stopRestTimer()
-                    if tutorialManager.currentStep == .finishWorkout {
-                        tutorialManager.setStep(.recoveryCheck)
-                    }
-                }
-            )
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            
+            // Вызываем чистый метод VM, который сам решит: пустая тренировка или запустить снекбар
+            viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
+            
         } label: {
             Text(LocalizedStringKey("Finish Workout")).font(.headline).frame(maxWidth: .infinity)
                 .padding().background(Color.accentColor).foregroundColor(.white)
@@ -195,13 +238,19 @@ struct WorkoutDetailContentView: View {
         .padding(.horizontal)
         .padding(.bottom, timerManager.isRestTimerActive ? 100 : 16)
         .animation(.default, value: timerManager.isRestTimerActive)
+        // Блокируем кнопку, если уже запущен процесс отсчета (снекбар висит)
+        .disabled(viewModel.isShowingSnackbar)
     }
     
-    private func snackbarOverlay(message: LocalizedStringKey) -> some View {
+    private var snackbarOverlay: some View {
         HStack {
-            Text(message).font(.subheadline).foregroundColor(.white)
+            Text(LocalizedStringKey("Workout finished")).font(.subheadline).foregroundColor(.white)
             Spacer()
-            Button { viewModel.undoAction() } label: {
+            Button {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                viewModel.undoFinishWorkout(workout: workout)
+            } label: {
                 Text(LocalizedStringKey("Undo")).font(.subheadline).bold().foregroundColor(.yellow)
             }
         }
@@ -210,14 +259,17 @@ struct WorkoutDetailContentView: View {
         .cornerRadius(10)
         .shadow(radius: 5)
         .padding(.horizontal)
-        .padding(.bottom, workout.isActive ? (timerManager.isRestTimerActive ? 160 : 80) : 20)
+        .padding(.bottom, timerManager.isRestTimerActive ? 160 : 80)
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .zIndex(100)
     }
 
     // MARK: - Lifecycle Handlers
-    fileprivate func handleOnAppear() {
+    
+    private func handleOnAppear() {
+        viewModel.loadCaches(from: dashboardViewModel)
         viewModel.updateWorkoutAnalytics(for: workout)
+        
         for (index, exercise) in workout.exercises.enumerated() {
             if expandedExercises[exercise.id] == nil {
                 expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
@@ -225,9 +277,8 @@ struct WorkoutDetailContentView: View {
         }
     }
     
-    fileprivate func handleOnDisappear() {
+    private func handleOnDisappear() {
         timerManager.isHidden = false
-        viewModel.commitSnackbar()
         
         if workout.isActive {
             let hasCompletedSets = workout.exercises.contains { ex in
@@ -236,12 +287,15 @@ struct WorkoutDetailContentView: View {
             }
             
             if !hasCompletedSets {
-                Task { await globalViewModel.deleteWorkout(workout) }
+                Task {
+                    await viewModel.deleteEmptyWorkout(workout: workout)
+                    timerManager.stopRestTimer()
+                }
             }
         }
     }
     
-    fileprivate func handleExercisesChanged() {
+    private func handleExercisesChanged() {
         viewModel.updateWorkoutAnalytics(for: workout)
         for (index, exercise) in workout.exercises.enumerated() {
             if expandedExercises[exercise.id] == nil {
@@ -250,16 +304,18 @@ struct WorkoutDetailContentView: View {
         }
     }
     
-    fileprivate func handleScrollTo(newId: UUID?, proxy: ScrollViewProxy) {
+    private func handleScrollTo(newId: UUID?, proxy: ScrollViewProxy) {
         if let exerciseId = newId {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            Task {
+                try? await Task.sleep(for: .seconds(0.1))
+                guard !Task.isCancelled else { return }
                 withAnimation { proxy.scrollTo(exerciseId, anchor: .top) }
                 scrollToExerciseId = nil
             }
         }
     }
     
-    fileprivate func handleTutorialStep(_ newStep: TutorialStep) {
+    private func handleTutorialStep(_ newStep: TutorialStep) {
         if newStep == .highlightChart || newStep == .highlightBody {
             selectedTab = .analytics
         } else if newStep == .addExercise {
@@ -268,6 +324,7 @@ struct WorkoutDetailContentView: View {
     }
     
     // MARK: - View Sections
+    
     private var actionButtonSection: some View {
         Group {
             if !workout.isActive {
@@ -295,11 +352,11 @@ struct WorkoutDetailContentView: View {
                 }
             }
             
-            Button { viewModel.activeDestination = .supersetBuilder(nil) } label: {
+            Button { activeSheet = .supersetBuilder(nil) } label: {
                 Label(LocalizedStringKey("Superset"), systemImage: "plus").font(.caption).bold().padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
             }.disabled(!workout.isActive)
             
-            Button { viewModel.activeDestination = .exerciseSelection } label: {
+            Button { activeSheet = .exerciseSelection } label: {
                 Label(LocalizedStringKey("Exercise"), systemImage: "plus").font(.caption).bold().padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
             }
             .disabled(!workout.isActive)
@@ -369,15 +426,11 @@ struct WorkoutDetailContentView: View {
     }
     
     @ViewBuilder
-    private func renderSheetContent(for destination: DetailDestination) -> some View {
+    private func renderSheetContent(for destination: DetailSheetDestination) -> some View {
         switch destination {
-        case .shareSheet:
-            if let image = viewModel.shareItems.first as? UIImage {
-                ActivityViewController(activityItems: [image])
-                    .presentationDetents([.medium, .large])
-            } else {
-                EmptyView()
-            }
+        case .shareSheet(let image):
+            ActivityViewController(activityItems: [image])
+                .presentationDetents([.medium, .large])
             
         case .exerciseSelection:
             ExerciseSelectionView { newExercise in
@@ -391,7 +444,7 @@ struct WorkoutDetailContentView: View {
                 }
             } onDelete: {
                 if let ex = existing {
-                    Task { await globalViewModel.removeExercise(ex, from: workout) }
+                    viewModel.removeExercise(ex, from: workout)
                 }
             }
             
@@ -399,9 +452,19 @@ struct WorkoutDetailContentView: View {
             ExerciseSelectionView { newEx in
                 viewModel.performSwap(old: oldEx, new: newEx, workout: workout)
             }
-            
-        default:
-            EmptyView()
+        }
+    }
+    
+    @ViewBuilder
+    private func renderFullScreenContent(for destination: DetailFullScreenDestination) -> some View {
+        switch destination {
+        case .prCelebration(let level):
+            PRCelebrationView(prLevel: level, onClose: { activeFullScreen = nil })
+                .presentationBackground(.clear)
+                
+        case .achievementPopup(let achievement):
+            AchievementPopupView(achievement: achievement) { activeFullScreen = nil }
+                .presentationBackground(.clear)
         }
     }
 }

@@ -11,7 +11,7 @@ import Combine
 // MARK: - Camera Manager
 
 @MainActor
-final class CameraManager: NSObject, ObservableObject {
+final class CameraManager: ObservableObject {
     @Published var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
     @Published var handPose: VNHumanHandPoseObservation? = nil
     @Published var bodyPose: VNHumanBodyPoseObservation? = nil
@@ -20,11 +20,9 @@ final class CameraManager: NSObject, ObservableObject {
     let session = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
     
-    // Очередь для получения кадров с камеры
-    private let cameraQueue = DispatchQueue(label: "com.workouttracker.cameraQueue", qos: .userInitiated)
     private var cameraDelegate: CameraDelegate?
     
-    override init() { super.init() }
+    init() { }
     
     deinit {
         videoOutput.setSampleBufferDelegate(nil, queue: nil)
@@ -55,8 +53,7 @@ final class CameraManager: NSObject, ObservableObject {
         guard !session.isRunning else { return }
         session.beginConfiguration()
         
-        // 🎼 Снижаем разрешение. Огромная экономия энергии и CPU.
-        // Для детекции скелета в Vision VGA разрешения более чем достаточно.
+        // Снижаем разрешение для экономии CPU и батареи
         session.sessionPreset = .vga640x480
         
         guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
@@ -81,6 +78,9 @@ final class CameraManager: NSObject, ObservableObject {
         self.cameraDelegate = delegate
         
         videoOutput.alwaysDiscardsLateVideoFrames = true
+        
+        // Очередь камеры остается GCD, т.к. этого требует AVFoundation API
+        let cameraQueue = DispatchQueue(label: "com.workouttracker.cameraQueue", qos: .userInitiated)
         videoOutput.setSampleBufferDelegate(delegate, queue: cameraQueue)
         
         if session.canAddOutput(videoOutput) {
@@ -92,7 +92,6 @@ final class CameraManager: NSObject, ObservableObject {
         }
         session.commitConfiguration()
         
-        // Запуск сессии тоже уводим в фон, чтобы не блокировать MainActor
         Task.detached { [weak self] in self?.session.startRunning() }
     }
     
@@ -103,10 +102,9 @@ final class CameraManager: NSObject, ObservableObject {
     }
 }
 
-// MARK: - Frame Counter Actor (Concurrency Safe)
+// MARK: - Frame Counter Actor
 
-/// Изолированный актор для безопасного инкремента счетчика кадров
-/// в многопоточной среде (заменяет устаревший NSLock).
+/// Изолированный актор для счетчика кадров (безопасно для многопоточности)
 actor FrameCounter {
     private var count = 0
     
@@ -116,15 +114,10 @@ actor FrameCounter {
     }
 }
 
-// MARK: - Camera Delegate
+// MARK: - Vision Processor Actor
 
-/// Делегат камеры. Потокобезопасен (Sendable).
-final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Sendable {
-    private let onUpdate: @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void
-    private let onBodyPoseUpdate: @Sendable (VNHumanBodyPoseObservation?) -> Void
-    private let onHandUpdate: @Sendable (VNHumanHandPoseObservation?) -> Void
-    
-    // 🚩 ОПТИМИЗАЦИЯ: Создаем тяжелые реквесты ОДИН РАЗ при инициализации
+/// ✅ НОВЫЙ АКТОР: Изолирует тяжелые вычисления Vision. Заменяет старую GCD очередь.
+actor VisionProcessor {
     private let bodyRequest = VNDetectHumanBodyPoseRequest()
     private let handRequest: VNDetectHumanHandPoseRequest = {
         let req = VNDetectHumanHandPoseRequest()
@@ -132,12 +125,39 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         return req
     }()
     
-    // Используем актор для счетчика кадров
-    private let frameCounter = FrameCounter()
+    /// Анализирует кадр. Работает в своем потоке пула (Actor Context).
+    func process(sampleBuffer: CMSampleBuffer) throws -> (
+        joints: [VNHumanBodyPoseObservation.JointName: CGPoint],
+        bodyPose: VNHumanBodyPoseObservation?,
+        handPose: VNHumanHandPoseObservation?
+    ) {
+        let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
+        try handler.perform([bodyRequest, handRequest])
+        
+        let bodyObservation = bodyRequest.results?.first
+        let handObservation = handRequest.results?.first
+        var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+        
+        if let body = bodyObservation, let recognizedPoints = try? body.recognizedPoints(.all) {
+            for (key, point) in recognizedPoints where point.confidence > 0.3 {
+                normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
+            }
+        }
+        
+        return (normalizedJoints, bodyObservation, handObservation)
+    }
+}
+
+// MARK: - Camera Delegate
+
+/// Делегат камеры (Sendable).
+final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate, Sendable {
+    private let onUpdate: @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void
+    private let onBodyPoseUpdate: @Sendable (VNHumanBodyPoseObservation?) -> Void
+    private let onHandUpdate: @Sendable (VNHumanHandPoseObservation?) -> Void
     
-    // 🚨 ГЛАВНАЯ ОПТИМИЗАЦИЯ: Выделенная очередь для тяжелых задач Vision 🚨
-    // Это предотвращает истощение (starvation) кооперативного пула потоков Swift Concurrency.
-    private let visionProcessingQueue = DispatchQueue(label: "com.workouttracker.visionProcessing", qos: .userInitiated)
+    private let frameCounter = FrameCounter()
+    private let visionProcessor = VisionProcessor() // Инстанцируем Actor
     
     init(
         onUpdate: @escaping @Sendable ([VNHumanBodyPoseObservation.JointName: CGPoint]) -> Void,
@@ -150,54 +170,29 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         super.init()
     }
     
+    // AVFoundation вызывает это из GCD очереди. Мы прокидываем в Task (Swift Concurrency).
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         
-        // Быстрая асинхронная проверка счетчика (не блокирует)
         Task {
             let shouldProcess = await frameCounter.incrementAndCheck(stride: 3)
             guard shouldProcess else { return }
             
-            // 🛡 Передаем тяжелую СИНХРОННУЮ работу с Vision на выделенную GCD очередь.
-            // Это спасает Swift Concurrency Thread Pool от исчерпания.
-            visionProcessingQueue.async {
+            do {
+                // Вызов тяжелого ML процессора. Выполняется изолированно, не блокируя UI!
+                let result = try await visionProcessor.process(sampleBuffer: sampleBuffer)
                 
-                // Обертка autoreleasepool очищает память от тяжелых
-                // объектов Vision сразу после завершения скоупа.
-                autoreleasepool {
-                    let handler = VNImageRequestHandler(cmSampleBuffer: sampleBuffer, orientation: .up, options: [:])
-                    
-                    do {
-                        try handler.perform([self.bodyRequest, self.handRequest])
-                        
-                        // --- 1. Обработка Body (Скелет тела) ---
-                        if let bodyObservation = self.bodyRequest.results?.first {
-                            self.onBodyPoseUpdate(bodyObservation)
-                            
-                            if let recognizedPoints = try? bodyObservation.recognizedPoints(.all) {
-                                var normalizedJoints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-                                for (key, point) in recognizedPoints where point.confidence > 0.3 {
-                                    normalizedJoints[key] = CGPoint(x: point.location.x, y: 1.0 - point.location.y)
-                                }
-                                self.onUpdate(normalizedJoints)
-                            }
-                        } else {
-                            self.onBodyPoseUpdate(nil)
-                            self.onUpdate([:])
-                        }
-                        
-                        // --- 2. Обработка Hand (Кисть для жестов) ---
-                        self.onHandUpdate(self.handRequest.results?.first)
-                        
-                    } catch {
-                        print("Vision request failed: \(error)")
-                    }
-                }
+                // Возвращаем результаты в MainActor коллбэки
+                onBodyPoseUpdate(result.bodyPose)
+                onUpdate(result.joints)
+                onHandUpdate(result.handPose)
+            } catch {
+                print("Vision request failed: \(error)")
             }
         }
     }
 }
 
-// MARK: - Camera Preview
+// MARK: - Camera Preview & Pose Overlay (Остались без изменений)
 
 struct CameraPreview: UIViewRepresentable {
     let session: AVCaptureSession
@@ -216,8 +211,6 @@ struct CameraPreview: UIViewRepresentable {
     
     func updateUIView(_ uiView: VideoPreviewView, context: Context) {}
 }
-
-// MARK: - Pose Overlay View
 
 struct PoseOverlayView: View {
     let joints: [VNHumanBodyPoseObservation.JointName: CGPoint]
