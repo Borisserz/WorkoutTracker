@@ -327,7 +327,7 @@ public final class AITrackerEngine: ObservableObject {
         
         // 2. Если ML запрещает трекинг, ставим математику на паузу
         // 2. Если ML запрещает трекинг, ставим математику на паузу
-        // guard isTrackingAction else { return } // ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ТЕСТА
+         guard isTrackingAction else { return } // ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ТЕСТА
         
         // 3. Извлекаем сырые точки и конвертируем в агностичные
         guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }

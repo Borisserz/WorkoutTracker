@@ -119,7 +119,7 @@
 		ACDA5BB62F06D002007FF65F /* Exceptions for "WorkoutTracker" folder in "StatsWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Managers/WidgetDataShared.swift,
+				DataLayer/DTOs/WidgetDataShared.swift,
 			);
 			target = ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */;
 		};
