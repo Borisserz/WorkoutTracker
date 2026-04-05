@@ -1,7 +1,3 @@
-// ============================================================
-// FILE: WorkoutTracker/Views/Workout/ExerciseCardView.swift
-// ============================================================
-
 internal import SwiftUI
 import SwiftData
 
@@ -9,6 +5,8 @@ struct ExerciseCardView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(UnitsManager.self) var unitsManager
     @Environment(WorkoutDetailViewModel.self) var detailViewModel
+    // ✅ FIX: Добавлен контекст для безопасной мутации на MainActor
+    @Environment(\.modelContext) private var context
     
     let exercise: Exercise
     let workout: Workout
@@ -47,8 +45,9 @@ struct ExerciseCardView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(isActiveExercise ? Color.blue.opacity(0.5) : Color.clear, lineWidth: isActiveExercise ? 2 : 0))
             .shadow(color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear, radius: isActiveExercise ? 8 : 0, x: 0, y: 2)
         }
+        // ✅ FIX: Убрана ошибочная проверка 'if exercise.isCompleted'. Функция вызывается всегда.
         .sheet(isPresented: $showEffortSheet, onDismiss: {
-            if exercise.isCompleted { completeExerciseAfterRPE() }
+            completeExerciseAfterRPE()
         }) {
             @Bindable var bindableExercise = exercise
             EffortInputView(effort: $bindableExercise.effort)
@@ -91,7 +90,8 @@ struct ExerciseCardView: View {
             .swipeActions(edge: .trailing) {
                 if !exercise.isCompleted && !isWorkoutCompleted {
                     Button(role: .destructive) {
-                        withAnimation { detailViewModel.removeSet(withId: set.id, from: exercise) }
+                        // ✅ FIX: Удаляем сет безопасно, передавая контекст
+                        withAnimation { detailViewModel.removeSet(set, from: exercise, context: context) }
                     } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
                 }
             }
@@ -126,7 +126,6 @@ struct ExerciseCardView: View {
                 
                 Menu {
                     if !isEmbeddedInSuperset {
-                        // ✅ ИСПРАВЛЕНИЕ 1: Используем новое событие ВьюМодели вместо коллбэка
                         Button { detailViewModel.activeEvent = .showSwapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") }
                     }
                     Button(role: .destructive) { detailViewModel.removeExercise(exercise, from: workout) } label: { Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash") }
@@ -171,7 +170,8 @@ struct ExerciseCardView: View {
     
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
-            Button(action: { withAnimation { detailViewModel.addSet(to: exercise) } }) {
+            // ✅ FIX: Передаем контекст для локального добавления
+            Button(action: { withAnimation { detailViewModel.addSet(to: exercise, context: context) } }) {
                 Text(exercise.isCompleted ? LocalizedStringKey("Exercise Completed") : LocalizedStringKey("+ Add Set"))
                 .font(.subheadline).bold().frame(maxWidth: .infinity).padding(.vertical, 10).background(Color.blue.opacity(0.1)).foregroundColor(.blue).cornerRadius(8)
             }
@@ -202,7 +202,6 @@ struct ExerciseCardView: View {
         }
     }
     
-    // ✅ ИСПРАВЛЕНИЕ 2: Убрали tutorialManager из вызова, обрабатываем туториал локально во View
     private func completeExerciseAfterRPE() {
         if tutorialManager.currentStep == .finishExercise {
             tutorialManager.setStep(.explainEffort)

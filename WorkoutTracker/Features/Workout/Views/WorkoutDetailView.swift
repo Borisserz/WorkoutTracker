@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: WorkoutTracker/Views/Workout/WorkoutDetailView.swift
+// FILE: WorkoutTracker/Features/Workout/Views/WorkoutDetailView.swift
 // ============================================================
 
 internal import SwiftUI
@@ -22,7 +22,7 @@ enum DetailSheetDestination: Identifiable {
     case exerciseSelection
     case supersetBuilder(Exercise?)
     case swapExercise(Exercise)
-    case shareSheet(UIImage)
+    case shareSheet([Any]) // Массив Any
     
     var id: String {
         switch self {
@@ -33,6 +33,7 @@ enum DetailSheetDestination: Identifiable {
         }
     }
 }
+
 
 enum DetailFullScreenDestination: Identifiable {
     case prCelebration(PRLevel)
@@ -62,6 +63,7 @@ struct WorkoutDetailContentView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(RestTimerManager.self) var timerManager
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(DIContainer.self) private var di // ✅ Добавлено для доступа к appState
     
     @Bindable var workout: Workout
     @Bindable var viewModel: WorkoutDetailViewModel
@@ -91,50 +93,65 @@ struct WorkoutDetailContentView: View {
         }
         .pickerStyle(.segmented)
     }
-
+    
     var body: some View {
-        ScrollViewReader { proxy in
-            mainLayout(proxy: proxy)
-                .navigationTitle(workout.title)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button { workout.isFavorite.toggle() } label: {
-                            Image(systemName: workout.isFavorite ? "star.fill" : "star")
-                                .foregroundColor(workout.isFavorite ? .yellow : .gray).font(.title3)
+        // ✅ FIX: Wrapped in ZStack to allow true transparent overlays for Popups
+        ZStack {
+            ScrollViewReader { proxy in
+                mainLayout(proxy: proxy)
+                    .navigationTitle(workout.title)
+                    .toolbar {
+                        ToolbarItem(placement: .navigationBarTrailing) {
+                            Button { workout.isFavorite.toggle() } label: {
+                                Image(systemName: workout.isFavorite ? "star.fill" : "star")
+                                    .foregroundColor(workout.isFavorite ? .yellow : .gray).font(.title3)
+                            }
                         }
                     }
-                }
-                .onAppear { handleOnAppear() }
-                .onDisappear(perform: handleOnDisappear)
-                .onChange(of: selectedTab) { _, newTab in withAnimation { timerManager.isHidden = (newTab == .aiCoach) } }
-                .onChange(of: workout.exercises.count) { _, _ in handleExercisesChanged() }
-                .onChange(of: scrollToExerciseId) { _, newId in handleScrollTo(newId: newId, proxy: proxy) }
-                .onChange(of: tutorialManager.currentStep) { _, newStep in handleTutorialStep(newStep) }
-            
-                // ✅ РЕАКТИВНАЯ ОБРАБОТКА СОБЫТИЙ ОТ VIEWMODEL
-                .onChange(of: viewModel.activeEvent) { _, event in
-                    handleViewModelEvent(event)
-                }
-            
-                // ✅ ШТОРКИ И АЛЕРТЫ
-                .sheet(item: $activeSheet) { sheet in
-                    renderSheetContent(for: sheet)
-                }
-                .fullScreenCover(item: $activeFullScreen) { fullScreen in
-                    renderFullScreenContent(for: fullScreen)
-                }
-                .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
-                    Button(LocalizedStringKey("Delete"), role: .destructive) {
-                        Task {
-                            await viewModel.deleteEmptyWorkout(workout: workout)
-                            timerManager.stopRestTimer()
+                    .onAppear {
+                        // ✅ ИСПРАВЛЕНИЕ: Разделяем вызовы на новые строки
+                        handleOnAppear()
+                        if workout.isActive {
+                            di.appState.isInsideActiveWorkout = true
+                        }
+                    }
+                    .onDisappear {
+                        handleOnDisappear()
+                        // ✅ Убеждаемся, что при выходе из экрана баннер может появиться
+                        di.appState.isInsideActiveWorkout = false
+                    }
+                    .onChange(of: selectedTab) { _, newTab in withAnimation { timerManager.isHidden = (newTab == .aiCoach) } }
+                    .onChange(of: workout.exercises.count) { _, _ in handleExercisesChanged() }
+                    .onChange(of: scrollToExerciseId) { _, newId in handleScrollTo(newId: newId, proxy: proxy) }
+                    .onChange(of: tutorialManager.currentStep) { _, newStep in handleTutorialStep(newStep) }
+                    .onChange(of: viewModel.activeEvent) { _, event in handleViewModelEvent(event) }
+                    .sheet(item: $activeSheet) { sheet in
+                        renderSheetContent(for: sheet)
+                    }
+                    .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
+                        Button(LocalizedStringKey("Delete"), role: .destructive) {
+                            let workoutToDelete = workout
                             dismiss()
+                            
+                            Task {
+                                try? await Task.sleep(for: .seconds(0.5))
+                                await viewModel.deleteEmptyWorkout(workout: workoutToDelete)
+                                timerManager.stopRestTimer()
+                            }
                         }
+                        Button(LocalizedStringKey("Continue"), role: .cancel) { }
+                    } message: {
+                        Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
                     }
-                    Button(LocalizedStringKey("Continue"), role: .cancel) { }
-                } message: {
-                    Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
-                }
+            }
+            
+            // ✅ FIX: Render Popups directly in ZStack for beautiful animations and proper background dimming
+            if let fullScreen = activeFullScreen {
+                renderFullScreenContent(for: fullScreen)
+                    .ignoresSafeArea()
+                    .zIndex(200)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9)))
+            }
         }
     }
     
@@ -150,7 +167,7 @@ struct WorkoutDetailContentView: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
-                            WorkoutDetailHeaderView(workout: workout)
+                            WorkoutDetailHeaderView(workout: workout, viewModel: viewModel)
                             actionButtonSection
                             if !workout.isActive { Divider().padding(.vertical, 5) }
                             tabPicker.padding(.bottom, 8)
@@ -161,7 +178,8 @@ struct WorkoutDetailContentView: View {
                                     workout: workout,
                                     expandedExercises: $expandedExercises,
                                     draggedExercise: $draggedExercise,
-                                    scrollToExerciseId: { id in self.scrollToExerciseId = id }
+                                    scrollToExerciseId: { id in self.scrollToExerciseId = id },
+                                    onAddExerciseTap: { activeSheet = .exerciseSelection }
                                 )
                                 .environment(viewModel)
                                 
@@ -189,14 +207,13 @@ struct WorkoutDetailContentView: View {
         switch event {
         case .showPR(let level):
             activeFullScreen = .prCelebration(level)
-            // Закрываем окно празднования через 3 секунды
             Task {
                 try? await Task.sleep(for: .seconds(3.5))
                 if case .prCelebration = activeFullScreen { activeFullScreen = nil }
             }
             
-        case .showShareSheet(let image):
-            activeSheet = .shareSheet(image)
+        case .showShareSheet(let item):
+            activeSheet = .shareSheet([item])
             
         case .showEmptyAlert:
             showEmptyAlert = true
@@ -208,15 +225,12 @@ struct WorkoutDetailContentView: View {
             activeSheet = .swapExercise(ex)
             
         case .workoutSuccessfullyFinished:
-            // Финальные действия после сохранения в БД
-            dashboardViewModel.refreshAllCaches()
             timerManager.stopRestTimer()
             if tutorialManager.currentStep == .finishWorkout {
                 tutorialManager.setStep(.recoveryCheck)
             }
         }
         
-        // Сбрасываем событие после его обработки
         viewModel.activeEvent = nil
     }
     
@@ -328,14 +342,23 @@ struct WorkoutDetailContentView: View {
     private var actionButtonSection: some View {
         Group {
             if !workout.isActive {
-                Button { viewModel.generateAndShare(workout: workout) } label: {
+                Button {
+                    viewModel.generateAndShare(workout: workout)
+                } label: {
                     HStack {
                         Image(systemName: "square.and.arrow.up")
                         Text(LocalizedStringKey("Share Result"))
                     }
-                    .font(.headline).frame(maxWidth: .infinity).padding()
-                    .background(Color.accentColor).foregroundColor(.white).cornerRadius(12).shadow(radius: 5)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.accentColor)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                    .shadow(radius: 5)
                 }
+                .opacity(viewModel.isShowingSnackbar ? 0.5 : 1.0)
+                .disabled(viewModel.isShowingSnackbar)
             }
         }
         .zIndex(9)
@@ -428,9 +451,10 @@ struct WorkoutDetailContentView: View {
     @ViewBuilder
     private func renderSheetContent(for destination: DetailSheetDestination) -> some View {
         switch destination {
-        case .shareSheet(let image):
-            ActivityViewController(activityItems: [image])
+        case .shareSheet(let items):
+            ActivityViewController(activityItems: items)
                 .presentationDetents([.medium, .large])
+
             
         case .exerciseSelection:
             ExerciseSelectionView { newExercise in

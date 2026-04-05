@@ -150,3 +150,27 @@ enum DetailDestination: Identifiable, Equatable {
         }
     }
 }
+public struct ProactiveWorkoutProposal: Sendable {
+    let message: String
+    let workout: GeneratedWorkoutDTO
+}
+
+struct RadarDataPoint: Sendable, Identifiable {
+    let id = UUID()
+    let axis: String
+    let value: Double
+    let maxValue: Double
+}
+
+struct AnatomyStatsDTO: Sendable {
+    let radarData: [RadarDataPoint]
+    let heatmapIntensities: [String: Int]
+    let setsPerMuscle: [MuscleCountDTO]
+}
+
+struct SetsOverTimePoint: Identifiable, Sendable {
+    let id = UUID()
+    let date: Date
+    let muscleGroup: String
+    let sets: Int
+}

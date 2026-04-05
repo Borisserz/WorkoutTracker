@@ -1,7 +1,3 @@
-// ============================================================
-// FILE: WorkoutTracker/Views/Exercise/ExerciseListView.swift
-// ============================================================
-
 internal import SwiftUI
 internal import UniformTypeIdentifiers
 
@@ -10,31 +6,47 @@ struct ExerciseListView: View {
     @Binding var expandedExercises: [UUID: Bool]
     @Binding var draggedExercise: Exercise?
     
-    // ✅ ИСПРАВЛЕНИЕ: Оставляем только локальный ViewModel
     @Environment(WorkoutDetailViewModel.self) var viewModel
     
     var scrollToExerciseId: (UUID?) -> Void
+    var onAddExerciseTap: () -> Void // ✅ FIX: Added callback for the empty state button
+    
+    // ✅ FIX: Computed property to keep uncompleted exercises at the top,
+    // preserving their natural order without jumping randomly.
+    private var sortedExercises: [Exercise] {
+        let uncompleted = workout.exercises.filter { !$0.isCompleted }
+        let completed = workout.exercises.filter { $0.isCompleted }
+        return uncompleted + completed
+    }
     
     var body: some View {
         if workout.exercises.isEmpty {
-            Button { } label: {
-                EmptyStateView(
-                    icon: "plus.circle.fill",
-                    title: LocalizedStringKey("No exercises added yet"),
-                    message: LocalizedStringKey("Tap the + button above to add your first exercise to this workout.")
-                )
-                .padding(.vertical, 30)
-            }.buttonStyle(.plain)
-        } else {
-            VStack(spacing: 16) {
-                ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
+                   // ✅ FIX: Executing the callback and making the whole area tappable
+                   Button {
+                       onAddExerciseTap()
+                   } label: {
+                       EmptyStateView(
+                           icon: "plus.circle.fill",
+                           title: LocalizedStringKey("No exercises added yet"),
+                           message: LocalizedStringKey("Tap the + button above to add your first exercise to this workout.")
+                       )
+                       .padding(.vertical, 30)
+                       .frame(maxWidth: .infinity, maxHeight: .infinity)
+                       .contentShape(Rectangle()) // ✅ FIX: Makes transparent areas clickable
+                   }
+                   .buttonStyle(.plain)
+               } else {
+                   VStack(spacing: 16) {
+                // ✅ FIX: Iterate over the stably sorted array
+                ForEach(sortedExercises) { exercise in
                     
                     let isExpandedBinding = Binding(
                         get: { expandedExercises[exercise.id] ?? false },
                         set: { expandedExercises[exercise.id] = $0 }
                     )
                     
-                    let isCurrentExercise = workout.isActive && !exercise.isCompleted && (expandedExercises[exercise.id] ?? false) && workout.exercises.prefix(index).allSatisfy { $0.isCompleted }
+                    // Check if it's the current exercise logically
+                    let isCurrentExercise = workout.isActive && !exercise.isCompleted && (expandedExercises[exercise.id] ?? false)
 
                     let card = Group {
                         if exercise.isSuperset {
@@ -75,10 +87,11 @@ struct ExerciseListView: View {
             expandedExercises[currentExerciseId] = false
         }
         
-        guard let currentIndex = workout.exercises.firstIndex(where: { $0.id == currentExerciseId }) else { return }
+        // ✅ FIX: Find the NEXT uncompleted exercise dynamically instead of relying on indices
+        let remainingUncompleted = workout.exercises.filter { !$0.isCompleted && $0.id != currentExerciseId }
         
-        if let nextIndex = workout.exercises.indices.first(where: { $0 > currentIndex && !workout.exercises[$0].isCompleted }) {
-            let nextId = workout.exercises[nextIndex].id
+        if let nextExercise = remainingUncompleted.first {
+            let nextId = nextExercise.id
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                 expandedExercises[nextId] = true
             }

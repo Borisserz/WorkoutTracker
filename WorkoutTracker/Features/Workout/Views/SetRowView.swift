@@ -270,28 +270,31 @@ struct SetRowView: View {
     // MARK: - Logic
     
     func toggleComplete() {
-        guard !isExerciseCompleted && !isWorkoutCompleted else { return }
-        
-        withAnimation { set.isCompleted.toggle() }
-        
-        if set.isCompleted {
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-            
-            var suggestedDuration: Int? = nil
-            if exerciseType == .strength {
-                if effort >= 8 { suggestedDuration = 180 }
-                else if effort >= 6 { suggestedDuration = 120 }
-                else { suggestedDuration = 90 }
-            }
-            
-            if autoStartTimer && !isLastSet {
-                onCheck(set, true, suggestedDuration)
-            } else {
-                onCheck(set, false, nil)
-            }
-        }
-    }
+           guard !isExerciseCompleted && !isWorkoutCompleted else { return }
+           
+           withAnimation { set.isCompleted.toggle() }
+           
+           // ✅ ФОРСИРУЕМ СОХРАНЕНИЕ: База данных мгновенно узнает о галочке
+           try? set.modelContext?.save()
+           
+           if set.isCompleted {
+               let generator = UIImpactFeedbackGenerator(style: .medium)
+               generator.impactOccurred()
+               
+               var suggestedDuration: Int? = nil
+               if exerciseType == .strength {
+                   if effort >= 8 { suggestedDuration = 180 }
+                   else if effort >= 6 { suggestedDuration = 120 }
+                   else { suggestedDuration = 90 }
+               }
+               
+               if autoStartTimer && !isLastSet {
+                   onCheck(set, true, suggestedDuration)
+               } else {
+                   onCheck(set, false, nil)
+               }
+           }
+       }
     
     private func formatTime(_ seconds: Int) -> String {
         return "\(seconds / 60):\(String(format: "%02d", seconds % 60))"

@@ -1,4 +1,3 @@
-
 internal import SwiftUI
 import SwiftData
 import UIKit
@@ -16,17 +15,14 @@ struct WorkoutView: View {
     @State private var showAddWorkout = false
     @State private var navigateToNewWorkout = false
     
-    // ✅ ИСПОЛЬЗУЕМ НОВЫЙ DEBOUNCER
     @State private var searchDebouncer = SearchDebouncer()
     
     @State private var selectedFilter: FilterPeriod = .all
     @State private var sortOption: SortOption = .dateDescending
     @State private var showFavoritesOnly = false
     
-    // Внедряем чистую ViewModel для списка
     @State private var listViewModel = WorkoutListViewModel()
     
-    // Состояние для хранения рекомендаций об дисбалансе
     @State private var imbalanceAdvice: (title: String, message: String)? = nil
     @State private var recentWorkoutForNavigation: Workout? = nil
     
@@ -75,7 +71,15 @@ struct WorkoutView: View {
                 }
                 .sheet(isPresented: $showAddWorkout) {
                     AddWorkoutView(onWorkoutCreated: {
-                        navigateToNewWorkout = true
+                        // ✅ FIX: Безопасный поиск созданной тренировки на MainActor
+                        Task { @MainActor in
+                            var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+                            descriptor.fetchLimit = 1
+                            if let newWorkout = try? context.fetch(descriptor).first {
+                                self.recentWorkoutForNavigation = newWorkout
+                                self.navigateToNewWorkout = true
+                            }
+                        }
                     })
                 }
                 .sheet(isPresented: $showImbalanceInfo) {
@@ -89,7 +93,6 @@ struct WorkoutView: View {
         .onAppear {
             loadImbalanceData()
         }
-        // Обновляем дисбаланс, когда меняются данные на дашборде
         .onChange(of: dashboardViewModel.dashboardTotalExercises) { _, _ in
             loadImbalanceData()
         }
@@ -97,7 +100,6 @@ struct WorkoutView: View {
     
     @ViewBuilder
     var content: some View {
-        // Мы используем DynamicWorkoutListView всегда. Если тренировок нет, он сам покажет EmptyState.
         List {
             Section {
                 Button {
@@ -129,7 +131,7 @@ struct WorkoutView: View {
             
             Section {
                 DynamicWorkoutListView(
-                    searchText: searchDebouncer.debouncedText, // ✅ ПЕРЕДАЕМ ТОЛЬКО ОЧИЩЕННЫЙ ТЕКСТ
+                    searchText: searchDebouncer.debouncedText,
                     filter: selectedFilter,
                     sort: sortOption,
                     favoritesOnly: showFavoritesOnly,
@@ -177,7 +179,6 @@ struct WorkoutView: View {
             .pickerStyle(.segmented)
             .padding(.horizontal)
             
-            // ✅ ИСПОЛЬЗУЕМ НОВЫЙ КОМПОНЕНТ
             DebouncedSearchBar(debouncer: searchDebouncer)
                 .padding()
                 .background(Color(UIColor.secondarySystemBackground))

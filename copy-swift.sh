@@ -3,9 +3,9 @@
 TEMP_FILE="all_swift_code.tmp"
 > "$TEMP_FILE" # Очищаем файл
 
-echo "🔍 Начинаю сбор кода проекта WorkoutTracker (Swift)..."
+echo "🔍 Начинаю сбор кода проекта WorkoutTracker (включая WatchApp)..."
 
-# 1. Важные файлы конфигурации в корне и внутри модулей
+# 1. Важные файлы конфигурации
 CONFIG_FILES=(
     "README.md"
     "WorkoutTracker/Info.plist"
@@ -13,7 +13,7 @@ CONFIG_FILES=(
     "StatsWidget/Info.plist"
     "StatsWidget/StatsWidgetExtension.entitlements"
     "WorkoutTimerWidget/Info.plist"
-    # На случай, если ты используешь SPM или CocoaPods (если файлов нет - скрипт просто пойдет дальше)
+    "WatchApp/Info.plist"  # <--- Добавлено для часов
     "Package.swift"
     "Podfile"
 )
@@ -28,9 +28,8 @@ for file in "${CONFIG_FILES[@]}"; do
 done
 
 # 2. Ищем исходный код (.swift) и файлы локализации (.xcstrings)
-# Ищем в основных папках: WorkoutTracker, StatsWidget, WorkoutTimerWidget
-# Исключаем системные папки, кэши, сборки SPM и Pods (на всякий случай)
-src_code=$(find WorkoutTracker StatsWidget WorkoutTimerWidget -type f \( -name '*.swift' -o -name '*.xcstrings' \) \
+# Добавлена папка WatchApp в список поиска
+src_code=$(find WorkoutTracker StatsWidget WorkoutTimerWidget WatchApp -type f \( -name '*.swift' -o -name '*.xcstrings' \) \
     -not -path "*/Pods/*" \
     -not -path "*/.build/*" \
     -not -path "*/DerivedData/*" \
@@ -42,7 +41,7 @@ fi
 
 # Проверка на пустоту
 if [ -z "$files_to_read" ]; then
-    echo "❌ Файлы не найдены. Убедись, что запускаешь скрипт из корня проекта (там, где лежит папка WorkoutTracker и файл .xcodeproj)"
+    echo "❌ Файлы не найдены. Убедись, что запускаешь скрипт из корня проекта."
     exit 1
 fi
 
@@ -61,7 +60,7 @@ done
 # Копирование в буфер обмена
 if command -v pbcopy > /dev/null; then
     cat "$TEMP_FILE" | pbcopy
-    echo "✅ Готово! Весь Swift-код в буфере обмена (macOS)."
+    echo "✅ Готово! Весь код (включая WatchApp) в буфере обмена (macOS)."
 elif command -v clip.exe > /dev/null; then
     cat "$TEMP_FILE" | clip.exe
     echo "✅ Готово! Весь код в буфере обмена (Windows)."
@@ -73,5 +72,4 @@ else
     exit 1
 fi
 
-# Удаляем временный файл (если хочешь оставлять файл на диске - закомментируй строку ниже)
 rm "$TEMP_FILE"

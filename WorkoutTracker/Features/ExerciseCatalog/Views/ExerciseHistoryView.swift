@@ -227,52 +227,61 @@ struct ExerciseHistoryView: View {
     }
     
     private func chartView(vm: ExerciseHistoryViewModel) -> some View {
-        Chart {
-            ForEach(vm.displayedGraphData) { dataPoint in
-                if vm.displayedGraphData.count > 1 {
-                    LineMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
-                        .interpolationMethod(.linear).foregroundStyle(vm.chartColor).lineStyle(StrokeStyle(lineWidth: 3))
-                }
-                PointMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
-                    .foregroundStyle(vm.chartColor).symbolSize(vm.displayedGraphData.count == 1 ? 50 : 30)
-                    .annotation(position: .top) {
-                        if vm.displayedGraphData.count < 10 {
-                            Text(LocalizationHelper.shared.formatInteger(dataPoint.value)).font(.caption2).foregroundColor(.secondary)
-                        }
-                    }
-            }
-            
-            if let val = vm.currentMetricValue, vm.displayedGraphData.count > 1 {
-                RuleMark(y: .value("Metric", val))
-                    .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5])).foregroundStyle(.secondary)
-                    .annotation(position: .top, alignment: .leading) {
-                        Text("\(vm.selectedMetric.rawValue): \(val, format: .number.precision(.fractionLength(1))) \(vm.unitLabel)")
-                            .font(.caption).bold().foregroundColor(.secondary)
-                    }
-            }
-        }
-        .frame(height: 250)
-        .chartXAxis { AxisMarks(values: .automatic) { _ in AxisGridLine().foregroundStyle(.secondary.opacity(0.3)); AxisTick(); AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
-        .chartYAxis { AxisMarks { _ in AxisGridLine().foregroundStyle(.secondary.opacity(0.3)); AxisTick(); AxisValueLabel() } }
-        .chartYScale(domain: .automatic(includesZero: false))
-    }
-    
-    @ViewBuilder
-       private func historyRowContent(dataPoint: ExerciseHistoryDataPoint, vm: ExerciseHistoryViewModel) -> some View {
-           HStack {
-               VStack(alignment: .leading) {
-                   Text(dataPoint.date, style: .date).font(.headline).foregroundColor(.primary)
-               }
-               Spacer()
-               VStack(alignment: .trailing) {
-                   Text("\(LocalizationHelper.shared.formatDecimal(dataPoint.value)) \(vm.unitLabel)")
-                       .bold().foregroundColor(vm.chartColor)
-               }
-           }
-           .padding()
-           .background(Color.gray.opacity(0.05))
-           .cornerRadius(10)
-       }
+          Chart {
+              ForEach(vm.displayedGraphData) { dataPoint in
+                  if vm.displayedGraphData.count > 1 {
+                      LineMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
+                          .interpolationMethod(.linear).foregroundStyle(vm.chartColor).lineStyle(StrokeStyle(lineWidth: 3))
+                  }
+                  PointMark(x: .value("Date", dataPoint.date), y: .value("Value", dataPoint.value))
+                      .foregroundStyle(vm.chartColor).symbolSize(vm.displayedGraphData.count == 1 ? 50 : 30)
+                      .annotation(position: .top) {
+                          if vm.displayedGraphData.count < 10 {
+                              Text(LocalizationHelper.shared.formatInteger(dataPoint.value)).font(.caption2).foregroundColor(.secondary)
+                          }
+                      }
+              }
+              
+              if let val = vm.currentMetricValue, vm.displayedGraphData.count > 1 {
+                  RuleMark(y: .value("Metric", val))
+                      .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5])).foregroundStyle(.secondary)
+                      .annotation(position: .top, alignment: .leading) {
+                          Text("\(vm.selectedMetric.rawValue): \(val, format: .number.precision(.fractionLength(1))) \(vm.unitLabel)")
+                              .font(.caption).bold().foregroundColor(.secondary)
+                      }
+              }
+          }
+          .frame(height: 250)
+          .chartXAxis { AxisMarks(values: .automatic) { _ in AxisGridLine().foregroundStyle(.secondary.opacity(0.3)); AxisTick(); AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
+          .chartYAxis { AxisMarks { _ in AxisGridLine().foregroundStyle(.secondary.opacity(0.3)); AxisTick(); AxisValueLabel() } }
+          // ✅ FIX: Fallback to including zero if there's only 1 point to prevent chart axes collapse
+          .chartYScale(domain: vm.displayedGraphData.count == 1 ? .automatic(includesZero: true) : .automatic(includesZero: false))
+      }
+      
+      @ViewBuilder
+      private func historyRowContent(dataPoint: ExerciseHistoryDataPoint, vm: ExerciseHistoryViewModel) -> some View {
+          // ✅ FIX: Wrapped in a NavigationLink to navigate directly to the specific Workout
+          NavigationLink {
+              WorkoutDetailWrapperView(workoutID: dataPoint.rawWorkoutID)
+          } label: {
+              HStack {
+                  VStack(alignment: .leading) {
+                      Text(dataPoint.date, style: .date).font(.headline).foregroundColor(.primary)
+                  }
+                  Spacer()
+                  VStack(alignment: .trailing) {
+                      Text("\(LocalizationHelper.shared.formatDecimal(dataPoint.value)) \(vm.unitLabel)")
+                          .bold().foregroundColor(vm.chartColor)
+                  }
+                  Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
+              }
+              .padding()
+              .background(Color.gray.opacity(0.05))
+              .cornerRadius(10)
+          }
+          .buttonStyle(PlainButtonStyle())
+      }
+
     @ViewBuilder
     private func exerciseTrendSection(trend: ExerciseTrend) -> some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -402,6 +411,32 @@ struct ExerciseNoteEditor: View {
         let noteID = notes.first?.persistentModelID
         Task {
             await userStatsViewModel.saveExerciseNote(exerciseName: exerciseName, text: text, existingNoteID: noteID)
+        }
+    }
+}
+struct WorkoutDetailWrapperView: View {
+    let workoutID: PersistentIdentifier
+    @Environment(\.modelContext) private var context
+    @Environment(DIContainer.self) private var di
+    
+    @State private var workout: Workout?
+    
+    var body: some View {
+        Group {
+            if let safeWorkout = workout {
+                WorkoutDetailView(workout: safeWorkout, viewModel: di.makeWorkoutDetailViewModel())
+            } else {
+                VStack {
+                    Spacer()
+                    ProgressView()
+                    Spacer()
+                }
+            }
+        }
+        .onAppear {
+            if let fetchedWorkout = context.model(for: workoutID) as? Workout {
+                self.workout = fetchedWorkout
+            }
         }
     }
 }

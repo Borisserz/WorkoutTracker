@@ -175,9 +175,15 @@ public struct TrackingState: Sendable {
     public var repsCount: Int = 0
     public var currentAmplitude: Double = 0.0
     
+    // VBT (Velocity-Based Training) Properties
+    public var concentricStartTime: Date? = nil
+    public var concentricDurations: [TimeInterval] = []
+    public var isVBTWarningTriggered: Bool = false
+    
     fileprivate var missingFramesCount: Int = 0
     fileprivate var lastValidMetricValue: Double? = nil
 }
+
 
 public final class RepetitionTracker {
     private let profile: BiomechanicsProfile
@@ -225,22 +231,41 @@ public final class RepetitionTracker {
         
         switch state.phase {
         case .unknown, .relaxed:
-            if !reachedRelaxed { state.phase = .contracting }
+            if !reachedRelaxed {
+                state.phase = .contracting
+                // VBT: Start concentric timer
+                state.concentricStartTime = Date()
+            }
         case .contracting:
-            if reachedContracted { state.phase = .contracted }
+            if reachedContracted {
+                state.phase = .contracted
+                
+                // VBT: Stop timer & Analyze
+                if let start = state.concentricStartTime {
+                    let duration = Date().timeIntervalSince(start)
+                    state.concentricDurations.append(duration)
+                    
+                    // VBT Logic: 20% speed drop compared to baseline (average of first 2 reps)
+                    if state.concentricDurations.count >= 3 && !state.isVBTWarningTriggered {
+                        let baseline = (state.concentricDurations[0] + state.concentricDurations[1]) / 2.0
+                        if duration >= baseline * 1.20 { // 20% slower
+                            state.isVBTWarningTriggered = true
+                        }
+                    }
+                }
+            }
             else if reachedRelaxed { state.phase = .relaxed } // False start
         case .contracted:
             if !reachedContracted { state.phase = .extending }
         case .extending:
             if reachedRelaxed {
                 state.phase = .relaxed
-                state.repsCount += 1 // ✅ Повторение засчитано!
+                state.repsCount += 1
             } else if reachedContracted {
                 state.phase = .contracted // Bounce back
             }
         }
     }
-    
     private func extractMetricValue(_ metric: MovementMetric, from joints: [AgnosticJointName: CGPoint]) -> Double? {
         switch metric {
         case .angle(let j1, let j2, let j3):
@@ -268,6 +293,7 @@ public final class AITrackerEngine: ObservableObject {
     @Published public private(set) var feedbackMessage: String = "Initializing..."
     @Published public private(set) var isTrackingAction: Bool = false
     @Published public var liveMuscleTension: [String: Int] = [:]
+    @Published public private(set) var vbtWarningTriggered: Bool = false
     
     // MARK: - Private Core Components
     private let exerciseName: String
@@ -324,10 +350,8 @@ public final class AITrackerEngine: ObservableObject {
         
         // 1. Всегда кормим ML Engine для поддержания окна предикшенов
         mlEngine.processFrame(observation: observation)
-        
-        // 2. Если ML запрещает трекинг, ставим математику на паузу
-        // 2. Если ML запрещает трекинг, ставим математику на паузу
-         guard isTrackingAction else { return } // ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ТЕСТА
+    
+         guard isTrackingAction else { return }
         
         // 3. Извлекаем сырые точки и конвертируем в агностичные
         guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
@@ -342,12 +366,14 @@ public final class AITrackerEngine: ObservableObject {
     
     // MARK: - State Synchronization
 
-        
-        private func syncStateToUI(state: TrackingState, profile: BiomechanicsProfile) {
-            // Синхронизация повторений
-            if self.repsCount != state.repsCount {
-                self.repsCount = state.repsCount
-            }
+    private func syncStateToUI(state: TrackingState, profile: BiomechanicsProfile) {
+        if self.repsCount != state.repsCount {
+            self.repsCount = state.repsCount
+        }
+        // VBT Trigger Sync
+           if state.isVBTWarningTriggered && !self.vbtWarningTriggered {
+               self.vbtWarningTriggered = true
+           }
             
             // Обновление Heatmap Tension
             let tension = Int(state.currentAmplitude)

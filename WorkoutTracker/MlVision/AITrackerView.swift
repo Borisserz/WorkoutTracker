@@ -117,6 +117,16 @@ struct AITrackerView: View {
                         }
                     }
                 }
+                .onChange(of: engine.vbtWarningTriggered) { triggered in
+                           if triggered {
+                               // Магия для профессионалов: AI детектит отказ по скорости штанги
+                               coach.speak("Bar speed dropping! Last two reps, push!")
+                               
+                               // Легкий тактильный импульс для юзера
+                               let generator = UINotificationFeedbackGenerator()
+                               generator.notificationOccurred(.warning)
+                           }
+                       }
     }
     
     // MARK: - Live Muscle Activation UI

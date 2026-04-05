@@ -431,37 +431,76 @@ actor WorkoutStore: WorkoutStoreProtocol {
     }
 
     func checkAndGenerateDefaultPresets() async throws {
-            let count = (try? modelContext.fetchCount(FetchDescriptor<WorkoutPreset>())) ?? 0
-            if count == 0 {
-                for example in Workout.examples {
-                    let preset = WorkoutPreset(id: UUID(), name: example.title, icon: example.icon, exercises: [])
-                    modelContext.insert(preset)
-                    try? modelContext.save()
-                    
-                    for exercise in example.exercises {
-                        // ✅ ИСПРАВЛЕНИЕ: Используем DTO вместо duplicate()
-                        let newEx = Exercise(from: exercise.toDTO())
-                        
-                        for set in newEx.setsList {
-                            modelContext.insert(set)
-                        }
-                        
-                        for sub in newEx.subExercises {
-                            for s in sub.setsList {
-                                modelContext.insert(s)
-                            }
-                            modelContext.insert(sub)
-                        }
-                        
-                        modelContext.insert(newEx)
-                        newEx.preset = preset
-                        preset.exercises.append(newEx)
-                    }
-                    try? modelContext.save()
-                }
-            }
-        }
-
+          let defaults = UserDefaults.standard
+          let flagKey = Constants.UserDefaultsKeys.hasGeneratedDefaultPresets_v3.rawValue
+          
+          // Гарантируем, что полная база пресетов сгенерируется ровно один раз,
+          // даже если пользователь уже создал свои шаблоны.
+          guard !defaults.bool(forKey: flagKey) else { return }
+          
+          // Чистые DTO-подобные данные, независимые от контекста
+          let templates: [(name: String, icon: String, exercises: [(n: String, g: String, s: Int, r: Int, w: Double)])] = [
+              ("Push Day", "img_chest", [
+                  ("Bench Press", "Chest", 4, 8, 60.0),
+                  ("Overhead Press", "Shoulders", 3, 10, 40.0),
+                  ("Triceps Extension", "Arms", 3, 12, 20.0)
+              ]),
+              ("Pull Day", "img_back", [
+                  ("Pull-ups", "Back", 4, 8, 0.0),
+                  ("Barbell Rows", "Back", 3, 10, 50.0),
+                  ("Barbell Curl", "Arms", 3, 12, 25.0)
+              ]),
+              ("Legs Day", "img_legs", [
+                  ("Squat", "Legs", 4, 8, 80.0),
+                  ("Leg Press", "Legs", 3, 12, 120.0),
+                  ("Calf Raises", "Legs", 4, 15, 60.0)
+              ]),
+              ("Full Body", "img_default", [
+                  ("Squat", "Legs", 3, 10, 60.0),
+                  ("Bench Press", "Chest", 3, 10, 50.0),
+                  ("Deadlift", "Back", 3, 5, 80.0)
+              ])
+          ]
+          
+          // Безопасная сборка @Model прямо внутри активного контекста
+          for template in templates {
+              let preset = WorkoutPreset(
+                  id: UUID(),
+                  name: template.name,
+                  icon: template.icon,
+                  isSystem: true, // ✅ ДОБАВЛЕНО: Теперь они системные
+                  exercises: []
+              )
+              modelContext.insert(preset)
+              
+              for exData in template.exercises {
+                  // Инициализатор Exercise автоматически генерирует вложенный массив setsList
+                  let exercise = Exercise(
+                      name: exData.n,
+                      muscleGroup: exData.g,
+                      type: .strength,
+                      sets: exData.s,
+                      reps: exData.r,
+                      weight: exData.w
+                  )
+                  
+                  modelContext.insert(exercise)
+                  
+                  // Явно вставляем сеты в контекст для каскадного сохранения
+                  for set in exercise.setsList {
+                      modelContext.insert(set)
+                  }
+                  
+                  // Устанавливаем двусторонние связи
+                  exercise.preset = preset
+                  preset.exercises.append(exercise)
+              }
+          }
+          
+          // Сохраняем транзакцию и ставим флаг
+          try modelContext.save()
+          defaults.set(true, forKey: flagKey)
+      }
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, workoutID: PersistentIdentifier) async throws {
         guard let workout = modelContext.model(for: workoutID) as? Workout, workout.isActive else { return }
         

@@ -21,7 +21,7 @@ struct ExerciseView: View {
     }
     
     var body: some View {
-        NavigationStack {
+       
             VStack(spacing: 0) {
                 searchBar
                 muscleGroupFilter
@@ -67,7 +67,7 @@ struct ExerciseView: View {
             } message: {
                 Text(LocalizedStringKey("This action cannot be undone."))
             }
-        }
+        
     }
     
     private func exerciseRow(name: String) -> some View {

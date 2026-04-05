@@ -1,7 +1,6 @@
 // ============================================================
 // FILE: WorkoutTracker/Views/Overview/OverviewView.swift
 // ============================================================
-
 internal import SwiftUI
 import SwiftData
 import Charts
@@ -74,7 +73,6 @@ struct OverviewView: View {
     @StateObject private var colorManager = MuscleColorManager.shared
     
     var body: some View {
-        // Используем NavigationStack(path:) для современного роутинга
         NavigationStack(path: $router.path) {
             ZStack(alignment: .topTrailing) {
                 ScrollView {
@@ -84,7 +82,7 @@ struct OverviewView: View {
                         } else {
                             chartSection
                             recoverySection
-                            generateFreshWorkoutBanner
+                            proactiveAutopilotBanner
                             topExercisesSection
                         }
                     }
@@ -101,7 +99,6 @@ struct OverviewView: View {
                 }
             }
             .navigationTitle(LocalizedStringKey("Overview"))
-            // 🚀 ЕДИНАЯ ТОЧКА ОБРАБОТКИ РОУТОВ
             .navigationDestination(for: OverviewRouter.RouteDestination.self) { route in
                 switch route {
                 case .workoutDetail(let workout):
@@ -124,17 +121,18 @@ struct OverviewView: View {
                     }
                 }
             }
-            // 🚀 ЕДИНАЯ ТОЧКА ОБРАБОТКИ ШТОРОК
             .sheet(item: $router.activeSheet) { sheet in
                 switch sheet {
                 case .settings:
                     SettingsView()
                 case .addWorkout:
                     AddWorkoutView(onWorkoutCreated: {
-                        // Безопасное открытие тренировки после ее создания в БД
-                        Task {
-                            if let newWorkout = await workoutService.fetchLatestWorkout() {
-                                await MainActor.run { router.push(.workoutDetail(newWorkout)) }
+                        // ✅ FIX: Безопасный поиск созданной тренировки на MainActor
+                        Task { @MainActor in
+                            var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+                            descriptor.fetchLimit = 1
+                            if let newWorkout = try? context.fetch(descriptor).first {
+                                router.push(.workoutDetail(newWorkout))
                             }
                         }
                     })
@@ -194,31 +192,32 @@ struct OverviewView: View {
     }
 
     private var recoverySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Button {
-                router.push(.detailedRecovery)
-            } label: {
-                HStack {
-                    Text(LocalizedStringKey("Muscle Recovery")).font(.headline).foregroundColor(.primary)
-                    Spacer()
-                    Text(LocalizedStringKey("See details")).font(.caption).foregroundColor(.blue)
-                    Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
+            VStack(alignment: .leading, spacing: 10) {
+                // ✅ FIX: Заменяем NavigationLink на Button с вызовом роутера
+                Button {
+                    router.push(.detailedRecovery)
+                } label: {
+                    HStack {
+                        Text(LocalizedStringKey("Muscle Recovery")).font(.headline).foregroundColor(.primary)
+                        Spacer()
+                        Text(LocalizedStringKey("See details")).font(.caption).foregroundColor(.blue)
+                        Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+                .simultaneousGesture(TapGesture().onEnded { if tutorialManager.currentStep == .recoveryCheck { tutorialManager.nextStep() } })
+                
+                Divider()
+                if recentWorkouts.isEmpty {
+                               Text(LocalizedStringKey("Complete a workout to see data")).font(.caption).foregroundColor(.secondary)
+                           } else {
+                               BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true, userGender: userGender)
+                           
                 }
             }
-            .buttonStyle(PlainButtonStyle())
-            .simultaneousGesture(TapGesture().onEnded { if tutorialManager.currentStep == .recoveryCheck { tutorialManager.nextStep() } })
-            
-            Divider()
-            if recentWorkouts.isEmpty {
-                           Text(LocalizedStringKey("Complete a workout to see data")).font(.caption).foregroundColor(.secondary)
-                       } else {
-                           BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true, userGender: userGender)
-                       
-            }
+            .padding().background(Color.gray.opacity(0.1)).cornerRadius(12)
+            .spotlight(step: .recoveryCheck, manager: tutorialManager, text: "Check your Muscle Recovery status here.", alignment: .top, yOffset: -10)
         }
-        .padding().background(Color.gray.opacity(0.1)).cornerRadius(12)
-        .spotlight(step: .recoveryCheck, manager: tutorialManager, text: "Check your Muscle Recovery status here.", alignment: .top, yOffset: -10)
-    }
     
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -274,67 +273,131 @@ struct OverviewView: View {
     }
     
     private var topExercisesSection: some View {
-         VStack(alignment: .leading, spacing: 10) {
-             if !dashboardViewModel.dashboardTopExercises.isEmpty {
-                 HStack {
-                     Text(LocalizedStringKey("Exercises")).font(.title2).bold()
-                     Spacer()
-                     Button { router.push(.exercises) } label: { Text(LocalizedStringKey("See all")).font(.subheadline).foregroundColor(.blue) }
-                 }
-                 .padding(.top, 10)
-                 
-                 ForEach(Array(dashboardViewModel.dashboardTopExercises.enumerated()), id: \.element.name) { index, item in
-                     NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
-                         HStack {
-                             rankIcon(rank: index + 1)
-                             Text(LocalizedStringKey(item.name)).font(.headline).foregroundColor(.primary)
-                             Spacer()
-                             Text("\(item.count) times").font(.subheadline).foregroundColor(.secondary)
-                             Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
-                         }
-                         .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(10).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                     }
-                 }
-             }
-         }
-     }
+          VStack(alignment: .leading, spacing: 10) {
+              if !dashboardViewModel.dashboardTopExercises.isEmpty {
+                  HStack {
+                      Text(LocalizedStringKey("Exercises")).font(.title2).bold()
+                      Spacer()
+                      // ✅ FIX: Заменяем NavigationLink на Button с вызовом роутера
+                      Button { router.push(.exercises) } label: { Text(LocalizedStringKey("See all")).font(.subheadline).foregroundColor(.blue) }
+                  }
+                  .padding(.top, 10)
+                  
+                  ForEach(Array(dashboardViewModel.dashboardTopExercises.enumerated()), id: \.element.name) { index, item in
+                      NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
+                          HStack {
+                              rankIcon(rank: index + 1)
+                              Text(LocalizedStringKey(item.name)).font(.headline).foregroundColor(.primary)
+                              Spacer()
+                              Text("\(item.count) times").font(.subheadline).foregroundColor(.secondary)
+                              Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
+                          }
+                          .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(10).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                      }
+                  }
+              }
+          }
+      }
     
-    private var generateFreshWorkoutBanner: some View {
-        Button(action: {
-            do {
-                let generated = try WorkoutGenerationService.generateFreshWorkout(
-                    recoveryStatus: dashboardViewModel.recoveryStatus, catalog: Exercise.catalog
-                )
-                router.present(.freshWorkout(generated))
-            } catch {
-                di.appState.showError(title: String(localized: "Too Tired!"), message: error.localizedDescription)
-            }
-        }) {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle().fill(Color.yellow.opacity(0.2)).frame(width: 44, height: 44)
-                    Image(systemName: "bolt.fill").foregroundColor(.yellow).font(.title2)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey("Fresh Muscle Workout")).font(.headline).foregroundColor(.primary)
-                    Text(LocalizedStringKey("Generate a routine for fully recovered muscles")).font(.caption).foregroundColor(.secondary).lineLimit(1)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
-            }
-            .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(16).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-        
     @ViewBuilder
-    private func rankIcon(rank: Int) -> some View {
-        ZStack {
-            Circle().fill(rank == 1 ? Color.yellow : rank == 2 ? Color.gray : rank == 3 ? Color.brown : Color.blue.opacity(0.1)).frame(width: 30, height: 30)
-            Text("\(rank)").font(.caption).bold().foregroundColor(rank <= 3 ? .white : .blue)
-        }.padding(.trailing, 5)
-    }
-    
+        private var proactiveAutopilotBanner: some View {
+            if let proposal = dashboardViewModel.proactiveProposal {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Header
+                    HStack {
+                        Image(systemName: "brain.head.profile")
+                            .font(.title2)
+                            .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        Text("AI Autopilot")
+                            .font(.headline)
+                            .fontWeight(.heavy)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        ActiveWorkoutIndicator()
+                    }
+                    
+                    // Context Message
+                    Text(LocalizedStringKey(proposal.message))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    // One-Tap Start Button
+                    Button {
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                        
+                        // Блокируем двойное нажатие
+                        dashboardViewModel.proactiveProposal = nil
+                        
+                        Task {
+                            await workoutService.startGeneratedWorkout(proposal.workout)
+                            if let newWorkout = await workoutService.fetchLatestWorkout() {
+                                await MainActor.run {
+                                    router.push(.workoutDetail(newWorkout))
+                                }
+                            }
+                        }
+                    } label: {
+                        HStack {
+                            Text("Start Now")
+                                .font(.headline)
+                            Image(systemName: "arrow.right.circle.fill")
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing))
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                        .shadow(color: .purple.opacity(0.3), radius: 8, x: 0, y: 4)
+                    }
+                }
+                .padding(20)
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(20)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(LinearGradient(colors: [.purple.opacity(0.5), .blue.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+            } else {
+                // Фолбэк, если AI не нашел явного паттерна (классическая кнопка)
+                Button(action: {
+                    do {
+                        let generated = try WorkoutGenerationService.generateFreshWorkout(
+                            recoveryStatus: dashboardViewModel.recoveryStatus, catalog: Exercise.catalog
+                        )
+                        router.present(.freshWorkout(generated))
+                    } catch {
+                        di.appState.showError(title: String(localized: "Too Tired!"), message: error.localizedDescription)
+                    }
+                }) {
+                    HStack(spacing: 16) {
+                        ZStack {
+                            Circle().fill(Color.yellow.opacity(0.2)).frame(width: 44, height: 44)
+                            Image(systemName: "bolt.fill").foregroundColor(.yellow).font(.title2)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(LocalizedStringKey("Fresh Muscle Workout")).font(.headline).foregroundColor(.primary)
+                            Text(LocalizedStringKey("Generate a routine for fully recovered muscles")).font(.caption).foregroundColor(.secondary).lineLimit(1)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
+                    }
+                    .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(16).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        } // ✅ ВОТ ЭТА СКОБКА БЫЛА ПРОПУЩЕНА В ТВОЕМ КОДЕ
+
+        @ViewBuilder
+        private func rankIcon(rank: Int) -> some View {
+            ZStack {
+                Circle().fill(rank == 1 ? Color.yellow : rank == 2 ? Color.gray : rank == 3 ? Color.brown : Color.blue.opacity(0.1)).frame(width: 30, height: 30)
+                Text("\(rank)").font(.caption).bold().foregroundColor(rank <= 3 ? .white : .blue)
+            }.padding(.trailing, 5)
+        }
     // MARK: - Actions
     
     private func handleFreshWorkoutAccept(_ generated: GeneratedWorkout) {

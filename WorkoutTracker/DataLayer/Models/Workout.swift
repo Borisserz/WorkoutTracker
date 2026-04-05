@@ -6,6 +6,7 @@
 //  Optimized with Computed Properties to prevent redundant DB writes.
 //
 
+
 import Foundation
 import SwiftData
 internal import SwiftUI
@@ -64,7 +65,7 @@ class WorkoutSet: Identifiable {
     
     var exercise: Exercise? = nil
     
-    init(id: UUID = UUID(), index: Int, weight: Double? = nil, reps: Int? = nil, distance: Double? = nil, time: Int? = nil, isCompleted: Bool = false, type: SetType = .normal) {
+    init(id: UUID = UUID(), index: Int = 0, weight: Double? = nil, reps: Int? = nil, distance: Double? = nil, time: Int? = nil, isCompleted: Bool = false, type: SetType = .normal) {
         self.id = id
         self.index = index
         self.weight = weight
@@ -74,8 +75,6 @@ class WorkoutSet: Identifiable {
         self.isCompleted = isCompleted
         self.type = type
     }
-    
-   
 }
 
 @Model
@@ -88,7 +87,6 @@ class Exercise: Identifiable {
     var effort: Int = 5
     var isCompleted: Bool = false
     
-    // ✅ НОВЫЕ ПОЛЯ ДЛЯ КЭШИРОВАНИЯ (Избавляют от N+1 проблемы)
     var cachedVolume: Double = 0.0
     var cachedMaxWeight: Double = 0.0
     
@@ -102,7 +100,7 @@ class Exercise: Identifiable {
     var workout: Workout? = nil
     var preset: WorkoutPreset? = nil
     
-    init(id: UUID = UUID(), name: String, muscleGroup: String, type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
+    init(id: UUID = UUID(), name: String = "", muscleGroup: String = "", type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0.0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
         self.id = id
         self.name = name
         self.muscleGroup = muscleGroup
@@ -120,34 +118,18 @@ class Exercise: Identifiable {
         }
     }
     
-    // MARK: - 🚀 ОПТИМИЗАЦИЯ: Вычисляемые свойства
-    
-    @Transient var sortedSets: [WorkoutSet] {
-        setsList.sorted(by: { $0.index < $1.index })
-    }
-    
+    @Transient var sortedSets: [WorkoutSet] { setsList.sorted(by: { $0.index < $1.index }) }
     @Transient var isSuperset: Bool { !subExercises.isEmpty }
-    
     @Transient var setsCount: Int { setsList.count }
-    
     @Transient var firstSetReps: Int { sortedSets.first?.reps ?? 0 }
-    
     @Transient var firstSetWeight: Double { sortedSets.first?.weight ?? 0.0 }
-    
     @Transient var firstSetDistance: Double? { sortedSets.first?.distance }
-    
     @Transient var firstSetTimeSeconds: Int? { sortedSets.first?.time }
     
     @Transient var exerciseVolume: Double {
-        // Если тренировка завершена, мгновенно отдаем кэш без обращения к сетам (O(1))
-        if isCompleted && cachedVolume > 0 {
-            return cachedVolume
-        }
-        
-        // Считаем на лету только во время активной тренировки
-        if isSuperset {
-            return subExercises.reduce(0.0) { $0 + $1.exerciseVolume }
-        } else {
+        if isCompleted && cachedVolume > 0 { return cachedVolume }
+        if isSuperset { return subExercises.reduce(0.0) { $0 + $1.exerciseVolume } }
+        else {
             return setsList.reduce(0.0) { partialResult, set in
                 if set.type == .warmup || !set.isCompleted { return partialResult }
                 guard let w = set.weight, let r = set.reps else { return partialResult }
@@ -156,41 +138,33 @@ class Exercise: Identifiable {
         }
     }
     
-    // MARK: - Safe Mutations
-    func addSafeSet(_ newSet: WorkoutSet) {
-        newSet.exercise = self
-        self.setsList.append(newSet)
-    }
-    
-    func removeSafeSet(_ set: WorkoutSet) {
-        self.setsList.removeAll(where: { $0.id == set.id })
+    func addSafeSet(_ newSet: WorkoutSet) { newSet.exercise = self; self.setsList.append(newSet) }
+    func removeSafeSet(_ set: WorkoutSet) { self.setsList.removeAll(where: { $0.id == set.id }); for (i, s) in sortedSets.enumerated() { s.index = i + 1 } }
+    func removeSafeSets(_ setsToRemove: [WorkoutSet]) {
+        let idsToRemove = Set(setsToRemove.map { $0.id })
+        self.setsList.removeAll(where: { idsToRemove.contains($0.id) })
         for (i, s) in sortedSets.enumerated() { s.index = i + 1 }
     }
-    func removeSafeSets(_ setsToRemove: [WorkoutSet]) {
-            let idsToRemove = Set(setsToRemove.map { $0.id })
-            self.setsList.removeAll(where: { idsToRemove.contains($0.id) })
-            // Пересчитываем индексы только ОДИН раз после массового удаления
-            for (i, s) in sortedSets.enumerated() { s.index = i + 1 }
-        }
-    
-    func replaceAllSets(with newSets: [WorkoutSet]) {
-        self.setsList = newSets
-        for set in newSets { set.exercise = self }
-    }
-    
-
+    func replaceAllSets(with newSets: [WorkoutSet]) { self.setsList = newSets; for set in newSets { set.exercise = self } }
 }
-
 @Model
 class WorkoutPreset: Identifiable {
     var id: UUID = UUID()
     var name: String = ""
     var icon: String = ""
+    var isSystem: Bool = false
+    var folderName: String? = nil // ✅ ДОБАВЛЕНО ДЛЯ ПАПОК
+    
     @Relationship(deleteRule: .cascade, inverse: \Exercise.preset)
     var exercises: [Exercise] = []
     
-    init(id: UUID = UUID(), name: String, icon: String, exercises: [Exercise]) {
-        self.id = id; self.name = name; self.icon = icon; self.exercises = exercises
+    init(id: UUID = UUID(), name: String = "", icon: String = "", isSystem: Bool = false, folderName: String? = nil, exercises: [Exercise] = []) {
+        self.id = id
+        self.name = name
+        self.icon = icon
+        self.isSystem = isSystem
+        self.folderName = folderName
+        self.exercises = exercises
     }
 }
 @Model
@@ -203,28 +177,28 @@ class Workout: Identifiable {
     var isFavorite: Bool = false
     var aiChatHistoryData: Data? = nil
     
-    // Кэшированные агрегаты (избавляют от проблемы N+1)
     var durationSeconds: Int = 0
     var effortPercentage: Int = 0
     var totalStrengthVolume: Double = 0.0
     var totalCardioDistance: Double = 0.0
-    var totalReps: Int = 0 // ✅ НОВОЕ ПОЛЕ ДЛЯ КЭШИРОВАНИЯ
+    var totalReps: Int = 0
     
     @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
     var exercises: [Exercise] = []
     
-    init(id: UUID = UUID(), title: String, date: Date, endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false, aiChatHistoryData: Data? = nil) {
+    init(id: UUID = UUID(), title: String = "", date: Date = Date(), endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false, aiChatHistoryData: Data? = nil) {
         self.id = id; self.title = title; self.date = date; self.endTime = endTime; self.icon = icon; self.isFavorite = isFavorite; self.exercises = exercises; self.aiChatHistoryData = aiChatHistoryData
     }
     
     var isActive: Bool { endTime == nil }
 }
 
+// ⚠️ CLOUDKIT FIX: Removed .unique attributes and ensured all default initializers
 @Model
 class ExerciseNote {
-    @Attribute(.unique) var exerciseName: String = ""
+    var exerciseName: String = ""
     var text: String = ""
-    init(exerciseName: String, text: String) { self.exerciseName = exerciseName; self.text = text }
+    init(exerciseName: String = "", text: String = "") { self.exerciseName = exerciseName; self.text = text }
 }
 
 @Model
@@ -238,20 +212,19 @@ class UserStats {
 
 @Model
 class ExerciseStat {
-    @Attribute(.unique) var exerciseName: String = ""
+    var exerciseName: String = ""
     var maxWeight: Double = 0.0; var totalCount: Int = 0; var lastPerformanceDTO: Data? = nil
-    init(exerciseName: String, maxWeight: Double = 0.0, totalCount: Int = 0, lastPerformanceDTO: Data? = nil) {
+    init(exerciseName: String = "", maxWeight: Double = 0.0, totalCount: Int = 0, lastPerformanceDTO: Data? = nil) {
         self.exerciseName = exerciseName; self.maxWeight = maxWeight; self.totalCount = totalCount; self.lastPerformanceDTO = lastPerformanceDTO
     }
 }
 
 @Model
 class MuscleStat {
-    @Attribute(.unique) var muscleName: String = ""
+    var muscleName: String = ""
     var totalCount: Int = 0
-    init(muscleName: String, totalCount: Int = 0) { self.muscleName = muscleName; self.totalCount = totalCount }
+    init(muscleName: String = "", totalCount: Int = 0) { self.muscleName = muscleName; self.totalCount = totalCount }
 }
-
 // MARK: - DTOs & Codable Support
 
 struct WorkoutSetDTO: Codable {
@@ -261,10 +234,13 @@ struct WorkoutSetDTO: Codable {
 struct ExerciseDTO: Codable {
     let name: String; let muscleGroup: String; let type: ExerciseType; let category: ExerciseCategory; let effort: Int; let isCompleted: Bool; let setsList: [WorkoutSetDTO]; let subExercises: [ExerciseDTO]
 }
-
 struct WorkoutPresetDTO: Codable {
-    let name: String; let icon: String; let exercises: [ExerciseDTO]
+    let name: String
+    let icon: String
+    var folderName: String? = nil // ✅ ДОБАВЛЕНО
+    let exercises: [ExerciseDTO]
 }
+
 
 extension WorkoutSet {
     func toDTO() -> WorkoutSetDTO {
@@ -286,10 +262,10 @@ extension Exercise {
 
 extension WorkoutPreset {
     func toDTO() -> WorkoutPresetDTO {
-        WorkoutPresetDTO(name: name, icon: icon, exercises: exercises.map { $0.toDTO() })
+        WorkoutPresetDTO(name: name, icon: icon, folderName: folderName, exercises: exercises.map { $0.toDTO() })
     }
     convenience init(from dto: WorkoutPresetDTO) {
-        self.init(name: dto.name, icon: dto.icon, exercises: dto.exercises.map { Exercise(from: $0) })
+        self.init(name: dto.name, icon: dto.icon, folderName: dto.folderName, exercises: dto.exercises.map { Exercise(from: $0) })
     }
 }
 
@@ -307,12 +283,29 @@ extension Exercise {
     ]
 }
 
+// ✅ FIX: Added comprehensive default workout templates
 extension Workout {
     static var examples: [Workout] {
         [
+            Workout(title: "Push Day", date: Date(), icon: "img_chest", exercises: [
+                Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 4, reps: 8, weight: 60),
+                Exercise(name: "Overhead Press", muscleGroup: "Shoulders", sets: 3, reps: 10, weight: 40),
+                Exercise(name: "Triceps Extension", muscleGroup: "Arms", sets: 3, reps: 12, weight: 20)
+            ]),
+            Workout(title: "Pull Day", date: Date(), icon: "img_back", exercises: [
+                Exercise(name: "Pull-ups", muscleGroup: "Back", sets: 4, reps: 8, weight: 0),
+                Exercise(name: "Barbell Rows", muscleGroup: "Back", sets: 3, reps: 10, weight: 50),
+                Exercise(name: "Barbell Curl", muscleGroup: "Arms", sets: 3, reps: 12, weight: 25)
+            ]),
+            Workout(title: "Legs Day", date: Date(), icon: "img_legs", exercises: [
+                Exercise(name: "Squat", muscleGroup: "Legs", sets: 4, reps: 8, weight: 80),
+                Exercise(name: "Leg Press", muscleGroup: "Legs", sets: 3, reps: 12, weight: 120),
+                Exercise(name: "Calf Raises", muscleGroup: "Legs", sets: 4, reps: 15, weight: 60)
+            ]),
             Workout(title: "Full Body", date: Date(), icon: "img_default", exercises: [
                 Exercise(name: "Squat", muscleGroup: "Legs", sets: 3, reps: 10, weight: 60),
-                Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 3, reps: 10, weight: 50)
+                Exercise(name: "Bench Press", muscleGroup: "Chest", sets: 3, reps: 10, weight: 50),
+                Exercise(name: "Deadlift", muscleGroup: "Back", sets: 3, reps: 5, weight: 80)
             ])
         ]
     }

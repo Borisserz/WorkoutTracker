@@ -25,6 +25,8 @@ public enum Constants {
         case userAvatar
         case exerciseNotes = "ExerciseNotes"
         case muscleColors = "MuscleColors"
+        case voiceCoachDucking
+        case hasGeneratedDefaultPresets_v3 
     }
     
     /// Default values and keys for AI integrations

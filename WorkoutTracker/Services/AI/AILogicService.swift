@@ -4,62 +4,6 @@
 
 import Foundation
 
-// MARK: - App DTOs
-public struct AICoachResponseDTO: Sendable {
-    let text: String
-    let workout: GeneratedWorkoutDTO?
-}
-
-public enum AIActionType: String, Codable, Sendable {
-    case dropWeight, addSet, replaceExercise, skipExercise, reduceRemainingLoad, none, unknown
-    
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let rawValue = try container.decode(String.self)
-        self = AIActionType(rawValue: rawValue) ?? .unknown
-    }
-}
-
-public struct InWorkoutResponseDTO: Codable, Sendable {
-    let explanation: String
-    let actionType: AIActionType
-    let targetExerciseName: String?
-    let valuePercentage: Double?
-    let valueReps: Int?
-    let valueWeightKg: Double?
-    let replacementExerciseName: String?
-}
-
-public struct UserProfileContext: Codable, Sendable {
-    let weightKg: Double
-    let experienceLevel: String
-    let favoriteMuscles: [String]
-    let recentPRs: [String: Double]
-    let language: String
-    let workoutsThisWeek: Int
-    let currentStreak: Int
-    let fatiguedMuscles: [String]
-    let availableExercises: [String]
-    let aiCoachTone: String
-    let weightUnit: String
-}
-
-public struct GeneratedWorkoutDTO: Codable, Sendable {
-    let title: String
-    let aiMessage: String
-    let exercises: [GeneratedExerciseDTO]
-}
-
-public struct GeneratedExerciseDTO: Codable, Sendable {
-    let name: String
-    let muscleGroup: String
-    let type: String
-    let sets: Int
-    let reps: Int
-    let recommendedWeightKg: Double?
-    let restSeconds: Int?
-}
-
 public enum AILogicError: Error, LocalizedError, Sendable {
     case invalidURL, invalidResponse, noDataReturned, invalidData, friendlyError
     case apiError(statusCode: Int, message: String)
@@ -211,5 +155,32 @@ public actor AILogicService {
         } catch {
             throw AILogicError.friendlyError
         }
+    }
+}
+
+extension AILogicService {
+    
+    public func generateFormRoast(exercise: String, reps: Int, language: String) async throws -> String {
+        let isRussian = language == "Russian"
+        let langInstruction = isRussian ? "ОТВЕЧАЙ НА РУССКОМ." : "REPLY IN ENGLISH."
+        
+        let systemPrompt = """
+        You are a savage, sarcastic, and extremely funny AI gym bro coach. 
+        Your goal is to ROAST the user's workout form and performance.
+        Keep it PG-13, but be absolutely merciless and funny. Use gym slang.
+        Do NOT use markdown. Maximum 3 short sentences.
+        \(langInstruction)
+        """
+        
+        let userPrompt = "I just did \(reps) reps of \(exercise). Roast my form and effort."
+        
+        let requestBody = GeminiRequest(
+            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
+            contents: [.init(role: "user", parts: [.init(text: userPrompt)])],
+            generationConfig: .init(temperature: 0.9, responseMimeType: "text/plain") // Higher temp for more creativity
+        )
+        
+        let response = try await networkClient.generateText(from: requestBody)
+        return response.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

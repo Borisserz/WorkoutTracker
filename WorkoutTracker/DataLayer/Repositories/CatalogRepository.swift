@@ -1,12 +1,5 @@
-//
-//  CatalogRepository.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 3.04.26.
-//
-
 // ============================================================
-// FILE: WorkoutTracker/Views/Exercise/CatalogRepository.swift
+// FILE: WorkoutTracker/DataLayer/Repositories/CatalogRepository.swift
 // ============================================================
 
 import Foundation
@@ -24,13 +17,25 @@ protocol CatalogRepositoryProtocol: Sendable {
 actor CatalogRepository: CatalogRepositoryProtocol {
     
     func addCustomExercise(name: String, category: String, targetedMuscles: [String], type: ExerciseType) async throws {
-        let item = ExerciseDictionaryItem(name: name, category: category, targetedMuscles: targetedMuscles, type: type, isCustom: true, isHidden: false)
-        modelContext.insert(item)
+        // ⚠️ UPSERT LOGIC: Prevent duplicates now that @Attribute(.unique) is gone
+        let descriptor = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.name == name && $0.isCustom == true })
+        
+        if let existingItem = try? modelContext.fetch(descriptor).first {
+            // Update existing
+            existingItem.category = category
+            existingItem.targetedMuscles = targetedMuscles
+            existingItem.type = type
+            existingItem.isHidden = false
+        } else {
+            // Insert new
+            let item = ExerciseDictionaryItem(name: name, category: category, targetedMuscles: targetedMuscles, type: type, isCustom: true, isHidden: false)
+            modelContext.insert(item)
+        }
         try modelContext.save()
     }
 
     func deleteCustomExercise(name: String, category: String) async throws {
-        let desc = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.name == name && $0.isCustom })
+        let desc = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.name == name && $0.isCustom == true })
         if let items = try? modelContext.fetch(desc), let item = items.first {
             item.isHidden = true
             try modelContext.save()
@@ -38,8 +43,15 @@ actor CatalogRepository: CatalogRepositoryProtocol {
     }
 
     func hideDefaultExercise(name: String, category: String) async throws {
-        let item = ExerciseDictionaryItem(name: name, category: category, targetedMuscles: [], type: .strength, isCustom: false, isHidden: true)
-        modelContext.insert(item)
+        // ⚠️ UPSERT LOGIC
+        let desc = FetchDescriptor<ExerciseDictionaryItem>(predicate: #Predicate { $0.name == name && $0.isCustom == false })
+        
+        if let existingItem = try? modelContext.fetch(desc).first {
+            existingItem.isHidden = true
+        } else {
+            let item = ExerciseDictionaryItem(name: name, category: category, targetedMuscles: [], type: .strength, isCustom: false, isHidden: true)
+            modelContext.insert(item)
+        }
         try modelContext.save()
     }
     

@@ -22,19 +22,26 @@ final class VoiceCoach: NSObject, ObservableObject, AVSpeechSynthesizerDelegate 
     }
     
     private func setupAudioSession() {
-        do {
-            // .playback - позволяет звучать даже в silent mode
-            // .mixWithOthers - не выключает музыку на фоне
-            // .duckOthers - автоматически приглушает фоновую музыку во время нашей речи
-            try audioSession.setCategory(
-                .playback,
-                mode: .spokenAudio, // Оптимизировано для голоса
-                options: [.duckOthers, .mixWithOthers]
-            )
-        } catch {
-            print("VoiceCoach: Failed to configure AVAudioSession - \(error)")
-        }
-    }
+           do {
+               let isDuckingEnabled = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.voiceCoachDucking.rawValue)
+               
+               // Всегда миксуем с фоновым звуком (музыка не ставится на паузу)
+               var options: AVAudioSession.CategoryOptions = [.mixWithOthers]
+               
+               // Даккинг строго Opt-in
+               if isDuckingEnabled {
+                   options.insert(.duckOthers)
+               }
+               
+               try audioSession.setCategory(
+                   .playback,
+                   mode: .spokenAudio, // Оптимизировано для голоса
+                   options: options
+               )
+           } catch {
+               print("VoiceCoach: Failed to configure AVAudioSession - \(error)")
+           }
+       }
     
     /// Произносит новую фразу, прерывая текущую
     func speak(_ text: String) {

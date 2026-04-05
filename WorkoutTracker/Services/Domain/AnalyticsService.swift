@@ -722,44 +722,11 @@ actor AnalyticsService {
             }
         }
     
-    // В файле AnalyticsService.swift, внутри `actor AnalyticsService`
 
-    func fetchWorkoutAnalytics(workoutID: PersistentIdentifier) async throws -> WorkoutAnalyticsDataDTO {
-        let bgContext = ModelContext(modelContainer)
-        guard let workout = bgContext.model(for: workoutID) as? Workout else { throw WorkoutRepositoryError.modelNotFound }
-        
-        var counts = [String: Int]()
-        var volume = 0.0
-        var chartExercises: [ExerciseChartDTO] = []
-        
-        for exercise in workout.exercises {
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-            for sub in targets {
-                if sub.type != .cardio && sub.setsList.contains(where: { $0.isCompleted }) {
-                    let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
-                    for muscleSlug in muscles { counts[muscleSlug, default: 0] += 1 }
-                }
-            }
-            volume += exercise.exerciseVolume
-        }
-        
-        let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
-        let forChart = flattened.filter { ex in
-            ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
-        }
-        
-        for ex in forChart {
-            let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-            if maxW > 0 {
-                chartExercises.append(ExerciseChartDTO(id: UUID(), name: ex.name, maxWeight: maxW))
-            }
-        }
-        
-        return WorkoutAnalyticsDataDTO(intensity: counts, volume: volume, chartExercises: chartExercises)
-    }
     // В файле AnalyticsService.swift, внутри `actor AnalyticsService`
 
     func finishWorkoutAndCalculateAchievements(workoutID: PersistentIdentifier) async throws -> (newUnlocks: [Achievement], totalCount: Int) {
+        
         let bgContext = ModelContext(modelContainer)
         try await workoutStore.processCompletedWorkout(workoutID: workoutID)
         
@@ -810,4 +777,79 @@ actor AnalyticsService {
            let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
            return (try? bgContext.fetch(descriptor)) ?? []
        }
+    
+    
+    // MARK: - Anatomy & Radar Stats
+        func fetchAnatomyStats(for interval: DateInterval, workouts: [Workout]) -> AnatomyStatsDTO {
+            let filteredWorkouts = workouts.filter { interval.contains($0.date) }
+            var muscleSets: [String: Int] = [:]
+            
+            for workout in filteredWorkouts {
+                for exercise in workout.exercises {
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for ex in targets where ex.type == .strength {
+                        let completedSets = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
+                        if completedSets > 0 {
+                            muscleSets[ex.muscleGroup, default: 0] += completedSets
+                        }
+                    }
+                }
+            }
+            
+            let maxSets = Double(muscleSets.values.max() ?? 1)
+            
+            // Для радара группируем по основным 6 осям
+            let radarAxes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
+            let radarData = radarAxes.map { axis -> RadarDataPoint in
+                let sets = Double(muscleSets[axis] ?? 0)
+                return RadarDataPoint(axis: axis, value: sets, maxValue: max(maxSets, 10.0))
+            }
+            
+            // Для тепловой карты маппим группы в слоги (slugs)
+            var heatmapData: [String: Int] = [:]
+            for (group, sets) in muscleSets {
+                let slugs = MuscleMapping.getMuscles(for: "Unknown", group: group)
+                for slug in slugs {
+                    heatmapData[slug, default: 0] += sets
+                }
+            }
+            
+            let sortedSets = muscleSets.map { MuscleCountDTO(muscle: $0.key, count: $0.value) }.sorted { $0.count > $1.count }
+            
+            return AnatomyStatsDTO(radarData: radarData, heatmapIntensities: heatmapData, setsPerMuscle: sortedSets)
+        }
+
+        // MARK: - Sets Over Time
+        func fetchSetsOverTime(period: StatsView.Period, workouts: [Workout]) -> [SetsOverTimePoint] {
+            let calendar = Calendar.current
+            let now = Date()
+            var data: [SetsOverTimePoint] = []
+            
+            let interval: DateInterval
+            switch period {
+            case .week: interval = calendar.dateInterval(of: .weekOfYear, for: now)!
+            case .month: interval = calendar.dateInterval(of: .month, for: now)!
+            case .year: interval = calendar.dateInterval(of: .year, for: now)!
+            }
+            
+            let filteredWorkouts = workouts.filter { interval.contains($0.date) }
+            
+            // Собираем данные по дням/неделям
+            for workout in filteredWorkouts {
+                var dailySets: [String: Int] = [:]
+                for ex in workout.exercises {
+                    let targets = ex.isSuperset ? ex.subExercises : [ex]
+                    for sub in targets where sub.type == .strength {
+                        let sets = sub.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
+                        if sets > 0 { dailySets[sub.muscleGroup, default: 0] += sets }
+                    }
+                }
+                
+                for (group, count) in dailySets {
+                    data.append(SetsOverTimePoint(date: calendar.startOfDay(for: workout.date), muscleGroup: group, sets: count))
+                }
+            }
+            
+            return data.sorted { $0.date < $1.date }
+        }
 }

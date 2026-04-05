@@ -15,7 +15,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "ACF4FC892F01579900850F6E"
+               BlueprintIdentifier = "AC3CB9882F8176AA008A6777"
                BuildableName = "WorkoutTrackerWatch Watch App.app"
                BlueprintName = "WorkoutTrackerWatch Watch App"
                ReferencedContainer = "container:WorkoutTracker.xcodeproj">
@@ -72,7 +72,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "ACF4FC892F01579900850F6E"
+            BlueprintIdentifier = "AC3CB9882F8176AA008A6777"
             BuildableName = "WorkoutTrackerWatch Watch App.app"
             BlueprintName = "WorkoutTrackerWatch Watch App"
             ReferencedContainer = "container:WorkoutTracker.xcodeproj">
@@ -89,7 +89,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "ACF4FC892F01579900850F6E"
+            BlueprintIdentifier = "AC3CB9882F8176AA008A6777"
             BuildableName = "WorkoutTrackerWatch Watch App.app"
             BlueprintName = "WorkoutTrackerWatch Watch App"
             ReferencedContainer = "container:WorkoutTracker.xcodeproj">

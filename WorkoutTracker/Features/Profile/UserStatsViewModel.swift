@@ -1,28 +1,59 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/Profile/UserStatsViewModel.swift
+// ============================================================
+
 internal import SwiftUI
 import SwiftData
 import Observation
 
 @Observable @MainActor
 final class UserStatsViewModel {
-    private let userRepository: UserRepositoryProtocol // 🟢 Изменено
+    private let userRepository: UserRepositoryProtocol
     var progressManager: ProgressManager
+    
+    // Inject HealthKit implicitly or via DI. Using the global actor singleton for simplicity here.
     
     init(userRepository: UserRepositoryProtocol, progressManager: ProgressManager) {
         self.userRepository = userRepository
         self.progressManager = progressManager
     }
     
+    /// Syncs weight from Apple Health on app launch or profile view appear
+    func syncWeightFromHealthKit() async {
+        do {
+            try await HealthKitManager.shared.requestAuthorization()
+            let hkWeight = try await HealthKitManager.shared.fetchLatestWeight()
+            
+            let currentLocalWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+            
+            // If HealthKit weight differs (e.g. user stepped on smart scale), update our local DB
+            if abs(hkWeight - currentLocalWeight) > 0.1 {
+                UserDefaults.standard.set(hkWeight, forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+                try? await userRepository.addWeightEntry(weight: hkWeight, date: Date())
+            }
+        } catch {
+            print("HealthKit sync skipped: \(error.localizedDescription)")
+        }
+    }
+    
+    /// Adds weight to local DB and pushes to Apple Health
     func addWeightEntry(weight: Double, date: Date = Date()) async {
         try? await userRepository.addWeightEntry(weight: weight, date: date)
         UserDefaults.standard.set(weight, forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+        
+        // Push to HealthKit
+        Task.detached {
+            try? await HealthKitManager.shared.saveWeight(weight, date: date)
+        }
     }
     
     func deleteWeightEntry(_ entryID: PersistentIdentifier) async {
         try? await userRepository.deleteWeightEntry(entryID)
     }
     
-    func addBodyMeasurement(neck: Double?, shoulders: Double?, chest: Double?, waist: Double?, pelvis: Double?, biceps: Double?, thigh: Double?, calves: Double?, date: Date = Date()) async {
-        try? await userRepository.addBodyMeasurement(neck: neck, shoulders: shoulders, chest: chest, waist: waist, pelvis: pelvis, biceps: biceps, thigh: thigh, calves: calves, date: date)
+    // ✅ ИСПРАВЛЕНИЕ: Новый элегантный метод для сохранения всей модели замеров сразу
+    func saveBodyMeasurement(_ measurement: BodyMeasurement) async {
+        try? await userRepository.saveBodyMeasurement(measurement)
     }
     
     func deleteBodyMeasurement(_ measurementID: PersistentIdentifier) async {
