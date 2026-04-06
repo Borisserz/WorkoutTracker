@@ -41,6 +41,14 @@ final class UserStatsViewModel {
         try? await userRepository.addWeightEntry(weight: weight, date: date)
         UserDefaults.standard.set(weight, forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
         
+        // ✅ БЕЗОПАСНАЯ ПРОВЕРКА ЦЕЛИ ЧЕРЕЗ РЕПОЗИТОРИЙ (Без прямого доступа к ModelContext)
+        if let goalAchieved = try? await userRepository.checkBodyweightGoal(currentWeight: weight), goalAchieved {
+            // Если цель по весу достигнута, можно запустить триггер для UI (например, через NotificationCenter)
+            // или обновить локальный стейт, чтобы на экране прогресса появилась ачивка.
+            print("🎯 Bodyweight Goal Achieved!")
+            NotificationCenter.default.post(name: NSNotification.Name("BodyweightGoalAchieved"), object: nil)
+        }
+        
         // Push to HealthKit
         Task.detached {
             try? await HealthKitManager.shared.saveWeight(weight, date: date)

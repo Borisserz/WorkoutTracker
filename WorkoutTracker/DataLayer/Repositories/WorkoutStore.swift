@@ -12,6 +12,34 @@ import WidgetKit // WidgetKit тут, чтобы ModelActor мог работа�
 // MARK: - WorkoutStore (@ModelActor)
 @ModelActor
 actor WorkoutStore: WorkoutStoreProtocol {
+    
+    
+    func swapExercise(oldID: PersistentIdentifier, newExerciseDTO: ExerciseDTO, inWorkoutID: PersistentIdentifier) async throws {
+            guard let workout = modelContext.model(for: inWorkoutID) as? Workout,
+                  let oldExercise = modelContext.model(for: oldID) as? Exercise,
+                  let index = workout.exercises.firstIndex(where: { $0.persistentModelID == oldID })
+            else {
+                throw WorkoutRepositoryError.modelNotFound
+            }
+            
+            // Удаляем старое упражнение
+            workout.exercises.remove(at: index)
+            modelContext.delete(oldExercise)
+            
+            // Создаем и вставляем новое на то же место
+            let newExercise = Exercise(from: newExerciseDTO)
+            modelContext.insert(newExercise)
+            for set in newExercise.setsList { modelContext.insert(set) } // Важно для SwiftData!
+            
+            newExercise.workout = workout
+            workout.exercises.insert(newExercise, at: index)
+            
+            try modelContext.save()
+        }
+    
+    
+    
+    
     // Добавьте этот метод внутрь actor WorkoutStore в файле WorkoutStore.swift
     func createWorkoutFromAI(generated: GeneratedWorkoutDTO) async throws -> PersistentIdentifier {
         let newWorkout = Workout(title: generated.title, date: Date())

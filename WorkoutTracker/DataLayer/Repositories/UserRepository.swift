@@ -19,7 +19,9 @@ protocol UserRepositoryProtocol: Sendable {
     func deleteAIChatSession(_ sessionID: PersistentIdentifier) async throws
     func fetchAIChatSessions() async throws -> [AIChatSession]
     func saveAIChatSession(_ session: AIChatSession) async throws
-}
+    func checkBodyweightGoal(currentWeight: Double) async throws -> Bool
+    func deleteGoal(goalID: PersistentIdentifier) async throws
+    }
 
 @ModelActor
 actor UserRepository: UserRepositoryProtocol {
@@ -78,6 +80,15 @@ actor UserRepository: UserRepositoryProtocol {
         let descriptor = FetchDescriptor<ExerciseNote>(predicate: #Predicate { $0.exerciseName == exerciseName })
         return try modelContext.fetch(descriptor).first
     }
+    
+    func deleteGoal(goalID: PersistentIdentifier) async throws {
+            guard let goal = modelContext.model(for: goalID) as? UserGoal else {
+                // Если цель уже удалена, просто выходим
+                return
+            }
+            modelContext.delete(goal)
+            try modelContext.save()
+        }
 
     // MARK: - AI Chat Sessions
 
@@ -96,4 +107,22 @@ actor UserRepository: UserRepositoryProtocol {
         modelContext.insert(session)
         try modelContext.save()
     }
+    
+    func checkBodyweightGoal(currentWeight: Double) async throws -> Bool {
+            let descriptor = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
+            let activeGoals = (try? modelContext.fetch(descriptor)) ?? []
+            var anyAchieved = false
+            
+            for goal in activeGoals where goal.type == .bodyweight {
+                let isWeightLoss = goal.startingValue > goal.targetValue
+                let goalAchieved = isWeightLoss ? (currentWeight <= goal.targetValue) : (currentWeight >= goal.targetValue)
+                
+                if goalAchieved {
+                    goal.isCompleted = true
+                    anyAchieved = true
+                }
+            }
+            if anyAchieved { try modelContext.save() }
+            return anyAchieved
+        }
 }

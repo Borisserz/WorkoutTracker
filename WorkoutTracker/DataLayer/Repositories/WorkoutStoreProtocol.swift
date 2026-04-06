@@ -7,6 +7,7 @@ import SwiftData
 
 /// Абстракция слоя доступа к данным SwiftData для Тренировок.
 protocol WorkoutStoreProtocol: Sendable {
+    func swapExercise(oldID: PersistentIdentifier, newExerciseDTO: ExerciseDTO, inWorkoutID: PersistentIdentifier) async throws
     func createWorkout(title: String, fromPresetID presetID: PersistentIdentifier?, isAIGenerated: Bool) async throws -> PersistentIdentifier
     func createWorkoutFromAI(generated: GeneratedWorkoutDTO) async throws -> PersistentIdentifier
     func addSet(toExerciseID: PersistentIdentifier, index: Int, weight: Double?, reps: Int?, distance: Double?, time: Int?, type: SetType, isCompleted: Bool) async throws

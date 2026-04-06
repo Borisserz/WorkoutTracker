@@ -111,7 +111,7 @@ struct WorkoutTrackerApp: App {
              let schema = Schema([
                  Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
                  ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
-                 AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self
+                 AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self 
              ])
              
              let modelConfiguration = ModelConfiguration(

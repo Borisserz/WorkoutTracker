@@ -3,7 +3,6 @@ import SwiftData
 import Charts
 
 // MARK: - 1. View Model (Чистая бизнес-логика)
-
 @Observable
 @MainActor
 final class StatsViewModel {
@@ -22,6 +21,10 @@ final class StatsViewModel {
     // Новые данные для расширенной аналитики
     var anatomyStats: AnatomyStatsDTO?
     var setsOverTime: [SetsOverTimePoint] = []
+    
+    // ✅ ДОБАВЛЕНО: Массив активных целей и словарь их текущих значений
+    var activeGoals: [UserGoal] = []
+    var activeGoalValues: [UUID: Double] = [:]
     
     private let analyticsService: AnalyticsService
     
@@ -62,8 +65,13 @@ final class StatsViewModel {
         self.anatomyStats = anatomy
         self.setsOverTime = setsData
         
+        // ✅ 5. ЗАГРУЖАЕМ ЦЕЛИ
+        await loadActiveGoals(prCache: prCache)
+        
         self.isDataLoaded = true
     }
+    
+
     
     private func calculateCurrentInterval() -> DateInterval {
         let now = Date()
@@ -90,7 +98,53 @@ final class StatsViewModel {
             return calendar.dateInterval(of: .year, for: lastYear)!
         }
     }
-}
+
+    func loadActiveGoals(prCache: [String: Double]) async {
+            let bgContext = ModelContext(analyticsService.modelContainer)
+            let descriptor = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false }, sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+            
+            let goals = (try? bgContext.fetch(descriptor)) ?? []
+            self.activeGoals = goals
+            
+            var newValues: [UUID: Double] = [:]
+            
+            // Предзагрузка данных для быстрого вычисления
+            let widgetData = WidgetDataManager.load()
+            let weightDesc = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+            let latestWeight = (try? bgContext.fetch(weightDesc).first)?.weight
+            
+            let activeWorkoutsDesc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
+            let activeWorkouts = (try? bgContext.fetch(activeWorkoutsDesc)) ?? []
+            
+            for goal in goals {
+                switch goal.type {
+                case .strength:
+                    if let exName = goal.exerciseName {
+                        var maxLifted = prCache[exName] ?? 0.0
+                        for w in activeWorkouts {
+                            let activeMax = w.exercises
+                                .filter { $0.name == exName }
+                                .flatMap { $0.setsList }
+                                .filter { $0.isCompleted && $0.type != .warmup && ($0.reps ?? 0) >= goal.targetReps }
+                                .compactMap { $0.weight }
+                                .max() ?? 0.0
+                            maxLifted = max(maxLifted, activeMax)
+                        }
+                        newValues[goal.id] = maxLifted
+                    }
+                case .consistency:
+                    newValues[goal.id] = Double(widgetData.streak)
+                case .bodyweight:
+                    newValues[goal.id] = latestWeight ?? goal.startingValue
+                }
+            }
+            
+            self.activeGoalValues = newValues
+        }
+    }
+
+
+
 
 // MARK: - 2. Smart Container View
 
@@ -180,24 +234,31 @@ struct StatsView: View {
 }
 
 // MARK: - 3. Redesigned StatsContentView
-
 struct StatsContentView: View {
     @Bindable var viewModel: StatsViewModel
     let currentStats: PeriodStats
     let previousStats: PeriodStats
+    @Environment(DIContainer.self) private var di
+
+    
+    // ✅ ДОБАВЬ ЭТУ СТРОКУ СЮДА:
+    @Environment(\.modelContext) private var context
     
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(DashboardViewModel.self) var dashboardViewModel
-    @Environment(DIContainer.self) private var di
     @Environment(UnitsManager.self) var unitsManager
     @AppStorage("userGender") private var userGender = "male"
     
     @State private var showProfile = false
     @State private var showAIReviewSheet = false
-    
+    @State private var showGoalSheet = false 
     var body: some View {
         List {
             streakSection
+            
+            // ✅ НОВАЯ СЕКЦИЯ: Активная Цель
+            activeGoalSection
+            
             aiReviewButtonSection
             periodPicker
             highlightsSection
@@ -235,13 +296,100 @@ struct StatsContentView: View {
             AIWeeklyReviewSheet(
                 currentStats: currentStats,
                 previousStats: previousStats,
-                weakPoints: dashboardViewModel.weakPoints, // Данные остаются в памяти для ИИ, даже если скрыты из UI
+                weakPoints: dashboardViewModel.weakPoints,
                 recentPRs: viewModel.recentPRs,
                 aiLogicService: di.aiLogicService
             )
         }
+        // ✅ ШТОРКА СОЗДАНИЯ ЦЕЛИ
+        .sheet(isPresented: $showGoalSheet) {
+            GoalSelectionSheet(onGoalCreated: {
+                Task {
+                    // Обновляем данные после создания цели
+                    await viewModel.loadActiveGoals(prCache: dashboardViewModel.personalRecordsCache)
+                }
+            })
+            .environment(unitsManager) // Пробрасываем зависимости
+            .environment(dashboardViewModel)
+        }
     }
-    
+
+    private var activeGoalSection: some View {
+            Section {
+                if viewModel.activeGoals.isEmpty {
+                    // СОСТОЯНИЕ: ЦЕЛЕЙ НЕТ
+                    ActiveGoalCard(
+                        goal: nil,
+                        currentValue: 0,
+                        onAddTapped: { showGoalSheet = true },
+                        onDeleteTapped: {},
+                        onReplaceTapped: {}
+                    )
+                    .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                } else {
+                    // СОСТОЯНИЕ: ЕСТЬ ЦЕЛИ (СПИСОК)
+                    ForEach(viewModel.activeGoals) { goal in
+                        ActiveGoalCard(
+                            goal: goal,
+                            currentValue: viewModel.activeGoalValues[goal.id] ?? 0.0,
+                            onAddTapped: { showGoalSheet = true },
+                            onDeleteTapped: { deleteGoal(goal) },
+                            onReplaceTapped: { replaceGoal(goal) }
+                        )
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    }
+                }
+            } header: {
+                HStack {
+                    // ✅ ИСПРАВЛЕНИЕ: Изменил заголовок на множественное число
+                    Text(LocalizedStringKey("Your Goals"))
+                        .font(.title2)
+                        .bold()
+                        .foregroundColor(.primary)
+                    Spacer()
+                    
+                    Button {
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                        showGoalSheet = true
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(.blue)
+                    }
+                }
+                .textCase(nil)
+                .padding(.horizontal, 4)
+                .padding(.bottom, 4)
+            }
+            .listRowInsets(EdgeInsets())
+        }
+
+        // ✅ ИСПРАВЛЕНИЕ: Функция принимает конкретную цель для удаления
+    private func deleteGoal(_ goal: UserGoal) {
+        let goalID = goal.persistentModelID // Захватываем ID перед удалением
+        
+        // 1. Мгновенно обновляем UI для плавности
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            viewModel.activeGoals.removeAll { $0.id == goal.id }
+        }
+        
+        // 2. Безопасно удаляем в фоне через репозиторий
+        Task {
+            try? await di.userRepository.deleteGoal(goalID: goalID)
+            
+            // 3. Перезагружаем данные для синхронизации
+            await viewModel.loadActiveGoals(prCache: dashboardViewModel.personalRecordsCache)
+        }
+    }
+        private func replaceGoal(_ goal: UserGoal) {
+            deleteGoal(goal) // Удаляем старую
+            showGoalSheet = true // Предлагаем создать новую
+        }
     // MARK: - Sections
     
     private var streakSection: some View {

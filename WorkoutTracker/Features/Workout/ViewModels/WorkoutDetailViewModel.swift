@@ -149,13 +149,10 @@ final class WorkoutDetailViewModel {
     }
 
     func performSwap(old: Exercise, new: Exercise, workout: Workout) {
-        guard let index = workout.exercises.firstIndex(where: { $0.id == old.id }) else { return }
-        withAnimation {
-            workout.exercises.insert(new, at: index)
-            Task { await workoutService.removeExercise(old, from: workout) }
+            Task {
+                await workoutService.swapExercise(old: old, new: new, workout: workout)
+            }
         }
-        updateWorkoutAnalytics(for: workout)
-    }
     
     func deleteEmptyWorkout(workout: Workout) async {
         await workoutService.deleteWorkout(workout)
@@ -174,6 +171,39 @@ final class WorkoutDetailViewModel {
     
     func handleSetCompleted(set: WorkoutSet, isLast: Bool, exerciseName: String, workout: Workout, weightUnit: String) {
         updateWorkoutAnalytics(for: workout)
+        
+        // ✅ НОВАЯ ЛОГИКА: ПРОВЕРКА ЦЕЛИ ПРЯМО ПОСЛЕ СЕТА (REAL-TIME)
+        if set.isCompleted, let context = workout.modelContext {
+                  let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
+                  let activeGoals = (try? context.fetch(goalDesc)) ?? []
+                  var achieved = false
+                  
+                  for goal in activeGoals {
+                      if goal.type == .strength, goal.exerciseName == exerciseName {
+                          let w = set.weight ?? 0.0
+                          let r = set.reps ?? 0
+                          
+                          if w >= goal.targetValue && r >= goal.targetReps {
+                              goal.isCompleted = true
+                              achieved = true
+                          }
+                      }
+                  }
+                  
+                  if achieved {
+                      try? context.save()
+                      let goalAchieved = Achievement(
+                          title: "Goal Crushed! 🎯",
+                          description: "You've successfully hit your target. Time to set a new one!",
+                          icon: "target",
+                          tier: .diamond,
+                          progress: "100%"
+                      )
+                      self.activeEvent = .showAchievement(goalAchieved)
+                  }
+              }
+
+        
         Task {
             await aiCoach.triggerProactiveFeedback(
                 for: set,
@@ -308,8 +338,6 @@ final class WorkoutDetailViewModel {
             // Принудительно сбрасываем UI-данные в SQLite перед фоновой обработкой
             try? workout.modelContext?.save()
             
-            // ❌ УДАЛЕНО ОТСЮДА: NotificationCenter.default.post(...)
-            
             let workoutID = workout.persistentModelID
             let wTitle = workout.title
             let wStart = workout.date
@@ -339,7 +367,52 @@ final class WorkoutDetailViewModel {
                 let result = try await analyticsService.finishWorkoutAndCalculateAchievements(workoutID: workoutID)
                 print("✅ ViewModel: Локальная статистика обновлена успешно")
                 
-                // ✅ FIX: Отправляем уведомление ТОЛЬКО ПОСЛЕ ТОГО, как статистика полностью рассчитана и сохранена
+                var goalAchievementToShow: Achievement? = nil
+                       
+                       if let context = workout.modelContext {
+                           let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
+                           let activeGoals = (try? context.fetch(goalDesc)) ?? []
+                           
+                           for goal in activeGoals {
+                               var goalAchieved = false
+                               
+                               if goal.type == .strength, let exName = goal.exerciseName {
+                                   let maxLifted = workout.exercises
+                                       .filter { $0.name == exName && $0.type == .strength }
+                                       .flatMap { $0.setsList }
+                                       .filter { $0.isCompleted && $0.type != .warmup && ($0.reps ?? 0) >= goal.targetReps }
+                                       .compactMap { $0.weight }
+                                       .max() ?? 0.0
+                                       
+                                   if maxLifted >= goal.targetValue { goalAchieved = true }
+                                   
+                               } else if goal.type == .consistency {
+                                   let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime != nil }, sortBy: [SortDescriptor(\.date, order: .reverse)])
+                                   let allWorkouts = (try? context.fetch(desc)) ?? []
+                                   let workoutDates = allWorkouts.map { $0.date }
+                                   
+                                   let maxRestDays = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) > 0 ? UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) : 2
+                                   let currentStreak = StreakCalculator.calculate(from: workoutDates, maxRestDays: maxRestDays)
+                                   
+                                   if Double(currentStreak) >= goal.targetValue { goalAchieved = true }
+                               }
+                               
+                               if goalAchieved {
+                                   goal.isCompleted = true
+                                   goalAchievementToShow = Achievement(
+                                       title: "Goal Crushed! 🎯",
+                                       description: "You've successfully hit your target. Time to set a new one!",
+                                       icon: "target",
+                                       tier: .diamond,
+                                       progress: "100%"
+                                   )
+                               }
+                           }
+                           try? context.save()
+                       }
+                
+                
+                // Отправляем уведомление ТОЛЬКО ПОСЛЕ ТОГО, как статистика полностью рассчитана и сохранена
                 NotificationCenter.default.post(
                     name: .workoutCompletedEvent,
                     object: workout.persistentModelID,
@@ -349,10 +422,15 @@ final class WorkoutDetailViewModel {
                 self.updateWorkoutAnalytics(for: workout)
                 self.activeEvent = .workoutSuccessfullyFinished
                 
-                if let firstUnlock = result.newUnlocks.first {
+                // Вывод Попапа: Приоритет отдаем Цели, затем стандартным Ачивкам
+                if let goalAchieved = goalAchievementToShow {
+                    try? await Task.sleep(for: .seconds(0.5))
+                    self.activeEvent = .showAchievement(goalAchieved)
+                } else if let firstUnlock = result.newUnlocks.first {
                     try? await Task.sleep(for: .seconds(0.5))
                     self.activeEvent = .showAchievement(firstUnlock)
                 }
+                
             } catch {
                 print("❌ ViewModel: Ошибка обновления локальной статистики - \(error)")
                 self.updateWorkoutAnalytics(for: workout)

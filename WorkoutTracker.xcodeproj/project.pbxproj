@@ -126,6 +126,7 @@
 				DataLayer/Models/BodyMeasurement.swift,
 				DataLayer/Models/CustomExerciseModels.swift,
 				DataLayer/Models/MuscleColorPreference.swift,
+				DataLayer/Models/UserGoal.swift,
 				DataLayer/Models/WeightEntry.swift,
 				DataLayer/Models/Workout.swift,
 			);

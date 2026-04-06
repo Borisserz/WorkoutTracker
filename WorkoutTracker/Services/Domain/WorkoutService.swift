@@ -292,4 +292,14 @@ final class WorkoutService {
     func updateWidgetData() async {
         await widgetSyncService.updateWidgetData()
     }
+    
+    func swapExercise(old: Exercise, new: Exercise, workout: Workout) async {
+            do {
+                // Конвертируем 'new' в безопасный DTO для передачи через границу актора
+                let newDTO = new.toDTO()
+                try await workoutStore.swapExercise(oldID: old.persistentModelID, newExerciseDTO: newDTO, inWorkoutID: workout.persistentModelID)
+            } catch {
+                appState.showError(title: "Swap Failed", message: "Could not swap exercise: \(error.localizedDescription)")
+            }
+        }
 } // ✅ FIX 2: Missing closing brace has been added
