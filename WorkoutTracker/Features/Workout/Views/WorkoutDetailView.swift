@@ -101,12 +101,16 @@ struct WorkoutDetailContentView: View {
         ZStack {
             ScrollViewReader { proxy in
                 mainLayout(proxy: proxy)
-                    .navigationTitle(workout.title)
+                   
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
-                            Button { workout.isFavorite.toggle() } label: {
+                            Button {
+                                // ✅ Вызываем новую логику ViewModel, передавая PresetService из DI
+                                viewModel.toggleFavorite(workout: workout, presetService: di.presetService)
+                            } label: {
                                 Image(systemName: workout.isFavorite ? "star.fill" : "star")
-                                    .foregroundColor(workout.isFavorite ? .yellow : .gray).font(.title3)
+                                    .foregroundColor(workout.isFavorite ? .yellow : .gray)
+                                    .font(.title3)
                             }
                         }
                     }

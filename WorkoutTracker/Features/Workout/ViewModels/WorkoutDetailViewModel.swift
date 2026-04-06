@@ -550,4 +550,55 @@ extension WorkoutDetailViewModel {
                 appState.showError(title: "Export Failed", message: error.localizedDescription)
             }
         }
-    }}
+    }
+    
+    
+    func toggleFavorite(workout: Workout, presetService: PresetService) {
+        let isNowFavorite = !workout.isFavorite
+        workout.isFavorite = isNowFavorite // Оптимистичное обновление UI
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        
+        Task {
+            // 1. Сохраняем статус тренировки в БД
+            await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: isNowFavorite)
+            
+            // 2. Если добавили в избранное - создаем шаблон
+            if isNowFavorite {
+                let folderName = String(localized: "Favorites")
+                
+                // Функция для рекурсивной очистки DTO (сброс галочек isCompleted)
+                func cleanExerciseDTO(_ dto: ExerciseDTO) -> ExerciseDTO {
+                    let cleanSets = dto.setsList.map { set in
+                        WorkoutSetDTO(index: set.index, weight: set.weight, reps: set.reps, distance: set.distance, time: set.time, isCompleted: false, type: set.type)
+                    }
+                    let cleanSubs = dto.subExercises.map { cleanExerciseDTO($0) }
+                    return ExerciseDTO(name: dto.name, muscleGroup: dto.muscleGroup, type: dto.type, category: dto.category, effort: dto.effort, isCompleted: false, setsList: cleanSets, subExercises: cleanSubs)
+                }
+                
+                // Конвертируем текущие упражнения в чистые шаблоны
+                let cleanExercises = workout.exercises.map { cleanExerciseDTO($0.toDTO()) }.map { Exercise(from: $0) }
+                
+                // Сохраняем как шаблон в папку
+                await presetService.savePreset(
+                    preset: nil,
+                    name: workout.title,
+                    icon: "star.fill",
+                    folderName: folderName,
+                    exercises: cleanExercises
+                )
+                
+                // Обновляем AppStorage, чтобы папка мгновенно появилась в HubView
+                await MainActor.run {
+                    let currentFolders = UserDefaults.standard.string(forKey: "customPresetFolders") ?? ""
+                    var foldersArray = currentFolders.isEmpty ? [] : currentFolders.components(separatedBy: "|")
+                    
+                    if !foldersArray.contains(folderName) {
+                        foldersArray.insert(folderName, at: 0)
+                        UserDefaults.standard.set(foldersArray.joined(separator: "|"), forKey: "customPresetFolders")
+                    }
+                }
+            }
+        }
+    }
+}

@@ -23,21 +23,30 @@ final class PresetService {
     
     // MARK: - Presets Operations
         
-        func savePreset(preset: WorkoutPreset?, name: String, icon: String, exercises: [Exercise]) async {
-            // ✅ ИСПРАВЛЕНИЕ: Маппим @Model в Sendable DTO прямо на MainActor
-            let exerciseDTOs = exercises.map { $0.toDTO() }
-            
-            do {
-                if let existingPreset = preset {
-                    // Передаем безопасный DTO в фоновый поток (ModelActor)
-                    try await presetRepository.updatePreset(presetID: existingPreset.persistentModelID, name: name, icon: icon, exercises: exerciseDTOs)
-                } else {
-                    try await presetRepository.createPreset(name: name, icon: icon, exercises: exerciseDTOs)
-                }
-            } catch {
-                appState.showError(title: "Save Failed", message: "Failed to save template: \(error.localizedDescription)")
-            }
-        }
+    func savePreset(preset: WorkoutPreset?, name: String, icon: String, folderName: String? = nil, exercises: [Exercise]) async {
+          let exerciseDTOs = exercises.map { $0.toDTO() }
+          
+          do {
+              if let existingPreset = preset {
+                  try await presetRepository.updatePreset(
+                      presetID: existingPreset.persistentModelID,
+                      name: name,
+                      icon: icon,
+                      folderName: folderName ?? existingPreset.folderName,
+                      exercises: exerciseDTOs
+                  )
+              } else {
+                  try await presetRepository.createPreset(
+                      name: name,
+                      icon: icon,
+                      folderName: folderName,
+                      exercises: exerciseDTOs
+                  )
+              }
+          } catch {
+              appState.showError(title: "Save Failed", message: "Failed to save template: \(error.localizedDescription)")
+          }
+      }
     
     func deletePreset(_ preset: WorkoutPreset) async {
         do {
@@ -72,13 +81,26 @@ final class PresetService {
                 // 1. Получаем готовый DTO из файла
                 let presetDTO = try WorkoutExportService.importPreset(from: url)
                 
-                // 2. ✅ ИСПРАВЛЕНИЕ: Передаем presetDTO.exercises напрямую!
-                // Они уже имеют тип [ExerciseDTO], который и нужен нашему обновленному репозиторию.
+                // 2. Передаем DTO в репозиторий вместе с папкой
                 try await presetRepository.createPreset(
                     name: presetDTO.name + " (Imported)",
                     icon: presetDTO.icon,
+                    folderName: presetDTO.folderName, // ✅ ИСПРАВЛЕНИЕ: Добавлен недостающий параметр
                     exercises: presetDTO.exercises
                 )
+                
+                // 3. Если пришел с папкой, которую мы еще не знаем, добавляем в UI (AppStorage)
+                if let newFolder = presetDTO.folderName {
+                    await MainActor.run {
+                        let currentFolders = UserDefaults.standard.string(forKey: "customPresetFolders") ?? ""
+                        var foldersArray = currentFolders.isEmpty ? [] : currentFolders.components(separatedBy: "|")
+                        
+                        if !foldersArray.contains(newFolder) {
+                            foldersArray.insert(newFolder, at: 0)
+                            UserDefaults.standard.set(foldersArray.joined(separator: "|"), forKey: "customPresetFolders")
+                        }
+                    }
+                }
                 
                 return true
             } catch {
