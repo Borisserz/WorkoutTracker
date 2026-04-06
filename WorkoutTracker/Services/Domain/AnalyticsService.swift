@@ -220,64 +220,76 @@ actor AnalyticsService {
             }
             
             autoreleasepool {
-                for workout in batch {
-                    if let endTime = workout.endTime, workout.durationSeconds == 0 {
-                        workout.durationSeconds = Int(endTime.timeIntervalSince(workout.date))
-                    }
-                    
-                    var strVol = 0.0, carDist = 0.0, totEff = 0, exComp = 0
-                    
-                    for exercise in workout.exercises {
-                        let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                        var hasComp = false
-                        
-                        for sub in targets {
-                            let completedSets = sub.setsList.filter { $0.isCompleted }
-                            if !completedSets.isEmpty { hasComp = true }
+                            // ✅ Читаем настройку один раз перед обработкой батча
+                            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
                             
-                            var currentVol = 0.0
-                            if sub.type == .strength {
-                                currentVol = completedSets.reduce(0.0) { res, set in
-                                    set.type == .warmup ? res : res + ((set.weight ?? 0) * Double(set.reps ?? 0))
+                            for workout in batch {
+                                if let endTime = workout.endTime, workout.durationSeconds == 0 {
+                                    workout.durationSeconds = Int(endTime.timeIntervalSince(workout.date))
                                 }
-                                strVol += currentVol
-                            } else if sub.type == .cardio {
-                                carDist += completedSets.compactMap { $0.distance }.reduce(0, +)
+                                
+                                var strVol = 0.0, carDist = 0.0, totEff = 0, exComp = 0
+                                
+                                for exercise in workout.exercises {
+                                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                                    var hasComp = false
+                                    
+                                    for sub in targets {
+                                        let completedSets = sub.setsList.filter { $0.isCompleted }
+                                        if !completedSets.isEmpty { hasComp = true }
+                                        
+                                        var currentVol = 0.0
+                                        if sub.type == .strength {
+                                            // ✅ Фильтруем разминку и упрощаем математику для компилятора
+                                            let validSets = completedSets.filter { includeWarmups || $0.type != .warmup }
+                                            
+                                            var tempVol = 0.0
+                                            for set in validSets {
+                                                let w = set.weight ?? 0.0
+                                                let r = Double(set.reps ?? 0)
+                                                tempVol += (w * r)
+                                            }
+                                            currentVol = tempVol
+                                            strVol += currentVol
+                                        } else if sub.type == .cardio {
+                                            carDist += completedSets.compactMap { $0.distance }.reduce(0, +)
+                                        }
+                                        
+                                        var exStat = exStatsDict[sub.name] ?? ExStatAccumulator()
+                                        exStat.count += 1
+                                        if let encodedData = try? JSONEncoder().encode(sub.toDTO()) {
+                                            exStat.lastDTO = encodedData
+                                        }
+                                        if sub.type == .strength {
+                                            // ✅ Учитываем разминку для Максимального Веса
+                                            let validSets = completedSets.filter { includeWarmups || $0.type != .warmup }
+                                            let maxW = validSets.compactMap { $0.weight }.max() ?? 0
+                                            if maxW > exStat.maxWeight { exStat.maxWeight = maxW }
+                                        }
+                                        exStatsDict[sub.name] = exStat
+                                        
+                                        if sub.type != .cardio && sub.type != .duration && sub.muscleGroup != "Cardio" {
+                                            mStatsDict[sub.muscleGroup, default: 0] += 1
+                                        }
+                                    }
+                                    
+                                    if hasComp { totEff += exercise.effort; exComp += 1 }
+                                }
+                                
+                                workout.totalStrengthVolume = strVol
+                                workout.totalCardioDistance = carDist
+                                if exComp > 0 { workout.effortPercentage = Int((Double(totEff) / Double(exComp)) * 10) }
+                                
+                                totalWorkouts += 1
+                                totalVolume += strVol
+                                totalDistance += carDist
+                                
+                                let hour = Calendar.current.component(.hour, from: workout.date)
+                                if hour < 9 { earlyWorkouts += 1 }
+                                if hour >= 20 { nightWorkouts += 1 }
                             }
-                            
-                            var exStat = exStatsDict[sub.name] ?? ExStatAccumulator()
-                            exStat.count += 1
-                            if let encodedData = try? JSONEncoder().encode(sub.toDTO()) {
-                                exStat.lastDTO = encodedData
-                            }
-                            if sub.type == .strength {
-                                let maxW = completedSets.filter { $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-                                if maxW > exStat.maxWeight { exStat.maxWeight = maxW }
-                            }
-                            exStatsDict[sub.name] = exStat
-                            
-                            if sub.type != .cardio && sub.type != .duration && sub.muscleGroup != "Cardio" {
-                                mStatsDict[sub.muscleGroup, default: 0] += 1
-                            }
+                            try? batchContext.save()
                         }
-                        
-                        if hasComp { totEff += exercise.effort; exComp += 1 }
-                    }
-                    
-                    workout.totalStrengthVolume = strVol
-                    workout.totalCardioDistance = carDist
-                    if exComp > 0 { workout.effortPercentage = Int((Double(totEff) / Double(exComp)) * 10) }
-                    
-                    totalWorkouts += 1
-                    totalVolume += strVol
-                    totalDistance += carDist
-                    
-                    let hour = Calendar.current.component(.hour, from: workout.date)
-                    if hour < 9 { earlyWorkouts += 1 }
-                    if hour >= 20 { nightWorkouts += 1 }
-                }
-                try? batchContext.save()
-            }
             offset += batchSize
         }
         

@@ -803,84 +803,84 @@ struct RadarChartDetailView: View {
     }
     
     private var aggregatedData: RadarAggregatedData {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        var curStart: Date = .distantPast
-        var prevStart: Date = .distantPast
-        var prevEnd: Date = .distantPast
-        
-        switch selectedPeriod {
-        case .week:
-            curStart = calendar.date(byAdding: .day, value: -7, to: now)!
-            prevEnd = curStart
-            prevStart = calendar.date(byAdding: .day, value: -14, to: now)!
-        case .month:
-            curStart = calendar.date(byAdding: .month, value: -1, to: now)!
-            prevEnd = curStart
-            prevStart = calendar.date(byAdding: .month, value: -2, to: now)!
-        case .year:
-            curStart = calendar.date(byAdding: .year, value: -1, to: now)!
-            prevEnd = curStart
-            prevStart = calendar.date(byAdding: .year, value: -2, to: now)!
-        case .allTime:
-            curStart = .distantPast
-            // Для All Time не рисуем предыдущий период
-            prevStart = .distantFuture
-            prevEnd = .distantFuture
-        }
-        
-        var curSets: [String: Double] = [:]
-        var prevSets: [String: Double] = [:]
-        var totalCur = 0
-        
-        for workout in allWorkouts {
-            let isCurrent = workout.date >= curStart
-            let isPrev = workout.date >= prevStart && workout.date < prevEnd
+            let calendar = Calendar.current
+            let now = Date()
             
-            if !isCurrent && !isPrev { continue }
+            // ✅ ДОБАВЛЕНО: Чтение настройки
+            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
             
-            for ex in workout.exercises {
-                let targets = ex.isSuperset ? ex.subExercises : [ex]
-                for sub in targets where sub.type == .strength {
-                    let completed = sub.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
-                    if completed > 0 {
-                        if isCurrent {
-                            curSets[sub.muscleGroup, default: 0] += Double(completed)
-                            totalCur += completed
-                        } else if isPrev {
-                            prevSets[sub.muscleGroup, default: 0] += Double(completed)
+            var curStart: Date = .distantPast
+            var prevStart: Date = .distantPast
+            var prevEnd: Date = .distantPast
+            
+            switch selectedPeriod {
+            case .week:
+                curStart = calendar.date(byAdding: .day, value: -7, to: now)!
+                prevEnd = curStart
+                prevStart = calendar.date(byAdding: .day, value: -14, to: now)!
+            case .month:
+                curStart = calendar.date(byAdding: .month, value: -1, to: now)!
+                prevEnd = curStart
+                prevStart = calendar.date(byAdding: .month, value: -2, to: now)!
+            case .year:
+                curStart = calendar.date(byAdding: .year, value: -1, to: now)!
+                prevEnd = curStart
+                prevStart = calendar.date(byAdding: .year, value: -2, to: now)!
+            case .allTime:
+                curStart = .distantPast
+                prevStart = .distantFuture
+                prevEnd = .distantFuture
+            }
+            
+            var curSets: [String: Double] = [:]
+            var prevSets: [String: Double] = [:]
+            var totalCur = 0
+            
+            for workout in allWorkouts {
+                let isCurrent = workout.date >= curStart
+                let isPrev = workout.date >= prevStart && workout.date < prevEnd
+                
+                if !isCurrent && !isPrev { continue }
+                
+                for ex in workout.exercises {
+                    let targets = ex.isSuperset ? ex.subExercises : [ex]
+                    for sub in targets where sub.type == .strength {
+                        // ✅ ИСПРАВЛЕНО: Интеграция тумблера
+                        let completed = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
+                        if completed > 0 {
+                            if isCurrent {
+                                curSets[sub.muscleGroup, default: 0] += Double(completed)
+                                totalCur += completed
+                            } else if isPrev {
+                                prevSets[sub.muscleGroup, default: 0] += Double(completed)
+                            }
                         }
                     }
                 }
             }
+            
+            let maxCur = curSets.values.max() ?? 1.0
+            let maxPrev = prevSets.values.max() ?? 1.0
+            let globalMax = max(10.0, max(maxCur, maxPrev))
+            
+            let curData = axes.map { RadarDataPoint(axis: $0, value: curSets[$0] ?? 0, maxValue: globalMax) }
+            let prevData = axes.map { RadarDataPoint(axis: $0, value: prevSets[$0] ?? 0, maxValue: globalMax) }
+            let listStats = axes.map { MuscleCountDTO(muscle: $0, count: Int(curSets[$0] ?? 0)) }.sorted { $0.count > $1.count }
+            
+            let curValues = curData.map { $0.value }
+            let avg = curValues.reduce(0, +) / Double(axes.count)
+            let score: Int
+            if avg == 0 {
+                score = 0
+            } else {
+                let variance = curValues.reduce(0) { $0 + pow($1 - avg, 2) } / Double(axes.count)
+                let stdDev = sqrt(variance)
+                let cv = stdDev / avg
+                score = max(0, min(100, Int(100 - (cv * 45))))
+            }
+            
+            return RadarAggregatedData(current: curData, previous: prevData, listStats: listStats, balanceScore: score, totalCurrentSets: totalCur)
         }
-        
-        // Находим глобальный максимум для нормализации шкалы радара
-        let maxCur = curSets.values.max() ?? 1.0
-        let maxPrev = prevSets.values.max() ?? 1.0
-        let globalMax = max(10.0, max(maxCur, maxPrev)) // Минимум 10 для красивой сетки
-        
-        let curData = axes.map { RadarDataPoint(axis: $0, value: curSets[$0] ?? 0, maxValue: globalMax) }
-        let prevData = axes.map { RadarDataPoint(axis: $0, value: prevSets[$0] ?? 0, maxValue: globalMax) }
-        let listStats = axes.map { MuscleCountDTO(muscle: $0, count: Int(curSets[$0] ?? 0)) }.sorted { $0.count > $1.count }
-        
-        // Алгоритм Symmetry Score (Баланс мышц)
-        let curValues = curData.map { $0.value }
-        let avg = curValues.reduce(0, +) / Double(axes.count)
-        let score: Int
-        if avg == 0 {
-            score = 0
-        } else {
-            let variance = curValues.reduce(0) { $0 + pow($1 - avg, 2) } / Double(axes.count)
-            let stdDev = sqrt(variance)
-            let cv = stdDev / avg
-            // cv обычно от 0 (идеал) до 1.5+. Формула дает от 0 до 100.
-            score = max(0, min(100, Int(100 - (cv * 45))))
-        }
-        
-        return RadarAggregatedData(current: curData, previous: prevData, listStats: listStats, balanceScore: score, totalCurrentSets: totalCur)
-    }
     
     var body: some View {
         ScrollView {
@@ -1191,64 +1191,63 @@ struct HeatmapAggregatedData: Sendable {
 /// 🚀 Фоновый процессор (Sendable) для защиты Main Thread от тяжелых вычислений
 struct HeatmapDataProcessor: Sendable {
     static func process(workouts: [Workout], period: SetsTrendDetailView.TrendPeriod) async -> HeatmapAggregatedData {
-        let calendar = Calendar.current
-        let now = Date()
-        let cutoffDate: Date?
-        
-        switch period {
-        case .week: cutoffDate = calendar.date(byAdding: .day, value: -7, to: now)
-        case .month: cutoffDate = calendar.date(byAdding: .month, value: -1, to: now)
-        case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now)
-        case .allTime: cutoffDate = nil
-        }
-        
-        var slugCounts: [String: Int] = [:]
-        var totalSets = 0
-        
-        // 1. Агрегация сырых данных
-        for workout in workouts {
-            if let cutoff = cutoffDate, workout.date < cutoff { continue }
+            let calendar = Calendar.current
+            let now = Date()
+            let cutoffDate: Date?
             
-            for exercise in workout.exercises {
-                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for sub in targets where sub.type == .strength {
-                    let completedSets = sub.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
-                    if completedSets > 0 {
-                        // Получаем точные детализированные мышцы
-                        let slugs = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
-                        for slug in slugs {
-                            slugCounts[slug, default: 0] += completedSets
+            // ✅ ДОБАВЛЕНО: Чтение настройки
+            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+            
+            switch period {
+            case .week: cutoffDate = calendar.date(byAdding: .day, value: -7, to: now)
+            case .month: cutoffDate = calendar.date(byAdding: .month, value: -1, to: now)
+            case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now)
+            case .allTime: cutoffDate = nil
+            }
+            
+            var slugCounts: [String: Int] = [:]
+            var totalSets = 0
+            
+            for workout in workouts {
+                if let cutoff = cutoffDate, workout.date < cutoff { continue }
+                
+                for exercise in workout.exercises {
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for sub in targets where sub.type == .strength {
+                        // ✅ ИСПРАВЛЕНО: Интеграция тумблера
+                        let completedSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
+                        if completedSets > 0 {
+                            let slugs = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
+                            for slug in slugs {
+                                slugCounts[slug, default: 0] += completedSets
+                            }
+                            totalSets += completedSets
                         }
-                        totalSets += completedSets
                     }
                 }
             }
-        }
-        
-        // 2. Нормализация интенсивности
-        let maxSets = Double(slugCounts.values.max() ?? 1)
-        var normalizedIntensities: [String: Int] = [:]
-        var detailedList: [HeatmapDetailItem] = []
-        
-        for (slug, count) in slugCounts {
-            let relativeIntensity = Double(count) / maxSets
-            normalizedIntensities[slug] = Int(relativeIntensity * 100) // Масштаб 0-100 для прозрачности
             
-            let displayName = MuscleDisplayHelper.getDisplayName(for: slug)
-            detailedList.append(HeatmapDetailItem(slug: slug, displayName: displayName, sets: count, relativeIntensity: relativeIntensity))
+            let maxSets = Double(slugCounts.values.max() ?? 1)
+            var normalizedIntensities: [String: Int] = [:]
+            var detailedList: [HeatmapDetailItem] = []
+            
+            for (slug, count) in slugCounts {
+                let relativeIntensity = Double(count) / maxSets
+                normalizedIntensities[slug] = Int(relativeIntensity * 100)
+                let displayName = MuscleDisplayHelper.getDisplayName(for: slug)
+                detailedList.append(HeatmapDetailItem(slug: slug, displayName: displayName, sets: count, relativeIntensity: relativeIntensity))
+            }
+            
+            detailedList.sort { $0.sets > $1.sets }
+            
+            return HeatmapAggregatedData(
+                intensities: normalizedIntensities,
+                rawCounts: slugCounts,
+                detailedList: detailedList,
+                totalSets: totalSets,
+                topMuscle: detailedList.first
+            )
         }
-        
-        // Сортируем по убыванию нагрузки
-        detailedList.sort { $0.sets > $1.sets }
-        
-        return HeatmapAggregatedData(
-            intensities: normalizedIntensities, // Передаем шкалу для красивой карты
-            rawCounts: slugCounts,              // Передаем сырые сеты для тултипов
-            detailedList: detailedList,
-            totalSets: totalSets,
-            topMuscle: detailedList.first
-        )
-    }
 }
 
 struct HeatmapDetailView: View {
@@ -1495,96 +1494,100 @@ struct PeriodReportPayload: Sendable {
 /// Строго изолированный процессор для отчета за последние 30 дней
 struct PeriodReportProcessor: Sendable {
     static func process(workouts: [Workout]) async -> PeriodReportPayload {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // Жестко фиксируем: Текущий период = последние 30 дней. Предыдущий = 30 дней до этого.
-        let curStart = calendar.date(byAdding: .day, value: -30, to: now)!
-        let prevEnd = curStart
-        let prevStart = calendar.date(byAdding: .day, value: -60, to: now)!
-        
-        let df = DateFormatter()
-        df.dateFormat = "MMMM yyyy"
-        let title = "\(df.string(from: now)) Report"
-        
-        // 1. Агрегация сводки
-        var sCW = 0, sPW = 0, sCD = 0, sPD = 0, sCS = 0, sPS = 0
-        var sCV = 0.0, sPV = 0.0
-        
-        // 2. Данные для графиков и календаря (только текущий период)
-        var dictWorkouts: [Date: Double] = [:]
-        var dictDuration: [Date: Double] = [:]
-        var dictVolume: [Date: Double] = [:]
-        var dictSets: [Date: Double] = [:]
-        var activeDays = Set<Date>()
-        
-        // 3. Данные для Радара
-        let axes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
-        var radarCur: [String: Double] = [:]
-        var radarPrev: [String: Double] = [:]
-        
-        for workout in workouts {
-            let isCur = workout.date >= curStart
-            let isPrev = workout.date >= prevStart && workout.date < prevEnd
-            if !isCur && !isPrev { continue }
+            let calendar = Calendar.current
+            let now = Date()
             
-            let dayStart = calendar.startOfDay(for: workout.date)
-            var wVolume = 0.0
-            var wSets = 0
+            // ✅ ДОБАВЛЕНО: Чтение настройки
+            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
             
-            for ex in workout.exercises {
-                let targets = ex.isSuperset ? ex.subExercises : [ex]
-                for sub in targets where sub.type == .strength {
-                    let cSets = sub.setsList.filter { $0.isCompleted && $0.type != .warmup }
-                    wSets += cSets.count
-                    wVolume += cSets.reduce(0.0) { $0 + (($1.weight ?? 0) * Double($1.reps ?? 0)) }
-                    
-                    if cSets.count > 0 {
-                        if isCur { radarCur[sub.muscleGroup, default: 0] += Double(cSets.count) }
-                        else if isPrev { radarPrev[sub.muscleGroup, default: 0] += Double(cSets.count) }
+            let curStart = calendar.date(byAdding: .day, value: -30, to: now)!
+            let prevEnd = curStart
+            let prevStart = calendar.date(byAdding: .day, value: -60, to: now)!
+            
+            let df = DateFormatter()
+            df.dateFormat = "MMMM yyyy"
+            let title = "\(df.string(from: now)) Report"
+            
+            var sCW = 0, sPW = 0, sCD = 0, sPD = 0, sCS = 0, sPS = 0
+            var sCV = 0.0, sPV = 0.0
+            
+            var dictWorkouts: [Date: Double] = [:]
+            var dictDuration: [Date: Double] = [:]
+            var dictVolume: [Date: Double] = [:]
+            var dictSets: [Date: Double] = [:]
+            var activeDays = Set<Date>()
+            
+            let axes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
+            var radarCur: [String: Double] = [:]
+            var radarPrev: [String: Double] = [:]
+            
+            for workout in workouts {
+                let isCur = workout.date >= curStart
+                let isPrev = workout.date >= prevStart && workout.date < prevEnd
+                if !isCur && !isPrev { continue }
+                
+                let dayStart = calendar.startOfDay(for: workout.date)
+                var wVolume = 0.0
+                var wSets = 0
+                
+                for ex in workout.exercises {
+                    let targets = ex.isSuperset ? ex.subExercises : [ex]
+                    for sub in targets where sub.type == .strength {
+                        // ✅ ИСПРАВЛЕНО: Интеграция тумблера
+                        let cSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }
+                        wSets += cSets.count
+                        
+                        // ✅ ИСПРАВЛЕНО: Упрощенный цикл вместо сложного reduce (решает проблему с компилятором)
+                        var tempSubVol = 0.0
+                        for set in cSets {
+                            let setWeight = set.weight ?? 0.0
+                            let setReps = Double(set.reps ?? 0)
+                            tempSubVol += (setWeight * setReps)
+                        }
+                        wVolume += tempSubVol
+                        
+                        if cSets.count > 0 {
+                            if isCur { radarCur[sub.muscleGroup, default: 0] += Double(cSets.count) }
+                            else if isPrev { radarPrev[sub.muscleGroup, default: 0] += Double(cSets.count) }
+                        }
                     }
+                }
+                
+                if isCur {
+                    sCW += 1; sCD += workout.durationSeconds / 60; sCV += wVolume; sCS += wSets
+                    dictWorkouts[dayStart, default: 0] += 1
+                    dictDuration[dayStart, default: 0] += Double(workout.durationSeconds / 60)
+                    dictVolume[dayStart, default: 0] += wVolume
+                    dictSets[dayStart, default: 0] += Double(wSets)
+                    activeDays.insert(dayStart)
+                } else if isPrev {
+                    sPW += 1; sPD += workout.durationSeconds / 60; sPV += wVolume; sPS += wSets
                 }
             }
             
-            if isCur {
-                sCW += 1; sCD += workout.durationSeconds / 60; sCV += wVolume; sCS += wSets
-                
-                dictWorkouts[dayStart, default: 0] += 1
-                dictDuration[dayStart, default: 0] += Double(workout.durationSeconds / 60)
-                dictVolume[dayStart, default: 0] += wVolume
-                dictSets[dayStart, default: 0] += Double(wSets)
-                activeDays.insert(dayStart)
-                
-            } else if isPrev {
-                sPW += 1; sPD += workout.durationSeconds / 60; sPV += wVolume; sPS += wSets
+            var cW: [ReportDailyPoint] = [], cD: [ReportDailyPoint] = [], cV: [ReportDailyPoint] = [], cS: [ReportDailyPoint] = []
+            for i in 0..<30 {
+                let date = calendar.date(byAdding: .day, value: i, to: curStart)!
+                let dayStart = calendar.startOfDay(for: date)
+                cW.append(.init(date: dayStart, value: dictWorkouts[dayStart] ?? 0))
+                cD.append(.init(date: dayStart, value: dictDuration[dayStart] ?? 0))
+                cV.append(.init(date: dayStart, value: dictVolume[dayStart] ?? 0))
+                cS.append(.init(date: dayStart, value: dictSets[dayStart] ?? 0))
             }
+            
+            let globalMax = max(10.0, max(radarCur.values.max() ?? 1, radarPrev.values.max() ?? 1))
+            let rC = axes.map { RadarDataPoint(axis: $0, value: radarCur[$0] ?? 0, maxValue: globalMax) }
+            let rP = axes.map { RadarDataPoint(axis: $0, value: radarPrev[$0] ?? 0, maxValue: globalMax) }
+            
+            return PeriodReportPayload(
+                title: title,
+                summary: ReportSummary(currentWorkouts: sCW, prevWorkouts: sPW, currentDuration: sCD, prevDuration: sPD, currentVolume: sCV, prevVolume: sPV, currentSets: sCS, prevSets: sPS),
+                chartWorkouts: cW, chartDuration: cD, chartVolume: cV, chartSets: cS,
+                activeDays: activeDays,
+                streakDays: StreakCalculator.calculate(from: Array(activeDays), maxRestDays: 2),
+                radarCurrent: rC, radarPrevious: rP
+            )
         }
-        
-        // 4. Форматируем графики (ровно 30 дней)
-        var cW: [ReportDailyPoint] = [], cD: [ReportDailyPoint] = [], cV: [ReportDailyPoint] = [], cS: [ReportDailyPoint] = []
-        for i in 0..<30 {
-            let date = calendar.date(byAdding: .day, value: i, to: curStart)!
-            let dayStart = calendar.startOfDay(for: date)
-            cW.append(.init(date: dayStart, value: dictWorkouts[dayStart] ?? 0))
-            cD.append(.init(date: dayStart, value: dictDuration[dayStart] ?? 0))
-            cV.append(.init(date: dayStart, value: dictVolume[dayStart] ?? 0))
-            cS.append(.init(date: dayStart, value: dictSets[dayStart] ?? 0))
-        }
-        
-        // 5. Радар
-        let globalMax = max(10.0, max(radarCur.values.max() ?? 1, radarPrev.values.max() ?? 1))
-        let rC = axes.map { RadarDataPoint(axis: $0, value: radarCur[$0] ?? 0, maxValue: globalMax) }
-        let rP = axes.map { RadarDataPoint(axis: $0, value: radarPrev[$0] ?? 0, maxValue: globalMax) }
-        
-        return PeriodReportPayload(
-            title: title,
-            summary: ReportSummary(currentWorkouts: sCW, prevWorkouts: sPW, currentDuration: sCD, prevDuration: sPD, currentVolume: sCV, prevVolume: sPV, currentSets: sCS, prevSets: sPS),
-            chartWorkouts: cW, chartDuration: cD, chartVolume: cV, chartSets: cS,
-            activeDays: activeDays,
-            streakDays: StreakCalculator.calculate(from: Array(activeDays), maxRestDays: 2),
-            radarCurrent: rC, radarPrevious: rP
-        )
-    }
 }
 
 struct MonthlyReportDetailView: View {

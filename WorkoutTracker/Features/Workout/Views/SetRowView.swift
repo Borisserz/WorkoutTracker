@@ -11,7 +11,7 @@ struct SetRowView: View {
     @Bindable var set: WorkoutSet
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
     @Environment(UnitsManager.self) var unitsManager
-    
+    @State private var showSetTypeSheet: Bool = false
     @State private var showAITracker: Bool = false
     
     let exerciseName: String
@@ -147,11 +147,47 @@ struct SetRowView: View {
     // MARK: - Subviews (Components)
     
     private var indexLabel: some View {
-        Text("\(set.index)")
-            .font(.subheadline).bold()
-            .foregroundColor(.secondary)
-            .frame(width: 25)
-    }
+            Button {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                showSetTypeSheet = true
+            } label: {
+                ZStack {
+                    // Subtle background for the indicator
+                    RoundedRectangle(cornerRadius: 6)
+                        .fill(set.type.displayColor.opacity(0.15))
+                    
+                    Text(set.type.shortIndicator(index: set.index))
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundColor(set.type.displayColor)
+                }
+                .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
+            .sheet(isPresented: $showSetTypeSheet) {
+                SetTypeSelectionSheet(
+                    selectedType: Binding(
+                        get: { set.type },
+                        set: { newType in
+                            set.type = newType
+                            try? set.modelContext?.save()
+                        }
+                    ),
+                    onRemove: {
+                        // Используем существующую логику удаления из ViewModel
+                        if let context = set.modelContext, let exercise = set.exercise {
+                            // Предполагаем, что ViewModel доступна (можно взять через Environment, как в ExerciseCardView)
+                            // Но так как у нас есть onCheck, мы можем просто отправить уведомление или вызывать контекст
+                            exercise.removeSafeSet(set)
+                            context.delete(set)
+                            try? context.save()
+                        }
+                    }
+                )
+            }
+        }
     
     @ViewBuilder
     private var inputsSection: some View {

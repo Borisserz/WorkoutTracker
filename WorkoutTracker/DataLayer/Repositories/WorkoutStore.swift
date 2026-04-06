@@ -211,6 +211,9 @@ actor WorkoutStore: WorkoutStoreProtocol {
             var cardioDist = 0.0
             var totalWorkoutReps = 0 // ✅ ЛОКАЛЬНАЯ ПЕРЕМЕННАЯ
             
+            // ✅ ЧИТАЕМ НАСТРОЙКУ РАЗМИНКИ ОДИН РАЗ ПЕРЕД ЦИКЛАМИ (Исключает лишние блокировки потока)
+            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+            
             for exercise in workout.exercises {
                 let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
                 var hasCompletedSet = false
@@ -225,14 +228,15 @@ actor WorkoutStore: WorkoutStoreProtocol {
                     var subMax = 0.0
                     
                     if sub.type == .strength {
-                        let validSets = sub.setsList.filter { $0.isCompleted && $0.type != .warmup }
+                        // ✅ ИНТЕГРАЦИЯ ТУМБЛЕРА РАЗМИНКИ: Фильтруем сеты на лету
+                        let validSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }
                         
                         subVol = validSets.reduce(0.0) { res, set in
                             res + ((set.weight ?? 0) * Double(set.reps ?? 0))
                         }
                         subMax = validSets.compactMap { $0.weight }.max() ?? 0.0
                         
-                        // ✅ Считаем все повторения за один проход!
+                        // ✅ Считаем все повторения (учитывая или исключая разминку в зависимости от validSets)
                         let subReps = validSets.compactMap { $0.reps }.reduce(0, +)
                         totalWorkoutReps += subReps
                         
@@ -298,7 +302,7 @@ actor WorkoutStore: WorkoutStoreProtocol {
                     }
                     
                     if ex.type == .strength {
-                        // ✅ ИСПОЛЬЗУЕМ КЭШ: Не фильтруем setsList заново, берем уже посчитанный maxWeight!
+                        // ✅ ИСПОЛЬЗУЕМ КЭШ: Не фильтруем setsList заново, берем уже посчитанный maxWeight (с учетом/без учета разминки)!
                         let maxWeight = ex.cachedMaxWeight
                         if maxWeight > exStat.maxWeight {
                             exStat.maxWeight = maxWeight

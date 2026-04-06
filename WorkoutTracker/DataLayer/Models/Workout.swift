@@ -127,16 +127,20 @@ class Exercise: Identifiable {
     @Transient var firstSetTimeSeconds: Int? { sortedSets.first?.time }
     
     @Transient var exerciseVolume: Double {
-        if isCompleted && cachedVolume > 0 { return cachedVolume }
-        if isSuperset { return subExercises.reduce(0.0) { $0 + $1.exerciseVolume } }
-        else {
-            return setsList.reduce(0.0) { partialResult, set in
-                if set.type == .warmup || !set.isCompleted { return partialResult }
-                guard let w = set.weight, let r = set.reps else { return partialResult }
-                return type == .strength ? partialResult + (w * Double(r)) : partialResult
+            if isCompleted && cachedVolume > 0 { return cachedVolume }
+            if isSuperset { return subExercises.reduce(0.0) { $0 + $1.exerciseVolume } }
+            else {
+                let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+                
+                return setsList.reduce(0.0) { partialResult, set in
+                    if !set.isCompleted { return partialResult }
+                    if !includeWarmups && set.type == .warmup { return partialResult }
+                    
+                    guard let w = set.weight, let r = set.reps else { return partialResult }
+                    return type == .strength ? partialResult + (w * Double(r)) : partialResult
+                }
             }
         }
-    }
     
     func addSafeSet(_ newSet: WorkoutSet) { newSet.exercise = self; self.setsList.append(newSet) }
     func removeSafeSet(_ set: WorkoutSet) { self.setsList.removeAll(where: { $0.id == set.id }); for (i, s) in sortedSets.enumerated() { s.index = i + 1 } }
@@ -361,5 +365,40 @@ extension Workout {
             totalCardioDistance: totalCardioDistance,
             exercises: exercises.map { $0.toDTO() }
         )
+    }
+}
+extension SetType {
+    // Letter or number representation for the UI
+    func shortIndicator(index: Int) -> String {
+        switch self {
+        case .normal: return "\(index)"
+        case .warmup: return "W"
+        case .failure: return "F"
+        }
+    }
+    
+    var title: LocalizedStringKey {
+        switch self {
+        case .normal: return "Normal Set"
+        case .warmup: return "Warm Up Set"
+        case .failure: return "Failure Set"
+        }
+    }
+    
+    var description: LocalizedStringKey {
+        switch self {
+        case .normal: return "Standard working set used for tracking volume and progression."
+        case .warmup: return "Lighter weight to prepare muscles. Usually excluded from total volume."
+        case .failure: return "A set pushed to absolute muscular failure. High fatigue impact."
+        }
+    }
+    
+    // Updated colors to match Apple's semantic palette
+    var displayColor: Color {
+        switch self {
+        case .normal: return .primary
+        case .warmup: return .orange
+        case .failure: return .red
+        }
     }
 }

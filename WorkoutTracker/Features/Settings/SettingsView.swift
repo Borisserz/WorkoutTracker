@@ -14,7 +14,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(DIContainer.self) private var di
-    
+    @AppStorage(Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue) private var includeWarmupsInStats: Bool = false
     @State private var isProcessing = false
     @State private var showTestDataAlert = false
     @State private var testDataAlertMessage = ""
@@ -41,6 +41,16 @@ struct SettingsView: View {
                     NavigationLink(destination: AudioSettingsView()) {
                         Label(LocalizedStringKey("Voice Coach"), systemImage: "speaker.wave.3.fill")
                     }
+                    Toggle(isOn: $includeWarmupsInStats) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(LocalizedStringKey("Include Warmups in Stats"))
+                                .foregroundColor(.primary)
+                            Text(LocalizedStringKey("If enabled, warm-up sets will be counted in total volume and personal records."))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .tint(.accentColor)
                 }
                 
                 Section(header: Text(LocalizedStringKey("Gamification"))) {
