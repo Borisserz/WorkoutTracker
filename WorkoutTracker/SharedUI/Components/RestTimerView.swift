@@ -1,84 +1,106 @@
-//
-//  RestTimerView.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/SharedUI/Components/RestTimerView.swift
+// ============================================================
 
 internal import SwiftUI
 
 struct RestTimerView: View {
-    // Используем современный @Environment для @Observable классов
     @Environment(RestTimerManager.self) var timerManager
-    
     @State private var isPulsing = false
     
     var body: some View {
         if timerManager.isRestTimerActive {
-            HStack(spacing: 16) {
-                
-                HStack(spacing: 6) {
-                    Image(systemName: timerManager.restTimerFinished ? "checkmark.circle.fill" : "timer")
-                        .foregroundColor(timerManager.restTimerFinished ? .green : .white)
-                        .symbolEffect(.bounce, value: timerManager.restTimerFinished)
-                    
-                    // Читаем значение напрямую из менеджера! SwiftUI обновит только этот Text.
-                    Text(timerManager.restTimerFinished ? "DONE" : timeString(time: timerManager.restTimeRemaining))
-                        .font(.title3.monospacedDigit())
-                        .bold()
-                        .foregroundColor(.white)
+            VStack(spacing: 0) {
+                // ✅ FIX: Progress bar is now in its own container for visual separation
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Rectangle()
+                            .fill(Color.black.opacity(0.2))
+                        
+                        Rectangle()
+                            .fill(timerManager.restTimerFinished ? Color.green : Color.blue)
+                            .frame(width: geo.size.width * CGFloat(timerManager.progress))
+                            .animation(.linear(duration: 1.0), value: timerManager.progress)
+                    }
                 }
+                .frame(height: 4)
                 
-                Spacer()
-                
-                if !timerManager.restTimerFinished {
-                    HStack(spacing: 16) {
-                        Button {
-                            timerManager.subtractRestTime(30)
-                        } label: {
-                            Text("-30")
-                                .font(.subheadline.bold())
-                                .foregroundColor(.white.opacity(0.9))
+                // Main timer content
+                VStack(spacing: 16) {
+                    Group {
+                        if timerManager.restTimerFinished {
+                            // ✅ FIX: Replaced "DONE" text with a large, animated checkmark icon
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 52, weight: .bold))
+                                .foregroundColor(.green)
+                                .symbolEffect(.bounce, value: timerManager.restTimerFinished)
+                        } else {
+                            Text(timeString(time: timerManager.restTimeRemaining))
+                                .font(.system(size: 56, weight: .bold, design: .monospaced))
+                                .foregroundColor(.primary)
+                                .contentTransition(.numericText())
+                                .animation(.default, value: timerManager.restTimeRemaining)
+                        }
+                    }
+                    .frame(height: 60) // Fixed height to prevent layout shifts
+                    
+                    // Controls
+                    HStack(spacing: 12) {
+                        if !timerManager.restTimerFinished {
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                timerManager.subtractRestTime(15)
+                            } label: {
+                                Text("-15s")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 50)
+                                    .background(Color(UIColor.secondarySystemFill))
+                                    .foregroundColor(.primary)
+                                    .cornerRadius(12)
+                            }
+                            
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                timerManager.addRestTime(15)
+                            } label: {
+                                Text("+15s")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 50)
+                                    .background(Color(UIColor.secondarySystemFill))
+                                    .foregroundColor(.primary)
+                                    .cornerRadius(12)
+                            }
                         }
                         
                         Button {
-                            timerManager.addRestTime(30)
-                        } label: {
-                            Text("+30")
-                                .font(.subheadline.bold())
-                                .foregroundColor(.white.opacity(0.9))
-                        }
-                        
-                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 timerManager.stopRestTimer()
                             }
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title3)
-                                .foregroundColor(.white.opacity(0.6))
+                            Text(timerManager.restTimerFinished ? LocalizedStringKey("Dismiss") : LocalizedStringKey("Skip"))
+                                .font(.headline)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 50)
+                                .background(timerManager.restTimerFinished ? Color.green : Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                                .shadow(color: (timerManager.restTimerFinished ? Color.green : Color.blue).opacity(0.3), radius: 5, x: 0, y: 3)
                         }
                     }
                 }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 20)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(
-                Capsule()
-                    .fill(.ultraThinMaterial)
-                    .environment(\.colorScheme, .dark)
-            )
-            .background(
-                Capsule()
-                    .fill(timerManager.restTimerFinished ? Color.green.opacity(0.3) : Color.blue.opacity(0.3))
-            )
-            .overlay(
-                Capsule()
-                    .strokeBorder(Color.white.opacity(0.15), lineWidth: 0.5)
-            )
-            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
-            .padding(.horizontal, 16)
-            .padding(.bottom, 10)
-            .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.9)))
-            .scaleEffect(isPulsing ? 1.04 : 1.0)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
+            .padding(.horizontal, 12)
+            .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.95)))
+            .scaleEffect(isPulsing ? 1.02 : 1.0)
             .onChange(of: timerManager.restTimerFinished) { _, finished in
                 if finished {
                     withAnimation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true)) {
@@ -91,7 +113,7 @@ struct RestTimerView: View {
         }
     }
     
-    func timeString(time: Int) -> String {
+    private func timeString(time: Int) -> String {
         let minutes = time / 60
         let seconds = time % 60
         return String(format: "%02d:%02d", minutes, seconds)

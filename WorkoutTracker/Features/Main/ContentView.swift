@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: WorkoutTracker/Views/Main/ContentView.swift
+// FILE: WorkoutTracker/Features/Main/ContentView.swift
 // ============================================================
 
 internal import SwiftUI
@@ -11,12 +11,14 @@ struct ContentView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(DIContainer.self) private var di
     
+    
     var body: some View {
         @Bindable var appState = di.appState
         
-        ZStack(alignment: .bottom) {
-            // ✅ ИСПРАВЛЕНИЕ: Привязываем TabView к глобальному стейту
+        ZStack {
+            // 1. Основной UI с TabView
             TabView(selection: $appState.selectedTab) {
+                // ... [содержимое TabView остается без изменений] ...
                 OverviewView()
                     .tabItem { Image(systemName: "chart.pie"); Text(LocalizedStringKey("Overview")) }
                     .tag(0)
@@ -38,12 +40,19 @@ struct ContentView: View {
                     .tag(4)
                     .spotlight(step: .progressTab, manager: tutorialManager, text: "Check your Progress", alignment: .bottom, xOffset: -20)
             }
+            .zIndex(1) // TabView всегда будет на заднем плане
             
-            // Оверлей таймера отдыха
-            TimerOverlayContainer()
-            
-            // ✅ НОВЫЙ КОМПОНЕНТ: Оверлей плавающего баннера активной тренировки
-            ActiveWorkoutBannerContainer()
+            // 2. Глобальные оверлеи поверх всего UI
+            VStack {
+                Spacer() // Прижимает контент к низу
+                
+                ActiveWorkoutBannerContainer()
+                
+                TimerOverlayContainer()
+            }
+            .padding(.bottom, 50) // ✅ Идеальный отступ над системным TabBar
+            .ignoresSafeArea(.keyboard, edges: .bottom) // Позволяет таймеру подняться над клавиатурой
+            .zIndex(100) // Оверлеи всегда сверху
         }
         .onAppear {
             dashboardViewModel.refreshAllCaches()
@@ -60,14 +69,12 @@ struct ContentView: View {
         }
     }
     
+    // TimerOverlayContainer остается без изменений
     struct TimerOverlayContainer: View {
         @Environment(RestTimerManager.self) var timerManager
         var body: some View {
             if timerManager.isRestTimerActive && !timerManager.isHidden {
                 RestTimerView()
-                    .padding(.bottom, 60)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                    .zIndex(100)
             }
         }
     }

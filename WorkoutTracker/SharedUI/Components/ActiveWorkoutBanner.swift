@@ -23,8 +23,6 @@ struct ActiveWorkoutBannerContainer: View {
         // Показываем баннер только если есть активная тренировка и мы НЕ внутри экрана WorkoutDetailView
         if let activeWorkout = activeWorkouts.first, !di.appState.isInsideActiveWorkout {
             ActiveWorkoutBanner(workout: activeWorkout)
-                // Поднимаем баннер над TabBar (50-60 поинтов) и над RestTimer, если он есть
-                .padding(.bottom, 60)
                 .padding(.horizontal, 16)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .zIndex(99)

@@ -10,12 +10,19 @@ import AudioToolbox
 @MainActor
 final class RestTimerManager {
     var restTimeRemaining: Int = 0
+    var initialRestTime: Int = 0 // ✅ ADDED: To track progress
     var isRestTimerActive: Bool = false
     var restTimerFinished: Bool = false
     var isHidden: Bool = false
     
     private var restEndTime: Date?
-    private var tickerTask: Task<Void, Never>? // ✅ ЗАМЕНИЛИ Timer на Task
+    private var tickerTask: Task<Void, Never>?
+    
+    // ✅ ADDED: Progress calculation for Circular UI (0.0 to 1.0)
+    var progress: Double {
+        guard initialRestTime > 0 else { return 0 }
+        return Double(restTimeRemaining) / Double(initialRestTime)
+    }
     
     private var defaultRestTime: Int {
         let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
@@ -74,16 +81,47 @@ final class RestTimerManager {
     }
     
     func startRestTimer(duration: Int? = nil) {
-          let seconds = duration ?? defaultRestTime
-          self.restEndTime = Date().addingTimeInterval(Double(seconds))
-          self.restTimeRemaining = seconds
-          self.isRestTimerActive = true
-          self.restTimerFinished = false
-          
-          saveTimerState()
-          NotificationManager.shared.scheduleRestTimerNotification(seconds: Double(seconds))
-          startTicker()
-      }
+        let seconds = duration ?? defaultRestTime
+        self.initialRestTime = seconds // ✅ Store initial time
+        self.restEndTime = Date().addingTimeInterval(Double(seconds))
+        self.restTimeRemaining = seconds
+        self.isRestTimerActive = true
+        self.restTimerFinished = false
+        
+        saveTimerState()
+        NotificationManager.shared.scheduleRestTimerNotification(seconds: Double(seconds))
+        startTicker()
+    }
+    
+    // В методах addRestTime и subtractRestTime нужно обновлять initialRestTime,
+    // чтобы прогресс-бар не "прыгал" некорректно:
+    func addRestTime(_ seconds: Int) {
+        if isRestTimerActive, let currentEnd = restEndTime {
+            let newEnd = currentEnd.addingTimeInterval(Double(seconds))
+            self.restEndTime = newEnd
+            self.initialRestTime += seconds // ✅ Update total pool
+            self.restTimeRemaining += seconds
+            saveTimerState()
+            NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
+        }
+    }
+    
+    func subtractRestTime(_ seconds: Int) {
+        if isRestTimerActive, let currentEnd = restEndTime {
+            let newEnd = currentEnd.addingTimeInterval(Double(-seconds))
+            if newEnd.timeIntervalSinceNow <= 0 {
+                self.restTimeRemaining = 0
+                finishTimer()
+            } else {
+                self.restEndTime = newEnd
+                // ✅ We don't decrease initialRestTime here so the progress bar jumps down visually,
+                // showing time was subtracted.
+                self.restTimeRemaining = max(0, restTimeRemaining - seconds)
+                saveTimerState()
+                NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
+            }
+        }
+    }
       
       // ✅ НОВЫЙ ЧИСТЫЙ TICKER НА БАЗЕ CONCURRENCY
       private func startTicker() {
@@ -123,30 +161,7 @@ final class RestTimerManager {
         }
     }
     
-    func addRestTime(_ seconds: Int) {
-        if isRestTimerActive, let currentEnd = restEndTime {
-            let newEnd = currentEnd.addingTimeInterval(Double(seconds))
-            self.restEndTime = newEnd
-            saveTimerState()
-            NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
-            self.restTimeRemaining += seconds
-        }
-    }
-    
-    func subtractRestTime(_ seconds: Int) {
-        if isRestTimerActive, let currentEnd = restEndTime {
-            let newEnd = currentEnd.addingTimeInterval(Double(-seconds))
-            if newEnd.timeIntervalSinceNow <= 0 {
-                self.restTimeRemaining = 0
-                finishTimer()
-            } else {
-                self.restEndTime = newEnd
-                saveTimerState()
-                NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
-                self.restTimeRemaining = max(0, restTimeRemaining - seconds)
-            }
-        }
-    }
+
     
     func finishTimer(suppressAudio: Bool = false) {
           tickerTask?.cancel() // ✅
