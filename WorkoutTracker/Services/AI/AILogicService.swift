@@ -184,3 +184,77 @@ extension AILogicService {
         return response.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
+extension AILogicService {
+    
+    // --- 4. FOR MULTI-DAY PROGRAM GENERATION ---
+    public func generateMultiDayProgram(
+        goal: String,
+        level: String,
+        days: Int,
+        equipment: String,
+        musclesToGrow: [String],
+        musclesToExclude: [String]
+    ) async throws -> GeneratedProgramDTO {
+        
+        let systemPrompt = """
+        You are an elite AI Strength & Conditioning Architect.
+        Design a premium multi-day workout program based on the user's parameters.
+        
+        RULES:
+        1. YOU MUST RETURN ONLY A RAW, VALID JSON OBJECT. NO markdown formatting, NO ```json wrappers, NO explanations.
+        2. Create EXACTLY \(days) workout days in the "schedule" array.
+        3. Goal: \(goal). Experience Level: \(level). Available Equipment: \(equipment).
+        4. FOCUS HEAVILY on growing these muscles: \(musclesToGrow.isEmpty ? "None specified" : musclesToGrow.joined(separator: ", ")).
+        5. COMPLETELY EXCLUDE exercises targeting these muscles (e.g., due to injury): \(musclesToExclude.isEmpty ? "None specified" : musclesToExclude.joined(separator: ", ")).
+        6. Use standard exercise names from the catalog.
+        7. Provide appropriate sets, reps, and restSeconds for the goal.
+        
+        JSON STRUCTURE:
+        {
+          "title": "Program Name",
+          "description": "Short motivational description",
+          "durationWeeks": 4,
+          "schedule": [
+            {
+              "dayName": "Day 1",
+              "focus": "Chest & Triceps",
+              "exercises": [
+                {
+                  "name": "Bench Press",
+                  "muscleGroup": "Chest",
+                  "type": "Strength",
+                  "sets": 4,
+                  "reps": 8,
+                  "recommendedWeightKg": null,
+                  "restSeconds": 90
+                }
+              ]
+            }
+          ]
+        }
+        """
+        
+        let requestBody = GeminiRequest(
+            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
+            contents: [.init(role: "user", parts: [.init(text: "Generate my \(days)-day program.")])],
+            generationConfig: .init(temperature: 0.4, responseMimeType: "application/json")
+        )
+        
+        let responseText = try await networkClient.generateText(from: requestBody)
+        var text = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
+        else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
+        if text.hasSuffix("```") { text = String(text.dropLast(3)) }
+        
+        guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
+        
+        do {
+            return try await MainActor.run {
+                try JSONDecoder().decode(GeneratedProgramDTO.self, from: jsonData)
+            }
+        } catch {
+            print("Decoding Error: \(error)")
+            throw AILogicError.invalidData
+        }
+    }
+}

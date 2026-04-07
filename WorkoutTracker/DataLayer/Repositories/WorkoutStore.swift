@@ -39,8 +39,7 @@ actor WorkoutStore: WorkoutStoreProtocol {
     
     
     
-    
-    // Добавьте этот метод внутрь actor WorkoutStore в файле WorkoutStore.swift
+ 
     func createWorkoutFromAI(generated: GeneratedWorkoutDTO) async throws -> PersistentIdentifier {
         let newWorkout = Workout(title: generated.title, date: Date())
         newWorkout.icon = "brain.head.profile"
@@ -53,7 +52,7 @@ actor WorkoutStore: WorkoutStoreProtocol {
                 muscleGroup: exDTO.muscleGroup,
                 type: ExerciseType(rawValue: exDTO.type) ?? .strength,
                 category: category,
-                sets: exDTO.sets,
+                sets: exDTO.sets, // <--- Инициализатор САМ создает сеты здесь
                 reps: exDTO.reps,
                 weight: exDTO.recommendedWeightKg ?? 0
             )
@@ -62,20 +61,11 @@ actor WorkoutStore: WorkoutStoreProtocol {
             exercise.workout = newWorkout
             newWorkout.exercises.append(exercise)
             
-            // Создаем сеты
-            for i in 1...max(1, exDTO.sets) {
-                let newSet = WorkoutSet(
-                    index: i,
-                    weight: exDTO.recommendedWeightKg,
-                    reps: exDTO.reps,
-                    isCompleted: false,
-                    type: .normal
-                )
-                modelContext.insert(newSet)
-                newSet.exercise = exercise
-                exercise.setsList.append(newSet)
+            // ✅ FIX: Убрано дублирующее создание сетов.
+            // Теперь мы просто регистрируем уже созданные сеты в контексте SwiftData.
+            for set in exercise.setsList {
+                modelContext.insert(set)
             }
-     
         }
         
         try modelContext.save()

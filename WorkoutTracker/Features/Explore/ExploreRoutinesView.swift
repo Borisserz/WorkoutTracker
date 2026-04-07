@@ -52,10 +52,15 @@ final class ExploreViewModel {
         selectedEquipment = nil
     }
 }
-
 struct ExploreRoutinesView: View {
     @State private var viewModel = ExploreViewModel()
     @State private var showFilters = false
+    
+    // ✅ ДОБАВЛЕНО: Состояние для вызова ИИ
+    @State private var showAIBuilder = false
+    
+    // ✅ ДОБАВЛЕНО: Доступ к DIContainer для передачи aiLogicService
+    @Environment(DIContainer.self) private var di
     
     var body: some View {
         ZStack {
@@ -111,6 +116,18 @@ struct ExploreRoutinesView: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 24) {
                         
+                        // ✅ ИСПРАВЛЕНО: Теперь кнопка меняет State
+                        Button {
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                            generator.impactOccurred()
+                            showAIBuilder = true // Открываем шторку
+                        } label: {
+                            PremiumAIBannerView()
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 16)
+                        .buttonStyle(.plain) // Убирает синюю подсветку при нажатии
+                                
                         if viewModel.filteredPrograms.isEmpty {
                             EmptyStateView(
                                 icon: "magnifyingglass",
@@ -140,5 +157,55 @@ struct ExploreRoutinesView: View {
         .sheet(isPresented: $showFilters) {
             ExploreFiltersSheet(viewModel: viewModel)
         }
+        // ✅ ДОБАВЛЕНО: Вызов самой шторки AI Program Builder
+        .sheet(isPresented: $showAIBuilder) {
+            AIProgramBuilderSheet(aiLogicService: di.aiLogicService)
+        }
+    }
+}
+// MARK: - Premium AI Banner
+struct PremiumAIBannerView: View {
+    var body: some View {
+        HStack(spacing: 16) {
+            // Иконка
+            ZStack {
+                Circle()
+                    .fill(Color.white.opacity(0.2))
+                    .frame(width: 48, height: 48)
+                
+                Image(systemName: "wand.and.stars")
+                    .font(.title2)
+                    .foregroundColor(.white)
+            }
+            
+            // Тексты
+            VStack(alignment: .leading, spacing: 4) {
+                Text("AI Program Architect")
+                    .font(.headline)
+                    .fontWeight(.heavy)
+                    .foregroundColor(.white)
+                
+                Text("Design your perfect weekly split.")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.body.bold())
+                .foregroundColor(.white.opacity(0.5))
+        }
+        .padding(20)
+        // Жестко заданный насыщенный градиент (выглядит премиально в любой теме)
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], // Яркий фиолетовый к синему
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 15, x: 0, y: 8)
     }
 }

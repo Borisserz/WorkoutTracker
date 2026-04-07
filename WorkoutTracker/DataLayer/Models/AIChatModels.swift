@@ -90,3 +90,16 @@ struct AIChatMessage: Identifiable, Equatable, Codable, Sendable {
     
     static func == (lhs: AIChatMessage, rhs: AIChatMessage) -> Bool { lhs.id == rhs.id }
 }
+
+public struct GeneratedProgramDTO: Codable, Sendable {
+    let title: String
+    let description: String
+    let durationWeeks: Int
+    let schedule: [GeneratedRoutineDTO]
+}
+
+public struct GeneratedRoutineDTO: Codable, Sendable {
+    let dayName: String
+    let focus: String
+    let exercises: [GeneratedExerciseDTO]
+}
