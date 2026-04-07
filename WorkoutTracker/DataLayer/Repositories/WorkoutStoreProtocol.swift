@@ -22,9 +22,9 @@ protocol WorkoutStoreProtocol: Sendable {
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, workoutID: PersistentIdentifier) async throws
     func processCompletedWorkout(workoutID: PersistentIdentifier) async throws
     func findActiveWorkoutsAndCleanup() async throws -> [PersistentIdentifier]
-    
-    // Пресеты
-
     func fetchLatestWorkout() async throws -> Workout?
     func checkAndGenerateDefaultPresets() async throws
+
+    // ✅ ДОБАВЛЕН НЕДОСТАЮЩИЙ МЕТОД
+    func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier) async throws
 }

@@ -10,17 +10,17 @@ import ActivityKit
 
 struct WorkoutDetailView: View {
     @Bindable var workout: Workout
-    @State private var viewModel: WorkoutDetailViewModel // ✅ ИСПРАВЛЕНИЕ: Используем @State
+    @State private var viewModel: WorkoutDetailViewModel
 
     init(workout: Workout, viewModel: WorkoutDetailViewModel) {
         self.workout = workout
-        // ✅ ИСПРАВЛЕНИЕ: Сохраняем ViewModel в State, чтобы она не уничтожалась
-        // при перерисовке родительских экранов (Overview/History) после сохранения в БД
         self._viewModel = State(initialValue: viewModel)
     }
 
     var body: some View {
         WorkoutDetailContentView(workout: workout, viewModel: viewModel)
+            // ✅ ГЛАВНЫЙ ФИКС: Передаем viewModel в окружение для всех дочерних вью
+            .environment(viewModel)
     }
 }
 struct WorkoutDetailContentView: View {

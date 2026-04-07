@@ -302,4 +302,17 @@ final class WorkoutService {
                 appState.showError(title: "Swap Failed", message: "Could not swap exercise: \(error.localizedDescription)")
             }
         }
+    
+    func applySmartAction(_ proposal: SmartActionDTO, to workout: Workout) async {
+        do {
+            // Вызываем метод у актора workoutStore
+            try await workoutStore.applySmartAction(proposal: proposal, inWorkoutID: workout.persistentModelID)
+            
+            // После изменения БД обновляем виджеты
+            await updateWidgetData()
+        } catch {
+            // Ошибки ловим здесь и прокидываем в глобальное состояние через AppState
+            appState.showError(title: "Database Error", message: "Failed to apply AI changes.")
+        }
+    }
 } // ✅ FIX 2: Missing closing brace has been added

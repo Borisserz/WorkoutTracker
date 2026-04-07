@@ -16,7 +16,13 @@ public enum AIActionType: String, Codable, Sendable {
         self = AIActionType(rawValue: rawValue) ?? .unknown
     }
 }
-
+public struct SmartActionDTO: Codable, Sendable, Equatable {
+    let action: String // "swap", "reduce_weight", "increase_weight", "add_finisher"
+    let exerciseName: String
+    let setsRemaining: Int
+    let weightValue: Double
+    let reasoning: String
+}
 public struct InWorkoutResponseDTO: Codable, Sendable {
     let explanation: String
     let actionType: AIActionType

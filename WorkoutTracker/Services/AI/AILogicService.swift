@@ -258,3 +258,47 @@ extension AILogicService {
         }
     }
 }
+// В файл: WorkoutTracker/Services/AI/AILogicService.swift
+extension AILogicService {
+    public func processSmartAction(
+        commandType: String,
+        workoutContext: String,
+        catalogContext: String,
+        weightUnit: String
+    ) async throws -> SmartActionDTO {
+        
+        let systemPrompt = """
+        Ты — элитный AI-тренер. Твоя задача — мгновенно корректировать текущую тренировку по запросу.
+        
+        ПРАВИЛА ОТВЕТА (ТОЛЬКО JSON):
+        1. "action": тип действия ("swap", "reduce_weight", "increase_weight", "add_finisher").
+        2. "exerciseName": название целевого упражнения (СТРОГО ИЗ КАТАЛОГА НА АНГЛИЙСКОМ).
+        3. "setsRemaining": количество оставшихся сетов (integer).
+        4. "weightValue": новый рабочий вес (double) в \(weightUnit). Если переход со штанги на гантели — снижай вес на 15-20%. Если "Too Heavy" - снижай на 10%.
+        5. "reasoning": короткая дерзкая фраза НА РУССКОМ для голосового ассистента (макс 2 предложения). Пример: "Тренажер занят? Не беда, сделаем жим гантелей. Бери по 30 килограмм и погнали!"
+        
+        ДОСТУПНЫЕ УПРАЖНЕНИЯ:
+        \(catalogContext)
+        """
+        
+        let userPrompt = "Текущий статус тренировки:\n\(workoutContext)\n\nКоманда пользователя: \(commandType)"
+        
+        let requestBody = GeminiRequest(
+            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
+            contents: [.init(role: "user", parts: [.init(text: userPrompt)])],
+            generationConfig: .init(temperature: 0.3, responseMimeType: "application/json")
+        )
+        
+        let responseText = try await networkClient.generateText(from: requestBody)
+        var text = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
+        else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
+        if text.hasSuffix("```") { text = String(text.dropLast(3)) }
+        
+        guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
+        
+        return try await MainActor.run {
+            try JSONDecoder().decode(SmartActionDTO.self, from: jsonData)
+        }
+    }
+}

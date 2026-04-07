@@ -1,156 +1,121 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/AICoach/ViewModels/InWorkoutAICoachViewModel.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
 import Observation
 
-struct InWorkoutChatMessage: Identifiable, Equatable, Codable {
-    var id = UUID()
-    let isUser: Bool
-    let text: String
-    let adjustment: InWorkoutResponseDTO?
-    var isAnimating: Bool = false
-    
-    enum CodingKeys: String, CodingKey {
-        case id, isUser, text, adjustment, isAnimating
-    }
-    
-    static func == (lhs: InWorkoutChatMessage, rhs: InWorkoutChatMessage) -> Bool { lhs.id == rhs.id }
-}
-
-@Observable // ✅ РЕФАКТОРИНГ: Заменяем ObservableObject
+@Observable
 @MainActor
 final class InWorkoutAICoachViewModel {
-    var chatHistory: [InWorkoutChatMessage] = []
-    var isGenerating: Bool = false
-    var inputText: String = ""
-    var focusedExerciseName: String? = nil
     
-    @ObservationIgnored // Игнорируем внутреннее состояние для UI
-    private var currentTask: Task<Void, Never>? = nil
+    // MARK: - Published State
+    var activeProposal: SmartActionDTO? = nil
+    var isProcessing: Bool = false
+    var activeCommandId: String? = nil
     
-    // ✅ ИСПРАВЛЕНИЕ: Зависимости через DI
+    // MARK: - Private Dependencies & State
+    @ObservationIgnored private let voiceCoach = VoiceCoach()
+    @ObservationIgnored private var currentTask: Task<Void, Never>? = nil
+    
     private let workoutService: WorkoutService
     private let aiLogicService: AILogicService
-    private let analyticsService: AnalyticsService
     private let exerciseCatalogService: ExerciseCatalogService
+    private let appState: AppStateManager
 
-    init(workoutService: WorkoutService, aiLogicService: AILogicService, analyticsService: AnalyticsService, exerciseCatalogService: ExerciseCatalogService) {
+    // MARK: - Initializer
+    init(
+        workoutService: WorkoutService,
+        aiLogicService: AILogicService,
+        analyticsService: AnalyticsService,
+        exerciseCatalogService: ExerciseCatalogService,
+        appState: AppStateManager
+    ) {
         self.workoutService = workoutService
         self.aiLogicService = aiLogicService
-        self.analyticsService = analyticsService
         self.exerciseCatalogService = exerciseCatalogService
+        self.appState = appState
     }
     
     deinit { currentTask?.cancel() }
     
-    func sendMessage(currentWorkout: Workout) async {
-        let prompt = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty, !isGenerating else { return }
+    // MARK: - Public Methods
+    func sendSmartCommand(_ command: String, currentWorkout: Workout) {
+        guard !isProcessing, currentWorkout.isActive else { return }
         
-        guard NetworkManager.shared.checkConnection() else {
-            let noNetMessage = InWorkoutChatMessage(isUser: false, text: String(localized: "Internet connection required. Please check your network."), adjustment: nil, isAnimating: false)
-            withAnimation { chatHistory.append(noNetMessage) }
-            return
-        }
+        isProcessing = true
+        activeCommandId = command
+        activeProposal = nil
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
         
-        let userMessage = InWorkoutChatMessage(isUser: true, text: prompt, adjustment: nil, isAnimating: false)
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            chatHistory.append(userMessage)
-            inputText = ""
-        }
-        
-        let contexts = await buildWorkoutContext(workout: currentWorkout)
-        let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
-        await requestAdjustment(prompt: prompt, workoutContext: contexts.workoutContext, catalogContext: contexts.catalogContext, tone: savedTone, weightUnit: UnitsManager.shared.weightUnitString(), currentWorkout: currentWorkout)
-    }
-    
-    func triggerProactiveFeedback(for set: WorkoutSet?, isLastSet: Bool, isPR: Bool, prLevel: String?, in exerciseName: String, currentWorkout: Workout, weightUnit: String) async {
-        guard !isGenerating, currentWorkout.isActive else { return }
-        guard isLastSet || isPR else { return }
-        guard NetworkManager.shared.checkConnection() else { return }
-        
-        var prompt = ""
-        if let s = set { prompt = "System update: I just completed set \(s.index) of \(exerciseName)." } else { prompt = "System update: I just completed an exercise: \(exerciseName)." }
-        
-        if isPR {
-            prompt += " I just hit a new Personal Record: \(prLevel ?? "New Record")! Congratulate me briefly and motivate me."
-        } else {
-            prompt += " Give me a short motivating feedback or form tip."
-        }
-        
-        let contexts = await buildWorkoutContext(workout: currentWorkout)
-        let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
-        await requestAdjustment(prompt: prompt, workoutContext: contexts.workoutContext, catalogContext: contexts.catalogContext, tone: savedTone, weightUnit: weightUnit, currentWorkout: currentWorkout)
-    }
-    
-    private func buildWorkoutContext(workout: Workout) async -> (workoutContext: String, catalogContext: String) {
-        var context = "STATUS: \(workout.isActive ? "ACTIVE WORKOUT" : "COMPLETED WORKOUT")\nWorkout: \(workout.title)\nDuration: \(workout.durationSeconds / 60) mins.\nEffort: \(workout.effortPercentage)%\n\n--- COMPLETED EXERCISES ---"
-        let completed = workout.exercises.filter { $0.isCompleted }
-        if completed.isEmpty { context += "\nNone yet." }
-        for ex in completed { context += "\n- \(ex.name): \(ex.setsList.count) sets done." }
-        
-        var catalogCtx = ""
-        if workout.isActive {
-            let remaining = workout.exercises.filter { !$0.isCompleted }
-            context += "\n\n--- REMAINING EXERCISES ---\n"
-            for ex in remaining {
-                let doneSets = ex.setsList.filter { $0.isCompleted }.count
-                context += "- \(ex.name): \(doneSets)/\(ex.setsCount) sets done.\n"
-            }
-            
-            // Получаем объединенный каталог через exerciseCatalogService
-            let standardExercises = Exercise.catalog.values.flatMap { $0 }
-            let customExercises = (try? await exerciseCatalogService.fetchCustomExercises())?.map { $0.name } ?? []
-            let allAvailableExercises = standardExercises + customExercises
-            
-            for (group, exercises) in Exercise.catalog {
-                let filtered = exercises.filter { allAvailableExercises.contains($0) }
-                if !filtered.isEmpty {
-                    catalogCtx += "\(group): \(filtered.joined(separator: ", "))\n"
-                }
-            }
-        }
-        return (context, catalogCtx)
-    }
-    
-    private func requestAdjustment(prompt: String, workoutContext: String, catalogContext: String, tone: String, weightUnit: String, currentWorkout: Workout) async {
-        isGenerating = true
         currentTask?.cancel()
-        currentTask = Task { [weak self] in
-            guard let self else { return }
+        currentTask = Task {
             do {
-                let dto = try await self.aiLogicService.analyzeActiveWorkout(userMessage: prompt, workoutContext: workoutContext, catalogContext: catalogContext, tone: tone, weightUnit: weightUnit)
-                guard !Task.isCancelled else { return }
+                let context = await buildWorkoutContext(currentWorkout)
+                let weightUnit = UnitsManager.shared.weightUnitString()
                 
-                let isNone = dto.actionType == .none || dto.actionType == .unknown
-                let aiMessage = InWorkoutChatMessage(isUser: false, text: dto.explanation, adjustment: isNone ? nil : dto, isAnimating: true)
+                let result = try await aiLogicService.processSmartAction(
+                    commandType: command,
+                    workoutContext: context.workout,
+                    catalogContext: context.catalog,
+                    weightUnit: weightUnit
+                )
                 
-                await MainActor.run { [weak self] in
-                    guard let self else { return }
-                    withAnimation(.spring()) { self.chatHistory.append(aiMessage); self.isGenerating = false }
+                guard !Task.isCancelled else {
+                    self.isProcessing = false
+                    self.activeCommandId = nil
+                    return
                 }
                 
-                // Сохраняем историю чата в WorkoutStore
-                try await self.workoutService.updateWorkoutChatHistory(workout: currentWorkout, history: self.chatHistory.map { $0.toAIChatMessage() })
+                self.activeProposal = result
+                self.isProcessing = false
+                self.activeCommandId = nil
+                self.voiceCoach.speak(result.reasoning)
+                
+                let successGen = UINotificationFeedbackGenerator()
+                successGen.notificationOccurred(.success)
+                
             } catch {
-                guard !Task.isCancelled else { return }
-                await MainActor.run { [weak self] in
-                    guard let self else { return }
-                    let errorMsg = (error as? AILogicError)?.errorDescription ?? error.localizedDescription
-                    self.chatHistory.append(InWorkoutChatMessage(isUser: false, text: errorMsg, adjustment: nil, isAnimating: false))
-                    self.isGenerating = false
-                }
+                self.isProcessing = false
+                self.activeCommandId = nil
+                self.appState.showError(title: "AI Error", message: "Could not reach the Coach. Please check your connection and try again.")
             }
         }
     }
     
-    func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, to workout: Workout) async {
-        await workoutService.applyAIAdjustment(adjustment, to: workout)
+    func applyActiveProposal(to workout: Workout) {
+        guard let proposal = activeProposal else { return }
+        Task {
+            await workoutService.applySmartAction(proposal, to: workout)
+            withAnimation(.spring()) {
+                self.activeProposal = nil
+            }
+        }
     }
-}
-
-extension InWorkoutChatMessage {
-    func toAIChatMessage() -> AIChatMessage {
-        AIChatMessage(id: self.id, isUser: self.isUser, text: self.text, proposedWorkout: nil, isAnimating: false)
+    
+    func discardProposal() {
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            activeProposal = nil
+        }
+    }
+    
+    // MARK: - Private Context Builder
+    private func buildWorkoutContext(_ workout: Workout) async -> (workout: String, catalog: String) {
+        guard let activeEx = workout.exercises.first(where: { !$0.isCompleted }) else {
+            return ("Workout is already completed.", "")
+        }
+        
+        let remainingSetsCount = activeEx.setsList.filter({ !$0.isCompleted }).count
+        let currentWeight = activeEx.setsList.last(where: { $0.weight != nil })?.weight ?? 0.0
+        
+        let workoutContextString = "Current exercise: \(activeEx.name). Sets remaining: \(remainingSetsCount). Last used weight: \(currentWeight) kg."
+        
+        let customExercises = (try? await exerciseCatalogService.fetchCustomExercises())?.map { $0.name } ?? []
+        let catalogExercises = Exercise.catalog[activeEx.muscleGroup] ?? []
+        let fullCatalog = Array(Set(catalogExercises + customExercises)).joined(separator: ", ")
+        
+        return (workout: workoutContextString, catalog: fullCatalog)
     }
 }

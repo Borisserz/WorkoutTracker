@@ -616,4 +616,62 @@ actor WorkoutStore: WorkoutStoreProtocol {
             descriptor.fetchLimit = 1
             return try modelContext.fetch(descriptor).first
         }
+}// В файл: WorkoutTracker/DataLayer/Repositories/WorkoutStore.swift
+
+extension WorkoutStore {
+    func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier) async throws {
+        guard let workout = modelContext.model(for: inWorkoutID) as? Workout else {
+            throw WorkoutRepositoryError.modelNotFound
+        }
+        
+        if proposal.action == "add_finisher" {
+            let finisher = Exercise(
+                name: proposal.exerciseName,
+                muscleGroup: "Mixed",
+                type: .strength,
+                sets: proposal.setsRemaining,
+                reps: 15,
+                weight: proposal.weightValue
+            )
+            modelContext.insert(finisher)
+            for set in finisher.setsList { modelContext.insert(set) }
+            finisher.workout = workout
+            workout.exercises.append(finisher)
+            
+        } else {
+            // Ищем текущее незавершенное упражнение
+            guard let activeExIndex = workout.exercises.firstIndex(where: { !$0.isCompleted }),
+                  let activeEx = workout.exercises[activeExIndex] as Exercise? else { return }
+            
+            if proposal.action == "swap" {
+                // Удаляем невыполненные сеты
+                let uncompletedSets = activeEx.setsList.filter { !$0.isCompleted }
+                for set in uncompletedSets { modelContext.delete(set) }
+                activeEx.setsList.removeAll(where: { !$0.isCompleted })
+                activeEx.isCompleted = true
+                
+                // Вставляем новое
+                let newEx = Exercise(
+                    name: proposal.exerciseName,
+                    muscleGroup: activeEx.muscleGroup,
+                    type: .strength,
+                    sets: proposal.setsRemaining,
+                    reps: activeEx.firstSetReps > 0 ? activeEx.firstSetReps : 10,
+                    weight: proposal.weightValue
+                )
+                modelContext.insert(newEx)
+                for set in newEx.setsList { modelContext.insert(set) }
+                
+                newEx.workout = workout
+                workout.exercises.insert(newEx, at: activeExIndex + 1)
+                
+            } else {
+                // reduce_weight или increase_weight для оставшихся сетов
+                for set in activeEx.setsList where !set.isCompleted {
+                    set.weight = proposal.weightValue
+                }
+            }
+        }
+        try modelContext.save()
+    }
 }

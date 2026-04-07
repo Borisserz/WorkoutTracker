@@ -1,3 +1,5 @@
+// Файл: WorkoutTracker/Features/Workout/ViewModels/WorkoutDetailViewModel.swift
+
 internal import SwiftUI
 import SwiftData
 import Observation
@@ -5,7 +7,7 @@ import Observation
 // Изменить WorkoutDetailEvent:
 enum WorkoutDetailEvent: Equatable {
     case showPR(PRLevel)
-    case showShareSheet(Any) 
+    case showShareSheet(Any)
     case showEmptyAlert
     case showAchievement(Achievement)
     case showSwapExercise(Exercise)
@@ -39,23 +41,26 @@ final class WorkoutDetailViewModel {
     private let analyticsService: AnalyticsService
     private let exerciseCatalogService: ExerciseCatalogService
     private let appState: AppStateManager
+       
     init(workoutService: WorkoutService,
-           analyticsService: AnalyticsService,
-           exerciseCatalogService: ExerciseCatalogService,
-           appState: AppStateManager) { // ✅ ИЗМЕНЕНО
-          
-          self.workoutService = workoutService
-          self.analyticsService = analyticsService
-          self.exerciseCatalogService = exerciseCatalogService
-          self.appState = appState // ✅ ДОБАВЛЕНО
-          
-          self.aiCoach = InWorkoutAICoachViewModel(
-              workoutService: workoutService,
-              aiLogicService: workoutService.aiLogicService,
-              analyticsService: analyticsService,
-              exerciseCatalogService: exerciseCatalogService
-          )
-      }
+            analyticsService: AnalyticsService,
+            exerciseCatalogService: ExerciseCatalogService,
+            appState: AppStateManager) {
+           
+           self.workoutService = workoutService
+           self.analyticsService = analyticsService
+           self.exerciseCatalogService = exerciseCatalogService
+           self.appState = appState
+           
+           self.aiCoach = InWorkoutAICoachViewModel(
+               workoutService: workoutService,
+               aiLogicService: workoutService.aiLogicService,
+               analyticsService: analyticsService,
+               exerciseCatalogService: exerciseCatalogService,
+               appState: appState
+           )
+       }
+
     
     // MARK: - Data Loading
     
@@ -71,7 +76,6 @@ final class WorkoutDetailViewModel {
         var chartExercises: [ExerciseChartDTO] = []
         var totalCompletedSets = 0
         
-        // Читаем данные напрямую из оперативной памяти
         for exercise in workout.exercises {
             let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
             for sub in targets {
@@ -88,7 +92,6 @@ final class WorkoutDetailViewModel {
             volume += exercise.exerciseVolume
         }
         
-        // Собираем упражнения для графика
         let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
         let forChart = flattened.filter { ex in
             ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
@@ -110,7 +113,6 @@ final class WorkoutDetailViewModel {
     }
 
     func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
-        // ✅ FIX: Explicitly set the inverse relationship BEFORE inserting into Context
         newExercise.workout = workout
         
         if let context = workout.modelContext {
@@ -127,6 +129,7 @@ final class WorkoutDetailViewModel {
             scrollToExerciseId(newExercise.id)
         }
     }
+    
     // MARK: - Set & Exercise Management
     
     func addSet(to exercise: Exercise, context: ModelContext) {
@@ -148,36 +151,29 @@ final class WorkoutDetailViewModel {
            self.newlyAddedSetId = newSet.id
            try? context.save()
            
-           // ✅ ДОБАВЛЕНО: Сразу пересчитываем аналитику для вкладки Analytics
            if let w = exercise.workout ?? exercise.parentExercise?.workout {
                self.updateWorkoutAnalytics(for: w)
            }
        }
        
-       // ✅ FIX: Выполняем удаление напрямую на MainActor и обновляем аналитику
        func removeSet(_ set: WorkoutSet, from exercise: Exercise, context: ModelContext) {
            exercise.setsList.removeAll(where: { $0.id == set.id })
            context.delete(set)
            
-           // Пересчет индексов
            for (i, s) in exercise.sortedSets.enumerated() {
                s.index = i + 1
            }
            try? context.save()
            
-           // ✅ ДОБАВЛЕНО: Сразу пересчитываем аналитику при удалении сета
            if let w = exercise.workout ?? exercise.parentExercise?.workout {
                self.updateWorkoutAnalytics(for: w)
            }
        }
     
-
     func removeExercise(_ exercise: Exercise, from workout: Workout) {
         Task { await workoutService.removeExercise(exercise, from: workout) }
     }
     
-
-
     func performSwap(old: Exercise, new: Exercise, workout: Workout) {
             Task {
                 await workoutService.swapExercise(old: old, new: new, workout: workout)
@@ -199,10 +195,10 @@ final class WorkoutDetailViewModel {
         )
     }
     
+    // ✅ ИСПРАВЛЕНИЕ: Удалены вызовы `triggerProactiveFeedback`
     func handleSetCompleted(set: WorkoutSet, isLast: Bool, exerciseName: String, workout: Workout, weightUnit: String) {
         updateWorkoutAnalytics(for: workout)
         
-        // ✅ НОВАЯ ЛОГИКА: ПРОВЕРКА ЦЕЛИ ПРЯМО ПОСЛЕ СЕТА (REAL-TIME)
         if set.isCompleted, let context = workout.modelContext {
                   let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
                   let activeGoals = (try? context.fetch(goalDesc)) ?? []
@@ -232,19 +228,7 @@ final class WorkoutDetailViewModel {
                       self.activeEvent = .showAchievement(goalAchieved)
                   }
               }
-
-        
-        Task {
-            await aiCoach.triggerProactiveFeedback(
-                for: set,
-                isLastSet: isLast,
-                isPR: false,
-                prLevel: nil,
-                in: exerciseName,
-                currentWorkout: workout,
-                weightUnit: weightUnit
-            )
-        }
+        // AI Coach больше не вызывается отсюда, он работает через Control Hub
     }
 
     func handleExerciseFinished(exerciseId: UUID, workout: Workout, weightUnit: String, onExpandNext: @escaping (UUID) -> Void) {
@@ -256,12 +240,12 @@ final class WorkoutDetailViewModel {
                 finishExercise(exercise, workout: workout, weightUnit: weightUnit)
             }
 
-            // ✅ FIX: Находим следующее невыполненное упражнение логически, а не по индексам массива
             let remainingUncompleted = workout.exercises.filter { !$0.isCompleted && $0.id != exerciseId }
             if let nextExercise = remainingUncompleted.first {
                 onExpandNext(nextExercise.id)
             }
         }
+        
     private func finishExercise(_ exercise: Exercise, workout: Workout, weightUnit: String) {
         guard !exercise.isCompleted && workout.isActive else { return }
         
@@ -273,7 +257,7 @@ final class WorkoutDetailViewModel {
         exercise.isCompleted = true
         
         if let prLevel = calculatePRLevel(for: exercise, prCache: self.personalRecordsCache) {
-            handlePRSet(level: prLevel, exerciseName: exercise.name, workout: workout, weightUnit: weightUnit)
+            handlePRSet(level: prLevel) // ✅ Убран лишний контекст
         }
     }
         
@@ -298,15 +282,13 @@ final class WorkoutDetailViewModel {
         }
         
         if let pr = highestPR {
-            handlePRSet(level: pr, exerciseName: superset.name, workout: workout, weightUnit: weightUnit)
+            handlePRSet(level: pr) // ✅ Убран лишний контекст
         }
     }
     
-    private func handlePRSet(level: PRLevel, exerciseName: String, workout: Workout, weightUnit: String) {
+    // ✅ ИСПРАВЛЕНИЕ: Убраны ненужные параметры
+    private func handlePRSet(level: PRLevel) {
         self.activeEvent = .showPR(level)
-        Task {
-            await self.aiCoach.triggerProactiveFeedback(for: nil, isLastSet: false, isPR: true, prLevel: level.title, in: exerciseName, currentWorkout: workout, weightUnit: weightUnit)
-        }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
@@ -360,12 +342,8 @@ final class WorkoutDetailViewModel {
                 self.isShowingSnackbar = false
             }
             
-            // Остановка Live Activity
             workoutService.stopLiveActivity()
-            
             progressManager.addXP(for: workout)
-            
-            // Принудительно сбрасываем UI-данные в SQLite перед фоновой обработкой
             try? workout.modelContext?.save()
             
             let workoutID = workout.persistentModelID
@@ -375,9 +353,6 @@ final class WorkoutDetailViewModel {
             let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
             let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
             
-            print("🚀 ViewModel: Начинаем завершение тренировки. Длительность: \(wDuration) сек.")
-            
-            // 1. ЗАПУСК HEALTHKIT
             Task {
                 do {
                     try await HealthKitManager.shared.saveWorkout(
@@ -392,67 +367,51 @@ final class WorkoutDetailViewModel {
                 }
             }
             
-            // 2. ОБНОВЛЕНИЕ ЛОКАЛЬНОЙ БАЗЫ И АЧИВОК
             do {
                 let result = try await analyticsService.finishWorkoutAndCalculateAchievements(workoutID: workoutID)
-                print("✅ ViewModel: Локальная статистика обновлена успешно")
                 
                 var goalAchievementToShow: Achievement? = nil
-                       
-                       if let context = workout.modelContext {
-                           let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
-                           let activeGoals = (try? context.fetch(goalDesc)) ?? []
+                if let context = workout.modelContext {
+                    let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
+                    let activeGoals = (try? context.fetch(goalDesc)) ?? []
                            
-                           for goal in activeGoals {
-                               var goalAchieved = false
-                               
-                               if goal.type == .strength, let exName = goal.exerciseName {
-                                   let maxLifted = workout.exercises
-                                       .filter { $0.name == exName && $0.type == .strength }
-                                       .flatMap { $0.setsList }
-                                       .filter { $0.isCompleted && $0.type != .warmup && ($0.reps ?? 0) >= goal.targetReps }
-                                       .compactMap { $0.weight }
-                                       .max() ?? 0.0
-                                       
-                                   if maxLifted >= goal.targetValue { goalAchieved = true }
-                                   
-                               } else if goal.type == .consistency {
-                                   let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime != nil }, sortBy: [SortDescriptor(\.date, order: .reverse)])
-                                   let allWorkouts = (try? context.fetch(desc)) ?? []
-                                   let workoutDates = allWorkouts.map { $0.date }
-                                   
-                                   let maxRestDays = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) > 0 ? UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) : 2
-                                   let currentStreak = StreakCalculator.calculate(from: workoutDates, maxRestDays: maxRestDays)
-                                   
-                                   if Double(currentStreak) >= goal.targetValue { goalAchieved = true }
-                               }
-                               
-                               if goalAchieved {
-                                   goal.isCompleted = true
-                                   goalAchievementToShow = Achievement(
-                                       title: "Goal Crushed! 🎯",
-                                       description: "You've successfully hit your target. Time to set a new one!",
-                                       icon: "target",
-                                       tier: .diamond,
-                                       progress: "100%"
-                                   )
-                               }
-                           }
-                           try? context.save()
-                       }
+                    for goal in activeGoals {
+                        var goalAchieved = false
+                        if goal.type == .strength, let exName = goal.exerciseName {
+                            let maxLifted = workout.exercises
+                                .filter { $0.name == exName && $0.type == .strength }
+                                .flatMap { $0.setsList }
+                                .filter { $0.isCompleted && $0.type != .warmup && ($0.reps ?? 0) >= goal.targetReps }
+                                .compactMap { $0.weight }
+                                .max() ?? 0.0
+                            if maxLifted >= goal.targetValue { goalAchieved = true }
+                        } else if goal.type == .consistency {
+                            let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime != nil }, sortBy: [SortDescriptor(\.date, order: .reverse)])
+                            let allWorkouts = (try? context.fetch(desc)) ?? []
+                            let workoutDates = allWorkouts.map { $0.date }
+                            let maxRestDays = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) > 0 ? UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) : 2
+                            let currentStreak = StreakCalculator.calculate(from: workoutDates, maxRestDays: maxRestDays)
+                            if Double(currentStreak) >= goal.targetValue { goalAchieved = true }
+                        }
+                        
+                        if goalAchieved {
+                            goal.isCompleted = true
+                            goalAchievementToShow = Achievement(
+                                title: "Goal Crushed! 🎯",
+                                description: "You've successfully hit your target. Time to set a new one!",
+                                icon: "target",
+                                tier: .diamond,
+                                progress: "100%"
+                            )
+                        }
+                    }
+                    try? context.save()
+                }
                 
-                
-                // Отправляем уведомление ТОЛЬКО ПОСЛЕ ТОГО, как статистика полностью рассчитана и сохранена
-                NotificationCenter.default.post(
-                    name: .workoutCompletedEvent,
-                    object: workout.persistentModelID,
-                    userInfo: ["modelContainer": analyticsService.modelContainer]
-                )
-                
+                NotificationCenter.default.post(name: .workoutCompletedEvent, object: workout.persistentModelID, userInfo: ["modelContainer": analyticsService.modelContainer])
                 self.updateWorkoutAnalytics(for: workout)
                 self.activeEvent = .workoutSuccessfullyFinished
                 
-                // Вывод Попапа: Приоритет отдаем Цели, затем стандартным Ачивкам
                 if let goalAchieved = goalAchievementToShow {
                     try? await Task.sleep(for: .seconds(0.5))
                     self.activeEvent = .showAchievement(goalAchieved)
@@ -462,11 +421,11 @@ final class WorkoutDetailViewModel {
                 }
                 
             } catch {
-                print("❌ ViewModel: Ошибка обновления локальной статистики - \(error)")
                 self.updateWorkoutAnalytics(for: workout)
                 self.activeEvent = .workoutSuccessfullyFinished
             }
         }
+        
     // MARK: - Math Logic
     
     private func calculatePRLevel(for exercise: Exercise, prCache: [String: Double]) -> PRLevel? {
@@ -484,6 +443,7 @@ final class WorkoutDetailViewModel {
         return nil
     }
 }
+
 extension WorkoutDetailViewModel {
     
     // MARK: - AI Roast Generation
@@ -497,7 +457,7 @@ extension WorkoutDetailViewModel {
         let reps = topExercise.setsList.filter { $0.isCompleted }.compactMap { $0.reps }.reduce(0, +)
         let exName = topExercise.name
         
-        self.isShowingSnackbar = true // Используем как лоадер (блокируем UI)
+        self.isShowingSnackbar = true
         
         Task {
             do {
@@ -507,7 +467,6 @@ extension WorkoutDetailViewModel {
                 await MainActor.run {
                     self.isShowingSnackbar = false
                     
-                    // Генерируем UIImage на MainActor
                     let renderer = ImageRenderer(content: AIRoastShareCard(roastText: roast, exerciseName: exName))
                     renderer.scale = 3.0
                     if let uiImage = renderer.uiImage {
@@ -526,9 +485,7 @@ extension WorkoutDetailViewModel {
     // MARK: - Dynamic Heatmap Video Generation
     
     func generateHeatmapVideo(workout: Workout, gender: String) {
-        self.isShowingSnackbar = true // Индикатор загрузки
-        
-        // ✅ ГЛАВНЫЙ ФИКС ВИДЕО: Принудительно собираем аналитику в память перед проверкой
+        self.isShowingSnackbar = true
         self.updateWorkoutAnalytics(for: workout)
         
         let intensities = self.workoutAnalytics.intensity
@@ -540,7 +497,7 @@ extension WorkoutDetailViewModel {
         
         Task { @MainActor in
             var frames: [CGImage] = []
-            let totalFrames = 30 // 1 секунда анимации (от 0 до 100%)
+            let totalFrames = 30
             
             for frame in 0...totalFrames {
                 let progress = Double(frame) / Double(totalFrames)
@@ -567,7 +524,7 @@ extension WorkoutDetailViewModel {
                     frames.append(cgImage)
                 }
                 
-                try? await Task.sleep(nanoseconds: 5_000_000) // Yield Main Thread
+                try? await Task.sleep(nanoseconds: 5_000_000)
             }
             
             let videoService = VideoExportService()
@@ -585,19 +542,16 @@ extension WorkoutDetailViewModel {
     
     func toggleFavorite(workout: Workout, presetService: PresetService) {
         let isNowFavorite = !workout.isFavorite
-        workout.isFavorite = isNowFavorite // Оптимистичное обновление UI
+        workout.isFavorite = isNowFavorite
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
         
         Task {
-            // 1. Сохраняем статус тренировки в БД
             await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: isNowFavorite)
             
-            // 2. Если добавили в избранное - создаем шаблон
             if isNowFavorite {
                 let folderName = String(localized: "Favorites")
                 
-                // Функция для рекурсивной очистки DTO (сброс галочек isCompleted)
                 func cleanExerciseDTO(_ dto: ExerciseDTO) -> ExerciseDTO {
                     let cleanSets = dto.setsList.map { set in
                         WorkoutSetDTO(index: set.index, weight: set.weight, reps: set.reps, distance: set.distance, time: set.time, isCompleted: false, type: set.type)
@@ -606,10 +560,8 @@ extension WorkoutDetailViewModel {
                     return ExerciseDTO(name: dto.name, muscleGroup: dto.muscleGroup, type: dto.type, category: dto.category, effort: dto.effort, isCompleted: false, setsList: cleanSets, subExercises: cleanSubs)
                 }
                 
-                // Конвертируем текущие упражнения в чистые шаблоны
                 let cleanExercises = workout.exercises.map { cleanExerciseDTO($0.toDTO()) }.map { Exercise(from: $0) }
                 
-                // Сохраняем как шаблон в папку
                 await presetService.savePreset(
                     preset: nil,
                     name: workout.title,
@@ -618,7 +570,6 @@ extension WorkoutDetailViewModel {
                     exercises: cleanExercises
                 )
                 
-                // Обновляем AppStorage, чтобы папка мгновенно появилась в HubView
                 await MainActor.run {
                     let currentFolders = UserDefaults.standard.string(forKey: "customPresetFolders") ?? ""
                     var foldersArray = currentFolders.isEmpty ? [] : currentFolders.components(separatedBy: "|")
