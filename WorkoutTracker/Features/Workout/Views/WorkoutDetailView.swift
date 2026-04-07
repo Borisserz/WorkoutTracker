@@ -17,38 +17,6 @@ struct WorkoutDetailView: View {
     }
 }
 
-// Вспомогательные Enum'ы для локального UI-роутинга
-enum DetailSheetDestination: Identifiable {
-    case exerciseSelection
-    case timerSetup
-    case supersetBuilder(Exercise?)
-    case swapExercise(Exercise)
-    case shareSheet([Any]) // Массив Any
-    
-    var id: String {
-        switch self {
-        case .timerSetup: return "timerSetup"
-        case .exerciseSelection: return "exSel"
-        case .supersetBuilder(let ex): return "super_\(ex?.id.uuidString ?? "new")"
-        case .swapExercise(let ex): return "swap_\(ex.id.uuidString)"
-        case .shareSheet: return "share"
-        }
-    }
-}
-
-
-enum DetailFullScreenDestination: Identifiable {
-    case prCelebration(PRLevel)
-    case achievementPopup(Achievement)
-    
-    var id: String {
-        switch self {
-        case .prCelebration(let lvl): return "pr_\(lvl.rank)"
-        case .achievementPopup(let ach): return "ach_\(ach.id)"
-        }
-    }
-}
-
 struct WorkoutDetailContentView: View {
     enum Tab: String, CaseIterable {
         case workout = "Workout"
@@ -65,15 +33,17 @@ struct WorkoutDetailContentView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(RestTimerManager.self) var timerManager
     @Environment(UnitsManager.self) var unitsManager
-    @Environment(DIContainer.self) private var di // ✅ Добавлено для доступа к appState
+    @Environment(DIContainer.self) private var di
     
     @Bindable var workout: Workout
     @Bindable var viewModel: WorkoutDetailViewModel
     
     // MARK: - Presentation State
-    @State private var activeSheet: DetailSheetDestination?
-    @State private var activeFullScreen: DetailFullScreenDestination?
+    @State private var activeSheet: DetailDestination?
+    @State private var activeFullScreen: DetailDestination?
     @State private var showEmptyAlert = false
+    @State private var showTimerSetup = false
+    @State private var shareItems: [Any] = []
     
     // MARK: - Local UI State
     @State private var selectedTab: Tab = .workout
@@ -97,15 +67,12 @@ struct WorkoutDetailContentView: View {
     }
     
     var body: some View {
-        // ✅ FIX: Wrapped in ZStack to allow true transparent overlays for Popups
         ZStack {
             ScrollViewReader { proxy in
                 mainLayout(proxy: proxy)
-                   
                     .toolbar {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
-                                // ✅ Вызываем новую логику ViewModel, передавая PresetService из DI
                                 viewModel.toggleFavorite(workout: workout, presetService: di.presetService)
                             } label: {
                                 Image(systemName: workout.isFavorite ? "star.fill" : "star")
@@ -115,15 +82,11 @@ struct WorkoutDetailContentView: View {
                         }
                     }
                     .onAppear {
-                        // ✅ ИСПРАВЛЕНИЕ: Разделяем вызовы на новые строки
                         handleOnAppear()
-                        if workout.isActive {
-                            di.appState.isInsideActiveWorkout = true
-                        }
+                        if workout.isActive { di.appState.isInsideActiveWorkout = true }
                     }
                     .onDisappear {
                         handleOnDisappear()
-                        // ✅ Убеждаемся, что при выходе из экрана баннер может появиться
                         di.appState.isInsideActiveWorkout = false
                     }
                     .onChange(of: selectedTab) { _, newTab in withAnimation { timerManager.isHidden = (newTab == .aiCoach) } }
@@ -131,14 +94,12 @@ struct WorkoutDetailContentView: View {
                     .onChange(of: scrollToExerciseId) { _, newId in handleScrollTo(newId: newId, proxy: proxy) }
                     .onChange(of: tutorialManager.currentStep) { _, newStep in handleTutorialStep(newStep) }
                     .onChange(of: viewModel.activeEvent) { _, event in handleViewModelEvent(event) }
-                    .sheet(item: $activeSheet) { sheet in
-                        renderSheetContent(for: sheet)
-                    }
+                    .sheet(item: $activeSheet) { sheet in renderSheetContent(for: sheet) }
+                    .sheet(isPresented: $showTimerSetup) { TimerSetupSheet().environment(timerManager) }
                     .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
                         Button(LocalizedStringKey("Delete"), role: .destructive) {
                             let workoutToDelete = workout
                             dismiss()
-                            
                             Task {
                                 try? await Task.sleep(for: .seconds(0.5))
                                 await viewModel.deleteEmptyWorkout(workout: workoutToDelete)
@@ -151,7 +112,6 @@ struct WorkoutDetailContentView: View {
                     }
             }
             
-            // ✅ FIX: Render Popups directly in ZStack for beautiful animations and proper background dimming
             if let fullScreen = activeFullScreen {
                 renderFullScreenContent(for: fullScreen)
                     .ignoresSafeArea()
@@ -160,110 +120,125 @@ struct WorkoutDetailContentView: View {
             }
         }
     }
+    
     @ViewBuilder
-        private func mainLayout(proxy: ScrollViewProxy) -> some View {
-            ZStack(alignment: .bottom) {
-                VStack(spacing: 0) {
-                    if selectedTab == .aiCoach {
-                        VStack(spacing: 0) {
-                            tabPicker.padding()
-                            InWorkoutAICoachView(workout: workout, viewModel: viewModel.aiCoach)
-                        }
-                    } else {
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 20) {
-                                WorkoutDetailHeaderView(workout: workout, viewModel: viewModel)
-                                actionButtonSection
-                                if !workout.isActive { Divider().padding(.vertical, 5) }
-                                tabPicker.padding(.bottom, 8)
+    private func mainLayout(proxy: ScrollViewProxy) -> some View {
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                if selectedTab == .aiCoach {
+                    VStack(spacing: 0) {
+                        tabPicker.padding()
+                        InWorkoutAICoachView(workout: workout, viewModel: viewModel.aiCoach)
+                    }
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            WorkoutDetailHeaderView(workout: workout, viewModel: viewModel)
+                            actionButtonSection
+                            if !workout.isActive { Divider().padding(.vertical, 5) }
+                            tabPicker.padding(.bottom, 8)
+                            
+                            if selectedTab == .workout {
+                                exercisesToolbarSection
+                                ExerciseListView(
+                                    workout: workout,
+                                    expandedExercises: $expandedExercises,
+                                    draggedExercise: $draggedExercise,
+                                    scrollToExerciseId: { id in self.scrollToExerciseId = id },
+                                    onAddExerciseTap: { activeSheet = .exerciseSelection }
+                                )
+                                .environment(viewModel)
+                            } else if selectedTab == .analytics {
+                                SessionSummaryGrid(workout: workout, viewModel: viewModel)
                                 
-                                if selectedTab == .workout {
-                                    exercisesToolbarSection
-                                    
-                                    ExerciseListView(
-                                        workout: workout,
-                                        expandedExercises: $expandedExercises,
-                                        draggedExercise: $draggedExercise,
-                                        scrollToExerciseId: { id in self.scrollToExerciseId = id },
-                                        onAddExerciseTap: { activeSheet = .exerciseSelection }
-                                    )
-                                    .environment(viewModel)
-                                    
-                                } else if selectedTab == .analytics {
-                                    chartSection
-                                    muscleHeatmapSection
-                                    if !workout.exercises.isEmpty {
-                                        FunFactView(totalStrengthVolume: viewModel.workoutAnalytics.volume)
-                                    }
+                                chartSection
+                                
+                                muscleHeatmapSection
+                                
+                                if !workout.exercises.isEmpty {
+                                    FunFactView(totalStrengthVolume: viewModel.workoutAnalytics.volume)
                                 }
-                                
-                                // ✅ FIX: Увеличенный отступ, чтобы скролл уходил ПОД новый премиальный таймер.
-                                // Теперь последний сет и график аналитики не перекроются таймером.
-                                Spacer(minLength: timerManager.isRestTimerActive ? 280 : 120)
                             }
-                            .padding()
+                            
+                            // ✅ Отступ внизу зависит от того, открыт таймер или нет
+                            Spacer(minLength: timerManager.isRestTimerActive ? 280 : 120)
                         }
+                        .padding()
                     }
                 }
-                
-                // Кнопка Finish и Snackbar висят поверх ScrollView, но ПОД таймером
-                if workout.isActive && selectedTab != .aiCoach { finishWorkoutButton }
-                if viewModel.isShowingSnackbar { snackbarOverlay }
             }
+            
+            // ✅ Кнопка Финиша всплывает НАД таймером
+            if workout.isActive && selectedTab != .aiCoach {
+                finishWorkoutButton
+            }
+            
+            if viewModel.isShowingSnackbar { snackbarOverlay }
         }
-    // MARK: - Event Handling
+    }
     
+    // MARK: - Event Handling
     private func handleViewModelEvent(_ event: WorkoutDetailEvent?) {
         guard let event = event else { return }
-        
         switch event {
         case .showPR(let level):
             activeFullScreen = .prCelebration(level)
             Task {
                 try? await Task.sleep(for: .seconds(3.5))
-                if case .prCelebration = activeFullScreen { activeFullScreen = nil }
+                if activeFullScreen == .prCelebration(level) { activeFullScreen = nil }
             }
-            
         case .showShareSheet(let item):
-            activeSheet = .shareSheet([item])
-            
+            self.shareItems = [item]
+            activeSheet = .shareSheet
         case .showEmptyAlert:
             showEmptyAlert = true
-            
         case .showAchievement(let ach):
             activeFullScreen = .achievementPopup(ach)
-            
         case .showSwapExercise(let ex):
             activeSheet = .swapExercise(ex)
-            
         case .workoutSuccessfullyFinished:
             timerManager.stopRestTimer()
-            if tutorialManager.currentStep == .finishWorkout {
-                tutorialManager.setStep(.recoveryCheck)
-            }
+            if tutorialManager.currentStep == .finishWorkout { tutorialManager.setStep(.recoveryCheck) }
         }
-        
         viewModel.activeEvent = nil
     }
     
-    // MARK: - Sections & Buttons
-    
+    // MARK: - Buttons
     private var finishWorkoutButton: some View {
+        VStack {
+            Spacer()
             Button {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
                 generator.impactOccurred()
                 viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
             } label: {
-                Text(LocalizedStringKey("Finish Workout")).font(.headline).frame(maxWidth: .infinity)
-                    .padding().background(Color.accentColor).foregroundColor(.white)
-                    .cornerRadius(12).shadow(radius: 8)
+                HStack(spacing: 8) {
+                    Image(systemName: "flag.checkered.circle.fill").font(.title2)
+                    Text(LocalizedStringKey("Finish Workout")).font(.title3).bold()
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))
+                .foregroundColor(.white)
+                .clipShape(Capsule())
+                .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)
             }
-            .padding(.horizontal)
-            // ✅ FIX: Если таймер активен, поднимаем кнопку Finish НАД ним (примерно 200 поинтов от низа экрана)
+            .padding(.horizontal, 24)
+            // ДИНАМИЧЕСКИЙ ОТСТУП СНИЗУ ДЛЯ КНОПКИ (Чтобы таймер снизу пролезал)
             .padding(.bottom, timerManager.isRestTimerActive ? 180 : 16)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: timerManager.isRestTimerActive)
             .disabled(viewModel.isShowingSnackbar)
         }
+        .background(
+            VStack {
+                Spacer()
+                LinearGradient(colors: [Color(UIColor.systemBackground).opacity(0), Color(UIColor.systemBackground)], startPoint: .top, endPoint: .bottom)
+                    .frame(height: timerManager.isRestTimerActive ? 280 : 100)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+        )
+    }
     
     private var snackbarOverlay: some View {
         HStack {
@@ -286,44 +261,31 @@ struct WorkoutDetailContentView: View {
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .zIndex(100)
     }
-
-    // MARK: - Lifecycle Handlers
     
+    // MARK: - Lifecycle
     private func handleOnAppear() {
         viewModel.loadCaches(from: dashboardViewModel)
         viewModel.updateWorkoutAnalytics(for: workout)
-        
         for (index, exercise) in workout.exercises.enumerated() {
-            if expandedExercises[exercise.id] == nil {
-                expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout
-            }
+            if expandedExercises[exercise.id] == nil { expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout }
         }
     }
     
     private func handleOnDisappear() {
         timerManager.isHidden = false
-        
         if workout.isActive {
             let hasCompletedSets = workout.exercises.contains { ex in
                 let targets = ex.isSuperset ? ex.subExercises : [ex]
                 return targets.contains { sub in sub.setsList.contains { $0.isCompleted } }
             }
-            
-            if !hasCompletedSets {
-                Task {
-                    await viewModel.deleteEmptyWorkout(workout: workout)
-                    timerManager.stopRestTimer()
-                }
-            }
+            if !hasCompletedSets { Task { await viewModel.deleteEmptyWorkout(workout: workout); timerManager.stopRestTimer() } }
         }
     }
     
     private func handleExercisesChanged() {
         viewModel.updateWorkoutAnalytics(for: workout)
         for (index, exercise) in workout.exercises.enumerated() {
-            if expandedExercises[exercise.id] == nil {
-                expandedExercises[exercise.id] = index == 0
-            }
+            if expandedExercises[exercise.id] == nil { expandedExercises[exercise.id] = index == 0 }
         }
     }
     
@@ -339,14 +301,9 @@ struct WorkoutDetailContentView: View {
     }
     
     private func handleTutorialStep(_ newStep: TutorialStep) {
-        if newStep == .highlightChart || newStep == .highlightBody {
-            selectedTab = .analytics
-        } else if newStep == .addExercise {
-            selectedTab = .workout
-        }
+        if newStep == .highlightChart || newStep == .highlightBody { selectedTab = .analytics }
+        else if newStep == .addExercise { selectedTab = .workout }
     }
-    
-    // MARK: - View Sections
     
     private var actionButtonSection: some View {
         Group {
@@ -375,20 +332,16 @@ struct WorkoutDetailContentView: View {
     
     private var exercisesToolbarSection: some View {
         HStack {
-                    Text(LocalizedStringKey("Exercises")).font(.title2).bold()
-                    Spacer()
-                    
-                    if workout.isActive {
-                        // ✅ Изменено: Вызов шторки вместо моментального старта
-                        Button { activeSheet = .timerSetup } label: {
-                            Image(systemName: "timer").font(.headline).padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
-                        }
-                    }
-            
+            Text(LocalizedStringKey("Exercises")).font(.title2).bold()
+            Spacer()
+            if workout.isActive {
+                Button { showTimerSetup = true } label: {
+                    Image(systemName: "timer").font(.headline).padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
+                }
+            }
             Button { activeSheet = .supersetBuilder(nil) } label: {
                 Label(LocalizedStringKey("Superset"), systemImage: "plus").font(.caption).bold().padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
             }.disabled(!workout.isActive)
-            
             Button { activeSheet = .exerciseSelection } label: {
                 Label(LocalizedStringKey("Exercise"), systemImage: "plus").font(.caption).bold().padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
             }
@@ -397,16 +350,35 @@ struct WorkoutDetailContentView: View {
         }
         .zIndex(15)
     }
-    
     private var chartSection: some View {
-        Group {
-            if !viewModel.workoutAnalytics.chartExercises.isEmpty {
-                VStack(alignment: .leading) {
-                    Text(LocalizedStringKey("Analysis (Max Weight)")).font(.title2).bold().padding(.top)
+        VStack(alignment: .leading, spacing: 16) {
+            Text(LocalizedStringKey("Analysis (Max Weight)"))
+                .font(.title2)
+                .bold()
+                .padding(.horizontal, 4)
+            
+            VStack(alignment: .leading, spacing: 16) {
+                if viewModel.workoutAnalytics.chartExercises.isEmpty {
+                    EmptyStateView(
+                        icon: "chart.bar.xaxis",
+                        title: LocalizedStringKey("No Data Yet"),
+                        message: LocalizedStringKey("Complete exercises with weight to see your performance chart here.")
+                    )
+                    .frame(height: 220)
+                } else {
+                    // Динамический заголовок выбранного столбца
                     if let selected = selectedChartExerciseName {
-                        Text(LocalizedStringKey(selected.trimmingCharacters(in: .whitespaces))).font(.subheadline).foregroundColor(.accentColor).padding(.bottom, 4).frame(minHeight: 20)
+                        Text(LocalizedStringKey(selected.trimmingCharacters(in: .whitespaces)))
+                            .font(.headline)
+                            .foregroundColor(.orange)
+                            .padding(.bottom, 4)
+                            .frame(minHeight: 24)
                     } else {
-                        Text(LocalizedStringKey("Tap a bar to see full name")).font(.subheadline).foregroundColor(.secondary).padding(.bottom, 4).frame(minHeight: 20)
+                        Text(LocalizedStringKey("Tap a bar to see full name"))
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 4)
+                            .frame(minHeight: 24)
                     }
                     
                     Chart {
@@ -414,94 +386,139 @@ struct WorkoutDetailContentView: View {
                             let maxWeight = exercise.maxWeight
                             let convertedWeight = unitsManager.convertFromKilograms(maxWeight)
                             let uniqueName = exercise.name + String(repeating: " ", count: index)
+                            let isSelected = selectedChartExerciseName == uniqueName
                             
                             BarMark(
                                 x: .value("Exercise", uniqueName),
                                 y: .value("Weight", convertedWeight)
                             )
-                            .foregroundStyle(selectedChartExerciseName == uniqueName ? Color.orange.gradient : Color.accentColor.gradient)
-                            .cornerRadius(4)
-                            .annotation(position: .top) { Text("\(Int(convertedWeight))").font(.caption2).foregroundColor(selectedChartExerciseName == uniqueName ? .orange : .secondary) }
-                        }
-                    }
-                    .frame(height: 250).padding(.bottom, 10).chartXSelection(value: $selectedChartExerciseName)
-                    .chartXAxis {
-                        AxisMarks(values: .automatic) { value in
-                            AxisTick()
-                            AxisValueLabel {
-                                if let uniqueName = value.as(String.self) {
-                                    Text(abbreviateName(uniqueName.trimmingCharacters(in: .whitespaces))).font(.caption2)
+                            // Подсветка золотым градиентом при выборе
+                            .foregroundStyle(
+                                isSelected
+                                ? LinearGradient(colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom)
+                                : LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom)
+                            )
+                            .cornerRadius(6)
+                            .annotation(position: .top) {
+                                if isSelected {
+                                    Text("\(Int(convertedWeight))")
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .foregroundColor(.orange)
+                                        .padding(.bottom, 4)
+                                        .contentTransition(.numericText())
+                                } else {
+                                    Text("\(Int(convertedWeight))")
+                                        .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                        .foregroundColor(.secondary)
+                                        .contentTransition(.numericText())
                                 }
                             }
                         }
                     }
+                    .frame(height: 220)
+                    .chartXSelection(value: $selectedChartExerciseName)
+                    // Скрываем лишние линии сетки для чистоты дизайна
+                    .chartXAxis {
+                        AxisMarks(values: .automatic) { value in
+                            AxisValueLabel {
+                                if let uniqueName = value.as(String.self) {
+                                    Text(String(uniqueName.trimmingCharacters(in: .whitespaces).prefix(3)).capitalized)
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .leading) { _ in
+                            AxisGridLine().foregroundStyle(Color.gray.opacity(0.1))
+                            AxisValueLabel().foregroundStyle(Color.secondary)
+                        }
+                    }
+                    .onChange(of: selectedChartExerciseName) { _, newValue in
+                        if newValue != nil {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                        }
+                    }
                 }
-                .spotlight(step: .highlightChart, manager: tutorialManager, text: "Track progress here.\nTap chart to continue.", alignment: .bottom)
-                .onTapGesture { if tutorialManager.currentStep == .highlightChart { tutorialManager.nextStep() } }
             }
+            .padding(20)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(24)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
         }
+        .padding(.top, 10)
     }
-      
-    private var muscleHeatmapSection: some View {
-        VStack(alignment: .leading) {
-            Text(LocalizedStringKey("Body Status")).font(.title2).bold().padding(.top)
-            VStack { BodyHeatmapView(muscleIntensities: viewModel.workoutAnalytics.intensity) }
-            .padding(.vertical).frame(maxWidth: .infinity).background(Color(UIColor.secondarySystemBackground)).cornerRadius(16)
-            .spotlight(step: .highlightBody, manager: tutorialManager, text: "See targeted muscles.\nTap heatmap to continue.", alignment: .top)
-            .onTapGesture { if tutorialManager.currentStep == .highlightBody { tutorialManager.nextStep() } }
-        }
-    }
-    
-    private func abbreviateName(_ name: String) -> String {
-        let words = name.split(separator: " ")
-        if words.count > 1 { return words.prefix(2).compactMap { $0.first }.map { String($0) }.joined().uppercased() }
-        else { return String(name.prefix(3)).capitalized }
-    }
-    
-    @ViewBuilder
-    private func renderSheetContent(for destination: DetailSheetDestination) -> some View {
-        switch destination {
-        case .shareSheet(let items):
-            ActivityViewController(activityItems: items)
-                .presentationDetents([.medium, .large])
 
-            
-        case .exerciseSelection:
-            ExerciseSelectionView { newExercise in
-                viewModel.addExercise(newExercise, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 })
-            }
-            
-        case .supersetBuilder(let existing):
-            SupersetBuilderView(existingSuperset: existing) { newSuperset in
-                if existing == nil {
-                    viewModel.addExercise(newSuperset, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 })
+    // MARK: - 2. Muscle Heatmap Section (WorkoutDetailContentView)
+
+    private var muscleHeatmapSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(LocalizedStringKey("Body Status"))
+                    .font(.title2)
+                    .bold()
+                
+                Spacer()
+                
+                // Пульсирующий бейдж Live Tension
+                if workout.isActive {
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 8, height: 8)
+                            .symbolEffect(.pulse)
+                        Text(LocalizedStringKey("Live Tension"))
+                            .font(.caption)
+                            .bold()
+                            .foregroundColor(.green)
+                            .textCase(.uppercase)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.green.opacity(0.15))
+                    .clipShape(Capsule())
                 }
-            } onDelete: {
-                if let ex = existing {
-                    viewModel.removeExercise(ex, from: workout)
-                }
             }
+            .padding(.horizontal, 4)
             
-        case .swapExercise(let oldEx):
-            ExerciseSelectionView { newEx in
-                viewModel.performSwap(old: oldEx, new: newEx, workout: workout)
+            VStack {
+                BodyHeatmapView(muscleIntensities: viewModel.workoutAnalytics.intensity)
             }
-        case .timerSetup: // ✅ ADDED
-                   TimerSetupSheet()
-                       .environment(timerManager)
+            .padding(.vertical, 20)
+            .frame(maxWidth: .infinity)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(24)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
         }
     }
     
     @ViewBuilder
-    private func renderFullScreenContent(for destination: DetailFullScreenDestination) -> some View {
+    private func renderSheetContent(for destination: DetailDestination) -> some View {
         switch destination {
-        case .prCelebration(let level):
-            PRCelebrationView(prLevel: level, onClose: { activeFullScreen = nil })
-                .presentationBackground(.clear)
-                
-        case .achievementPopup(let achievement):
-            AchievementPopupView(achievement: achievement) { activeFullScreen = nil }
-                .presentationBackground(.clear)
+        case .shareSheet: ActivityViewController(activityItems: shareItems).presentationDetents([.medium, .large])
+        case .exerciseSelection: ExerciseSelectionView { newEx in viewModel.addExercise(newEx, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 }) }
+        case .supersetBuilder(let existing): SupersetBuilderView(existingSuperset: existing) { newSuper in if existing == nil { viewModel.addExercise(newSuper, workout: workout, scrollToExerciseId: { scrollToExerciseId = $0 }) } } onDelete: { if let ex = existing { viewModel.removeExercise(ex, from: workout) } }
+        case .swapExercise(let oldEx): ExerciseSelectionView { newEx in viewModel.performSwap(old: oldEx, new: newEx, workout: workout) }
+        default: EmptyView()
+        }
+    }
+    
+    @ViewBuilder
+    private func renderFullScreenContent(for destination: DetailDestination) -> some View {
+        switch destination {
+        case .prCelebration(let level): PRCelebrationView(prLevel: level, onClose: { activeFullScreen = nil }).presentationBackground(.clear)
+        case .achievementPopup(let achievement): AchievementPopupView(achievement: achievement) { activeFullScreen = nil }.presentationBackground(.clear)
+        default: EmptyView()
         }
     }
 }

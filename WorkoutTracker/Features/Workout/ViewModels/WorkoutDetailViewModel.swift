@@ -68,18 +68,22 @@ final class WorkoutDetailViewModel {
            var counts = [String: Int]()
            var volume = 0.0
            var chartExercises: [ExerciseChartDTO] = []
+           var totalCompletedSets = 0
            
-           // Читаем данные напрямую из оперативной памяти (мгновенно и безопасно для Main Thread)
+           // Читаем данные напрямую из оперативной памяти
            for exercise in workout.exercises {
                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
                for sub in targets {
-                   // Если есть хотя бы один выполненный сет, засчитываем мышцы
-                   if sub.type != .cardio && sub.setsList.contains(where: { $0.isCompleted }) {
+                   let completedSetsCount = sub.setsList.filter { $0.isCompleted }.count
+                   totalCompletedSets += completedSetsCount
+                   
+                   if sub.type != .cardio && completedSetsCount > 0 {
                        let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
-                       for muscleSlug in muscles { counts[muscleSlug, default: 0] += 1 }
+                       for muscleSlug in muscles {
+                           counts[muscleSlug, default: 0] += (completedSetsCount * 25)
+                       }
                    }
                }
-               // exerciseVolume сам разрулит кэш или пересчет
                volume += exercise.exerciseVolume
            }
            
@@ -92,14 +96,35 @@ final class WorkoutDetailViewModel {
            for ex in forChart {
                let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
                if maxW > 0 {
-                   chartExercises.append(ExerciseChartDTO(id: UUID(), name: ex.name, maxWeight: maxW))
+                   // ✅ FIX: Используем стабильный ex.id вместо UUID(), чтобы график не исчезал и не дергался
+                   chartExercises.append(ExerciseChartDTO(id: ex.id, name: ex.name, maxWeight: maxW))
                }
            }
            
-           // Мгновенное обновление UI и данных для генерации видео
-           self.workoutAnalytics = WorkoutAnalyticsDataDTO(intensity: counts, volume: volume, chartExercises: chartExercises)
+           self.workoutAnalytics = WorkoutAnalyticsDataDTO(
+               intensity: counts,
+               volume: volume,
+               chartExercises: chartExercises,
+               completedSetsCount: totalCompletedSets
+           )
        }
-    
+
+       func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
+           // ✅ FIX: Явно добавляем объект в SwiftData контекст, иначе статистика его не увидит
+           if let context = workout.modelContext {
+               context.insert(newExercise)
+               for set in newExercise.setsList {
+                   context.insert(set)
+               }
+           }
+           
+           withAnimation { workout.exercises.insert(newExercise, at: 0) }
+           Task {
+               try? await Task.sleep(for: .seconds(0.3))
+               guard !Task.isCancelled else { return }
+               scrollToExerciseId(newExercise.id)
+           }
+       }
     // MARK: - Set & Exercise Management
     
     // ✅ FIX: Выполняем добавление напрямую на MainActor
@@ -139,14 +164,7 @@ final class WorkoutDetailViewModel {
         Task { await workoutService.removeExercise(exercise, from: workout) }
     }
     
-    func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
-        withAnimation { workout.exercises.insert(newExercise, at: 0) }
-        Task {
-            try? await Task.sleep(for: .seconds(0.3))
-            guard !Task.isCancelled else { return }
-            scrollToExerciseId(newExercise.id)
-        }
-    }
+
 
     func performSwap(old: Exercise, new: Exercise, workout: Workout) {
             Task {

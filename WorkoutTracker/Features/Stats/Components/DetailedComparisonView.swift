@@ -30,60 +30,63 @@ struct DetailedComparisonView: View {
     }
 }
 
+
 struct DetailedComparisonRow: View {
     let comparison: DetailedComparison
     
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(comparison.metric)
-                    .font(.headline)
-                
-                Spacer()
-                
-                Image(systemName: comparison.trend.icon)
-                    .foregroundColor(comparison.trend.color)
-            }
-            
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey("Previous"))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(formatValue(comparison.previousValue))
-                        .font(.subheadline)
-                }
-                
-                Image(systemName: "arrow.right")
-                    .foregroundColor(.blue)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey("Current"))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(formatValue(comparison.currentValue))
-                        .font(.subheadline)
-                        .bold()
-                }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(comparison.changePercentage >= 0 ? "+" : "")\(comparison.changePercentage, specifier: "%.1f")%")
-                        .font(.headline)
-                        .foregroundColor(comparison.trend.color)
-                    
-                    Text(formatValue(abs(comparison.change)))
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-        .padding(.vertical, 8)
+    private func iconAndColor(for metric: String) -> (icon: String, color: Color) {
+        let m = metric.lowercased()
+        if m.contains("workout") { return ("figure.run", .blue) }
+        if m.contains("volume") { return ("scalemass.fill", .purple) }
+        if m.contains("distance") { return ("map.fill", .orange) }
+        if m.contains("time") { return ("stopwatch.fill", .cyan) }
+        return ("chart.bar.fill", .gray)
     }
     
-    private func formatValue(_ value: Double) -> String {
-        return LocalizationHelper.shared.formatSmart(value)
+    var body: some View {
+        HStack(spacing: 16) {
+            let style = iconAndColor(for: comparison.metric)
+            
+            ZStack {
+                Circle().fill(style.color.opacity(0.15)).frame(width: 48, height: 48)
+                Image(systemName: style.icon).font(.title3).foregroundColor(style.color)
+            }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(LocalizedStringKey(comparison.metric))
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                HStack(spacing: 6) {
+                    Text(LocalizationHelper.shared.formatSmart(comparison.previousValue))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Image(systemName: "arrow.right")
+                        .font(.caption2)
+                        .foregroundColor(.gray)
+                    Text(LocalizationHelper.shared.formatSmart(comparison.currentValue))
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundColor(.primary)
+                }
+            }
+            
+            Spacer()
+            
+            let isPositive = comparison.changePercentage >= 0
+            Text("\(isPositive ? "+" : "")\(comparison.changePercentage, specifier: "%.1f")%")
+                .font(.subheadline)
+                .fontWeight(.bold)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(isPositive ? Color.green.opacity(0.15) : Color.red.opacity(0.15))
+                .foregroundColor(isPositive ? .green : .red)
+                .clipShape(Capsule())
+        }
+        .padding(16)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
 }
 

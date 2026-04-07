@@ -239,11 +239,8 @@ struct StatsContentView: View {
     let currentStats: PeriodStats
     let previousStats: PeriodStats
     @Environment(DIContainer.self) private var di
-
     
-    // ✅ ДОБАВЬ ЭТУ СТРОКУ СЮДА:
     @Environment(\.modelContext) private var context
-    
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(UnitsManager.self) var unitsManager
@@ -251,32 +248,41 @@ struct StatsContentView: View {
     
     @State private var showProfile = false
     @State private var showAIReviewSheet = false
-    @State private var showGoalSheet = false 
+    @State private var showGoalSheet = false
+    
     var body: some View {
-        List {
-            streakSection
+        ZStack {
+            Color(UIColor.systemGroupedBackground)
+                .ignoresSafeArea()
             
-            // ✅ НОВАЯ СЕКЦИЯ: Активная Цель
-            activeGoalSection
-            
-            aiReviewButtonSection
-            periodPicker
-            highlightsSection
-            chartSection
-            
-            // 1. Детальное сравнение СРАЗУ после графика
-            if !viewModel.detailedComparison.isEmpty {
-                Section(header: Text(LocalizedStringKey("Detailed Comparison"))) {
-                    DetailedComparisonView(comparisons: viewModel.detailedComparison, period: viewModel.selectedPeriod.rawValue)
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 24) {
+                    streakSection
+                    
+                    activeGoalSection
+                    
+                    aiReviewButtonSection
+                    
+                    periodPicker
+                    
+                    highlightsSection
+                    
+                    chartSection
+                    
+                    if !viewModel.detailedComparison.isEmpty {
+                        detailedComparisonSection
+                    }
+                    
+                    advancedStatisticsSection
+                    
+                    prSection
+                    
+                    bestStatsSection
+                    
+                    Spacer(minLength: 40)
                 }
+                .padding(.vertical, 20)
             }
-            
-            // 2. Новая секция продвинутой статистики (Drill-down)
-            advancedStatisticsSection
-            
-            // 3. Рекорды в самом конце
-            prSection
-            bestStatsSection
         }
         .navigationTitle(LocalizedStringKey("Progress"))
         .toolbar {
@@ -301,134 +307,150 @@ struct StatsContentView: View {
                 aiLogicService: di.aiLogicService
             )
         }
-        // ✅ ШТОРКА СОЗДАНИЯ ЦЕЛИ
         .sheet(isPresented: $showGoalSheet) {
             GoalSelectionSheet(onGoalCreated: {
                 Task {
-                    // Обновляем данные после создания цели
                     await viewModel.loadActiveGoals(prCache: dashboardViewModel.personalRecordsCache)
                 }
             })
-            .environment(unitsManager) // Пробрасываем зависимости
+            .environment(unitsManager)
             .environment(dashboardViewModel)
         }
     }
 
-    private var activeGoalSection: some View {
-            Section {
-                if viewModel.activeGoals.isEmpty {
-                    // СОСТОЯНИЕ: ЦЕЛЕЙ НЕТ
-                    ActiveGoalCard(
-                        goal: nil,
-                        currentValue: 0,
-                        onAddTapped: { showGoalSheet = true },
-                        onDeleteTapped: {},
-                        onReplaceTapped: {}
-                    )
-                } else {
-                    // СОСТОЯНИЕ: ЕСТЬ ЦЕЛИ (СПИСОК)
-                    ForEach(viewModel.activeGoals) { goal in
-                        ActiveGoalCard(
-                            goal: goal,
-                            currentValue: viewModel.activeGoalValues[goal.id] ?? 0.0,
-                            onAddTapped: { showGoalSheet = true },
-                            onDeleteTapped: { deleteGoal(goal) },
-                            onReplaceTapped: { replaceGoal(goal) }
-                        )
-                    }
-                }
-            } header: {
-                HStack {
-                    Text(LocalizedStringKey("Your Goals"))
-                        .font(.title2)
-                        .bold()
-                        .foregroundColor(.primary)
-                    Spacer()
-                    
-                    Button {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
-                        showGoalSheet = true
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundColor(.blue)
-                    }
-                }
-                .textCase(nil) // Убирает системный капс у заголовка секции
-                .padding(.bottom, 4)
-            }
-        }
-
-        // ✅ ИСПРАВЛЕНИЕ: Функция принимает конкретную цель для удаления
-    private func deleteGoal(_ goal: UserGoal) {
-        let goalID = goal.persistentModelID // Захватываем ID перед удалением
-        
-        // 1. Мгновенно обновляем UI для плавности
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-            viewModel.activeGoals.removeAll { $0.id == goal.id }
-        }
-        
-        // 2. Безопасно удаляем в фоне через репозиторий
-        Task {
-            try? await di.userRepository.deleteGoal(goalID: goalID)
-            
-            // 3. Перезагружаем данные для синхронизации
-            await viewModel.loadActiveGoals(prCache: dashboardViewModel.personalRecordsCache)
-        }
-    }
-        private func replaceGoal(_ goal: UserGoal) {
-            deleteGoal(goal) // Удаляем старую
-            showGoalSheet = true // Предлагаем создать новую
-        }
     // MARK: - Sections
     
+    private func sectionHeader(title: LocalizedStringKey, actionIcon: String? = nil, action: (() -> Void)? = nil) -> some View {
+        HStack {
+            Text(title)
+                .font(.title2)
+                .bold()
+                .foregroundColor(.primary)
+            Spacer()
+            if let actionIcon = actionIcon, let action = action {
+                Button(action: {
+                    let generator = UIImpactFeedbackGenerator(style: .light)
+                    generator.impactOccurred()
+                    action()
+                }) {
+                    Image(systemName: actionIcon)
+                        .font(.title3)
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.bottom, -4)
+    }
+
     private var streakSection: some View {
-        Section {
-            HStack(spacing: 15) {
-                Image(systemName: "flame.fill").font(.largeTitle).foregroundColor(.orange)
-                VStack(alignment: .leading) {
-                    Text(LocalizedStringKey("\(dashboardViewModel.streakCount) Day Streak")).font(.headline)
-                    let streakMessage: LocalizedStringKey = dashboardViewModel.streakCount > 0 ? "Keep the fire burning!" : "Start your streak today!"
-                    Text(streakMessage).font(.caption).foregroundColor(.secondary)
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.15))
+                    .frame(width: 54, height: 54)
+                Image(systemName: "flame.fill")
+                    .font(.title2)
+                    .foregroundColor(.orange)
+                    .shadow(color: .orange.opacity(0.5), radius: 5, x: 0, y: 2)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(LocalizedStringKey("\(dashboardViewModel.streakCount) Day Streak"))
+                    .font(.headline)
+                    .contentTransition(.numericText())
+                
+                let streakMessage: LocalizedStringKey = dashboardViewModel.streakCount > 0 ? "Keep the fire burning!" : "Start your streak today!"
+                Text(streakMessage)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding(16)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+        .padding(.horizontal, 20)
+    }
+
+    private var activeGoalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: "Your Goals", actionIcon: "plus.circle.fill", action: { showGoalSheet = true })
+            
+            if viewModel.activeGoals.isEmpty {
+                ActiveGoalCard(
+                    goal: nil,
+                    currentValue: 0,
+                    onAddTapped: { showGoalSheet = true },
+                    onDeleteTapped: {},
+                    onReplaceTapped: {}
+                )
+                .padding(.horizontal, 20)
+            } else {
+                ForEach(viewModel.activeGoals) { goal in
+                    ActiveGoalCard(
+                        goal: goal,
+                        currentValue: viewModel.activeGoalValues[goal.id] ?? 0.0,
+                        onAddTapped: { showGoalSheet = true },
+                        onDeleteTapped: { deleteGoal(goal) },
+                        onReplaceTapped: { replaceGoal(goal) }
+                    )
+                    .padding(.horizontal, 20)
                 }
             }
         }
-        .listRowBackground(Color.orange.opacity(0.1))
-        .listRowSeparator(.hidden)
     }
-    
+
     private var aiReviewButtonSection: some View {
-        Section {
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                showAIReviewSheet = true
-            } label: {
-                HStack(spacing: 16) {
-                    Image(systemName: "sparkles").font(.title2).foregroundColor(.yellow)
-                        .shadow(color: .yellow.opacity(0.5), radius: 5, x: 0, y: 0)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStringKey("Generate AI Weekly Review")).font(.headline).foregroundColor(.white)
-                        Text(LocalizedStringKey("Get personalized insights and tips")).font(.caption).foregroundColor(.white.opacity(0.8))
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").foregroundColor(.white.opacity(0.6)).font(.caption)
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            showAIReviewSheet = true
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 48, height: 48)
+                    Image(systemName: "sparkles")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .shadow(color: .white.opacity(0.8), radius: 8, x: 0, y: 0)
                 }
-                .padding(.vertical, 8)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("AI Performance Review"))
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    Text(LocalizedStringKey("Get personalized insights and tips"))
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.white.opacity(0.5))
+                    .font(.body.bold())
             }
+            .padding(16)
+            .background(
+                LinearGradient(colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
+            .cornerRadius(20)
+            .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 12, x: 0, y: 6)
         }
-        .listRowBackground(LinearGradient(colors: [.purple.opacity(0.8), .blue.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
     }
-    
+
     private var periodPicker: some View {
         Picker(LocalizedStringKey("Period"), selection: $viewModel.selectedPeriod) {
             ForEach(StatsView.Period.allCases) { Text($0.localizedName).tag($0) }
         }
         .pickerStyle(.segmented)
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-        .listRowBackground(Color.clear)
+        .padding(.horizontal, 20)
     }
-    
+
     private var highlightsTitle: LocalizedStringKey {
         switch viewModel.selectedPeriod {
         case .week: return "Highlights for this Week"
@@ -436,167 +458,246 @@ struct StatsContentView: View {
         case .year: return "Highlights for this Year"
         }
     }
-    
+
     private var highlightsSection: some View {
-        Section(header: Text(highlightsTitle)) {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: highlightsTitle)
+            
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: 16) {
+                    Spacer().frame(width: 4)
                     metricButton(metric: .count, title: "Workouts", value: "\(currentStats.workoutCount)", icon: "figure.run", prevValue: Double(previousStats.workoutCount), currValue: Double(currentStats.workoutCount))
                     metricButton(metric: .volume, title: "Volume (\(unitsManager.weightUnitString()))", value: "\(Int(unitsManager.convertFromKilograms(currentStats.totalVolume)))", icon: "scalemass.fill", prevValue: previousStats.totalVolume, currValue: currentStats.totalVolume)
                     metricButton(metric: .distance, title: "Distance (\(unitsManager.distanceUnitString()))", value: LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters(currentStats.totalDistance)), icon: "map.fill", prevValue: previousStats.totalDistance, currValue: currentStats.totalDistance)
                     metricButton(metric: .time, title: "Time (min)", value: "\(currentStats.totalDuration)", icon: "stopwatch.fill", prevValue: Double(previousStats.totalDuration), currValue: Double(currentStats.totalDuration))
+                    Spacer().frame(width: 4)
                 }
-                .padding(.horizontal, 16).padding(.vertical, 5)
-            }
-            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
-        }
-    }
-    
-    private var chartSection: some View {
-        Section(header: Text(viewModel.selectedMetric.title)) {
-            if viewModel.chartData.isEmpty || viewModel.chartData.reduce(0, { $0 + $1.value }) == 0 {
-                EmptyStateView(icon: "chart.bar.fill", title: "No data for this period", message: "Complete some workouts to see your progress chart here.")
-                    .frame(height: 180)
-            } else {
-                let useLineChart = viewModel.selectedMetric == .distance && viewModel.selectedPeriod == .year && viewModel.chartData.count > 1
-                let maxValue = viewModel.chartData.map { $0.value }.max() ?? 0
-                let minValue = viewModel.chartData.map { $0.value }.min() ?? 0
-                let valueRange = maxValue - minValue
-                let shouldExcludeZero = valueRange > 0 && (maxValue / valueRange < 0.1 || maxValue < 1.0)
-                
-                if useLineChart {
-                    Chart(viewModel.chartData) { dataPoint in
-                        LineMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
-                            .foregroundStyle(Color.blue).interpolationMethod(.linear).lineStyle(StrokeStyle(lineWidth: 3))
-                        PointMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
-                            .foregroundStyle(Color.blue).symbolSize(30)
-                    }
-                    .frame(height: 200)
-                    .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
-                } else {
-                    Chart(viewModel.chartData) { dataPoint in
-                        BarMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
-                            .foregroundStyle(Color.blue.gradient).cornerRadius(6)
-                    }
-                    .frame(height: 200)
-                    .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
-                }
+                .padding(.vertical, 8)
             }
         }
     }
 
-    // MARK: - Advanced Statistics Section
-    
-    private var advancedStatisticsSection: some View {
-        Section(header: Text(LocalizedStringKey("Advanced statistics"))) {
+    private var chartSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: viewModel.selectedMetric.title)
             
-            NavigationLink(destination: SetsTrendDetailView()) {
-                AdvancedStatRow(
-                    icon: "chart.xyaxis.line",
-                    title: "Set count per muscle group",
-                    subtitle: "Number of sets logged for each muscle group."
-                )
-            }
-            
-            if let anatomy = viewModel.anatomyStats {
-                NavigationLink(destination: RadarChartDetailView()) {
-                    AdvancedStatRow(
-                        icon: "pentagon",
-                        title: "Muscle distribution (Chart)",
-                        subtitle: "Compare your current and previous muscle distributions."
-                    )
-                }
-                
-                NavigationLink(destination: HeatmapDetailView(gender: userGender)) {
-                    AdvancedStatRow(
-                        icon: "figure.arms.open",
-                        title: "Muscle distribution (Body)",
-                        subtitle: "Heat map of muscles worked during this period."
-                    )
-                }
-            }
-            
-            NavigationLink(destination: MonthlyReportDetailView()) {
-                    AdvancedStatRow(
-                        icon: "doc.text",
-                        title: LocalizedStringKey("30-Day Report"),
-                        subtitle: LocalizedStringKey("Recap of your workouts and volume changes.")
-                    )
-                }
-        }
-    }
-    
-    // MARK: - Bottom Sections
-    
-    @ViewBuilder
-    private var prSection: some View {
-        if !viewModel.recentPRs.isEmpty {
-            Section(header: Text(LocalizedStringKey("New Personal Records"))) {
-                ForEach(viewModel.recentPRs) { pr in
-                    HStack {
-                        Image(systemName: "trophy.fill").foregroundColor(.orange)
-                        VStack(alignment: .leading) {
-                            Text(LocalizedStringKey(pr.exerciseName)).fontWeight(.bold)
-                            Text(pr.date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundColor(.secondary)
+            VStack {
+                if viewModel.chartData.isEmpty || viewModel.chartData.reduce(0, { $0 + $1.value }) == 0 {
+                    EmptyStateView(icon: "chart.bar.fill", title: "No data for this period", message: "Complete some workouts to see your progress chart here.")
+                        .frame(height: 200)
+                } else {
+                    let useLineChart = viewModel.selectedMetric == .distance && viewModel.selectedPeriod == .year && viewModel.chartData.count > 1
+                    let maxValue = viewModel.chartData.map { $0.value }.max() ?? 0
+                    let minValue = viewModel.chartData.map { $0.value }.min() ?? 0
+                    let valueRange = maxValue - minValue
+                    let shouldExcludeZero = valueRange > 0 && (maxValue / valueRange < 0.1 || maxValue < 1.0)
+                    
+                    if useLineChart {
+                        Chart(viewModel.chartData) { dataPoint in
+                            LineMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
+                                .foregroundStyle(Color.blue)
+                                .interpolationMethod(.catmullRom)
+                                .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                            
+                            AreaMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
+                                .foregroundStyle(LinearGradient(colors: [Color.blue.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom))
+                                .interpolationMethod(.catmullRom)
+                            
+                            PointMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
+                                // ИСПРАВЛЕНИЕ: Используем .symbol вместо .overlay
+                                .symbol {
+                                    Circle()
+                                        .fill(Color.white)
+                                        .frame(width: 12, height: 12)
+                                        .overlay(
+                                            Circle().stroke(Color.blue, lineWidth: 3)
+                                        )
+                                        .shadow(color: .blue.opacity(0.3), radius: 3, x: 0, y: 2)
+                                }
                         }
-                        Spacer()
-                        Text(LocalizedStringKey("\(Int(unitsManager.convertFromKilograms(pr.weight))) \(unitsManager.weightUnitString())")).font(.headline).foregroundColor(.blue)
+                        .frame(height: 220)
+                        .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
+                    } else {
+                        Chart(viewModel.chartData) { dataPoint in
+                            BarMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
+                                .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
+                                .cornerRadius(6)
+                        }
+                        .frame(height: 220)
+                        .chartYScale(domain: shouldExcludeZero ? .automatic(includesZero: false) : .automatic(includesZero: true))
                     }
                 }
             }
+            .padding(20)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(24)
+            .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+            .padding(.horizontal, 20)
         }
     }
-    
+
+    private var detailedComparisonSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: "Detailed Comparison")
+            DetailedComparisonView(comparisons: viewModel.detailedComparison, period: viewModel.selectedPeriod.rawValue)
+                .padding(.horizontal, 20)
+        }
+    }
+
+    private var advancedStatisticsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: "Advanced statistics")
+            
+            VStack(spacing: 12) {
+                NavigationLink(destination: SetsTrendDetailView()) {
+                    AdvancedStatRow(icon: "chart.xyaxis.line", title: "Set count per muscle group", subtitle: "Number of sets logged for each muscle group.", color: .blue)
+                }
+                
+                if let anatomy = viewModel.anatomyStats {
+                    NavigationLink(destination: RadarChartDetailView()) {
+                        AdvancedStatRow(icon: "pentagon", title: "Muscle distribution (Chart)", subtitle: "Compare your current and previous muscle distributions.", color: .purple)
+                    }
+                    
+                    NavigationLink(destination: HeatmapDetailView(gender: userGender)) {
+                        AdvancedStatRow(icon: "figure.arms.open", title: "Muscle distribution (Body)", subtitle: "Heat map of muscles worked during this period.", color: .orange)
+                    }
+                }
+                
+                NavigationLink(destination: MonthlyReportDetailView()) {
+                    AdvancedStatRow(icon: "doc.text", title: "30-Day Report", subtitle: "Recap of your workouts and volume changes.", color: .cyan)
+                }
+            }
+            .padding(.horizontal, 20)
+        }
+    }
+
+    @ViewBuilder
+    private var prSection: some View {
+        if !viewModel.recentPRs.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                sectionHeader(title: "New Personal Records")
+                
+                VStack(spacing: 12) {
+                    ForEach(viewModel.recentPRs) { pr in
+                        HStack(spacing: 16) {
+                            ZStack {
+                                Circle().fill(Color.yellow.opacity(0.15)).frame(width: 50, height: 50)
+                                Image(systemName: "trophy.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.yellow)
+                                    .shadow(color: .yellow.opacity(0.6), radius: 6, x: 0, y: 2)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(LocalizedStringKey(pr.exerciseName))
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Text(pr.date.formatted(date: .abbreviated, time: .omitted))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Text(LocalizedStringKey("\(Int(unitsManager.convertFromKilograms(pr.weight))) \(unitsManager.weightUnitString())"))
+                                .font(.title3)
+                                .bold()
+                                .foregroundColor(.primary)
+                        }
+                        .padding(16)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(20)
+                        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+
     private var bestStatsSection: some View {
-        Section(header: Text(LocalizedStringKey("All-Time Bests"))) {
-            HStack {
-                Image(systemName: "calendar.badge.exclamationmark").foregroundColor(.green)
-                Text(LocalizedStringKey("Best Week:"))
-                Spacer()
-                Text(LocalizedStringKey("\(dashboardViewModel.bestWeekStats.workoutCount) workouts, \(Int(unitsManager.convertFromKilograms(dashboardViewModel.bestWeekStats.totalVolume))) \(unitsManager.weightUnitString())")).bold()
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader(title: "All-Time Bests")
+            
+            VStack(spacing: 12) {
+                bestStatCard(icon: "calendar.badge.exclamationmark", title: "Best Week:", count: dashboardViewModel.bestWeekStats.workoutCount, vol: dashboardViewModel.bestWeekStats.totalVolume)
+                bestStatCard(icon: "calendar", title: "Best Month:", count: dashboardViewModel.bestMonthStats.workoutCount, vol: dashboardViewModel.bestMonthStats.totalVolume)
             }
-            HStack {
-                Image(systemName: "calendar").foregroundColor(.green)
-                Text(LocalizedStringKey("Best Month:"))
-                Spacer()
-                Text(LocalizedStringKey("\(dashboardViewModel.bestMonthStats.workoutCount) workouts, \(Int(unitsManager.convertFromKilograms(dashboardViewModel.bestMonthStats.totalVolume))) \(unitsManager.weightUnitString())")).bold()
-            }
+            .padding(.horizontal, 20)
         }
     }
     
-    // MARK: - Helpers
+    private func bestStatCard(icon: String, title: LocalizedStringKey, count: Int, vol: Double) -> some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle().fill(Color.green.opacity(0.15)).frame(width: 44, height: 44)
+                Image(systemName: icon).foregroundColor(.green).font(.title3)
+            }
+            Text(title)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text("\(count) workouts, \(Int(unitsManager.convertFromKilograms(vol))) \(unitsManager.weightUnitString())")
+                .font(.subheadline)
+                .bold()
+                .foregroundColor(.primary)
+        }
+        .padding(16)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+    }
+
+    // MARK: - Logic Helpers
+    private func deleteGoal(_ goal: UserGoal) {
+        let goalID = goal.persistentModelID
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            viewModel.activeGoals.removeAll { $0.id == goal.id }
+        }
+        Task {
+            try? await di.userRepository.deleteGoal(goalID: goalID)
+            await viewModel.loadActiveGoals(prCache: dashboardViewModel.personalRecordsCache)
+        }
+    }
+    
+    private func replaceGoal(_ goal: UserGoal) {
+        deleteGoal(goal)
+        showGoalSheet = true
+    }
+
     private func metricButton(metric: StatsView.GraphMetric, title: LocalizedStringKey, value: String, icon: String, prevValue: Double, currValue: Double) -> some View {
         Button {
-            withAnimation { viewModel.selectedMetric = metric }
+            let gen = UISelectionFeedbackGenerator()
+            gen.selectionChanged()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { viewModel.selectedMetric = metric }
         } label: {
             HighlightCard(title: title, value: value, icon: icon, isSelected: viewModel.selectedMetric == metric, change: calculateChange(current: currValue, previous: prevValue))
         }
         .buttonStyle(PlainButtonStyle())
     }
-    
+
     private func calculateChange(current: Double, previous: Double) -> Double {
         if previous == 0 { return current > 0 ? 100.0 : 0.0 }
         return ((current - previous) / previous) * 100.0
     }
 }
 
-// MARK: - Reusable Advanced Stat Row
 
+// MARK: - Advanced Statistics Row UI Redesign
 struct AdvancedStatRow: View {
     let icon: String
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey
+    let color: Color
     
     var body: some View {
         HStack(spacing: 16) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.primary)
-                .frame(width: 32)
+            ZStack {
+                Circle().fill(color.opacity(0.15)).frame(width: 48, height: 48)
+                Image(systemName: icon).font(.title3).foregroundColor(color)
+            }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.body)
+                    .font(.headline)
                     .foregroundColor(.primary)
                 
                 Text(subtitle)
@@ -604,10 +705,18 @@ struct AdvancedStatRow: View {
                     .foregroundColor(.secondary)
                     .lineLimit(2)
             }
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.caption.bold())
+                .foregroundColor(Color(UIColor.tertiaryLabel))
         }
-        .padding(.vertical, 4)
+        .padding(16)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
 }
+
 
 // MARK: - Detail Screens (Drill-Downs)
 
@@ -2000,7 +2109,6 @@ struct MonthlyReportDetailView: View {
         }
     }
 }
-
 struct HighlightCard: View {
     let title: LocalizedStringKey
     let value: String
@@ -2010,18 +2118,35 @@ struct HighlightCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: icon).font(.title2).foregroundColor(.blue)
-            Text(value).font(.system(size: 28, weight: .bold, design: .rounded))
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(isSelected ? .white : .blue)
+            
+            Text(value)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .contentTransition(.numericText())
+                .foregroundColor(isSelected ? .white : .primary)
+            
             VStack(alignment: .leading) {
-                Text(title).font(.caption).foregroundColor(.secondary)
-                Text("\(change, specifier: "%.0f")%").font(.caption.bold()).foregroundColor(change >= 0 ? .green : .red)
+                Text(title)
+                    .font(.caption)
+                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                
+                Text("\(change >= 0 ? "+" : "")\(change, specifier: "%.0f")%")
+                    .font(.caption.bold())
+                    .foregroundColor(isSelected ? .white : (change >= 0 ? .green : .red))
             }
         }
         .padding()
-        .frame(minWidth: 140)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(isSelected ? Color.blue : Color.clear, lineWidth: 2.5))
+        .frame(minWidth: 140, alignment: .leading)
+        .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
+        .cornerRadius(20)
+        // ✅ ДОБАВЛЕНА ОБВОДКА:
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(isSelected ? Color.white.opacity(0.3) : Color.gray.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: isSelected ? .blue.opacity(0.4) : .black.opacity(0.04), radius: 8, x: 0, y: 4)
         .compositingGroup()
     }
 }

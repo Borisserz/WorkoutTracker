@@ -58,6 +58,7 @@ struct WorkoutAnalyticsDataDTO: Sendable {
     var intensity: [String: Int] = [:]
     var volume: Double = 0.0
     var chartExercises: [ExerciseChartDTO] = []
+    var completedSetsCount: Int = 0 // ✅ FIX: Added dedicated property for reactive UI updates
 }
 
 // MARK: - Common UI & Data Models

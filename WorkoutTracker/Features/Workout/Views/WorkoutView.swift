@@ -300,12 +300,10 @@ struct DynamicWorkoutListView: View {
                     .font(.caption)
                     .foregroundColor(.gray)
             }
-            .padding(.vertical, 40)
+            .padding(.vertical, 60)
             .frame(maxWidth: .infinity)
-            .listRowSeparator(.hidden)
-            .listRowInsets(EdgeInsets())
             .onAppear {
-                onFirstWorkoutLoaded?(Workout(title: "", date: Date())) // Очищаем ссылку
+                onFirstWorkoutLoaded?(Workout(title: "", date: Date()))
             }
         } else {
             ForEach(workouts) { workout in
@@ -313,16 +311,13 @@ struct DynamicWorkoutListView: View {
                     NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) { EmptyView() }.opacity(0)
                     WorkoutRow(workout: workout)
                 }
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .padding(.vertical, 6)
             }
             .onDelete { indexSet in
                 withAnimation {
                     for index in indexSet {
                         let workoutToDelete = workouts[index]
-                        Task {
-                            await workoutService.deleteWorkout(workoutToDelete)
-                        }
+                        Task { await workoutService.deleteWorkout(workoutToDelete) }
                     }
                 }
             }
@@ -333,6 +328,133 @@ struct DynamicWorkoutListView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Premium Workout Row
+
+struct WorkoutRow: View {
+    let workout: Workout
+    @Environment(UnitsManager.self) var unitsManager
+    @Environment(\.colorScheme) private var colorScheme
+    
+    @State private var isBlinking = false
+    
+    var safeIcon: String { UIImage(systemName: workout.icon) != nil ? workout.icon : "figure.run" }
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            // Верхняя часть: Иконка, Название, Дата, LIVE-бейдж
+            HStack(alignment: .top, spacing: 14) {
+                // Иконка
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [.blue.opacity(0.15), .cyan.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 50, height: 50)
+                    
+                    Image(systemName: safeIcon)
+                        .font(.title2)
+                        .foregroundStyle(LinearGradient(colors: [.blue, .cyan], startPoint: .top, endPoint: .bottom))
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(workout.title)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                            .lineLimit(1)
+                        
+                        Spacer()
+                        
+                        if workout.isActive {
+                            HStack(spacing: 4) {
+                                Circle()
+                                    .fill(Color.red)
+                                    .frame(width: 6, height: 6)
+                                    .opacity(isBlinking ? 0.3 : 1.0)
+                                Text("LIVE")
+                                    .font(.system(size: 10, weight: .heavy, design: .rounded))
+                                    .foregroundColor(.red)
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.red.opacity(0.1))
+                            .clipShape(Capsule())
+                        }
+                    }
+                    
+                    Text(workout.date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            Divider().opacity(0.5)
+            
+            // Нижняя часть: Мини-грид статистики
+            HStack(spacing: 20) {
+                miniStat(icon: "stopwatch.fill", value: workout.isActive ? "In Progress" : "\(workout.durationSeconds / 60)m")
+                miniStat(icon: "list.bullet", value: "\(workout.exercises.count) exs")
+                miniStat(icon: "scalemass.fill", value: "\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume))) \(unitsManager.weightUnitString())")
+                
+                Spacer()
+                
+                // Effort Capsule
+                HStack(spacing: 4) {
+                    Image(systemName: "flame.fill")
+                        .font(.caption2)
+                    Text("\(workout.effortPercentage)%")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(effortGradient(workout.effortPercentage).opacity(0.15))
+                .foregroundColor(effortColor(workout.effortPercentage))
+                .clipShape(Capsule())
+            }
+        }
+        .padding(16)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 8, x: 0, y: 4)
+        // Пульсирующая обводка для активной тренировки
+        .overlay(
+            RoundedRectangle(cornerRadius: 20)
+                .stroke(workout.isActive ? Color.blue.opacity(isBlinking ? 0.8 : 0.2) : Color.clear, lineWidth: workout.isActive ? 2 : 0)
+        )
+        .onAppear {
+            if workout.isActive {
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                    isBlinking = true
+                }
+            }
+        }
+    }
+    
+    private func miniStat(icon: String, value: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption2)
+                .foregroundColor(.gray)
+            Text(value)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    private func effortColor(_ percentage: Int) -> Color {
+        if percentage > 80 { return .red }
+        if percentage > 50 { return .orange }
+        return .green
+    }
+    
+    private func effortGradient(_ percentage: Int) -> LinearGradient {
+        if percentage > 80 { return LinearGradient(colors: [.red, .pink], startPoint: .leading, endPoint: .trailing) }
+        if percentage > 50 { return LinearGradient(colors: [.orange, .yellow], startPoint: .leading, endPoint: .trailing) }
+        return LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing)
     }
 }
 
@@ -408,67 +530,6 @@ struct ActiveWorkoutIndicator: View {
     }
 }
 
-struct WorkoutRow: View {
-    let workout: Workout
-    
-    func effortColor(percentage: Int) -> Color {
-        if percentage > 80 { return .red }
-        if percentage > 50 { return .orange }
-        return .green
-    }
-    
-    var safeIcon: String { UIImage(systemName: workout.icon) != nil ? workout.icon : "figure.run" }
-    
-    var body: some View {
-        HStack {
-            Image(systemName: safeIcon)
-                .font(.title2)
-                .foregroundColor(.blue)
-                .frame(width: 50, height: 50)
-                .background(Color.blue.opacity(0.1))
-                .clipShape(Circle())
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(workout.title)
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
-                    if workout.isActive { ActiveWorkoutIndicator() }
-                }
-                Text(workout.date.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 4) {
-                if workout.isActive {
-                    Text(LocalizedStringKey("In Progress"))
-                        .font(.subheadline)
-                        .bold()
-                        .foregroundColor(.blue)
-                } else {
-                    Text(LocalizedStringKey("\(workout.durationSeconds / 60) min"))
-                        .font(.subheadline)
-                        .bold()
-                }
-                Text(LocalizedStringKey("Effort: \(workout.effortPercentage)%"))
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(effortColor(percentage: workout.effortPercentage).opacity(0.2))
-                    .foregroundColor(effortColor(percentage: workout.effortPercentage))
-                    .cornerRadius(4)
-            }
-        }
-        .padding()
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
-        .compositingGroup()
-        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-    }
-}
 
 struct StatCard: View {
     let title: LocalizedStringKey

@@ -1,14 +1,3 @@
-//
-//  ExerciseSelectionView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Экран выбора упражнения из каталога.
-//  Отображает список, сгруппированный по частям тела, с иконками типов.
-//  При выборе открывает экран конфигурации (ConfigureExerciseView).
-//
-
 internal import SwiftUI
 
 struct ExerciseSelectionView: View {
@@ -25,108 +14,99 @@ struct ExerciseSelectionView: View {
     @State private var searchText: String = ""
     @State private var selectedGroups: Set<String> = []
     
-    // MARK: - Body
-    
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Строка поиска
-                searchBar
+            ZStack(alignment: .top) {
+                // Премиальный фон
+                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 
-                // Фильтр по группам мышц
-                muscleGroupFilter
-                
-                if hasAnyFilteredExercises {
-                    List {
-                        // Проходим по всем группам мышц (ключам словаря)
-                        ForEach(filteredGroups, id: \.self) { group in
-                            let exercisesInGroup = getFilteredExercises(for: group)
-                            
-                            // Показываем секцию только если в ней есть упражнения
-                            if !exercisesInGroup.isEmpty {
-                                Section(header: Text(LocalizedStringKey(group))) {
+                VStack(spacing: 0) {
+                    // Строка поиска
+                    searchBar
+                    
+                    // Фильтр по группам мышц
+                    muscleGroupFilter
+                    
+                    Divider().opacity(0.5)
+                    
+                    if hasAnyFilteredExercises {
+                        ScrollView(.vertical, showsIndicators: false) {
+                            LazyVStack(spacing: 24) {
+                                ForEach(filteredGroups, id: \.self) { group in
+                                    let exercisesInGroup = getFilteredExercises(for: group)
                                     
-                                    ForEach(exercisesInGroup, id: \.self) { exerciseName in
-                                        
-                                        // Определяем тип (Силовое/Кардио/Время)
-                                        let detectedType = detectType(name: exerciseName, group: group)
-                                        
-                                        NavigationLink {
-                                            // Экран настройки параметров (Сеты/Повторы)
-                                            ConfigureExerciseView(
-                                                exerciseName: exerciseName,
-                                                muscleGroup: group,
-                                                exerciseType: detectedType
-                                            ) { newExercise in
-                                                onAdd(newExercise)
-                                                dismiss()
-                                                if tutorialManager.currentStep == .addExercise {
-                                                    // Небольшая задержка, чтобы экран успел закрыться
-                                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                                        tutorialManager.setStep(.finishExercise)
+                                    if !exercisesInGroup.isEmpty {
+                                        VStack(alignment: .leading, spacing: 12) {
+                                            Text(LocalizedStringKey(group))
+                                                .font(.title3)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.primary)
+                                                .padding(.horizontal, 20)
+                                                .padding(.top, 8)
+                                            
+                                            VStack(spacing: 12) {
+                                                ForEach(exercisesInGroup, id: \.self) { exerciseName in
+                                                    let detectedType = detectType(name: exerciseName, group: group)
+                                                    
+                                                    NavigationLink {
+                                                        ConfigureExerciseView(
+                                                            exerciseName: exerciseName,
+                                                            muscleGroup: group,
+                                                            exerciseType: detectedType
+                                                        ) { newExercise in
+                                                            onAdd(newExercise)
+                                                            dismiss()
+                                                            if tutorialManager.currentStep == .addExercise {
+                                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                                                    tutorialManager.setStep(.finishExercise)
+                                                                }
+                                                            }
+                                                        }
+                                                    } label: {
+                                                        exerciseCardView(name: exerciseName, type: detectedType, group: group)
                                                     }
+                                                    .buttonStyle(.plain) // Чтобы вся карточка нажималась без синего текста
                                                 }
                                             }
-                                        } label: {
-                                            // Внешний вид строки
-                                            exerciseRowView(name: exerciseName, type: detectedType)
+                                            .padding(.horizontal, 20)
                                         }
                                     }
                                 }
                             }
+                            .padding(.vertical, 16)
+                            .padding(.bottom, 40)
                         }
+                    } else {
+                        emptyStateView
                     }
-                    .listStyle(.insetGrouped)
-                } else {
-                    // Пустое состояние когда нет упражнений после фильтрации
-                    VStack(spacing: 16) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray.opacity(0.5))
-                        
-                        Text(LocalizedStringKey("No exercises found"))
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        if searchText.isEmpty {
-                            Text(LocalizedStringKey("No exercises match the selected filters. Try selecting different muscle groups."))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        } else {
-                            Text(LocalizedStringKey("No exercises match your search \"\(searchText)\". Try a different search term or clear the filters."))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
                 }
             }
             .navigationTitle(LocalizedStringKey("Select Exercise"))
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                Button(LocalizedStringKey("Close")) { dismiss() }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(LocalizedStringKey("Close")) { dismiss() }
+                }
             }
         }
     }
     
     // MARK: - View Components
     
-    /// Строка поиска
     private var searchBar: some View {
         HStack {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.secondary)
             
             TextField(LocalizedStringKey("Search exercises"), text: $searchText)
-                .textFieldStyle(PlainTextFieldStyle())
+                .textFieldStyle(.plain)
+                .font(.body)
             
             if !searchText.isEmpty {
                 Button {
-                    searchText = ""
+                    let gen = UIImpactFeedbackGenerator(style: .light)
+                    gen.impactOccurred()
+                    withAnimation { searchText = "" }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundColor(.secondary)
@@ -134,183 +114,190 @@ struct ExerciseSelectionView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color(.systemGray6))
-        .cornerRadius(10)
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.vertical, 12)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(12)
+        .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: 2)
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
         .padding(.bottom, 8)
     }
     
-    /// Горизонтальная прокручиваемая панель фильтров по группам мышц
     private var muscleGroupFilter: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                // Кнопка "Все"
+                Spacer().frame(width: 8) // Отступ слева
+                
                 filterButton(
                     title: LocalizedStringKey("All"),
                     isSelected: selectedGroups.isEmpty,
                     action: {
-                        selectedGroups.removeAll()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedGroups.removeAll()
+                        }
                     }
                 )
                 
-                // Кнопки для каждой группы мышц
                 ForEach(sortedCategories, id: \.self) { group in
                     filterButton(
                         title: LocalizedStringKey(group),
                         isSelected: selectedGroups.contains(group),
                         action: {
-                            if selectedGroups.contains(group) {
-                                selectedGroups.remove(group)
-                            } else {
-                                selectedGroups.insert(group)
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                if selectedGroups.contains(group) {
+                                    selectedGroups.remove(group)
+                                } else {
+                                    selectedGroups.insert(group)
+                                }
                             }
                         }
                     )
                 }
+                
+                Spacer().frame(width: 8) // Отступ справа
             }
-            .padding(.horizontal, 16)
             .padding(.vertical, 12)
         }
-        .background(Color(.systemGroupedBackground))
     }
     
-    /// Кнопка фильтра
     private func filterButton(title: LocalizedStringKey, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            let gen = UISelectionFeedbackGenerator()
+            gen.selectionChanged()
+            action()
+        } label: {
             Text(title)
-                .font(.system(size: 14, weight: isSelected ? .semibold : .regular))
+                .font(.subheadline)
+                .fontWeight(isSelected ? .bold : .medium)
                 .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(isSelected ? Color.accentColor : Color(.systemGray5))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
                 .cornerRadius(20)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(isSelected ? Color.blue : Color.gray.opacity(0.2), lineWidth: 1)
+                )
         }
     }
     
-    /// Внешний вид строки списка упражнений
-    private func exerciseRowView(name: String, type: ExerciseType) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 12) {
-                // 1. Иконка типа (Слева)
+    private func exerciseCardView(name: String, type: ExerciseType, group: String) -> some View {
+        HStack(spacing: 16) {
+            // Иконка
+            ZStack {
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(getColor(for: type).opacity(0.1))
+                    .frame(width: 50, height: 50)
+                
                 Image(systemName: getIcon(for: type))
+                    .font(.title3)
                     .foregroundColor(getColor(for: type))
-                    .frame(width: 20) // Фиксированная ширина для выравнивания
+            }
+            
+            // Тексты
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(LocalizedStringKey(name))
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    
+                    if isCustom(name: name) {
+                        Image(systemName: "person.crop.circle")
+                            .foregroundColor(.gray.opacity(0.5))
+                            .font(.caption)
+                    }
+                }
                 
-                // 2. Название
-                Text(LocalizedStringKey(name))
-                    .foregroundColor(.primary)
-                    .font(.body)
-                
-                Spacer()
-                
-                // 3. Бейдж "Пользовательское" (Справа)
-                if isCustom(name: name) {
-                    Image(systemName: "person.crop.circle")
-                        .foregroundColor(.gray.opacity(0.5))
-                        .font(.caption)
+                let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: name, muscleGroup: group)
+                if !targetMuscles.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.caption2)
+                        Text(targetMuscles.joined(separator: ", "))
+                            .font(.caption)
+                            .lineLimit(1)
+                    }
+                    .foregroundColor(.secondary)
                 }
             }
             
-            // Таргетные мускулы
-            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: name, muscleGroup: detectGroup(name: name))
-            if !targetMuscles.isEmpty {
-                HStack(spacing: 4) {
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    Text(targetMuscles.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
-                }
-                .padding(.leading, 32)
-            }
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundColor(.gray.opacity(0.5))
         }
+        .padding(16)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
     }
     
-    /// Определить группу мышц для упражнения
-    private func detectGroup(name: String) -> String {
-        for (group, exercises) in catalogViewModel.combinedCatalog {
-            if exercises.contains(name) {
-                return group
-            }
+    private var emptyStateView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 60))
+                .foregroundColor(.gray.opacity(0.4))
+            
+            Text(LocalizedStringKey("No exercises found"))
+                .font(.headline)
+                .foregroundColor(.primary)
+            
+            Text(searchText.isEmpty ? LocalizedStringKey("No exercises match the selected filters. Try selecting different muscle groups.") : LocalizedStringKey("No exercises match your search \"\(searchText)\". Try a different search term or clear the filters."))
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 40)
         }
-        return "Chest" // Fallback
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.bottom, 60)
     }
     
-    // MARK: - Helpers (Logic)
+    // MARK: - Logic (Untouched)
     
     private var sortedCategories: [String] {
-           catalogViewModel.combinedCatalog.keys.sorted()
-       }
-       
-       private func isCustom(name: String) -> Bool {
-           return catalogViewModel.isCustomExercise(name: name)
-       }
+        catalogViewModel.combinedCatalog.keys.sorted()
+    }
     
-    /// Отфильтрованные группы (если есть выбранные группы, показываем только их)
+    private func isCustom(name: String) -> Bool {
+        return catalogViewModel.isCustomExercise(name: name)
+    }
+    
     private var filteredGroups: [String] {
-        if selectedGroups.isEmpty {
-            return sortedCategories
-        } else {
-            return sortedCategories.filter { selectedGroups.contains($0) }
-        }
+        if selectedGroups.isEmpty { return sortedCategories }
+        return sortedCategories.filter { selectedGroups.contains($0) }
     }
     
     private func getSortedExercises(for group: String) -> [String] {
         catalogViewModel.combinedCatalog[group]?.sorted() ?? []
     }
     
-    /// Получить отфильтрованный список упражнений для группы (с учетом поиска)
     private func getFilteredExercises(for group: String) -> [String] {
         let exercises = getSortedExercises(for: group)
-        
-        if searchText.isEmpty {
-            return exercises
-        } else {
-            return exercises.filter { exerciseName in
-                exerciseName.localizedCaseInsensitiveContains(searchText)
-            }
-        }
+        if searchText.isEmpty { return exercises }
+        return exercises.filter { $0.localizedCaseInsensitiveContains(searchText) }
     }
     
-    /// Проверяет, есть ли хотя бы одно упражнение после фильтрации
     private var hasAnyFilteredExercises: Bool {
         for group in filteredGroups {
-            if !getFilteredExercises(for: group).isEmpty {
-                return true
-            }
+            if !getFilteredExercises(for: group).isEmpty { return true }
         }
         return false
     }
     
-    
-    
-    /// Логика автоматического определения типа упражнения
     private func detectType(name: String, group: String) -> ExerciseType {
-        // 1. Проверяем пользовательские (там тип задан явно)
-        if let custom = catalogViewModel.customExercises.first(where: { $0.name == name }) {
-            return custom.type
-        }
-        
-        // 2. Проверяем по спискам стандартных исключений
+        if let custom = catalogViewModel.customExercises.first(where: { $0.name == name }) { return custom.type }
         if ["Running", "Cycling", "Rowing", "Jump Rope"].contains(name) { return .cardio }
         if ["Plank", "Stretching"].contains(name) { return .duration }
         if group == "Cardio" { return .cardio }
-        
-        // 3. По умолчанию считаем силовым
         return .strength
     }
     
-    // MARK: - Helpers (UI)
-    
     private func getIcon(for type: ExerciseType) -> String {
         switch type {
-        case .strength: return "dumbbell.fill"    // Гантелька
-        case .cardio: return "figure.run"         // Бегущий
-        case .duration: return "stopwatch.fill"   // Таймер
+        case .strength: return "dumbbell.fill"
+        case .cardio: return "figure.run"
+        case .duration: return "stopwatch.fill"
         }
     }
     
