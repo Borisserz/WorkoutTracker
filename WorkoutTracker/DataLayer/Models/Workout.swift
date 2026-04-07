@@ -112,91 +112,112 @@ class Exercise: Identifiable {
         self.setsList = setsList
         
         if self.setsList.isEmpty && self.subExercises.isEmpty && sets > 0 {
-            self.setsList = (1...sets).map { i in
-                WorkoutSet(index: i, weight: weight > 0 ? weight : nil, reps: reps > 0 ? reps : nil, distance: distance, time: timeSeconds, isCompleted: false, type: .normal)
-            }
-        }
-    }
-    
-    @Transient var sortedSets: [WorkoutSet] { setsList.sorted(by: { $0.index < $1.index }) }
-    @Transient var isSuperset: Bool { !subExercises.isEmpty }
-    @Transient var setsCount: Int { setsList.count }
-    @Transient var firstSetReps: Int { sortedSets.first?.reps ?? 0 }
-    @Transient var firstSetWeight: Double { sortedSets.first?.weight ?? 0.0 }
-    @Transient var firstSetDistance: Double? { sortedSets.first?.distance }
-    @Transient var firstSetTimeSeconds: Int? { sortedSets.first?.time }
-    
-    @Transient var exerciseVolume: Double {
-            if isCompleted && cachedVolume > 0 { return cachedVolume }
-            if isSuperset { return subExercises.reduce(0.0) { $0 + $1.exerciseVolume } }
-            else {
-                let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
-                
-                return setsList.reduce(0.0) { partialResult, set in
-                    if !set.isCompleted { return partialResult }
-                    if !includeWarmups && set.type == .warmup { return partialResult }
-                    
-                    guard let w = set.weight, let r = set.reps else { return partialResult }
-                    return type == .strength ? partialResult + (w * Double(r)) : partialResult
-                }
-            }
-        }
-    
-    func addSafeSet(_ newSet: WorkoutSet) { newSet.exercise = self; self.setsList.append(newSet) }
-    func removeSafeSet(_ set: WorkoutSet) { self.setsList.removeAll(where: { $0.id == set.id }); for (i, s) in sortedSets.enumerated() { s.index = i + 1 } }
-    func removeSafeSets(_ setsToRemove: [WorkoutSet]) {
-        let idsToRemove = Set(setsToRemove.map { $0.id })
-        self.setsList.removeAll(where: { idsToRemove.contains($0.id) })
-        for (i, s) in sortedSets.enumerated() { s.index = i + 1 }
-    }
-    func replaceAllSets(with newSets: [WorkoutSet]) { self.setsList = newSets; for set in newSets { set.exercise = self } }
-}
-@Model
-class WorkoutPreset: Identifiable {
-    var id: UUID = UUID()
-    var name: String = ""
-    var icon: String = ""
-    var isSystem: Bool = false
-    var folderName: String? = nil // ✅ ДОБАВЛЕНО ДЛЯ ПАПОК
-    
-    @Relationship(deleteRule: .cascade, inverse: \Exercise.preset)
-    var exercises: [Exercise] = []
-    
-    init(id: UUID = UUID(), name: String = "", icon: String = "", isSystem: Bool = false, folderName: String? = nil, exercises: [Exercise] = []) {
-        self.id = id
-        self.name = name
-        self.icon = icon
-        self.isSystem = isSystem
-        self.folderName = folderName
-        self.exercises = exercises
-    }
-}
-@Model
-class Workout: Identifiable {
-    var id: UUID = UUID()
-    var title: String = ""
-    var date: Date = Date()
-    var endTime: Date? = nil
-    var icon: String = "figure.run"
-    var isFavorite: Bool = false
-    var aiChatHistoryData: Data? = nil
-    
-    var durationSeconds: Int = 0
-    var effortPercentage: Int = 0
-    var totalStrengthVolume: Double = 0.0
-    var totalCardioDistance: Double = 0.0
-    var totalReps: Int = 0
-    
-    @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
-    var exercises: [Exercise] = []
-    
-    init(id: UUID = UUID(), title: String = "", date: Date = Date(), endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false, aiChatHistoryData: Data? = nil) {
-        self.id = id; self.title = title; self.date = date; self.endTime = endTime; self.icon = icon; self.isFavorite = isFavorite; self.exercises = exercises; self.aiChatHistoryData = aiChatHistoryData
-    }
-    
-    var isActive: Bool { endTime == nil }
-}
+                   self.setsList = (1...sets).map { i in
+                       WorkoutSet(index: i, weight: weight > 0 ? weight : nil, reps: reps > 0 ? reps : nil, distance: distance, time: timeSeconds, isCompleted: false, type: .normal)
+                   }
+               }
+               
+               // ✅ FIX: Manually establish inverse relationships to prevent SwiftData detachment bugs
+               for set in self.setsList {
+                   set.exercise = self
+               }
+               for sub in self.subExercises {
+                   sub.parentExercise = self
+               }
+           }
+           
+           // ✅ FIX: Removed @Transient from ALL computed properties.
+           // SwiftData breaks getters if @Transient is applied to computed properties.
+           var sortedSets: [WorkoutSet] { setsList.sorted(by: { $0.index < $1.index }) }
+           var isSuperset: Bool { !subExercises.isEmpty }
+           var setsCount: Int { setsList.count }
+           var firstSetReps: Int { sortedSets.first?.reps ?? 0 }
+           var firstSetWeight: Double { sortedSets.first?.weight ?? 0.0 }
+           var firstSetDistance: Double? { sortedSets.first?.distance }
+           var firstSetTimeSeconds: Int? { sortedSets.first?.time }
+           
+           var exerciseVolume: Double {
+               if isCompleted && cachedVolume > 0 { return cachedVolume }
+               if isSuperset { return subExercises.reduce(0.0) { $0 + $1.exerciseVolume } }
+               else {
+                   let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+                   
+                   return setsList.reduce(0.0) { partialResult, set in
+                       if !set.isCompleted { return partialResult }
+                       if !includeWarmups && set.type == .warmup { return partialResult }
+                       
+                       guard let w = set.weight, let r = set.reps else { return partialResult }
+                       return type == .strength ? partialResult + (w * Double(r)) : partialResult
+                   }
+               }
+           }
+           
+           func addSafeSet(_ newSet: WorkoutSet) { newSet.exercise = self; self.setsList.append(newSet) }
+           func removeSafeSet(_ set: WorkoutSet) { self.setsList.removeAll(where: { $0.id == set.id }); for (i, s) in sortedSets.enumerated() { s.index = i + 1 } }
+           func removeSafeSets(_ setsToRemove: [WorkoutSet]) {
+               let idsToRemove = Set(setsToRemove.map { $0.id })
+               self.setsList.removeAll(where: { idsToRemove.contains($0.id) })
+               for (i, s) in sortedSets.enumerated() { s.index = i + 1 }
+           }
+           func replaceAllSets(with newSets: [WorkoutSet]) { self.setsList = newSets; for set in newSets { set.exercise = self } }
+       }
 
+       @Model
+       class WorkoutPreset: Identifiable {
+           var id: UUID = UUID()
+           var name: String = ""
+           var icon: String = ""
+           var isSystem: Bool = false
+           var folderName: String? = nil
+           
+           @Relationship(deleteRule: .cascade, inverse: \Exercise.preset)
+           var exercises: [Exercise] = []
+           
+           init(id: UUID = UUID(), name: String = "", icon: String = "", isSystem: Bool = false, folderName: String? = nil, exercises: [Exercise] = []) {
+               self.id = id
+               self.name = name
+               self.icon = icon
+               self.isSystem = isSystem
+               self.folderName = folderName
+               self.exercises = exercises
+               
+               // ✅ FIX: Establish inverse relationships
+               for exercise in self.exercises {
+                   exercise.preset = self
+               }
+           }
+       }
+
+       @Model
+       class Workout: Identifiable {
+           var id: UUID = UUID()
+           var title: String = ""
+           var date: Date = Date()
+           var endTime: Date? = nil
+           var icon: String = "figure.run"
+           var isFavorite: Bool = false
+           var aiChatHistoryData: Data? = nil
+           
+           var durationSeconds: Int = 0
+           var effortPercentage: Int = 0
+           var totalStrengthVolume: Double = 0.0
+           var totalCardioDistance: Double = 0.0
+           var totalReps: Int = 0
+           
+           @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
+           var exercises: [Exercise] = []
+           
+           init(id: UUID = UUID(), title: String = "", date: Date = Date(), endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false, aiChatHistoryData: Data? = nil) {
+               self.id = id; self.title = title; self.date = date; self.endTime = endTime; self.icon = icon; self.isFavorite = isFavorite; self.exercises = exercises; self.aiChatHistoryData = aiChatHistoryData
+               
+               // ✅ FIX: Establish inverse relationships
+               for exercise in self.exercises {
+                   exercise.workout = self
+               }
+           }
+           
+           var isActive: Bool { endTime == nil }
+       }
 // ⚠️ CLOUDKIT FIX: Removed .unique attributes and ensured all default initializers
 @Model
 class ExerciseNote {

@@ -59,107 +59,119 @@ final class WorkoutDetailViewModel {
     
     // MARK: - Data Loading
     
+    
     func loadCaches(from dashboard: DashboardViewModel) {
         self.personalRecordsCache = dashboard.personalRecordsCache
         self.lastPerformancesCache = dashboard.lastPerformancesCache
     }
     
     func updateWorkoutAnalytics(for workout: Workout) {
-           var counts = [String: Int]()
-           var volume = 0.0
-           var chartExercises: [ExerciseChartDTO] = []
-           var totalCompletedSets = 0
-           
-           // Читаем данные напрямую из оперативной памяти
-           for exercise in workout.exercises {
-               let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-               for sub in targets {
-                   let completedSetsCount = sub.setsList.filter { $0.isCompleted }.count
-                   totalCompletedSets += completedSetsCount
-                   
-                   if sub.type != .cardio && completedSetsCount > 0 {
-                       let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
-                       for muscleSlug in muscles {
-                           counts[muscleSlug, default: 0] += (completedSetsCount * 25)
-                       }
-                   }
-               }
-               volume += exercise.exerciseVolume
-           }
-           
-           // Собираем упражнения для графика
-           let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
-           let forChart = flattened.filter { ex in
-               ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
-           }
-           
-           for ex in forChart {
-               let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-               if maxW > 0 {
-                   // ✅ FIX: Используем стабильный ex.id вместо UUID(), чтобы график не исчезал и не дергался
-                   chartExercises.append(ExerciseChartDTO(id: ex.id, name: ex.name, maxWeight: maxW))
-               }
-           }
-           
-           self.workoutAnalytics = WorkoutAnalyticsDataDTO(
-               intensity: counts,
-               volume: volume,
-               chartExercises: chartExercises,
-               completedSetsCount: totalCompletedSets
-           )
-       }
+        var counts = [String: Int]()
+        var volume = 0.0
+        var chartExercises: [ExerciseChartDTO] = []
+        var totalCompletedSets = 0
+        
+        // Читаем данные напрямую из оперативной памяти
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            for sub in targets {
+                let completedSetsCount = sub.setsList.filter { $0.isCompleted }.count
+                totalCompletedSets += completedSetsCount
+                
+                if sub.type != .cardio && completedSetsCount > 0 {
+                    let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
+                    for muscleSlug in muscles {
+                        counts[muscleSlug, default: 0] += (completedSetsCount * 25)
+                    }
+                }
+            }
+            volume += exercise.exerciseVolume
+        }
+        
+        // Собираем упражнения для графика
+        let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
+        let forChart = flattened.filter { ex in
+            ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
+        }
+        
+        for ex in forChart {
+            let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+            if maxW > 0 {
+                chartExercises.append(ExerciseChartDTO(id: ex.id, name: ex.name, maxWeight: maxW))
+            }
+        }
+        
+        self.workoutAnalytics = WorkoutAnalyticsDataDTO(
+            intensity: counts,
+            volume: volume,
+            chartExercises: chartExercises,
+            completedSetsCount: totalCompletedSets
+        )
+    }
 
-       func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
-           // ✅ FIX: Явно добавляем объект в SwiftData контекст, иначе статистика его не увидит
-           if let context = workout.modelContext {
-               context.insert(newExercise)
-               for set in newExercise.setsList {
-                   context.insert(set)
-               }
-           }
-           
-           withAnimation { workout.exercises.insert(newExercise, at: 0) }
-           Task {
-               try? await Task.sleep(for: .seconds(0.3))
-               guard !Task.isCancelled else { return }
-               scrollToExerciseId(newExercise.id)
-           }
-       }
+    func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
+        // ✅ FIX: Explicitly set the inverse relationship BEFORE inserting into Context
+        newExercise.workout = workout
+        
+        if let context = workout.modelContext {
+            context.insert(newExercise)
+            for set in newExercise.setsList {
+                context.insert(set)
+            }
+        }
+        
+        withAnimation { workout.exercises.insert(newExercise, at: 0) }
+        Task {
+            try? await Task.sleep(for: .seconds(0.3))
+            guard !Task.isCancelled else { return }
+            scrollToExerciseId(newExercise.id)
+        }
+    }
     // MARK: - Set & Exercise Management
     
-    // ✅ FIX: Выполняем добавление напрямую на MainActor
     func addSet(to exercise: Exercise, context: ModelContext) {
-        let lastSet = exercise.sortedSets.last
-        let newIndex = (lastSet?.index ?? 0) + 1
-        
-        let newSet = WorkoutSet(
-            index: newIndex,
-            weight: lastSet?.weight,
-            reps: lastSet?.reps,
-            distance: lastSet?.distance,
-            time: lastSet?.time,
-            isCompleted: false,
-            type: .normal
-        )
-        
-        context.insert(newSet)
-        exercise.setsList.append(newSet)
-        self.newlyAddedSetId = newSet.id
-        try? context.save()
-    }
+           let lastSet = exercise.sortedSets.last
+           let newIndex = (lastSet?.index ?? 0) + 1
+           
+           let newSet = WorkoutSet(
+               index: newIndex,
+               weight: lastSet?.weight,
+               reps: lastSet?.reps,
+               distance: lastSet?.distance,
+               time: lastSet?.time,
+               isCompleted: false,
+               type: .normal
+           )
+           
+           context.insert(newSet)
+           exercise.setsList.append(newSet)
+           self.newlyAddedSetId = newSet.id
+           try? context.save()
+           
+           // ✅ ДОБАВЛЕНО: Сразу пересчитываем аналитику для вкладки Analytics
+           if let w = exercise.workout ?? exercise.parentExercise?.workout {
+               self.updateWorkoutAnalytics(for: w)
+           }
+       }
+       
+       // ✅ FIX: Выполняем удаление напрямую на MainActor и обновляем аналитику
+       func removeSet(_ set: WorkoutSet, from exercise: Exercise, context: ModelContext) {
+           exercise.setsList.removeAll(where: { $0.id == set.id })
+           context.delete(set)
+           
+           // Пересчет индексов
+           for (i, s) in exercise.sortedSets.enumerated() {
+               s.index = i + 1
+           }
+           try? context.save()
+           
+           // ✅ ДОБАВЛЕНО: Сразу пересчитываем аналитику при удалении сета
+           if let w = exercise.workout ?? exercise.parentExercise?.workout {
+               self.updateWorkoutAnalytics(for: w)
+           }
+       }
     
-    // ✅ FIX: Выполняем удаление напрямую на MainActor
-    func removeSet(_ set: WorkoutSet, from exercise: Exercise, context: ModelContext) {
-        exercise.setsList.removeAll(where: { $0.id == set.id })
-        context.delete(set)
-        
-        // Пересчет индексов
-        for (i, s) in exercise.sortedSets.enumerated() {
-            s.index = i + 1
-        }
-        try? context.save()
-    }
-    
+
     func removeExercise(_ exercise: Exercise, from workout: Workout) {
         Task { await workoutService.removeExercise(exercise, from: workout) }
     }
