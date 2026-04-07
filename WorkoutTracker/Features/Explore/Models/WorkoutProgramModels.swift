@@ -142,6 +142,120 @@ struct MockProgramCatalog {
                 routine("Arms Day", icon: "img_arms", exercises: [ex("Barbell Curl", "Arms", 4, 10), ex("Triceps Extension", "Arms", 4, 10), ex("Hammer Curls", "Arms", 4, 12), ex("Skull Crushers", "Arms", 4, 12)])
             ]
         ),
+                
+                WorkoutProgramDefinition(
+                    title: "StrongLifts 5x5",
+                    description: "The ultimate beginner strength program. Focus on heavy compound movements 3 days a week to build a massive foundation.",
+                    level: .beginner,
+                    goal: .getStronger,
+                    equipment: .fullGym,
+                    gradientColors: [Color.orange, Color.red],
+                    isSingleRoutine: false,
+                    routines: [
+                        routine("Workout A", icon: "img_default", exercises: [
+                            ex("Squat", "Legs", 5, 5),
+                            ex("Bench Press", "Chest", 5, 5),
+                            ex("Barbell Rows", "Back", 5, 5)
+                        ]),
+                        routine("Workout B", icon: "img_legs", exercises: [
+                            ex("Squat", "Legs", 5, 5),
+                            ex("Overhead Press", "Shoulders", 5, 5),
+                            ex("Deadlift", "Back", 1, 5)
+                        ])
+                    ]
+                ),
+                
+                WorkoutProgramDefinition(
+                    title: "Arnold's 6-Day Split",
+                    description: "A high-volume, 6-day split favored by the Austrian Oak. Chest & Back, Shoulders & Arms, Legs. Repeat.",
+                    level: .advanced,
+                    goal: .buildMuscle,
+                    equipment: .fullGym,
+                    gradientColors: [Color(hex: "b8860b"), Color.black], // Золотой и Черный
+                    isSingleRoutine: false,
+                    routines: [
+                        routine("Chest & Back", icon: "img_chest", exercises: [
+                            ex("Bench Press", "Chest", 4, 10),
+                            ex("Incline Dumbbell Press", "Chest", 4, 10),
+                            ex("Pull-ups", "Back", 4, 10),
+                            ex("Barbell Rows", "Back", 4, 10),
+                            ex("Deadlift", "Back", 3, 8)
+                        ]),
+                        routine("Shoulders & Arms", icon: "img_arms", exercises: [
+                            ex("Overhead Press", "Shoulders", 4, 10),
+                            ex("Lateral Raises", "Shoulders", 4, 12),
+                            ex("Barbell Curl", "Arms", 4, 10),
+                            ex("Hammer Curls", "Arms", 4, 10),
+                            ex("Triceps Extension", "Arms", 4, 12)
+                        ]),
+                        routine("Legs", icon: "img_legs2", exercises: [
+                            ex("Squat", "Legs", 4, 8),
+                            ex("Leg Press", "Legs", 4, 10),
+                            ex("Romanian Deadlift", "Legs", 4, 10),
+                            ex("Leg Extensions", "Legs", 4, 15),
+                            ex("Standing Calf Raise", "Legs", 5, 15)
+                        ])
+                    ]
+                ),
+                
+                WorkoutProgramDefinition(
+                    title: "Glute Builder & Core",
+                    description: "Maximize lower body hypertrophy and core strength while keeping the upper body toned. Perfect for aesthetic goals.",
+                    level: .intermediate,
+                    goal: .buildMuscle,
+                    equipment: .fullGym,
+                    gradientColors: [Color.pink, Color.purple],
+                    isSingleRoutine: false,
+                    routines: [
+                        routine("Lower: Glutes & Quads", icon: "img_legs", exercises: [
+                            ex("Squat", "Legs", 4, 10),
+                            ex("Hip Thrusts", "Legs", 4, 12),
+                            ex("Walking Lunges", "Legs", 3, 12),
+                            ex("Leg Press", "Legs", 3, 15)
+                        ]),
+                        routine("Upper & Core", icon: "img_default", exercises: [
+                            ex("Lat Pulldown", "Back", 3, 12),
+                            ex("Dumbbell Flyes", "Chest", 3, 12),
+                            ex("Lateral Raises", "Shoulders", 3, 15),
+                            ex("Plank", "Core", 3, 60),
+                            ex("Bicycle Crunches", "Core", 3, 20)
+                        ]),
+                        routine("Lower: Glutes & Hams", icon: "img_legs2", exercises: [
+                            ex("Romanian Deadlift", "Legs", 4, 10),
+                            ex("Bulgarian Split Squat", "Legs", 3, 10),
+                            ex("Leg Curls", "Legs", 4, 15),
+                            ex("Glute Bridge", "Legs", 3, 15)
+                        ])
+                    ]
+                ),
+                
+                WorkoutProgramDefinition(
+                    title: "Dumbbell Warrior",
+                    description: "No gym? No problem. A complete full-body hypertrophy program using only dumbbells. Great for home workouts.",
+                    level: .beginner,
+                    goal: .buildMuscle,
+                    equipment: .dumbbells,
+                    gradientColors: [Color.teal, Color.blue],
+                    isSingleRoutine: false,
+                    routines: [
+                        routine("Full Body A", icon: "img_arms", exercises: [
+                            ex("Goblet Squat", "Legs", 3, 12),
+                            ex("Incline Dumbbell Press", "Chest", 3, 10),
+                            ex("One-Arm Dumbbell Row", "Back", 3, 10),
+                            ex("Arnold Press", "Shoulders", 3, 10),
+                            ex("Crunches", "Core", 3, 15)
+                        ]),
+                        routine("Full Body B", icon: "img_shoulders", exercises: [
+                            ex("Lunges", "Legs", 3, 12),
+                            ex("Dumbbell Flyes", "Chest", 3, 12),
+                            ex("Renegade Rows", "Back", 3, 10),
+                            ex("Bicep Curls", "Arms", 3, 12),
+                            ex("Overhead Triceps Extension", "Arms", 3, 12)
+                        ])
+                    ]
+                ),
+                
+           
         
         // MARK: - SINGLE ROUTINES
         

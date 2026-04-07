@@ -2,17 +2,18 @@
 //  ExerciseHistoryViewModel.swift
 //  WorkoutTracker
 //
-
 import Foundation
 import SwiftData
 internal import SwiftUI
 import Observation
+
 @Observable
 @MainActor
 final class ExerciseHistoryViewModel {
     
+    // ✅ ИСПРАВЛЕНО: Добавлена вкладка oneRepMax
     enum Tab: String, CaseIterable {
-        case summary = "Summary", technique = "Technique", history = "History"
+        case summary = "Summary", technique = "Technique", history = "History", oneRepMax = "1RM"
         var localizedName: LocalizedStringKey { LocalizedStringKey(self.rawValue) }
     }
     
@@ -32,8 +33,6 @@ final class ExerciseHistoryViewModel {
     var exerciseForecast: ProgressForecast?
     
     var displayedGraphData: [ExerciseHistoryDataPoint] = []
-    
-    // ВОТ ЭТА СТРОКА БЫЛА ПРОПУЩЕНА:
     var currentMetricValue: Double? = nil
     
     private var allDataPoints: [ExerciseHistoryDataPoint] = []
@@ -41,17 +40,62 @@ final class ExerciseHistoryViewModel {
     let exerciseName: String
     private let analyticsService: AnalyticsService
     
+    // MARK: - 1RM Calculator State
+    
+    var selectedFormula: RMFormula = .brzycki {
+        didSet {
+            UserDefaults.standard.set(selectedFormula.rawValue, forKey: Constants.UserDefaultsKeys.preferred1RMFormula.rawValue)
+        }
+    }
+    
+    var calcInputWeight: Double? = nil
+    var calcInputReps: Int? = nil
+    var manual1RMOverride: Double? = nil
+    
+    /// Возвращает базовый 1RM (в КГ). Приоритет: Ручной ввод -> Ввод из калькулятора -> Лучший сет в истории -> 0
+    var effective1RM: Double {
+        if let manual = manual1RMOverride { return manual }
+        
+        if let w = calcInputWeight, let r = calcInputReps, w > 0, r > 0 {
+            return OneRepMaxCalculator.calculate1RM(weight: w, reps: r, formula: selectedFormula)
+        }
+        
+        let maxHist = allDataPoints.map { $0.value }.max() ?? 0.0
+        return UnitsManager.shared.convertToKilograms(maxHist) // Возвращаем чистые КГ для математики
+    }
+    
+    // MARK: - Init
+    
     init(exerciseName: String, analyticsService: AnalyticsService) {
         self.exerciseName = exerciseName
         self.analyticsService = analyticsService
+        
+        // Загрузка сохраненной формулы 1RM
+        if let savedFormula = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.preferred1RMFormula.rawValue),
+           let formula = RMFormula(rawValue: savedFormula) {
+            self.selectedFormula = formula
+        }
     }
+
     
     func loadData(unitsManager: UnitsManager) async {
         guard let payload = await analyticsService.fetchExerciseHistoryData(exerciseName: exerciseName) else {
             self.isDataLoaded = true
             return
         }
-        
+        var effective1RM: Double {
+               if let manual = manual1RMOverride { return manual }
+               
+               // Если ручного ввода нет, но есть введенные данные сета - считаем от них
+               if let w = calcInputWeight, let r = calcInputReps, w > 0, r > 0 {
+                   return OneRepMaxCalculator.calculate1RM(weight: w, reps: r, formula: selectedFormula)
+               }
+               
+               // Фоллбэк на исторический максимум (берем максимальный вес)
+               let maxHist = allDataPoints.map { $0.value }.max() ?? 0.0
+               // В allDataPoints у нас уже сконвертированные значения. Нам нужны КГ для формулы.
+               return UnitsManager.shared.convertToKilograms(maxHist)
+           }
         self.exerciseType = payload.type
         self.exerciseCategory = payload.category
         self.muscleGroup = payload.muscleGroup

@@ -61,7 +61,9 @@ struct ExerciseHistoryView: View {
                                 switch vm.selectedTab {
                                 case .summary: summaryContent(vm: vm)
                                 case .technique: techniqueContent(vm: vm)
+                                case .oneRepMax: OneRepMaxTabView(vm: vm)
                                 case .history: historyContent(vm: vm)
+                                
                                 }
                             }
                             .padding(.horizontal, 16)
@@ -85,34 +87,39 @@ struct ExerciseHistoryView: View {
     
     // MARK: - Modern Tab Picker
     private func customTabBar(vm: ExerciseHistoryViewModel) -> some View {
-        HStack(spacing: 0) {
-            ForEach(ExerciseHistoryViewModel.Tab.allCases, id: \.self) { tab in
-                let isSelected = vm.selectedTab == tab
-                
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                        vm.selectedTab = tab
-                    }
-                } label: {
-                    Text(tab.localizedName)
-                        .font(.subheadline)
-                        .fontWeight(isSelected ? .bold : .medium)
-                        .foregroundColor(isSelected ? .white : .primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background {
-                            if isSelected {
-                                Capsule()
-                                    .fill(vm.chartColor)
-                                    .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
-                                    .shadow(color: vm.chartColor.opacity(0.3), radius: 5, x: 0, y: 2)
+            HStack(spacing: 0) {
+                ForEach(ExerciseHistoryViewModel.Tab.allCases, id: \.self) { tab in
+                    // ✅ ПРОВЕРКА: Скрываем 1RM для несиловых тренировок
+                    if tab == .oneRepMax && vm.exerciseType != .strength {
+                        EmptyView()
+                    } else {
+                        let isSelected = vm.selectedTab == tab
+                        
+                        Button {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                vm.selectedTab = tab
                             }
+                        } label: {
+                            Text(tab.localizedName)
+                                .font(.subheadline)
+                                .fontWeight(isSelected ? .bold : .medium)
+                                .foregroundColor(isSelected ? .white : .primary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background {
+                                    if isSelected {
+                                        Capsule()
+                                            .fill(vm.chartColor)
+                                            .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
+                                            .shadow(color: vm.chartColor.opacity(0.3), radius: 5, x: 0, y: 2)
+                                    }
+                                }
                         }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
-                .buttonStyle(PlainButtonStyle())
             }
-        }
         .padding(4)
         .background(Color(UIColor.secondarySystemGroupedBackground))
         .clipShape(Capsule())

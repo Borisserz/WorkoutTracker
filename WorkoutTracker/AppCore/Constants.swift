@@ -28,6 +28,7 @@ public enum Constants {
         case voiceCoachDucking
         case hasGeneratedDefaultPresets_v3
         case includeWarmupsInStats
+        case preferred1RMFormula
     }
     
     /// Default values and keys for AI integrations
