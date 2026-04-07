@@ -325,9 +325,6 @@ struct StatsContentView: View {
                         onDeleteTapped: {},
                         onReplaceTapped: {}
                     )
-                    .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
                 } else {
                     // СОСТОЯНИЕ: ЕСТЬ ЦЕЛИ (СПИСОК)
                     ForEach(viewModel.activeGoals) { goal in
@@ -338,14 +335,10 @@ struct StatsContentView: View {
                             onDeleteTapped: { deleteGoal(goal) },
                             onReplaceTapped: { replaceGoal(goal) }
                         )
-                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
                     }
                 }
             } header: {
                 HStack {
-                    // ✅ ИСПРАВЛЕНИЕ: Изменил заголовок на множественное число
                     Text(LocalizedStringKey("Your Goals"))
                         .font(.title2)
                         .bold()
@@ -362,11 +355,9 @@ struct StatsContentView: View {
                             .foregroundColor(.blue)
                     }
                 }
-                .textCase(nil)
-                .padding(.horizontal, 4)
+                .textCase(nil) // Убирает системный капс у заголовка секции
                 .padding(.bottom, 4)
             }
-            .listRowInsets(EdgeInsets())
         }
 
         // ✅ ИСПРАВЛЕНИЕ: Функция принимает конкретную цель для удаления

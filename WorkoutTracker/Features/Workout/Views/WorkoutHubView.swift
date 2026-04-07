@@ -4,67 +4,155 @@
 
 internal import SwiftUI
 import SwiftData
-internal import UniformTypeIdentifiers
 
+// MARK: - Wrapper Type for Universal Carousel
+enum CarouselItemType: Identifiable, Hashable {
+    case preset(WorkoutPreset)
+    case favorite(Workout)
+    
+    var id: String {
+        switch self {
+        case .preset(let p): return "preset_\(p.persistentModelID.hashValue)"
+        case .favorite(let w): return "fav_\(w.persistentModelID.hashValue)"
+        }
+    }
+}
+
+// MARK: - Main View
 struct WorkoutHubView: View {
     @Environment(DIContainer.self) private var di
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(PresetService.self) var presetService
     
-    // Пользовательские шаблоны
+    // 1. Все пользовательские шаблоны (Созданные юзером + Скачанные из Explore)
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
-    private var myPresets: [WorkoutPreset]
+    private var userPresets: [WorkoutPreset]
     
-    // Системные/Сохраненные программы
+    // 2. Системные шаблоны (Базовые программы приложения)
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == true }, sort: \WorkoutPreset.name)
     private var systemPresets: [WorkoutPreset]
     
-    // Управление папками (Храним имена папок в строке через разделитель)
-    @AppStorage("customPresetFolders") private var customFoldersString: String = ""
-    @State private var showNewFolderAlert = false
-    @State private var newFolderName = ""
-    @State private var expandedFolders: [String: Bool] = [:] // Состояние развертывания папок
+    // 3. Избранные тренировки (из Истории)
+    @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
+    private var favoriteWorkouts: [Workout]
     
-    // ✅ ИСПРАВЛЕНИЕ: Сделано Read-Only для защиты от 'self is immutable'
-    var customFolders: [String] {
-        customFoldersString.isEmpty ? [] : customFoldersString.components(separatedBy: "|")
+    // MARK: - Динамическая сортировка по папкам (Новая логика)
+    
+    // Личные тренировки юзера (без папки)
+    private var myRoutines: [WorkoutPreset] {
+        userPresets.filter { ($0.folderName ?? "").isEmpty }
     }
     
+    // Одиночные скачанные тренировки из магазина
+    private var savedSingleRoutines: [WorkoutPreset] {
+        userPresets.filter { $0.folderName == PresetService.savedRoutinesFolderName }
+    }
+    
+    // Многодневные программы (Группируются по названию программы)
+    private var programFolders: [String: [WorkoutPreset]] {
+        var dict = [String: [WorkoutPreset]]()
+        for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName {
+            dict[p.folderName!, default: []].append(p)
+        }
+        return dict
+    }
+    
+    // MARK: - State & Navigation
     @State private var navigateToActiveWorkout: Workout? = nil
     @State private var navigateToExplore = false
     
     @State private var showPresetEditor = false
     @State private var presetToEdit: WorkoutPreset? = nil
-    @State private var presetToDelete: WorkoutPreset? = nil
-    @State private var showDeleteAlert = false
     
+    @State private var itemToDelete: CarouselItemType? = nil
+    @State private var showDeleteAlert = false
     @State private var showActiveWorkoutAlert = false
     @State private var isProcessing = false
-    
-    // Состояния сворачивания системных списков
-    @State private var isMyRoutinesExpanded: Bool = true
-    @State private var isSystemRoutinesExpanded: Bool = false
-    
-    private let columns = [GridItem(.flexible(), spacing: 16)]
+    @State private var selectedPreview: PreviewItem? = nil
     
     var body: some View {
         NavigationStack {
             ZStack {
+                // Premium Dark Background
                 Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        quickStartButton
-                        routinesActionRow
-                        
-                        // Списки программ (с поддержкой папок и Drag & Drop)
-                        VStack(spacing: 20) {
-                            foldersAndMyRoutinesSection
-                            systemRoutinesSection
+                    VStack(alignment: .leading, spacing: 32) {
+                        // Top Action Rows
+                        VStack(spacing: 24) {
+                            quickStartButton
+                            routinesActionRow
                         }
+                        .padding(.top, 20)
+                        
+                        // My Routines (user-created)
+                        CarouselSectionView(
+                            title: "My Routines",
+                            folderName: nil, // ✅ ИСПРАВЛЕНО: 'nil' для корневой папки
+                            items: myRoutines.map { .preset($0) },
+                            onItemTapped: handleItemStart,
+                            onEdit: { presetToEdit = $0; showPresetEditor = true },
+                            onDuplicate: duplicatePreset,
+                            onDelete: promptDelete
+                        )
+                        
+                        // Saved Single Routines
+                        if !savedSingleRoutines.isEmpty {
+                            CarouselSectionView(
+                                title: "Saved Routines",
+                                folderName: PresetService.savedRoutinesFolderName, // ✅ ИСПРАВЛЕНО: Передаем имя папки
+                                items: savedSingleRoutines.map { .preset($0) },
+                                onItemTapped: handleItemStart,
+                                onEdit: { presetToEdit = $0; showPresetEditor = true },
+                                onDuplicate: duplicatePreset,
+                                onDelete: promptDelete
+                            )
+                        }
+                        
+                        // Dynamic Program Carousels
+                        ForEach(programFolders.keys.sorted(), id: \.self) { folderName in
+                            if let programRoutines = programFolders[folderName] {
+                                CarouselSectionView(
+                                    title: LocalizedStringKey(folderName),
+                                    folderName: folderName, // ✅ ИСПРАВЛЕНО: Передаем имя папки
+                                    items: programRoutines.map { .preset($0) },
+                                    onItemTapped: handleItemStart,
+                                    onEdit: { presetToEdit = $0; showPresetEditor = true },
+                                    onDuplicate: duplicatePreset,
+                                    onDelete: promptDelete
+                                )
+                            }
+                        }
+                        
+                        // System Programs
+                        if !systemPresets.isEmpty {
+                            CarouselSectionView(
+                                title: "System Programs",
+                                folderName: nil, // ✅ ИСПРАВЛЕНО: Системные не являются папкой
+                                items: systemPresets.map { .preset($0) },
+                                onItemTapped: handleItemStart,
+                                onEdit: nil,
+                                onDuplicate: duplicatePreset,
+                                onDelete: nil
+                            )
+                        }
+                        
+                        // Favorites
+                        if !favoriteWorkouts.isEmpty {
+                            CarouselSectionView(
+                                title: "Favorites",
+                                folderName: nil, // ✅ ИСПРАВЛЕНО: Избранное - не папка
+                                items: favoriteWorkouts.map { .favorite($0) },
+                                onItemTapped: handleItemStart,
+                                onEdit: nil,
+                                onDuplicate: nil,
+                                onDelete: promptDelete
+                            )
+                        }
+                        
+                        Spacer(minLength: 40)
                     }
-                    .padding(.vertical, 20)
                 }
             }
             .navigationTitle(LocalizedStringKey("Workout"))
@@ -77,292 +165,143 @@ struct WorkoutHubView: View {
             .sheet(isPresented: $showPresetEditor) {
                 PresetEditorView(preset: presetToEdit)
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        newFolderName = ""
-                        showNewFolderAlert = true
-                    } label: {
-                        Image(systemName: "folder.badge.plus")
-                            .font(.body)
-                    }
+            .sheet(item: $selectedPreview) { previewItem in
+                TemplatePreviewSheetView(item: previewItem) {
+                    startWorkoutFromPreview(item: previewItem)
                 }
-            }
-            .alert(LocalizedStringKey("New Folder"), isPresented: $showNewFolderAlert) {
-                TextField("Folder Name", text: $newFolderName)
-                Button("Create") {
-                    let name = newFolderName.trimmingCharacters(in: .whitespaces)
-                    if !name.isEmpty && !customFolders.contains(name) {
-                        var folders = customFolders
-                        folders.append(name)
-                        // ✅ ИСПРАВЛЕНИЕ: Обновляем напрямую @AppStorage переменную
-                        customFoldersString = folders.joined(separator: "|")
-                        expandedFolders[name] = true // Сразу открываем новую папку
-                    }
-                }
-                Button("Cancel", role: .cancel) { }
-            } message: {
-                Text("Enter a name for your new routine group.")
             }
             .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: {
                 Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one."))
             }
-            .alert(LocalizedStringKey("Delete Template?"), isPresented: $showDeleteAlert) {
+            .alert(LocalizedStringKey("Delete Item?"), isPresented: $showDeleteAlert) {
                 Button(LocalizedStringKey("Delete"), role: .destructive) {
-                    if let p = presetToDelete {
-                        Task { await presetService.deletePreset(p); presetToDelete = nil }
-                    }
+                    confirmDelete()
                 }
-                Button(LocalizedStringKey("Cancel"), role: .cancel) { presetToDelete = nil }
+                Button(LocalizedStringKey("Cancel"), role: .cancel) { itemToDelete = nil }
             } message: {
-                if let p = presetToDelete {
-                    Text(String(localized: "Are you sure you want to delete '\(p.name)'? This action cannot be undone."))
-                }
+                Text(LocalizedStringKey("This action cannot be undone."))
             }
             .onChange(of: di.appState.returnToActiveWorkoutId) { _, newId in
-                            if let id = newId {
-                                // Ищем тренировку в кэше по ID и делаем Push
-                                let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
-                                if let active = try? context.fetch(desc).first(where: { $0.persistentModelID == id }) {
-                                    self.navigateToActiveWorkout = active
-                                }
-                                // Сбрасываем триггер
-                                di.appState.returnToActiveWorkoutId = nil
-                            }
-                        }
-                    } // <- Закрывающая скобка NavigationStack
+                if let id = newId {
+                    let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
+                    if let active = try? context.fetch(desc).first(where: { $0.persistentModelID == id }) {
+                        self.navigateToActiveWorkout = active
+                    }
+                    di.appState.returnToActiveWorkoutId = nil
                 }
-      
-    
-    // MARK: - Sections
-    
-    private var quickStartButton: some View {
-        Button { startWorkout(presetID: nil) } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "plus").font(.headline).fontWeight(.semibold)
-                Text(LocalizedStringKey("Start an Empty Workout")).font(.headline).fontWeight(.semibold)
             }
-            .foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 14)
-            .background(Color.blue).cornerRadius(12)
         }
-        .padding(.horizontal).disabled(isProcessing)
+    }
+    // MARK: - Top Actions
+    private var quickStartButton: some View {
+        Button { startEmptyWorkout() } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.headline).fontWeight(.bold)
+                Text(LocalizedStringKey("Start an Empty Workout"))
+                    .font(.headline).fontWeight(.bold)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
+            .cornerRadius(16)
+            .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+        }
+        .padding(.horizontal)
+        .disabled(isProcessing)
     }
     
     private var routinesActionRow: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(LocalizedStringKey("Routines")).font(.title2).bold()
                 Spacer()
-                Button {
-                    presetToEdit = nil
-                    showPresetEditor = true
-                } label: { Image(systemName: "plus.square").font(.title2).foregroundColor(.primary) }
             }
             .padding(.horizontal)
             
             HStack(spacing: 12) {
                 Button { presetToEdit = nil; showPresetEditor = true } label: {
-                    HStack { Image(systemName: "clipboard.fill").foregroundColor(.primary); Text(LocalizedStringKey("New Routine")).font(.subheadline).fontWeight(.medium).foregroundColor(.primary) }
-                    .frame(maxWidth: .infinity).padding(.vertical, 14).background(Color(UIColor.systemBackground)).cornerRadius(12)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.2), lineWidth: 1))
+                    HStack {
+                        Image(systemName: "clipboard.fill").foregroundColor(.blue)
+                        Text(LocalizedStringKey("New Routine")).font(.subheadline).fontWeight(.semibold).foregroundColor(.primary)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                 }
                 
                 Button { navigateToExplore = true } label: {
-                    HStack { Image(systemName: "magnifyingglass").foregroundColor(.primary); Text(LocalizedStringKey("Explore")).font(.subheadline).fontWeight(.medium).foregroundColor(.primary) }
-                    .frame(maxWidth: .infinity).padding(.vertical, 14).background(Color(UIColor.systemBackground)).cornerRadius(12)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.2), lineWidth: 1))
+                    HStack {
+                        Image(systemName: "magnifyingglass").foregroundColor(.purple)
+                        Text(LocalizedStringKey("Explore")).font(.subheadline).fontWeight(.semibold).foregroundColor(.primary)
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
+                    .background(Color(UIColor.secondarySystemBackground))
+                    .cornerRadius(16)
+                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                 }
             }
             .padding(.horizontal)
         }
     }
     
-    // MARK: - Folders & My Routines
-    
-    private var foldersAndMyRoutinesSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            
-            // 1. Некатегоризированные (Корневые) тренировки
-            let uncategorized = myPresets.filter { $0.folderName == nil || $0.folderName!.isEmpty }
-            
-            VStack(spacing: 8) {
-                folderDropHeader(
-                    title: "My Routines",
-                    count: uncategorized.count,
-                    isExpanded: $isMyRoutinesExpanded,
-                    icon: "tray.full.fill",
-                    targetFolder: nil
-                )
-                
-                if isMyRoutinesExpanded {
-                    if uncategorized.isEmpty && customFolders.isEmpty {
-                        emptyRoutinesState
-                    } else {
-                        renderPresetsGrid(uncategorized)
-                    }
-                }
+    private func startWorkoutFromPreview(item: PreviewItem) {
+        guard !isProcessing else { return }
+        isProcessing = true
+        
+        Task { @MainActor in
+            if await workoutService.hasActiveWorkout() {
+                showActiveWorkoutAlert = true; isProcessing = false; return
             }
             
-            // 2. Кастомные папки
-            ForEach(customFolders, id: \.self) { folder in
-                let folderPresets = myPresets.filter { $0.folderName == folder }
-                let isExp = Binding(
-                    get: { expandedFolders[folder] ?? false },
-                    set: { expandedFolders[folder] = $0 }
-                )
-                
-                VStack(spacing: 8) {
-                    folderDropHeader(
-                        title: folder,
-                        count: folderPresets.count,
-                        isExpanded: isExp,
-                        icon: "folder.fill",
-                        targetFolder: folder
-                    )
-                    .contextMenu {
-                        Button(role: .destructive) { deleteFolder(folder) } label: {
-                            Label(LocalizedStringKey("Delete Folder"), systemImage: "trash")
-                        }
-                    }
+            switch item {
+            case .preset(let preset):
+                if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
+                    di.liveActivityManager.startWorkoutActivity(title: preset.name)
+                    routeToLatestWorkout()
+                }
+            case .favorite(let workout):
+                if let _ = await workoutService.createWorkout(title: workout.title, presetID: nil, isAIGenerated: false) {
+                    di.liveActivityManager.startWorkoutActivity(title: workout.title)
                     
-                    if isExp.wrappedValue {
-                        if folderPresets.isEmpty {
-                            Text(LocalizedStringKey("Drag routines here"))
-                                .font(.caption).foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, minHeight: 60)
-                                .background(Color.gray.opacity(0.05))
-                                .cornerRadius(12)
-                                .padding(.horizontal)
-                                // Пустая зона тоже принимает Drop
-                                .onDrop(of: [.text], delegate: RoutineDropDelegate(folderName: folder, presets: myPresets, onMove: moveRoutine))
-                        } else {
-                            renderPresetsGrid(folderPresets)
+                    var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
+                    if let newWorkout = try? context.fetch(descriptor).first {
+                        for ex in workout.exercises {
+                            let newEx = Exercise(from: ex.toDTO())
+                            newEx.isCompleted = false
+                            context.insert(newEx)
+                            for set in newEx.setsList { set.isCompleted = false; context.insert(set) }
+                            for sub in newEx.subExercises {
+                                sub.isCompleted = false; context.insert(sub)
+                                for set in sub.setsList { set.isCompleted = false; context.insert(set) }
+                            }
+                            newWorkout.exercises.append(newEx)
                         }
+                        try? context.save()
+                        self.navigateToActiveWorkout = newWorkout
                     }
                 }
             }
+            isProcessing = false
         }
-    }
-    
-    private func renderPresetsGrid(_ presets: [WorkoutPreset]) -> some View {
-        LazyVGrid(columns: columns, spacing: 16) {
-            ForEach(presets) { preset in
-                PremiumRoutineCard(
-                    preset: preset,
-                    onStart: { startWorkout(presetID: preset.persistentModelID) },
-                    onEdit: { presetToEdit = preset; showPresetEditor = true },
-                    onDuplicate: { duplicatePreset(preset) },
-                    onDelete: { presetToDelete = preset; showDeleteAlert = true }
-                )
-                // ✅ Поддержка Drag (начинаем перетаскивание)
-                .onDrag {
-                    NSItemProvider(object: preset.id.uuidString as NSString)
-                }
-            }
-        }
-        .padding(.horizontal)
-        .transition(.opacity.combined(with: .move(edge: .top)))
-    }
-    
-    private func folderDropHeader(title: String, count: Int, isExpanded: Binding<Bool>, icon: String, targetFolder: String?) -> some View {
-        Button {
-            withAnimation(.snappy) { isExpanded.wrappedValue.toggle() }
-        } label: {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(targetFolder == nil ? .purple : .blue)
-                    .frame(width: 24)
-                Text(LocalizedStringKey("\(title) (\(count))"))
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                Spacer()
-                Image(systemName: isExpanded.wrappedValue ? "chevron.down" : "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.gray)
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        // ✅ Поддержка Drop (бросаем карточку на заголовок папки)
-        .onDrop(of: [.text], delegate: RoutineDropDelegate(folderName: targetFolder, presets: myPresets, onMove: moveRoutine))
-    }
-    
-    // MARK: - System Routines
-    
-    private var systemRoutinesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Button {
-                withAnimation(.snappy) { isSystemRoutinesExpanded.toggle() }
-            } label: {
-                HStack {
-                    Image(systemName: "star.square.on.square.fill")
-                        .foregroundColor(.yellow)
-                        .frame(width: 24)
-                    Text(LocalizedStringKey("Saved Programs (\(systemPresets.count))"))
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    Spacer()
-                    Image(systemName: isSystemRoutinesExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption).foregroundColor(.gray)
-                }
-                .padding(.horizontal).padding(.vertical, 8).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            
-            if isSystemRoutinesExpanded {
-                if systemPresets.isEmpty {
-                    Text(LocalizedStringKey("Explore and save programs to see them here."))
-                        .font(.subheadline).foregroundColor(.secondary).padding(.horizontal)
-                } else {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(systemPresets) { preset in
-                            PremiumRoutineCard(
-                                preset: preset,
-                                onStart: { startWorkout(presetID: preset.persistentModelID) },
-                                onEdit: nil,
-                                onDuplicate: { duplicatePreset(preset) },
-                                onDelete: nil
-                            )
-                        }
-                    }
-                    .padding(.horizontal).transition(.opacity.combined(with: .move(edge: .top)))
-                }
-            }
-        }
-    }
-    
-    private var emptyRoutinesState: some View {
-        Button {
-            presetToEdit = nil
-            showPresetEditor = true
-        } label: {
-            VStack(spacing: 12) {
-                Image(systemName: "doc.badge.plus").font(.system(size: 40))
-                Text(LocalizedStringKey("Tap to Add\nNew Template")).font(.headline).multilineTextAlignment(.center)
-            }
-            .foregroundColor(.blue).frame(maxWidth: .infinity, minHeight: 160).background(Color.blue.opacity(0.05)).cornerRadius(16)
-            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [8])).foregroundColor(.blue.opacity(0.3)))
-        }
-        .padding(.horizontal)
     }
     
     // MARK: - Logic
-    
-    private func startWorkout(presetID: PersistentIdentifier?) {
+    private func startEmptyWorkout() {
         guard !isProcessing else { return }
         isProcessing = true
         Task { @MainActor in
             if await workoutService.hasActiveWorkout() {
                 showActiveWorkoutAlert = true; isProcessing = false; return
             }
-            let allPresets = myPresets + systemPresets
-            let title = presetID == nil ? LocalizationHelper.shared.formatWorkoutDateName() : (allPresets.first(where: { $0.persistentModelID == presetID })?.name ?? "Workout")
-            
-            if let _ = await workoutService.createWorkout(title: title, presetID: presetID, isAIGenerated: false) {
+            let title = LocalizationHelper.shared.formatWorkoutDateName()
+            if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
                 di.liveActivityManager.startWorkoutActivity(title: title)
                 var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
                 if let newWorkout = try? context.fetch(descriptor).first { self.navigateToActiveWorkout = newWorkout }
@@ -371,79 +310,298 @@ struct WorkoutHubView: View {
         }
     }
     
+    private func handleItemStart(item: CarouselItemType) {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        
+        switch item {
+        case .preset(let preset):
+            selectedPreview = .preset(preset)
+        case .favorite(let workout):
+            selectedPreview = .favorite(workout)
+        }
+    }
+    
+    private func routeToLatestWorkout() {
+        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 1
+        if let newWorkout = try? context.fetch(descriptor).first {
+            self.navigateToActiveWorkout = newWorkout
+        }
+    }
+    
     private func duplicatePreset(_ preset: WorkoutPreset) {
         Task { @MainActor in
             let newName = preset.name + " (Copy)"
             let copiedExercises = preset.exercises.map { Exercise(from: $0.toDTO()) }
-            await presetService.savePreset(preset: nil, name: newName, icon: preset.icon, exercises: copiedExercises)
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
-            withAnimation { isMyRoutinesExpanded = true }
+            // Копии сохраняются в ту же папку
+            await presetService.savePreset(preset: nil, name: newName, icon: preset.icon, folderName: preset.folderName, exercises: copiedExercises)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
         }
     }
     
-    // MARK: - Folders Logic
-    
-    private func moveRoutine(preset: WorkoutPreset, to folder: String?) {
-        withAnimation(.snappy) {
-            preset.folderName = folder
-            try? context.save()
-            
-            // Если перенесли в папку, автоматически открываем её
-            if let f = folder {
-                expandedFolders[f] = true
-            }
-        }
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+    private func promptDelete(item: CarouselItemType) {
+        itemToDelete = item
+        showDeleteAlert = true
     }
     
-    private func deleteFolder(_ folder: String) {
-        withAnimation(.snappy) {
-            // Возвращаем все тренировки в корень
-            let presetsInFolder = myPresets.filter { $0.folderName == folder }
-            for p in presetsInFolder {
-                p.folderName = nil
+    private func confirmDelete() {
+        guard let item = itemToDelete else { return }
+        Task { @MainActor in
+            switch item {
+            case .preset(let preset):
+                await presetService.deletePreset(preset)
+            case .favorite(let workout):
+                await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: false)
             }
-            try? context.save()
-            
-            // Удаляем папку из настроек
-            var folders = customFolders
-            folders.removeAll { $0 == folder }
-            // ✅ ИСПРАВЛЕНИЕ: Обновляем напрямую @AppStorage переменную
-            customFoldersString = folders.joined(separator: "|")
+            itemToDelete = nil
         }
     }
 }
 
-// MARK: - Drop Delegate for Routines
+// MARK: - Carousel Section View
+// ============================================================
+// FILE: WorkoutTracker/Views/Workout/WorkoutHubView.swift
+// (Updates to CarouselSectionView)
+// ============================================================
 
-struct RoutineDropDelegate: DropDelegate {
-    let folderName: String?
-    let presets: [WorkoutPreset]
-    let onMove: (WorkoutPreset, String?) -> Void
+struct CarouselSectionView: View {
+    let title: LocalizedStringKey
+    let folderName: String? // Used to identify the folder for deletion logic
+    let items: [CarouselItemType]
     
-    func performDrop(info: DropInfo) -> Bool {
-        guard let itemProvider = info.itemProviders(for: [.text]).first else { return false }
-        
-        // Безопасное чтение перетаскиваемого объекта
-        itemProvider.loadObject(ofClass: NSString.self) { (string, error) in
-            if let str = string as? String, let id = UUID(uuidString: str) {
-                // Возвращаемся в Main Thread для изменения состояния UI и БД
-                DispatchQueue.main.async {
-                    if let preset = presets.first(where: { $0.id == id }) {
-                        // Не делаем перемещение, если папка и так целевая
-                        if preset.folderName != folderName {
-                            onMove(preset, folderName)
+    let onItemTapped: (CarouselItemType) -> Void
+    let onEdit: ((WorkoutPreset) -> Void)?
+    let onDuplicate: ((WorkoutPreset) -> Void)?
+    let onDelete: ((CarouselItemType) -> Void)?
+    
+    var body: some View {
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                
+                // Header with "See All"
+                HStack(alignment: .bottom) {
+                    Text(title)
+                        .font(.title3).bold()
+                        .foregroundColor(.primary)
+                    
+                    Spacer()
+                    
+                    // ✅ Always show "See All" to access folder management
+                    NavigationLink(destination: FolderDetailView(
+                        folderTitle: title,
+                        folderName: folderName,
+                        items: items,
+                        onItemTapped: onItemTapped,
+                        onEdit: onEdit,
+                        onDuplicate: onDuplicate,
+                        onDelete: onDelete
+                    )) {
+                        Text(LocalizedStringKey("See all"))
+                            .font(.subheadline)
+                            .foregroundColor(.blue)
+                    }
+                }
+                .padding(.horizontal)
+                
+                // Horizontal Carousel
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(spacing: 16) {
+                        ForEach(items.prefix(7), id: \.id) { item in
+                            PremiumCarouselCardView(
+                                item: item,
+                                onTap: { onItemTapped(item) },
+                                onEdit: onEdit,
+                                onDuplicate: onDuplicate,
+                                onDelete: onDelete
+                            )
                         }
                     }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
                 }
             }
         }
-        return true
+    }
+}
+
+// MARK: - Premium Carousel Card
+struct PremiumCarouselCardView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let item: CarouselItemType
+    
+    let onTap: () -> Void
+    let onEdit: ((WorkoutPreset) -> Void)?
+    let onDuplicate: ((WorkoutPreset) -> Void)?
+    let onDelete: ((CarouselItemType) -> Void)?
+    
+    var body: some View {
+        Button(action: onTap) {
+            ZStack(alignment: .topLeading) {
+                // Background Base
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : .white)
+                
+                // Subtle Accent Glow
+                GeometryReader { geo in
+                    Circle()
+                        .fill(accentColor.opacity(0.15))
+                        .blur(radius: 30)
+                        .frame(width: geo.size.width * 1.5)
+                        .offset(x: -geo.size.width * 0.2, y: -geo.size.height * 0.2)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    // Top Row: Icon & Menu
+                    HStack(alignment: .top) {
+                        // Icon
+                        ZStack {
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                                .frame(width: 44, height: 44)
+                            
+                            if isSystemIcon {
+                                Image(systemName: iconName)
+                                    .font(.title3)
+                                    .foregroundColor(accentColor)
+                            } else if UIImage(named: iconName) != nil {
+                                Image(iconName)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 24, height: 24)
+                            } else {
+                                Image(systemName: "dumbbell.fill")
+                                    .font(.title3)
+                                    .foregroundColor(accentColor)
+                            }
+                        }
+                        
+                        Spacer()
+                        
+                        // Action Menu
+                        Menu {
+                            if let p = extractPreset(), let onEdit = onEdit {
+                                Button { onEdit(p) } label: { Label(LocalizedStringKey("Edit"), systemImage: "pencil") }
+                            }
+                            if let p = extractPreset(), let onDuplicate = onDuplicate {
+                                Button { onDuplicate(p) } label: { Label(LocalizedStringKey("Duplicate"), systemImage: "plus.square.on.square") }
+                            }
+                            if let onDelete = onDelete {
+                                Button(role: .destructive) { onDelete(item) } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.headline)
+                                .foregroundColor(.gray)
+                                .frame(width: 30, height: 30)
+                                .background(Color.gray.opacity(0.1))
+                                .clipShape(Circle())
+                        }
+                        .highPriorityGesture(TapGesture().onEnded { }) // Prevent triggering card tap
+                    }
+                    
+                    Spacer()
+                    
+                    // Bottom Row: Text
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                        
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                .padding(16)
+            }
+            .frame(width: 160, height: 200)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.white.opacity(colorScheme == .dark ? 0.1 : 0.4), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.15), radius: 15, x: 0, y: 8)
+        }
+        .buttonStyle(.plain)
     }
     
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        return DropProposal(operation: .move)
+    // MARK: Card Data Extraction Helpers
+    private var title: String {
+        switch item {
+        case .preset(let p): return p.name
+        case .favorite(let w): return w.title
+        }
+    }
+    
+    private var subtitle: LocalizedStringKey {
+        switch item {
+        case .preset(let p): return LocalizedStringKey("\(p.exercises.count) exercises")
+        case .favorite(let w): return LocalizedStringKey("\(w.exercises.count) exercises")
+        }
+    }
+    
+    private var iconName: String {
+        switch item {
+        case .preset(let p): return p.icon
+        case .favorite(let w): return w.icon
+        }
+    }
+    
+    private var isSystemIcon: Bool {
+        switch item {
+        case .preset(let p): return p.isSystem
+        case .favorite: return true // Workouts generally use SF Symbols
+        }
+    }
+    
+    private var accentColor: Color {
+        switch item {
+        case .preset(let p): return p.isSystem ? .purple : .blue
+        case .favorite: return .orange
+        }
+    }
+    
+    private func extractPreset() -> WorkoutPreset? {
+        if case .preset(let p) = item { return p }
+        return nil
+    }
+}
+
+// MARK: - "See All" Grid View
+struct PresetListView: View {
+    let title: LocalizedStringKey
+    let items: [CarouselItemType]
+    
+    let onItemTapped: (CarouselItemType) -> Void
+    let onEdit: ((WorkoutPreset) -> Void)?
+    let onDuplicate: ((WorkoutPreset) -> Void)?
+    let onDelete: ((CarouselItemType) -> Void)?
+    
+    let columns = [GridItem(.adaptive(minimum: 160), spacing: 16)]
+    
+    var body: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(items, id: \.id) { item in
+                    PremiumCarouselCardView(
+                        item: item,
+                        onTap: { onItemTapped(item) },
+                        onEdit: onEdit,
+                        onDuplicate: onDuplicate,
+                        onDelete: onDelete
+                    )
+                }
+            }
+            .padding()
+        }
+            // ИСПРАВЛЕНИЕ: Используем colorScheme для поддержки светлой/темной темы
+            .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

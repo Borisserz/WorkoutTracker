@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 
 protocol PresetRepositoryProtocol: Sendable {
+    func fetchPresets(matching descriptor: FetchDescriptor<WorkoutPreset>) async throws -> [WorkoutPreset]
     func createPreset(name: String, icon: String, folderName: String?, exercises: [ExerciseDTO]) async throws
     func updatePreset(presetID: PersistentIdentifier, name: String, icon: String, folderName: String?, exercises: [ExerciseDTO]) async throws
     func deletePreset(presetID: PersistentIdentifier) async throws
@@ -68,4 +69,7 @@ actor PresetRepository: PresetRepositoryProtocol {
     func fetchPreset(by id: PersistentIdentifier) async throws -> WorkoutPreset? {
         return modelContext.model(for: id) as? WorkoutPreset
     }
+    func fetchPresets(matching descriptor: FetchDescriptor<WorkoutPreset>) async throws -> [WorkoutPreset] {
+            return try modelContext.fetch(descriptor)
+        }
 }

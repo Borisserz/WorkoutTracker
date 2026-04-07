@@ -17,7 +17,6 @@ struct ActiveGoalCard: View {
     let onReplaceTapped: () -> Void
     
     @Environment(UnitsManager.self) var unitsManager
-    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         if let goal = goal {
@@ -90,17 +89,12 @@ struct ActiveGoalCard: View {
                             Capsule()
                                 .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .leading, endPoint: .trailing))
                                 .frame(width: max(0, geo.size.width * CGFloat(progress)), height: 10)
-                                .shadow(color: .blue.opacity(0.4), radius: 4, x: 0, y: 0)
                         }
                     }
                     .frame(height: 10)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading) // ✅ ИСПРАВЛЕНИЕ: Растягиваем на всю ширину
-            .padding()
-            .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : .white)
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+            .padding(.vertical, 8) // Только нативный вертикальный отступ для дыхания контента
             
         } else {
             // СОСТОЯНИЕ: НЕТ ЦЕЛИ (EMPTY STATE)
@@ -130,16 +124,12 @@ struct ActiveGoalCard: View {
                     .cornerRadius(12)
                 }
                 .padding(.top, 4)
+                .buttonStyle(BorderlessButtonStyle()) // Чтобы тап по кнопке не конфликтовал со строкой списка
             }
-            .frame(maxWidth: .infinity, alignment: .leading) // ✅ ИСПРАВЛЕНИЕ: Растягиваем на всю ширину
-            .padding()
-            .background(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : .white)
-            .cornerRadius(16)
-            .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 4)
+            .padding(.vertical, 8)
         }
     }
-    
-    // Вспомогательные функции рендеринга текста
+    // MARK: - Вспомогательные функции (Оставлены без изменений)
     private func icon(for type: GoalType) -> String {
         switch type {
         case .strength: return "dumbbell.fill"

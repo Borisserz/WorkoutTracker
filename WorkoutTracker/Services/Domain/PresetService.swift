@@ -109,3 +109,64 @@ final class PresetService {
             }
         }
 }
+extension PresetService {
+    
+    /// Global constant for the default single routines folder
+    static let savedRoutinesFolderName = "Saved Routines"
+    
+    // MARK: - Folder Management
+    
+    /// Checks if a program (folder) or a single routine is already saved.
+    func isProgramSaved(title: String, isSingleRoutine: Bool) async -> Bool {
+        do {
+            let targetFolder = isSingleRoutine ? Self.savedRoutinesFolderName : title
+            
+            // Efficient fetch using SwiftData descriptors
+            let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.folderName == targetFolder })
+            let existingPresets = try await presetRepository.fetchPresets(matching: descriptor)
+            
+            if isSingleRoutine {
+                // For single routines, we check if a preset with the exact name exists in the "Saved Routines" folder.
+                return existingPresets.contains { $0.name == title }
+            } else {
+                // For programs, if the folder exists and has contents, it's considered saved.
+                return !existingPresets.isEmpty
+            }
+        } catch {
+            print("Error checking saved status: \(error)")
+            return false
+        }
+    }
+    
+    /// Deletes an entire folder (Program) and all its routines.
+    /// Prevents deletion of the user's root "My Routines" (where folderName is nil/empty).
+    func deleteFolder(named folderName: String) async {
+        guard !folderName.isEmpty else { return } // Safety check: Do not delete root
+        
+        do {
+            let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.folderName == folderName })
+            let presetsToDelete = try await presetRepository.fetchPresets(matching: descriptor)
+            
+            for preset in presetsToDelete {
+                try await presetRepository.deletePreset(presetID: preset.persistentModelID)
+            }
+            
+            // Clean up the AppStorage folder array to instantly update the UI
+            await MainActor.run {
+                let currentFolders = UserDefaults.standard.string(forKey: "customPresetFolders") ?? ""
+                var foldersArray = currentFolders.isEmpty ? [] : currentFolders.components(separatedBy: "|")
+                
+                if let index = foldersArray.firstIndex(of: folderName) {
+                    foldersArray.remove(at: index)
+                    UserDefaults.standard.set(foldersArray.joined(separator: "|"), forKey: "customPresetFolders")
+                }
+            }
+            
+        } catch {
+            appState.showError(title: "Delete Failed", message: "Could not remove the program: \(error.localizedDescription)")
+        }
+    }
+    
+    // Note: You will need to add this helper to `PresetRepositoryProtocol` and its implementation:
+    // func fetchPresets(matching descriptor: FetchDescriptor<WorkoutPreset>) async throws -> [WorkoutPreset]
+}

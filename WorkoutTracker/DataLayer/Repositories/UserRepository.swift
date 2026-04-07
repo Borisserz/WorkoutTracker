@@ -6,7 +6,7 @@ import Foundation
 import SwiftData
 
 protocol UserRepositoryProtocol: Sendable {
-    func addWeightEntry(weight: Double, date: Date) async throws
+    func addWeightEntry(weight: Double, date: Date, imageFileNames: [String]) async throws
     func deleteWeightEntry(_ entryID: PersistentIdentifier) async throws
     
     // Новые, чистые методы для замеров тела
@@ -28,14 +28,18 @@ actor UserRepository: UserRepositoryProtocol {
     
     // MARK: - Weight
     
-    func addWeightEntry(weight: Double, date: Date) async throws {
-        let newEntry = WeightEntry(date: date, weight: weight)
+    func addWeightEntry(weight: Double, date: Date, imageFileNames: [String] = []) async throws {
+        let newEntry = WeightEntry(date: date, weight: weight, imageFileNames: imageFileNames)
         modelContext.insert(newEntry)
         try modelContext.save()
     }
 
     func deleteWeightEntry(_ entryID: PersistentIdentifier) async throws {
         guard let entry = modelContext.model(for: entryID) as? WeightEntry else { throw WorkoutRepositoryError.modelNotFound }
+        
+        // Batch delete all associated images from the file system
+        await LocalImageStore.shared.deleteImages(named: entry.imageFileNames)
+        
         modelContext.delete(entry)
         try modelContext.save()
     }
