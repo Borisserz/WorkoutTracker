@@ -131,21 +131,27 @@ struct ExerciseHistoryView: View {
     
     // MARK: - Tab Contents
     private func summaryContent(vm: ExerciseHistoryViewModel) -> some View {
-        VStack(spacing: 24) {
-            proChartContainerView(vm: vm)
-            
-            if let trend = vm.exerciseTrend {
-                proExerciseTrendSection(trend: trend)
-            }
-            
-            if let forecast = vm.exerciseForecast {
-                proForecastSection(forecast: forecast)
-            }
-            
-            ExerciseNoteEditor(exerciseName: vm.exerciseName, isInputActive: $isInputActive)
-                .id("notesSection")
-        }
-    }
+           VStack(spacing: 24) {
+               proChartContainerView(vm: vm)
+               
+               if let trend = vm.exerciseTrend {
+                   proExerciseTrendSection(trend: trend)
+               }
+               
+               if let forecast = vm.exerciseForecast {
+                   proForecastSection(forecast: forecast)
+               }
+               
+               // ✅ ДОБАВЛЕНО: Интеграция нового блока Personal Records
+               if let records = vm.personalRecords, vm.exerciseType == .strength {
+                   PersonalRecordsCardView(records: records)
+               }
+               
+               ExerciseNoteEditor(exerciseName: vm.exerciseName, isInputActive: $isInputActive)
+                   .id("notesSection")
+           }
+       }
+
     
     private func techniqueContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -347,28 +353,32 @@ struct ExerciseHistoryView: View {
         .shadow(color: .black.opacity(0.04), radius: 15, x: 0, y: 5)
     }
     
+  
     private func proChartView(vm: ExerciseHistoryViewModel) -> some View {
-            // Вычисляем динамический размер осей, чтобы тултипы никогда не обрезались
-            let minVal = vm.displayedGraphData.map { $0.value }.min() ?? 0
-            let maxVal = vm.displayedGraphData.map { $0.value }.max() ?? 10
-            let diff = maxVal - minVal
-            let yPadding = diff == 0 ? (maxVal == 0 ? 10 : maxVal * 0.4) : diff * 0.4
-            let yDomainMin = max(0, minVal - (diff == 0 ? 0 : diff * 0.1))
-            let yDomainMax = maxVal + yPadding
-            
-            return Chart {
-                ForEach(vm.displayedGraphData) { dataPoint in
-                    if vm.displayedGraphData.count > 1 {
-                        LineMark(
-                            x: .value("Date", dataPoint.date),
-                            y: .value("Value", dataPoint.value)
-                        )
-                        .foregroundStyle(vm.chartColor)
-                        .interpolationMethod(.catmullRom)
-                        // Чуть толще основная линия для большей четкости
-                        .lineStyle(StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
-                    }
-                    
+        // Вычисляем динамический размер осей, чтобы тултипы никогда не обрезались
+        let minVal = vm.displayedGraphData.map { $0.value }.min() ?? 0
+        let maxVal = vm.displayedGraphData.map { $0.value }.max() ?? 10
+        let diff = maxVal - minVal
+        let yPadding = diff == 0 ? (maxVal == 0 ? 10 : maxVal * 0.4) : diff * 0.4
+        let yDomainMin = max(0, minVal - (diff == 0 ? 0 : diff * 0.1))
+        let yDomainMax = maxVal + yPadding
+        
+        return Chart {
+            ForEach(vm.displayedGraphData) { dataPoint in
+                if vm.displayedGraphData.count > 1 {
+                    // Главная линия тренда (Без заливки)
+                    LineMark(
+                        x: .value("Date", dataPoint.date),
+                        y: .value("Value", dataPoint.value)
+                    )
+                    .foregroundStyle(vm.chartColor)
+                    .interpolationMethod(.catmullRom)
+                    // Чуть толще основная линия для большей четкости
+                    .lineStyle(StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
+                }
+                
+                // Рисуем точки ТОЛЬКО если данных мало (чтобы не было "каши")
+                if vm.displayedGraphData.count < 20 {
                     PointMark(
                         x: .value("Date", dataPoint.date),
                         y: .value("Value", dataPoint.value)
@@ -376,93 +386,86 @@ struct ExerciseHistoryView: View {
                     .symbol {
                         Circle()
                             .fill(Color(UIColor.systemBackground))
-                            .frame(width: vm.displayedGraphData.count == 1 ? 16 : 12, height: vm.displayedGraphData.count == 1 ? 16 : 12)
+                            .frame(width: vm.displayedGraphData.count == 1 ? 16 : 10, height: vm.displayedGraphData.count == 1 ? 16 : 10)
                             .overlay(
                                 Circle().stroke(vm.chartColor, lineWidth: 3)
                             )
                             .shadow(color: vm.chartColor.opacity(0.4), radius: 4, x: 0, y: 2)
                     }
                 }
-                
-                // Четкая пунктирная линия Average / Max
-                if let val = vm.currentMetricValue, vm.displayedGraphData.count > 1, vm.selectedMetric != .none {
-                    RuleMark(y: .value("Metric", val))
-                        .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4])) // Более выраженный пунктир
-                        .foregroundStyle(Color.primary.opacity(0.3)) // Контрастнее цвет
-                        .annotation(position: .top, alignment: .leading) {
-                            Text("\(val, format: .number.precision(.fractionLength(1))) \(vm.unitLabel)")
-                                .font(.caption)
-                                .bold()
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color(UIColor.systemBackground).opacity(0.95))
-                                .cornerRadius(6)
-                                .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15), lineWidth: 1))
-                        }
-                }
-                
-                // Выбранная точка (Tooltip)
-                if let selectedDate = selectedX {
-                    if let closestPoint = vm.displayedGraphData.min(by: { abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate)) }) {
-                        RuleMark(x: .value("Selected", closestPoint.date))
-                            .foregroundStyle(Color.primary.opacity(0.3))
-                            .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4]))
-                            .annotation(position: .top) {
-                                VStack(alignment: .center, spacing: 2) {
-                                    Text("\(LocalizationHelper.shared.formatDecimal(closestPoint.value)) \(vm.unitLabel)")
-                                        .font(.headline)
-                                        .bold()
-                                        .foregroundColor(Color(UIColor.systemBackground))
-                                    Text(closestPoint.date, format: .dateTime.month(.abbreviated).day())
-                                        .font(.caption)
-                                        .foregroundColor(Color(UIColor.systemBackground).opacity(0.8))
-                                }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color(UIColor.label).opacity(0.9))
-                                .cornerRadius(8)
-                                .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
-                            }
+            }
+            
+            // Четкая пунктирная линия Average / Max
+            if let val = vm.currentMetricValue, vm.displayedGraphData.count > 1, vm.selectedMetric != .none {
+                RuleMark(y: .value("Metric", val))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                    .foregroundStyle(Color.primary.opacity(0.3))
+                    .annotation(position: .top, alignment: .leading) {
+                        Text("\(val, format: .number.precision(.fractionLength(1))) \(vm.unitLabel)")
+                            .font(.caption)
+                            .bold()
+                            .foregroundColor(.primary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(UIColor.systemBackground).opacity(0.95))
+                            .cornerRadius(6)
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15), lineWidth: 1))
                     }
-                }
             }
-            .frame(height: 240)
-            .chartXSelection(value: $selectedX)
-            .chartXScale(range: .plotDimension(padding: 15))
-            .chartYScale(domain: yDomainMin...yDomainMax, range: .plotDimension(padding: 15))
-            // Настройка осей и сетки
-            .chartXAxis {
-                AxisMarks(values: .automatic) { _ in
-                    // Сетка более плотная и заметная
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                        .foregroundStyle(Color.gray.opacity(0.3))
-                    
-                    // Включены засечки (штрихи) на оси
-                    AxisTick()
-                        .foregroundStyle(Color.gray.opacity(0.5))
-                    
-                    AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
-                        .foregroundStyle(Color.primary.opacity(0.7)) // Контрастный текст
-                        .font(.caption2.bold())
-                }
-            }
-            .chartYAxis {
-                AxisMarks(position: .leading) { _ in
-                    // Сетка по Y
-                    AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                        .foregroundStyle(Color.gray.opacity(0.3))
-                    
-                    // Засечки по Y
-                    AxisTick()
-                        .foregroundStyle(Color.gray.opacity(0.5))
-                    
-                    AxisValueLabel()
-                        .foregroundStyle(Color.primary.opacity(0.7))
-                        .font(.caption2.bold())
+            
+            // Выбранная точка (Tooltip)
+            if let selectedDate = selectedX {
+                if let closestPoint = vm.displayedGraphData.min(by: { abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate)) }) {
+                    RuleMark(x: .value("Selected", closestPoint.date))
+                        .foregroundStyle(Color.primary.opacity(0.3))
+                        .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4]))
+                        .annotation(position: .top) {
+                            VStack(alignment: .center, spacing: 2) {
+                                Text("\(LocalizationHelper.shared.formatDecimal(closestPoint.value)) \(vm.unitLabel)")
+                                    .font(.headline)
+                                    .bold()
+                                    .foregroundColor(Color(UIColor.systemBackground))
+                                Text(closestPoint.date, format: .dateTime.month(.abbreviated).day())
+                                    .font(.caption)
+                                    .foregroundColor(Color(UIColor.systemBackground).opacity(0.8))
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color(UIColor.label).opacity(0.9))
+                            .cornerRadius(8)
+                            .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
+                        }
                 }
             }
         }
+        .frame(height: 240)
+        .chartXSelection(value: $selectedX)
+        .chartXScale(range: .plotDimension(padding: 15))
+        .chartYScale(domain: yDomainMin...yDomainMax, range: .plotDimension(padding: 15))
+        // Настройка осей и сетки
+        .chartXAxis {
+            AxisMarks(values: .automatic) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    .foregroundStyle(Color.gray.opacity(0.3))
+                AxisTick()
+                    .foregroundStyle(Color.gray.opacity(0.5))
+                AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
+                    .foregroundStyle(Color.primary.opacity(0.7))
+                    .font(.caption2.bold())
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading) { _ in
+                AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                    .foregroundStyle(Color.gray.opacity(0.3))
+                AxisTick()
+                    .foregroundStyle(Color.gray.opacity(0.5))
+                AxisValueLabel()
+                    .foregroundStyle(Color.primary.opacity(0.7))
+                    .font(.caption2.bold())
+            }
+        }
+    }
     // MARK: - Widget-Style Cards
     
     @ViewBuilder
@@ -794,6 +797,58 @@ struct WorkoutDetailWrapperView: View {
             if let fetchedWorkout = context.model(for: workoutID) as? Workout {
                 self.workout = fetchedWorkout
             }
+        }
+    }
+}
+
+// MARK: - Personal Records Card View
+struct PersonalRecordsCardView: View {
+    let records: ExerciseRecordsDTO
+    @Environment(UnitsManager.self) var unitsManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(LocalizedStringKey("Personal Records"))
+                .font(.title2)
+                .bold()
+                .foregroundColor(.primary)
+                .padding(.bottom, 4)
+            
+            recordRow(title: "Max Set Reps", value: records.maxSetReps > 0 ? "\(records.maxSetReps)" : "--")
+            
+            Divider().opacity(0.5)
+            
+            recordRow(title: "Max Workout Reps", value: records.maxWorkoutReps > 0 ? "\(records.maxWorkoutReps)" : "--")
+            
+            Divider().opacity(0.5)
+            
+            let setVol = unitsManager.convertFromKilograms(records.maxSetVolume)
+            let setVolStr = records.maxSetVolume > 0 ? "\(LocalizationHelper.shared.formatInteger(setVol)) \(unitsManager.weightUnitString())" : "--"
+            recordRow(title: "Max Set Volume", value: setVolStr)
+            
+            Divider().opacity(0.5)
+            
+            let woVol = unitsManager.convertFromKilograms(records.maxWorkoutVolume)
+            let woVolStr = records.maxWorkoutVolume > 0 ? "\(LocalizationHelper.shared.formatInteger(woVol)) \(unitsManager.weightUnitString())" : "--"
+            recordRow(title: "Max Workout Volume", value: woVolStr)
+        }
+        .padding(20)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .cornerRadius(24)
+        .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
+    }
+    
+    private func recordRow(title: LocalizedStringKey, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.body)
+                .foregroundColor(.secondary)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.headline)
+                .foregroundColor(.primary)
         }
     }
 }

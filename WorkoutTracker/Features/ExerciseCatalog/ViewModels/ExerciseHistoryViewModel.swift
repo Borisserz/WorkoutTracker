@@ -1,7 +1,7 @@
-//
-//  ExerciseHistoryViewModel.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Features/ExerciseCatalog/ViewModels/ExerciseHistoryViewModel.swift
+// ============================================================
+
 import Foundation
 import SwiftData
 internal import SwiftUI
@@ -34,7 +34,7 @@ final class ExerciseHistoryViewModel {
     
     var displayedGraphData: [ExerciseHistoryDataPoint] = []
     var currentMetricValue: Double? = nil
-    
+    var personalRecords: ExerciseRecordsDTO? = nil
     private var allDataPoints: [ExerciseHistoryDataPoint] = []
     
     let exerciseName: String
@@ -79,28 +79,17 @@ final class ExerciseHistoryViewModel {
 
     
     func loadData(unitsManager: UnitsManager) async {
-        guard let payload = await analyticsService.fetchExerciseHistoryData(exerciseName: exerciseName) else {
-            self.isDataLoaded = true
-            return
-        }
-        var effective1RM: Double {
-               if let manual = manual1RMOverride { return manual }
-               
-               // Если ручного ввода нет, но есть введенные данные сета - считаем от них
-               if let w = calcInputWeight, let r = calcInputReps, w > 0, r > 0 {
-                   return OneRepMaxCalculator.calculate1RM(weight: w, reps: r, formula: selectedFormula)
-               }
-               
-               // Фоллбэк на исторический максимум (берем максимальный вес)
-               let maxHist = allDataPoints.map { $0.value }.max() ?? 0.0
-               // В allDataPoints у нас уже сконвертированные значения. Нам нужны КГ для формулы.
-               return UnitsManager.shared.convertToKilograms(maxHist)
-           }
-        self.exerciseType = payload.type
-        self.exerciseCategory = payload.category
-        self.muscleGroup = payload.muscleGroup
-        self.exerciseTrend = payload.trend
-        self.exerciseForecast = payload.forecast
+          guard let payload = await analyticsService.fetchExerciseHistoryData(exerciseName: exerciseName) else {
+              self.isDataLoaded = true
+              return
+          }
+          
+          self.exerciseType = payload.type
+          self.exerciseCategory = payload.category
+          self.muscleGroup = payload.muscleGroup
+          self.exerciseTrend = payload.trend
+          self.exerciseForecast = payload.forecast
+          self.personalRecords = payload.records // ✅ ДОБАВЛЕНО
         
         // Маппим данные, используя глобальный тип ExerciseHistoryDataPoint
         self.allDataPoints = payload.dataPoints.map { dp in
@@ -119,8 +108,10 @@ final class ExerciseHistoryViewModel {
     
     func updateGraphData() {
         let calendar = Calendar.current
-        let filteredByDate: [ExerciseHistoryDataPoint]
+        let now = Date()
         
+        // 1. Фильтруем по дате
+        let filteredByDate: [ExerciseHistoryDataPoint]
         if selectedTimeRange == .all {
             filteredByDate = allDataPoints
         } else {
@@ -128,18 +119,62 @@ final class ExerciseHistoryViewModel {
             switch selectedTimeRange {
             case .month: days = 30; case .threeMonths: days = 90; case .sixMonths: days = 180; case .year: days = 365; case .all: days = 0
             }
-            let cutoff = calendar.date(byAdding: .day, value: -days, to: Date()) ?? Date.distantPast
+            let cutoff = calendar.date(byAdding: .day, value: -days, to: now) ?? .distantPast
             filteredByDate = allDataPoints.filter { $0.date >= cutoff }
         }
         
+        guard !filteredByDate.isEmpty else {
+            self.displayedGraphData = []
+            self.currentMetricValue = nil
+            return
+        }
+        
+        // 2. Агрегация данных (Downsampling) для устранения "каши" на графике
+        var groupedDict: [Date: [Double]] = [:]
+        
+        for point in filteredByDate {
+            let dateKey: Date
+            switch selectedTimeRange {
+            case .month, .threeMonths:
+                // Группируем по дням
+                dateKey = calendar.startOfDay(for: point.date)
+            case .sixMonths, .year:
+                // Группируем по неделям (начало недели)
+                let comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: point.date)
+                dateKey = calendar.date(from: comps) ?? calendar.startOfDay(for: point.date)
+            case .all:
+                // Группируем по месяцам, если данных очень много, иначе по неделям
+                if filteredByDate.count > 200 {
+                    let comps = calendar.dateComponents([.year, .month], from: point.date)
+                    dateKey = calendar.date(from: comps) ?? calendar.startOfDay(for: point.date)
+                } else {
+                    let comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: point.date)
+                    dateKey = calendar.date(from: comps) ?? calendar.startOfDay(for: point.date)
+                }
+            }
+            groupedDict[dateKey, default: []].append(point.value)
+        }
+        
+        // 3. Формируем финальные точки (берем Max или Avg за период)
+        var aggregatedPoints: [ExerciseHistoryDataPoint] = []
+        for (date, values) in groupedDict {
+            // Для силовых и кардио обычно интереснее максимальный результат за день/неделю
+            let aggregatedValue = values.max() ?? 0.0
+            aggregatedPoints.append(ExerciseHistoryDataPoint(date: date, value: aggregatedValue, rawWorkoutID: filteredByDate.first!.rawWorkoutID))
+        }
+        
+        // Сортируем по дате
+        let finalData = aggregatedPoints.sorted { $0.date < $1.date }
+        
+        // 4. Высчитываем метрику для пунктирной линии (Max/Average)
         var newMetric: Double? = nil
-        if selectedMetric != .none && !filteredByDate.isEmpty {
-            let values = filteredByDate.map { $0.value }
+        if selectedMetric != .none {
+            let values = finalData.map { $0.value }
             if selectedMetric == .max { newMetric = values.max() }
             else if selectedMetric == .average { newMetric = values.reduce(0, +) / Double(values.count) }
         }
         
-        self.displayedGraphData = filteredByDate
+        self.displayedGraphData = finalData
         self.currentMetricValue = newMetric
     }
     

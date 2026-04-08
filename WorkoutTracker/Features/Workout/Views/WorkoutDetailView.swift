@@ -23,6 +23,7 @@ struct WorkoutDetailView: View {
             .environment(viewModel)
     }
 }
+
 struct WorkoutDetailContentView: View {
     enum Tab: String, CaseIterable {
         case workout = "Workout"
@@ -33,7 +34,7 @@ struct WorkoutDetailContentView: View {
     
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
-    
+    @State private var isDeletingEmptyWorkout = false
     @Environment(DashboardViewModel.self) private var dashboardViewModel
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(TutorialManager.self) var tutorialManager
@@ -76,46 +77,7 @@ struct WorkoutDetailContentView: View {
         ZStack {
             ScrollViewReader { proxy in
                 mainLayout(proxy: proxy)
-                    .toolbar {
-                        ToolbarItem(placement: .navigationBarTrailing) {
-                            Button {
-                                viewModel.toggleFavorite(workout: workout, presetService: di.presetService)
-                            } label: {
-                                Image(systemName: workout.isFavorite ? "star.fill" : "star")
-                                    .foregroundColor(workout.isFavorite ? .yellow : .gray)
-                                    .font(.title3)
-                            }
-                        }
-                    }
-                    .onAppear {
-                        handleOnAppear()
-                        if workout.isActive { di.appState.isInsideActiveWorkout = true }
-                    }
-                    .onDisappear {
-                        handleOnDisappear()
-                        di.appState.isInsideActiveWorkout = false
-                    }
-                    .onChange(of: selectedTab) { _, newTab in withAnimation { timerManager.isHidden = (newTab == .aiCoach) } }
-                    .onChange(of: workout.exercises.count) { _, _ in handleExercisesChanged() }
                     .onChange(of: scrollToExerciseId) { _, newId in handleScrollTo(newId: newId, proxy: proxy) }
-                    .onChange(of: tutorialManager.currentStep) { _, newStep in handleTutorialStep(newStep) }
-                    .onChange(of: viewModel.activeEvent) { _, event in handleViewModelEvent(event) }
-                    .sheet(item: $activeSheet) { sheet in renderSheetContent(for: sheet) }
-                    .sheet(isPresented: $showTimerSetup) { TimerSetupSheet().environment(timerManager) }
-                    .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
-                        Button(LocalizedStringKey("Delete"), role: .destructive) {
-                            let workoutToDelete = workout
-                            dismiss()
-                            Task {
-                                try? await Task.sleep(for: .seconds(0.5))
-                                await viewModel.deleteEmptyWorkout(workout: workoutToDelete)
-                                timerManager.stopRestTimer()
-                            }
-                        }
-                        Button(LocalizedStringKey("Continue"), role: .cancel) { }
-                    } message: {
-                        Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
-                    }
             }
             
             if let fullScreen = activeFullScreen {
@@ -125,6 +87,47 @@ struct WorkoutDetailContentView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    viewModel.toggleFavorite(workout: workout, presetService: di.presetService)
+                } label: {
+                    Image(systemName: workout.isFavorite ? "star.fill" : "star")
+                        .foregroundColor(workout.isFavorite ? .yellow : .gray)
+                        .font(.title3)
+                }
+            }
+        }
+        .onAppear {
+            handleOnAppear()
+            if workout.isActive { di.appState.isInsideActiveWorkout = true }
+        }
+        .onDisappear {
+            handleOnDisappear()
+            di.appState.isInsideActiveWorkout = false
+        }
+        .onChange(of: selectedTab) { _, newTab in withAnimation { timerManager.isHidden = (newTab == .aiCoach) } }
+        .onChange(of: workout.exercises.count) { _, _ in handleExercisesChanged() }
+        .onChange(of: tutorialManager.currentStep) { _, newStep in handleTutorialStep(newStep) }
+        .onChange(of: viewModel.activeEvent) { _, event in handleViewModelEvent(event) }
+        .sheet(item: $activeSheet) { sheet in renderSheetContent(for: sheet) }
+        .sheet(isPresented: $showTimerSetup) { TimerSetupSheet().environment(timerManager) }
+        .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
+               Button(LocalizedStringKey("Delete"), role: .destructive) {
+                   isDeletingEmptyWorkout = true // Блокируем логику в onDisappear
+                   let safeID = workout.persistentModelID // Безопасно сохраняем ID до удаления
+                   dismiss() // Сначала закрываем экран
+                   
+                   Task {
+                       // Ждем, пока экран полностью закроется, чтобы не сломать Bindable
+                       try? await Task.sleep(for: .seconds(0.5))
+                       await viewModel.deleteEmptyWorkout(workoutID: safeID)
+                   }
+               }
+               Button(LocalizedStringKey("Continue"), role: .cancel) { }
+           } message: {
+               Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
+           }
     }
     
     @ViewBuilder
@@ -276,17 +279,27 @@ struct WorkoutDetailContentView: View {
             if expandedExercises[exercise.id] == nil { expandedExercises[exercise.id] = index == 0 ? true : !isNewWorkout }
         }
     }
-    
     private func handleOnDisappear() {
-        timerManager.isHidden = false
-        if workout.isActive {
-            let hasCompletedSets = workout.exercises.contains { ex in
-                let targets = ex.isSuperset ? ex.subExercises : [ex]
-                return targets.contains { sub in sub.setsList.contains { $0.isCompleted } }
-            }
-            if !hasCompletedSets { Task { await viewModel.deleteEmptyWorkout(workout: workout); timerManager.stopRestTimer() } }
-        }
-    }
+           timerManager.isHidden = false
+           
+           // Если мы уже удаляем тренировку через Алерт, дальше не идем
+           guard !isDeletingEmptyWorkout, workout.isActive else { return }
+           
+           let hasCompletedSets = workout.exercises.contains { ex in
+               let targets = ex.isSuperset ? ex.subExercises : [ex]
+               return targets.contains { sub in sub.setsList.contains { $0.isCompleted } }
+           }
+           
+           if !hasCompletedSets {
+               isDeletingEmptyWorkout = true // Ставим флаг
+               let safeID = workout.persistentModelID // Безопасно извлекаем ID
+               
+               Task {
+                   await viewModel.deleteEmptyWorkout(workoutID: safeID)
+                   timerManager.stopRestTimer()
+               }
+           }
+       }
     
     private func handleExercisesChanged() {
         viewModel.updateWorkoutAnalytics(for: workout)
@@ -356,6 +369,7 @@ struct WorkoutDetailContentView: View {
         }
         .zIndex(15)
     }
+    
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Analysis (Max Weight)"))
@@ -462,7 +476,6 @@ struct WorkoutDetailContentView: View {
     }
 
     // MARK: - 2. Muscle Heatmap Section (WorkoutDetailContentView)
-
     private var muscleHeatmapSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {

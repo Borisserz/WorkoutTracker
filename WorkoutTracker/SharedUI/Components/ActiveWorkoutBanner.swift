@@ -1,10 +1,3 @@
-//
-//  ActiveWorkoutBanner.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 5.04.26.
-//
-
 // ============================================================
 // FILE: WorkoutTracker/SharedUI/Components/ActiveWorkoutBanner.swift
 // ============================================================
@@ -119,15 +112,17 @@ struct ActiveWorkoutBanner: View {
         }
         .alert(LocalizedStringKey("Cancel Workout?"), isPresented: $showDeleteAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
+                // Если мы сейчас внутри этой тренировки — выходим из неё
+                if di.appState.selectedTab == 2 {
+                    // Можно принудительно сменить вкладку или закрыть NavigationPath
+                }
+                
                 Task {
                     await workoutService.deleteWorkout(workout)
                 }
             }
-            Button(LocalizedStringKey("Cancel"), role: .cancel) { }
-        } message: {
-            Text(LocalizedStringKey("Are you sure you want to cancel this active workout? All progress will be lost."))
         }
-    }
+    } // ✅ Correctly closes `body` here
     
     private func returnToWorkout() {
         let generator = UIImpactFeedbackGenerator(style: .medium)

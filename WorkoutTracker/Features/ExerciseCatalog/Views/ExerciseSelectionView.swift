@@ -1,3 +1,7 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/ExerciseCatalog/Views/ExerciseSelectionView.swift
+// ============================================================
+
 internal import SwiftUI
 
 struct ExerciseSelectionView: View {
@@ -11,8 +15,11 @@ struct ExerciseSelectionView: View {
     var onAdd: (Exercise) -> Void
     
     // MARK: - State
-    @State private var searchText: String = ""
-    @State private var selectedGroups: Set<String> = []
+    @State private var filterState = ExerciseFilterState()
+    @State private var showAdvancedFilters = false
+    @State private var allItems: [ExerciseDBItem] = []
+    
+    private let availableGroups = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio"]
     
     var body: some View {
         NavigationStack {
@@ -21,64 +28,52 @@ struct ExerciseSelectionView: View {
                 Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Строка поиска
-                    searchBar
+                    // 1. Строка поиска с кнопкой фильтров
+                    PremiumExerciseSearchBar(filterState: filterState) {
+                        showAdvancedFilters = true
+                    }
                     
-                    // Фильтр по группам мышц
+                    // 2. Горизонтальный фильтр по группам мышц
                     muscleGroupFilter
                     
                     Divider().opacity(0.5)
                     
-                    if hasAnyFilteredExercises {
-                        ScrollView(.vertical, showsIndicators: false) {
-                            LazyVStack(spacing: 24) {
-                                ForEach(filteredGroups, id: \.self) { group in
-                                    let exercisesInGroup = getFilteredExercises(for: group)
-                                    
-                                    if !exercisesInGroup.isEmpty {
-                                        VStack(alignment: .leading, spacing: 12) {
-                                            Text(LocalizedStringKey(group))
-                                                .font(.title3)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(.primary)
-                                                .padding(.horizontal, 20)
-                                                .padding(.top, 8)
-                                            
-                                            VStack(spacing: 12) {
-                                                ForEach(exercisesInGroup, id: \.self) { exerciseName in
-                                                    let detectedType = detectType(name: exerciseName, group: group)
-                                                    
-                                                    NavigationLink {
-                                                        ConfigureExerciseView(
-                                                            exerciseName: exerciseName,
-                                                            muscleGroup: group,
-                                                            exerciseType: detectedType
-                                                        ) { newExercise in
-                                                            onAdd(newExercise)
-                                                            dismiss()
-                                                            if tutorialManager.currentStep == .addExercise {
-                                                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                                                    tutorialManager.setStep(.finishExercise)
-                                                                }
-                                                            }
-                                                        }
-                                                    } label: {
-                                                        exerciseCardView(name: exerciseName, type: detectedType, group: group)
-                                                    }
-                                                    .buttonStyle(.plain) // Чтобы вся карточка нажималась без синего текста
-                                                }
-                                            }
-                                            .padding(.horizontal, 20)
-                                        }
-                                    }
-                                }
-                            }
-                            .padding(.vertical, 16)
-                            .padding(.bottom, 40)
-                        }
-                    } else {
-                        emptyStateView
-                    }
+                    // 3. Вычисляем отфильтрованные данные
+                    let filteredItems = filterState.filter(exercises: allItems).sorted(by: { $0.name < $1.name })
+                                       
+                                       if filteredItems.isEmpty {
+                                           emptyStateView
+                                       } else {
+                                           ScrollView(.vertical, showsIndicators: false) {
+                                               LazyVStack(spacing: 12) { // Уменьшили spacing, так как нет заголовков групп
+                                                   ForEach(filteredItems, id: \.name) { item in
+                                                       let detectedType = detectType(name: item.name, group: item.primaryMuscles?.first ?? "Other")
+                                                       
+                                                       NavigationLink {
+                                                           ConfigureExerciseView(
+                                                               exerciseName: item.name,
+                                                               muscleGroup: item.primaryMuscles?.first ?? "Other", // Берем мышцу из JSON
+                                                               exerciseType: detectedType
+                                                           ) { newExercise in
+                                                               onAdd(newExercise)
+                                                               dismiss()
+                                                               if tutorialManager.currentStep == .addExercise {
+                                                                   DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                                                       tutorialManager.setStep(.finishExercise)
+                                                                   }
+                                                               }
+                                                           }
+                                                       } label: {
+                                                           ExerciseDBRowView(exercise: item)
+                                                       }
+                                                       .buttonStyle(.plain)
+                                                   }
+                                               }
+                                               .padding(.horizontal, 20)
+                                               .padding(.vertical, 16)
+                                               .padding(.bottom, 40)
+                                           }
+                                       }
                 }
             }
             .navigationTitle(LocalizedStringKey("Select Exercise"))
@@ -88,40 +83,19 @@ struct ExerciseSelectionView: View {
                     Button(LocalizedStringKey("Close")) { dismiss() }
                 }
             }
+            .task {
+                await loadExercises()
+            }
+            .sheet(isPresented: $showAdvancedFilters) {
+                AdvancedFiltersSheet(
+                    filterState: filterState,
+                    resultsCount: filterState.filter(exercises: allItems).count
+                )
+            }
         }
     }
     
     // MARK: - View Components
-    
-    private var searchBar: some View {
-        HStack {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
-            
-            TextField(LocalizedStringKey("Search exercises"), text: $searchText)
-                .textFieldStyle(.plain)
-                .font(.body)
-            
-            if !searchText.isEmpty {
-                Button {
-                    let gen = UIImpactFeedbackGenerator(style: .light)
-                    gen.impactOccurred()
-                    withAnimation { searchText = "" }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: 2)
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 8)
-    }
     
     private var muscleGroupFilter: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -130,25 +104,21 @@ struct ExerciseSelectionView: View {
                 
                 filterButton(
                     title: LocalizedStringKey("All"),
-                    isSelected: selectedGroups.isEmpty,
+                    isSelected: filterState.selectedMuscles.isEmpty,
                     action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            selectedGroups.removeAll()
+                            filterState.selectedMuscles.removeAll()
                         }
                     }
                 )
                 
-                ForEach(sortedCategories, id: \.self) { group in
+                ForEach(availableGroups, id: \.self) { group in
                     filterButton(
                         title: LocalizedStringKey(group),
-                        isSelected: selectedGroups.contains(group),
+                        isSelected: filterState.selectedMuscles.contains(group.lowercased()),
                         action: {
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                if selectedGroups.contains(group) {
-                                    selectedGroups.remove(group)
-                                } else {
-                                    selectedGroups.insert(group)
-                                }
+                                filterState.toggle(item: group.lowercased(), in: &filterState.selectedMuscles)
                             }
                         }
                     )
@@ -181,58 +151,6 @@ struct ExerciseSelectionView: View {
         }
     }
     
-    private func exerciseCardView(name: String, type: ExerciseType, group: String) -> some View {
-        HStack(spacing: 16) {
-            // Иконка
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(getColor(for: type).opacity(0.1))
-                    .frame(width: 50, height: 50)
-                
-                Image(systemName: getIcon(for: type))
-                    .font(.title3)
-                    .foregroundColor(getColor(for: type))
-            }
-            
-            // Тексты
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(LocalizedStringKey(name))
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                    
-                    if isCustom(name: name) {
-                        Image(systemName: "person.crop.circle")
-                            .foregroundColor(.gray.opacity(0.5))
-                            .font(.caption)
-                    }
-                }
-                
-                let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: name, muscleGroup: group)
-                if !targetMuscles.isEmpty {
-                    HStack(spacing: 4) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.caption2)
-                        Text(targetMuscles.joined(separator: ", "))
-                            .font(.caption)
-                            .lineLimit(1)
-                    }
-                    .foregroundColor(.secondary)
-                }
-            }
-            
-            Spacer()
-            
-            Image(systemName: "chevron.right")
-                .font(.caption)
-                .foregroundColor(.gray.opacity(0.5))
-        }
-        .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 3)
-    }
-    
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
@@ -243,7 +161,7 @@ struct ExerciseSelectionView: View {
                 .font(.headline)
                 .foregroundColor(.primary)
             
-            Text(searchText.isEmpty ? LocalizedStringKey("No exercises match the selected filters. Try selecting different muscle groups.") : LocalizedStringKey("No exercises match your search \"\(searchText)\". Try a different search term or clear the filters."))
+            Text(LocalizedStringKey("Try adjusting your search or clear advanced filters."))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -253,59 +171,46 @@ struct ExerciseSelectionView: View {
         .padding(.bottom, 60)
     }
     
-    // MARK: - Logic (Untouched)
-    
-    private var sortedCategories: [String] {
-        catalogViewModel.combinedCatalog.keys.sorted()
-    }
-    
-    private func isCustom(name: String) -> Bool {
-        return catalogViewModel.isCustomExercise(name: name)
-    }
-    
-    private var filteredGroups: [String] {
-        if selectedGroups.isEmpty { return sortedCategories }
-        return sortedCategories.filter { selectedGroups.contains($0) }
-    }
-    
-    private func getSortedExercises(for group: String) -> [String] {
-        catalogViewModel.combinedCatalog[group]?.sorted() ?? []
-    }
-    
-    private func getFilteredExercises(for group: String) -> [String] {
-        let exercises = getSortedExercises(for: group)
-        if searchText.isEmpty { return exercises }
-        return exercises.filter { $0.localizedCaseInsensitiveContains(searchText) }
-    }
-    
-    private var hasAnyFilteredExercises: Bool {
-        for group in filteredGroups {
-            if !getFilteredExercises(for: group).isEmpty { return true }
+    // MARK: - Logic
+    private func loadExercises() async {
+            // 1. Убеждаемся, что словарь каталога загружен
+            if catalogViewModel.combinedCatalog.isEmpty {
+                await catalogViewModel.loadDictionary()
+            }
+            
+            // 2. Получаем все упражнения из JSON
+            var items = await ExerciseDatabaseService.shared.getAllExerciseItems()
+            
+            // 3. Удаляем те, которые пользователь скрыл
+            let hidden = catalogViewModel.deletedDefaultExercises
+            items.removeAll { hidden.contains($0.name) }
+            
+            // 4. Добавляем кастомные упражнения пользователя, преобразуя их в ExerciseDBItem
+            // ✅ ИСПРАВЛЕНО: Добавлены недостающие аргументы force, mechanic, level
+            let customItems = catalogViewModel.customExercises.map { custom in
+                ExerciseDBItem(
+                    id: custom.id.uuidString,
+                    name: custom.name,
+                    equipment: "bodyweight",
+                    force: "push",        // Значение по умолчанию для кастомных
+                    mechanic: "isolation", // Значение по умолчанию для кастомных
+                    primaryMuscles: custom.targetedMuscles,
+                    secondaryMuscles: nil,
+                    instructions: nil,
+                    category: custom.category,
+                    level: "beginner"      // Значение по умолчанию для кастомных
+                )
+            }
+            
+            // 5. Сортируем и сохраняем
+            self.allItems = (items + customItems).sorted { $0.name < $1.name }
         }
-        return false
-    }
     
     private func detectType(name: String, group: String) -> ExerciseType {
         if let custom = catalogViewModel.customExercises.first(where: { $0.name == name }) { return custom.type }
         if ["Running", "Cycling", "Rowing", "Jump Rope"].contains(name) { return .cardio }
         if ["Plank", "Stretching"].contains(name) { return .duration }
-        if group == "Cardio" { return .cardio }
+        if group.localizedCaseInsensitiveContains("Cardio") { return .cardio }
         return .strength
-    }
-    
-    private func getIcon(for type: ExerciseType) -> String {
-        switch type {
-        case .strength: return "dumbbell.fill"
-        case .cardio: return "figure.run"
-        case .duration: return "stopwatch.fill"
-        }
-    }
-    
-    private func getColor(for type: ExerciseType) -> Color {
-        switch type {
-        case .strength: return .blue
-        case .cardio: return .orange
-        case .duration: return .purple
-        }
     }
 }

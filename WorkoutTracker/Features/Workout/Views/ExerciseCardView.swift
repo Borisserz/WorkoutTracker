@@ -61,7 +61,8 @@ struct ExerciseCardView: View {
             EffortInputView(effort: $bindableExercise.effort)
         }
         .sheet(isPresented: $showTechniqueSheet) {
-            TechniqueSheetView(category: exercise.category)
+            // ✅ ДОБАВИЛИ exerciseName
+            TechniqueSheetView(exerciseName: exercise.name, category: exercise.category)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }

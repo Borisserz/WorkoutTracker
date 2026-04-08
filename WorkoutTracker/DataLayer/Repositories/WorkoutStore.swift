@@ -453,76 +453,71 @@ actor WorkoutStore: WorkoutStoreProtocol {
     }
 
     func checkAndGenerateDefaultPresets() async throws {
-          let defaults = UserDefaults.standard
-          let flagKey = Constants.UserDefaultsKeys.hasGeneratedDefaultPresets_v3.rawValue
-          
-          // Гарантируем, что полная база пресетов сгенерируется ровно один раз,
-          // даже если пользователь уже создал свои шаблоны.
-          guard !defaults.bool(forKey: flagKey) else { return }
-          
-          // Чистые DTO-подобные данные, независимые от контекста
-          let templates: [(name: String, icon: String, exercises: [(n: String, g: String, s: Int, r: Int, w: Double)])] = [
-              ("Push Day", "img_chest", [
-                  ("Bench Press", "Chest", 4, 8, 60.0),
-                  ("Overhead Press", "Shoulders", 3, 10, 40.0),
-                  ("Triceps Extension", "Arms", 3, 12, 20.0)
-              ]),
-              ("Pull Day", "img_back", [
-                  ("Pull-ups", "Back", 4, 8, 0.0),
-                  ("Barbell Rows", "Back", 3, 10, 50.0),
-                  ("Barbell Curl", "Arms", 3, 12, 25.0)
-              ]),
-              ("Legs Day", "img_legs", [
-                  ("Squat", "Legs", 4, 8, 80.0),
-                  ("Leg Press", "Legs", 3, 12, 120.0),
-                  ("Calf Raises", "Legs", 4, 15, 60.0)
-              ]),
-              ("Full Body", "img_default", [
-                  ("Squat", "Legs", 3, 10, 60.0),
-                  ("Bench Press", "Chest", 3, 10, 50.0),
-                  ("Deadlift", "Back", 3, 5, 80.0)
-              ])
-          ]
-          
-          // Безопасная сборка @Model прямо внутри активного контекста
-          for template in templates {
-              let preset = WorkoutPreset(
-                  id: UUID(),
-                  name: template.name,
-                  icon: template.icon,
-                  isSystem: true, // ✅ ДОБАВЛЕНО: Теперь они системные
-                  exercises: []
-              )
-              modelContext.insert(preset)
-              
-              for exData in template.exercises {
-                  // Инициализатор Exercise автоматически генерирует вложенный массив setsList
-                  let exercise = Exercise(
-                      name: exData.n,
-                      muscleGroup: exData.g,
-                      type: .strength,
-                      sets: exData.s,
-                      reps: exData.r,
-                      weight: exData.w
-                  )
-                  
-                  modelContext.insert(exercise)
-                  
-                  // Явно вставляем сеты в контекст для каскадного сохранения
-                  for set in exercise.setsList {
-                      modelContext.insert(set)
-                  }
-                  
-                  // Устанавливаем двусторонние связи
-                  exercise.preset = preset
-                  preset.exercises.append(exercise)
-              }
-          }
-          
-          // Сохраняем транзакцию и ставим флаг
-          try modelContext.save()
-          defaults.set(true, forKey: flagKey)
-      }
+            let defaults = UserDefaults.standard
+            let flagKey = Constants.UserDefaultsKeys.hasGeneratedDefaultPresets_v3.rawValue
+            
+            // Гарантируем, что полная база пресетов сгенерируется ровно один раз
+            guard !defaults.bool(forKey: flagKey) else { return }
+            
+            // ✅ ОБНОВЛЕНО: Используем ТОЧНЫЕ названия из exercises.json
+            let templates: [(name: String, icon: String, exercises: [(n: String, g: String, s: Int, r: Int, w: Double)])] = [
+                ("Push Day", "img_chest", [
+                    ("Barbell Bench Press - Medium Grip", "Chest", 4, 8, 60.0),
+                    ("Standing Military Press", "Shoulders", 3, 10, 40.0),
+                    ("Triceps Pushdown", "Arms", 3, 12, 20.0)
+                ]),
+                ("Pull Day", "img_back", [
+                    ("Pullups", "Back", 4, 8, 0.0),
+                    ("Bent Over Barbell Row", "Back", 3, 10, 50.0),
+                    ("Barbell Curl", "Arms", 3, 12, 25.0)
+                ]),
+                ("Legs Day", "img_legs", [
+                    ("Barbell Squat", "Legs", 4, 8, 80.0),
+                    ("Leg Press", "Legs", 3, 12, 120.0),
+                    ("Standing Barbell Calf Raise", "Legs", 4, 15, 60.0)
+                ]),
+                ("Full Body", "img_default", [
+                    ("Barbell Squat", "Legs", 3, 10, 60.0),
+                    ("Barbell Bench Press - Medium Grip", "Chest", 3, 10, 50.0),
+                    ("Barbell Deadlift", "Back", 3, 5, 80.0)
+                ])
+            ]
+            
+            // Безопасная сборка @Model прямо внутри активного контекста
+            for template in templates {
+                let preset = WorkoutPreset(
+                    id: UUID(),
+                    name: template.name,
+                    icon: template.icon,
+                    isSystem: true,
+                    exercises: []
+                )
+                modelContext.insert(preset)
+                
+                for exData in template.exercises {
+                    let exercise = Exercise(
+                        name: exData.n,
+                        muscleGroup: exData.g,
+                        type: .strength,
+                        sets: exData.s,
+                        reps: exData.r,
+                        weight: exData.w
+                    )
+                    
+                    modelContext.insert(exercise)
+                    for set in exercise.setsList {
+                        modelContext.insert(set)
+                    }
+                    
+                    exercise.preset = preset
+                    preset.exercises.append(exercise)
+                }
+            }
+            
+            try modelContext.save()
+            defaults.set(true, forKey: flagKey)
+        }
+    
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, workoutID: PersistentIdentifier) async throws {
         guard let workout = modelContext.model(for: workoutID) as? Workout, workout.isActive else { return }
         

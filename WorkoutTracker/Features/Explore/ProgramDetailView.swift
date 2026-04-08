@@ -255,13 +255,17 @@ struct RoutinePreviewCard: View {
                             .foregroundColor(.primary)
                         
                         Spacer()
-                        
-                        Text("\(ex.setsList.count) x \(ex.setsList.first?.reps ?? 0) reps")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
+                                                
+                                                // ✅ ИСПРАВЛЕНИЕ: Выносим логику из Text, чтобы не сводить компилятор с ума
+                                                let safeSets = ex.setsList ?? []
+                                                let repsCount = safeSets.first?.reps ?? 10
+                                                
+                                                Text("\(safeSets.count) x \(repsCount) reps")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.secondary)
+                                            }
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 12)
                     
                     // Divider except for the last item
                     if index != routine.exercises.count - 1 {

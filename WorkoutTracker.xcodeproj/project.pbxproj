@@ -129,6 +129,7 @@
 				DataLayer/Models/UserGoal.swift,
 				DataLayer/Models/WeightEntry.swift,
 				DataLayer/Models/Workout.swift,
+				Services/Domain/ExerciseDatabaseService.swift,
 			);
 			target = AC3CB9882F8176AA008A6777 /* WorkoutTrackerWatch Watch App */;
 		};

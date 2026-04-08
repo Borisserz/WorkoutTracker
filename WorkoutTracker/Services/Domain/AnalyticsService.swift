@@ -33,7 +33,12 @@ actor AnalyticsService {
                exerciseCounts[ex.exerciseName] = ex.totalCount
                if let data = ex.lastPerformanceDTO { partialLastPerformances[ex.exerciseName] = data }
            }
-           for m in mStats { stats[m.muscleName] = m.totalCount }
+        for m in mStats {
+            let broadCategory = MuscleCategoryMapper.getBroadCategory(for: m.muscleName)
+            if broadCategory != "Other" {
+                stats[broadCategory, default: 0] += m.totalCount
+            }
+        }
            
            // 2. Получаем тренировки за 3 месяца (для трендов и стрейков)
            let threeMonthsAgo = Calendar.current.date(byAdding: .month, value: -3, to: Date())!
@@ -50,7 +55,7 @@ actor AnalyticsService {
            let recoveryCutoffDate = Date().addingTimeInterval(-fullRecoveryHours * 3600)
            let recoveryWorkouts = recentWorkouts.filter { $0.date >= recoveryCutoffDate }
            
-           let recovery = calculateRecovery(hours: fullRecoveryHours, workouts: recoveryWorkouts)
+        let recovery = await calculateRecovery(hours: fullRecoveryHours, workouts: recoveryWorkouts)
            
            let sortedMuscleData = stats.map { MuscleCountDTO(muscle: $0.key, count: $0.value) }.filter { $0.count > 0 }.sorted { $0.count > $1.count }
            let totalExCount = sortedMuscleData.reduce(0) { $0 + $1.count }
@@ -102,79 +107,114 @@ actor AnalyticsService {
 
     // MARK: - Exercise History Data
     func fetchExerciseHistoryData(exerciseName: String) async -> ExerciseHistoryPayload? {
-        let bgContext = ModelContext(modelContainer)
-        let filter = #Predicate<Exercise> { ex in ex.name == exerciseName && ex.preset == nil }
-        let descriptor = FetchDescriptor<Exercise>(predicate: filter)
-        
-        guard let fetchedExercises = try? bgContext.fetch(descriptor), !fetchedExercises.isEmpty else {
-            return nil
-        }
-        
-        var foundType: ExerciseType = .strength
-        var foundCategory: ExerciseCategory = .other
-        var foundMuscle: String = "Other"
-        
-        var workoutMap: [UUID: (workout: Workout, exercises: [Exercise])] = [:]
-        
-        for ex in fetchedExercises {
-            let targetWorkout = ex.workout ?? ex.parentExercise?.workout
-            if let w = targetWorkout, w.endTime != nil {
-                if workoutMap[w.id] == nil {
-                    workoutMap[w.id] = (w, [ex])
-                } else {
-                    workoutMap[w.id]?.exercises.append(ex)
-                }
-            }
-            foundType = ex.type
-            foundCategory = ex.category
-            foundMuscle = ex.muscleGroup
-        }
-        
-        var filteredWorkouts: [Workout] = []
-        var rawDataPoints: [ExerciseHistoryDataPoint] = []
-        
-        for (_, data) in workoutMap {
-            let bestExercise = data.exercises.max { e1, e2 in
-                let max1 = e1.setsList.compactMap { $0.weight }.max() ?? 0
-                let max2 = e2.setsList.compactMap { $0.weight }.max() ?? 0
-                return max1 < max2
-            } ?? data.exercises.first!
-            
-            filteredWorkouts.append(data.workout)
-            
-            var rawValue: Double = 0.0
-            switch foundType {
-            case .strength:
-                rawValue = bestExercise.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0.0
-            case .cardio:
-                rawValue = bestExercise.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
-            case .duration:
-                let sec = bestExercise.setsList.filter { $0.isCompleted }.compactMap { $0.time }.reduce(0, +)
-                rawValue = Double(sec)
-            }
-            
-            if rawValue > 0 {
-                // ИСПРАВЛЕНИЕ: Убрали 'id: UUID()' из инициализатора
-                rawDataPoints.append(ExerciseHistoryDataPoint(date: data.workout.date, value: rawValue, rawWorkoutID: data.workout.persistentModelID))
-            }
-        }
-        
-        let trend = getExerciseTrends(workouts: filteredWorkouts, period: .month).first(where: { $0.exerciseName == exerciseName })
-        let forecast = getProgressForecast(workouts: filteredWorkouts).first(where: { $0.exerciseName == exerciseName })
-        
-        var sortedPoints = rawDataPoints
-        sortedPoints.sort { $0.date < $1.date }
-        
-        return ExerciseHistoryPayload(
-            type: foundType,
-            category: foundCategory,
-            muscleGroup: foundMuscle,
-            dataPoints: sortedPoints,
-            trend: trend,
-            forecast: forecast
-        )
-    }
-
+           let bgContext = ModelContext(modelContainer)
+           let filter = #Predicate<Exercise> { ex in ex.name == exerciseName && ex.preset == nil }
+           let descriptor = FetchDescriptor<Exercise>(predicate: filter)
+           
+           guard let fetchedExercises = try? bgContext.fetch(descriptor), !fetchedExercises.isEmpty else {
+               return nil
+           }
+           
+           var foundType: ExerciseType = .strength
+           var foundCategory: ExerciseCategory = .other
+           var foundMuscle: String = "Other"
+           
+           var workoutMap: [UUID: (workout: Workout, exercises: [Exercise])] = [:]
+           
+           for ex in fetchedExercises {
+               let targetWorkout = ex.workout ?? ex.parentExercise?.workout
+               if let w = targetWorkout, w.endTime != nil {
+                   if workoutMap[w.id] == nil {
+                       workoutMap[w.id] = (w, [ex])
+                   } else {
+                       workoutMap[w.id]?.exercises.append(ex)
+                   }
+               }
+               foundType = ex.type
+               foundCategory = ex.category
+               foundMuscle = ex.muscleGroup
+           }
+           
+           var filteredWorkouts: [Workout] = []
+           var rawDataPoints: [ExerciseHistoryDataPoint] = []
+           
+           // ✅ ДОБАВЛЕНО: Переменные для отслеживания глобальных рекордов
+           var globalMaxSetReps = 0
+           var globalMaxWorkoutReps = 0
+           var globalMaxSetVolume = 0.0
+           var globalMaxWorkoutVolume = 0.0
+           
+           for (_, data) in workoutMap {
+               let bestExercise = data.exercises.max { e1, e2 in
+                   let max1 = e1.setsList.compactMap { $0.weight }.max() ?? 0
+                   let max2 = e2.setsList.compactMap { $0.weight }.max() ?? 0
+                   return max1 < max2
+               } ?? data.exercises.first!
+               
+               filteredWorkouts.append(data.workout)
+               
+               var currentWorkoutReps = 0
+                        var currentWorkoutVolume = 0.0
+                        
+                        for exercise in data.exercises {
+                            let validSets = exercise.setsList.filter { $0.isCompleted && $0.type != .warmup }
+                            
+                            for set in validSets {
+                                let r = set.reps ?? 0
+                                let w = set.weight ?? 0.0
+                                let v = w * Double(r)
+                                
+                                currentWorkoutReps += r
+                                currentWorkoutVolume += v
+                                
+                                // 👇 ИСПРАВЛЕНО: убрано лишнее слово Set
+                                if r > globalMaxSetReps { globalMaxSetReps = r }
+                                if v > globalMaxSetVolume { globalMaxSetVolume = v }
+                            }
+                        }
+               
+               if currentWorkoutReps > globalMaxWorkoutReps { globalMaxWorkoutReps = currentWorkoutReps }
+               if currentWorkoutVolume > globalMaxWorkoutVolume { globalMaxWorkoutVolume = currentWorkoutVolume }
+               
+               var rawValue: Double = 0.0
+               switch foundType {
+               case .strength:
+                   rawValue = bestExercise.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0.0
+               case .cardio:
+                   rawValue = bestExercise.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
+               case .duration:
+                   let sec = bestExercise.setsList.filter { $0.isCompleted }.compactMap { $0.time }.reduce(0, +)
+                   rawValue = Double(sec)
+               }
+               
+               if rawValue > 0 {
+                   rawDataPoints.append(ExerciseHistoryDataPoint(date: data.workout.date, value: rawValue, rawWorkoutID: data.workout.persistentModelID))
+               }
+           }
+           
+           let trend = getExerciseTrends(workouts: filteredWorkouts, period: .month).first(where: { $0.exerciseName == exerciseName })
+           let forecast = getProgressForecast(workouts: filteredWorkouts).first(where: { $0.exerciseName == exerciseName })
+           
+           var sortedPoints = rawDataPoints
+           sortedPoints.sort { $0.date < $1.date }
+           
+           let recordsDTO = ExerciseRecordsDTO(
+               maxSetReps: globalMaxSetReps,
+               maxWorkoutReps: globalMaxWorkoutReps,
+               maxSetVolume: globalMaxSetVolume,
+               maxWorkoutVolume: globalMaxWorkoutVolume
+           )
+           
+           return ExerciseHistoryPayload(
+               type: foundType,
+               category: foundCategory,
+               muscleGroup: foundMuscle,
+               dataPoints: sortedPoints,
+               trend: trend,
+               forecast: forecast,
+               records: recordsDTO // ✅ ДОБАВЛЕНО
+           )
+       }
     // MARK: - Rebuild All Stats (Batching)
     func rebuildAllStats() async {
         let bgContext = ModelContext(modelContainer)
@@ -700,7 +740,7 @@ actor AnalyticsService {
         return comp
     }
     
-    func calculateRecovery(hours: Double, workouts: [Workout]) -> [MuscleRecoveryStatus] {
+    func calculateRecovery(hours: Double, workouts: [Workout]) async -> [MuscleRecoveryStatus] {
             var rawFatigueMap: [String: Double] = [:]
             
             for workout in workouts.filter({ !$0.isActive }).sorted(by: { $0.date < $1.date }) {
@@ -713,13 +753,21 @@ actor AnalyticsService {
                     for ex in targetExercises {
                         var initialFatigue = Double(ex.effort) / 10.0
                         
-                        // 🚀 ОПТИМИЗАЦИЯ N+1: Берем кэшированное количество сетов (не дергая связи!)
                         let completedSets = ex.setsCount
-                        
                         if completedSets < 3 { initialFatigue *= 0.7 }
+                        
                         let currentFatigue = max(0.0, initialFatigue - timeDecay)
-                        for slug in MuscleMapping.getMuscles(for: ex.name, group: ex.muscleGroup) {
-                            rawFatigueMap[slug] = max(rawFatigueMap[slug] ?? 0.0, currentFatigue)
+                        
+                        // ✅ ИСПОЛЬЗУЕМ НОВУЮ JSON БАЗУ ЧЕРЕЗ АКТОР
+                        let activations = await ExerciseDatabaseService.shared.getMuscleActivations(
+                            for: ex.name,
+                            fallbackGroup: ex.muscleGroup
+                        )
+                        
+                        for activation in activations {
+                            // Применяем коэффициент (1.0 для Primary, 0.4 для Secondary)
+                            let appliedFatigue = currentFatigue * activation.multiplier
+                            rawFatigueMap[activation.slug] = max(rawFatigueMap[activation.slug] ?? 0.0, appliedFatigue)
                         }
                     }
                 }
@@ -734,8 +782,63 @@ actor AnalyticsService {
             }
         }
     
+    
+  
+    func fetchTrainingStyleStats(for interval: DateInterval?, workouts: [Workout]) async -> TrainingStyleDTO {
+           let validWorkouts = interval != nil ? workouts.filter { interval!.contains($0.date) } : workouts
+           
+           var compound = 0
+           var isolation = 0
+           var equipmentStats: [EquipmentCategory: Int] = [.freeWeights: 0, .machines: 0, .bodyweight: 0, .other: 0]
+           
+           let dbItems = await ExerciseDatabaseService.shared.getAllExerciseItems()
+           let dbDict = Dictionary(uniqueKeysWithValues: dbItems.map { ($0.name.lowercased(), $0) })
+           let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+           
+           for workout in validWorkouts {
+               for exercise in workout.exercises {
+                   let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                   for sub in targets where sub.type == .strength {
+                       let completedSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
+                       guard completedSets > 0 else { continue }
+                       
+                       let dbItem = dbDict[sub.name.lowercased()]
+                       
+                       // Mechanic Aggregation
+                       let mechanic = dbItem?.mechanic?.lowercased() ?? "compound"
+                       if mechanic == "isolation" {
+                           isolation += completedSets
+                       } else {
+                           compound += completedSets
+                       }
+                       
+                       // Equipment Aggregation
+                       let eq = dbItem?.equipment?.lowercased() ?? "bodyweight"
+                       let category: EquipmentCategory
+                       
+                       if eq.contains("barbell") || eq.contains("dumbbell") || eq.contains("kettlebell") {
+                           category = .freeWeights
+                       } else if eq.contains("machine") || eq.contains("cable") || eq.contains("band") {
+                           category = .machines
+                       } else if eq.contains("body") || eq == "bodyweight" {
+                           category = .bodyweight
+                       } else {
+                           category = .other
+                       }
+                       
+                       equipmentStats[category, default: 0] += completedSets
+                   }
+               }
+           }
+           
+           return TrainingStyleDTO(
+               compoundSets: compound,
+               isolationSets: isolation,
+               equipmentDistribution: equipmentStats
+           )
+       }
+ 
 
-    // В файле AnalyticsService.swift, внутри `actor AnalyticsService`
 
     func finishWorkoutAndCalculateAchievements(workoutID: PersistentIdentifier) async throws -> (newUnlocks: [Achievement], totalCount: Int) {
         
@@ -802,7 +905,10 @@ actor AnalyticsService {
                     for ex in targets where ex.type == .strength {
                         let completedSets = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
                         if completedSets > 0 {
-                            muscleSets[ex.muscleGroup, default: 0] += completedSets
+                            let broadCategory = MuscleCategoryMapper.getBroadCategory(for: ex.muscleGroup)
+                            if broadCategory != "Other" {
+                                muscleSets[broadCategory, default: 0] += completedSets
+                            }
                         }
                     }
                 }
@@ -853,10 +959,14 @@ actor AnalyticsService {
                     let targets = ex.isSuperset ? ex.subExercises : [ex]
                     for sub in targets where sub.type == .strength {
                         let sets = sub.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
-                        if sets > 0 { dailySets[sub.muscleGroup, default: 0] += sets }
+                        if sets > 0 {
+                            let broadCategory = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
+                            if broadCategory != "Other" {
+                                dailySets[broadCategory, default: 0] += sets
+                            }
+                        }
                     }
                 }
-                
                 for (group, count) in dailySets {
                     data.append(SetsOverTimePoint(date: calendar.startOfDay(for: workout.date), muscleGroup: group, sets: count))
                 }

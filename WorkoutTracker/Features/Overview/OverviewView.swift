@@ -362,17 +362,25 @@ struct OverviewView: View {
                 )
                 .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
             } else {
-                // Фолбэк, если AI не нашел явного паттерна (классическая кнопка)
-                Button(action: {
-                    do {
-                        let generated = try WorkoutGenerationService.generateFreshWorkout(
-                            recoveryStatus: dashboardViewModel.recoveryStatus, catalog: Exercise.catalog
-                        )
-                        router.present(.freshWorkout(generated))
-                    } catch {
-                        di.appState.showError(title: String(localized: "Too Tired!"), message: error.localizedDescription)
-                    }
-                }) {
+                           // Фолбэк, если AI не нашел явного паттерна (классическая кнопка)
+                           Button(action: {
+                               Task { // ✅ Обернули в Task, так как обращаемся к актору
+                                   do {
+                                       let currentCatalog = await ExerciseDatabaseService.shared.getCatalog()
+                                       let generated = try WorkoutGenerationService.generateFreshWorkout(
+                                           recoveryStatus: dashboardViewModel.recoveryStatus,
+                                           catalog: currentCatalog // ✅ ИСПОЛЬЗУЕМ JSON КАТАЛОГ
+                                       )
+                                       await MainActor.run {
+                                           router.present(.freshWorkout(generated))
+                                       }
+                                   } catch {
+                                       await MainActor.run {
+                                           di.appState.showError(title: String(localized: "Too Tired!"), message: error.localizedDescription)
+                                       }
+                                   }
+                               }
+                           }) {
                     HStack(spacing: 16) {
                         ZStack {
                             Circle().fill(Color.yellow.opacity(0.2)).frame(width: 44, height: 44)

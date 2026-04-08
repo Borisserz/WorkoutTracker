@@ -254,7 +254,115 @@ struct MockProgramCatalog {
                         ])
                     ]
                 ),
-                
+        WorkoutProgramDefinition(
+                 title: "Classic 3-Day Mass Split",
+                 description: "A time-tested 3-day split (Back/Biceps, Legs/Shoulders, Chest/Triceps) perfect for building foundational mass and strength.",
+                 level: .beginner,
+                 goal: .buildMuscle,
+                 equipment: .fullGym,
+                 gradientColors: [Color.blue, Color.cyan],
+                 isSingleRoutine: false,
+                 routines: [
+                     routine("Monday: Back & Biceps", icon: "img_back", exercises: [
+                         ex("Bent Over Barbell Row", "Back", 3, 8),
+                         ex("Pullups", "Back", 3, 8),
+                         ex("Straight-Arm Pulldown", "Back", 3, 8),
+                         ex("Barbell Curl", "Arms", 3, 8),
+                         ex("Hammer Curls", "Arms", 3, 10)
+                     ]),
+                     routine("Wednesday: Legs & Shoulders", icon: "img_legs", exercises: [
+                         ex("Barbell Squat", "Legs", 3, 8),
+                         ex("Leg Press", "Legs", 3, 8),
+                         ex("Lying Leg Curls", "Legs", 3, 8),
+                         ex("Smith Machine Overhead Shoulder Press", "Shoulders", 3, 8),
+                         ex("Side Lateral Raise", "Shoulders", 3, 10),
+                         ex("Seated Bent-Over Rear Delt Raise", "Shoulders", 3, 10)
+                     ]),
+                     routine("Friday: Chest & Triceps", icon: "img_chest", exercises: [
+                         ex("Barbell Bench Press - Medium Grip", "Chest", 3, 8),
+                         ex("Incline Dumbbell Flyes", "Chest", 3, 8),
+                         ex("Cable Crossover", "Chest", 3, 10),
+                         ex("Close-Grip Barbell Bench Press", "Arms", 3, 8),
+                         ex("Triceps Pushdown", "Arms", 3, 10)
+                     ])
+                 ]
+             ),
+             
+             // MARK: - 2. POWER & PUMP: PHASE 1 (Из Excel Скриншота 1)
+             WorkoutProgramDefinition(
+                 title: "Power & Pump: Phase 1",
+                 description: "Advanced periodization. Heavy strength focus on Chest, Legs, and Shoulders. Hypertrophy pump for Back and Arms.",
+                 level: .intermediate,
+                 goal: .buildMuscle,
+                 equipment: .fullGym,
+                 gradientColors: [Color.purple, Color.indigo],
+                 isSingleRoutine: false,
+                 routines: [
+                     routine("Day 1: Chest (Power) & Back (Pump)", icon: "img_chest2", exercises: [
+                         ex("Barbell Incline Bench Press - Medium Grip", "Chest", 4, 8),
+                         ex("Dumbbell Bench Press", "Chest", 3, 10),
+                         ex("Low Cable Crossover", "Chest", 3, 12),
+                         ex("Wide-Grip Pulldown Behind The Neck", "Back", 3, 12),
+                         ex("Underhand Cable Pulldowns", "Back", 3, 15)
+                     ]),
+                     routine("Day 2: Legs (Power)", icon: "img_legs2", exercises: [
+                         ex("Barbell Squat", "Legs", 3, 10),
+                         ex("Narrow Stance Leg Press", "Legs", 3, 10),
+                         ex("Stiff-Legged Barbell Deadlift", "Legs", 3, 10),
+                         ex("Seated Leg Curl", "Legs", 3, 10),
+                         ex("Standing Barbell Calf Raise", "Legs", 3, 10),
+                         ex("Barbell Shrug", "Shoulders", 3, 10)
+                     ]),
+                     routine("Day 3: Shoulders (Power) & Arms (Pump)", icon: "img_shoulders", exercises: [
+                         ex("Seated Dumbbell Press", "Shoulders", 3, 10),
+                         ex("Seated Bent-Over Rear Delt Raise", "Shoulders", 4, 8),
+                         ex("Dumbbell Incline Row", "Back", 4, 8),
+                         ex("Triceps Pushdown - Rope Attachment", "Arms", 3, 12),
+                         ex("Triceps Overhead Extension with Rope", "Arms", 3, 12),
+                         ex("Cross Body Hammer Curl", "Arms", 3, 12),
+                         ex("High Cable Curls", "Arms", 3, 12)
+                     ])
+                 ]
+             ),
+             
+             // MARK: - 3. POWER & PUMP: PHASE 2 (Из Excel Скриншота 2)
+             WorkoutProgramDefinition(
+                 title: "Power & Pump: Phase 2",
+                 description: "Advanced periodization. Heavy strength focus on Back and Arms. Hypertrophy pump for Chest, Legs, and Shoulders.",
+                 level: .advanced,
+                 goal: .buildMuscle,
+                 equipment: .fullGym,
+                 gradientColors: [Color.orange, Color.red],
+                 isSingleRoutine: false,
+                 routines: [
+                     routine("Day 1: Back (Power) & Chest (Pump)", icon: "img_back2", exercises: [
+                         ex("Bent Over Two-Dumbbell Row", "Back", 3, 10),
+                         ex("Pullups", "Back", 4, 8),
+                         ex("Reverse Grip Bent-Over Rows", "Back", 3, 10),
+                         ex("Dumbbell Bench Press", "Chest", 3, 12),
+                         ex("Incline Dumbbell Flyes", "Chest", 3, 15)
+                     ]),
+                     routine("Day 2: Legs (Pump)", icon: "img_legs", exercises: [
+                         ex("Leg Press", "Legs", 3, 12),
+                         ex("Leg Extensions", "Legs", 3, 12),
+                         ex("Stiff-Legged Dumbbell Deadlift", "Legs", 3, 12),
+                         ex("Lying Leg Curls", "Legs", 3, 12),
+                         ex("Seated Calf Raise", "Legs", 3, 12),
+                         ex("Dumbbell Shrug", "Shoulders", 3, 12)
+                     ]),
+                     routine("Day 3: Arms (Power) & Shoulders (Pump)", icon: "img_arms", exercises: [
+                         ex("Close-Grip Barbell Bench Press", "Arms", 4, 8),
+                         ex("EZ-Bar Skullcrusher", "Arms", 3, 10),
+                         ex("Seated Triceps Press", "Arms", 3, 10),
+                         ex("Barbell Curl", "Arms", 4, 8),
+                         ex("Hammer Curls", "Arms", 3, 10),
+                         ex("Machine Preacher Curls", "Arms", 3, 10),
+                         ex("Side Lateral Raise", "Shoulders", 3, 15),
+                         ex("Seated Bent-Over Rear Delt Raise", "Shoulders", 3, 15)
+                     ])
+                 ]
+             ),
+             
            
         
         // MARK: - SINGLE ROUTINES
@@ -335,6 +443,8 @@ struct MockProgramCatalog {
             ]
         )
     ]
+        
+    
     
     // MARK: - Builders
     private static func routine(_ name: String, icon: String, exercises: [ExerciseDTO]) -> WorkoutPresetDTO {

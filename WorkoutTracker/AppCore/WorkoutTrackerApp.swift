@@ -106,13 +106,16 @@ struct WorkoutTrackerApp: App {
     }
     
     @MainActor
-     private func setupDependencies() async {
-         do {
-             let schema = Schema([
-                 Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
-                 ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
-                 AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self 
-             ])
+    private func setupDependencies() async {
+          do {
+              // ✅ УБИРАЕМ Task.detached. Ждем загрузки базы (парсинг локального JSON занимает миллисекунды)
+              await ExerciseDatabaseService.shared.loadDatabase()
+              
+              let schema = Schema([
+                  Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
+                  ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
+                  AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
+              ])
              
              let modelConfiguration = ModelConfiguration(
                  schema: schema,
@@ -134,15 +137,16 @@ struct WorkoutTrackerApp: App {
              self.catalogViewModel = di.makeCatalogViewModel()
              self.profileViewModel = di.makeProfileViewModel()
              
-             self.diContainer = di
-             
-             // ❌ УДАЛЕНО: Запрос HealthKit при старте приложения
-             
-         } catch {
-             self.databaseLoadError = error
-             print("❌ SwiftData Initialization Failed: \(error)")
-         }
-     }
+              self.diContainer = di
+                      
+                      // 👉 ДОБАВИТЬ ЭТУ СТРОКУ: Подгружаем распарсенный JSON во ViewModel
+                      await self.catalogViewModel?.loadDictionary()
+                      
+                  } catch {
+                      self.databaseLoadError = error
+                      print("❌ SwiftData Initialization Failed: \(error)")
+                  }
+              }
     
     struct DatabaseErrorView: View {
         let error: Error?

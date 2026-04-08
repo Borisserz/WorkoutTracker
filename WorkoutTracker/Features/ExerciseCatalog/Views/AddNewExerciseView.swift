@@ -7,6 +7,7 @@
 //  Экран создания нового (пользовательского) упражнения.
 //  Позволяет задать имя, категорию, тип и отметить задействованные мышцы для Heatmap.
 //
+// FILE: WorkoutTracker/Features/ExerciseCatalog/Views/AddNewExerciseView.swift
 
 internal import SwiftUI
 import SwiftData
@@ -14,18 +15,17 @@ import SwiftData
 struct AddNewExerciseView: View {
     
     // MARK: - Environment & State
-    
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(CatalogViewModel.self) private var catalogViewModel
     
-    // Данные формы
+    // ✅ 1. Добавляем стейт для категорий
+    @State private var categories: [String] = []
+    
     @State private var name: String = ""
     @State private var selectedCategory: String = "Chest"
     @State private var selectedType: ExerciseType = .strength
-    @State private var selectedMuscles: Set<String> = [] // Храним выбранные слоги (slugs)
-    
-    // MARK: - Constants / Data Source
+    @State private var selectedMuscles: Set<String> = []
     
     // Словарь: Отображаемое имя -> Технический слаг (slug)
     private let availableMuscles: [(name: String, slug: String)] = [
@@ -37,22 +37,41 @@ struct AddNewExerciseView: View {
         ("Quads", "quadriceps"), ("Hamstrings", "hamstring"), ("Glutes", "gluteal"), ("Calves", "calves")
     ]
     
-    private var categories: [String] {
-        Exercise.catalog.keys.sorted()
-    }
-    
-    // MARK: - Body
-    
+
+
     var body: some View {
         NavigationStack {
             Form {
-                // 1. Основная информация (Имя, Категория, Тип)
-                basicInfoSection
+                // 1. Основная информация
+                Section(header: Text(LocalizedStringKey("Basic Info"))) {
+                    TextField(LocalizedStringKey("Exercise Name"), text: $name)
+                    
+                    // ✅ 2. Пикер теперь использует локальный массив categories
+                    Picker(LocalizedStringKey("Category"), selection: $selectedCategory) {
+                        if categories.isEmpty {
+                            Text("Loading...").tag("Chest")
+                        } else {
+                            ForEach(categories, id: \.self) { cat in
+                                Text(cat).tag(cat)
+                            }
+                        }
+                    }
+                }
                 
-                // 2. Выбор мышц (Список с галочками)
+                // 2. Выбор мышц
                 muscleSelectionSection
             }
             .navigationTitle(LocalizedStringKey("New Exercise"))
+            // ✅ 3. Загружаем категории при открытии экрана
+            .task {
+                let catalog = await ExerciseDatabaseService.shared.getCatalog()
+                self.categories = catalog.keys.sorted()
+                
+                // Убеждаемся, что выбранная категория существует в списке
+                if !categories.isEmpty && !categories.contains(selectedCategory) {
+                    selectedCategory = categories.first ?? "Chest"
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Cancel")) { dismiss() }
@@ -61,12 +80,14 @@ struct AddNewExerciseView: View {
                     Button(LocalizedStringKey("Save")) {
                         saveExercise()
                     }
-                    .disabled(name.isEmpty || selectedMuscles.isEmpty)
+                    .disabled(name.isEmpty || selectedMuscles.isEmpty || categories.isEmpty)
                 }
             }
         }
     }
     
+
+
     // MARK: - View Components
     
     private var basicInfoSection: some View {
@@ -141,3 +162,4 @@ struct AddNewExerciseView: View {
         }
     }
 }
+

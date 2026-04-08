@@ -23,7 +23,7 @@ final class InWorkoutAICoachViewModel {
     private let aiLogicService: AILogicService
     private let exerciseCatalogService: ExerciseCatalogService
     private let appState: AppStateManager
-
+    
     // MARK: - Initializer
     init(
         workoutService: WorkoutService,
@@ -113,7 +113,12 @@ final class InWorkoutAICoachViewModel {
         let workoutContextString = "Current exercise: \(activeEx.name). Sets remaining: \(remainingSetsCount). Last used weight: \(currentWeight) kg."
         
         let customExercises = (try? await exerciseCatalogService.fetchCustomExercises())?.map { $0.name } ?? []
-        let catalogExercises = Exercise.catalog[activeEx.muscleGroup] ?? []
+        let catalog = await ExerciseDatabaseService.shared.getCatalog()
+
+        // Получаем широкую категорию, так как каталог сгруппирован по "Chest", "Back" и т.д.
+        let broadCategory = MuscleCategoryMapper.getBroadCategory(for: activeEx.muscleGroup)
+        let catalogExercises = catalog[broadCategory] ?? []
+
         let fullCatalog = Array(Set(catalogExercises + customExercises)).joined(separator: ", ")
         
         return (workout: workoutContextString, catalog: fullCatalog)

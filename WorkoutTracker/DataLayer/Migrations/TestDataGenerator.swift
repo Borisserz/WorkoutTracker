@@ -11,7 +11,7 @@ actor TestDataGenerator {
     
     // MARK: - Configuration
     
-    private let exerciseCatalog: [String: [String]] = Exercise.catalog
+    private var exerciseCatalog: [String: [String]] = [:]
     
     private let workoutIcons = [
         "img_chest", "img_chest2", "img_back", "img_back2",
@@ -21,13 +21,22 @@ actor TestDataGenerator {
     // MARK: - Main Generation Methods
     
     func generateAllData() async {
+        // 1. Загружаем новый JSON каталог
+        self.exerciseCatalog = await ExerciseDatabaseService.shared.getCatalog()
+        
+        if exerciseCatalog.isEmpty {
+            await ExerciseDatabaseService.shared.loadDatabase()
+            self.exerciseCatalog = await ExerciseDatabaseService.shared.getCatalog()
+        }
+        
         await clearAllDataAsync()
         
+        // 2. Устанавливаем новые даты: 1 января 2025 - 7 апреля 2026
         var components = DateComponents()
-        components.year = 2021; components.month = 1; components.day = 1
+        components.year = 2025; components.month = 1; components.day = 1
         guard let startDate = Calendar.current.date(from: components) else { return }
         
-        components.year = 2026; components.month = 3; components.day = 1
+        components.year = 2026; components.month = 4; components.day = 7
         guard let endDate = Calendar.current.date(from: components) else { return }
         
         await generateWorkouts(from: startDate, to: endDate)
@@ -49,6 +58,7 @@ actor TestDataGenerator {
             print("Fallback deletion error: \(error)")
         }
     }
+    
     // MARK: - Workouts Generation
     
     private func generateWorkouts(from startDate: Date, to endDate: Date) async {
@@ -58,6 +68,7 @@ actor TestDataGenerator {
         
         while currentDate <= endDate {
             let weekday = calendar.component(.weekday, from: currentDate)
+            // Тренировки 4 раза в неделю
             let isWorkoutDay = (weekday == 2 || weekday == 4 || weekday == 6 || (weekday == 7 && workoutNumber % 4 == 0))
             
             if isWorkoutDay {
@@ -91,17 +102,16 @@ actor TestDataGenerator {
         }
         
         try? modelContext.save()
-        print("✅ Сгенерировано \(workoutNumber) разнообразных тренировок.")
+        print("✅ Сгенерировано \(workoutNumber) тренировок из нового JSON.")
     }
     
     // MARK: - Weights Generation
     
     private func generateWeights(from startDate: Date, to endDate: Date) async {
-        let startWeight = 95.0, targetWeight = 78.0
+        let startWeight = 85.0, targetWeight = 75.0
         let totalDays = Calendar.current.dateComponents([.day], from: startDate, to: endDate).day ?? 1
         var currentDate = startDate
         var dayOffset = 0
-        
         var count = 0
         
         while currentDate <= endDate {
@@ -118,7 +128,7 @@ actor TestDataGenerator {
             modelContext.insert(WeightEntry(date: currentDate, weight: currentWeight))
             count += 1
             
-            let jump = Int.random(in: 2...5)
+            let jump = Int.random(in: 3...7)
             dayOffset += jump
             if let nextDate = Calendar.current.date(byAdding: .day, value: jump, to: currentDate) {
                 currentDate = nextDate
@@ -126,7 +136,7 @@ actor TestDataGenerator {
         }
         
         try? modelContext.save()
-        print("✅ Сгенерировано \(count) записей о весе.")
+        print("✅ Сгенерировано \(count) записей о весе тела.")
     }
     
     // MARK: - Workout Generation Details
@@ -159,11 +169,12 @@ actor TestDataGenerator {
         let type = determineWorkoutType(index: workoutIndex)
         var exercises = generateExercises(for: type, workoutIndex: workoutIndex)
         
+        // Создаем суперсеты с шансом 25%, если упражнений достаточно
         if Bool.random() && Bool.random() && exercises.count >= 3 {
             exercises = createRandomSuperset(from: exercises)
         }
         
-        let duration = Int.random(in: 40...100) * 60
+        let duration = Int.random(in: 40...90) * 60
         let endTime = date.addingTimeInterval(TimeInterval(duration))
         let icon = workoutIcons[workoutIndex % workoutIcons.count]
         
@@ -223,6 +234,10 @@ actor TestDataGenerator {
             let filtered = pool.filter { $0.localizedCaseInsensitiveContains(filter) || $0.localizedCaseInsensitiveContains(filter.replacingOccurrences(of: "p", with: "ps")) || $0.localizedCaseInsensitiveContains("extension") }
             if !filtered.isEmpty { pool = filtered }
         }
+        
+        // Если пул пустой (что маловероятно с новым JSON), ставим заглушку
+        if pool.isEmpty { pool = ["\(group) Exercise"] }
+        
         var result: [Exercise] = []
         let shuffled = pool.shuffled()
         for i in 0..<min(count, shuffled.count) {
@@ -232,16 +247,16 @@ actor TestDataGenerator {
     }
     
     private func fetchCardio(count: Int, index: Int) -> [Exercise] {
-        let pool = (exerciseCatalog["Cardio"] ?? []).shuffled()
-        var result: [Exercise] = []
-        for i in 0..<min(count, pool.count) {
-            result.append(buildCardio(name: pool[i], index: index))
+            // ИСПРАВЛЕНИЕ: Точные имена из JSON для кардио
+            let pool = (exerciseCatalog["Cardio"] ?? ["Running, Treadmill", "Bicycling", "Rowing, Stationary"]).shuffled()
+            var result: [Exercise] = []
+            for i in 0..<min(count, pool.count) {
+                result.append(buildCardio(name: pool[i], index: index))
+            }
+            return result
         }
-        return result
-    }
-    
     private func fetchDuration(group: String, count: Int, index: Int) -> [Exercise] {
-        let pool = (exerciseCatalog[group] ?? []).shuffled()
+        let pool = (exerciseCatalog[group] ?? ["Plank"]).shuffled()
         var result: [Exercise] = []
         for i in 0..<min(count, pool.count) {
             result.append(buildDuration(name: pool[i], group: group, index: index))
@@ -252,58 +267,72 @@ actor TestDataGenerator {
     private func buildStrength(name: String, group: String, index: Int) -> Exercise {
         let baseGroupWeight: Double
         switch group {
-        case "Legs": baseGroupWeight = 70.0
-        case "Back": baseGroupWeight = 55.0
-        case "Chest": baseGroupWeight = 50.0
-        case "Shoulders": baseGroupWeight = 25.0
-        case "Arms": baseGroupWeight = 15.0
-        default: baseGroupWeight = 20.0
+        case "Legs": baseGroupWeight = 60.0
+        case "Back": baseGroupWeight = 50.0
+        case "Chest": baseGroupWeight = 45.0
+        case "Shoulders": baseGroupWeight = 20.0
+        case "Arms": baseGroupWeight = 12.0
+        default: baseGroupWeight = 15.0
         }
+        
         var actualWeight = baseGroupWeight
         var actualReps = 10
         let n = name.lowercased()
         
-        if n.contains("squat") || n.contains("deadlift") || n.contains("press") {
-            actualWeight *= 1.4
+        // Корректируем базовый вес исходя из названия упражнения (даже для нового JSON)
+        if n.contains("squat") || n.contains("deadlift") || n.contains("bench press") {
+            actualWeight *= 1.5
             actualReps = Int.random(in: 5...8)
         } else if n.contains("curl") || n.contains("raise") || n.contains("fly") || n.contains("extension") {
-            actualWeight *= 0.6
+            actualWeight *= 0.5
             actualReps = Int.random(in: 10...15)
+        } else if n.contains("body") || n.contains("jump") || n.contains("push-up") || n.contains("chin-up") {
+            actualWeight = 0.0 // Упражнения с собственным весом
         }
         
-        let cappedIndex = min(Double(index), 600.0)
-        let fatigueWave = sin(cappedIndex / 15.0) * 0.1
-        let progressFactor = 1.0 + (cappedIndex / 600.0) + fatigueWave
-        let finalWeight = actualWeight * progressFactor + Double.random(in: -2...4)
-        let setsCount = Int.random(in: 3...5)
+        // Математика прогрессии (настроена на 15 месяцев / ~200 тренировок)
+        let maxWorkouts = 250.0
+        let cappedIndex = min(Double(index), maxWorkouts)
+        
+        // Волнообразная прогрессия с общим трендом вверх (на 60% рост силы за год)
+        let fatigueWave = sin(cappedIndex / 8.0) * 0.1
+        let progressFactor = 1.0 + (cappedIndex / maxWorkouts) * 0.6 + fatigueWave
+        
+        let finalWeight = actualWeight == 0 ? 0 : max(2.5, (actualWeight * progressFactor + Double.random(in: -2...2)))
+        
+        // Округляем до 2.5 кг
+        let roundedWeight = round(finalWeight / 2.5) * 2.5
+        
+        let setsCount = Int.random(in: 3...4)
         var setsList: [WorkoutSet] = []
         
         for i in 1...setsCount {
             let isWarmup = (i == 1 && setsCount > 3)
             let isFailure = (i == setsCount && Bool.random())
             let setType: SetType = isWarmup ? .warmup : (isFailure ? .failure : .normal)
-            let setW = isWarmup ? finalWeight * 0.6 : finalWeight + Double.random(in: -2...2)
-            let setR = isWarmup ? actualReps + 4 : actualReps + Int.random(in: -2...1)
             
-            setsList.append(WorkoutSet(index: i, weight: max(2.5, setW), reps: max(1, setR), isCompleted: true, type: setType))
+            let setW = isWarmup ? roundedWeight * 0.6 : roundedWeight
+            let setR = isWarmup ? actualReps + 4 : actualReps + Int.random(in: -1...2)
+            
+            setsList.append(WorkoutSet(index: i, weight: setW > 0 ? setW : nil, reps: max(1, setR), isCompleted: true, type: setType))
         }
         let effort = Int.random(in: 6...10)
-        return Exercise(name: name, muscleGroup: group, type: .strength, sets: setsCount, reps: actualReps, weight: finalWeight, effort: effort, setsList: setsList, isCompleted: true)
+        return Exercise(name: name, muscleGroup: group, type: .strength, sets: setsCount, reps: actualReps, weight: roundedWeight, effort: effort, setsList: setsList, isCompleted: true)
     }
     
     private func buildCardio(name: String, index: Int) -> Exercise {
-        let distance = 3.0 + (Double(index) / 200.0) + Double.random(in: -1...2)
-        let timeMinutes = Int(15 + (distance * 5) + Double.random(in: -5...5))
+        let distance = 2.0 + (Double(index) / 100.0) + Double.random(in: -0.5...1.5)
+        let timeMinutes = Int(10 + (distance * 6) + Double.random(in: -3...3))
         let set = WorkoutSet(index: 1, distance: max(1.0, distance), time: timeMinutes * 60, isCompleted: true, type: .normal)
         return Exercise(name: name, muscleGroup: "Cardio", type: .cardio, sets: 1, reps: 0, weight: 0, distance: max(1.0, distance), timeSeconds: timeMinutes * 60, effort: Int.random(in: 5...9), setsList: [set], isCompleted: true)
     }
     
     private func buildDuration(name: String, group: String, index: Int) -> Exercise {
-        let time = 45 + Int.random(in: -15...45)
+        let time = 30 + Int.random(in: -10...30)
         let setsCount = Int.random(in: 2...4)
         var setsList: [WorkoutSet] = []
         for i in 1...setsCount {
-            setsList.append(WorkoutSet(index: i, time: time + Int.random(in: -5...10), isCompleted: true, type: .normal))
+            setsList.append(WorkoutSet(index: i, time: time + Int.random(in: -5...5), isCompleted: true, type: .normal))
         }
         return Exercise(name: name, muscleGroup: group, type: .duration, sets: setsCount, reps: 0, weight: 0, timeSeconds: time, effort: Int.random(in: 6...9), setsList: setsList, isCompleted: true)
     }
@@ -317,7 +346,7 @@ actor TestDataGenerator {
         
         let superset = Exercise(
             name: "Superset",
-            muscleGroup: "Multiple",
+            muscleGroup: "Mixed",
             type: .strength,
             effort: max(ex1.effort, ex2.effort),
             subExercises: [ex1, ex2],

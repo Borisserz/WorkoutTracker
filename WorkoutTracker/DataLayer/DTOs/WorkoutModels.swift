@@ -21,10 +21,14 @@ struct DashboardCacheDTO: Sendable {
     let weakPoints: [WeakPoint]
     let recommendations: [Recommendation]
 }
+public struct ExerciseRecordsDTO: Sendable {
+    let maxSetReps: Int
+    let maxWorkoutReps: Int
+    let maxSetVolume: Double
+    let maxWorkoutVolume: Double
+}
 
-struct MuscleCountDTO: Sendable { let muscle: String; let count: Int }
-struct ExerciseCountDTO: Sendable { let name: String; let count: Int }
-
+// Обновите существующую структуру ExerciseHistoryPayload
 struct ExerciseHistoryPayload: Sendable {
     let type: ExerciseType
     let category: ExerciseCategory
@@ -32,7 +36,12 @@ struct ExerciseHistoryPayload: Sendable {
     let dataPoints: [ExerciseHistoryDataPoint]
     let trend: ExerciseTrend?
     let forecast: ProgressForecast?
+    let records: ExerciseRecordsDTO? // ✅ ДОБАВЛЕНО
 }
+struct MuscleCountDTO: Sendable { let muscle: String; let count: Int }
+struct ExerciseCountDTO: Sendable { let name: String; let count: Int }
+
+
 struct ExerciseHistoryDataPoint: Identifiable, Sendable {
     let id = UUID()
     let date: Date
@@ -174,4 +183,39 @@ struct SetsOverTimePoint: Identifiable, Sendable {
     let date: Date
     let muscleGroup: String
     let sets: Int
+}
+public enum EquipmentCategory: String, Sendable, CaseIterable, Identifiable {
+    case freeWeights = "Free Weights"
+    case machines = "Machines & Cables"
+    case bodyweight = "Bodyweight"
+    case other = "Other"
+    
+    public var id: String { self.rawValue }
+    
+    var icon: String {
+        switch self {
+        case .freeWeights: return "dumbbell.fill"
+        case .machines: return "gearshape.2.fill"
+        case .bodyweight: return "figure.core.training"
+        case .other: return "circle.grid.cross"
+        }
+    }
+    
+    var color: Color {
+        switch self {
+        case .freeWeights: return .orange
+        case .machines: return .purple
+        case .bodyweight: return .cyan
+        case .other: return .gray
+        }
+    }
+}
+
+public struct TrainingStyleDTO: Sendable {
+    let compoundSets: Int
+    let isolationSets: Int
+    let equipmentDistribution: [EquipmentCategory: Int]
+    
+    var totalMechanicSets: Int { compoundSets + isolationSets }
+    var totalEquipmentSets: Int { equipmentDistribution.values.reduce(0, +) }
 }

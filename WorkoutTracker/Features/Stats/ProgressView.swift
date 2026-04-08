@@ -545,31 +545,41 @@ struct StatsContentView: View {
     }
 
     private var advancedStatisticsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionHeader(title: "Advanced statistics")
-            
-            VStack(spacing: 12) {
-                NavigationLink(destination: SetsTrendDetailView()) {
-                    AdvancedStatRow(icon: "chart.xyaxis.line", title: "Set count per muscle group", subtitle: "Number of sets logged for each muscle group.", color: .blue)
-                }
+            VStack(alignment: .leading, spacing: 12) {
+                sectionHeader(title: "Advanced statistics")
                 
-                if let anatomy = viewModel.anatomyStats {
-                    NavigationLink(destination: RadarChartDetailView()) {
-                        AdvancedStatRow(icon: "pentagon", title: "Muscle distribution (Chart)", subtitle: "Compare your current and previous muscle distributions.", color: .purple)
+                VStack(spacing: 12) {
+                    
+                    NavigationLink(destination: TrainingStyleDetailView()) {
+                        AdvancedStatRow(
+                            icon: "dumbbell.fill",
+                            title: "Training Style & Equipment",
+                            subtitle: "Compound vs Isolation and your equipment arsenal.",
+                            color: .orange
+                        )
                     }
                     
-                    NavigationLink(destination: HeatmapDetailView(gender: userGender)) {
-                        AdvancedStatRow(icon: "figure.arms.open", title: "Muscle distribution (Body)", subtitle: "Heat map of muscles worked during this period.", color: .orange)
+                    NavigationLink(destination: SetsTrendDetailView()) {
+                        AdvancedStatRow(icon: "chart.xyaxis.line", title: "Set count per muscle group", subtitle: "Number of sets logged for each muscle group.", color: .blue)
+                    }
+                    
+                    if let anatomy = viewModel.anatomyStats {
+                        NavigationLink(destination: RadarChartDetailView()) {
+                            AdvancedStatRow(icon: "pentagon", title: "Muscle distribution (Chart)", subtitle: "Compare your current and previous muscle distributions.", color: .purple)
+                        }
+                        
+                        NavigationLink(destination: HeatmapDetailView(gender: userGender)) {
+                            AdvancedStatRow(icon: "figure.arms.open", title: "Muscle distribution (Body)", subtitle: "Heat map of muscles worked during this period.", color: .orange)
+                        }
+                    }
+                    
+                    NavigationLink(destination: MonthlyReportDetailView()) {
+                        AdvancedStatRow(icon: "doc.text", title: "30-Day Report", subtitle: "Recap of your workouts and volume changes.", color: .cyan)
                     }
                 }
-                
-                NavigationLink(destination: MonthlyReportDetailView()) {
-                    AdvancedStatRow(icon: "doc.text", title: "30-Day Report", subtitle: "Recap of your workouts and volume changes.", color: .cyan)
-                }
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 20)
         }
-    }
 
     @ViewBuilder
     private var prSection: some View {
@@ -768,7 +778,7 @@ struct SetsTrendDetailView: View {
             var workoutSetsCount = 0
             for ex in workout.exercises {
                 let targets = ex.isSuperset ? ex.subExercises : [ex]
-                for sub in targets where sub.type == .strength && sub.muscleGroup == selectedMuscle {
+                for sub in targets where sub.type == .strength && MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup) == selectedMuscle {
                     let completed = sub.setsList.filter { $0.isCompleted && $0.type != .warmup }.count
                     workoutSetsCount += completed
                 }
@@ -1049,12 +1059,10 @@ struct RadarChartDetailView: View {
         let balanceScore: Int
         let totalCurrentSets: Int
     }
-    
     private var aggregatedData: RadarAggregatedData {
             let calendar = Calendar.current
             let now = Date()
             
-            // ✅ ДОБАВЛЕНО: Чтение настройки
             let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
             
             var curStart: Date = .distantPast
@@ -1093,19 +1101,21 @@ struct RadarChartDetailView: View {
                 for ex in workout.exercises {
                     let targets = ex.isSuperset ? ex.subExercises : [ex]
                     for sub in targets where sub.type == .strength {
-                        // ✅ ИСПРАВЛЕНО: Интеграция тумблера
                         let completed = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
                         if completed > 0 {
-                            if isCurrent {
-                                curSets[sub.muscleGroup, default: 0] += Double(completed)
-                                totalCur += completed
-                            } else if isPrev {
-                                prevSets[sub.muscleGroup, default: 0] += Double(completed)
+                            let broadCategory = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
+                            if broadCategory != "Other" {
+                                if isCurrent {
+                                    curSets[broadCategory, default: 0] += Double(completed)
+                                    totalCur += completed
+                                } else if isPrev {
+                                    prevSets[broadCategory, default: 0] += Double(completed)
+                                }
                             }
                         }
-                    }
-                }
-            }
+                    } // ✅ Восстановлена скобка
+                } // ✅ Восстановлена скобка
+            } // ✅ Восстановлена скобка
             
             let maxCur = curSets.values.max() ?? 1.0
             let maxPrev = prevSets.values.max() ?? 1.0
@@ -1439,64 +1449,62 @@ struct HeatmapAggregatedData: Sendable {
 /// 🚀 Фоновый процессор (Sendable) для защиты Main Thread от тяжелых вычислений
 struct HeatmapDataProcessor: Sendable {
     static func process(workouts: [Workout], period: SetsTrendDetailView.TrendPeriod) async -> HeatmapAggregatedData {
-            let calendar = Calendar.current
-            let now = Date()
-            let cutoffDate: Date?
-            
-            // ✅ ДОБАВЛЕНО: Чтение настройки
-            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
-            
-            switch period {
-            case .week: cutoffDate = calendar.date(byAdding: .day, value: -7, to: now)
-            case .month: cutoffDate = calendar.date(byAdding: .month, value: -1, to: now)
-            case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now)
-            case .allTime: cutoffDate = nil
-            }
-            
-            var slugCounts: [String: Int] = [:]
-            var totalSets = 0
-            
-            for workout in workouts {
-                if let cutoff = cutoffDate, workout.date < cutoff { continue }
-                
-                for exercise in workout.exercises {
-                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                    for sub in targets where sub.type == .strength {
-                        // ✅ ИСПРАВЛЕНО: Интеграция тумблера
-                        let completedSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
-                        if completedSets > 0 {
-                            let slugs = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
-                            for slug in slugs {
-                                slugCounts[slug, default: 0] += completedSets
-                            }
-                            totalSets += completedSets
-                        }
-                    }
-                }
-            }
-            
-            let maxSets = Double(slugCounts.values.max() ?? 1)
-            var normalizedIntensities: [String: Int] = [:]
-            var detailedList: [HeatmapDetailItem] = []
-            
-            for (slug, count) in slugCounts {
-                let relativeIntensity = Double(count) / maxSets
-                normalizedIntensities[slug] = Int(relativeIntensity * 100)
-                let displayName = MuscleDisplayHelper.getDisplayName(for: slug)
-                detailedList.append(HeatmapDetailItem(slug: slug, displayName: displayName, sets: count, relativeIntensity: relativeIntensity))
-            }
-            
-            detailedList.sort { $0.sets > $1.sets }
-            
-            return HeatmapAggregatedData(
-                intensities: normalizedIntensities,
-                rawCounts: slugCounts,
-                detailedList: detailedList,
-                totalSets: totalSets,
-                topMuscle: detailedList.first
-            )
+        let calendar = Calendar.current
+        let now = Date()
+        let cutoffDate: Date?
+        
+        let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+        
+        switch period {
+        case .week: cutoffDate = calendar.date(byAdding: .day, value: -7, to: now)
+        case .month: cutoffDate = calendar.date(byAdding: .month, value: -1, to: now)
+        case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now)
+        case .allTime: cutoffDate = nil
         }
-}
+        
+        var slugCounts: [String: Int] = [:]
+        var totalSets = 0
+        
+        for workout in workouts {
+            if let cutoff = cutoffDate, workout.date < cutoff { continue }
+            
+            for exercise in workout.exercises {
+                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for sub in targets where sub.type == .strength {
+                    let completedSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
+                    if completedSets > 0 {
+                        let broadCategory = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
+                        let slugs = MuscleMapping.getMuscles(for: sub.name, group: broadCategory)
+                        for slug in slugs {
+                            slugCounts[slug, default: 0] += completedSets
+                        }
+                        totalSets += completedSets
+                    }
+                } // ✅ Восстановлена скобка
+            } // ✅ Восстановлена скобка
+        } // ✅ Восстановлена скобка
+        
+        let maxSets = Double(slugCounts.values.max() ?? 1)
+        var normalizedIntensities: [String: Int] = [:]
+        var detailedList: [HeatmapDetailItem] = []
+        
+        for (slug, count) in slugCounts {
+            let relativeIntensity = Double(count) / maxSets
+            normalizedIntensities[slug] = Int(relativeIntensity * 100)
+            let displayName = MuscleDisplayHelper.getDisplayName(for: slug)
+            detailedList.append(HeatmapDetailItem(slug: slug, displayName: displayName, sets: count, relativeIntensity: relativeIntensity))
+        }
+        
+        detailedList.sort { $0.sets > $1.sets }
+        
+        return HeatmapAggregatedData(
+            intensities: normalizedIntensities,
+            rawCounts: slugCounts,
+            detailedList: detailedList,
+            totalSets: totalSets,
+            topMuscle: detailedList.first
+        )
+    }}
 
 struct HeatmapDetailView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)

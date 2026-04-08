@@ -136,7 +136,10 @@ struct WatchActiveWorkoutView: View {
         HStack {
             VStack(alignment: .leading) {
                 Text(exercise.name).font(.headline).lineLimit(1)
-                Text("\(exercise.setsList.count) sets completed")
+                
+                // ✅ ИСПРАВЛЕНИЕ: Безопасное обращение к опциональному массиву
+                let setsCount = (exercise.setsList ?? []).count
+                Text("\(setsCount) sets completed")
                     .font(.caption2)
                     .foregroundColor(.secondary)
             }
@@ -146,8 +149,7 @@ struct WatchActiveWorkoutView: View {
                 .foregroundColor(.gray)
         }
         .padding(.vertical, 4)
-    }
-}
+    }}
 
 // MARK: - 2. ЭКРАН ДОБАВЛЕНИЯ СЕТА
 struct WatchExerciseSetView: View {
@@ -227,13 +229,12 @@ struct WatchExerciseSetView: View {
 struct WatchExerciseSelectionView: View {
     var onSelect: (String) -> Void
     
-    private let allExercises: [String] = {
-        let base = Exercise.catalog.values.flatMap { $0 }
-        return Array(Set(base)).sorted()
-    }()
-    
+    // ✅ 1. Заменяем статический массив на @State
+    @State private var allExercises: [String] = []
+
     var body: some View {
         NavigationStack {
+            // ✅ 2. Используем @State
             List(allExercises, id: \.self) { name in
                 Button(action: { onSelect(name) }) {
                     Text(name)
@@ -241,6 +242,12 @@ struct WatchExerciseSelectionView: View {
                 }
             }
             .navigationTitle("Exercises")
+            // ✅ 3. Асинхронно загружаем данные при появлении
+            .task {
+                let catalog = await ExerciseDatabaseService.shared.getCatalog()
+                // Превращаем словарь в плоский отсортированный массив
+                self.allExercises = Array(Set(catalog.values.flatMap { $0 })).sorted()
+            }
         }
     }
 }

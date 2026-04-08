@@ -53,13 +53,16 @@ struct WorkoutExportService: Sendable {
         csvLines.append("## EXERCISES")
         csvLines.append("Name,Muscle Group,Type,Effort,Is Completed,Set Count")
         for exercise in preset.exercises {
-            csvLines.append("\"\(escapeCSV(exercise.name))\",\(exercise.muscleGroup),\(exercise.type.rawValue),\(exercise.effort),\(exercise.isCompleted),\(exercise.setsList.count)")
-        }
-        csvLines.append("")
-        csvLines.append("## SETS")
-        csvLines.append("Exercise Name,Set Index,Weight,Reps,Distance (m),Time (sec),Is Completed,Set Type")
-        for exercise in preset.exercises {
-            for set in exercise.setsList {
+                    // ✅ Безопасно считаем количество подходов
+                    let setsCount = (exercise.setsList ?? []).count
+                    csvLines.append("\"\(escapeCSV(exercise.name))\",\(exercise.muscleGroup),\(exercise.type.rawValue),\(exercise.effort),\(exercise.isCompleted),\(setsCount)")
+                }
+                csvLines.append("")
+                csvLines.append("## SETS")
+                csvLines.append("Exercise Name,Set Index,Weight,Reps,Distance (m),Time (sec),Is Completed,Set Type")
+                for exercise in preset.exercises {
+                    // ✅ Безопасно проходим по массиву
+                    for set in exercise.setsList ?? [] {
                 let weightStr = set.weight != nil ? String(set.weight!) : ""
                 let repsStr = set.reps != nil ? String(set.reps!) : ""
                 let distanceStr = set.distance != nil ? String(set.distance!) : ""

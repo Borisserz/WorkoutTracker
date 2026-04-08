@@ -254,15 +254,24 @@ final class WorkoutService {
     func stopLiveActivity() {
         liveActivityManager.stopAllActivities()
     }
-
     func deleteWorkout(_ workout: Workout) async {
-        do {
-            try await workoutStore.deleteWorkout(workoutID: workout.persistentModelID)
-            stopLiveActivity()
-        } catch {
-            appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
+            do {
+                try await workoutStore.deleteWorkout(workoutID: workout.persistentModelID)
+                stopLiveActivity()
+            } catch {
+                appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
+            }
         }
-    }
+
+        // ✅ ДОБАВИТЬ ЭТОТ НОВЫЙ МЕТОД
+        func deleteWorkout(byID id: PersistentIdentifier) async {
+            do {
+                try await workoutStore.deleteWorkout(workoutID: id)
+                stopLiveActivity()
+            } catch {
+                appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
+            }
+        }
 
     func cleanupAndFindActiveWorkouts() async {
         do {

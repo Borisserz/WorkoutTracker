@@ -49,7 +49,9 @@ final class WatchActiveWorkoutViewModel {
     func logSet(for exerciseIndex: Int, weight: Double, reps: Int) async {
         guard exercises.indices.contains(exerciseIndex) else { return }
         let currentEx = exercises[exerciseIndex]
-        let nextIndex = currentEx.setsList.count + 1
+        
+        // ✅ ИСПРАВЛЕНИЕ 1: Безопасное извлечение массива
+        let nextIndex = (currentEx.setsList ?? []).count + 1
         
         WKInterfaceDevice.current().play(.success)
         
@@ -64,14 +66,19 @@ final class WatchActiveWorkoutViewModel {
         
         // Обновление UI
         let newSet = WorkoutSetDTO(index: nextIndex, weight: weight, reps: reps, distance: nil, time: nil, isCompleted: true, type: .normal)
-        var updatedSets = currentEx.setsList
+        
+        // ✅ ИСПРАВЛЕНИЕ 2: Безопасное добавление сета и обновление структуры
+        var updatedSets = currentEx.setsList ?? []
         updatedSets.append(newSet)
-        exercises[exerciseIndex] = ExerciseDTO(name: currentEx.name, muscleGroup: currentEx.muscleGroup, type: currentEx.type, category: currentEx.category, effort: currentEx.effort, isCompleted: currentEx.isCompleted, setsList: updatedSets, subExercises: currentEx.subExercises)
+        
+        // Создаем копию упражнения, меняем в ней сеты и возвращаем в массив
+        var updatedEx = currentEx
+        updatedEx.setsList = updatedSets
+        exercises[exerciseIndex] = updatedEx
         
         totalSets += 1
         totalVolume += (weight * Double(reps))
     }
-    
     func finishWorkout() async {
         _ = try? await store.finishWorkout(workoutID: workoutID.uuidString)
         let payload = LiveSyncPayload(action: .finishWorkout, workoutID: workoutID.uuidString)

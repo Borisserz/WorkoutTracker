@@ -8,12 +8,14 @@ struct GeneratedWorkoutResultView: View {
     var onStart: ([ExerciseDTO]) -> Void
     
     private var muscleDistribution: [(String, Double)] {
-        let totalSets = Double(vm.generatedExercises.map { $0.setsList.count }.reduce(0, +))
-        guard totalSets > 0 else { return [] }
-        var counts: [String: Double] = [:]
-        for ex in vm.generatedExercises { counts[ex.muscleGroup, default: 0] += Double(ex.setsList.count) }
-        return counts.map { ($0.key, ($0.value / totalSets) * 100.0) }.sorted { $0.1 > $1.1 }
-    }
+            // ✅ БЕЗОПАСНОЕ извлечение .count
+            let totalSets = Double(vm.generatedExercises.map { ($0.setsList ?? []).count }.reduce(0, +))
+            guard totalSets > 0 else { return [] }
+            var counts: [String: Double] = [:]
+            // ✅ БЕЗОПАСНОЕ извлечение .count в цикле
+            for ex in vm.generatedExercises { counts[ex.muscleGroup, default: 0] += Double((ex.setsList ?? []).count) }
+            return counts.map { ($0.key, ($0.value / totalSets) * 100.0) }.sorted { $0.1 > $1.1 }
+        }
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -66,21 +68,27 @@ struct GeneratedWorkoutResultView: View {
                                     
                                     // Умное форматирование в зависимости от типа
                                     VStack(alignment: .trailing, spacing: 4) {
-                                        if ex.type == .strength {
-                                            Text("\(ex.setsList.count)x\(ex.setsList.first?.reps ?? 10)")
-                                                .font(.subheadline).bold()
-                                            if let weight = ex.setsList.first?.weight, weight > 0 {
-                                                let conv = unitsManager.convertFromKilograms(weight)
-                                                Text("\(Int(conv)) \(unitsManager.weightUnitString())")
-                                                    .font(.caption).foregroundColor(.cyan)
-                                            }
-                                        } else {
-                                            // Если кардио/время
-                                            let timeSec = ex.setsList.first?.time ?? 0
-                                            Text("\(timeSec / 60) min")
-                                                .font(.subheadline).bold()
-                                        }
-                                    }
+                                                                        // ✅ ИСПРАВЛЕНО: Безопасное извлечение подходов и повторений
+                                                                        let safeSets = ex.setsList ?? []
+                                                                        let reps = safeSets.first?.reps ?? 10
+                                                                        let weight = safeSets.first?.weight ?? 0.0
+                                                                        
+                                                                        if ex.type == .strength {
+                                                                            Text("\(safeSets.count)x\(reps)")
+                                                                                .font(.subheadline).bold()
+                                                                            
+                                                                            if weight > 0 {
+                                                                                let conv = unitsManager.convertFromKilograms(weight)
+                                                                                Text("\(Int(conv)) \(unitsManager.weightUnitString())")
+                                                                                    .font(.caption).foregroundColor(.cyan)
+                                                                            }
+                                                                        } else {
+                                                                            // Если кардио/время
+                                                                            let timeSec = safeSets.first?.time ?? 0
+                                                                            Text("\(timeSec / 60) min")
+                                                                                .font(.subheadline).bold()
+                                                                        }
+                                                                    }
                                 }
                                 .padding()
                                 .background(Color(UIColor.secondarySystemBackground))

@@ -37,19 +37,19 @@ final class DashboardViewModel {
             }
     }
     func refreshAllCaches() {
-            Task {
-                do {
-                    // 1. Получаем свежие данные из базы (фоновый актор)
-                    let cacheDTO = try await analyticsService.fetchDashboardCache()
-                    
-                    // 2. ✅ ИСПРАВЛЕНИЕ: Берем recoveryStatus из свежего DTO
-                    let proposal = WorkoutGenerationService.generateProactiveProposal(
-                        recoveryStatus: cacheDTO.recoveryStatus,
-                        catalog: Exercise.catalog
-                    )
-                    
-                    // 3. ✅ ИСПРАВЛЕНИЕ: Сохраняем в State ViewModel-и
-                    self.proactiveProposal = proposal
+          Task {
+              do {
+                  let cacheDTO = try await analyticsService.fetchDashboardCache()
+                  
+                  // ✅ БЕРЕМ АКТУАЛЬНЫЙ КАТАЛОГ ИЗ НОВОЙ БАЗЫ
+                  let currentCatalog = await ExerciseDatabaseService.shared.getCatalog()
+                  
+                  let proposal = WorkoutGenerationService.generateProactiveProposal(
+                      recoveryStatus: cacheDTO.recoveryStatus,
+                      catalog: currentCatalog // ✅ ИСПОЛЬЗУЕМ JSON КАТАЛОГ
+                  )
+                  
+                  self.proactiveProposal = proposal
                     
                     self.personalRecordsCache = cacheDTO.personalRecords
                     self.dashboardTotalExercises = cacheDTO.dashboardTotalExercises

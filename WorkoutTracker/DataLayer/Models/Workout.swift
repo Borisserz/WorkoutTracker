@@ -41,11 +41,12 @@ enum ExerciseCategory: String, Codable, CaseIterable {
     static func determine(from name: String) -> ExerciseCategory {
         let lower = name.lowercased()
         if lower.contains("squat") { return .squat }
-        if lower.contains("bench") || lower.contains("press") { return .press }
-        if lower.contains("deadlift") { return .deadlift }
-        if lower.contains("pull") || lower.contains("row") { return .pull }
+        if lower.contains("bench") || lower.contains("press") || lower.contains("push-up") || lower.contains("pushup") { return .press }
+        if lower.contains("deadlift") || lower.contains("good morning") { return .deadlift }
+        if lower.contains("pull") || lower.contains("row") || lower.contains("chin") { return .pull }
         if lower.contains("curl") { return .curl }
-        if lower.contains("plank") || lower.contains("crunch") { return .core }
+        if lower.contains("plank") || lower.contains("crunch") || lower.contains("sit-up") { return .core }
+        if lower.contains("run") || lower.contains("walk") || lower.contains("bike") || lower.contains("rowing") || lower.contains("jump") { return .cardio }
         return .other
     }
 }
@@ -256,8 +257,49 @@ struct WorkoutSetDTO: Codable {
     let index: Int; let weight: Double?; let reps: Int?; let distance: Double?; let time: Int?; let isCompleted: Bool; let type: SetType
 }
 
-struct ExerciseDTO: Codable {
-    let name: String; let muscleGroup: String; let type: ExerciseType; let category: ExerciseCategory; let effort: Int; let isCompleted: Bool; let setsList: [WorkoutSetDTO]; let subExercises: [ExerciseDTO]
+struct ExerciseDTO: Codable, Sendable {
+    var name: String
+    var muscleGroup: String
+    var type: ExerciseType
+    var category: ExerciseCategory
+    var effort: Int
+    var isCompleted: Bool
+    
+    var setsList: [WorkoutSetDTO]?
+    var subExercises: [ExerciseDTO]?
+    
+    var sets: Int?
+    var reps: Int?
+    var recommendedWeightKg: Double?
+}
+
+// 2. Обновляем инициализатор, чтобы он подхватывал данные из JSON
+extension Exercise {
+    func toDTO() -> ExerciseDTO {
+        ExerciseDTO(
+            name: name, muscleGroup: muscleGroup, type: type, category: category, effort: effort, isCompleted: isCompleted,
+            setsList: sortedSets.map { $0.toDTO() }, subExercises: subExercises.map { $0.toDTO() }
+        )
+    }
+    
+    convenience init(from dto: ExerciseDTO) {
+        let safeSets = dto.setsList ?? []
+        let safeSubs = dto.subExercises ?? []
+        
+        self.init(
+            name: dto.name,
+            muscleGroup: dto.muscleGroup,
+            type: dto.type,
+            category: dto.category,
+            sets: dto.sets ?? 3,
+            reps: dto.reps ?? 10,
+            weight: dto.recommendedWeightKg ?? 0.0,
+            effort: dto.effort,
+            subExercises: safeSubs.map { Exercise(from: $0) },
+            setsList: safeSets.map { WorkoutSet(from: $0) },
+            isCompleted: dto.isCompleted
+        )
+    }
 }
 struct WorkoutPresetDTO: Codable {
     let name: String
@@ -276,14 +318,6 @@ extension WorkoutSet {
     }
 }
 
-extension Exercise {
-    func toDTO() -> ExerciseDTO {
-        ExerciseDTO(name: name, muscleGroup: muscleGroup, type: type, category: category, effort: effort, isCompleted: isCompleted, setsList: sortedSets.map { $0.toDTO() }, subExercises: subExercises.map { $0.toDTO() })
-    }
-    convenience init(from dto: ExerciseDTO) {
-        self.init(name: dto.name, muscleGroup: dto.muscleGroup, type: dto.type, category: dto.category, effort: dto.effort, subExercises: dto.subExercises.map { Exercise(from: $0) }, setsList: dto.setsList.map { WorkoutSet(from: $0) }, isCompleted: dto.isCompleted)
-    }
-}
 
 extension WorkoutPreset {
     func toDTO() -> WorkoutPresetDTO {
@@ -295,18 +329,84 @@ extension WorkoutPreset {
 }
 
 // MARK: - Extensions (Catalog & Examples)
-
-extension Exercise {
-    static let catalog: [String: [String]] = [
-        Constants.MuscleName.chest.rawValue: ["Bench Press", "Push Ups"],
-        Constants.MuscleName.back.rawValue: ["Pull-ups", "Deadlift", "Barbell Rows"],
-        Constants.MuscleName.legs.rawValue: ["Squat", "Leg Press", "Lunges"],
-        Constants.MuscleName.shoulders.rawValue: ["Overhead Press", "Lateral Raises"],
-        Constants.MuscleName.arms.rawValue: ["Barbell Curl", "Triceps Extension"],
-        Constants.MuscleName.core.rawValue: ["Plank", "Crunches"],
-        Constants.MuscleName.cardio.rawValue: ["Running", "Cycling"]
-    ]
-}
+//
+//extension Exercise {
+//    static let catalog: [String: [String]] = [
+//        Constants.MuscleName.chest.rawValue: [
+//            "Around The World", "Bench Press", "Cable Crossover", "Cable Flyes", "Chest Dips",
+//            "Chest Press Machine", "Close Grip Pushups", "Decline Bench Press", "Decline Bench Press (Barbell)",
+//            "Decline Push-ups", "Diamond Push Ups", "Dips", "Dumbbell Bench Press", "Dumbbell Flyes",
+//            "Dumbbell Pullover", "Floor Press", "Floor Press (Dumbbell)", "Hammer Strength Wide Chest",
+//            "Hex Press (Dumbbell)", "High-to-Low Cable Fly", "Incline Bench Press", "Incline Dumbbell Flyes",
+//            "Incline Dumbbell Press", "Low Cable Fly Crossovers", "Machine Chest Press", "Pec Deck",
+//            "Plate Squeeze (Svend Press)", "Push Ups", "Push-up Variations", "Smith Machine Incline Press",
+//            "Wide Grip Push Ups"
+//        ],
+//        Constants.MuscleName.back.rawValue: [
+//            "Barbell Rows", "Bent Over Row", "Cable Rows", "Chest Supported Row", "Chin-ups",
+//            "Close Grip Lat Pulldown", "Dead Hang", "Deadlift", "Deadlift High Pull", "Good Mornings",
+//            "Gorilla Row (Kettlebell)", "Hyperextension", "Hyperextensions", "Inverted Row", "Landmine Row",
+//            "Lat Pulldown", "Machine Back Extensions", "Machine Row", "Meadows Row", "Meadows Rows (Barbell)",
+//            "Neutral Grip Lat Pulldown", "Neutral Grip Pull-ups", "One-Arm Dumbbell Row", "Pendlay Row",
+//            "Pull-ups", "Rack Pull", "Rack Pulls", "Renegade Rows", "Reverse Grip Lat Pulldown",
+//            "Scapular Pull Ups", "Seated Cable Row", "Shrugs", "Straight Arm Lat Pulldown",
+//            "Straight Arm Pulldown", "T-Bar Row", "V-Bar Seated Row", "Wide Grip Pull-ups"
+//        ],
+//        Constants.MuscleName.legs.rawValue: [
+//            "Assisted Pistol Squats", "Belt Squat", "Bodyweight Sissy Squats", "Bodyweight Squat", "Box Jump",
+//            "Box Squat (Barbell)", "Box Step Ups", "Bulgarian Split Squat", "Calf Press on Leg Press",
+//            "Calf Raises", "Clamshell", "Curtsy Lunge", "Frog Pumps (Dumbbell)", "Front Squat",
+//            "Glute Bridge", "Glute Ham Raise", "Goblet Squat", "Hack Squat", "Hip Abduction (Machine)",
+//            "Hip Adduction (Machine)", "Hip Thrusts", "Lateral Squat", "Leg Curls", "Leg Extensions",
+//            "Leg Press", "Lunges", "Lying Leg Curl", "Overhead Squat", "Partial Glute Bridge",
+//            "Pistol Squat", "Quadruped Hip Extension", "Reverse Hyperextension", "Romanian Deadlift",
+//            "Seated Calf Raise", "Seated Leg Curl", "Single Leg Box Squat", "Single Leg Hip Thrust",
+//            "Single Leg Press", "Single Leg RDL", "Sissy Squat", "Smith Machine Squat", "Split Squat",
+//            "Squat", "Standing Calf Raise", "Standing Leg Curls", "Step-ups", "Stiff Leg Deadlift",
+//            "Sumo Squat", "Swiss Ball Leg Curls", "Trap Bar Deadlift", "Walking Lunges", "Wall Sits",
+//            "Zercher Squat"
+//        ],
+//        Constants.MuscleName.shoulders.rawValue: [
+//            "Arnold Press", "Band Lateral Raise", "Cable Lateral Raises", "Clean and Press",
+//            "Dumbbell Shoulder Press", "Face Pulls", "Front Plate Raise", "Front Raises",
+//            "Handstand Push-ups", "Kettlebell Halo", "Landmine Press", "Lateral Raises",
+//            "Overhead Plate Raise", "Overhead Press", "Pike Push-ups", "Push Press", "Rear Delt Fly",
+//            "Rear Delt Flyes", "Reverse Flyes", "Reverse Pec Deck", "Ring Face-Pulls",
+//            "Seated Military Press", "Shoulder Press Machine", "Shoulder Taps", "Single Arm Landmine Press",
+//            "Smith Machine Press", "Turkish Get-up", "Underhand Front Delt Raise", "Upright Row", "Z Press"
+//        ],
+//        Constants.MuscleName.arms.rawValue: [
+//            "21s Bicep Curl", "Barbell Curl", "Behind the Back Wrist Curl", "Bench Dips", "Bicep Curls",
+//            "Cable Curls", "Cable Kickbacks", "Cable Overhead Triceps Ext", "Close Grip Bench Press",
+//            "Concentration Curl", "Concentration Curls", "Cross Body Hammer Curl", "Drag Curl",
+//            "Dumbbell Kickbacks", "EZ Bar Curl", "French Press", "Hammer Curls", "Incline Dumbbell Curl",
+//            "Machine Bicep Curl", "Machine Dips", "Machine Preacher Curl", "Overhead Triceps Extension",
+//            "Pinwheel Curl", "Preacher Curl", "Reverse Curl", "Rope Hammer Curls", "Seated Dumbbell Curl",
+//            "Seated Palms Up Wrist Curl", "Single Arm Triceps Ext", "Skull Crushers", "Spider Curl",
+//            "Spider Curls", "Straight Bar Triceps Pushdown", "Tate Press (Dumbbell)", "Tricep Press Machine",
+//            "Triceps Dips", "Triceps Extension", "Triceps Pushdown", "Triceps Rope Pushdown",
+//            "Wrist Roller", "Zottman Curl", "Zottman Curls"
+//        ],
+//        Constants.MuscleName.core.rawValue: [
+//            "Ab Machine", "Ab Scissors", "Ab Wheel", "Ab Wheel Rollout", "Bicycle Crunches",
+//            "Bird Dog", "Boat Holds", "Bosu Jackknife", "Cable Crunches", "Crunches",
+//            "Dead Bug", "Decline Crunch", "Dragon Flag", "Dragonfly", "Dumbbell Side Bends",
+//            "Flutter Kicks", "Hanging Knee Raises", "Knee Raise Parallel Bars", "L-Sit Hold",
+//            "L-sit", "Landmine 180", "Leg Raises", "Pallof Press", "Plank", "Reverse Crunches",
+//            "Russian Twist", "Russian Twists", "Side Plank", "Sit-ups", "Spiderman", "Toes to Bar",
+//            "V-Ups", "Weighted Crunches", "Weighted Decline Crunch"
+//        ],
+//        Constants.MuscleName.cardio.rawValue: [
+//            "Air Bike", "Ball Slams", "Battle Ropes", "Box Jumps", "Burpee", "Burpees",
+//            "Clean and Jerk", "Cycling", "Downward Dog", "Elliptical", "Farmer's Walk", "HIIT",
+//            "High Knees", "Jump Rope", "Jump Squat", "Jumping Jack", "Jumping Jacks", "Jumping Lunge",
+//            "Kettlebell Swings", "Kettlebell Turkish Get Up", "Lying Neck Curls", "Lying Neck Extension",
+//            "Mountain Climbers", "Rowing", "Rowing Machine", "Running", "Sled Push", "Snatch",
+//            "Split Jerk", "Stair Climber", "Stretching", "Swimming", "Thruster", "Treadmill",
+//            "Treadmill Sprints", "Wall Ball"
+//        ]
+//    ]
+//}
 
 // ✅ FIX: Added comprehensive default workout templates
 extension Workout {

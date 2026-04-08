@@ -32,15 +32,15 @@ public struct SmartGeneratorConfig: Sendable {
 }
 
 /// Чистый локальный генератор тренировок
+
 actor LocalWorkoutGeneratorService {
     
     static let shared = LocalWorkoutGeneratorService()
     private init() {}
     
-    func generateWorkout(config: SmartGeneratorConfig) -> [ExerciseDTO] {
+    func generateWorkout(config: SmartGeneratorConfig) async -> [ExerciseDTO] {
         var generatedExercises: [ExerciseDTO] = []
         
-        // В среднем 1 силовое упражнение = 5 минут. Кардио = выделенное время.
         let targetExerciseCount = max(2, min(Int(config.durationMinutes / 5.0), 10))
         let musclesToTrain = config.targetMuscles.isEmpty ? ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"] : Array(config.targetMuscles)
         let exercisesPerMuscle = max(1, targetExerciseCount / musclesToTrain.count)
@@ -51,12 +51,13 @@ actor LocalWorkoutGeneratorService {
             guard remainingExercises > 0 else { break }
             let countToPick = min(exercisesPerMuscle, remainingExercises)
             
-            // Получаем список упражнений и сортируем умно: сначала те, что есть в истории (70% шанс), затем новые (30% шанс)
-            let pool = filterCatalog(for: muscle, equipment: config.equipment)
+            // ✅ 1. Добавляем await для вызова асинхронного метода
+            let pool = await filterCatalog(for: muscle, equipment: config.equipment)
+            
             let sortedPool = pool.sorted { ex1, ex2 in
                 let hasHistory1 = config.history[ex1] != nil
                 let hasHistory2 = config.history[ex2] != nil
-                if hasHistory1 && !hasHistory2 { return Double.random(in: 0...1) > 0.3 } // 70% шанс, что знакомое упражнение будет выше
+                if hasHistory1 && !hasHistory2 { return Double.random(in: 0...1) > 0.3 }
                 if !hasHistory1 && hasHistory2 { return Double.random(in: 0...1) < 0.3 }
                 return Bool.random()
             }
@@ -65,11 +66,7 @@ actor LocalWorkoutGeneratorService {
             
             for name in selectedNames {
                 let exerciseType: ExerciseType = (muscle == "Cardio" || name == "Plank" || name == "Running") ? (muscle == "Cardio" ? .cardio : .duration) : .strength
-                
-                // Вытягиваем историю, если есть
                 let historyData = config.history[name]
-                
-                // 1. Формируем сеты
                 var setsList: [WorkoutSetDTO] = []
                 
                 if exerciseType == .strength {
@@ -81,12 +78,10 @@ actor LocalWorkoutGeneratorService {
                         setsList.append(WorkoutSetDTO(index: i, weight: weight > 0 ? weight : nil, reps: reps, distance: nil, time: nil, isCompleted: false, type: .normal))
                     }
                 } else if exerciseType == .cardio || exerciseType == .duration {
-                    // Кардио или планка = 1 подход на время
                     let durationSeconds = Int((config.durationMinutes / Double(targetExerciseCount)) * 60)
                     setsList.append(WorkoutSetDTO(index: 1, weight: nil, reps: nil, distance: nil, time: durationSeconds, isCompleted: false, type: .normal))
                 }
                 
-                // 2. Создаем DTO
                 let newExDTO = ExerciseDTO(
                     name: name,
                     muscleGroup: muscle,
@@ -105,12 +100,25 @@ actor LocalWorkoutGeneratorService {
         return generatedExercises
     }
     
-    private func filterCatalog(for muscle: String, equipment: WorkoutEquipment) -> [String] {
-        let allExercises = Exercise.catalog[muscle] ?? []
+    // ✅ 2. Делаем метод асинхронным и меняем логику получения каталога
+    private func filterCatalog(for muscle: String, equipment: WorkoutEquipment) async -> [String] {
+        // Запрашиваем каталог у нового сервиса
+        let catalog = await ExerciseDatabaseService.shared.getCatalog()
+        let allExercises = catalog[muscle] ?? []
+        
         switch equipment {
-        case .fullGym: return allExercises
-        case .dumbbellsOnly: return allExercises.filter { !$0.lowercased().contains("barbell") && !$0.lowercased().contains("machine") && !$0.lowercased().contains("cable") }
-        case .bodyweight: return allExercises.filter { ["push up", "pull-up", "plank", "crunch", "squat", "lunges", "running"].contains(where: $0.lowercased().contains) }
+        case .fullGym:
+            return allExercises
+        case .dumbbellsOnly:
+            return allExercises.filter {
+                let low = $0.lowercased()
+                return !low.contains("barbell") && !low.contains("machine") && !low.contains("cable")
+            }
+        case .bodyweight:
+            return allExercises.filter {
+                let low = $0.lowercased()
+                return ["push up", "pull-up", "plank", "crunch", "squat", "lunges", "running"].contains(where: low.contains)
+            }
         }
     }
     

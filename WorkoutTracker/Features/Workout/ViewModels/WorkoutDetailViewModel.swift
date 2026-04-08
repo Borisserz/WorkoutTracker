@@ -180,10 +180,9 @@ final class WorkoutDetailViewModel {
             }
         }
     
-    func deleteEmptyWorkout(workout: Workout) async {
-        await workoutService.deleteWorkout(workout)
-    }
-    
+    func deleteEmptyWorkout(workoutID: PersistentIdentifier) async {
+           await workoutService.deleteWorkout(byID: workoutID)
+       }
     // MARK: - Workout Flow Logic
     
     func startTimerIfNeeded(shouldStartTimer: Bool, suggestedDuration: Int?) {
@@ -541,45 +540,52 @@ extension WorkoutDetailViewModel {
     
     
     func toggleFavorite(workout: Workout, presetService: PresetService) {
-        let isNowFavorite = !workout.isFavorite
-        workout.isFavorite = isNowFavorite
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-        
-        Task {
-            await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: isNowFavorite)
+            let isNowFavorite = !workout.isFavorite
+            workout.isFavorite = isNowFavorite
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
             
-            if isNowFavorite {
-                let folderName = String(localized: "Favorites")
+            Task {
+                await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: isNowFavorite)
                 
-                func cleanExerciseDTO(_ dto: ExerciseDTO) -> ExerciseDTO {
-                    let cleanSets = dto.setsList.map { set in
-                        WorkoutSetDTO(index: set.index, weight: set.weight, reps: set.reps, distance: set.distance, time: set.time, isCompleted: false, type: set.type)
-                    }
-                    let cleanSubs = dto.subExercises.map { cleanExerciseDTO($0) }
-                    return ExerciseDTO(name: dto.name, muscleGroup: dto.muscleGroup, type: dto.type, category: dto.category, effort: dto.effort, isCompleted: false, setsList: cleanSets, subExercises: cleanSubs)
-                }
-                
-                let cleanExercises = workout.exercises.map { cleanExerciseDTO($0.toDTO()) }.map { Exercise(from: $0) }
-                
-                await presetService.savePreset(
-                    preset: nil,
-                    name: workout.title,
-                    icon: "star.fill",
-                    folderName: folderName,
-                    exercises: cleanExercises
-                )
-                
-                await MainActor.run {
-                    let currentFolders = UserDefaults.standard.string(forKey: "customPresetFolders") ?? ""
-                    var foldersArray = currentFolders.isEmpty ? [] : currentFolders.components(separatedBy: "|")
+                if isNowFavorite {
+                    let folderName = String(localized: "Favorites")
                     
-                    if !foldersArray.contains(folderName) {
-                        foldersArray.insert(folderName, at: 0)
-                        UserDefaults.standard.set(foldersArray.joined(separator: "|"), forKey: "customPresetFolders")
+                    func cleanExerciseDTO(_ dto: ExerciseDTO) -> ExerciseDTO {
+                        // ✅ ИСПРАВЛЕНИЕ: Делаем изменяемую копию DTO
+                        var cleanDto = dto
+                        cleanDto.isCompleted = false
+                        
+                        // Безопасно извлекаем и маппим массивы через (?? [])
+                        cleanDto.setsList = (dto.setsList ?? []).map { set in
+                            WorkoutSetDTO(index: set.index, weight: set.weight, reps: set.reps, distance: set.distance, time: set.time, isCompleted: false, type: set.type)
+                        }
+                        
+                        cleanDto.subExercises = (dto.subExercises ?? []).map { cleanExerciseDTO($0) }
+                        
+                        return cleanDto
+                    }
+                    
+                    let cleanExercises = workout.exercises.map { cleanExerciseDTO($0.toDTO()) }.map { Exercise(from: $0) }
+                    
+                    await presetService.savePreset(
+                        preset: nil,
+                        name: workout.title,
+                        icon: "star.fill",
+                        folderName: folderName,
+                        exercises: cleanExercises
+                    )
+                    
+                    await MainActor.run {
+                        let currentFolders = UserDefaults.standard.string(forKey: "customPresetFolders") ?? ""
+                        var foldersArray = currentFolders.isEmpty ? [] : currentFolders.components(separatedBy: "|")
+                        
+                        if !foldersArray.contains(folderName) {
+                            foldersArray.insert(folderName, at: 0)
+                            UserDefaults.standard.set(foldersArray.joined(separator: "|"), forKey: "customPresetFolders")
+                        }
                     }
                 }
             }
         }
-    }
 }

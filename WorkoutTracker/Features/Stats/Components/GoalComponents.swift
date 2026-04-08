@@ -282,24 +282,33 @@ struct GoalSetupDetailView: View {
     
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var currentBodyWeight = 75.0
     
+    // ✅ 1. Добавляем стейт для хранения списка упражнений
+    @State private var availableExercises: [String] = []
+    
     @State private var targetWeightString: String = ""
     @State private var targetDays: Int = 10
-    @State private var targetReps: Int = 1 // ✅ ДОБАВЛЕН STATE ДЛЯ ПОВТОРЕНИЙ
+    @State private var targetReps: Int = 1
     @State private var targetDate: Date = Calendar.current.date(byAdding: .month, value: 1, to: Date())!
-    @State private var selectedExercise: String = "Bench Press"
+    @State private var selectedExercise: String = "" // Оставляем пустым до загрузки
     
     var body: some View {
         Form {
             Section(header: Text(LocalizedStringKey("Goal Parameters"))) {
                 if type == .strength {
+                    // ✅ 2. Используем локальный массив availableExercises
                     Picker(LocalizedStringKey("Exercise"), selection: $selectedExercise) {
-                        ForEach(getAvailableExercises(), id: \.self) { ex in
-                            Text(LocalizedStringKey(ex)).tag(ex)
+                        if availableExercises.isEmpty {
+                            Text("Loading...").tag("")
+                        } else {
+                            ForEach(availableExercises, id: \.self) { ex in
+                                Text(LocalizedStringKey(ex)).tag(ex)
+                            }
                         }
                     }
-                    .pickerStyle(.menu) // ✅ ИСПРАВЛЕНИЕ: .menu вместо .navigationLink спасает от бага SwiftUI
+                    .pickerStyle(.menu)
                     .tint(.blue)
                 }
+                
                 if type == .strength || type == .bodyweight {
                     HStack {
                         Text(LocalizedStringKey("Target (\(unitsManager.weightUnitString()))"))
@@ -341,37 +350,43 @@ struct GoalSetupDetailView: View {
             }
             
             Section {
-                Button(action: saveGoal) {
-                    Text(LocalizedStringKey("Set Goal"))
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(.white)
-                }
-                .listRowBackground(Color.blue)
-            }
-        }
-        .navigationTitle(type.rawValue.capitalized)
-        .onAppear {
-            setupInitialValues()
-        }
-    }
-    
-    private func getAvailableExercises() -> [String] {
-        let pool = (Exercise.catalog["Chest"] ?? []) + (Exercise.catalog["Back"] ?? []) + (Exercise.catalog["Legs"] ?? [])
-        return Array(Set(pool)).sorted()
-    }
-    
-    private func setupInitialValues() {
-        if type == .bodyweight {
-            targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentBodyWeight))
-        } else if type == .strength {
-            selectedExercise = getAvailableExercises().first ?? "Bench Press"
-            let currentMax = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
-            targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentMax + 5.0))
-        }
-    }
-    
-    private func saveGoal() {
+                          Button(action: saveGoal) {
+                              Text(LocalizedStringKey("Set Goal"))
+                                  .font(.headline)
+                                  .frame(maxWidth: .infinity)
+                                  .foregroundColor(.white)
+                          }
+                          .listRowBackground(Color.blue)
+                          .disabled(type == .strength && selectedExercise.isEmpty) // Защита
+                      }
+                  }
+                  .navigationTitle(type.rawValue.capitalized)
+                  // ✅ 3. Загружаем данные асинхронно при появлении вью
+                  .task {
+                      let catalog = await ExerciseDatabaseService.shared.getCatalog()
+                      
+                      // Фильтруем основные группы для целей (грудь, спина, ноги)
+                      let pool = (catalog["Chest"] ?? []) + (catalog["Back"] ?? []) + (catalog["Legs"] ?? [])
+                      let sortedPool = Array(Set(pool)).sorted()
+                      
+                      await MainActor.run {
+                          self.availableExercises = sortedPool
+                          
+                          // Теперь, когда данные есть, настраиваем начальные значения
+                          if type == .strength {
+                              if selectedExercise.isEmpty {
+                                  selectedExercise = availableExercises.first ?? "Bench Press"
+                              }
+                              let currentMax = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
+                              targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentMax + 5.0))
+                          } else if type == .bodyweight {
+                              targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentBodyWeight))
+                          }
+                      }
+                  }
+              }
+
+              private func saveGoal() {
         let startingVal: Double
         let targetVal: Double
         

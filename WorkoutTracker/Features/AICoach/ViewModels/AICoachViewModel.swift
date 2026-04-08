@@ -127,19 +127,23 @@ final class AICoachViewModel {
         let prCache = await analyticsService.getAllPersonalRecords(workouts: workouts, unitsManager: UnitsManager.shared).reduce(into: [String:Double]()) { $0[$1.exerciseName] = Double($1.value.filter("0123456789.".contains)) ?? 0 }
         let allAvailableExercises = (try? await exerciseCatalogService.fetchCustomExercises())?.map { $0.name } ?? []
         
-        let userContext = UserProfileContext(
-            weightKg: UnitsManager.shared.convertToKilograms(userWeight),
-            experienceLevel: "Intermediate",
-            favoriteMuscles: [],
-            recentPRs: prCache,
-            language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
-            workoutsThisWeek: await analyticsService.getStats(for: Calendar.current.dateInterval(of: .weekOfYear, for: Date())!, workouts: workouts).workoutCount,
-            currentStreak: await analyticsService.calculateWorkoutStreak(workouts: workouts),
-            fatiguedMuscles: recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup },
-            availableExercises: Exercise.catalog.values.flatMap { $0 } + allAvailableExercises,
-            aiCoachTone: savedTone,
-            weightUnit: UnitsManager.shared.weightUnitString()
-        )
+        let catalog = await ExerciseDatabaseService.shared.getCatalog()
+                
+                let userContext = UserProfileContext(
+                    weightKg: UnitsManager.shared.convertToKilograms(userWeight),
+                    experienceLevel: "Intermediate",
+                    favoriteMuscles: [],
+                    recentPRs: prCache,
+                    language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
+                    workoutsThisWeek: await analyticsService.getStats(for: Calendar.current.dateInterval(of: .weekOfYear, for: Date())!, workouts: workouts).workoutCount,
+                    currentStreak: await analyticsService.calculateWorkoutStreak(workouts: workouts),
+                    fatiguedMuscles: recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup },
+                    // ✅ ИСПОЛЬЗУЕМ ЗАГРУЖЕННЫЙ КАТАЛОГ
+                    availableExercises: catalog.values.flatMap { $0 } + allAvailableExercises,
+                    aiCoachTone: savedTone,
+                    weightUnit: UnitsManager.shared.weightUnitString()
+                )
+                
         
         currentTask?.cancel()
         currentTask = Task {

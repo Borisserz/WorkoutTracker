@@ -70,61 +70,115 @@ struct TechniqueHelper {
     }
 }
 
-// Представление-шторка для отображения техники
 struct TechniqueSheetView: View {
+    let exerciseName: String // ✅ ДОБАВИЛИ ИМЯ
     let category: ExerciseCategory
+    
     @Environment(\.dismiss) var dismiss
+    
+    // Стейт для данных из JSON
+    @State private var jsonInstructions: [String]? = nil
+    @State private var isLoading = true
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(LocalizedStringKey("How to Perform"))
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        Text(TechniqueHelper.getDescription(for: category))
-                            .font(.body)
-                            .lineSpacing(4)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(12)
                     
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(LocalizedStringKey("Key Tips"))
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        ForEach(TechniqueHelper.getTips(for: category), id: \.self) { tip in
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.blue)
-                                    .font(.caption)
-                                    .padding(.top, 4)
+                    if isLoading {
+                        ProgressView("Loading instructions...")
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 50)
+                    } else {
+                        // Если JSON вернул массив шагов
+                        if let steps = jsonInstructions, !steps.isEmpty {
+                            VStack(alignment: .leading, spacing: 16) {
+                                Text(LocalizedStringKey("How to Perform"))
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
                                 
-                                Text(tip)
-                                    .font(.body)
-                                    .lineSpacing(4)
+                                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                                    HStack(alignment: .top, spacing: 12) {
+                                        Text("\(index + 1)")
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.white)
+                                            .frame(width: 24, height: 24)
+                                            .background(Color.blue)
+                                            .clipShape(Circle())
+                                        
+                                        Text(step)
+                                            .font(.body)
+                                            .lineSpacing(4)
+                                    }
+                                }
                             }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(12)
+                            
+                        } else {
+                            // ФОЛЛБЭК: Старый метод, если в JSON пусто
+                            fallbackView
                         }
                     }
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(12)
                 }
                 .padding()
             }
-            .navigationTitle(LocalizedStringKey("Technique"))
+            .navigationTitle(LocalizedStringKey(exerciseName))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Done")) { dismiss() }
                 }
             }
+            .task {
+                // АСИНХРОННО ТЯНЕМ ИНСТРУКЦИИ ИЗ БАЗЫ
+                let instructions = await ExerciseDatabaseService.shared.getInstructions(for: exerciseName)
+                await MainActor.run {
+                    self.jsonInstructions = instructions
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+    
+    // Старый интерфейс как запасной вариант
+    private var fallbackView: some View {
+        Group {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(LocalizedStringKey("How to Perform"))
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text(TechniqueHelper.getDescription(for: category))
+                    .font(.body)
+                    .lineSpacing(4)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                Text(LocalizedStringKey("Key Tips"))
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                
+                ForEach(TechniqueHelper.getTips(for: category), id: \.self) { tip in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.blue)
+                            .font(.caption)
+                            .padding(.top, 4)
+                        Text(tip).font(.body).lineSpacing(4)
+                    }
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
         }
     }
 }
