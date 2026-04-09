@@ -148,27 +148,31 @@ struct WorkoutView: View {
     }
     
     private var statsSection: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                StatCard(
-                    title: LocalizedStringKey("Avg Duration"),
-                    value: "\(listViewModel.calculatedAvgDuration)",
-                    subtitle: LocalizedStringKey("min"),
-                    icon: "stopwatch"
-                )
-                
-                StatCard(
-                    title: LocalizedStringKey("Avg Volume"),
-                    value: "\(Int(unitsManager.convertFromKilograms(Double(listViewModel.calculatedAvgVolume))))",
-                    subtitle: LocalizedStringKey(unitsManager.weightUnitString()),
-                    icon: "scalemass"
-                )
+            // Вычисляем тонны
+            let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
+            let formattedTons = LocalizationHelper.shared.formatTwoDecimals(tons)
+            
+            return VStack(spacing: 12) {
+                HStack(spacing: 12) {
+                    StatCard(
+                        title: LocalizedStringKey("Avg Duration"),
+                        value: "\(listViewModel.calculatedAvgDuration)",
+                        subtitle: LocalizedStringKey("min"),
+                        icon: "stopwatch"
+                    )
+                    
+                    StatCard(
+                        title: LocalizedStringKey("Avg Volume"),
+                        value: formattedTons,
+                        subtitle: LocalizedStringKey("tons"), // Жестко задаем тонны
+                        icon: "scalemass"
+                    )
+                }
+                .padding(.horizontal)
+                .padding(.top, 8)
+                .padding(.bottom, 8)
             }
-            .padding(.horizontal)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
         }
-    }
     
     private var searchAndFiltersSection: some View {
         VStack(spacing: 12) {

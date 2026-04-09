@@ -71,46 +71,56 @@ final class WorkoutDetailViewModel {
     }
     
     func updateWorkoutAnalytics(for workout: Workout) {
-        var counts = [String: Int]()
-        var volume = 0.0
-        var chartExercises: [ExerciseChartDTO] = []
-        var totalCompletedSets = 0
-        
-        for exercise in workout.exercises {
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-            for sub in targets {
-                let completedSetsCount = sub.setsList.filter { $0.isCompleted }.count
-                totalCompletedSets += completedSetsCount
-                
-                if sub.type != .cardio && completedSetsCount > 0 {
-                    let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
-                    for muscleSlug in muscles {
-                        counts[muscleSlug, default: 0] += (completedSetsCount * 25)
+            var rawExerciseCounts = [String: Int]()
+            var intensities = [String: Int]()
+            
+            var volume = 0.0
+            var chartExercises: [ExerciseChartDTO] = []
+            var totalCompletedSets = 0
+            
+            for exercise in workout.exercises {
+                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for sub in targets {
+                    let completedSetsCount = sub.setsList.filter { $0.isCompleted }.count
+                    totalCompletedSets += completedSetsCount
+                    
+                    // ✅ Считаем УПРАЖНЕНИЯ, а не сеты (если есть хотя бы 1 выполненный сет)
+                    if sub.type != .cardio && completedSetsCount > 0 {
+                        let muscles = MuscleMapping.getMuscles(for: sub.name, group: sub.muscleGroup)
+                        for muscleSlug in muscles {
+                            rawExerciseCounts[muscleSlug, default: 0] += 1
+                        }
                     }
                 }
+                volume += exercise.exerciseVolume
             }
-            volume += exercise.exerciseVolume
-        }
-        
-        let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
-        let forChart = flattened.filter { ex in
-            ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
-        }
-        
-        for ex in forChart {
-            let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
-            if maxW > 0 {
-                chartExercises.append(ExerciseChartDTO(id: ex.id, name: ex.name, maxWeight: maxW))
+            
+            // ✅ Рассчитываем яркость красного цвета (до 100%)
+            // 1 упражнение = 40% яркости, 2 = 75%, 3 и более = 100%
+            for (slug, count) in rawExerciseCounts {
+                intensities[slug] = min(100, count * 35 + 5)
             }
+            
+            let flattened = workout.exercises.flatMap { $0.isSuperset ? $0.subExercises : [$0] }
+            let forChart = flattened.filter { ex in
+                ex.type == .strength && ex.setsList.contains(where: { $0.isCompleted && ($0.weight ?? 0) > 0 })
+            }
+            
+            for ex in forChart {
+                let maxW = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }.compactMap { $0.weight }.max() ?? 0
+                if maxW > 0 {
+                    chartExercises.append(ExerciseChartDTO(id: ex.id, name: ex.name, maxWeight: maxW))
+                }
+            }
+            
+            self.workoutAnalytics = WorkoutAnalyticsDataDTO(
+                intensity: intensities,
+                rawCounts: rawExerciseCounts, // Передаем сырые данные
+                volume: volume,
+                chartExercises: chartExercises,
+                completedSetsCount: totalCompletedSets
+            )
         }
-        
-        self.workoutAnalytics = WorkoutAnalyticsDataDTO(
-            intensity: counts,
-            volume: volume,
-            chartExercises: chartExercises,
-            completedSetsCount: totalCompletedSets
-        )
-    }
 
     func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
         newExercise.workout = workout
@@ -194,7 +204,6 @@ final class WorkoutDetailViewModel {
         )
     }
     
-    // ✅ ИСПРАВЛЕНИЕ: Удалены вызовы `triggerProactiveFeedback`
     func handleSetCompleted(set: WorkoutSet, isLast: Bool, exerciseName: String, workout: Workout, weightUnit: String) {
         updateWorkoutAnalytics(for: workout)
         

@@ -2,13 +2,6 @@
 //  TechniqueHelper.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 23.03.26.
-//
-
-//
-//  TechniqueHelper.swift
-//  WorkoutTracker
-//
 
 import Foundation
 internal import SwiftUI
@@ -71,13 +64,13 @@ struct TechniqueHelper {
 }
 
 struct TechniqueSheetView: View {
-    let exerciseName: String // ✅ ДОБАВИЛИ ИМЯ
+    let exerciseName: String
     let category: ExerciseCategory
     
     @Environment(\.dismiss) var dismiss
     
-    // Стейт для данных из JSON
-    @State private var jsonInstructions: [String]? = nil
+    // Стейт для полного объекта из базы
+    @State private var dbItem: ExerciseDBItem? = nil
     @State private var isLoading = true
     
     var body: some View {
@@ -86,40 +79,56 @@ struct TechniqueSheetView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     
                     if isLoading {
-                        ProgressView("Loading instructions...")
+                        ProgressView("Loading details...")
                             .frame(maxWidth: .infinity)
                             .padding(.top, 50)
                     } else {
-                        // Если JSON вернул массив шагов
-                        if let steps = jsonInstructions, !steps.isEmpty {
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text(LocalizedStringKey("How to Perform"))
-                                    .font(.headline)
-                                    .foregroundColor(.secondary)
-                                
-                                ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                                    HStack(alignment: .top, spacing: 12) {
-                                        Text("\(index + 1)")
-                                            .font(.caption)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.white)
-                                            .frame(width: 24, height: 24)
-                                            .background(Color.blue)
-                                            .clipShape(Circle())
-                                        
-                                        Text(step)
-                                            .font(.body)
-                                            .lineSpacing(4)
+                        // Если упражнение нашлось в JSON
+                        if let item = dbItem {
+                            
+                            // 1. ЦЕЛЕВЫЕ МЫШЦЫ
+                            if let primary = item.primaryMuscles, !primary.isEmpty {
+                                musclesSection(title: "Target Muscles", muscles: primary, color: .blue, icon: "figure.strengthtraining.traditional")
+                            }
+                            
+                            // 2. ВТОРОСТЕПЕННЫЕ МЫШЦЫ
+                            if let secondary = item.secondaryMuscles, !secondary.isEmpty {
+                                musclesSection(title: "Synergist Muscles", muscles: secondary, color: .orange, icon: "figure.mixed.cardio")
+                            }
+                            
+                            // 3. ИНСТРУКЦИИ
+                            if let steps = item.instructions, !steps.isEmpty {
+                                VStack(alignment: .leading, spacing: 16) {
+                                    Text(LocalizedStringKey("How to Perform"))
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                    
+                                    ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                                        HStack(alignment: .top, spacing: 12) {
+                                            Text("\(index + 1)")
+                                                .font(.caption)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.white)
+                                                .frame(width: 24, height: 24)
+                                                .background(Color.blue)
+                                                .clipShape(Circle())
+                                            
+                                            Text(step)
+                                                .font(.body)
+                                                .lineSpacing(4)
+                                        }
                                     }
                                 }
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(12)
+                            } else {
+                                fallbackView // Если инструкций нет
                             }
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .cornerRadius(12)
                             
                         } else {
-                            // ФОЛЛБЭК: Старый метод, если в JSON пусто
+                            // ФОЛЛБЭК: Если это кастомное упражнение (которого нет в JSON)
                             fallbackView
                         }
                     }
@@ -134,17 +143,46 @@ struct TechniqueSheetView: View {
                 }
             }
             .task {
-                // АСИНХРОННО ТЯНЕМ ИНСТРУКЦИИ ИЗ БАЗЫ
-                let instructions = await ExerciseDatabaseService.shared.getInstructions(for: exerciseName)
+                // Вытягиваем весь объект из базы
+                let item = await ExerciseDatabaseService.shared.getExerciseItem(for: exerciseName)
                 await MainActor.run {
-                    self.jsonInstructions = instructions
+                    self.dbItem = item
                     self.isLoading = false
                 }
             }
         }
     }
     
-    // Старый интерфейс как запасной вариант
+    // Блок для отрисовки тегов мышц
+    private func musclesSection(title: String, muscles: [String], color: Color, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon).foregroundColor(color)
+                Text(LocalizedStringKey(title)).font(.headline)
+            }
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(muscles, id: \.self) { muscle in
+                        Text(LocalizedStringKey(muscle.capitalized))
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(color.opacity(0.15))
+                            .foregroundColor(color)
+                            .cornerRadius(8)
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+    
+    // Старый интерфейс как запасной вариант (для кастомных упражнений)
     private var fallbackView: some View {
         Group {
             VStack(alignment: .leading, spacing: 12) {

@@ -44,7 +44,7 @@ struct WorkoutDetailContentView: View {
     
     @Bindable var workout: Workout
     @Bindable var viewModel: WorkoutDetailViewModel
-    
+    @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
     // MARK: - Presentation State
     @State private var activeSheet: DetailDestination?
     @State private var activeFullScreen: DetailDestination?
@@ -477,49 +477,56 @@ struct WorkoutDetailContentView: View {
 
     // MARK: - 2. Muscle Heatmap Section (WorkoutDetailContentView)
     private var muscleHeatmapSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStringKey("Body Status"))
-                    .font(.title2)
-                    .bold()
-                
-                Spacer()
-                
-                // Пульсирующий бейдж Live Tension
-                if workout.isActive {
-                    HStack(spacing: 6) {
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 8, height: 8)
-                            .symbolEffect(.pulse)
-                        Text(LocalizedStringKey("Live Tension"))
-                            .font(.caption)
-                            .bold()
-                            .foregroundColor(.green)
-                            .textCase(.uppercase)
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text(LocalizedStringKey("Body Status"))
+                        .font(.title2)
+                        .bold()
+                    
+                    Spacer()
+                    
+                    if workout.isActive {
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color.green)
+                                .frame(width: 8, height: 8)
+                                .symbolEffect(.pulse)
+                            Text(LocalizedStringKey("Live Tension"))
+                                .font(.caption)
+                                .bold()
+                                .foregroundColor(.green)
+                                .textCase(.uppercase)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Color.green.opacity(0.15))
+                        .clipShape(Capsule())
                     }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.green.opacity(0.15))
-                    .clipShape(Capsule())
                 }
+                .padding(.horizontal, 4)
+                
+                VStack {
+                    // ✅ ИСПРАВЛЕНИЕ: Передаем rawMuscleCounts и "exercises"
+                    BodyHeatmapView(
+                        muscleIntensities: viewModel.workoutAnalytics.intensity,
+                        rawMuscleCounts: viewModel.workoutAnalytics.rawCounts,
+                        isRecoveryMode: false,
+                        isCompactMode: false,
+                        userGender: userGender,
+                        countLabel: "exercises"
+                    )
+                }
+                .padding(.vertical, 20)
+                .frame(maxWidth: .infinity)
+                .background(Color(UIColor.secondarySystemBackground))
+                .cornerRadius(24)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
             }
-            .padding(.horizontal, 4)
-            
-            VStack {
-                BodyHeatmapView(muscleIntensities: viewModel.workoutAnalytics.intensity)
-            }
-            .padding(.vertical, 20)
-            .frame(maxWidth: .infinity)
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(24)
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
         }
-    }
     
     @ViewBuilder
     private func renderSheetContent(for destination: DetailDestination) -> some View {

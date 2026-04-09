@@ -11,7 +11,6 @@ import Observation
 @MainActor
 final class ExerciseHistoryViewModel {
     
-    // ✅ ИСПРАВЛЕНО: Добавлена вкладка oneRepMax
     enum Tab: String, CaseIterable {
         case summary = "Summary", technique = "Technique", history = "History", oneRepMax = "1RM"
         var localizedName: LocalizedStringKey { LocalizedStringKey(self.rawValue) }
@@ -40,6 +39,10 @@ final class ExerciseHistoryViewModel {
     let exerciseName: String
     private let analyticsService: AnalyticsService
     
+    // ✅ МЫШЦЫ ИЗ JSON
+    var primaryMuscles: [String] = []
+    var secondaryMuscles: [String] = []
+    
     // MARK: - 1RM Calculator State
     
     var selectedFormula: RMFormula = .brzycki {
@@ -52,7 +55,6 @@ final class ExerciseHistoryViewModel {
     var calcInputReps: Int? = nil
     var manual1RMOverride: Double? = nil
     
-    /// Возвращает базовый 1RM (в КГ). Приоритет: Ручной ввод -> Ввод из калькулятора -> Лучший сет в истории -> 0
     var effective1RM: Double {
         if let manual = manual1RMOverride { return manual }
         
@@ -61,7 +63,7 @@ final class ExerciseHistoryViewModel {
         }
         
         let maxHist = allDataPoints.map { $0.value }.max() ?? 0.0
-        return UnitsManager.shared.convertToKilograms(maxHist) // Возвращаем чистые КГ для математики
+        return UnitsManager.shared.convertToKilograms(maxHist)
     }
     
     // MARK: - Init
@@ -70,28 +72,33 @@ final class ExerciseHistoryViewModel {
         self.exerciseName = exerciseName
         self.analyticsService = analyticsService
         
-        // Загрузка сохраненной формулы 1RM
         if let savedFormula = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.preferred1RMFormula.rawValue),
            let formula = RMFormula(rawValue: savedFormula) {
             self.selectedFormula = formula
         }
     }
 
+    // MARK: - Data Loading
     
     func loadData(unitsManager: UnitsManager) async {
-          guard let payload = await analyticsService.fetchExerciseHistoryData(exerciseName: exerciseName) else {
-              self.isDataLoaded = true
-              return
-          }
-          
-          self.exerciseType = payload.type
-          self.exerciseCategory = payload.category
-          self.muscleGroup = payload.muscleGroup
-          self.exerciseTrend = payload.trend
-          self.exerciseForecast = payload.forecast
-          self.personalRecords = payload.records // ✅ ДОБАВЛЕНО
+        // 1. Сначала загружаем статику (мышцы) из БД, чтобы даже для пустых упражнений была информация
+        let dbItem = await ExerciseDatabaseService.shared.getExerciseItem(for: exerciseName)
+        self.primaryMuscles = dbItem?.primaryMuscles ?? []
+        self.secondaryMuscles = dbItem?.secondaryMuscles ?? []
         
-        // Маппим данные, используя глобальный тип ExerciseHistoryDataPoint
+        // 2. Загружаем динамику (историю) из аналитики
+        guard let payload = await analyticsService.fetchExerciseHistoryData(exerciseName: exerciseName) else {
+            self.isDataLoaded = true
+            return
+        }
+        
+        self.exerciseType = payload.type
+        self.exerciseCategory = payload.category
+        self.muscleGroup = payload.muscleGroup
+        self.exerciseTrend = payload.trend
+        self.exerciseForecast = payload.forecast
+        self.personalRecords = payload.records
+        
         self.allDataPoints = payload.dataPoints.map { dp in
             var convertedValue = dp.value
             switch payload.type {
@@ -106,11 +113,12 @@ final class ExerciseHistoryViewModel {
         self.isDataLoaded = true
     }
     
+    // MARK: - Graph Data
+    
     func updateGraphData() {
         let calendar = Calendar.current
         let now = Date()
         
-        // 1. Фильтруем по дате
         let filteredByDate: [ExerciseHistoryDataPoint]
         if selectedTimeRange == .all {
             filteredByDate = allDataPoints
@@ -129,21 +137,17 @@ final class ExerciseHistoryViewModel {
             return
         }
         
-        // 2. Агрегация данных (Downsampling) для устранения "каши" на графике
         var groupedDict: [Date: [Double]] = [:]
         
         for point in filteredByDate {
             let dateKey: Date
             switch selectedTimeRange {
             case .month, .threeMonths:
-                // Группируем по дням
                 dateKey = calendar.startOfDay(for: point.date)
             case .sixMonths, .year:
-                // Группируем по неделям (начало недели)
                 let comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: point.date)
                 dateKey = calendar.date(from: comps) ?? calendar.startOfDay(for: point.date)
             case .all:
-                // Группируем по месяцам, если данных очень много, иначе по неделям
                 if filteredByDate.count > 200 {
                     let comps = calendar.dateComponents([.year, .month], from: point.date)
                     dateKey = calendar.date(from: comps) ?? calendar.startOfDay(for: point.date)
@@ -155,18 +159,14 @@ final class ExerciseHistoryViewModel {
             groupedDict[dateKey, default: []].append(point.value)
         }
         
-        // 3. Формируем финальные точки (берем Max или Avg за период)
         var aggregatedPoints: [ExerciseHistoryDataPoint] = []
         for (date, values) in groupedDict {
-            // Для силовых и кардио обычно интереснее максимальный результат за день/неделю
             let aggregatedValue = values.max() ?? 0.0
             aggregatedPoints.append(ExerciseHistoryDataPoint(date: date, value: aggregatedValue, rawWorkoutID: filteredByDate.first!.rawWorkoutID))
         }
         
-        // Сортируем по дате
         let finalData = aggregatedPoints.sorted { $0.date < $1.date }
         
-        // 4. Высчитываем метрику для пунктирной линии (Max/Average)
         var newMetric: Double? = nil
         if selectedMetric != .none {
             let values = finalData.map { $0.value }
@@ -177,6 +177,8 @@ final class ExerciseHistoryViewModel {
         self.displayedGraphData = finalData
         self.currentMetricValue = newMetric
     }
+    
+    // MARK: - UI Helpers
     
     var unitLabel: String { switch exerciseType { case .strength: return UnitsManager.shared.weightUnitString(); case .cardio: return UnitsManager.shared.distanceUnitString(); case .duration: return "min" } }
     var chartTitle: LocalizedStringKey { switch exerciseType { case .strength: return "Progress (Weight)"; case .cardio: return "Progress (Distance)"; case .duration: return "Progress (Time)" } }

@@ -206,45 +206,68 @@ struct ExerciseHistoryView: View {
             .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
             
             let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: vm.exerciseName, muscleGroup: vm.muscleGroup)
-            if !targetMuscles.isEmpty {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .foregroundColor(vm.chartColor)
-                        Text(LocalizedStringKey("Target Muscles"))
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                    }
-                    
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
-                        ForEach(targetMuscles, id: \.self) { muscle in
-                            NavigationLink(destination: ExerciseView(preselectedCategory: vm.muscleGroup)) {
-                                HStack(spacing: 6) {
-                                    Circle()
-                                        .fill(vm.chartColor)
-                                        .frame(width: 8, height: 8)
-                                    Text(muscle)
-                                        .font(.subheadline)
-                                        .fontWeight(.semibold)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                                .background(vm.chartColor.opacity(0.1))
-                                .foregroundColor(vm.chartColor)
-                                .cornerRadius(12)
-                            }
-                        }
-                    }
-                }
-                .padding(20)
-                .background(Color(UIColor.secondarySystemGroupedBackground))
-                .cornerRadius(20)
-                .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
-            }
-        }
-    }
-    
+            if !vm.primaryMuscles.isEmpty {
+                         VStack(alignment: .leading, spacing: 16) {
+                             HStack(spacing: 8) {
+                                 Image(systemName: "figure.strengthtraining.traditional").foregroundColor(vm.chartColor)
+                                 Text(LocalizedStringKey("Target (Primary) Muscles")).font(.headline).foregroundColor(.primary)
+                             }
+                             
+                             // Теги с мышцами
+                             ScrollView(.horizontal, showsIndicators: false) {
+                                 HStack(spacing: 10) {
+                                     ForEach(vm.primaryMuscles, id: \.self) { muscle in
+                                         HStack(spacing: 6) {
+                                             Circle().fill(vm.chartColor).frame(width: 8, height: 8)
+                                             Text(LocalizedStringKey(muscle.capitalized))
+                                                 .font(.subheadline).fontWeight(.semibold)
+                                         }
+                                         .padding(.horizontal, 14).padding(.vertical, 10)
+                                         .background(vm.chartColor.opacity(0.15))
+                                         .foregroundColor(vm.chartColor)
+                                         .cornerRadius(12)
+                                     }
+                                 }
+                             }
+                         }
+                         .padding(20)
+                         .background(Color(UIColor.secondarySystemGroupedBackground))
+                         .cornerRadius(20)
+                         .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
+                     }
+                     
+                     // ✅ Блок: ВТОРОСТЕПЕННЫЕ МЫШЦЫ (Secondary)
+                     if !vm.secondaryMuscles.isEmpty {
+                         VStack(alignment: .leading, spacing: 16) {
+                             HStack(spacing: 8) {
+                                 Image(systemName: "figure.mixed.cardio").foregroundColor(.orange)
+                                 Text(LocalizedStringKey("Synergist (Secondary) Muscles")).font(.headline).foregroundColor(.primary)
+                             }
+                             
+                             // Теги с мышцами
+                             ScrollView(.horizontal, showsIndicators: false) {
+                                 HStack(spacing: 10) {
+                                     ForEach(vm.secondaryMuscles, id: \.self) { muscle in
+                                         HStack(spacing: 6) {
+                                             Circle().fill(Color.orange).frame(width: 6, height: 6)
+                                             Text(LocalizedStringKey(muscle.capitalized))
+                                                 .font(.subheadline).fontWeight(.medium)
+                                         }
+                                         .padding(.horizontal, 14).padding(.vertical, 10)
+                                         .background(Color.orange.opacity(0.1))
+                                         .foregroundColor(.orange)
+                                         .cornerRadius(12)
+                                     }
+                                 }
+                             }
+                         }
+                         .padding(20)
+                         .background(Color(UIColor.secondarySystemGroupedBackground))
+                         .cornerRadius(20)
+                         .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
+                     }
+                 }
+             }
     private func historyContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("History"))

@@ -43,19 +43,21 @@ final class ExerciseFilterState {
             }
             
             // 2. ИСПРАВЛЕННАЯ ФИЛЬТРАЦИЯ ПО МЫШЦАМ
-            if !targetMuscles.isEmpty {
-                let primary = (exercise.primaryMuscles ?? []).map { $0.lowercased() }
-                let secondary = (exercise.secondaryMuscles ?? []).map { $0.lowercased() }
-                let category = exercise.category?.lowercased() ?? ""
-                
-                // Собираем все мышцы, задействованные в упражнении
-                let exerciseTargets = Set(primary + secondary + [category])
-                
-                // Если нет пересечений (т.е. наборы Disjoint) -> отбрасываем упражнение
-                if targetMuscles.isDisjoint(with: exerciseTargets) {
-                    return false
-                }
-            }
+            // 2. СТРОГАЯ ФИЛЬТРАЦИЯ ПО ЦЕЛЕВЫМ МЫШЦАМ
+                        if !targetMuscles.isEmpty {
+                            // Берем только ГЛАВНЫЕ мышцы (primaryMuscles)
+                            let primary = (exercise.primaryMuscles ?? []).map { $0.lowercased() }
+                            // Оставляем категорию, чтобы нормально работала вкладка "Cardio"
+                            let category = exercise.category?.lowercased() ?? ""
+                            
+                            // Исключаем secondaryMuscles, чтобы жим лежа не попадал в плечи и т.д.
+                            let exerciseTargets = Set(primary + [category])
+                            
+                            // Если главные мышцы упражнения не пересекаются с выбранной UI-вкладкой -> отбрасываем
+                            if targetMuscles.isDisjoint(with: exerciseTargets) {
+                                return false
+                            }
+                        }
             
             // Фильтрация по оборудованию
             if !selectedEquipment.isEmpty {

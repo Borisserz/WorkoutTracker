@@ -59,24 +59,28 @@ struct HistoryView: View {
     // MARK: - View Components
     
     private var statsSection: some View {
-        HStack(spacing: 12) {
-            CompactStatCard(
-                title: "Avg Duration",
-                value: "\(listViewModel.calculatedAvgDuration)",
-                unit: "min",
-                icon: "stopwatch.fill",
-                colors: [.purple, .indigo]
-            )
+            // Вычисляем тонны
+            let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
+            let formattedTons = LocalizationHelper.shared.formatTwoDecimals(tons)
             
-            CompactStatCard(
-                title: "Avg Volume",
-                value: "\(Int(unitsManager.convertFromKilograms(Double(listViewModel.calculatedAvgVolume))))",
-                unit: LocalizedStringKey(unitsManager.weightUnitString()),
-                icon: "scalemass.fill",
-                colors: [.cyan, .blue]
-            )
+            return HStack(spacing: 12) {
+                CompactStatCard(
+                    title: "Avg Duration",
+                    value: "\(listViewModel.calculatedAvgDuration)",
+                    unit: "min",
+                    icon: "stopwatch.fill",
+                    colors: [.purple, .indigo]
+                )
+                
+                CompactStatCard(
+                    title: "Avg Volume",
+                    value: formattedTons,
+                    unit: "tons", // Жестко задаем тонны
+                    icon: "scalemass.fill",
+                    colors: [.cyan, .blue]
+                )
+            }
         }
-    }
     
     private var stickyControlBar: some View {
             VStack(spacing: 12) {

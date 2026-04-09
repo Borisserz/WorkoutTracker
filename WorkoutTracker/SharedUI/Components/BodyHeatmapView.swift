@@ -6,10 +6,11 @@ internal import SwiftUI
 
 struct BodyHeatmapView: View {
     let muscleIntensities: [String: Int]
-    let rawMuscleCounts: [String: Int]? // ✅ ДОБАВЛЕНО: Сырые данные для тултипов
+    let rawMuscleCounts: [String: Int]?
     let isRecoveryMode: Bool
     let isCompactMode: Bool
     let userGender: String
+    let countLabel: String // ✅ ДОБАВЛЕНО: для переключения текста (sets / exercises)
     
     @State private var isFrontView = true
     @State private var selectedMuscleName: String? = nil
@@ -22,17 +23,19 @@ struct BodyHeatmapView: View {
     
     init(
         muscleIntensities: [String: Int] = [:],
-        rawMuscleCounts: [String: Int]? = nil, // ✅ ДОБАВЛЕНО
+        rawMuscleCounts: [String: Int]? = nil,
         isRecoveryMode: Bool = false,
         isCompactMode: Bool = false,
         defaultToBack: Bool = false,
-        userGender: String = "male"
+        userGender: String = "male",
+        countLabel: String = "sets" // По умолчанию оставляем "sets" для глобальной аналитики
     ) {
         self.muscleIntensities = muscleIntensities
         self.rawMuscleCounts = rawMuscleCounts
         self.isRecoveryMode = isRecoveryMode
         self.isCompactMode = isCompactMode
         self.userGender = userGender
+        self.countLabel = countLabel
         self._isFrontView = State(initialValue: !defaultToBack)
     }
     
@@ -69,7 +72,7 @@ struct BodyHeatmapView: View {
                             drawMuscle(muscle, centeringOffset: centeringOffset)
                         }
                     }
-                    .drawingGroup() // Аппаратное ускорение Metal
+                    .drawingGroup()
                 }
                 .frame(width: canvasWidth, height: canvasHeight)
                 .scaleEffect(scale)
@@ -113,12 +116,18 @@ struct BodyHeatmapView: View {
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.8))
                 } else {
-                    // ✅ ИСПРАВЛЕНИЕ: Используем сырые данные для тултипа, если они есть
                     let displayCount = rawMuscleCounts?[slug] ?? muscleIntensities[slug] ?? 0
                     if displayCount > 0 {
-                        Text(LocalizedStringKey("\(displayCount) sets")) // Изменили "exercises" на "sets" для точности
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
+                        // ✅ ИСПОЛЬЗУЕМ ДИНАМИЧЕСКИЙ ЯРЛЫК ("exercises" или "sets")
+                        if countLabel == "exercises" {
+                            Text(LocalizedStringKey("\(displayCount) exercises"))
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
+                        } else {
+                            Text(LocalizedStringKey("\(displayCount) sets"))
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
                     }
                 }
             }
@@ -185,7 +194,7 @@ struct BodyHeatmapView: View {
         } label: {
             ZStack {
                 finalPath
-                    .fill(Color.white.opacity(0.001)) // Хитбокс
+                    .fill(Color.white.opacity(0.001))
                 
                 finalPath
                     .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
@@ -219,7 +228,6 @@ struct BodyHeatmapView: View {
             let tension = muscleIntensities[slug] ?? 0
             if tension == 0 { return emptyColor }
             else {
-                // ✅ ЗАЩИТА: Clamping opacity, чтобы никогда не выходило за рамки 0.0...1.0
                 let calculatedOpacity = 0.3 + (0.7 * (Double(tension) / 100.0))
                 let safeOpacity = min(1.0, max(0.0, calculatedOpacity))
                 return Color.red.opacity(safeOpacity)

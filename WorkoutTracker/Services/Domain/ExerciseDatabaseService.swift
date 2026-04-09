@@ -116,7 +116,9 @@ public actor ExerciseDatabaseService {
     public func getAllExerciseItems() -> [ExerciseDBItem] { return Array(exercisesDict.values) }
     public func getInstructions(for exerciseName: String) -> [String]? { return exercisesDict[exerciseName.lowercased()]?.instructions }
     public func getPattern(for exerciseName: String) -> MovementPattern { return exercisesDict[exerciseName.lowercased()]?.pattern ?? .unsupported }
-    
+    public func getExerciseItem(for exerciseName: String) -> ExerciseDBItem? {
+           return exercisesDict[exerciseName.lowercased()]
+       }
     public func getMuscleActivations(for exerciseName: String, fallbackGroup: String) -> [MuscleActivation] {
         guard let item = exercisesDict[exerciseName.lowercased()] else {
             return [MuscleActivation(slug: mapToSlug(fallbackGroup), multiplier: 1.0)]
