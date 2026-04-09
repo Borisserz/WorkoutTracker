@@ -9,7 +9,32 @@
 import Foundation
 
 class LocalizationHelper {
-    
+    // === ДОБАВЛЯЕМ СЮДА ===
+     private var exerciseNamesRU: [String: String] = [:]
+     private var exerciseInstructionsRU: [String: [String]] = [:]
+
+     func setTranslations(names: [String: String], instructions: [String: [String]]) {
+         cacheLock.lock()
+         defer { cacheLock.unlock() }
+         self.exerciseNamesRU = names
+         self.exerciseInstructionsRU = instructions
+     }
+
+     /// Синхронный перевод имени (идеально для SwiftUI Views)
+     func translateName(_ englishName: String) -> String {
+         guard Locale.current.language.languageCode?.identifier == "ru" else { return englishName }
+         cacheLock.lock()
+         defer { cacheLock.unlock() }
+         return exerciseNamesRU[englishName.lowercased()] ?? englishName
+     }
+
+     /// Синхронный перевод инструкций
+     func translateInstructions(for englishName: String) -> [String]? {
+         guard Locale.current.language.languageCode?.identifier == "ru" else { return nil }
+         cacheLock.lock()
+         defer { cacheLock.unlock() }
+         return exerciseInstructionsRU[englishName.lowercased()]
+     }
     // MARK: - Singleton
     static let shared = LocalizationHelper()
     

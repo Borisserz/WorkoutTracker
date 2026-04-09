@@ -4,7 +4,7 @@
 //
 //  Created by Boris Serzhanovich on 24.12.25.
 //
-//  Отображение прогноза прогресса
+//  Отображение прогноза Progressа
 
 internal import SwiftUI
 
@@ -32,7 +32,7 @@ struct ProgressForecastRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(forecast.exerciseName)
+                Text(LocalizationHelper.shared.translateName(forecast.exerciseName))
                     .font(.headline)
                 
                 Spacer()
@@ -85,7 +85,7 @@ struct ProgressForecastRow: View {
                 }
             }
             
-            // Прогресс бар для визуализации
+            // Progress бар для визуализации
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Rectangle()

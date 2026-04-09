@@ -1051,7 +1051,7 @@ struct RadarChartDetailView: View {
     
     private let axes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
     
-    // Обертка для данных текущего и прошлого периодов
+    // Обертка для данных текущего и прошлого Periodов
     private struct RadarAggregatedData {
         let current: [RadarDataPoint]
         let previous: [RadarDataPoint]
@@ -1351,7 +1351,7 @@ struct RadarChartView: View {
                         .position(x: labelX, y: labelY)
                 }
                 
-                // 3. ПРЕДЫДУЩИЙ период (Ghost Polygon)
+                // 3. ПРЕДЫДУЩИЙ Period (Ghost Polygon)
                 if let prev = previousData {
                     DataPolygonShape(data: prev)
                         .fill(Color.gray.opacity(0.1))
@@ -1359,13 +1359,13 @@ struct RadarChartView: View {
                         .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
                 }
                 
-                // 4. ТЕКУЩИЙ период (Main Polygon)
+                // 4. ТЕКУЩИЙ Period (Main Polygon)
                 DataPolygonShape(data: currentData)
                     .fill(color.opacity(0.3))
                 DataPolygonShape(data: currentData)
                     .stroke(color, lineWidth: 2)
                 
-                // 5. Точки на вершинах текущего периода
+                // 5. Точки на вершинах текущего Periodа
                 ForEach(Array(currentData.enumerated()), id: \.offset) { index, point in
                     let currentAngle = computeAngle(for: index, totalCount: totalCount)
                     let isAxisHighlighted = highlightedAxis == point.axis

@@ -145,7 +145,7 @@ struct AddWorkoutView: View {
     private func exercisePreviewRow(exercise: Exercise) -> some View {
         HStack(alignment: .center, spacing: 8) {
             Circle().fill(Color.secondary.opacity(0.3)).frame(width: 6, height: 6)
-            Text(exercise.name).foregroundColor(.secondary)
+            Text(LocalizationHelper.shared.translateName(exercise.name)).foregroundColor(.secondary)
             Spacer()
             Text(exercise.formattedDetails(unitsManager: unitsManager))
                 .font(.caption)

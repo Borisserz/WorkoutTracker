@@ -50,7 +50,7 @@ struct WorkoutTrackerApp: App {
                     // Сразу запускаем главный контент
                     mainContent(di: di, dvm: dvm, usvm: usvm, aicvm: aicvm, cvm: cvm, pvm: pvm)
                 } else {
-                    ProgressView("Инициализация...")
+                    ProgressView("Initializing...")
                         .controlSize(.large)
                         .preferredColorScheme(colorScheme)
                 }

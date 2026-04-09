@@ -54,7 +54,7 @@ struct AIRoastShareCard: View {
                 
                 // Content
                 VStack(spacing: 16) {
-                    Text(LocalizedStringKey(exerciseName.uppercased()))
+                    Text(LocalizationHelper.shared.translateName(exerciseName).uppercased())
                         .font(.headline)
                         .foregroundColor(.gray)
                         .tracking(2)

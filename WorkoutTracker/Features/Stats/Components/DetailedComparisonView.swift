@@ -4,7 +4,7 @@
 //
 //  Created by Boris Serzhanovich on 24.12.25.
 //
-//  Детальное сравнение с предыдущим периодом
+//  Детальное сравнение с предыдущим Periodом
 
 internal import SwiftUI
 

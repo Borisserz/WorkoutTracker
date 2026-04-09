@@ -5,7 +5,7 @@ struct AdvancedFiltersSheet: View {
     let resultsCount: Int
     @Environment(\.dismiss) private var dismiss
     
-    private let equipmentList = ["barbell", "dumbbell", "machine", "cable", "bodyweight", "kettlebell", "bands"]
+    private let equipmentList = ["barbell", "dumbbell1", "machine", "cable", "bodyweight", "kettlebell", "bands"]
     private let mechanicsList = ["compound", "isolation"]
     private let levelsList = ["beginner", "intermediate", "expert"]
     

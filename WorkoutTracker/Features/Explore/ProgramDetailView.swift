@@ -210,7 +210,7 @@ struct RoutinePreviewCard: View {
     let routine: WorkoutPresetDTO
     let hideHeader: Bool
     var dayIndex: Int? = nil
-    
+    @State private var selectedHistoryExercise: String? = nil
     var body: some View {
         VStack(spacing: 0) {
             
@@ -244,43 +244,49 @@ struct RoutinePreviewCard: View {
             // Exercises List
             VStack(spacing: 0) {
                 ForEach(Array(routine.exercises.enumerated()), id: \.offset) { index, ex in
-                    HStack {
-                        Image(systemName: ex.type == .cardio ? "figure.run" : "dumbbell.fill")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                            .frame(width: 20)
-                        
-                        Text(ex.name)
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                        
-                        Spacer()
-                                                
-                                                // ✅ ИСПРАВЛЕНИЕ: Выносим логику из Text, чтобы не сводить компилятор с ума
-                                                let safeSets = ex.setsList ?? []
-                                                let repsCount = safeSets.first?.reps ?? 10
-                                                
-                                                Text("\(safeSets.count) x \(repsCount) reps")
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.secondary)
-                                            }
-                                            .padding(.horizontal, 16)
-                                            .padding(.vertical, 12)
+                    Button {
+                        selectedHistoryExercise = ex.name
+                    } label: {
+                        HStack {
+                            Image(systemName: ex.type == .cardio ? "figure.run" : "dumbbell.fill")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                                .frame(width: 20)
+                            
+                            Text(ex.name)
+                                .font(.subheadline)
+                                .foregroundColor(.primary)
+                            
+                            Spacer()
+                            
+                            let safeSets = ex.setsList ?? []
+                            let repsCount = safeSets.first?.reps ?? 10
+                            
+                            Text("\(safeSets.count) x \(repsCount) reps")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                     
                     // Divider except for the last item
                     if index != routine.exercises.count - 1 {
                         Divider().padding(.leading, 48)
                     }
                 }
+                
+                .padding(.vertical, hideHeader ? 8 : 0)
             }
-            .padding(.vertical, hideHeader ? 8 : 0)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
         }
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.gray.opacity(0.15), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
 }

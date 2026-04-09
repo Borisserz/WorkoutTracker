@@ -51,7 +51,7 @@ final class GestureController: ObservableObject {
                 let elapsed = Date().timeIntervalSince(startTime)
                 let rawProgress = elapsed / dwellTimeRequired
                 
-                // Плавно заполняем прогресс бар
+                // Плавно заполняем Progress бар
                 withAnimation(.linear(duration: 0.1)) {
                     gestureProgress = min(1.0, rawProgress)
                 }

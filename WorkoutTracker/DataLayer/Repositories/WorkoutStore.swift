@@ -353,7 +353,7 @@ actor WorkoutStore: WorkoutStoreProtocol {
         for workout in activeWorkouts {
             let hoursSinceStart = Date().timeIntervalSince(workout.date) / 3600
             if hoursSinceStart > 12 {
-                // Если тренировка висит дольше 12 часов, считаем её завершенной и процессим
+                // Если Workout висит дольше 12 часов, считаем её завершенной и процессим
                 workout.endTime = workout.date.addingTimeInterval(3600) // Устанавливаем фиктивную длительность
                 try await processCompletedWorkout(workoutID: workout.persistentModelID)
             } else {

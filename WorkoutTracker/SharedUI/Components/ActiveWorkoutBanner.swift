@@ -13,7 +13,7 @@ struct ActiveWorkoutBannerContainer: View {
     private var activeWorkouts: [Workout]
     
     var body: some View {
-        // Показываем баннер только если есть активная тренировка и мы НЕ внутри экрана WorkoutDetailView
+        // Показываем баннер только если есть активная Workout и мы НЕ внутри экрана WorkoutDetailView
         if let activeWorkout = activeWorkouts.first, !di.appState.isInsideActiveWorkout {
             ActiveWorkoutBanner(workout: activeWorkout)
                 .padding(.horizontal, 16)
@@ -75,7 +75,7 @@ struct ActiveWorkoutBanner: View {
                             .foregroundColor(.primary)
                     }
                     
-                    Text(LocalizedStringKey(currentExerciseName))
+                    Text(LocalizationHelper.shared.translateName(currentExerciseName))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -114,7 +114,7 @@ struct ActiveWorkoutBanner: View {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
                 // Если мы сейчас внутри этой тренировки — выходим из неё
                 if di.appState.selectedTab == 2 {
-                    // Можно принудительно сменить вкладку или закрыть NavigationPath
+                    // Можно принудительно сменить вкладку или Close NavigationPath
                 }
                 
                 Task {

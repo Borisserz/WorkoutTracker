@@ -45,7 +45,7 @@ struct EditExerciseView: View {
                HStack {
                    Text(LocalizedStringKey("Exercise"))
                    Spacer()
-                   Text(exercise.name).bold()
+                   Text(LocalizationHelper.shared.translateName(exercise.name)).bold()
                }
            }
        }

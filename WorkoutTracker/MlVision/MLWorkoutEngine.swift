@@ -11,7 +11,7 @@ import Combine
 final class MLWorkoutEngine: ObservableObject {
     
     // MARK: - Published State (UI & Gatekeeper)
-    /// Флаг, указывающий, что пользователь выполняет циклическое действие, а не отдыхает.
+    /// Флаг, указывающий, что пользователь выполняет циклическое действие, а не Restает.
     @Published private(set) var isUserActive: Bool = false
     @Published private(set) var confidence: Double = 0.0
     
@@ -84,7 +84,7 @@ final class MLWorkoutEngine: ObservableObject {
             }
             
             if let res = result {
-                // Если модель уверена больше чем на 45% и это НЕ состояние отдыха
+                // Если модель уверена больше чем на 45% и это НЕ состояние Restа
                 if res.confidence > 0.45 && res.label.lowercased() != "idle" {
                     self.isUserActive = true
                     self.confidence = res.confidence

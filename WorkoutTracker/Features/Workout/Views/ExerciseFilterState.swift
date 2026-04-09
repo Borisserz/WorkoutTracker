@@ -31,16 +31,17 @@ final class ExerciseFilterState {
     
     func filter(exercises: [ExerciseDBItem]) -> [ExerciseDBItem] {
         let searchQuery = searchText.trimmingCharacters(in: .whitespaces).lowercased()
-        
-        // 1. РАЗВОРАЧИВАЕМ UI-КАТЕГОРИИ В СПИСОК АНАТОМИЧЕСКИХ МЫШЦ
-        // Если выбрано ["legs"], получим ["quadriceps", "hamstrings", "calves", ...]
         let targetMuscles = MuscleCategoryMapper.expandMuscles(from: selectedMuscles)
         
         return exercises.filter { exercise in
             // Поиск по тексту
-            if !searchQuery.isEmpty && !exercise.name.localizedCaseInsensitiveContains(searchQuery) {
-                return false
-            }
+            if !searchQuery.isEmpty {
+                       let localizedName = LocalizationHelper.shared.translateName(exercise.name).lowercased()
+                       if !exercise.name.localizedCaseInsensitiveContains(searchQuery) &&
+                          !localizedName.contains(searchQuery) {
+                           return false
+                       }
+                   }
             
             // 2. ИСПРАВЛЕННАЯ ФИЛЬТРАЦИЯ ПО МЫШЦАМ
             // 2. СТРОГАЯ ФИЛЬТРАЦИЯ ПО ЦЕЛЕВЫМ МЫШЦАМ

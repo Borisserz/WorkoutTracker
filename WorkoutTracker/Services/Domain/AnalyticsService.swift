@@ -470,7 +470,7 @@ actor AnalyticsService {
         switch period {
         case .week:
             guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: now) else { return [] }
-            let weekdays = [String(localized: "Вс"), String(localized: "Пн"), String(localized: "Вт"), String(localized: "Ср"), String(localized: "Чт"), String(localized: "Пт"), String(localized: "Сб")]
+            let weekdays = [String(localized: "Sun"), String(localized: "Mon"), String(localized: "Tue"), String(localized: "Wed"), String(localized: "Thu"), String(localized: "Fri"), String(localized: "Sat")]
             for i in 0..<7 {
                 guard let date = calendar.date(byAdding: .day, value: i, to: weekInterval.start) else { continue }
                 let dayWorkouts = workouts.filter { calendar.isDate($0.date, inSameDayAs: date) }
@@ -816,7 +816,7 @@ actor AnalyticsService {
                        let eq = dbItem?.equipment?.lowercased() ?? "bodyweight"
                        let category: EquipmentCategory
                        
-                       if eq.contains("barbell") || eq.contains("dumbbell") || eq.contains("kettlebell") {
+                       if eq.contains("barbell") || eq.contains("dumbbell1") || eq.contains("kettlebell") {
                            category = .freeWeights
                        } else if eq.contains("machine") || eq.contains("cable") || eq.contains("band") {
                            category = .machines

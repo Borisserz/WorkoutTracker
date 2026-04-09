@@ -61,7 +61,7 @@ struct GeneratedWorkoutResultView: View {
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 4) {
-                                        Text(LocalizedStringKey(ex.name)).font(.headline)
+                                        Text(LocalizationHelper.shared.translateName(ex.name)).font(.headline)
                                         Text(LocalizedStringKey(ex.muscleGroup)).font(.caption).foregroundColor(.secondary)
                                     }
                                     Spacer()

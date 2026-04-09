@@ -97,13 +97,15 @@ struct TechniqueSheetView: View {
                             }
                             
                             // 3. ИНСТРУКЦИИ
-                            if let steps = item.instructions, !steps.isEmpty {
+                            let stepsToDisplay = LocalizationHelper.shared.translateInstructions(for: exerciseName) ?? item.instructions ?? []
+
+                            if !stepsToDisplay.isEmpty {
                                 VStack(alignment: .leading, spacing: 16) {
                                     Text(LocalizedStringKey("How to Perform"))
                                         .font(.headline)
                                         .foregroundColor(.secondary)
                                     
-                                    ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
+                                    ForEach(Array(stepsToDisplay.enumerated()), id: \.offset) { index, step in
                                         HStack(alignment: .top, spacing: 12) {
                                             Text("\(index + 1)")
                                                 .font(.caption)
@@ -113,9 +115,9 @@ struct TechniqueSheetView: View {
                                                 .background(Color.blue)
                                                 .clipShape(Circle())
                                             
-                                            Text(step)
-                                                .font(.body)
-                                                .lineSpacing(4)
+                                            Text(step) 
+                                                                .font(.body)
+                                                                .lineSpacing(4)
                                         }
                                     }
                                 }
@@ -135,7 +137,7 @@ struct TechniqueSheetView: View {
                 }
                 .padding()
             }
-            .navigationTitle(LocalizedStringKey(exerciseName))
+            .navigationTitle(LocalizationHelper.shared.translateName(exerciseName))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

@@ -65,7 +65,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
     private func savePresetsLocally(_ dtos: [WorkoutPresetDTO]) async {
         guard let context = modelContext else { return }
         
-        // Удаляем старые, чтобы не дублировать (простой способ синхронизации без iCloud)
+        // Удаляем Older, чтобы не дублировать (простой способ синхронизации без iCloud)
         let fetchDescriptor = FetchDescriptor<WorkoutPreset>()
         if let existing = try? context.fetch(fetchDescriptor) {
             for p in existing { context.delete(p) }

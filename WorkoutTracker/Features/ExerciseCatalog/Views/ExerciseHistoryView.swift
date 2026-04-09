@@ -30,7 +30,7 @@ struct ExerciseHistoryView: View {
                     .controlSize(.large)
             }
         }
-        .navigationTitle(exerciseName)
+        .navigationTitle(LocalizationHelper.shared.translateName(exerciseName))
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if viewModel == nil {

@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Views/Workout/WorkoutHubView.swift
-// ============================================================
+// MARK: - FILE: WorkoutTracker/Features/Workout/Views/WorkoutHubView.swift
 
 internal import SwiftUI
 import SwiftData
@@ -28,16 +26,14 @@ struct WorkoutHubView: View {
     // 1. Все пользовательские шаблоны (Созданные юзером + Скачанные из Explore)
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
     private var userPresets: [WorkoutPreset]
-    @State private var showSmartBuilder = false
-    // 2. Системные шаблоны (Базовые программы приложения)
-    @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == true }, sort: \WorkoutPreset.name)
-    private var systemPresets: [WorkoutPreset]
     
-    // 3. Избранные тренировки (из Истории)
+    @State private var showSmartBuilder = false
+    
+    // 2. Избранные тренировки (из Истории)
     @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
     private var favoriteWorkouts: [Workout]
     
-    // MARK: - Динамическая сортировка по папкам (Новая логика)
+    // MARK: - Динамическая сортировка по папкам
     
     // Личные тренировки юзера (без папки)
     private var myRoutines: [WorkoutPreset] {
@@ -90,7 +86,7 @@ struct WorkoutHubView: View {
                         // My Routines (user-created)
                         CarouselSectionView(
                             title: "My Routines",
-                            folderName: nil, // ✅ ИСПРАВЛЕНО: 'nil' для корневой папки
+                            folderName: nil,
                             items: myRoutines.map { .preset($0) },
                             onItemTapped: handleItemStart,
                             onEdit: { presetToEdit = $0; showPresetEditor = true },
@@ -102,7 +98,7 @@ struct WorkoutHubView: View {
                         if !savedSingleRoutines.isEmpty {
                             CarouselSectionView(
                                 title: "Saved Routines",
-                                folderName: PresetService.savedRoutinesFolderName, // ✅ ИСПРАВЛЕНО: Передаем имя папки
+                                folderName: PresetService.savedRoutinesFolderName,
                                 items: savedSingleRoutines.map { .preset($0) },
                                 onItemTapped: handleItemStart,
                                 onEdit: { presetToEdit = $0; showPresetEditor = true },
@@ -116,7 +112,7 @@ struct WorkoutHubView: View {
                             if let programRoutines = programFolders[folderName] {
                                 CarouselSectionView(
                                     title: LocalizedStringKey(folderName),
-                                    folderName: folderName, // ✅ ИСПРАВЛЕНО: Передаем имя папки
+                                    folderName: folderName,
                                     items: programRoutines.map { .preset($0) },
                                     onItemTapped: handleItemStart,
                                     onEdit: { presetToEdit = $0; showPresetEditor = true },
@@ -126,24 +122,11 @@ struct WorkoutHubView: View {
                             }
                         }
                         
-                        // System Programs
-                        if !systemPresets.isEmpty {
-                            CarouselSectionView(
-                                title: "System Programs",
-                                folderName: nil, // ✅ ИСПРАВЛЕНО: Системные не являются папкой
-                                items: systemPresets.map { .preset($0) },
-                                onItemTapped: handleItemStart,
-                                onEdit: nil,
-                                onDuplicate: duplicatePreset,
-                                onDelete: nil
-                            )
-                        }
-                        
                         // Favorites
                         if !favoriteWorkouts.isEmpty {
                             CarouselSectionView(
                                 title: "Favorites",
-                                folderName: nil, // ✅ ИСПРАВЛЕНО: Избранное - не папка
+                                folderName: nil,
                                 items: favoriteWorkouts.map { .favorite($0) },
                                 onItemTapped: handleItemStart,
                                 onEdit: nil,
@@ -172,37 +155,33 @@ struct WorkoutHubView: View {
                 }
             }
             .sheet(isPresented: $showSmartBuilder) {
-                            SmartGeneratorEntryView(onWorkoutReady: { exerciseDTOs in
-                                Task { @MainActor in
-                                    
-                                    // ✅ ИСПРАВЛЕНИЕ: Безопасно извлекаем опциональные данные
-                                    let generatedDTO = GeneratedWorkoutDTO(
-                                        title: "Smart Workout",
-                                        aiMessage: "Generated by Smart Builder",
-                                        exercises: exerciseDTOs.map { dto in
-                                            let safeSetsList = dto.setsList ?? []
-                                            return GeneratedExerciseDTO(
-                                                name: dto.name,
-                                                muscleGroup: dto.muscleGroup,
-                                                type: dto.type.rawValue,
-                                                sets: safeSetsList.count,
-                                                reps: safeSetsList.first?.reps ?? 10,
-                                                recommendedWeightKg: safeSetsList.first?.weight,
-                                                restSeconds: nil
-                                            )
-                                        }
-                                    )
-                                    
-                                    // ✅ Отправляем в сервис
-                                    await workoutService.startGeneratedWorkout(generatedDTO)
-                                    
-                                    // ✅ Ищем новую тренировку и переходим на неё
-                                    if let newWorkout = await workoutService.fetchLatestWorkout() {
-                                        self.navigateToActiveWorkout = newWorkout
-                                    }
-                                }
-                            })
+                SmartGeneratorEntryView(onWorkoutReady: { exerciseDTOs in
+                    Task { @MainActor in
+                        let generatedDTO = GeneratedWorkoutDTO(
+                            title: "Smart Workout",
+                            aiMessage: "Generated by Smart Builder",
+                            exercises: exerciseDTOs.map { dto in
+                                let safeSetsList = dto.setsList ?? []
+                                return GeneratedExerciseDTO(
+                                    name: dto.name,
+                                    muscleGroup: dto.muscleGroup,
+                                    type: dto.type.rawValue,
+                                    sets: safeSetsList.count,
+                                    reps: safeSetsList.first?.reps ?? 10,
+                                    recommendedWeightKg: safeSetsList.first?.weight,
+                                    restSeconds: nil
+                                )
+                            }
+                        )
+                        
+                        await workoutService.startGeneratedWorkout(generatedDTO)
+                        
+                        if let newWorkout = await workoutService.fetchLatestWorkout() {
+                            self.navigateToActiveWorkout = newWorkout
                         }
+                    }
+                })
+            }
             .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: {
@@ -227,6 +206,7 @@ struct WorkoutHubView: View {
             }
         }
     }
+    
     // MARK: - Top Actions
     private var quickStartButton: some View {
         Button { startEmptyWorkout() } label: {
@@ -248,32 +228,32 @@ struct WorkoutHubView: View {
         .padding(.horizontal)
         .disabled(isProcessing)
     }
+    
     private var smartBuilderButton: some View {
-            Button {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
-                showSmartBuilder = true
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "wand.and.stars")
-                        .font(.headline).fontWeight(.bold)
-                    Text("Smart Workout Builder")
-                        .font(.headline).fontWeight(.bold)
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    // ✅ ИСПРАВЛЕНИЕ: Поменяли фиолетовый градиент на красивый Cyan -> Blue
-                    LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                )
-                .cornerRadius(16)
-                // ✅ ИСПРАВЛЕНИЕ: Тень теперь тоже синяя
-                .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+        Button {
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            showSmartBuilder = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "wand.and.stars")
+                    .font(.headline).fontWeight(.bold)
+                Text("Smart Workout Builder")
+                    .font(.headline).fontWeight(.bold)
             }
-            .padding(.horizontal)
-            .disabled(isProcessing)
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+            )
+            .cornerRadius(16)
+            .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
         }
+        .padding(.horizontal)
+        .disabled(isProcessing)
+    }
+    
     private var routinesActionRow: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -392,7 +372,6 @@ struct WorkoutHubView: View {
         Task { @MainActor in
             let newName = preset.name + " (Copy)"
             let copiedExercises = preset.exercises.map { Exercise(from: $0.toDTO()) }
-            // Копии сохраняются в ту же папку
             await presetService.savePreset(preset: nil, name: newName, icon: preset.icon, folderName: preset.folderName, exercises: copiedExercises)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         }
@@ -418,10 +397,6 @@ struct WorkoutHubView: View {
 }
 
 // MARK: - Carousel Section View
-// ============================================================
-// FILE: WorkoutTracker/Views/Workout/WorkoutHubView.swift
-// (Updates to CarouselSectionView)
-// ============================================================
 
 struct CarouselSectionView: View {
     let title: LocalizedStringKey
@@ -445,7 +420,6 @@ struct CarouselSectionView: View {
                     
                     Spacer()
                     
-                    // ✅ Always show "See All" to access folder management
                     NavigationLink(destination: FolderDetailView(
                         folderTitle: title,
                         folderName: folderName,
@@ -657,8 +631,7 @@ struct PresetListView: View {
             }
             .padding()
         }
-            // ИСПРАВЛЕНИЕ: Используем colorScheme для поддержки светлой/темной темы
-            .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }

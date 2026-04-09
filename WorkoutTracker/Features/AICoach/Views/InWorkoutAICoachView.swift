@@ -180,7 +180,7 @@ struct AIProposalPremiumCard: View {
             HStack(spacing: 15) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("EXERCISE")).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
-                    Text(LocalizedStringKey(proposal.exerciseName)).font(.subheadline).bold().lineLimit(1)
+                    Text(LocalizationHelper.shared.translateName(proposal.exerciseName)).font(.subheadline).bold().lineLimit(1)
                 }
                 Divider().frame(height: 30)
                 VStack(alignment: .leading, spacing: 4) {

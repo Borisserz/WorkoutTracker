@@ -55,6 +55,9 @@ struct TemplatePreviewSheetView: View {
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
     
+    // Стейт для навигации
+    @State private var selectedHistoryExercise: String? = nil
+    
     let item: PreviewItem
     let onStart: () -> Void
     
@@ -102,6 +105,10 @@ struct TemplatePreviewSheetView: View {
             // Плавающая кнопка старта с градиентом-подложкой
             .safeAreaInset(edge: .bottom) {
                 startWorkoutButton
+            }
+            // ВАЖНО: Модификатор навигации должен быть ВНУТРИ NavigationStack
+            .navigationDestination(item: $selectedHistoryExercise) { exName in
+                ExerciseHistoryView(exerciseName: exName)
             }
         }
         .presentationDragIndicator(.visible)
@@ -194,52 +201,57 @@ struct TemplatePreviewSheetView: View {
             
             VStack(spacing: 12) {
                 ForEach(item.exercises) { exercise in
-                    HStack(spacing: 16) {
-                        // Иконка упражнения
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color.blue.opacity(0.1))
-                                .frame(width: 50, height: 50)
-                            
-                            Image(systemName: exercise.type == .cardio ? "figure.run" : "dumbbell.fill")
-                                .foregroundColor(.blue)
-                                .font(.title3)
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(LocalizedStringKey(exercise.name))
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                                .lineLimit(1)
-                            
-                            HStack(spacing: 6) {
-                                Text(LocalizedStringKey("\(exercise.setsCount) sets"))
-                                Text("×")
-                                Text(LocalizedStringKey("\(exercise.firstSetReps) reps"))
+                    Button {
+                        selectedHistoryExercise = exercise.name
+                    } label: {
+                        HStack(spacing: 16) {
+                            // Иконка упражнения
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(Color.blue.opacity(0.1))
+                                    .frame(width: 50, height: 50)
                                 
-                                if exercise.type == .strength && exercise.firstSetWeight > 0 {
-                                    Text("•")
-                                    let weight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
-                                    Text("\(LocalizationHelper.shared.formatFlexible(weight)) \(unitsManager.weightUnitString())")
-                                        .foregroundColor(.blue)
-                                        .bold()
-                                }
+                                Image(systemName: exercise.type == .cardio ? "figure.run" : "dumbbell.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.title3)
                             }
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(LocalizationHelper.shared.translateName(exercise.name))
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                
+                                HStack(spacing: 6) {
+                                    Text(LocalizedStringKey("\(exercise.setsCount) sets"))
+                                    Text("×")
+                                    Text(LocalizedStringKey("\(exercise.firstSetReps) reps"))
+                                    
+                                    if exercise.type == .strength && exercise.firstSetWeight > 0 {
+                                        Text("•")
+                                        let weight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
+                                        Text("\(LocalizationHelper.shared.formatFlexible(weight)) \(unitsManager.weightUnitString())")
+                                            .foregroundColor(.blue)
+                                            .bold()
+                                    }
+                                }
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
                         }
-                        
-                        Spacer()
+                        .padding(12)
+                        .background(Color(UIColor.secondarySystemBackground))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                        )
+                        .shadow(color: .black.opacity(0.04), radius: 5, x: 0, y: 2)
+                        .padding(.horizontal)
                     }
-                    .padding(12)
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(16)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(Color.gray.opacity(0.1), lineWidth: 1)
-                    )
-                    .shadow(color: .black.opacity(0.04), radius: 5, x: 0, y: 2)
-                    .padding(.horizontal)
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -276,7 +288,7 @@ struct TemplatePreviewSheetView: View {
         .padding(.top, 16)
         .padding(.bottom, 10)
         .background(
-            // Плавный градиент (фейд) снизу вверх, чтобы кнопка эффектно ложилась поверх списка
+            // Плавный градиент (фейд) снизу вверх
             LinearGradient(colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0.0)], startPoint: .bottom, endPoint: .top)
                 .ignoresSafeArea()
         )

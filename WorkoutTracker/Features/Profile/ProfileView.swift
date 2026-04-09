@@ -343,7 +343,8 @@ struct ProfileForecastBanner: View {
                     .fontWeight(.heavy)
                     .foregroundColor(.white)
                 
-                Text(String(localized: "In \(forecast.timeframe) your \(forecast.exerciseName) is predicted to reach \(weightStr) \(unitsManager.weightUnitString())!"))
+                let translatedExName = LocalizationHelper.shared.translateName(forecast.exerciseName)
+Text(String(localized: "In \(forecast.timeframe) your \(translatedExName) is predicted to reach \(weightStr) \(unitsManager.weightUnitString())!"))
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.9))
                     .fixedSize(horizontal: false, vertical: true)
@@ -506,7 +507,7 @@ struct PremiumRecordCard: View {
             }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(LocalizedStringKey(record.exerciseName))
+                Text(LocalizationHelper.shared.translateName(record.exerciseName))
                     .font(.headline)
                     .foregroundColor(.primary)
                 

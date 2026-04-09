@@ -89,9 +89,23 @@ public actor ExerciseDatabaseService {
         guard let url = Bundle.main.url(forResource: "exercises", withExtension: "json") else { return }
         
         do {
+            // 1. Грузим английскую базу (ОСНОВА ДЛЯ ЛОГИКИ И ИИ)
             let data = try Data(contentsOf: url)
             let items = try JSONDecoder().decode([ExerciseDBItem].self, from: data)
             
+            // 2. Грузим русский перевод (ТОЛЬКО ДЛЯ UI)
+            var ruDict: [String: ExerciseDBItem] = [:]
+            if Locale.current.language.languageCode?.identifier == "ru",
+               let ruUrl = Bundle.main.url(forResource: "exercises_ru", withExtension: "json"),
+               let ruData = try? Data(contentsOf: ruUrl),
+               let ruItems = try? JSONDecoder().decode([ExerciseDBItem].self, from: ruData) {
+                for item in ruItems {
+                    if let id = item.id { ruDict[id] = item }
+                }
+            }
+            
+            var tempNamesRU: [String: String] = [:]
+            var tempInstRU: [String: [String]] = [:]
             var dict: [String: ExerciseDBItem] = [:]
             var catalog: [String: Set<String>] = [:]
             
@@ -99,12 +113,24 @@ public actor ExerciseDatabaseService {
                 item.pattern = PatternClassifier.classify(
                     name: item.name, force: item.force, mechanic: item.mechanic, primaryMuscles: item.primaryMuscles
                 )
-                dict[item.name.lowercased()] = item
+                let engKey = item.name.lowercased()
+                dict[engKey] = item
+                
+                // 3. Если есть русский аналог по ID, записываем перевод
+                if let id = item.id, let ruItem = ruDict[id] {
+                    tempNamesRU[engKey] = ruItem.name
+                    if let inst = ruItem.instructions {
+                        tempInstRU[engKey] = inst
+                    }
+                }
                 
                 let groupKey = item.primaryMuscles?.first?.capitalized ?? item.category?.capitalized ?? "Other"
                 let mappedGroup = mapUIGroup(groupKey)
                 catalog[mappedGroup, default: []].insert(item.name)
             }
+            
+            // Передаем собранные переводы в синхронный кэш UI
+            LocalizationHelper.shared.setTranslations(names: tempNamesRU, instructions: tempInstRU)
             
             self.exercisesDict = dict
             self.groupedCatalog = catalog.mapValues { Array($0).sorted() }

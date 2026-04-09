@@ -32,7 +32,7 @@ final class DashboardViewModel {
         self.cancellable = NotificationCenter.default.publisher(for: .workoutCompletedEvent)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
-                // Как только тренировка завершена, немедленно запускаем полное обновление кэшей.
+                // Как только Workout завершена, немедленно запускаем полное обновление кэшей.
                 self?.refreshAllCaches()
             }
     }

@@ -127,7 +127,7 @@ struct HistoryView: View {
                             )
                         }
                         
-                        // Кнопки: Периоды
+                        // Кнопки: Periodы
                         ForEach(WorkoutView.FilterPeriod.allCases, id: \.self) { period in
                             Button {
                                 triggerFeedback()

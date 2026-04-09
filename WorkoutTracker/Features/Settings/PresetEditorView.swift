@@ -59,7 +59,7 @@ struct PresetEditorView: View {
     
     private let availableIcons = [
         "img_default", "img_chest", "img_chest2", "img_back", "img_back2",
-        "img_legs", "img_legs2", "img_arms", "battle-rope", "dumbbell",
+        "img_legs", "img_legs2", "img_arms", "battle-rope", "dumbbell1",
         "exercise-2", "gym-4"
     ]
     
@@ -303,9 +303,12 @@ struct PresetEditorView: View {
                 .foregroundColor(.gray.opacity(0.4))
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(exercise.name)
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name)) {
+                    Text(LocalizationHelper.shared.translateName(exercise.name))
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                }
+                .buttonStyle(.plain)
                 
                 Group {
                     switch exercise.type {
@@ -484,7 +487,7 @@ struct PresetExerciseEditor: View {
             // 1. УБРАЛИ ZStack. Используем чистый ScrollView
             ScrollView {
                 VStack(spacing: 24) {
-                    Text(LocalizedStringKey(exercise.name))
+                    Text(LocalizationHelper.shared.translateName(exercise.name))
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)

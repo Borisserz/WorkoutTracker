@@ -135,7 +135,7 @@ struct WatchActiveWorkoutView: View {
     private func exerciseRow(for exercise: ExerciseDTO) -> some View {
         HStack {
             VStack(alignment: .leading) {
-                Text(exercise.name).font(.headline).lineLimit(1)
+                Text(LocalizationHelper.shared.translateName(exercise.name)).font(.headline).lineLimit(1)
                 
                 // ✅ ИСПРАВЛЕНИЕ: Безопасное обращение к опциональному массиву
                 let setsCount = (exercise.setsList ?? []).count

@@ -27,7 +27,7 @@ struct AICoachView: View {
         return textIsEmpty || viewModel.isGenerating
     }
     
-    private let quickActions: [String] = ["Тренировка", "Прогресс", "Отдых"]
+    private let quickActions: [String] = ["Workout", "Progress", "Rest"]
     
     var body: some View {
         NavigationStack {
@@ -43,7 +43,7 @@ struct AICoachView: View {
                 
                 inputArea(viewModel: viewModel)
             }
-            .navigationTitle(viewModel.currentSession?.title ?? "AI Тренер")
+            .navigationTitle(viewModel.currentSession?.title ?? "AI Coach")
             .navigationDestination(item: $navigateToWorkout) { workout in
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
@@ -72,32 +72,32 @@ struct AICoachView: View {
             .sheet(isPresented: $showAISettings) {
                 NavigationStack {
                     Form {
-                        Section(header: Text("Стиль общения"), footer: Text("Выбранный тон будет использоваться во всех ответах ИИ-тренера.")) {
-                            Picker("Тон общения", selection: $aiCoachTone) {
-                                Text("Мотивационный").tag("Мотивационный")
-                                Text("Строгий (Армейский)").tag("Строгий")
-                                Text("Дружелюбный").tag("Дружелюбный")
-                                Text("Научный / Сухой").tag("Научный")
+                        Section(header: Text("Communication Style"), footer: Text("The selected tone will be used in all AI coach responses.")) {
+                            Picker("Tone", selection: $aiCoachTone) {
+                                Text("Motivational").tag("Motivational")
+                                Text("Strict ").tag("Strict")
+                                Text("Friendly").tag("Friendly")
+                                Text("Scientific").tag("Scientific")
                             }.pickerStyle(.menu)
                         }
                     }
-                    .navigationTitle("Настройки ИИ").navigationBarTitleDisplayMode(.inline)
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Готово") { showAISettings = false } } }
+                    .navigationTitle("AI Settings").navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showAISettings = false } } }
                 }.presentationDetents([.medium])
             }
             .sheet(isPresented: $showSmartBuilder) {
                 SmartWorkoutBuilderSheet { generatedPrompt in
-                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "Составь план по моим параметрам", aiPrompt: generatedPrompt) }
+                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "Create a plan based on my parameters", aiPrompt: generatedPrompt) }
                 }
             }
             .sheet(isPresented: $showProgressSheet) {
                 ProgressAnalysisSheet { generatedPrompt in
-                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "Оцени мой прогресс", aiPrompt: generatedPrompt) }
+                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "Rate my Progress", aiPrompt: generatedPrompt) }
                 }
             }
             .sheet(isPresented: $showRecoverySheet) {
                 RecoveryAdvisorSheet { generatedPrompt in
-                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "Что рекомендуешь сделать?", aiPrompt: generatedPrompt) }
+                    Task { await viewModel.sendMessage(userWeight: userBodyWeight, uiText: "What do you recommend doing?", aiPrompt: generatedPrompt) }
                 }
             }
         }
@@ -106,8 +106,8 @@ struct AICoachView: View {
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             ZStack { Circle().fill(Color.blue.opacity(0.1)).frame(width: 80, height: 80); Image(systemName: "brain.head.profile").font(.system(size: 40)).foregroundColor(.blue) }
-            Text("Готов помочь").font(.title2).bold().foregroundColor(.primary)
-            Text("Задай вопрос о фитнесе или попроси составить план тренировки.").font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal, 32)
+            Text("Ready to help").font(.title2).bold().foregroundColor(.primary)
+            Text("Ask a fitness question or request a workout plan.").font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal, 32)
         }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(.bottom, 160)
     }
     
@@ -139,14 +139,14 @@ struct AICoachView: View {
                         isInputFocused = false
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
-                        if action == "Тренировка" { showSmartBuilder = true } else if action == "Прогресс" { showProgressSheet = true } else if action == "Отдых" { showRecoverySheet = true }
+                        if action == "Workout" { showSmartBuilder = true } else if action == "Progress" { showProgressSheet = true } else if action == "Rest" { showRecoverySheet = true }
                     }) { Text(action).font(.caption).fontWeight(.medium).lineLimit(1).minimumScaleFactor(0.8).padding(.horizontal, 6).padding(.vertical, 10).frame(maxWidth: .infinity).background(Color(UIColor.systemBackground)).foregroundColor(.primary).cornerRadius(16).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.3), lineWidth: 1)) }
                 }
             }.padding(.horizontal, 12).padding(.bottom, 12).disabled(vm.isGenerating).opacity(vm.isGenerating ? 0.5 : 1.0)
             Divider().background(Color.gray.opacity(0.3))
             HStack(alignment: .bottom, spacing: 12) {
                 
-                TextField("Спроси AI Тренера...", text: Binding(
+                TextField("Ask AI Coach...", text: Binding(
                     get: { vm.inputText },
                     set: { vm.inputText = $0 }
                 ), axis: .vertical)
@@ -183,15 +183,15 @@ struct ChatHistorySheetView: View {
     let onSelect: (AIChatSession) -> Void
     
     enum SessionGroup: String, CaseIterable, Identifiable {
-        case today = "Сегодня"
-        case yesterday = "Вчера"
-        case previous = "Последние 7 дней"
-        case older = "Старые"
+        case today = "Today"
+        case yesterday = "Yesterday"
+        case previous = "Last 7 days"
+        case older = "Older"
         var id: String { self.rawValue }
     }
     
     @State private var expandedSections: [String: Bool] = [
-        "Сегодня": false, "Вчера": false, "Последние 7 дней": false, "Старые": false
+        "Today": false, "Yesterday": false, "Last 7 days": false, "Older": false
     ]
     
     private var groupedSessions: [(SessionGroup, [AIChatSession])] {
@@ -225,10 +225,10 @@ struct ChatHistorySheetView: View {
                         Image(systemName: "bubble.left.and.bubble.right.fill")
                             .font(.system(size: 60))
                             .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        Text("История чатов пуста.")
+                        Text("Chat history is empty.")
                             .font(.title2).bold()
                             .foregroundColor(.primary)
-                        Text("Ваши предыдущие переписки с ИИ-тренером будут отображаться здесь.")
+                        Text("Your previous conversations with the AI coach will appear here.")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
@@ -276,11 +276,11 @@ struct ChatHistorySheetView: View {
                     }
                 }
             }
-            .navigationTitle("История чатов")
+            .navigationTitle("Chat History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Закрыть") { dismiss() }
+                    Button("Close") { dismiss() }
                 }
             }
             .task { await fetchSessions() }

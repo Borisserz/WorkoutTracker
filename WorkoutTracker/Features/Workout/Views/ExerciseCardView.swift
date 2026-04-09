@@ -10,7 +10,7 @@ struct ExerciseCardView: View {
     @Environment(UnitsManager.self) var unitsManager
     @Environment(WorkoutDetailViewModel.self) var detailViewModel
     @Environment(\.modelContext) private var context
-    
+    @State private var showHistory = false
     let exercise: Exercise
     let workout: Workout
     var isEmbeddedInSuperset: Bool = false
@@ -66,6 +66,9 @@ struct ExerciseCardView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .navigationDestination(isPresented: $showHistory) {
+                    ExerciseHistoryView(exerciseName: exercise.name)
+                }
     }
     
     
@@ -116,12 +119,15 @@ struct ExerciseCardView: View {
             HStack {
                 Image(systemName: "line.3.horizontal").foregroundColor(.gray).font(.caption).frame(width: 20, height: 20)
                 
-                NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name)) {
+                Button {
+                    showHistory = true
+                } label: {
                     HStack {
                         Image(systemName: getIcon()).foregroundColor(getColor()).font(.caption)
-                        Text(LocalizedStringKey(exercise.name)).font(.headline).foregroundColor(.primary)
+                        Text(LocalizationHelper.shared.translateName(exercise.name)).font(.headline).foregroundColor(.primary)
                     }
-                }.highPriorityGesture(TapGesture().onEnded { })
+                }
+                .buttonStyle(.plain)
                 
                 Button { showTechniqueSheet = true } label: { Image(systemName: "info.circle").font(.subheadline).foregroundColor(.secondary).padding(.horizontal, 4) }.buttonStyle(BorderlessButtonStyle())
                 

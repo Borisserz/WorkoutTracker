@@ -290,11 +290,11 @@ actor TestDataGenerator {
             actualWeight = 0.0 // Упражнения с собственным весом
         }
         
-        // Математика прогрессии (настроена на 15 месяцев / ~200 тренировок)
+        // Математика Progressии (настроена на 15 месяцев / ~200 тренировок)
         let maxWorkouts = 250.0
         let cappedIndex = min(Double(index), maxWorkouts)
         
-        // Волнообразная прогрессия с общим трендом вверх (на 60% рост силы за год)
+        // Волнообразная Progressия с общим трендом вверх (на 60% рост силы за год)
         let fatigueWave = sin(cappedIndex / 8.0) * 0.1
         let progressFactor = 1.0 + (cappedIndex / maxWorkouts) * 0.6 + fatigueWave
         

@@ -40,7 +40,7 @@ actor PresetRepository: PresetRepositoryProtocol {
             existingPreset.folderName = newFolder
         }
         
-        // Очищаем старые упражнения
+        // Очищаем Older упражнения
         for oldEx in existingPreset.exercises { modelContext.delete(oldEx) }
         existingPreset.exercises.removeAll()
         

@@ -15,7 +15,7 @@ public enum AILogicError: Error, LocalizedError, Sendable {
         case .invalidResponse: return "Received an invalid response from the server."
         case .noDataReturned: return "No data was returned from the server."
         case .invalidData: return "The AI response was malformed."
-        case .friendlyError: return "Прости, я немного запутался. Можешь перефразировать запрос?"
+        case .friendlyError: return "Sorry, I got a little confused. Could you rephrase that?"
         case .apiError(let code, let msg): return "API Error (\(code)): \(msg)"
         case .decodingFailed(let err): return "Decoding failed: \(err.localizedDescription)"
         }
@@ -72,7 +72,7 @@ public actor AILogicService {
         1. YOU MUST ALWAYS RETURN A VALID JSON OBJECT.
         2. All weight values MUST be in \(weightUnit).
         3. "explanation" — твой ответ НА РУССКОМ.
-        4. Если тренировка ЗАВЕРШЕНА, "actionType" ВСЕГДА должен быть "none".
+        4. Если Workout ЗАВЕРШЕНА, "actionType" ВСЕГДА должен быть "none".
         5. "actionType" ДОЛЖЕН БЫТЬ одним из: replaceExercise, dropWeight, reduceRemainingLoad, skipExercise, addSet, none.
         
         ДОСТУПНЫЕ УПРАЖНЕНИЯ ДЛЯ ЗАМЕНЫ:
@@ -107,7 +107,7 @@ public actor AILogicService {
         let userStatsHeader: String
         
         if isRussian {
-            systemPrompt = "Ты — элитный аналитик. Напиши мотивационный обзор в Markdown. ОТВЕЧАЙ НА РУССКОМ. Не используй блоки кода ```markdown."
+            systemPrompt = "Ты — элитный аналитик. Напиши Motivational обзор в Markdown. ОТВЕЧАЙ НА РУССКОМ. Не используй блоки кода ```markdown."
             userStatsHeader = "Вот моя статистика:"
         } else {
             systemPrompt = "You are an elite data analyst. Write a motivational review in Markdown. REPLY IN ENGLISH. Do not use code blocks like ```markdown."

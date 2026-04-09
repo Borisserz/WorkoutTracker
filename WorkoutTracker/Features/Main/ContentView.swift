@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Main/ContentView.swift
-// ============================================================
+// MARK: - FILE: WorkoutTracker/Features/Main/ContentView.swift
 
 internal import SwiftUI
 import SwiftData
@@ -11,14 +9,12 @@ struct ContentView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(DIContainer.self) private var di
     
-    
     var body: some View {
         @Bindable var appState = di.appState
         
         ZStack {
             // 1. Основной UI с TabView
             TabView(selection: $appState.selectedTab) {
-                // ... [содержимое TabView остается без изменений] ...
                 OverviewView()
                     .tabItem { Image(systemName: "chart.pie"); Text(LocalizedStringKey("Overview")) }
                     .tag(0)
@@ -38,7 +34,6 @@ struct ContentView: View {
                 StatsView()
                     .tabItem { Image(systemName: "trophy"); Text(LocalizedStringKey("Progress")) }
                     .tag(4)
-                    .spotlight(step: .progressTab, manager: tutorialManager, text: "Check your Progress", alignment: .bottom, xOffset: -20)
             }
             .zIndex(1) // TabView всегда будет на заднем плане
             
@@ -50,7 +45,7 @@ struct ContentView: View {
                 
                 TimerOverlayContainer()
             }
-            .padding(.bottom, 50) // ✅ Идеальный отступ над системным TabBar
+            .padding(.bottom, 50) // Идеальный отступ над системным TabBar
             .ignoresSafeArea(.keyboard, edges: .bottom) // Позволяет таймеру подняться над клавиатурой
             .zIndex(100) // Оверлеи всегда сверху
         }
@@ -69,7 +64,6 @@ struct ContentView: View {
         }
     }
     
-    // TimerOverlayContainer остается без изменений
     struct TimerOverlayContainer: View {
         @Environment(RestTimerManager.self) var timerManager
         var body: some View {

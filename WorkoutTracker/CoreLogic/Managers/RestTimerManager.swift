@@ -94,7 +94,7 @@ final class RestTimerManager {
     }
     
     // В методах addRestTime и subtractRestTime нужно обновлять initialRestTime,
-    // чтобы прогресс-бар не "прыгал" некорректно:
+    // чтобы Progress-бар не "прыгал" некорректно:
     func addRestTime(_ seconds: Int) {
         if isRestTimerActive, let currentEnd = restEndTime {
             let newEnd = currentEnd.addingTimeInterval(Double(seconds))

@@ -200,7 +200,7 @@ struct ProposedWorkoutCardView: View {
                 ForEach(workout.exercises, id: \.name) { exercise in
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(LocalizedStringKey(exercise.name))
+                            Text(LocalizationHelper.shared.translateName(exercise.name))
                                 .font(.subheadline)
                                 .fontWeight(.semibold)
                             

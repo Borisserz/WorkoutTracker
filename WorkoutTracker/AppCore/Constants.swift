@@ -33,7 +33,7 @@ public enum Constants {
     
     /// Default values and keys for AI integrations
     public enum AIConstants {
-        public static let defaultTone = "Мотивационный"
+        public static let defaultTone = "Motivational"
     }
     
     /// Identifiers for local notifications and notification center events

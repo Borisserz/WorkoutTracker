@@ -10,13 +10,25 @@ struct ExerciseDBRowView: View {
                     .fill(equipmentColor.opacity(0.15))
                     .frame(width: 54, height: 54)
                 
-                Image(systemName: equipmentIcon)
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundColor(equipmentColor)
+                if UIImage(named: equipmentIcon) != nil {
+                    // 1. Отрисовка ВАШИХ кастомных картинок из Assets
+                    Image(equipmentIcon)
+                        .renderingMode(.template) // Обязательно для перекраски
+                        .resizable()
+                        .scaledToFit()
+                        // 👇 Используем новую переменную для размера
+                        .frame(width: iconSize, height: iconSize)
+                        .foregroundColor(equipmentColor)
+                } else {
+                    // 2. Отрисовка СИСТЕМНЫХ SF Symbols (если картинка вдруг не найдется)
+                    Image(systemName: equipmentIcon)
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundColor(equipmentColor)
+                }
             }
             
             VStack(alignment: .leading, spacing: 6) {
-                Text(LocalizedStringKey(exercise.name))
+                Text(LocalizationHelper.shared.translateName(exercise.name))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                     .lineLimit(1)
@@ -48,33 +60,49 @@ struct ExerciseDBRowView: View {
         .foregroundColor(color).padding(.horizontal, 8).padding(.vertical, 4).background(color.opacity(0.1)).clipShape(Capsule())
     }
     
+    // MARK: - Иконки и Цвета
+    
+    // 👇 НОВАЯ ПЕРЕМЕННАЯ: Удобное управление размерами кастомных иконок
+    private var iconSize: CGFloat {
+        switch equipmentIcon {
+        case "person-standing":
+            return 44 // Размер для человечка
+        case "barbell-2":
+            return 44 // Размер для штанги (можете сделать 40 или 46, если нужно)
+        default:
+            return 30 // Стандартный размер для всех остальных (гантели, тренажеры и т.д.)
+        }
+    }
+    
     private var equipmentIcon: String {
-         let eq = exercise.equipment?.lowercased() ?? "body only"
-         
-         if eq.contains("barbell") { return "dumbbell.fill" } // Штанга
-         if eq.contains("dumbbell") { return "dumbbell" } // Гантели
-         if eq.contains("machine") || eq.contains("cable") { return "gearshape.2.fill" } // Тренажеры / Блоки
-         if eq.contains("kettlebell") { return "bag.fill" } // Гиря
-         if eq.contains("band") { return "lines.measurement.horizontal" } // Эспандеры
-         if eq.contains("ball") { return "basketball.fill" } // Фитбол / Медбол
-         if eq.contains("foam roll") { return "cylinder.fill" } // Валик
-         
-         // Для "body only" (свой вес) и всего остального
-         return "figure.core.training"
-     }
+        let eq = exercise.equipment?.lowercased() ?? "body only"
+        
+        if eq.contains("barbell") { return "barbell-2" }
+        if eq.contains("dumbbell") { return "dumbbell" }
+        if eq.contains("machine") || eq.contains("cable") { return "gym" }
+        if eq.contains("kettlebell") { return "kettlebell" }
+        if eq.contains("band") { return "fitness" }
+        if eq.contains("ball") { return "ball" }
+        if eq.contains("foam roll") { return "matress" }
+        
+        // Если ничего не подошло (свой вес)
+        return "person-standing"
+    }
      
-     private var equipmentColor: Color {
-         let eq = exercise.equipment?.lowercased() ?? "bodyweight"
-         
-         if eq.contains("barbell") { return .blue }
-         if eq.contains("dumbbell") { return .cyan }
-         if eq.contains("machine") || eq.contains("cable") { return .purple } // Сделаем тренажеры фиолетовыми
-         if eq.contains("kettlebell") { return .orange }
-         if eq.contains("band") { return .pink }
-         if eq.contains("ball") { return .yellow }
-         
-         return .green // Свой вес - зеленый
-     }
+    private var equipmentColor: Color {
+        let eq = exercise.equipment?.lowercased() ?? "bodyweight"
+        
+        if eq.contains("barbell") { return .blue }
+        if eq.contains("dumbbell") { return .cyan }
+        if eq.contains("machine") || eq.contains("cable") { return .purple }
+        if eq.contains("kettlebell") { return .orange }
+        if eq.contains("band") { return .pink }
+        if eq.contains("ball") { return .yellow }
+        if eq.contains("foam roll") { return .red }
+        
+        return .green // Свой вес
+    }
+    
     private func levelColor(_ level: String) -> Color {
         let lvl = level.lowercased()
         if lvl == "beginner" { return .green }

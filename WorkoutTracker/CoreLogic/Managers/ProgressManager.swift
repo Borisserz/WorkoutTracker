@@ -7,8 +7,8 @@
 //  Менеджер геймификации.
 //  Отвечает за:
 //  1. Подсчет опыта (XP) на основе объема тренировки и усилий.
-//  2. Расчет уровней (Level Up) по геометрической прогрессии.
-//  3. Сохранение прогресса игрока.
+//  2. Расчет уровней (Level Up) по геометрической Progressии.
+//  3. Сохранение Progressа игрока.
 //
 import Foundation
 internal import SwiftUI
@@ -37,7 +37,7 @@ class ProgressManager {
     // MARK: - Level Math
     
     /// Вычисляет суммарный XP, необходимый для достижения уровня `n`.
-    /// Используется формула суммы геометрической прогрессии.
+    /// Используется формула суммы геометрической Progressии.
     private func cumulativeXPRequired(forLevel n: Int) -> Int {
         if n <= 1 { return 0 }
         let power = pow(multiplier, Double(n - 1))
@@ -52,14 +52,14 @@ class ProgressManager {
         return cumulativeXPRequired(forLevel: level + 1)
     }
     
-    /// Текущий прогресс внутри уровня (например, набрал 500 из 1000 нужных для апа)
+    /// Текущий Progress внутри уровня (например, набрал 500 из 1000 нужных для апа)
     var currentXPInLevel: Int {
         let startOfLevelXP = cumulativeXPRequired(forLevel: level)
         let val = totalXP - startOfLevelXP
         return max(val, 0)
     }
     
-    /// Процент прогресса для ProgressView (от 0.0 до 1.0)
+    /// Процент Progressа для ProgressView (от 0.0 до 1.0)
     var progressPercentage: Double {
         let startOfLevelXP = cumulativeXPRequired(forLevel: level)
         let nextLevelXP = cumulativeXPRequired(forLevel: level + 1)

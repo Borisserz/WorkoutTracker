@@ -60,7 +60,7 @@ struct ConfigureExerciseView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         
                         // Главный заголовок
-                        Text(LocalizedStringKey(viewModel.exerciseName))
+                        Text(LocalizationHelper.shared.translateName(viewModel.exerciseName))
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
                             .foregroundColor(.primary)
                             .padding(.horizontal, 20)

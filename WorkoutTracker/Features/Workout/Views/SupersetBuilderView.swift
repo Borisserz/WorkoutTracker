@@ -312,7 +312,7 @@ struct EditSupersetItemView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text(exercise.name)) {
+                Section(header: Text(LocalizationHelper.shared.translateName(exercise.name))) {
                     if !exercise.setsList.isEmpty {
                         Stepper(LocalizedStringKey("Sets: \(exercise.setsList.count)"), onIncrement: addSetLocally, onDecrement: removeSetLocally)
                         

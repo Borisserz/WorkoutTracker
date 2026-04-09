@@ -82,7 +82,7 @@ final class AICoachViewModel {
         
         if currentSession == nil {
             isFirstMessage = true
-            let newSession = AIChatSession(title: "Новый чат...", date: Date(), messages: [])
+            let newSession = AIChatSession(title: "New Chat...", date: Date(), messages: [])
             try? await userRepository.saveAIChatSession(newSession)
             currentSession = newSession
         }

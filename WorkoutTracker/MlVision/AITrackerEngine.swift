@@ -376,7 +376,7 @@ public final class AITrackerEngine: ObservableObject {
         // 1. Всегда кормим ML Gatekeeper для поддержания окна предикшенов
         mlEngine.processFrame(observation: observation)
     
-        // 2. Блокируем математику, если Gatekeeper считает, что юзер отдыхает
+        // 2. Блокируем математику, если Gatekeeper считает, что юзер Restает
         guard isTrackingAction else { return }
         
         // 3. Выполняется ТОЛЬКО если юзер активен (экономия батареи и CPU)

@@ -28,7 +28,7 @@ final class ConfigureExerciseViewModel {
         self.exerciseType = exerciseType
     }
     
-    /// Загружает последние данные и вычисляет прогрессивную перегрузку
+    /// Загружает последние данные и вычисляет Progressивную перегрузку
     func loadLastPerformance(from dashboardCache: [String: Exercise]) {
            guard !hasAutoFilled else { return }
            hasAutoFilled = true

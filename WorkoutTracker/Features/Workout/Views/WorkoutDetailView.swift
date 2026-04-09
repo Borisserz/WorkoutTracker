@@ -388,7 +388,7 @@ struct WorkoutDetailContentView: View {
                 } else {
                     // Динамический заголовок выбранного столбца
                     if let selected = selectedChartExerciseName {
-                        Text(LocalizedStringKey(selected.trimmingCharacters(in: .whitespaces)))
+                        Text(LocalizationHelper.shared.translateName(selected.trimmingCharacters(in: .whitespaces)))
                             .font(.headline)
                             .foregroundColor(.orange)
                             .padding(.bottom, 4)
@@ -442,7 +442,8 @@ struct WorkoutDetailContentView: View {
                         AxisMarks(values: .automatic) { value in
                             AxisValueLabel {
                                 if let uniqueName = value.as(String.self) {
-                                    Text(String(uniqueName.trimmingCharacters(in: .whitespaces).prefix(3)).capitalized)
+                                    let translatedName = LocalizationHelper.shared.translateName(String(uniqueName.trimmingCharacters(in: .whitespaces)))
+Text(String(translatedName.prefix(3)).capitalized)
                                         .font(.caption2)
                                         .fontWeight(.bold)
                                         .foregroundColor(.secondary)
