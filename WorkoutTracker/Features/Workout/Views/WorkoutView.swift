@@ -27,22 +27,44 @@ struct WorkoutView: View {
     @State private var recentWorkoutForNavigation: Workout? = nil
     
     enum FilterPeriod: String, CaseIterable {
-        case all = "All Time"
-        case week = "Last Week"
-        case month = "Last Month"
-        case threeMonths = "Last 3 Months"
-        case year = "Last Year"
-    }
-    
-    enum SortOption: String, CaseIterable {
-        case dateDescending = "Newest First"
-        case dateAscending = "Oldest First"
-        case durationDescending = "Longest First"
-        case durationAscending = "Shortest First"
-        case effortDescending = "Highest Effort"
-        case effortAscending = "Lowest Effort"
-    }
-    
+            case all = "All Time"
+            case week = "Last Week"
+            case month = "Last Month"
+            case threeMonths = "Last 3 Months"
+            case year = "Last Year"
+            
+            // ✅ ДОБАВЛЯЕМ ЭТО СВОЙСТВО
+            var localizedName: LocalizedStringKey {
+                switch self {
+                case .all: return "All Time"
+                case .week: return "Last Week"
+                case .month: return "Last Month"
+                case .threeMonths: return "Last 3 Months"
+                case .year: return "Last Year"
+                }
+            }
+        }
+        
+        enum SortOption: String, CaseIterable {
+            case dateDescending = "Newest First"
+            case dateAscending = "Oldest First"
+            case durationDescending = "Longest First"
+            case durationAscending = "Shortest First"
+            case effortDescending = "Highest Effort"
+            case effortAscending = "Lowest Effort"
+            
+            // ✅ ДОБАВЛЯЕМ ЭТО СВОЙСТВО
+            var localizedName: LocalizedStringKey {
+                switch self {
+                case .dateDescending: return "Newest First"
+                case .dateAscending: return "Oldest First"
+                case .durationDescending: return "Longest First"
+                case .durationAscending: return "Shortest First"
+                case .effortDescending: return "Highest Effort"
+                case .effortAscending: return "Lowest Effort"
+                }
+            }
+        }
     var body: some View {
         NavigationStack {
             content
@@ -191,14 +213,14 @@ struct WorkoutView: View {
             
             HStack(spacing: 12) {
                 Menu {
-                    ForEach(FilterPeriod.allCases, id: \.self) { period in
-                        Button(LocalizedStringKey(period.rawValue)) { selectedFilter = period }
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "calendar")
-                        Text(LocalizedStringKey(selectedFilter.rawValue))
-                    }
+                                    ForEach(FilterPeriod.allCases, id: \.self) { period in
+                                        Button(period.localizedName) { selectedFilter = period } // ✅ Замена
+                                    }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "calendar")
+                                        Text(selectedFilter.localizedName) // ✅ Замена
+                                    }
                     .font(.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -207,14 +229,14 @@ struct WorkoutView: View {
                 }
                 
                 Menu {
-                    ForEach(SortOption.allCases, id: \.self) { option in
-                        Button(LocalizedStringKey(option.rawValue)) { sortOption = option }
-                    }
-                } label: {
-                    HStack {
-                        Image(systemName: "arrow.up.arrow.down")
-                        Text(LocalizedStringKey(sortOption.rawValue))
-                    }
+                                    ForEach(SortOption.allCases, id: \.self) { option in
+                                        Button(option.localizedName) { sortOption = option } // ✅ Замена
+                                    }
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "arrow.up.arrow.down")
+                                        Text(sortOption.localizedName) // ✅ Замена
+                                    }
                     .font(.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)

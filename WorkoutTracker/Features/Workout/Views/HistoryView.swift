@@ -107,43 +107,42 @@ struct HistoryView: View {
                         }
                         .buttonStyle(.plain)
                         
-                        // Меню: Сортировка
                         Menu {
-                            ForEach(WorkoutView.SortOption.allCases, id: \.self) { option in
-                                Button {
-                                    triggerFeedback()
-                                    sortOption = option
-                                } label: {
-                                    Label(LocalizedStringKey(option.rawValue), systemImage: sortIcon(for: option))
-                                }
-                            }
-                        } label: {
-                            // Используем только View, без Button внутри, чтобы Menu не ломало стили
-                            HistoryFilterChipView(
-                                title: LocalizedStringKey(sortOption.rawValue),
-                                icon: "arrow.up.arrow.down",
-                                isSelected: false, // Делаем серым/белым как обычный фильтр
-                                activeColor: .clear
-                            )
-                        }
-                        
-                        // Кнопки: Periodы
-                        ForEach(WorkoutView.FilterPeriod.allCases, id: \.self) { period in
-                            Button {
-                                triggerFeedback()
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    selectedFilter = period
-                                }
-                            } label: {
-                                HistoryFilterChipView(
-                                    title: LocalizedStringKey(period.rawValue),
-                                    icon: nil,
-                                    isSelected: selectedFilter == period,
-                                    activeColor: .blue
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
+                                                ForEach(WorkoutView.SortOption.allCases, id: \.self) { option in
+                                                    Button {
+                                                        triggerFeedback()
+                                                        sortOption = option
+                                                    } label: {
+                                                        Label(option.localizedName, systemImage: sortIcon(for: option)) // ✅ ИСПОЛЬЗУЕМ localizedName
+                                                    }
+                                                }
+                                            } label: {
+                                                // Используем только View, без Button внутри, чтобы Menu не ломало стили
+                                                HistoryFilterChipView(
+                                                    title: sortOption.localizedName, // ✅ ИСПОЛЬЗУЕМ localizedName
+                                                    icon: "arrow.up.arrow.down",
+                                                    isSelected: false, // Делаем серым/белым как обычный фильтр
+                                                    activeColor: .clear
+                                                )
+                                            }
+                                            
+                                            // Кнопки: Periodы
+                                            ForEach(WorkoutView.FilterPeriod.allCases, id: \.self) { period in
+                                                Button {
+                                                    triggerFeedback()
+                                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                        selectedFilter = period
+                                                    }
+                                                } label: {
+                                                    HistoryFilterChipView(
+                                                        title: period.localizedName, // ✅ ИСПОЛЬЗУЕМ localizedName
+                                                        icon: nil,
+                                                        isSelected: selectedFilter == period,
+                                                        activeColor: .blue
+                                                    )
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
                         
                         Spacer().frame(width: 6)
                     }
@@ -194,19 +193,25 @@ struct CompactStatCard: View {
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.secondary)
                     .textCase(.uppercase)
+                    .lineLimit(1)                     // ✅ Запрещаем перенос заголовка
+                    .minimumScaleFactor(0.6)          // ✅ Разрешаем шрифту сжаться, если текст длинный
                 
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(value)
                         .font(.system(size: 22, weight: .heavy, design: .rounded))
                         .foregroundColor(.primary)
                         .contentTransition(.numericText())
+                        .lineLimit(1)                 // ✅ Запрещаем перенос цифр (чтобы 7 не улетала вниз)
+                        .minimumScaleFactor(0.5)      // ✅ Разрешаем цифрам уменьшиться до 50%
+                    
                     Text(unit)
                         .font(.caption2)
                         .fontWeight(.bold)
                         .foregroundColor(.secondary)
+                        .lineLimit(1)                 // ✅ Единицы измерения тоже строго в одну строку
                 }
             }
-            Spacer()
+            Spacer(minLength: 0) // ✅ Позволяем Spacer'у сжиматься до 0, отдавая пространство тексту
         }
         .padding(14)
         .background(Color(UIColor.secondarySystemGroupedBackground))

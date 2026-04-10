@@ -733,11 +733,13 @@ actor AnalyticsService {
             return (c - p, pct, abs(pct) < 2 ? .stable : (pct > 0 ? .growing : .declining))
         }
         var comp: [DetailedComparison] = []
-        let (wcC, wcP, wcT) = calc(Double(cur.workoutCount), Double(prev.workoutCount))
-        comp.append(.init(metric: String(localized: "Workouts"), currentValue: Double(cur.workoutCount), previousValue: Double(prev.workoutCount), change: wcC, changePercentage: wcP, trend: wcT))
-        let (volC, volP, volT) = calc(cur.totalVolume, prev.totalVolume)
-        comp.append(.init(metric: String(localized: "Total Volume"), currentValue: cur.totalVolume, previousValue: prev.totalVolume, change: volC, changePercentage: volP, trend: volT))
-        return comp
+                let (wcC, wcP, wcT) = calc(Double(cur.workoutCount), Double(prev.workoutCount))
+                // Убрали String(localized:) 👇
+                comp.append(.init(metric: "Workouts", currentValue: Double(cur.workoutCount), previousValue: Double(prev.workoutCount), change: wcC, changePercentage: wcP, trend: wcT))
+                let (volC, volP, volT) = calc(cur.totalVolume, prev.totalVolume)
+                // Убрали String(localized:) 👇
+                comp.append(.init(metric: "Total Volume", currentValue: cur.totalVolume, previousValue: prev.totalVolume, change: volC, changePercentage: volP, trend: volT))
+                return comp
     }
     
     func calculateRecovery(hours: Double, workouts: [Workout]) async -> [MuscleRecoveryStatus] {

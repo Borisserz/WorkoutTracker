@@ -350,25 +350,54 @@ struct WorkoutDetailContentView: View {
     }
     
     private var exercisesToolbarSection: some View {
-        HStack {
-            Text(LocalizedStringKey("Exercises")).font(.title2).bold()
-            Spacer()
-            if workout.isActive {
-                Button { showTimerSetup = true } label: {
-                    Image(systemName: "timer").font(.headline).padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
+            HStack {
+                Text(LocalizedStringKey("Exercises"))
+                    .font(.title2)
+                    .bold()
+                    .lineLimit(1) // ✅ Запрещаем перенос заголовка на 2 строки
+                    .minimumScaleFactor(0.5) // ✅ Разрешаем шрифту сжаться, если тесно
+                
+                Spacer(minLength: 5) // Позволяем спейсеру сжиматься
+                
+                if workout.isActive {
+                    Button { showTimerSetup = true } label: {
+                        Image(systemName: "timer")
+                            .font(.headline)
+                            .padding(8)
+                            .background(Color.accentColor.opacity(0.1))
+                            .foregroundColor(.accentColor)
+                            .cornerRadius(8)
+                    }
                 }
+                
+                Button { activeSheet = .supersetBuilder(nil) } label: {
+                    Label(LocalizedStringKey("Superset"), systemImage: "plus")
+                        .font(.caption)
+                        .bold()
+                        .lineLimit(1) // ✅ Запрещаем перенос текста в кнопке
+                        .minimumScaleFactor(0.7) // ✅ Разрешаем тексту кнопки сжаться
+                        .padding(8)
+                        .background(Color.accentColor.opacity(0.1))
+                        .foregroundColor(.accentColor)
+                        .cornerRadius(8)
+                }.disabled(!workout.isActive)
+                
+                Button { activeSheet = .exerciseSelection } label: {
+                    Label(LocalizedStringKey("Exercise"), systemImage: "plus")
+                        .font(.caption)
+                        .bold()
+                        .lineLimit(1) // ✅ Запрещаем перенос текста в кнопке
+                        .minimumScaleFactor(0.7) // ✅ Разрешаем тексту кнопки сжаться
+                        .padding(8)
+                        .background(Color.accentColor.opacity(0.1))
+                        .foregroundColor(.accentColor)
+                        .cornerRadius(8)
+                }
+                .disabled(!workout.isActive)
+                .spotlight(step: .addExercise, manager: tutorialManager, text: "Tap here to add an exercise.", alignment: .top, xOffset: -50, yOffset: 10)
             }
-            Button { activeSheet = .supersetBuilder(nil) } label: {
-                Label(LocalizedStringKey("Superset"), systemImage: "plus").font(.caption).bold().padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
-            }.disabled(!workout.isActive)
-            Button { activeSheet = .exerciseSelection } label: {
-                Label(LocalizedStringKey("Exercise"), systemImage: "plus").font(.caption).bold().padding(8).background(Color.accentColor.opacity(0.1)).foregroundColor(.accentColor).cornerRadius(8)
-            }
-            .disabled(!workout.isActive)
-            .spotlight(step: .addExercise, manager: tutorialManager, text: "Tap here to add an exercise.", alignment: .top, xOffset: -50, yOffset: 10)
+            .zIndex(15)
         }
-        .zIndex(15)
-    }
     
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: 16) {
