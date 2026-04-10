@@ -43,13 +43,13 @@ struct PremiumProgramCardView: View {
             
             // Content Overlay (No Creator Text)
             VStack(alignment: .leading, spacing: 6) {
-                Text(program.title)
+                Text(LocalizedStringKey(program.title))
                     .font(.title2)
                     .fontWeight(.heavy)
                     .foregroundColor(.white)
                     .lineLimit(1)
                 
-                Text(program.description)
+                Text(LocalizedStringKey(program.description))
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.8))
                     .lineLimit(2)
@@ -136,7 +136,7 @@ struct FilterSection<T: RawRepresentable & Identifiable & Equatable>: View where
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.headline)
                 .foregroundColor(.primary)
             
@@ -167,7 +167,7 @@ struct FilterChip: View {
             gen.selectionChanged()
             action()
         }) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.subheadline)
                 .fontWeight(isSelected ? .bold : .medium)
                 .padding(.horizontal, 20)

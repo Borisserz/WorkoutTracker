@@ -70,11 +70,11 @@ struct ExploreRoutinesView: View {
                 // Fixed Header Area
                 VStack(spacing: 12) {
                     // Type Picker
-                    Picker("Workout Type", selection: $viewModel.selectedTab) {
-                        Text("Programs").tag(ExploreTabType.programs)
-                        Text("Single Routines").tag(ExploreTabType.singles)
+                    Picker(LocalizedStringKey("Workout Type"), selection: $viewModel.selectedTab) {
+                        Text(LocalizedStringKey("Programs")).tag(ExploreTabType.programs)
+                        Text(LocalizedStringKey("Single Routines")).tag(ExploreTabType.singles)
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.segmented) // ✅ Модификаторы теперь применяются прямо к Picker
                     .padding(.horizontal)
                     .padding(.top, 8)
                     

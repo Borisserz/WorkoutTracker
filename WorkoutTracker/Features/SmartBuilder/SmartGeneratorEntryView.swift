@@ -86,10 +86,10 @@ struct SmartGeneratorEntryView: View {
     
     private var headerSection: some View {
         VStack(spacing: 12) {
-            Text("Don't want to think?")
+            Text(LocalizedStringKey("Don't want to think?"))
                 .font(.system(size: 28, weight: .heavy, design: .rounded))
                 .padding(.top, 24)
-            Text("Select a quick preset or build a custom routine in seconds.")
+            Text(LocalizedStringKey("Select a quick preset or build a custom routine in seconds."))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

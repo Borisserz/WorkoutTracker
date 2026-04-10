@@ -10,6 +10,9 @@ enum ProgramLevel: String, CaseIterable, Identifiable, Sendable {
     case intermediate = "Intermediate"
     case advanced = "Advanced"
     var id: String { rawValue }
+    var localizedName: String {
+            String(localized: String.LocalizationValue(self.rawValue))
+        }
 }
 
 enum ProgramGoal: String, CaseIterable, Identifiable, Sendable {

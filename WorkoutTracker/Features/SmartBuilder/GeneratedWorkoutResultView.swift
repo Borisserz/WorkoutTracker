@@ -25,7 +25,7 @@ struct GeneratedWorkoutResultView: View {
                 VStack(spacing: 24) {
                     // Инфографика (БЕЗ грязного блюра, чистый фон)
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Workout Focus").font(.headline).foregroundColor(.secondary)
+                        Text(LocalizedStringKey("Workout Focus")).font(.headline).foregroundColor(.secondary)
                         
                         VStack(spacing: 12) {
                             ForEach(muscleDistribution, id: \.0) { item in
@@ -50,7 +50,7 @@ struct GeneratedWorkoutResultView: View {
                     
                     // Список упражнений
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Exercises").font(.title3).bold().padding(.horizontal)
+                        Text(LocalizedStringKey("Exercises")).font(.title3).bold().padding(.horizontal)
                         
                         VStack(spacing: 12) {
                             ForEach(vm.generatedExercises, id: \.name) { ex in
@@ -74,7 +74,7 @@ struct GeneratedWorkoutResultView: View {
                                                                         let weight = safeSets.first?.weight ?? 0.0
                                                                         
                                                                         if ex.type == .strength {
-                                                                            Text("\(safeSets.count)x\(reps)")
+                                                                            Text("\(safeSets.count) x \(reps)", comment: "Sets and reps format")
                                                                                 .font(.subheadline).bold()
                                                                             
                                                                             if weight > 0 {
@@ -85,7 +85,7 @@ struct GeneratedWorkoutResultView: View {
                                                                         } else {
                                                                             // Если кардио/время
                                                                             let timeSec = safeSets.first?.time ?? 0
-                                                                            Text("\(timeSec / 60) min")
+                                                                            Text("\(timeSec / 60) min", comment: "Duration in minutes")
                                                                                 .font(.subheadline).bold()
                                                                         }
                                                                     }
@@ -110,7 +110,7 @@ struct GeneratedWorkoutResultView: View {
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "bolt.fill").font(.title2)
-                        Text("START WORKOUT").font(.title3).bold().tracking(1.5)
+                        Text(LocalizedStringKey("START WORKOUT")).font(.title3).bold().tracking(1.5)
                     }
                     .foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 20)
                     .background(Color.blue)
@@ -122,7 +122,7 @@ struct GeneratedWorkoutResultView: View {
             .padding(.bottom, 16)
             // ✅ ИСПРАВЛЕНИЕ: Убрали прозрачный градиент, который перекрывал список (пленку)
         }
-        .navigationTitle("Your Routine")
+        .navigationTitle(LocalizedStringKey("Your Routine"))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

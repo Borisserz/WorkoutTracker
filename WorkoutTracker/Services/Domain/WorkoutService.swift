@@ -139,7 +139,10 @@ final class WorkoutService {
             _ = try await workoutStore.createWorkoutFromAI(generated: generated)
             liveActivityManager.startWorkoutActivity(title: generated.title)
         } catch {
-            appState.showError(title: "Save Failed", message: "Failed to save generated workout: \(error.localizedDescription)")
+            appState.showError(
+                title: String(localized: "Save Failed"),
+                message: String(localized: "Failed to save generated workout: \(error.localizedDescription)")
+            )
         }
     }
     

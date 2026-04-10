@@ -458,7 +458,10 @@ extension WorkoutDetailViewModel {
     
     func generateRoast(for workout: Workout) {
         guard let topExercise = workout.exercises.max(by: { $0.exerciseVolume < $1.exerciseVolume }) else {
-            appState.showError(title: "Error", message: "Complete an exercise first to get roasted.")
+            appState.showError(
+                title: String(localized: "Error"),
+                message: String(localized: "Complete an exercise first to get roasted.")
+            )
             return
         }
         

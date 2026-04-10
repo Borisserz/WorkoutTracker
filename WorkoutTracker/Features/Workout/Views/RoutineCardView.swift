@@ -17,7 +17,7 @@ struct PremiumRoutineCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(preset.name)
+                    Text(LocalizedStringKey(preset.name))
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
@@ -98,6 +98,7 @@ struct PremiumRoutineCard: View {
     
     private var exercisesPreviewText: String {
         if preset.exercises.isEmpty { return String(localized: "No exercises") }
-        return preset.exercises.map { $0.name }.joined(separator: ", ")
+        // 👈 Добавили прогон через LocalizationHelper
+        return preset.exercises.map { LocalizationHelper.shared.translateName($0.name) }.joined(separator: ", ")
     }
 }

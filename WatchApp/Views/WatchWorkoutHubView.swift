@@ -48,7 +48,7 @@ struct WatchWorkoutHubView: View {
                         ForEach(myPresets) { preset in
                             Button(action: { startPresetWorkout(preset) }) {
                                 VStack(alignment: .leading) {
-                                    Text(preset.name).font(.headline)
+                                    Text(LocalizedStringKey(preset.name)).font(.headline)
                                     Text("\(preset.exercises.count) exercises")
                                         .font(.caption2).foregroundColor(.secondary)
                                 }

@@ -417,7 +417,7 @@ struct FreshWorkoutPreviewSheet: View {
                 ForEach(generatedWorkout.exercises) { ex in
                     HStack {
                         VStack(alignment: .leading) {
-                            Text(ex.name).font(.headline)
+                            Text(LocalizationHelper.shared.translateName(ex.name)).font(.headline)
                             Text(ex.muscleGroup).font(.caption).foregroundColor(.secondary)
                         }
                         Spacer()

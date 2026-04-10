@@ -214,7 +214,7 @@ struct WatchExerciseSetView: View {
             withAnimation { focus = type }
         } label: {
             VStack {
-                Text(title).font(.system(size: 10, weight: .bold)).foregroundColor(isFocused ? color : .gray)
+                Text(LocalizedStringKey(title)).font(.system(size: 10, weight: .bold)).foregroundColor(isFocused ? color : .gray)
                 Text(value).font(.system(size: 24, weight: .bold, design: .rounded))
             }
             .frame(maxWidth: .infinity).padding(.vertical, 8)
@@ -298,7 +298,7 @@ struct WatchSummaryView: View {
     
     private func summaryRow(title: String, value: String) -> some View {
         HStack {
-            Text(title).foregroundColor(.secondary)
+            Text(LocalizedStringKey(title)).foregroundColor(.secondary)
             Spacer()
             Text(value).bold()
         }

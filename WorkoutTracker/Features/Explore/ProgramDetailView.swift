@@ -38,7 +38,7 @@ struct ProgramDetailView: View {
                         
                         // Title & Tags
                         VStack(alignment: .leading, spacing: 12) {
-                            Text(program.title)
+                            Text(LocalizedStringKey(program.title))
                                 .font(.system(size: 32, weight: .heavy, design: .rounded))
                                 .foregroundColor(.primary)
                             
@@ -48,7 +48,7 @@ struct ProgramDetailView: View {
                                 ProgramTag(text: program.equipment.rawValue, icon: program.equipment.icon, color: .orange)
                             }
                             
-                            Text(program.description)
+                            Text(LocalizedStringKey(program.description))
                                 .font(.body)
                                 .foregroundColor(.secondary)
                                 .lineSpacing(4)
@@ -231,7 +231,7 @@ struct RoutinePreviewCard: View {
                                 .textCase(.uppercase)
                                 .fontWeight(.bold)
                         }
-                        Text(routine.name)
+                        Text(LocalizedStringKey(routine.name))
                             .font(.headline)
                             .foregroundColor(.primary)
                     }
@@ -253,7 +253,7 @@ struct RoutinePreviewCard: View {
                                 .foregroundColor(.blue)
                                 .frame(width: 20)
                             
-                            Text(ex.name)
+                            Text(LocalizationHelper.shared.translateName(ex.name))
                                 .font(.subheadline)
                                 .foregroundColor(.primary)
                             
