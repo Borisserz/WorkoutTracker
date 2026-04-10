@@ -28,47 +28,49 @@ final class ConfigureExerciseViewModel {
         self.exerciseType = exerciseType
     }
     
-    /// Загружает последние данные и вычисляет прогрессивную перегрузку
+    /// Загружает последние данные и вычисляет Progressивную перегрузку
     func loadLastPerformance(from dashboardCache: [String: Exercise]) {
-        guard !hasAutoFilled else { return }
-        hasAutoFilled = true
-        
-        guard let lastPerf = dashboardCache[exerciseName] else { return }
-        let lastSets = lastPerf.sortedSets.filter { $0.type != .warmup && $0.isCompleted }
-        guard !lastSets.isEmpty else { return }
-        
-        switch exerciseType {
-        case .strength:
-            form.sets = lastSets.count
-            form.reps = lastSets.first?.reps ?? 10
-            
-            let lastMax = lastSets.compactMap { $0.weight }.max() ?? 0.0
-            form.weight = lastMax > 0 ? lastMax : nil
-            
-            if lastMax > 0 {
-                // БИЗНЕС-ЛОГИКА НАХОДИТСЯ ЗДЕСЬ, А НЕ ВО VIEW
-                self.recommendedWeight = lastMax + 2.5
-                self.showOverloadBanner = true
-            }
-            
-        case .cardio:
-            if let firstSet = lastSets.first {
-                form.distance = firstSet.distance
-                let t = firstSet.time ?? 0
-                form.minutes = t / 60
-                form.seconds = t % 60
-            }
-            
-        case .duration:
-            if let firstSet = lastSets.first {
-                form.sets = lastSets.count
-                let t = firstSet.time ?? 0
-                form.minutes = t / 60
-                form.seconds = t % 60
-            }
-        }
-    }
-    
+           guard !hasAutoFilled else { return }
+           hasAutoFilled = true
+           
+           guard let lastPerf = dashboardCache[exerciseName] else { return }
+           let lastSets = lastPerf.sortedSets.filter { $0.type != .warmup && $0.isCompleted }
+           guard !lastSets.isEmpty else { return }
+           
+           switch exerciseType {
+           case .strength:
+               // Если в кэше записано 0 подходов, ставим хотя бы 1
+               form.sets = lastSets.count > 0 ? lastSets.count : 3
+               
+               // Если в кэше записано 0 повторений, ставим 10
+               let previousReps = lastSets.first?.reps ?? 10
+               form.reps = previousReps > 0 ? previousReps : 10
+               
+               let lastMax = lastSets.compactMap { $0.weight }.max() ?? 0.0
+               form.weight = lastMax > 0 ? lastMax : nil
+               
+               if lastMax > 0 {
+                   self.recommendedWeight = lastMax + 2.5
+                   self.showOverloadBanner = true
+               }
+               
+           case .cardio:
+               if let firstSet = lastSets.first {
+                   form.distance = firstSet.distance
+                   let t = firstSet.time ?? 0
+                   form.minutes = t / 60
+                   form.seconds = t % 60
+               }
+               
+           case .duration:
+               if let firstSet = lastSets.first {
+                   form.sets = lastSets.count > 0 ? lastSets.count : 3
+                   let t = firstSet.time ?? 0
+                   form.minutes = t / 60
+                   form.seconds = t % 60
+               }
+           }
+       }
     func applyOverload() {
         form.weight = recommendedWeight
         showOverloadBanner = false

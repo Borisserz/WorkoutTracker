@@ -70,18 +70,23 @@ struct AITrackerView: View {
             .padding(.vertical, 16)
         }
         .navigationBarHidden(true)
-        .onAppear {
-            cameraManager.checkPermission()
-            coach.speak("Ready. Let's go!")
-        }
-        .onDisappear {
-            cameraManager.stopSession()
-        }
-        .onChange(of: cameraManager.bodyPose) { newPose in
-            if let pose = newPose {
-                engine.processFrame(observation: pose)
-            }
-        }
+               // ✅ ГЛАВНОЕ ИЗМЕНЕНИЕ: Использование .task вместо .onAppear
+               .task {
+                   // 1. Асинхронно достаем профиль из 800+ упражнений
+                   await engine.setup()
+                   
+                   // 2. Включаем камеру
+                   cameraManager.checkPermission()
+                   coach.speak("Ready. Let's go!")
+               }
+               .onDisappear {
+                   cameraManager.stopSession()
+               }
+               .onChange(of: cameraManager.bodyPose) { newPose in
+                   if let pose = newPose {
+                       engine.processFrame(observation: pose)
+                   }
+               }
         .onChange(of: cameraManager.handPose) { newHandPose in
             if let pose = newHandPose {
                 gestureCtrl.processHandPose(observation: pose)
@@ -117,6 +122,16 @@ struct AITrackerView: View {
                         }
                     }
                 }
+                .onChange(of: engine.vbtWarningTriggered) { triggered in
+                           if triggered {
+                               // Магия для профессионалов: AI детектит отказ по скорости штанги
+                               coach.speak("Bar speed dropping! Last two reps, push!")
+                               
+                               // Легкий тактильный импульс для юзера
+                               let generator = UINotificationFeedbackGenerator()
+                               generator.notificationOccurred(.warning)
+                           }
+                       }
     }
     
     // MARK: - Live Muscle Activation UI

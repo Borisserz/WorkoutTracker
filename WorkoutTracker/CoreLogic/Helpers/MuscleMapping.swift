@@ -1,22 +1,12 @@
-//
-//  MuscleMapping.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Справочник для маппинга названий упражнений в технические идентификаторы мышц (slugs).
-//  Используется для отрисовки тепловой карты (Heatmap) тела.
-//
-
+// ============================================================
+// FILE: WorkoutTracker/CoreLogic/Helpers/MuscleMapping.swift
+// ============================================================
 
 import Foundation
-import SwiftData // Для PersistentIdentifier, если понадобится
 
 struct MuscleMapping {
     
     // MARK: - Constants
-    
-    /// Старый ключ для UserDefaults (используется только для миграции)
     private static let customMappingKey = "CustomExerciseMappings"
     
     private static var customMappingsFileURL: URL {
@@ -26,152 +16,11 @@ struct MuscleMapping {
     // Блокировка для потокобезопасного доступа к кэшу
     private static let cacheLock = NSLock()
     
-    // Кэш в оперативной памяти для быстрого доступа
+    // Кэши в оперативной памяти для быстрого доступа
     private static var _cachedCustomMappings: [String: [String]]?
+    private static var _jsonExerciseToMuscles: [String: [String]]?
     
-    // MARK: - Standard Mappings
-    
-    /// Словарь: Название упражнения
-    static let exerciseToMuscles: [String: [String]] = [
-        
-        // --- Chest ---
-        "Bench Press":              ["chest", "triceps", "deltoids"],
-        "Push Ups":                 ["chest", "triceps", "deltoids", "abs"],
-        "Incline Dumbbell Press":   ["chest", "triceps", "deltoids"],
-        "Dips":                     ["chest", "triceps", "deltoids"],
-        "Dumbbell Flyes":           ["chest"],
-        "Cable Crossover":          ["chest"],
-        "Decline Bench Press":      ["chest", "triceps", "deltoids"],
-        "Chest Press Machine":      ["chest", "triceps", "deltoids"],
-        "Pec Deck":                 ["chest"],
-        "Incline Bench Press":      ["chest", "triceps", "deltoids"],
-        "Diamond Push Ups":         ["chest", "triceps", "deltoids"],
-        "Wide Grip Push Ups":       ["chest", "triceps", "deltoids"],
-        "Cable Flyes":              ["chest"],
-        "Push-up Variations":       ["chest", "triceps", "deltoids", "abs"],
-        "Chest Dips":               ["chest", "triceps", "deltoids"],
-        
-        // --- Back ---
-        "Pull-ups":                 ["upper-back", "biceps", "forearm"],
-        "Deadlift":                 ["hamstring", "gluteal", "lower-back", "trapezius", "forearm"],
-        "Barbell Rows":             ["upper-back", "biceps", "lower-back", "deltoids"],
-        "Lat Pulldown":             ["upper-back", "biceps"],
-        "T-Bar Row":                ["upper-back", "lower-back", "biceps"],
-        "Cable Rows":               ["upper-back", "biceps", "lower-back"],
-        "One-Arm Dumbbell Row":     ["upper-back", "biceps", "lower-back"],
-        "Chin-ups":                 ["upper-back", "biceps", "forearm"],
-        "Wide Grip Pull-ups":       ["upper-back", "biceps", "forearm"],
-        "Seated Cable Row":         ["upper-back", "biceps", "lower-back"],
-        "Bent Over Row":            ["upper-back", "biceps", "lower-back"],
-        "Shrugs":                   ["trapezius"],
-        "Good Mornings":            ["hamstring", "lower-back", "gluteal"],
-        "Rack Pulls":               ["upper-back", "lower-back", "trapezius", "gluteal"],
-        "Renegade Rows":            ["upper-back", "biceps", "abs"],
-        "Inverted Row":             ["upper-back", "biceps"],
-        "Hyperextensions":          ["lower-back", "gluteal", "hamstring"],
-        "Meadows Row":              ["upper-back", "biceps"],
-        
-        // --- Legs ---
-        "Squat":                    ["quadriceps", "gluteal", "hamstring", "lower-back"],
-        "Leg Press":                ["quadriceps", "gluteal", "hamstring"],
-        "Lunges":                   ["quadriceps", "gluteal", "hamstring", "calves"],
-        "Calf Raises":              ["calves"],
-        "Romanian Deadlift":        ["hamstring", "gluteal", "lower-back"],
-        "Bulgarian Split Squat":    ["quadriceps", "gluteal", "hamstring"],
-        "Leg Curls":                ["hamstring"],
-        "Leg Extensions":           ["quadriceps"],
-        "Hack Squat":               ["quadriceps", "gluteal", "hamstring"],
-        "Front Squat":              ["quadriceps", "gluteal", "hamstring", "lower-back"],
-        "Walking Lunges":           ["quadriceps", "gluteal", "hamstring", "calves"],
-        "Step-ups":                 ["quadriceps", "gluteal", "hamstring"],
-        "Glute Bridge":             ["gluteal", "hamstring"],
-        "Hip Thrusts":              ["gluteal", "hamstring"],
-        "Goblet Squat":             ["quadriceps", "gluteal", "hamstring"],
-        "Pistol Squat":             ["quadriceps", "gluteal", "hamstring"],
-        "Sumo Squat":               ["quadriceps", "gluteal", "hamstring", "adductors"],
-        "Stiff Leg Deadlift":       ["hamstring", "gluteal", "lower-back"],
-        "Seated Calf Raise":        ["calves"],
-        "Standing Calf Raise":      ["calves"],
-        "Wall Sits":                ["quadriceps", "gluteal"],
-        "Quadruped Hip Extension":  ["gluteal", "hamstring"],
-        
-        // --- Shoulders ---
-        "Overhead Press":           ["deltoids", "triceps", "trapezius"],
-        "Lateral Raises":           ["deltoids"],
-        "Face Pulls":               ["deltoids", "trapezius", "upper-back"],
-        "Arnold Press":             ["deltoids", "triceps"],
-        "Reverse Flyes":            ["upper-back", "deltoids"],
-        "Front Raises":             ["deltoids"],
-        "Upright Row":              ["deltoids", "trapezius"],
-        "Pike Push-ups":            ["deltoids", "triceps"],
-        "Shoulder Press Machine":   ["deltoids", "triceps"],
-        "Cable Lateral Raises":     ["deltoids"],
-        "Rear Delt Flyes":          ["deltoids", "upper-back"],
-        "Push Press":               ["deltoids", "triceps", "legs"],
-        "Handstand Push-ups":       ["deltoids", "triceps"],
-        "Landmine Press":           ["deltoids", "chest", "triceps"],
-        "Turkish Get-up":           ["deltoids", "abs", "gluteal"],
-        
-        // --- Arms ---
-        "Barbell Curl":             ["biceps", "forearm"],
-        "Triceps Extension":        ["triceps"],
-        "Hammer Curls":             ["biceps", "forearm"],
-        "Bicep Curls":              ["biceps", "forearm"],
-        "Triceps Dips":             ["triceps", "chest", "deltoids"],
-        "Close Grip Bench Press":   ["triceps", "chest", "deltoids"],
-        "Preacher Curl":            ["biceps", "forearm"],
-        "Concentration Curls":      ["biceps"],
-        "Cable Curls":              ["biceps", "forearm"],
-        "Triceps Pushdown":         ["triceps"],
-        "Overhead Triceps Extension": ["triceps"],
-        "Spider Curls":             ["biceps", "forearm"],
-        "Rope Hammer Curls":        ["biceps", "forearm"],
-        "Skull Crushers":           ["triceps"],
-        "French Press":             ["triceps"],
-        "Zottman Curls":            ["biceps", "forearm"],
-        "Cable Kickbacks":          ["triceps"],
-        
-        // --- Core ---
-        "Plank":                    ["abs", "obliques", "deltoids"],
-        "Crunches":                 ["abs"],
-        "Leg Raises":               ["abs", "obliques"],
-        "Russian Twists":           ["abs", "obliques"],
-        "Bicycle Crunches":         ["abs", "obliques"],
-        "Hanging Knee Raises":      ["abs", "obliques"],
-        "Dead Bug":                 ["abs"],
-        "Bird Dog":                 ["abs", "lower-back"],
-        "Side Plank":               ["abs", "obliques", "deltoids"],
-        "Ab Wheel Rollout":         ["abs", "obliques"],
-        "Sit-ups":                  ["abs"],
-        "L-sit":                    ["abs", "obliques"],
-        "Dragon Flag":              ["abs", "obliques"],
-        "Toes to Bar":              ["abs", "obliques"],
-        "Cable Crunches":           ["abs"],
-        "Pallof Press":             ["abs", "obliques"],
-        
-        // --- Cardio & Duration ---
-        "Running":                  ["quadriceps", "hamstring", "calves", "gluteal"],
-        "Cycling":                  ["quadriceps", "calves"],
-        "Rowing":                   ["upper-back", "biceps", "quadriceps", "hamstring"],
-        "Jump Rope":                ["calves", "quadriceps", "deltoids"],
-        "Stretching":               [],
-        "Treadmill":                ["quadriceps", "hamstring", "calves", "gluteal"],
-        "Elliptical":               ["quadriceps", "hamstring", "gluteal", "calves"],
-        "HIIT":                     ["quadriceps", "hamstring", "calves", "gluteal", "abs"],
-        "Burpees":                  ["quadriceps", "gluteal", "chest", "deltoids", "abs"],
-        "Jumping Jacks":            ["quadriceps", "calves", "deltoids"],
-        "High Knees":               ["quadriceps", "calves", "gluteal"],
-        "Mountain Climbers":        ["abs", "deltoids", "quadriceps"],
-        "Battle Ropes":             ["deltoids", "abs", "upper-back"],
-        "Box Jumps":                ["quadriceps", "gluteal", "calves"],
-        "Swimming":                 ["upper-back", "deltoids", "quadriceps"],
-        "Stair Climber":            ["quadriceps", "gluteal", "calves"],
-        "Kettlebell Swings":        ["gluteal", "hamstring", "deltoids"],
-        "Rowing Machine":           ["upper-back", "biceps", "quadriceps", "hamstring"],
-        "Treadmill Sprints":        ["quadriceps", "hamstring", "calves", "gluteal"]
-    ]
-    
-    /// Запасной вариант: если упражнения нет в списке выше,
+    // Запасной вариант (Фолбэк), если упражнения вообще нигде нет
     static let groupToMuscles: [String: [String]] = [
         "Chest":     ["chest"],
         "Back":      ["upper-back", "lower-back", "trapezius"],
@@ -184,14 +33,79 @@ struct MuscleMapping {
     
     // MARK: - Logic
     
-    /// Запускает асинхронную загрузку маппингов для избежания зависания на старте
+    /// Запускает асинхронную загрузку маппингов на старте приложения (без лагов)
     static func preload() {
         Task.detached(priority: .background) {
             _ = getCustomMappings()
+            _ = getJSONMappings()
         }
     }
     
-    /// Извлекает пользовательские маппинги из файла или кэша
+    // MARK: - JSON Mappings (НОВАЯ ДИНАМИЧЕСКАЯ ЛОГИКА)
+    
+    /// Читает exercises.json и автоматически создает карту мышц для тепловой карты
+    private static func getJSONMappings() -> [String: [String]] {
+        cacheLock.lock()
+        if let cached = _jsonExerciseToMuscles {
+            cacheLock.unlock()
+            return cached
+        }
+        cacheLock.unlock()
+        
+        var mapping: [String: [String]] = [:]
+        
+        // Вспомогательная структура для быстрого парсинга нужных полей
+        struct TempItem: Codable {
+            let name: String
+            let primaryMuscles: [String]?
+            let secondaryMuscles: [String]?
+        }
+        
+        if let url = Bundle.main.url(forResource: "exercises", withExtension: "json"),
+           let data = try? Data(contentsOf: url),
+           let items = try? JSONDecoder().decode([TempItem].self, from: data) {
+            
+            for item in items {
+                var slugs = Set<String>()
+                // Добавляем и основные, и второстепенные мышцы на тепловую карту
+                item.primaryMuscles?.forEach { slugs.insert(mapToSlug($0)) }
+                item.secondaryMuscles?.forEach { slugs.insert(mapToSlug($0)) }
+                
+                mapping[item.name.lowercased()] = Array(slugs)
+            }
+        }
+        
+        cacheLock.lock()
+        _jsonExerciseToMuscles = mapping
+        cacheLock.unlock()
+        
+        return mapping
+    }
+    
+    /// Конвертирует названия мышц из JSON в технические "слаги", которые понимает SVG отрисовщик тела
+    private static func mapToSlug(_ rawName: String) -> String {
+        let lowercased = rawName.lowercased()
+        switch lowercased {
+        case "lower back", "lower-back": return "lower-back"
+        case "middle back", "lats", "upper back", "traps", "trapezius": return "upper-back"
+        case "forearms", "forearm": return "forearm"
+        case "glutes", "gluteal": return "gluteal"
+        case "hamstrings", "hamstring": return "hamstring"
+        case "quadriceps", "quads": return "quadriceps"
+        case "calves", "calf": return "calves"
+        case "shoulders", "delts", "deltoids": return "deltoids"
+        case "chest", "pectorals": return "chest"
+        case "biceps": return "biceps"
+        case "triceps": return "triceps"
+        case "abdominals", "abs", "core": return "abs"
+        case "obliques": return "obliques"
+        case "adductors", "abductors": return "adductors"
+        default: return lowercased.replacingOccurrences(of: " ", with: "-")
+        }
+    }
+    
+    // MARK: - Custom Mappings
+    
     private static func getCustomMappings() -> [String: [String]] {
         cacheLock.lock()
         if let cached = _cachedCustomMappings {
@@ -227,7 +141,6 @@ struct MuscleMapping {
         return loaded
     }
     
-    /// Обновляет кэш и сохраняет изменения в файл асинхронно. Вызывается из ExerciseCatalogService.
     static func updateCustomMapping(name: String, muscles: [String]?) {
         var currentMap = getCustomMappings()
         if let muscles = muscles {
@@ -248,23 +161,21 @@ struct MuscleMapping {
         }
     }
     
+    // MARK: - Final Resolution Function
+    
     /// Возвращает список задействованных мышц для конкретного упражнения.
-    ///
-    /// Поиск происходит в следующем порядке:
-    /// 1. Стандартный словарь (`exerciseToMuscles`).
-    /// 2. Пользовательские упражнения (`FileManager` / `Cache`).
-    /// 3. Дефолтный маппинг по группе мышц (`groupToMuscles`).
     static func getMuscles(for exerciseName: String, group: String) -> [String] {
+        let nameKey = exerciseName.lowercased()
         
-        // 1. Сначала ищем в стандартном словаре
-        if let muscles = exerciseToMuscles[exerciseName] {
+        // 1. Сначала ищем в динамическом JSON-словаре (база на 800+ упражнений)
+        let jsonMap = getJSONMappings()
+        if let muscles = jsonMap[nameKey], !muscles.isEmpty {
             return muscles
         }
         
-        // 2. Если не нашли, ищем в ПОЛЬЗОВАТЕЛЬСКИХ (из кэша/FileManager)
+        // 2. Если не нашли, ищем в ПОЛЬЗОВАТЕЛЬСКИХ (созданных вручную)
         let customMap = getCustomMappings()
-        
-        if let customMuscles = customMap[exerciseName] {
+        if let customMuscles = customMap[exerciseName] ?? customMap[nameKey], !customMuscles.isEmpty {
             return customMuscles
         }
         
@@ -273,12 +184,12 @@ struct MuscleMapping {
     }
     
     static func isBackFacing(exerciseName: String) -> Bool {
-            let name = exerciseName.lowercased()
-            let backKeywords = [
-                "deadlift", "row", "pull", "chin", "tricep",
-                "glute", "hamstring", "calf", "calves", "back",
-                "good morning", "shrug"
-            ]
-            return backKeywords.contains { name.contains($0) }
-        }
+        let name = exerciseName.lowercased()
+        let backKeywords = [
+            "deadlift", "row", "pull", "chin", "tricep",
+            "glute", "hamstring", "calf", "calves", "back",
+            "good morning", "shrug"
+        ]
+        return backKeywords.contains { name.contains($0) }
+    }
 }

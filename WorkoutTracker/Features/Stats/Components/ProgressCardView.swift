@@ -30,7 +30,7 @@ struct ProgressCardView: View {
                     .background(color)
                     .clipShape(Circle())
                 
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.headline)
                 
                 Spacer()

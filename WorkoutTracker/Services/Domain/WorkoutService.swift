@@ -1,17 +1,15 @@
-//
-//  WorkoutService.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Services/Domain/WorkoutService.swift
+// ============================================================
 
 import Foundation
 import SwiftData
 import AudioToolbox
 import WidgetKit
-
+import WatchConnectivity
 @Observable
 @MainActor
 final class WorkoutService {
-    // ❌ УБРАНО: var currentError: AppError?
     
     public private(set) var aiLogicService: AILogicService
     
@@ -22,7 +20,6 @@ final class WorkoutService {
     private let notificationManager: NotificationManager
     private let progressManager: ProgressManager
     
-    // ✅ ДОБАВЛЕНО: Инъекция стейт-менеджера и Live Activity менеджера
     private let appState: AppStateManager
     private let liveActivityManager: LiveActivityManager
 
@@ -45,10 +42,76 @@ final class WorkoutService {
         self.progressManager = progressManager
         self.appState = appState
         self.liveActivityManager = liveActivityManager
+        
+        NotificationCenter.default.addObserver(forName: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, queue: .main) { [weak self] notification in
+            guard let self = self,
+                  let payloadDict = notification.userInfo?["payload"],
+                  let payload = payloadDict as? LiveSyncPayload else { return }
+            
+            Task { @MainActor in
+                // ✅ FIX 1: Use analyticsService.modelContainer to avoid protocol constraints
+                let bgContext = ModelContext(self.analyticsService.modelContainer)
+                let workoutUUID = UUID(uuidString: payload.workoutID)
+                
+                switch payload.action {
+                case .startWorkout:
+                    guard let uuid = workoutUUID else { return }
+                    let newWorkout = Workout(id: uuid, title: payload.workoutTitle ?? "Watch Workout", date: Date(), exercises: [])
+                    newWorkout.icon = "applewatch"
+                    bgContext.insert(newWorkout)
+                    try? bgContext.save()
+                    
+                    self.liveActivityManager.startWorkoutActivity(title: newWorkout.title)
+                    self.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
+                    
+                case .addExercise:
+                    guard let uuid = workoutUUID, let exName = payload.exerciseName else { return }
+                    let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
+                    if let workout = try? bgContext.fetch(desc).first {
+                        let newEx = Exercise(name: exName, muscleGroup: "Mixed", type: .strength, sets: 0, reps: 0, weight: 0)
+                        bgContext.insert(newEx)
+                        newEx.workout = workout
+                        workout.exercises.append(newEx)
+                        try? bgContext.save()
+                    }
+                    
+                case .logSet:
+                    guard let uuid = workoutUUID, let exName = payload.exerciseName, let setIndex = payload.setIndex else { return }
+                    let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
+                    if let workout = try? bgContext.fetch(desc).first,
+                       let exercise = workout.exercises.first(where: { $0.name == exName && !$0.isCompleted }) {
+                        
+                        let newSet = WorkoutSet(index: setIndex, weight: payload.weight, reps: payload.reps, isCompleted: true, type: .normal)
+                        bgContext.insert(newSet)
+                        newSet.exercise = exercise
+                        exercise.setsList.append(newSet)
+                        try? bgContext.save()
+                    }
+                    
+                case .finishWorkout:
+                    guard let uuid = workoutUUID else { return }
+                    let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
+                    if let workout = try? bgContext.fetch(desc).first {
+                        await self.processCompletedWorkout(workout)
+                        self.appState.returnToActiveWorkoutId = nil
+                    }
+                    
+                case .discardWorkout:
+                    guard let uuid = workoutUUID else { return }
+                    let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
+                    if let workout = try? bgContext.fetch(desc).first {
+                        await self.deleteWorkout(workout)
+                    }
+                }
+            }
+        }
     }
-    
-
-
+    func syncPresetsWithWatch(presets: [WorkoutPreset]) {
+        let dtos = presets.map { $0.toDTO() }
+        if let data = try? JSONEncoder().encode(dtos) {
+            WCSession.default.sendMessage(["presetsBatch": data], replyHandler: nil)
+        }
+    }
     func fetchLatestWorkout() async -> Workout? {
         do {
             return try await workoutStore.fetchLatestWorkout()
@@ -61,12 +124,25 @@ final class WorkoutService {
     // MARK: - Workout Management
     func createWorkout(title: String, presetID: PersistentIdentifier?, isAIGenerated: Bool) async -> PersistentIdentifier? {
         do {
+            try? await HealthKitManager.shared.requestAuthorization()
             let id = try await workoutStore.createWorkout(title: title, fromPresetID: presetID, isAIGenerated: isAIGenerated)
-            
             return id
         } catch {
             appState.showError(title: String(localized: "Error"), message: error.localizedDescription)
             return nil
+        }
+    }
+        
+    func startGeneratedWorkout(_ generated: GeneratedWorkoutDTO) async {
+        do {
+            try? await HealthKitManager.shared.requestAuthorization()
+            _ = try await workoutStore.createWorkoutFromAI(generated: generated)
+            liveActivityManager.startWorkoutActivity(title: generated.title)
+        } catch {
+            appState.showError(
+                title: String(localized: "Save Failed"),
+                message: String(localized: "Failed to save generated workout: \(error.localizedDescription)")
+            )
         }
     }
     
@@ -79,22 +155,6 @@ final class WorkoutService {
             return false
         }
     }
-    
-    func startGeneratedWorkout(_ generated: GeneratedWorkoutDTO) async {
-        do {
-            _ = try await workoutStore.createWorkoutFromAI(generated: generated)
-            
-            
-            // ✅ ИСПОЛЬЗУЕМ ВЫДЕЛЕННЫЙ СЕРВИС
-            liveActivityManager.startWorkoutActivity(title: generated.title)
-            
-        } catch {
-            appState.showError(title: "Save Failed", message: "Failed to save generated workout: \(error.localizedDescription)")
-        }
-    }
-    
-
-
     
     // MARK: - Entity Manipulation
     func addSet(to exercise: Exercise, index: Int, weight: Double?, reps: Int?, distance: Double?, time: Int?, type: SetType, isCompleted: Bool) async {
@@ -112,14 +172,16 @@ final class WorkoutService {
             appState.showError(title: "Error", message: "Could not delete set: \(error.localizedDescription)")
         }
     }
+    
     func deleteSets(_ sets: [WorkoutSet], from exercise: Exercise) async {
-          let ids = sets.map { $0.persistentModelID }
-          do {
-              try await workoutStore.deleteSets(setIDs: ids, fromExerciseID: exercise.persistentModelID)
-          } catch {
-              appState.showError(title: "Error", message: "Could not batch delete sets: \(error.localizedDescription)")
-          }
-      }
+        let ids = sets.map { $0.persistentModelID }
+        do {
+            try await workoutStore.deleteSets(setIDs: ids, fromExerciseID: exercise.persistentModelID)
+        } catch {
+            appState.showError(title: "Error", message: "Could not batch delete sets: \(error.localizedDescription)")
+        }
+    }
+    
     func removeSubExercise(_ subExercise: Exercise, from superset: Exercise) async {
         do {
             try await workoutStore.removeSubExercise(subID: subExercise.persistentModelID, fromSupersetID: superset.persistentModelID)
@@ -160,44 +222,76 @@ final class WorkoutService {
         }
     }
 
+    func processCompletedWorkout(_ workout: Workout) async {
+        do {
+            try await workoutStore.processCompletedWorkout(workoutID: workout.persistentModelID)
+            liveActivityManager.stopAllActivities()
+            
+            let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+            let safeWeight = userWeight > 0 ? userWeight : 75.0
+            
+            let wTitle = workout.title
+            let wStart = workout.date
+            let wEnd = workout.endTime ?? Date()
+            let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
+            
+            Task.detached {
+                do {
+                    try await HealthKitManager.shared.requestAuthorization()
+                    try await HealthKitManager.shared.saveWorkout(
+                        title: wTitle,
+                        startDate: wStart,
+                        endDate: wEnd,
+                        durationSeconds: wDuration,
+                        userWeightKg: safeWeight
+                    )
+                } catch {
+                    print("⚠️ Failed to sync workout to HealthKit: \(error)")
+                }
+            }
+        } catch {
+            appState.showError(title: "Process Failed", message: "Could not process completed workout: \(error.localizedDescription)")
+        }
+    }
+
+    func stopLiveActivity() {
+        liveActivityManager.stopAllActivities()
+    }
+    func deleteWorkout(_ workout: Workout) async {
+            do {
+                try await workoutStore.deleteWorkout(workoutID: workout.persistentModelID)
+                stopLiveActivity()
+            } catch {
+                appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
+            }
+        }
+
+        // ✅ ДОБАВИТЬ ЭТОТ НОВЫЙ МЕТОД
+        func deleteWorkout(byID id: PersistentIdentifier) async {
+            do {
+                try await workoutStore.deleteWorkout(workoutID: id)
+                stopLiveActivity()
+            } catch {
+                appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
+            }
+        }
+
     func cleanupAndFindActiveWorkouts() async {
         do {
-            _ = try await workoutStore.findActiveWorkoutsAndCleanup()
+            let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
+            if activeIDs.isEmpty { stopLiveActivity() }
         } catch {
             print("Cleanup failed: \(error.localizedDescription)")
         }
     }
     
-    func deleteWorkout(_ workout: Workout) async {
-        do {
-            try await workoutStore.deleteWorkout(workoutID: workout.persistentModelID)
-            
-        } catch {
-            appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
-        }
-    }
-    
-    func processCompletedWorkout(_ workout: Workout) async {
-        do {
-            try await workoutStore.processCompletedWorkout(workoutID: workout.persistentModelID)
-            
-        } catch {
-            appState.showError(title: "Process Failed", message: "Could not process completed workout: \(error.localizedDescription)")
-        }
-    }
-    
-
-
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, to workout: Workout) async {
         do {
             try await workoutStore.applyAIAdjustment(adjustment, workoutID: workout.persistentModelID)
-            
         } catch {
             appState.showError(title: "AI Update Failed", message: "Could not apply AI recommendations: \(error.localizedDescription)")
         }
     }
-    
-
     
     func checkAndGenerateDefaultPresets() async {
         do {
@@ -210,4 +304,27 @@ final class WorkoutService {
     func updateWidgetData() async {
         await widgetSyncService.updateWidgetData()
     }
-}
+    
+    func swapExercise(old: Exercise, new: Exercise, workout: Workout) async {
+            do {
+                // Конвертируем 'new' в безопасный DTO для передачи через границу актора
+                let newDTO = new.toDTO()
+                try await workoutStore.swapExercise(oldID: old.persistentModelID, newExerciseDTO: newDTO, inWorkoutID: workout.persistentModelID)
+            } catch {
+                appState.showError(title: "Swap Failed", message: "Could not swap exercise: \(error.localizedDescription)")
+            }
+        }
+    
+    func applySmartAction(_ proposal: SmartActionDTO, to workout: Workout) async {
+        do {
+            // Вызываем метод у актора workoutStore
+            try await workoutStore.applySmartAction(proposal: proposal, inWorkoutID: workout.persistentModelID)
+            
+            // После изменения БД обновляем виджеты
+            await updateWidgetData()
+        } catch {
+            // Ошибки ловим здесь и прокидываем в глобальное состояние через AppState
+            appState.showError(title: "Database Error", message: "Failed to apply AI changes.")
+        }
+    }
+} // ✅ FIX 2: Missing closing brace has been added

@@ -29,7 +29,7 @@ struct StatOverviewCard: View {
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundColor(.primary)
             
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.caption)
                 .foregroundColor(.secondary)
         }

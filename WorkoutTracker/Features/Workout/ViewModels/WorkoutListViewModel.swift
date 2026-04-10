@@ -5,6 +5,7 @@
 import Foundation
 import Observation
 import SwiftData
+// В FILE: WorkoutTracker/Features/Workout/ViewModels/WorkoutListViewModel.swift
 
 @Observable
 @MainActor
@@ -20,7 +21,6 @@ final class WorkoutListViewModel {
             return
         }
         
-        // Извлекаем нужные данные в DTO, чтобы безопасно передать в фоновый поток
         struct WorkoutStatsDTO: Sendable {
             let duration: Int
             let volume: Double
@@ -29,27 +29,25 @@ final class WorkoutListViewModel {
         let statsData = workouts.map { workout in
             WorkoutStatsDTO(
                 duration: workout.durationSeconds,
-                // 🔥 ИСПРАВЛЕНИЕ N+1: Берем готовое значение, а не дергаем базу через .reduce()
                 volume: workout.totalStrengthVolume
             )
         }
         
-        // Выполняем математику в фоне
         Task.detached(priority: .userInitiated) {
-            var totalDur = 0
+            var totalDurSeconds = 0
             var totalVol = 0.0
             
             for data in statsData {
-                totalDur += (data.duration / 60)
+                totalDurSeconds += data.duration // Суммируем сырые секунды
                 totalVol += data.volume
             }
             
-            let avgDur = totalDur / totalWorkouts
+            // ✅ ИСПРАВЛЕНО: Безопасное деление, перевод в минуты в самом конце
+            let avgDurMinutes = (totalDurSeconds / totalWorkouts) / 60
             let avgVol = Int(totalVol / Double(totalWorkouts))
             
-            // Возвращаем результат в UI
             await MainActor.run {
-                self.calculatedAvgDuration = avgDur
+                self.calculatedAvgDuration = avgDurMinutes
                 self.calculatedAvgVolume = avgVol
             }
         }

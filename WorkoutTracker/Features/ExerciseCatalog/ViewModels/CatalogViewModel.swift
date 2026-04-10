@@ -15,6 +15,9 @@ final class CatalogViewModel {
     var customExercises: [CustomExerciseDefinition] = []
     var deletedDefaultExercises: Set<String> = []
     
+    // ✅ ДОБАВЛЕНО: Стейт для загруженного из JSON каталога
+    var baseCatalog: [String: [String]] = [:]
+    
     private let exerciseCatalogService: ExerciseCatalogService
     
     init(exerciseCatalogService: ExerciseCatalogService) {
@@ -22,8 +25,8 @@ final class CatalogViewModel {
     }
     
     var combinedCatalog: [String: [String]] {
-        // Базовый хардкодный каталог
-        var catalog = Exercise.catalog
+        // ✅ ИСПОЛЬЗУЕМ ЗАГРУЖЕННЫЙ БАЗОВЫЙ КАТАЛОГ ВМЕСТО ХАРДКОДА
+        var catalog = baseCatalog
         
         // Удаляем скрытые дефолтные упражнения
         for (category, exercises) in catalog {
@@ -41,6 +44,9 @@ final class CatalogViewModel {
     
     func loadDictionary() async {
         do {
+            // ✅ Получаем базовый каталог из нового актора
+            self.baseCatalog = await ExerciseDatabaseService.shared.getCatalog()
+            
             let custom = try await exerciseCatalogService.fetchCustomExercises()
             let deleted = try await exerciseCatalogService.fetchDeletedDefaultExercises()
             

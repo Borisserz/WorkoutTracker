@@ -1,10 +1,6 @@
-//
-//  AITrackerEngine.swift
-//  WorkoutTracker
-//
-//  Vision & Biomechanics Engine
-//  Combines deterministic geometric heuristics with ML safeguards.
-//
+// ============================================================
+// FILE: WorkoutTracker/MlVision/AITrackerEngine.swift
+// ============================================================
 
 import Foundation
 import Vision
@@ -90,10 +86,11 @@ public enum BiomechanicsMath {
         
         return agnostic
     }
-    // Вставь этот код внутрь enum BiomechanicsMath
+    
     public static func distance(p1: CGPoint, p2: CGPoint) -> Double {
         return hypot(p1.x - p2.x, p1.y - p2.y)
     }
+    
     public static func angleBetween(p1: CGPoint, p2: CGPoint, p3: CGPoint) -> Double {
         let v1 = CGVector(dx: p1.x - p2.x, dy: p1.y - p2.y)
         let v2 = CGVector(dx: p3.x - p2.x, dy: p3.y - p2.y)
@@ -121,48 +118,78 @@ public enum BiomechanicsMath {
 
 // MARK: - 3. Exercise Registry (Factory)
 
-public enum ExerciseRegistry {
-    public static func profile(for exercise: String) -> BiomechanicsProfile? {
-        let name = exercise.lowercased()
-        if name.contains("curl") { return bicepsCurl }
-        if name.contains("squat") { return squat }
-        if name.contains("bench") || name.contains("press") { return benchPress }
-        return nil // Фоллбэк: упражнение не поддерживается ИИ
+public enum ExerciseRegistry: Sendable {
+    
+    /// O(1) Фабрика. Получает паттерн из базы и возвращает готовый математический профиль
+    public static func profile(for pattern: MovementPattern, exerciseName: String) -> BiomechanicsProfile? {
+        switch pattern {
+        case .elbowFlexion: return bicepsCurl(name: exerciseName)
+        case .squat: return squatPattern(name: exerciseName)
+        case .horizontalPress: return horizontalPress(name: exerciseName)
+        case .verticalPull: return verticalPull(name: exerciseName)
+        case .horizontalPull: return horizontalPull(name: exerciseName)
+        case .verticalPress: return verticalPress(name: exerciseName)
+        case .hinge: return hingePattern(name: exerciseName)
+        case .lunge: return lungePattern(name: exerciseName)
+        case .elbowExtension: return tricepsExtension(name: exerciseName)
+        case .coreFlexion: return coreFlexion(name: exerciseName)
+        case .lateralRaise: return lateralRaise(name: exerciseName)
+        case .calfRaise: return calfRaise(name: exerciseName)
+        case .unsupported: return nil
+        }
     }
     
-    private static var bicepsCurl: BiomechanicsProfile {
-        BiomechanicsProfile(
-            exerciseName: "Biceps Curl",
-            metric: .angle(.shoulder, .elbow, .wrist),
-            thresholds: PhaseThresholds(relaxed: 160.0, contracted: 45.0, hysteresis: 15.0),
-            maxOccludedFrames: 3,
-            primaryMuscles: ["biceps"], secondaryMuscles: ["forearm"],
-            texts: PhaseTexts(contracting: "Curl up!", contracted: "Squeeze!", extending: "Control down...", relaxed: "Ready")
-        )
+    // MARK: - Biomechanical Profiles
+    
+    private static func bicepsCurl(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.shoulder, .elbow, .wrist), thresholds: PhaseThresholds(relaxed: 160.0, contracted: 50.0, hysteresis: 15.0), maxOccludedFrames: 3, primaryMuscles: ["biceps"], secondaryMuscles: ["forearm"], texts: PhaseTexts(contracting: "Curl it up!", contracted: "Squeeze!", extending: "Control...", relaxed: "Ready"))
     }
     
-    private static var squat: BiomechanicsProfile {
-        BiomechanicsProfile(
-            exerciseName: "Squat",
-            metric: .fallback(primary: .angle(.hip, .knee, .ankle), secondary: .angle(.shoulder, .hip, .knee)),
-            thresholds: PhaseThresholds(relaxed: 165.0, contracted: 90.0, hysteresis: 15.0),
-            maxOccludedFrames: 4,
-            primaryMuscles: ["quadriceps", "gluteal"], secondaryMuscles: ["hamstring", "calves"],
-            texts: PhaseTexts(contracting: "Lower...", contracted: "Push up!", extending: "Stand tall", relaxed: "Ready")
-        )
+    private static func squatPattern(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .fallback(primary: .angle(.hip, .knee, .ankle), secondary: .angle(.shoulder, .hip, .knee)), thresholds: PhaseThresholds(relaxed: 165.0, contracted: 90.0, hysteresis: 15.0), maxOccludedFrames: 4, primaryMuscles: ["quadriceps", "gluteal"], secondaryMuscles: ["hamstring", "lower-back", "calves"], texts: PhaseTexts(contracting: "Lower deep...", contracted: "Drive up!", extending: "Stand tall", relaxed: "Ready"))
     }
     
-    private static var benchPress: BiomechanicsProfile {
-        BiomechanicsProfile(
-            exerciseName: "Bench Press",
-            metric: .projectionY(.wrist, .shoulder),
-            thresholds: PhaseThresholds(relaxed: 0.45, contracted: 0.10, hysteresis: 0.05),
-            maxOccludedFrames: 3,
-            primaryMuscles: ["chest", "triceps"], secondaryMuscles: ["deltoids"],
-            texts: PhaseTexts(contracting: "Lower bar...", contracted: "Press!", extending: "Lock out", relaxed: "Ready")
-        )
+    private static func horizontalPress(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.shoulder, .elbow, .wrist), thresholds: PhaseThresholds(relaxed: 160.0, contracted: 75.0, hysteresis: 15.0), maxOccludedFrames: 3, primaryMuscles: ["chest", "triceps"], secondaryMuscles: ["deltoids"], texts: PhaseTexts(contracting: "Lower slowly...", contracted: "Press hard!", extending: "Lock out", relaxed: "Arms straight"))
+    }
+    
+    private static func verticalPull(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .projectionY(.wrist, .shoulder), thresholds: PhaseThresholds(relaxed: 0.40, contracted: 0.10, hysteresis: 0.05), maxOccludedFrames: 3, primaryMuscles: ["upper-back", "lats", "biceps"], secondaryMuscles: ["forearm", "deltoids"], texts: PhaseTexts(contracting: "Pull up!", contracted: "Hold it!", extending: "Lower under control", relaxed: "Dead hang"))
+    }
+    
+    private static func horizontalPull(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.shoulder, .elbow, .wrist), thresholds: PhaseThresholds(relaxed: 165.0, contracted: 85.0, hysteresis: 15.0), maxOccludedFrames: 3, primaryMuscles: ["upper-back", "lats"], secondaryMuscles: ["biceps", "lower-back", "deltoids"], texts: PhaseTexts(contracting: "Pull to torso!", contracted: "Squeeze back", extending: "Stretch", relaxed: "Arms extended"))
+    }
+    
+    private static func verticalPress(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.shoulder, .elbow, .wrist), thresholds: PhaseThresholds(relaxed: 60.0, contracted: 160.0, hysteresis: 15.0), maxOccludedFrames: 3, primaryMuscles: ["deltoids", "triceps"], secondaryMuscles: ["trapezius"], texts: PhaseTexts(contracting: "Press overhead!", contracted: "Locked out", extending: "Lower safely", relaxed: "Ready"))
+    }
+    
+    private static func hingePattern(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.shoulder, .hip, .knee), thresholds: PhaseThresholds(relaxed: 170.0, contracted: 90.0, hysteresis: 15.0), maxOccludedFrames: 4, primaryMuscles: ["hamstring", "gluteal", "lower-back"], secondaryMuscles: ["trapezius", "forearm"], texts: PhaseTexts(contracting: "Hinge hips...", contracted: "Thrust hips!", extending: "Lock hips", relaxed: "Standing tall"))
+    }
+    
+    private static func lungePattern(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.hip, .knee, .ankle), thresholds: PhaseThresholds(relaxed: 170.0, contracted: 90.0, hysteresis: 15.0), maxOccludedFrames: 4, primaryMuscles: ["quadriceps", "gluteal", "hamstring"], secondaryMuscles: ["calves"], texts: PhaseTexts(contracting: "Drop knee...", contracted: "Push through heel!", extending: "Rise up", relaxed: "Feet together"))
+    }
+    
+    private static func tricepsExtension(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.shoulder, .elbow, .wrist), thresholds: PhaseThresholds(relaxed: 60.0, contracted: 165.0, hysteresis: 15.0), maxOccludedFrames: 3, primaryMuscles: ["triceps"], secondaryMuscles: ["deltoids"], texts: PhaseTexts(contracting: "Extend arms!", contracted: "Flex triceps", extending: "Control", relaxed: "Elbows bent"))
+    }
+    
+    private static func coreFlexion(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.shoulder, .hip, .knee), thresholds: PhaseThresholds(relaxed: 170.0, contracted: 90.0, hysteresis: 15.0), maxOccludedFrames: 3, primaryMuscles: ["abs"], secondaryMuscles: ["obliques"], texts: PhaseTexts(contracting: "Crunch up!", contracted: "Hold core tight", extending: "Lower down", relaxed: "Body extended"))
+    }
+    
+    private static func lateralRaise(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .angle(.hip, .shoulder, .elbow), thresholds: PhaseThresholds(relaxed: 15.0, contracted: 85.0, hysteresis: 10.0), maxOccludedFrames: 3, primaryMuscles: ["deltoids"], secondaryMuscles: ["trapezius", "upper-back"], texts: PhaseTexts(contracting: "Raise arms!", contracted: "Hold the burn", extending: "Lower slowly", relaxed: "Arms down"))
+    }
+    
+    private static func calfRaise(name: String) -> BiomechanicsProfile {
+        BiomechanicsProfile(exerciseName: name, metric: .distance(.knee, .ankle), thresholds: PhaseThresholds(relaxed: 0.35, contracted: 0.40, hysteresis: 0.01), maxOccludedFrames: 3, primaryMuscles: ["calves"], secondaryMuscles: [], texts: PhaseTexts(contracting: "Up on toes!", contracted: "Peak contraction", extending: "Heels down", relaxed: "Heels flat"))
     }
 }
+
 
 // MARK: - 4. Repetition Tracker (State Machine)
 
@@ -174,6 +201,11 @@ public struct TrackingState: Sendable {
     public var phase: MovementPhase = .unknown
     public var repsCount: Int = 0
     public var currentAmplitude: Double = 0.0
+    
+    // VBT (Velocity-Based Training) Properties
+    public var concentricStartTime: Date? = nil
+    public var concentricDurations: [TimeInterval] = []
+    public var isVBTWarningTriggered: Bool = false
     
     fileprivate var missingFramesCount: Int = 0
     fileprivate var lastValidMetricValue: Double? = nil
@@ -225,18 +257,30 @@ public final class RepetitionTracker {
         
         switch state.phase {
         case .unknown, .relaxed:
-            if !reachedRelaxed { state.phase = .contracting }
+            if !reachedRelaxed {
+                state.phase = .contracting
+                state.concentricStartTime = Date()
+            }
         case .contracting:
-            if reachedContracted { state.phase = .contracted }
-            else if reachedRelaxed { state.phase = .relaxed } // False start
+            if reachedContracted {
+                state.phase = .contracted
+                if let start = state.concentricStartTime {
+                    let duration = Date().timeIntervalSince(start)
+                    state.concentricDurations.append(duration)
+                    if state.concentricDurations.count >= 3 && !state.isVBTWarningTriggered {
+                        let baseline = (state.concentricDurations[0] + state.concentricDurations[1]) / 2.0
+                        if duration >= baseline * 1.20 { state.isVBTWarningTriggered = true }
+                    }
+                }
+            } else if reachedRelaxed { state.phase = .relaxed }
         case .contracted:
             if !reachedContracted { state.phase = .extending }
         case .extending:
             if reachedRelaxed {
                 state.phase = .relaxed
-                state.repsCount += 1 // ✅ Повторение засчитано!
+                state.repsCount += 1
             } else if reachedContracted {
-                state.phase = .contracted // Bounce back
+                state.phase = .contracted
             }
         }
     }
@@ -258,20 +302,22 @@ public final class RepetitionTracker {
     }
 }
 
-// MARK: - 5. AITrackerEngine (Main Coordinator)
+
+// MARK: - 5. Main Coordinator (AITrackerEngine)
 
 @MainActor
 public final class AITrackerEngine: ObservableObject {
     
     // MARK: - Published UI State
     @Published public private(set) var repsCount: Int = 0
-    @Published public private(set) var feedbackMessage: String = "Initializing..."
+    @Published public private(set) var feedbackMessage: String = "Initializing AI..."
     @Published public private(set) var isTrackingAction: Bool = false
     @Published public var liveMuscleTension: [String: Int] = [:]
+    @Published public private(set) var vbtWarningTriggered: Bool = false
     
     // MARK: - Private Core Components
     private let exerciseName: String
-    private let profile: BiomechanicsProfile? // Кэшируем профиль, чтобы не искать каждый кадр
+    private var profile: BiomechanicsProfile?
     private let mlEngine = MLWorkoutEngine()
     private var repetitionTracker: RepetitionTracker?
     private var cancellables = Set<AnyCancellable>()
@@ -279,35 +325,40 @@ public final class AITrackerEngine: ObservableObject {
     // MARK: - Init
     public init(exerciseName: String) {
         self.exerciseName = exerciseName
-        self.profile = ExerciseRegistry.profile(for: exerciseName)
+        setupMLSubscription()
+    }
+    
+    // MARK: - Async Setup
+    /// Асинхронно подтягивает профиль упражнения из словаря (O(1))
+    public func setup() async {
+        // 1. Ищем паттерн в загруженной базе данных
+        let pattern = await ExerciseDatabaseService.shared.getPattern(for: exerciseName)
+        
+        // 2. Фабрика выдает геометрические углы и настройки
+        self.profile = ExerciseRegistry.profile(for: pattern, exerciseName: exerciseName)
         
         if let profile = self.profile {
             self.repetitionTracker = RepetitionTracker(profile: profile)
             self.feedbackMessage = "Ready. Waiting for action."
         } else {
-            self.feedbackMessage = "AI Tracking not optimized for this exercise"
+            self.feedbackMessage = "AI Tracking not supported for this exercise."
         }
-        
-        setupMLSubscription()
     }
     
     // MARK: - Pipeline
     
     private func setupMLSubscription() {
-        mlEngine.$currentAction
+        // Подписываемся на флаг активности из ML Gatekeeper'а
+        mlEngine.$isUserActive
             .dropFirst()
-            .sink { [weak self] action in
-                self?.handleMLActionChange(action: action)
+            .sink { [weak self] isActive in
+                self?.handleMLActionChange(isActive: isActive)
             }
             .store(in: &cancellables)
     }
     
-    private func handleMLActionChange(action: String) {
+    private func handleMLActionChange(isActive: Bool) {
         guard repetitionTracker != nil else { return }
-        
-        // Считаем активным, если ML выдает "Active" или точное название упражнения
-        let isActive = action.lowercased() == "active" ||
-                       exerciseName.lowercased().contains(action.lowercased())
         
         if isTrackingAction != isActive {
             isTrackingAction = isActive
@@ -322,58 +373,62 @@ public final class AITrackerEngine: ObservableObject {
     public func processFrame(observation: VNHumanBodyPoseObservation) {
         guard let tracker = repetitionTracker, let profile = self.profile else { return }
         
-        // 1. Всегда кормим ML Engine для поддержания окна предикшенов
+        // 1. Всегда кормим ML Gatekeeper для поддержания окна предикшенов
         mlEngine.processFrame(observation: observation)
+    
+        // 2. Блокируем математику, если Gatekeeper считает, что юзер Restает
+        guard isTrackingAction else { return }
         
-        // 2. Если ML запрещает трекинг, ставим математику на паузу
-        // 2. Если ML запрещает трекинг, ставим математику на паузу
-         guard isTrackingAction else { return } // ВРЕМЕННО ОТКЛЮЧЕНО ДЛЯ ТЕСТА
-        
-        // 3. Извлекаем сырые точки и конвертируем в агностичные
+        // 3. Выполняется ТОЛЬКО если юзер активен (экономия батареи и CPU)
         guard let recognizedPoints = try? observation.recognizedPoints(.all) else { return }
         let agnosticJoints = BiomechanicsMath.extractAgnosticJoints(from: recognizedPoints)
         
-        // 4. Прогоняем через математический трекер
+        // 4. Детерминированная математика (< 1 мс)
         let state = tracker.process(joints: agnosticJoints)
         
-        // 5. Синхронизируем состояние с UI
+        // 5. Синхронизация с UI
         syncStateToUI(state: state, profile: profile)
     }
     
-    // MARK: - State Synchronization
-
-        
-        private func syncStateToUI(state: TrackingState, profile: BiomechanicsProfile) {
-            // Синхронизация повторений
-            if self.repsCount != state.repsCount {
-                self.repsCount = state.repsCount
-            }
-            
-            // Обновление Heatmap Tension
-            let tension = Int(state.currentAmplitude)
-            var newTension: [String: Int] = [:]
-            
-            if tension > 0 {
-                for m in profile.primaryMuscles { newTension[m] = tension }
-                for m in profile.secondaryMuscles { newTension[m] = tension / 2 }
-            }
-            self.liveMuscleTension = newTension
-            
-            // Обратная связь по State Machine
-            let newFeedback: String
-            switch state.phase {
-            case .relaxed:
-                newFeedback = "Ready"
-            case .contracting, .contracted, .extending:
-                newFeedback = "Tracking..."
-            case .unknown:
-                newFeedback = "Body parts occluded. Adjust camera!"
-            }
-            
-            if self.feedbackMessage != newFeedback {
-                self.feedbackMessage = newFeedback
-            }
+    private func syncStateToUI(state: TrackingState, profile: BiomechanicsProfile) {
+        if self.repsCount != state.repsCount {
+            self.repsCount = state.repsCount
         }
+        
+        // VBT Trigger Sync (Предупреждение о падении скорости штанги)
+        if state.isVBTWarningTriggered && !self.vbtWarningTriggered {
+            self.vbtWarningTriggered = true
+        }
+        
+        // Обновление тепловой карты (Live Heatmap Tension)
+        let tension = Int(state.currentAmplitude)
+        var newTension: [String: Int] = [:]
+        
+        if tension > 0 {
+            for m in profile.primaryMuscles { newTension[m] = tension }
+            for m in profile.secondaryMuscles { newTension[m] = tension / 2 }
+        }
+        self.liveMuscleTension = newTension
+        
+        // Текстовая обратная связь
+        let newFeedback: String
+        switch state.phase {
+        case .relaxed:
+            newFeedback = profile.texts.relaxed
+        case .contracting:
+            newFeedback = profile.texts.contracting
+        case .contracted:
+            newFeedback = profile.texts.contracted
+        case .extending:
+            newFeedback = profile.texts.extending
+        case .unknown:
+            newFeedback = "Body parts occluded. Adjust camera!"
+        }
+        
+        if self.feedbackMessage != newFeedback {
+            self.feedbackMessage = newFeedback
+        }
+    }
     
     public func reset() {
         self.repsCount = 0

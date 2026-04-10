@@ -1,50 +1,54 @@
-//
-//  UserRepository.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 3.04.26.
-//
-
 // ============================================================
-// FILE: WorkoutTracker/Views/Profile/UserRepository.swift
+// FILE: WorkoutTracker/DataLayer/Repositories/UserRepository.swift
 // ============================================================
 
 import Foundation
 import SwiftData
 
 protocol UserRepositoryProtocol: Sendable {
-    func addWeightEntry(weight: Double, date: Date) async throws
+    func addWeightEntry(weight: Double, date: Date, imageFileNames: [String]) async throws
     func deleteWeightEntry(_ entryID: PersistentIdentifier) async throws
-    func addBodyMeasurement(neck: Double?, shoulders: Double?, chest: Double?, waist: Double?, pelvis: Double?, biceps: Double?, thigh: Double?, calves: Double?, date: Date) async throws
+    
+    // Новые, чистые методы для замеров тела
+    func saveBodyMeasurement(_ measurement: BodyMeasurement) async throws
     func deleteBodyMeasurement(_ measurementID: PersistentIdentifier) async throws
+    
     func saveExerciseNote(exerciseName: String, text: String, existingNoteID: PersistentIdentifier?) async throws -> PersistentIdentifier?
     func fetchExerciseNote(exerciseName: String) async throws -> ExerciseNote?
+    
     func deleteAIChatSession(_ sessionID: PersistentIdentifier) async throws
     func fetchAIChatSessions() async throws -> [AIChatSession]
     func saveAIChatSession(_ session: AIChatSession) async throws
-}
+    func checkBodyweightGoal(currentWeight: Double) async throws -> Bool
+    func deleteGoal(goalID: PersistentIdentifier) async throws
+    }
 
 @ModelActor
 actor UserRepository: UserRepositoryProtocol {
     
-    func addWeightEntry(weight: Double, date: Date) async throws {
-        let newEntry = WeightEntry(date: date, weight: weight)
+    // MARK: - Weight
+    
+    func addWeightEntry(weight: Double, date: Date, imageFileNames: [String] = []) async throws {
+        let newEntry = WeightEntry(date: date, weight: weight, imageFileNames: imageFileNames)
         modelContext.insert(newEntry)
         try modelContext.save()
     }
 
     func deleteWeightEntry(_ entryID: PersistentIdentifier) async throws {
         guard let entry = modelContext.model(for: entryID) as? WeightEntry else { throw WorkoutRepositoryError.modelNotFound }
+        
+        // Batch delete all associated images from the file system
+        await LocalImageStore.shared.deleteImages(named: entry.imageFileNames)
+        
         modelContext.delete(entry)
         try modelContext.save()
     }
-
-    func addBodyMeasurement(neck: Double?, shoulders: Double?, chest: Double?, waist: Double?, pelvis: Double?, biceps: Double?, thigh: Double?, calves: Double?, date: Date) async throws {
-        let entry = BodyMeasurement(
-            date: date, neck: neck, shoulders: shoulders, chest: chest,
-            waist: waist, pelvis: pelvis, biceps: biceps, thigh: thigh, calves: calves
-        )
-        modelContext.insert(entry)
+    
+    // MARK: - Body Measurements
+    
+    func saveBodyMeasurement(_ measurement: BodyMeasurement) async throws {
+        // ✅ ИСПРАВЛЕНИЕ: Прямое сохранение в контекст
+        modelContext.insert(measurement)
         try modelContext.save()
     }
 
@@ -53,6 +57,8 @@ actor UserRepository: UserRepositoryProtocol {
         modelContext.delete(measurement)
         try modelContext.save()
     }
+
+    // MARK: - Exercise Notes
 
     func saveExerciseNote(exerciseName: String, text: String, existingNoteID: PersistentIdentifier?) async throws -> PersistentIdentifier? {
         var note: ExerciseNote?
@@ -78,6 +84,17 @@ actor UserRepository: UserRepositoryProtocol {
         let descriptor = FetchDescriptor<ExerciseNote>(predicate: #Predicate { $0.exerciseName == exerciseName })
         return try modelContext.fetch(descriptor).first
     }
+    
+    func deleteGoal(goalID: PersistentIdentifier) async throws {
+            guard let goal = modelContext.model(for: goalID) as? UserGoal else {
+                // Если цель уже удалена, просто выходим
+                return
+            }
+            modelContext.delete(goal)
+            try modelContext.save()
+        }
+
+    // MARK: - AI Chat Sessions
 
     func deleteAIChatSession(_ sessionID: PersistentIdentifier) async throws {
         guard let session = modelContext.model(for: sessionID) as? AIChatSession else { throw WorkoutRepositoryError.modelNotFound }
@@ -94,4 +111,22 @@ actor UserRepository: UserRepositoryProtocol {
         modelContext.insert(session)
         try modelContext.save()
     }
+    
+    func checkBodyweightGoal(currentWeight: Double) async throws -> Bool {
+            let descriptor = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
+            let activeGoals = (try? modelContext.fetch(descriptor)) ?? []
+            var anyAchieved = false
+            
+            for goal in activeGoals where goal.type == .bodyweight {
+                let isWeightLoss = goal.startingValue > goal.targetValue
+                let goalAchieved = isWeightLoss ? (currentWeight <= goal.targetValue) : (currentWeight >= goal.targetValue)
+                
+                if goalAchieved {
+                    goal.isCompleted = true
+                    anyAchieved = true
+                }
+            }
+            if anyAchieved { try modelContext.save() }
+            return anyAchieved
+        }
 }

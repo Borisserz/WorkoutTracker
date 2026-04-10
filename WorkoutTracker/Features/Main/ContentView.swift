@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Views/Main/ContentView.swift
-// ============================================================
+// MARK: - FILE: WorkoutTracker/Features/Main/ContentView.swift
 
 internal import SwiftUI
 import SwiftData
@@ -9,43 +7,51 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(TutorialManager.self) var tutorialManager
-    
-    // ✅ ВНЕДРЯЕМ DI-КОНТЕЙНЕР
     @Environment(DIContainer.self) private var di
     
-    @State private var selectedTab = 0
-  
     var body: some View {
         @Bindable var appState = di.appState
         
-        ZStack(alignment: .bottom) {
-            // ✅ ИСПРАВЛЕНИЕ: TabView больше не зависит от timerManager.
-            // Он перерисовывается ТОЛЬКО при смене вкладки или глобальных данных.
-            TabView(selection: $selectedTab) {
+        ZStack {
+            // 1. Основной UI с TabView
+            TabView(selection: $appState.selectedTab) {
                 OverviewView()
                     .tabItem { Image(systemName: "chart.pie"); Text(LocalizedStringKey("Overview")) }
                     .tag(0)
                 
-                WorkoutView()
-                    .tabItem { Image(systemName: "figure.run"); Text(LocalizedStringKey("Workout")) }
+                HistoryView()
+                    .tabItem { Image(systemName: "clock.arrow.circlepath"); Text(LocalizedStringKey("History")) }
                     .tag(1)
+                
+                WorkoutHubView()
+                    .tabItem { Image(systemName: "plus.circle.fill"); Text(LocalizedStringKey("Workout")) }
+                    .tag(2)
                 
                 AICoachView()
                     .tabItem { Image(systemName: "brain.head.profile"); Text(LocalizedStringKey("AI Coach")) }
-                    .tag(2)
+                    .tag(3)
                 
                 StatsView()
                     .tabItem { Image(systemName: "trophy"); Text(LocalizedStringKey("Progress")) }
-                    .tag(3)
-                    .spotlight(step: .progressTab, manager: tutorialManager, text: "Check your Progress", alignment: .bottom, xOffset: -20)
+                    .tag(4)
             }
+            .zIndex(1) // TabView всегда будет на заднем плане
             
-            // ✅ ИСПРАВЛЕНИЕ: Изолированная обертка таймера.
-            // Она сама подписывается на timerManager, не заражая ContentView.
-            TimerOverlayContainer()
+            // 2. Глобальные оверлеи поверх всего UI
+            VStack {
+                Spacer() // Прижимает контент к низу
+                
+                ActiveWorkoutBannerContainer()
+                
+                TimerOverlayContainer()
+            }
+            .padding(.bottom, 50) // Идеальный отступ над системным TabBar
+            .ignoresSafeArea(.keyboard, edges: .bottom) // Позволяет таймеру подняться над клавиатурой
+            .zIndex(100) // Оверлеи всегда сверху
         }
         .onAppear {
             dashboardViewModel.refreshAllCaches()
+            NotificationManager.shared.requestPermission()
         }
         .alert(item: $appState.currentError) { error in
             Alert(
@@ -57,19 +63,13 @@ struct ContentView: View {
             )
         }
     }
-}
-
-// ✅ НОВЫЙ КОМПОНЕНТ: Берет на себя зависимость от таймера.
-// ContentView больше не обновляется 10 раз в секунду.
-struct TimerOverlayContainer: View {
-    @Environment(RestTimerManager.self) var timerManager
     
-    var body: some View {
-        if timerManager.isRestTimerActive && !timerManager.isHidden {
-            RestTimerView()
-                .padding(.bottom, 60)
-                .transition(.move(edge: .bottom))
-                .zIndex(100)
+    struct TimerOverlayContainer: View {
+        @Environment(RestTimerManager.self) var timerManager
+        var body: some View {
+            if timerManager.isRestTimerActive && !timerManager.isHidden {
+                RestTimerView()
+            }
         }
     }
 }

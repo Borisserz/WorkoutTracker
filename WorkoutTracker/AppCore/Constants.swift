@@ -25,11 +25,15 @@ public enum Constants {
         case userAvatar
         case exerciseNotes = "ExerciseNotes"
         case muscleColors = "MuscleColors"
+        case voiceCoachDucking
+        case hasGeneratedDefaultPresets_v3
+        case includeWarmupsInStats
+        case preferred1RMFormula
     }
     
     /// Default values and keys for AI integrations
     public enum AIConstants {
-        public static let defaultTone = "Мотивационный"
+        public static let defaultTone = "Motivational"
     }
     
     /// Identifiers for local notifications and notification center events

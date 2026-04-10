@@ -2,13 +2,6 @@
 //  TechniqueHelper.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 23.03.26.
-//
-
-//
-//  TechniqueHelper.swift
-//  WorkoutTracker
-//
 
 import Foundation
 internal import SwiftUI
@@ -70,61 +63,162 @@ struct TechniqueHelper {
     }
 }
 
-// Представление-шторка для отображения техники
 struct TechniqueSheetView: View {
+    let exerciseName: String
     let category: ExerciseCategory
+    
     @Environment(\.dismiss) var dismiss
+    
+    // Стейт для полного объекта из базы
+    @State private var dbItem: ExerciseDBItem? = nil
+    @State private var isLoading = true
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(LocalizedStringKey("How to Perform"))
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        Text(TechniqueHelper.getDescription(for: category))
-                            .font(.body)
-                            .lineSpacing(4)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(12)
                     
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(LocalizedStringKey("Key Tips"))
-                            .font(.headline)
-                            .foregroundColor(.secondary)
-                        
-                        ForEach(TechniqueHelper.getTips(for: category), id: \.self) { tip in
-                            HStack(alignment: .top, spacing: 10) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.blue)
-                                    .font(.caption)
-                                    .padding(.top, 4)
-                                
-                                Text(tip)
-                                    .font(.body)
-                                    .lineSpacing(4)
+                    if isLoading {
+                        ProgressView("Loading details...")
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 50)
+                    } else {
+                        // Если упражнение нашлось в JSON
+                        if let item = dbItem {
+                            
+                            // 1. ЦЕЛЕВЫЕ МЫШЦЫ
+                            if let primary = item.primaryMuscles, !primary.isEmpty {
+                                musclesSection(title: "Target Muscles", muscles: primary, color: .blue, icon: "figure.strengthtraining.traditional")
                             }
+                            
+                            // 2. ВТОРОСТЕПЕННЫЕ МЫШЦЫ
+                            if let secondary = item.secondaryMuscles, !secondary.isEmpty {
+                                musclesSection(title: "Synergist Muscles", muscles: secondary, color: .orange, icon: "figure.mixed.cardio")
+                            }
+                            
+                            // 3. ИНСТРУКЦИИ
+                            let stepsToDisplay = LocalizationHelper.shared.translateInstructions(for: exerciseName) ?? item.instructions ?? []
+
+                            if !stepsToDisplay.isEmpty {
+                                VStack(alignment: .leading, spacing: 16) {
+                                    Text(LocalizedStringKey("How to Perform"))
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
+                                    
+                                    ForEach(Array(stepsToDisplay.enumerated()), id: \.offset) { index, step in
+                                        HStack(alignment: .top, spacing: 12) {
+                                            Text("\(index + 1)")
+                                                .font(.caption)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.white)
+                                                .frame(width: 24, height: 24)
+                                                .background(Color.blue)
+                                                .clipShape(Circle())
+                                            
+                                            Text(step) 
+                                                                .font(.body)
+                                                                .lineSpacing(4)
+                                        }
+                                    }
+                                }
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(UIColor.secondarySystemBackground))
+                                .cornerRadius(12)
+                            } else {
+                                fallbackView // Если инструкций нет
+                            }
+                            
+                        } else {
+                            // ФОЛЛБЭК: Если это кастомное упражнение (которого нет в JSON)
+                            fallbackView
                         }
                     }
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color(UIColor.secondarySystemBackground))
-                    .cornerRadius(12)
                 }
                 .padding()
             }
-            .navigationTitle(LocalizedStringKey("Technique"))
+            .navigationTitle(LocalizationHelper.shared.translateName(exerciseName))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Done")) { dismiss() }
                 }
             }
+            .task {
+                // Вытягиваем весь объект из базы
+                let item = await ExerciseDatabaseService.shared.getExerciseItem(for: exerciseName)
+                await MainActor.run {
+                    self.dbItem = item
+                    self.isLoading = false
+                }
+            }
+        }
+    }
+    
+    // Блок для отрисовки тегов мышц
+    private func musclesSection(title: String, muscles: [String], color: Color, icon: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: icon).foregroundColor(color)
+                Text(LocalizedStringKey(title)).font(.headline)
+            }
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(muscles, id: \.self) { muscle in
+                        Text(LocalizedStringKey(muscle.capitalized))
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(color.opacity(0.15))
+                            .foregroundColor(color)
+                            .cornerRadius(8)
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+    
+    // Старый интерфейс как запасной вариант (для кастомных упражнений)
+    private var fallbackView: some View {
+        Group {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(LocalizedStringKey("How to Perform"))
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                Text(TechniqueHelper.getDescription(for: category))
+                    .font(.body)
+                    .lineSpacing(4)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
+            
+            VStack(alignment: .leading, spacing: 12) {
+                Text(LocalizedStringKey("Key Tips"))
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                
+                ForEach(TechniqueHelper.getTips(for: category), id: \.self) { tip in
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.blue)
+                            .font(.caption)
+                            .padding(.top, 4)
+                        Text(tip).font(.body).lineSpacing(4)
+                    }
+                }
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
         }
     }
 }

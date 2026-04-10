@@ -118,7 +118,7 @@ struct SupersetBuilderView: View {
             ForEach(addedExercises) { ex in
                 HStack {
                     VStack(alignment: .leading) {
-                        Text(ex.name).bold()
+                        Text(LocalizationHelper.shared.translateName(ex.name)).bold()
                         // Превью параметров (берем из первого сета)
                         if let firstSet = ex.setsList.sorted(by: { $0.index < $1.index }).first, let weight = firstSet.weight {
                             let convertedWeight = unitsManager.convertFromKilograms(weight)
@@ -312,7 +312,7 @@ struct EditSupersetItemView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text(exercise.name)) {
+                Section(header: Text(LocalizationHelper.shared.translateName(exercise.name))) {
                     if !exercise.setsList.isEmpty {
                         Stepper(LocalizedStringKey("Sets: \(exercise.setsList.count)"), onIncrement: addSetLocally, onDecrement: removeSetLocally)
                         

@@ -32,6 +32,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict/>
+	</dict>
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>

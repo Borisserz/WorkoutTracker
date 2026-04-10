@@ -23,23 +23,37 @@ struct DetailedRecoveryView: View {
     
     // MARK: - Environment & Storage
     @Environment(\.modelContext) private var context
-    @Environment(DIContainer.self) private var di // ✅ Заменили WorkoutViewModel на DIContainer
+    @Environment(DIContainer.self) private var di
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @AppStorage("userGender") private var userGender = "male"
     @AppStorage("userRecoveryHours") private var storedRecoveryHours: Double = 48.0
+    
     @State private var localRecoveryHours: Double = 48.0
     @State private var inMemoryWorkouts: [Workout] = []
     
+    // ✅ ДОБАВЛЕНО: Локальный стейт для изоляции рендеринга
+    @State private var localRecoveryStatus: [MuscleRecoveryStatus] = []
+    
     private var musclesData: [MuscleStatusItem] {
-        return dashboardViewModel.recoveryStatus.map {
-            let displayName = MuscleDisplayHelper.getDisplayName(for: $0.muscleGroup)
-            return MuscleStatusItem(name: displayName, percent: $0.recoveryPercentage)
-        }.sorted { lhs, rhs in
-            if lhs.percent != rhs.percent { return lhs.percent < rhs.percent }
-            else { return lhs.name < rhs.name }
+            // ✅ FIX: Filter out non-primary muscles (head, hands, feet, etc.)
+            let mainSlugs: Set<String> = [
+                "chest", "upper-back", "lats", "lower-back", "deltoids",
+                "biceps", "triceps", "forearm", "abs", "obliques",
+                "gluteal", "hamstring", "quadriceps", "calves"
+            ]
+            
+            return localRecoveryStatus
+                .filter { mainSlugs.contains($0.muscleGroup) }
+                .map {
+                    let displayName = MuscleDisplayHelper.getDisplayName(for: $0.muscleGroup)
+                    return MuscleStatusItem(name: displayName, percent: $0.recoveryPercentage)
+                }.sorted { lhs, rhs in
+                    if lhs.percent != rhs.percent { return lhs.percent < rhs.percent }
+                    else { return lhs.name < rhs.name }
+                }
         }
-    }
+    
     
     var body: some View {
         ScrollView {
@@ -75,7 +89,7 @@ struct DetailedRecoveryView: View {
         Task {
             let newRecoveryStatus = await di.analyticsService.calculateRecovery(hours: hours, workouts: inMemoryWorkouts)
             await MainActor.run {
-                dashboardViewModel.recoveryStatus = newRecoveryStatus
+                self.localRecoveryStatus = newRecoveryStatus
             }
         }
     }

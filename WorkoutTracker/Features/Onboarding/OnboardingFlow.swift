@@ -106,13 +106,13 @@ struct UserDataInputView: View {
             ScrollView {
                 VStack(spacing: 25) {
                     Spacer(minLength: 20)
-                    Text("About You").font(.largeTitle).bold()
-                    Text("This helps us personalize your profile and calculate stats.").foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal)
+                    Text(LocalizedStringKey("About You")).font(.largeTitle).bold()
+                    Text(LocalizedStringKey("This helps us personalize your profile and calculate stats.")).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal)
                     
                     VStack(spacing: 20) {
                         VStack(alignment: .leading) {
                             Text("Your Name").font(.caption).foregroundColor(isNameInvalid ? .red : .gray)
-                            TextField("Champion", text: $name)
+                            TextField(LocalizedStringKey("Champion"), text: $name)
                                 .font(.title3).padding()
                                 .background(isNameInvalid ? Color.red.opacity(0.1) : Color(UIColor.secondarySystemBackground))
                                 .cornerRadius(12)

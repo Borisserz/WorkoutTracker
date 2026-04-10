@@ -6,7 +6,7 @@ struct MuscleColorSettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var colorManager = MuscleColorManager.shared
     
-    // ИСПРАВЛЕНИЕ: Оставляем только основные группы мышц (как они записаны в тренировках)
+    // ИСПРАВЛЕНИЕ: Оставляем только основные группы мышц (как они записаны в Workoutх)
     let muscles = [
         "Chest", "Back", "Legs", "Shoulders", "Arms", "Core"
     ]

@@ -1,7 +1,6 @@
-//
-//  WeightHistoryView.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Features/Profile/WeightHistoryView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -14,9 +13,11 @@ struct WeightHistoryView: View {
     @Environment(\.dismiss) var dismiss
     
     @State private var selectedPeriod: PeriodFilter = .month
-    @State private var showingAddWeight = false
-    @State private var newWeightText = ""
-    @State private var newWeightDate = Date()
+    @State private var showingAddWeightSheet = false
+    @State private var showingComparisonView = false
+    
+    // Для просмотра фото из списка
+    @State private var selectedEntryForGallery: WeightEntry? = nil
     
     enum PeriodFilter: String, CaseIterable {
         case week = "Week", month = "Month", threeMonths = "3 Months"
@@ -28,11 +29,35 @@ struct WeightHistoryView: View {
         return weightHistory.filter { $0.date >= cutoff }
     }
     
+    var photosAvailable: Bool {
+        weightHistory.filter { !$0.imageFileNames.isEmpty }.count >= 2
+    }
+    
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
                     if !weightHistory.isEmpty { statsHeaderSection }
+                    
+                    if photosAvailable {
+                        Button {
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                            generator.impactOccurred()
+                            showingComparisonView = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "photo.on.rectangle.angled")
+                                Text(LocalizedStringKey("Compare Progress Photos"))
+                                    .bold()
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue.opacity(0.1))
+                            .foregroundColor(.blue)
+                            .cornerRadius(12)
+                            .padding(.horizontal)
+                        }
+                    }
                     
                     Picker(LocalizedStringKey("Period"), selection: $selectedPeriod) { ForEach(PeriodFilter.allCases, id: \.self) { p in Text(LocalizedStringKey(p.rawValue)).tag(p) } }
                         .pickerStyle(.segmented).padding(.horizontal)
@@ -49,15 +74,18 @@ struct WeightHistoryView: View {
             .navigationTitle(LocalizedStringKey("Weight Tracking"))
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button(LocalizedStringKey("Close")) { dismiss() } }
-                ToolbarItem(placement: .primaryAction) { Button { openAddSheet() } label: { Image(systemName: "plus") } }
-            }
-            .alert(LocalizedStringKey("Add Weight"), isPresented: $showingAddWeight) {
-                VStack {
-                    DatePicker("", selection: $newWeightDate, displayedComponents: .date).datePickerStyle(.compact)
-                    TextField(LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"), text: $newWeightText).keyboardType(.decimalPad)
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showingAddWeightSheet = true } label: { Image(systemName: "plus") }
                 }
-                Button(LocalizedStringKey("Save")) { saveWeight() }
-                Button(LocalizedStringKey("Cancel"), role: .cancel) { }
+            }
+            .sheet(isPresented: $showingAddWeightSheet) {
+                AddWeightSheet(latestWeight: weightHistory.first?.weight)
+            }
+            .fullScreenCover(isPresented: $showingComparisonView) {
+                ProgressComparisonView(entriesWithPhotos: weightHistory.filter { !$0.imageFileNames.isEmpty })
+            }
+            .sheet(item: $selectedEntryForGallery) { entry in
+                WeightPhotoGalleryView(entry: entry)
             }
         }
     }
@@ -103,36 +131,39 @@ struct WeightHistoryView: View {
             Text(LocalizedStringKey("No weight data yet")).font(.headline).foregroundColor(.secondary)
         }.frame(maxWidth: .infinity).padding(.vertical, 40)
     }
-    
+
     @ViewBuilder
     private var listSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(LocalizedStringKey("History")).font(.headline).padding(.horizontal)
             VStack(spacing: 0) {
                 ForEach(filteredHistory) { entry in
-                    WeightEntryRow(entry: entry, unitsManager: unitsManager)
-                        .contextMenu { Button(role: .destructive) { Task { await userStatsViewModel.deleteWeightEntry(entry.persistentModelID) } } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") } }
+                    Button {
+                        if !entry.imageFileNames.isEmpty {
+                            selectedEntryForGallery = entry
+                        }
+                    } label: {
+                        WeightEntryRow(entry: entry, unitsManager: unitsManager)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            Task { await userStatsViewModel.deleteWeightEntry(entry.persistentModelID) }
+                        } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
+                    }
+                    
                     if entry.id != filteredHistory.last?.id { Divider().padding(.leading, 50) }
                 }
-            }.background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).padding(.horizontal)
-        }
-    }
-    
-    private func openAddSheet() {
-        newWeightDate = Date()
-        if let latest = weightHistory.first?.weight { newWeightText = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(latest)) } else { newWeightText = "" }
-        showingAddWeight = true
-    }
-    
-    private func saveWeight() {
-        if let weight = Double(newWeightText.replacingOccurrences(of: ",", with: ".")) {
-            let weightInKg = unitsManager.convertToKilograms(weight)
-            Task { await userStatsViewModel.addWeightEntry(weight: weightInKg, date: newWeightDate) }
+            }
+            .background(Color(UIColor.secondarySystemBackground))
+            .cornerRadius(12)
+            .padding(.horizontal)
         }
     }
 }
 
-// Заглушки для вспомогательных View
+// MARK: - Subcomponents
+
 struct WeightStatCard: View {
     let title: LocalizedStringKey; let value: String; let unit: String; let color: Color
     var body: some View {
@@ -145,15 +176,97 @@ struct WeightStatCard: View {
 }
 
 struct WeightEntryRow: View {
-    let entry: WeightEntry; let unitsManager: UnitsManager
+    let entry: WeightEntry
+    let unitsManager: UnitsManager
+    
+    @State private var loadedImage: UIImage? = nil
+    
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.date, style: .date).font(.body)
                 Text(entry.date, style: .time).font(.caption).foregroundColor(.secondary)
             }
+            
             Spacer()
-            Text("\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(entry.weight))) \(unitsManager.weightUnitString())").font(.headline).foregroundColor(.blue)
-        }.padding()
+            
+            if let image = loadedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .padding(.trailing, 8)
+                
+                if entry.imageFileNames.count > 1 {
+                    Text("+\(entry.imageFileNames.count - 1)")
+                        .font(.caption2)
+                        .bold()
+                        .foregroundColor(.secondary)
+                        .padding(.trailing, 8)
+                }
+            }
+            
+            Text("\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(entry.weight))) \(unitsManager.weightUnitString())")
+                .font(.headline)
+                .foregroundColor(.blue)
+        }
+        .padding()
+        .contentShape(Rectangle())
+        .task {
+            // Грузим только первую картинку для превью
+            if let firstFileName = entry.imageFileNames.first {
+                self.loadedImage = await LocalImageStore.shared.loadImage(named: firstFileName)
+            }
+        }
+    }
+}
+
+// MARK: - Photo Gallery Sheet
+struct WeightPhotoGalleryView: View {
+    let entry: WeightEntry
+    @Environment(\.dismiss) private var dismiss
+    @Environment(UnitsManager.self) private var unitsManager
+    
+    @State private var images: [UIImage] = []
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                if images.isEmpty {
+                    ProgressView().tint(.white)
+                } else {
+                    TabView {
+                        ForEach(images, id: \.self) { image in
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                        }
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .always))
+                }
+            }
+            .navigationTitle(entry.date.formatted(date: .abbreviated, time: .omitted))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(LocalizedStringKey("Close")) { dismiss() }
+                }
+            }
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .task {
+                var loaded: [UIImage] = []
+                for fileName in entry.imageFileNames {
+                    if let img = await LocalImageStore.shared.loadImage(named: fileName) {
+                        loaded.append(img)
+                    }
+                }
+                await MainActor.run { self.images = loaded }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }

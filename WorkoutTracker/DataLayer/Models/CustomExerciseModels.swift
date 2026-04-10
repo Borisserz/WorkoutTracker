@@ -1,34 +1,23 @@
-//
-//  CustomExerciseModels.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 27.12.25.
-//
-
+// ============================================================
+// FILE: WorkoutTracker/DataLayer/Models/CustomExerciseModels.swift
+// ============================================================
 import Foundation
 import SwiftData
 
-// Единая таблица-словарь для кастомных и скрытых упражнений в SwiftData
 @Model
 class ExerciseDictionaryItem {
-    @Attribute(.unique) var name: String
-    var category: String
-    var targetedMuscles: [String]
-    var type: ExerciseType
-    var isCustom: Bool
-    var isHidden: Bool
+    var name: String = ""
+    var category: String = ""
+    var targetedMuscles: [String] = []
+    var type: ExerciseType = ExerciseType.strength
+    var isCustom: Bool = false
+    var isHidden: Bool = false
     
-    init(name: String, category: String, targetedMuscles: [String] = [], type: ExerciseType = .strength, isCustom: Bool = false, isHidden: Bool = false) {
-        self.name = name
-        self.category = category
-        self.targetedMuscles = targetedMuscles
-        self.type = type
-        self.isCustom = isCustom
-        self.isHidden = isHidden
+    init(name: String = "", category: String = "", targetedMuscles: [String] = [], type: ExerciseType = .strength, isCustom: Bool = false, isHidden: Bool = false) {
+        self.name = name; self.category = category; self.targetedMuscles = targetedMuscles; self.type = type; self.isCustom = isCustom; self.isHidden = isHidden
     }
 }
 
-// Оставляем структуру для UI-слоя (кэширования), чтобы не переписывать логику Views
 struct CustomExerciseDefinition: Codable, Identifiable, Hashable {
     var id = UUID()
     var name: String

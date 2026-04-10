@@ -6,9 +6,11 @@ internal import SwiftUI
 
 struct BodyHeatmapView: View {
     let muscleIntensities: [String: Int]
+    let rawMuscleCounts: [String: Int]?
     let isRecoveryMode: Bool
     let isCompactMode: Bool
-    let userGender: String // ✅ ИСПРАВЛЕНИЕ: Передаем явно, без @AppStorage
+    let userGender: String
+    let countLabel: String // ✅ ДОБАВЛЕНО: для переключения текста (sets / exercises)
     
     @State private var isFrontView = true
     @State private var selectedMuscleName: String? = nil
@@ -17,20 +19,23 @@ struct BodyHeatmapView: View {
     let canvasHeight: CGFloat = 1450
     let backViewOffset: CGFloat = 740
     
-    // Статический кэш для оффсетов центрирования
     private static var cachedOffsets: [String: CGFloat] = [:]
     
     init(
         muscleIntensities: [String: Int] = [:],
+        rawMuscleCounts: [String: Int]? = nil,
         isRecoveryMode: Bool = false,
         isCompactMode: Bool = false,
         defaultToBack: Bool = false,
-        userGender: String = "male" // Значение по умолчанию
+        userGender: String = "male",
+        countLabel: String = "sets" // По умолчанию оставляем "sets" для глобальной аналитики
     ) {
         self.muscleIntensities = muscleIntensities
+        self.rawMuscleCounts = rawMuscleCounts
         self.isRecoveryMode = isRecoveryMode
         self.isCompactMode = isCompactMode
         self.userGender = userGender
+        self.countLabel = countLabel
         self._isFrontView = State(initialValue: !defaultToBack)
     }
     
@@ -62,14 +67,12 @@ struct BodyHeatmapView: View {
                 let centeringOffset = getCenteringOffset(isFront: isFrontView)
                 
                 ZStack {
-                    // Используем drawingGroup для аппаратного ускорения сложных путей!
                     ZStack {
                         ForEach(currentMuscles) { muscle in
                             drawMuscle(muscle, centeringOffset: centeringOffset)
                         }
                     }
                     .drawingGroup()
-                    
                 }
                 .frame(width: canvasWidth, height: canvasHeight)
                 .scaleEffect(scale)
@@ -100,7 +103,6 @@ struct BodyHeatmapView: View {
     @ViewBuilder
     private func tooltipView(for name: String) -> some View {
         let slug = findSlug(forName: name)
-        let count = muscleIntensities[name.lowercased()] ?? muscleIntensities[slug]
         
         VStack(spacing: 4) {
             Text(LocalizedStringKey(name))
@@ -109,15 +111,23 @@ struct BodyHeatmapView: View {
             
             if !isExceptionPart(slug) {
                 if isRecoveryMode {
-                    let rec = count ?? 100
+                    let rec = muscleIntensities[slug] ?? 100
                     Text(LocalizedStringKey("\(rec)% recovered"))
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.8))
                 } else {
-                    if let c = count, c > 0 {
-                        Text(LocalizedStringKey("\(c) exercises"))
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.8))
+                    let displayCount = rawMuscleCounts?[slug] ?? muscleIntensities[slug] ?? 0
+                    if displayCount > 0 {
+                        // ✅ ИСПОЛЬЗУЕМ ДИНАМИЧЕСКИЙ ЯРЛЫК ("exercises" или "sets")
+                        if countLabel == "exercises" {
+                            Text(LocalizedStringKey("\(displayCount) exercises"))
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
+                        } else {
+                            Text(LocalizedStringKey("\(displayCount) sets"))
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.8))
+                        }
                     }
                 }
             }
@@ -183,8 +193,6 @@ struct BodyHeatmapView: View {
             }
         } label: {
             ZStack {
-                // 🚀 ОПТИМИЗАЦИЯ: Убрали тяжелый hitPath.cgPath.copy(strokingWithWidth:).
-                // Теперь прозрачная заливка работает как хитбокс.
                 finalPath
                     .fill(Color.white.opacity(0.001))
                 
@@ -219,7 +227,11 @@ struct BodyHeatmapView: View {
         } else {
             let tension = muscleIntensities[slug] ?? 0
             if tension == 0 { return emptyColor }
-            else { return Color.red.opacity(0.3 + (0.7 * (Double(tension) / 100.0))) }
+            else {
+                let calculatedOpacity = 0.3 + (0.7 * (Double(tension) / 100.0))
+                let safeOpacity = min(1.0, max(0.0, calculatedOpacity))
+                return Color.red.opacity(safeOpacity)
+            }
         }
     }
     

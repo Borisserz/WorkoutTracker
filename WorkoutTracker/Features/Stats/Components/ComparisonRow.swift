@@ -20,7 +20,7 @@ struct ComparisonRow: View {
                 .foregroundColor(color)
                 .frame(width: 20)
             
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .foregroundColor(.white)
             
             Spacer()

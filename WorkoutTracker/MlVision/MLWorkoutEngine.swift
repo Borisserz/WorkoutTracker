@@ -1,7 +1,6 @@
-//
-//  MLWorkoutEngine.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/MlVision/MLWorkoutEngine.swift
+// ============================================================
 
 internal import SwiftUI
 import Vision
@@ -11,8 +10,9 @@ import Combine
 @MainActor
 final class MLWorkoutEngine: ObservableObject {
     
-    // MARK: - Published State (UI)
-    @Published private(set) var currentAction: String = "Idle"
+    // MARK: - Published State (UI & Gatekeeper)
+    /// Флаг, указывающий, что пользователь выполняет циклическое действие, а не Restает.
+    @Published private(set) var isUserActive: Bool = false
     @Published private(set) var confidence: Double = 0.0
     
     // MARK: - Configuration
@@ -66,7 +66,7 @@ final class MLWorkoutEngine: ObservableObject {
         }
     }
     
-    // MARK: - ML Prediction (Structured Concurrency)
+    // MARK: - ML Prediction (Gatekeeper Logic)
     
     private func predictAction() {
         guard !isPredicting, let model = actionClassifier else { return }
@@ -75,25 +75,24 @@ final class MLWorkoutEngine: ObservableObject {
         isPredicting = true
         predictionTask?.cancel()
         
-        // Обычный Task наследует контекст, но мы вызываем nonisolated метод для снятия нагрузки с MainActor
         predictionTask = Task {
             let result = await performPrediction(on: windowToPredict, model: model)
             
-            // Защита от отмены задачи
             guard !Task.isCancelled else {
                 self.isPredicting = false
                 return
             }
             
-            // Обновляем состояние безопасно на MainActor
             if let res = result {
-                if res.confidence > 0.45 {
-                    self.currentAction = res.label
+                // Если модель уверена больше чем на 45% и это НЕ состояние Restа
+                if res.confidence > 0.45 && res.label.lowercased() != "idle" {
+                    self.isUserActive = true
                     self.confidence = res.confidence
                     self.lastConfidentPredictionTime = Date()
                 } else {
+                    // Даем небольшой кулдаун, чтобы не сбрасывать активность из-за одного неудачного кадра
                     if Date().timeIntervalSince(self.lastConfidentPredictionTime) > self.predictionCooldown {
-                        self.currentAction = "Idle"
+                        self.isUserActive = false
                         self.confidence = 0.0
                     }
                 }
@@ -102,7 +101,6 @@ final class MLWorkoutEngine: ObservableObject {
         }
     }
     
-    // Тяжелая математика вынесена из MainActor. Передаем только Sendable или изолированные параметры.
     nonisolated private func performPrediction(on window: [MLMultiArray], model: MLModel) async -> (label: String, confidence: Double)? {
         do {
             let combinedArray = try MLMultiArray(concatenating: window, axis: 0, dataType: .float32)
@@ -128,7 +126,7 @@ final class MLWorkoutEngine: ObservableObject {
         isPredicting = false
         multiArraysWindow.removeAll()
         frameCounter = 0
-        currentAction = "Idle"
+        isUserActive = false
         confidence = 0.0
         lastConfidentPredictionTime = .distantPast
     }

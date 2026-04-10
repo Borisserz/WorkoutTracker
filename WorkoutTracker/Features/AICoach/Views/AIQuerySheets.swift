@@ -5,45 +5,45 @@
 
 internal import SwiftUI
 
-// MARK: - Шторка: Мой прогресс
+// MARK: - Шторка: Мой Progress
 struct ProgressAnalysisSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onGenerate: (String) -> Void
     
-    @State private var selectedPeriod = "За неделю"
-    @State private var selectedFocus = "Общий обзор"
+    @State private var selectedPeriod = "Past Week"
+    @State private var selectedFocus = "General Overview"
     
-    let periods = ["За неделю", "За месяц", "За всё время"]
-    let focuses = ["Общий обзор", "Личные рекорды", "Регулярность и дисциплина"]
+    let periods = ["Past Week", "Past Month", "All Time"]
+    let focuses = ["General Overview", "Personal Records", "Consistency and Discipline"]
     
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Параметры анализа")) {
-                    Picker("Период", selection: $selectedPeriod) {
+                Section(header: Text("Analysis Parameters")) {
+                    Picker("Period", selection: $selectedPeriod) {
                         ForEach(periods, id: \.self) { Text($0) }
                     }
-                    Picker("Главный фокус", selection: $selectedFocus) {
+                    Picker("Main Focus", selection: $selectedFocus) {
                         ForEach(focuses, id: \.self) { Text($0) }
                     }
                 }
             }
-            .navigationTitle("Анализ прогресса")
+            .navigationTitle("Progress Analysis")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Закрыть") { dismiss() }
+                    Button("Close") { dismiss() }
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 Button {
-                    let prompt = "Проанализируй мой прогресс. Период: \(selectedPeriod). Сделай акцент на: \(selectedFocus). НЕ создавай план тренировки, только текстовый анализ."
+                    let prompt = "Проанализируй мой Progress. Period: \(selectedPeriod). Сделай акцент на: \(selectedFocus). НЕ создавай план тренировки, только текстовый анализ."
                     onGenerate(prompt)
                     let generator = UIImpactFeedbackGenerator(style: .medium)
                     generator.impactOccurred()
                     dismiss()
                 } label: {
-                    Text("Спросить тренера")
+                    Text("Ask Coach")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
@@ -64,17 +64,17 @@ struct RecoveryAdvisorSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onGenerate: (String) -> Void
     
-    @State private var feeling = "Легкая крепатура"
-    @State private var goal = "Что можно потренировать?"
+    @State private var feeling = "Light soreness"
+    @State private var goal = "Everything hurtsWhat can I train?"
     
-    let feelings = ["Полон сил", "Легкая крепатура", "Всё болит"]
-    let goals = ["Что можно потренировать?", "Активное восстановление (кардио/растяжка)", "Нужен ли полный отдых?"]
+    let feelings = ["Full of energy", "Light soreness", "Everything hurts"]
+    let goals = ["Everything hurtsWhat can I train?", "Active recovery (cardio/stretch)", "Do I need full rest?"]
     
     var body: some View {
         NavigationStack {
             Form {
                 // Выбор самочувствия В СТОЛБИК мелким шрифтом
-                Section(header: Text("Твое самочувствие")) {
+                Section(header: Text("How do you feel")) {
                     ForEach(feelings, id: \.self) { f in
                         Button {
                             feeling = f
@@ -93,7 +93,7 @@ struct RecoveryAdvisorSheet: View {
                     }
                 }
                 
-                Section(header: Text("Что планируем делать?")) {
+                Section(header: Text("What's the plan?")) {
                     ForEach(goals, id: \.self) { g in
                         Button {
                             goal = g
@@ -112,22 +112,22 @@ struct RecoveryAdvisorSheet: View {
                     }
                 }
             }
-            .navigationTitle("Оценка восстановления")
+            .navigationTitle("Recovery Assessment")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Закрыть") { dismiss() }
+                    Button("Close") { dismiss() }
                 }
             }
             .safeAreaInset(edge: .bottom) {
                 Button {
-                    let prompt = "Оцени мое восстановление с учетом уставших мышц (в твоем контексте). Мое самочувствие: \(feeling). Мой вопрос/цель: \(goal). Дай короткий и четкий совет. НЕ создавай план тренировки, если я явно не выбрал 'Что можно потренировать?'."
+                    let prompt = "Оцени мое восстановление с учетом уставших мышц (в твоем контексте). Мое самочувствие: \(feeling). Мой вопрос/цель: \(goal). Дай короткий и четкий совет. НЕ создавай план тренировки, если я явно не выбрал 'Everything hurtsWhat can I train?'."
                     onGenerate(prompt)
                     let generator = UIImpactFeedbackGenerator(style: .medium)
                     generator.impactOccurred()
                     dismiss()
                 } label: {
-                    Text("Узнать статус")
+                    Text("Get Status")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()

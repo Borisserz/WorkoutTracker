@@ -292,7 +292,7 @@ struct WorkoutShareCard: View {
 // MARK: - Extensions
 
 extension Color {
-    /// Инициализация цвета через HEX строку (например "1a1a1a")
+    /// Initializing цвета через HEX строку (например "1a1a1a")
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0

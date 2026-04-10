@@ -20,7 +20,7 @@ struct ImbalanceCard: View {
             }
             
             VStack(alignment: .leading, spacing: 5) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.headline)
                     .foregroundColor(.primary)
                 

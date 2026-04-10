@@ -64,7 +64,7 @@ struct ExerciseTrendRow: View {
                 .frame(width: 24)
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(trend.exerciseName)
+                Text(LocalizationHelper.shared.translateName(trend.exerciseName))
                     .font(.headline)
                 
                 HStack(spacing: 8) {

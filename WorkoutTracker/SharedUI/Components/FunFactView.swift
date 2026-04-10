@@ -1,13 +1,10 @@
-//
-//  FunFactView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 2.04.26.
-//
+// ============================================================
+// FILE: WorkoutTracker/SharedUI/Components/FunFactView.swift
+// ============================================================
 
 internal import SwiftUI
 
-// This view shows a fun comparison for the total weight lifted
+// This view shows a fun, beautiful banner for the total weight lifted
 struct FunFactView: View {
     let totalStrengthVolume: Double
     @Environment(UnitsManager.self) var unitsManager
@@ -24,20 +21,45 @@ struct FunFactView: View {
     }
 
     var body: some View {
-        VStack(spacing: 15) {
-            Text(funFact.title)
-                .font(.caption)
-                .foregroundColor(.secondary)
+        ZStack {
+            // Премиальный градиентный фон
+            LinearGradient(
+                colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
             
-            Text(funFact.value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+            // Крупный эмодзи на фоне
+            HStack {
+                Spacer()
+                Text(funFact.emoji)
+                    .font(.system(size: 100))
+                    .opacity(0.2)
+                    .offset(x: 20, y: 15)
+                    .rotationEffect(.degrees(15))
+            }
             
-            Text(funFact.emoji)
-                .font(.largeTitle)
+            // Контент поверх
+            VStack(alignment: .leading, spacing: 8) {
+                Text(funFact.title)
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.white.opacity(0.9))
+                
+                Text(funFact.value)
+                    .font(.system(size: 34, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .contentTransition(.numericText())
+            }
+            .padding(24)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(16)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+        )
+        .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 15, x: 0, y: 8)
+        .padding(.vertical, 10)
     }
 }

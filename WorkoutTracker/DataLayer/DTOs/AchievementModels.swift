@@ -66,7 +66,7 @@ class AchievementCalculator {
     ) -> [Achievement] {
         var list: [Achievement] = []
         
-        // Локализованные строки для подстановок прогресса
+        // Локализованные строки для подстановок Progressа
         let maxLevelStr = String(localized: "Max Level!")
         let workoutsStr = String(localized: "workouts")
         let daysStr = String(localized: "days")

@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: WorkoutTracker/Views/Workout/ExerciseCardView.swift
+// FILE: WorkoutTracker/Features/Workout/Views/ExerciseCardView.swift
 // ============================================================
 
 internal import SwiftUI
@@ -9,7 +9,8 @@ struct ExerciseCardView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(UnitsManager.self) var unitsManager
     @Environment(WorkoutDetailViewModel.self) var detailViewModel
-    
+    @Environment(\.modelContext) private var context
+    @State private var showHistory = false
     let exercise: Exercise
     let workout: Workout
     var isEmbeddedInSuperset: Bool = false
@@ -20,12 +21,13 @@ struct ExerciseCardView: View {
     @State private var showEffortSheet = false
     @State private var showTechniqueSheet = false
     
-    private var isActiveExercise: Bool {
-        isCurrentExercise && !exercise.isCompleted && workout.isActive
-    }
+    private var isActiveExercise: Bool { isCurrentExercise && !exercise.isCompleted && workout.isActive }
+    private var isWorkoutCompleted: Bool { !workout.isActive }
     
-    private var isWorkoutCompleted: Bool {
-        !workout.isActive
+    // Поддерживает ли упражнение трекинг по камере
+    private var isAISupported: Bool {
+        let category = ExerciseCategory.determine(from: exercise.name)
+        return [.squat, .curl, .press, .deadlift, .pull].contains(category)
     }
     
     var body: some View {
@@ -42,76 +44,92 @@ struct ExerciseCardView: View {
                 }
             }
             .padding()
-            .background(isActiveExercise ? Color.blue.opacity(0.08) : Color(UIColor.secondarySystemBackground))
-            .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isActiveExercise ? Color.blue.opacity(0.5) : Color.clear, lineWidth: isActiveExercise ? 2 : 0))
-            .shadow(color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear, radius: isActiveExercise ? 8 : 0, x: 0, y: 2)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(exercise.isCompleted ? Color.green.opacity(0.05) : (isActiveExercise ? Color.cyan.opacity(0.05) : Color(UIColor.secondarySystemBackground)))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(exercise.isCompleted ? Color.green.opacity(0.3) : (isActiveExercise ? Color.cyan.opacity(0.5) : Color.clear), lineWidth: (isActiveExercise || exercise.isCompleted) ? 2 : 0)
+            )
+            .shadow(color: isActiveExercise ? Color.cyan.opacity(0.2) : .clear, radius: 15, x: 0, y: 5)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: exercise.isCompleted)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isActiveExercise)
         }
-        .sheet(isPresented: $showEffortSheet, onDismiss: {
-            if exercise.isCompleted { completeExerciseAfterRPE() }
-        }) {
+        .sheet(isPresented: $showEffortSheet, onDismiss: { completeExerciseAfterRPE() }) {
             @Bindable var bindableExercise = exercise
             EffortInputView(effort: $bindableExercise.effort)
         }
         .sheet(isPresented: $showTechniqueSheet) {
-            TechniqueSheetView(category: exercise.category)
+            // ✅ ДОБАВИЛИ exerciseName
+            TechniqueSheetView(exerciseName: exercise.name, category: exercise.category)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
+        .navigationDestination(isPresented: $showHistory) {
+                    ExerciseHistoryView(exerciseName: exercise.name)
+                }
     }
     
+    
     @ViewBuilder
-    private var setsSection: some View {
-        let lastExerciseData = detailViewModel.lastPerformancesCache[exercise.name]
-        let sortedSets = exercise.sortedSets
-        let sortedPrevSets: [WorkoutSet] = lastExerciseData?.sortedSets ?? []
-        
-        ForEach(Array(sortedSets.enumerated()), id: \.element.id) { currentIndex, set in
-            let isLast = currentIndex == sortedSets.count - 1
-            let prevSet: WorkoutSet? = currentIndex < sortedPrevSets.count ? sortedPrevSets[currentIndex] : nil
+        private var setsSection: some View {
+            let lastExerciseData = detailViewModel.lastPerformancesCache[exercise.name]
+            let sortedSets = exercise.sortedSets
+            let sortedPrevSets: [WorkoutSet] = lastExerciseData?.sortedSets ?? []
             
-            SetRowView(
-                set: set,
-                exerciseName: exercise.name,
-                cached1RM: detailViewModel.personalRecordsCache[exercise.name] ?? 0.0,
-                effort: exercise.effort,
-                exerciseType: exercise.type,
-                isLastSet: isLast,
-                isExerciseCompleted: exercise.isCompleted,
-                isWorkoutCompleted: isWorkoutCompleted,
-                onCheck: { checkedSet, shouldStartTimer, suggestedDuration in
-                    handleSetChecked(set: checkedSet, shouldStartTimer: shouldStartTimer, suggestedDuration: suggestedDuration)
-                },
-                prevWeight: prevSet?.weight,
-                prevReps: prevSet?.reps,
-                prevDist: prevSet?.distance,
-                prevTime: prevSet?.time,
-                autoFocus: set.id == detailViewModel.newlyAddedSetId
-            )
-            .swipeActions(edge: .trailing) {
-                if !exercise.isCompleted && !isWorkoutCompleted {
-                    Button(role: .destructive) {
-                        withAnimation { detailViewModel.removeSet(withId: set.id, from: exercise) }
-                    } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
+            ForEach(Array(sortedSets.enumerated()), id: \.element.id) { currentIndex, set in
+                let isLast = currentIndex == sortedSets.count - 1
+                let prevSet: WorkoutSet? = currentIndex < sortedPrevSets.count ? sortedPrevSets[currentIndex] : nil
+                
+                SetRowView(
+                    set: set,
+                    exerciseName: exercise.name,
+                    cached1RM: detailViewModel.personalRecordsCache[exercise.name] ?? 0.0,
+                    effort: exercise.effort,
+                    exerciseType: exercise.type,
+                    isLastSet: isLast,
+                    isExerciseCompleted: exercise.isCompleted,
+                    isWorkoutCompleted: isWorkoutCompleted,
+                    onCheck: { checkedSet, shouldStartTimer, suggestedDuration in
+                        detailViewModel.startTimerIfNeeded(shouldStartTimer: shouldStartTimer, suggestedDuration: suggestedDuration)
+                        detailViewModel.handleSetCompleted(set: checkedSet, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
+                    },
+                    onDataChange: { // ✅ FIX: Поставлено в правильное место (после onCheck)
+                        detailViewModel.updateWorkoutAnalytics(for: workout)
+                    },
+                    prevWeight: prevSet?.weight,
+                    prevReps: prevSet?.reps,
+                    prevDist: prevSet?.distance,
+                    prevTime: prevSet?.time,
+                    autoFocus: set.id == detailViewModel.newlyAddedSetId
+                )
+                .swipeActions(edge: .trailing) {
+                    if !exercise.isCompleted && !isWorkoutCompleted {
+                        Button(role: .destructive) {
+                            withAnimation { detailViewModel.removeSet(set, from: exercise, context: context) }
+                        } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
+                    }
                 }
             }
         }
-    }
-    
+
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: "line.3.horizontal").foregroundColor(.gray).font(.caption).frame(width: 20, height: 20)
                 
-                NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name)) {
+                Button {
+                    showHistory = true
+                } label: {
                     HStack {
                         Image(systemName: getIcon()).foregroundColor(getColor()).font(.caption)
-                        Text(LocalizedStringKey(exercise.name)).font(.headline).foregroundColor(.blue)
+                        Text(LocalizationHelper.shared.translateName(exercise.name)).font(.headline).foregroundColor(.primary)
                     }
-                }.highPriorityGesture(TapGesture().onEnded { })
+                }
+                .buttonStyle(.plain)
                 
-                Button { showTechniqueSheet = true } label: { Image(systemName: "info.circle").font(.subheadline).foregroundColor(.secondary).padding(.horizontal, 4) }
-                .buttonStyle(BorderlessButtonStyle())
+                Button { showTechniqueSheet = true } label: { Image(systemName: "info.circle").font(.subheadline).foregroundColor(.secondary).padding(.horizontal, 4) }.buttonStyle(BorderlessButtonStyle())
                 
                 Spacer()
                 
@@ -120,15 +138,12 @@ struct ExerciseCardView: View {
                 
                 HStack(spacing: 4) {
                     Image(systemName: completedCount == totalCount && totalCount > 0 ? "checkmark.circle.fill" : "checkmark.circle")
-                        .foregroundColor(completedCount == totalCount && totalCount > 0 ? .green : (completedCount > 0 ? .blue : .gray)).font(.caption)
-                    Text("\(completedCount)/\(totalCount) sets").font(.subheadline).foregroundColor(.secondary)
+                        .foregroundColor(completedCount == totalCount && totalCount > 0 ? .green : (completedCount > 0 ? .cyan : .gray)).font(.caption)
+                    Text("\(completedCount)/\(totalCount)").font(.subheadline).foregroundColor(.secondary)
                 }
                 
                 Menu {
-                    if !isEmbeddedInSuperset {
-                        // ✅ ИСПРАВЛЕНИЕ 1: Используем новое событие ВьюМодели вместо коллбэка
-                        Button { detailViewModel.activeEvent = .showSwapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") }
-                    }
+                    if !isEmbeddedInSuperset { Button { detailViewModel.activeEvent = .showSwapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") } }
                     Button(role: .destructive) { detailViewModel.removeExercise(exercise, from: workout) } label: { Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis").foregroundColor(.gray).padding(10) }
                 .highPriorityGesture(TapGesture().onEnded { })
@@ -148,21 +163,28 @@ struct ExerciseCardView: View {
     
     private var columnHeadersSection: some View {
         HStack(spacing: 8) {
-            Text(LocalizedStringKey("Set")).font(.caption2).frame(width: 25).foregroundColor(.secondary)
-            switch exercise.type {
-            case .strength:
-                Text(unitsManager.weightUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
-                Text(LocalizedStringKey("Reps")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
-            case .cardio:
-                Text(unitsManager.distanceUnitString()).font(.caption2).frame(width: 100).foregroundColor(.secondary)
-                Spacer()
-                Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
-            case .duration:
-                Text(LocalizedStringKey("Time")).font(.caption2).frame(width: 100).foregroundColor(.secondary)
+            Text(LocalizedStringKey("Set")).font(.caption2.bold()).frame(width: 32).foregroundColor(.secondary)
+            
+            // Динамический блок колонок (растягивается на все свободное место)
+            HStack(spacing: 8) {
+                switch exercise.type {
+                case .strength:
+                    Text(unitsManager.weightUnitString()).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Reps")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                case .cardio:
+                    Text(unitsManager.distanceUnitString()).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Time")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                case .duration:
+                    Text(LocalizedStringKey("Time")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                }
             }
-            Image(systemName: "brain.head.profile").font(.title3).frame(width: 32).foregroundColor(.secondary)
-            Image(systemName: "checkmark").font(.caption2).frame(width: 32).foregroundColor(.secondary)
-        }.padding(.horizontal, 8).padding(.bottom, 4)
+            
+            // Зарезервированное место под кнопки
+            if isAISupported {
+                Image(systemName: "brain").font(.caption2.bold()).frame(width: 44).foregroundColor(.secondary)
+            }
+            Image(systemName: "checkmark").font(.caption2.bold()).frame(width: 44).foregroundColor(.secondary)
+        }.padding(.horizontal, 10).padding(.bottom, 4)
     }
     
     private var collapsedInfoSection: some View {
@@ -171,63 +193,35 @@ struct ExerciseCardView: View {
     
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
-            Button(action: { withAnimation { detailViewModel.addSet(to: exercise) } }) {
-                Text(exercise.isCompleted ? LocalizedStringKey("Exercise Completed") : LocalizedStringKey("+ Add Set"))
-                .font(.subheadline).bold().frame(maxWidth: .infinity).padding(.vertical, 10).background(Color.blue.opacity(0.1)).foregroundColor(.blue).cornerRadius(8)
+            Button(action: { withAnimation { detailViewModel.addSet(to: exercise, context: context) } }) {
+                Text(LocalizedStringKey("+ Add Set"))
+                .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14).background(Color.cyan.opacity(0.15)).foregroundColor(.cyan).cornerRadius(14)
             }
             .buttonStyle(BorderlessButtonStyle()).disabled(exercise.isCompleted || isWorkoutCompleted)
             
             if !isEmbeddedInSuperset {
                 Button(action: { finishExerciseAction() }) {
-                    Text(exercise.isCompleted ? LocalizedStringKey("Continue") : LocalizedStringKey("Finish Exercise"))
-                        .font(.subheadline).bold().frame(maxWidth: .infinity).padding(.vertical, 10).background(Color.green.opacity(0.1)).foregroundColor(.green).cornerRadius(8)
+                    Text(exercise.isCompleted ? LocalizedStringKey("Resume Exercise") : LocalizedStringKey("Finish Exercise"))
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(exercise.isCompleted ? Color.blue.opacity(0.15) : Color.green.opacity(0.15))
+                        .foregroundColor(exercise.isCompleted ? .blue : .green)
+                        .cornerRadius(14)
                 }
                 .buttonStyle(BorderlessButtonStyle()).disabled(isWorkoutCompleted)
-                .spotlight(step: .finishExercise, manager: tutorialManager, text: "Tap here when you are done with this exercise.", alignment: .top, yOffset: -20)
             }
         }.padding(.top, 12)
     }
 
-    private func handleSetChecked(set: WorkoutSet, shouldStartTimer: Bool, suggestedDuration: Int?) {
-        detailViewModel.startTimerIfNeeded(shouldStartTimer: shouldStartTimer, suggestedDuration: suggestedDuration)
-        let isLast = set.id == exercise.sortedSets.last?.id
-        detailViewModel.handleSetCompleted(set: set, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
-    }
-    
     private func finishExerciseAction() {
-        if exercise.isCompleted {
-            withAnimation { exercise.isCompleted = false }
-        } else {
-            showEffortSheet = true
-        }
+        if exercise.isCompleted { withAnimation { exercise.isCompleted = false } } else { showEffortSheet = true }
     }
     
-    // ✅ ИСПРАВЛЕНИЕ 2: Убрали tutorialManager из вызова, обрабатываем туториал локально во View
     private func completeExerciseAfterRPE() {
-        if tutorialManager.currentStep == .finishExercise {
-            tutorialManager.setStep(.explainEffort)
-        }
-        
-        detailViewModel.handleExerciseFinished(
-            exerciseId: exercise.id,
-            workout: workout,
-            weightUnit: unitsManager.weightUnitString(),
-            onExpandNext: { nextId in onExpandNext?(nextId) }
-        )
+        detailViewModel.handleExerciseFinished(exerciseId: exercise.id, workout: workout, weightUnit: unitsManager.weightUnitString(), onExpandNext: { nextId in onExpandNext?(nextId) })
     }
 
-    private func getIcon() -> String {
-        switch exercise.type {
-        case .strength: return "dumbbell.fill"
-        case .cardio: return "figure.run"
-        case .duration: return "stopwatch.fill"
-        }
-    }
-    private func getColor() -> Color {
-        switch exercise.type {
-        case .strength: return .blue
-        case .cardio: return .orange
-        case .duration: return .purple
-        }
-    }
+    private func getIcon() -> String { exercise.type == .strength ? "dumbbell.fill" : (exercise.type == .cardio ? "figure.run" : "stopwatch.fill") }
+    private func getColor() -> Color { exercise.type == .strength ? .cyan : (exercise.type == .cardio ? .orange : .purple) }
 }

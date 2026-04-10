@@ -12,18 +12,16 @@ import Observation
 enum TutorialStep: Int, CaseIterable, Equatable {
     case tapPlus = 0, createEmpty,tapStartNow, addExercise, finishExercise, explainEffort, highlightChart, highlightBody, finishWorkout, recoveryCheck, recoverySlider, historyTab, exercisesTab, createCustom, progressTab, completed
 }
-
 @Observable
 class TutorialManager {
     var currentStep: TutorialStep
     private let kHasSeenTutorial = "hasSeenTutorial_Final_v8"
 
     init() {
-        if UserDefaults.standard.bool(forKey: kHasSeenTutorial) {
-            self.currentStep = .completed
-        } else {
-            self.currentStep = .tapPlus
-        }
+        // ✅ FIX: Принудительно отключаем туториал, так как онбординг удален.
+        // Теперь пользователь не увидит Spotlight-подсказки при первом запуске.
+        self.currentStep = .completed
+        UserDefaults.standard.set(true, forKey: kHasSeenTutorial)
     }
     
     func nextStep() {

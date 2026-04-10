@@ -32,14 +32,15 @@ enum InputFieldType: Equatable {
 
 // MARK: - Slider Sheet View (Модальное окно со слайдером)
 
+
 struct SliderSheetView: View {
     let fieldType: InputFieldType
     @Binding var value: Double?
     @Binding var isPresented: Bool
     
-@Environment(UnitsManager.self) var unitsManager
+    @Environment(UnitsManager.self) var unitsManager
     
-    // Локальное состояние для слайдера - обновляется мгновенно без валидации
+    // Локальное состояние
     @State private var localValue: Double = 0
     @State private var textValue: String = ""
     @FocusState private var isBigTextFocused: Bool
@@ -47,15 +48,38 @@ struct SliderSheetView: View {
     // Ошибки валидации
     @State private var errorMessage: String? = nil
     
-    // Кэшированные параметры слайдера (вычисляются один раз)
-    @State private var params: (min: Double, max: Double, step: Double) = (0, 100, 1)
-    
     private var navigationTitleText: LocalizedStringKey {
         switch fieldType {
         case .weight: return "Adjust Weight"
         case .reps: return "Adjust Reps"
         case .distance: return "Adjust Distance"
         case .timeMin, .timeSec: return "Adjust Time"
+        }
+    }
+    
+    // Умные шаги в зависимости от контекста
+    private var quickSteps: [Double] {
+        switch fieldType {
+        case .weight:
+            return unitsManager.weightUnit == .pounds ? [2.5, 5.0, 10.0, 25.0] : [1, 2.5, 5.0, 10.0]
+        case .reps:
+            return [1.0, 2.0, 5.0, 10.0]
+        case .distance:
+            return unitsManager.distanceUnit == .miles ? [0.1, 0.5, 1.0, 5.0] : [100.0, 500.0, 1000.0, 5000.0]
+        case .timeMin:
+            return [1.0, 5.0, 10.0, 15.0]
+        case .timeSec:
+            return [5.0, 10.0, 15.0, 30.0]
+        }
+    }
+    
+    // Базовый шаг для больших круглых кнопок +/-
+    private var mainStep: Double {
+        switch fieldType {
+        case .weight: return unitsManager.weightUnit == .pounds ? 2.5 : 1.0
+        case .reps, .timeMin: return 1.0
+        case .timeSec: return 5.0
+        case .distance: return unitsManager.distanceUnit == .miles ? 0.1 : 100.0
         }
     }
     
@@ -67,14 +91,12 @@ struct SliderSheetView: View {
                     Text(fieldType.title(unitsManager: unitsManager).uppercased())
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
+                        .tracking(1.5)
                     
-                    // Заменили Text на TextField для быстрого ручного ввода
                     TextField("0", text: $textValue)
-                        .font(.system(size: 48, weight: .bold))
+                        .font(.system(size: 64, weight: .heavy, design: .rounded))
                         .foregroundColor(errorMessage != nil ? .red : .primary)
-                        .keyboardType(.decimalPad)
+                        .keyboardType(fieldType == .reps ? .numberPad : .decimalPad) // Reps только целые
                         .multilineTextAlignment(.center)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -88,16 +110,11 @@ struct SliderSheetView: View {
                         }
                         .onChange(of: textValue) { _, newText in
                             if isBigTextFocused {
-                                // Защита от запятых (в некоторых локалях они ломают конвертацию)
                                 let cleanStr = newText.replacingOccurrences(of: ",", with: ".")
                                 if let val = Double(cleanStr) {
-                                    validateValue(val)
-                                    localValue = val // Позволяем UI обновиться, даже если значение ошибочно
-                                    
-                                    // Динамически расширяем лимит слайдера, если ввели больше руками
-                                    if errorMessage == nil && val > params.max {
-                                        params.max = val
-                                    }
+                                    let sanitizedVal = fieldType == .reps ? Double(Int(val)) : val
+                                    validateValue(sanitizedVal)
+                                    localValue = sanitizedVal
                                 } else if newText.isEmpty {
                                     localValue = 0
                                     errorMessage = nil
@@ -110,7 +127,6 @@ struct SliderSheetView: View {
                             }
                         }
                     
-                    // Показ текста ошибки под полем
                     if let error = errorMessage {
                         Text(error)
                             .font(.caption)
@@ -120,51 +136,41 @@ struct SliderSheetView: View {
                 }
                 .padding(.top, 40)
                 
-                // Кнопки +/- и слайдер
-                VStack(spacing: 20) {
-                    // Кнопки быстрого изменения
-                    HStack(spacing: 30) {
-                        // Кнопка уменьшения
-                        Button(action: decrement) {
+                // Элементы управления
+                VStack(spacing: 24) {
+                    // Главные кнопки +/- (Точная подстройка)
+                    HStack(spacing: 40) {
+                        Button { adjustValue(by: -mainStep) } label: {
                             Image(systemName: "minus.circle.fill")
-                                .font(.system(size: 50))
+                                .font(.system(size: 60))
                                 .foregroundColor(.blue)
                         }
                         .buttonStyle(BorderlessButtonStyle())
                         
-                        // Кнопка увеличения
-                        Button(action: increment) {
+                        Button { adjustValue(by: mainStep) } label: {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 50))
+                                .font(.system(size: 60))
                                 .foregroundColor(.blue)
                         }
                         .buttonStyle(BorderlessButtonStyle())
                     }
                     
-                    // Слайдер с оптимизированным обновлением (onEditingChanged)
-                    VStack(spacing: 8) {
-                        Slider(
-                            value: $localValue,
-                            in: params.min...params.max,
-                            step: params.step
-                        ) { editing in
-                            // Когда пользователь ОТПУСКАЕТ палец (editing == false),
-                            // мы передаем значение в модель (сохраняем)
-                            if !editing {
-                                validateValue(localValue)
-                                updateBindingValue(localValue)
+                    Divider().padding(.horizontal, 40).opacity(0.5)
+                    
+                    // Кнопки быстрого добавления (Quick Adjust)
+                    VStack(spacing: 12) {
+                        // Плюс строка
+                        HStack(spacing: 10) {
+                            ForEach(quickSteps, id: \.self) { step in
+                                quickAdjustButton(amount: step, isPositive: true)
                             }
                         }
-                        .tint(errorMessage != nil ? .red : .blue)
                         
-                        HStack {
-                            Text("\(Int(params.min))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Text("\(Int(params.max))")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                        // Минус строка
+                        HStack(spacing: 10) {
+                            ForEach(quickSteps, id: \.self) { step in
+                                quickAdjustButton(amount: step, isPositive: false)
+                            }
                         }
                     }
                     .padding(.horizontal, 20)
@@ -172,55 +178,69 @@ struct SliderSheetView: View {
                 
                 Spacer()
             }
-            .padding()
             .navigationTitle(navigationTitleText)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    // Блокируем кнопку "Сохранить", если есть ошибка
                     Button(LocalizedStringKey("Done")) {
                         isBigTextFocused = false
-                        // При закрытии сохраняем финальное значение
                         updateBindingValue(localValue)
                         isPresented = false
                     }
                     .disabled(errorMessage != nil)
+                    .fontWeight(.bold)
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.fraction(0.6)]) // Делаем шторку чуть выше половины для комфорта
+        .presentationDragIndicator(.visible)
         .onAppear {
-            // Инициализируем локальное значение при появлении
             localValue = value ?? 0
-            
-            // Кэшируем параметры слайдера один раз при появлении, основываясь на Enum
-            switch fieldType {
-            case .weight:
-                // ИЗМЕНЕНО: Для фунтов увеличиваем максимальный вес до 1100, для кг до 500
-                params = (0, unitsManager.weightUnit == .pounds ? 1100 : 500, 0.5)
-            case .reps:
-                // ИЗМЕНЕНО: До 100 повторений
-                params = (0, 100, 1)
-            case .distance:
-                params = (0, unitsManager.distanceUnit == .miles ? 60 : 10000, unitsManager.distanceUnit == .miles ? 0.1 : 100)
-            case .timeMin, .timeSec:
-                params = (0, 300, 1)
-            }
-            
-            // Если в истории был сохранен больший вес, подстраиваем ползунок под него
-            if localValue > params.max {
-                params.max = localValue
-            }
-            
             textValue = formatValue(localValue)
         }
         .onDisappear {
-            // На всякий случай сохраняем при скрытии шторки смахиванием вниз, только если нет ошибки
             updateBindingValue(localValue)
         }
     }
     
-    // MARK: - Validation
+    // MARK: - Quick Adjust Button
+    
+    private func quickAdjustButton(amount: Double, isPositive: Bool) -> some View {
+        let sign = isPositive ? "+" : "-"
+        let valueStr = fieldType == .reps ? "\(Int(amount))" : LocalizationHelper.shared.formatFlexible(amount)
+        let actualAmount = isPositive ? amount : -amount
+        
+        return Button {
+            adjustValue(by: actualAmount)
+        } label: {
+            Text("\(sign)\(valueStr)")
+                .font(.subheadline)
+                .fontWeight(.bold)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(isPositive ? Color.blue.opacity(0.15) : Color.red.opacity(0.1))
+                .foregroundColor(isPositive ? .blue : .red)
+                .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - Validation & Logic
+    
+    private func adjustValue(by amount: Double) {
+        isBigTextFocused = false
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        
+        var newValue = localValue + amount
+        if newValue < 0 { newValue = 0 } // Запрещаем отрицательные значения
+        
+        if fieldType == .reps {
+            newValue = Double(Int(newValue)) // Защита от дробей в повторениях
+        }
+        
+        localValue = newValue
+        validateValue(newValue)
+    }
     
     private func validateValue(_ val: Double) {
         let isValid: Bool
@@ -249,38 +269,21 @@ struct SliderSheetView: View {
         self.errorMessage = errMsg
     }
     
-    // Обновляет binding с валидацией
     private func updateBindingValue(_ newValue: Double) {
-        guard errorMessage == nil else { return } // Не сохраняем невалидные значения!
-        let validated = max(params.min, newValue)
-        value = validated > 0 ? validated : nil
-    }
-    
-    private func increment() {
-        let newValue = localValue + params.step // Позволяем увеличивать без искусственного максимума от слайдера
-        localValue = newValue
-        validateValue(newValue)
-        if errorMessage == nil && newValue > params.max {
-            params.max = newValue
-        }
-    }
-    
-    private func decrement() {
-        let newValue = max(localValue - params.step, params.min)
-        localValue = newValue
-        validateValue(newValue)
+        guard errorMessage == nil else { return }
+        value = newValue > 0 ? newValue : nil
     }
     
     private func formatValue(_ val: Double) -> String {
-        if val < 0 {
-            return "—"
-        }
-        let step = params.step
-        if step < 1 {
-            return LocalizationHelper.shared.formatDecimal(val)
-        } else {
+        if val < 0 { return "—" }
+        
+        // ЖЕСТКАЯ ПРОВЕРКА: Если это повторения, минуты или секунды — ТОЛЬКО целые числа
+        if fieldType == .reps || fieldType == .timeMin || fieldType == .timeSec {
             return LocalizationHelper.shared.formatInteger(val)
         }
+        
+        // Для веса и дистанции используем гибкое форматирование (убираем .0)
+        return LocalizationHelper.shared.formatFlexible(val)
     }
 }
 
