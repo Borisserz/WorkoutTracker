@@ -33,11 +33,14 @@ struct ActiveWorkoutBanner: View {
     
     // Определяем текущее упражнение (первое незавершенное)
     private var currentExerciseName: String {
-        if let activeEx = workout.exercises.first(where: { !$0.isCompleted }) {
-            return activeEx.name
-        }
-        return String(localized: "Finishing up...")
-    }
+           if workout.exercises.isEmpty {
+               return String(localized: "In progress...") // 👈 Если пусто, пишем это
+           }
+           if let activeEx = workout.exercises.first(where: { !$0.isCompleted }) {
+               return activeEx.name
+           }
+           return String(localized: "Finishing up...")
+       }
     
     var body: some View {
         HStack(spacing: 16) {

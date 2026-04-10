@@ -67,12 +67,17 @@ struct AdvancedFiltersSheet: View {
     }
 }
 
-// Выделенный безопасный компонент (Лечит ошибку Binding<C>)
 struct AdvancedFilterSectionView: View {
     let title: String
     let items: [String]
     @Binding var selectedItems: Set<String>
     var filterState: ExerciseFilterState
+    
+    // Вспомогательная функция для красивого отображения ключей
+    private func displayString(for item: String) -> String {
+        if item == "dumbbell1" { return "Dumbbell" }
+        return item.capitalized
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -86,6 +91,8 @@ struct AdvancedFilterSectionView: View {
                     Spacer().frame(width: 10)
                     ForEach(items, id: \.self) { item in
                         let isSelected = selectedItems.contains(item)
+                        let buttonTitle = displayString(for: item) // 👈 Получаем чистое имя
+                        
                         Button {
                             let gen = UIImpactFeedbackGenerator(style: .light)
                             gen.impactOccurred()
@@ -93,7 +100,7 @@ struct AdvancedFilterSectionView: View {
                                 filterState.toggle(item: item, in: &selectedItems)
                             }
                         } label: {
-                            Text(LocalizedStringKey(item.capitalized))
+                            Text(LocalizedStringKey(buttonTitle)) // 👈 Переводим чистое имя
                                 .font(.subheadline)
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .padding(.horizontal, 16)

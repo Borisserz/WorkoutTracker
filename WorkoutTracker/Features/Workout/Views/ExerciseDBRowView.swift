@@ -54,10 +54,19 @@ struct ExerciseDBRowView: View {
     
     private func tagView(text: String, icon: String, color: Color) -> some View {
         HStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 9, weight: .bold))
-            Text(LocalizedStringKey(text)).font(.system(size: 10, weight: .bold, design: .rounded))
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .bold))
+            
+            Text(LocalizedStringKey(text))
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .lineLimit(1)            // 👈 Запрещаем перенос на новую строку
+                .minimumScaleFactor(0.7) // 👈 Разрешаем тексту сжаться до 70% от оригинала, если не влезает
         }
-        .foregroundColor(color).padding(.horizontal, 8).padding(.vertical, 4).background(color.opacity(0.1)).clipShape(Capsule())
+        .foregroundColor(color)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(color.opacity(0.1))
+        .clipShape(Capsule())
     }
     
     // MARK: - Иконки и Цвета

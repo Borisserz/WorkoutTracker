@@ -84,6 +84,7 @@ struct ProfileView: View {
                     .padding(.bottom, 60)
                     .opacity(isAppeared ? 1 : 0)
                     .offset(y: isAppeared ? 0 : 20)
+                    .frame(maxWidth: .infinity)
                 }
                 .navigationTitle(LocalizedStringKey("Profile"))
                 .navigationBarTitleDisplayMode(.inline)
@@ -421,14 +422,17 @@ struct PremiumAchievementBadge: View {
                     .fontWeight(.bold)
                     .foregroundColor(achievement.isUnlocked ? .primary : .secondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.4) // 👈 Уменьшаем до 0.4 для длинных слов типа "Путешественник"
                 
                 if !achievement.isUnlocked && !achievement.progress.isEmpty {
                     Text(achievement.progress)
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundColor(.gray)
+                        .lineLimit(1)            // 👈 Запрещаем перенос на вторую строку
+                        .minimumScaleFactor(0.4) // 👈 Разрешаем тексту сжиматься
                 }
             }
+            .frame(maxWidth: .infinity) // 👈 Жестко ограничиваем ширину по размеру колонки
         }
         .onAppear {
             if achievement.isUnlocked {

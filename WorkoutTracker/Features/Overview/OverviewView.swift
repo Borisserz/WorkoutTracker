@@ -195,7 +195,8 @@ struct OverviewView: View {
                 .frame(height: 220)
             } else {
                 Chart(dashboardViewModel.dashboardMuscleData, id: \.muscle) { item in
-                    SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.6), angularInset: 2)
+                    // 1. Можно чуть-чуть увеличить внутренний радиус с 0.6 до 0.65 для большего "воздуха"
+                    SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.65), angularInset: 2)
                         .cornerRadius(5)
                         .foregroundStyle(colorManager.getColor(for: item.muscle))
                         .opacity(selectedChartMuscle == nil || selectedChartMuscle == item.muscle ? 1.0 : 0.3)
@@ -205,13 +206,33 @@ struct OverviewView: View {
                     GeometryReader { geometry in
                         VStack {
                             if let selected = selectedMuscleInfo {
-                                Text(LocalizedStringKey(selected.muscle)).font(.headline).multilineTextAlignment(.center)
-                                Text(LocalizedStringKey("\(selected.count) sets")).font(.title2).bold().foregroundColor(.blue)
+                                Text(LocalizedStringKey(selected.muscle))
+                                    .font(.headline)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(1) // Запрещаем перенос названия мышцы
+                                    .minimumScaleFactor(0.6) // Разрешаем уменьшаться до 60%
+                                
+                                Text(LocalizedStringKey("\(selected.count) sets"))
+                                    .font(.title2)
+                                    .bold()
+                                    .foregroundColor(.blue)
+                                    .lineLimit(1) // Запрещаем перенос
+                                    .minimumScaleFactor(0.25) // Разрешаем тексту сжаться в 2 раза, если он не влезает
                             } else {
-                                Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(.secondary)
-                                Text("\(dashboardViewModel.dashboardTotalExercises)").font(.title).bold().foregroundColor(.primary)
+                                Text(LocalizedStringKey("Total"))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text("\(dashboardViewModel.dashboardTotalExercises)")
+                                    .font(.title)
+                                    .bold()
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
                             }
                         }
+                        // 2. Ограничиваем ширину VStack.
+                        // Внутренний радиус = 65% от всей ширины. Мы даем тексту максимум 55% ширины (чтобы были отступы по бокам).
+                        .frame(maxWidth: geometry.size.width * 0.40)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     }
                 }
@@ -250,10 +271,23 @@ struct OverviewView: View {
                     NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
                         HStack {
                             rankIcon(rank: index + 1)
-                            Text(LocalizedStringKey(item.name)).font(.headline).foregroundColor(.primary)
-                            Spacer()
-                            Text("\(item.count) times").font(.subheadline).foregroundColor(.secondary)
-                            Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
+                            
+                            // Используем кастомный переводчик из JSON
+                            Text(LocalizationHelper.shared.translateName(item.name))
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                                .lineLimit(1) // Защита от очень длинных русских названий
+                                .minimumScaleFactor(0.8) // Разрешаем шрифту чуть сжаться
+                            
+                            Spacer(minLength: 8)
+                            
+                            Text("\(item.count) times")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.gray)
                         }
                         .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(10).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                     }

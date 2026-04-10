@@ -3,6 +3,7 @@
 // ============================================================
 
 internal import SwiftUI
+import SwiftData
 import PhotosUI
 
 struct AddWeightSheet: View {
@@ -11,152 +12,31 @@ struct AddWeightSheet: View {
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
     
+    // ✅ ДОБАВЛЕНО: Прямой запрос к базе для получения истории и поиска последнего фото
+    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    
     let latestWeight: Double?
     
     @State private var date = Date()
     @State private var weightString = ""
-    
+    @State private var showSmartCamera = false
+    @State private var previousPhotoRef: UIImage? = nil
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var isProcessingImage = false
     
     var body: some View {
         NavigationStack {
-            ZStack {
+            ZStack(alignment: .topTrailing) {
                 // Premium Background
                 Color(UIColor.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 32) {
-                        
-                        // 1. GIGANTIC WEIGHT INPUT
-                        VStack(spacing: 8) {
-                            Text(LocalizedStringKey("Current Weight"))
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                                .textCase(.uppercase)
-                                .tracking(1.5)
-                            
-                            HStack(alignment: .lastTextBaseline, spacing: 8) {
-                                Spacer()
-                                TextField("0.0", text: $weightString)
-                                    .font(.system(size: 80, weight: .heavy, design: .rounded))
-                                    .foregroundColor(.primary)
-                                    .keyboardType(.decimalPad)
-                                    .multilineTextAlignment(.trailing)
-                                    .fixedSize(horizontal: true, vertical: false)
-                                
-                                Text(unitsManager.weightUnitString())
-                                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                                    .foregroundColor(.blue)
-                                Spacer()
-                            }
-                        }
-                        .padding(.top, 40)
-                        
-                        // 2. STYLISH DATE PICKER
-                        HStack {
-                            ZStack {
-                                Circle()
-                                    .fill(Color.blue.opacity(0.15))
-                                    .frame(width: 40, height: 40)
-                                Image(systemName: "calendar")
-                                    .foregroundColor(.blue)
-                                    .font(.headline)
-                            }
-                            
-                            DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                                .labelsHidden()
-                                .colorInvert() // Fix for dark mode inside light materials if needed
-                                .colorMultiply(colorScheme == .dark ? .white : .black)
-                            
-                            Spacer()
-                        }
-                        .padding(16)
-                        .background(Color(UIColor.secondarySystemBackground))
-                        .cornerRadius(20)
-                        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
-                        .padding(.horizontal, 24)
-                        
-                        // 3. PROGRESS PHOTOS GALLERY
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text(LocalizedStringKey("Progress Photos"))
-                                .font(.headline)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 24)
-                            
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 16) {
-                                    Spacer().frame(width: 8)
-                                    
-                                    // ADD PHOTO BUTTON
-                                    if selectedImages.count < 4 {
-                                        PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 4, matching: .images, photoLibrary: .shared()) {
-                                            VStack(spacing: 12) {
-                                                if isProcessingImage {
-                                                    ProgressView()
-                                                        .scaleEffect(1.5)
-                                                } else {
-                                                    Image(systemName: "camera.fill")
-                                                        .font(.system(size: 32))
-                                                    Text(LocalizedStringKey("Add"))
-                                                        .font(.subheadline)
-                                                        .fontWeight(.bold)
-                                                }
-                                            }
-                                            .foregroundColor(.blue)
-                                            .frame(width: 130, height: 170)
-                                            .background(Color.blue.opacity(0.1))
-                                            .cornerRadius(20)
-                                            .overlay(
-                                                RoundedRectangle(cornerRadius: 20)
-                                                    .stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6]))
-                                            )
-                                        }
-                                        .disabled(isProcessingImage)
-                                    }
-                                    
-                                    // SELECTED IMAGES
-                                    ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, image in
-                                        ZStack(alignment: .topTrailing) {
-                                            Image(uiImage: image)
-                                                .resizable()
-                                                .scaledToFill()
-                                                .frame(width: 130, height: 170)
-                                                .clipShape(RoundedRectangle(cornerRadius: 20))
-                                                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-                                            
-                                            Button {
-                                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                                generator.impactOccurred()
-                                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                                    selectedImages.remove(at: index)
-                                                    selectedPhotoItems.remove(at: index)
-                                                }
-                                            } label: {
-                                                Image(systemName: "xmark")
-                                                    .font(.system(size: 14, weight: .bold))
-                                                    .foregroundColor(.white)
-                                                    .padding(8)
-                                                    .background(Color.black.opacity(0.6))
-                                                    .clipShape(Circle())
-                                                    .padding(8)
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                        .transition(.scale.combined(with: .opacity))
-                                    }
-                                    
-                                    Spacer().frame(width: 8)
-                                }
-                            }
-                            
-                            Text(LocalizedStringKey("Attach up to 4 photos to compare your progress later."))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .padding(.horizontal, 24)
-                        }
+                        weightInputSection
+                        datePickerSection
+                        photoGallerySection
                     }
                     .padding(.bottom, 120) // Space for the floating button
                 }
@@ -173,27 +53,15 @@ struct AddWeightSheet: View {
                     }
                 }
             }
-            // FLOATING SAVE BUTTON
-            .safeAreaInset(edge: .bottom) {
-                Button(action: saveWeight) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.title3)
-                        Text(LocalizedStringKey("Save"))
-                            .font(.title3)
-                            .fontWeight(.bold)
+            .fullScreenCover(isPresented: $showSmartCamera) {
+                SmartCaptureView(referenceImage: previousPhotoRef) { capturedImage in
+                    withAnimation(.spring()) {
+                        self.selectedImages.append(capturedImage)
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(weightString.isEmpty || isProcessingImage ? Color.gray : Color.blue)
-                    .cornerRadius(20)
-                    .shadow(color: (weightString.isEmpty || isProcessingImage ? Color.clear : Color.blue.opacity(0.4)), radius: 15, x: 0, y: 8)
                 }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 10)
-                .disabled(weightString.isEmpty || isProcessingImage)
-                .animation(.spring(), value: weightString.isEmpty)
+            }
+            .safeAreaInset(edge: .bottom) {
+                floatingSaveButton
             }
             .onAppear {
                 if let lw = latestWeight {
@@ -206,7 +74,183 @@ struct AddWeightSheet: View {
         }
     }
     
+    // MARK: - View Components (Разбито для скорости компиляции)
+    
+    private var weightInputSection: some View {
+        VStack(spacing: 8) {
+            Text(LocalizedStringKey("Current Weight"))
+                .font(.headline)
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+                .tracking(1.5)
+            
+            HStack(alignment: .lastTextBaseline, spacing: 8) {
+                Spacer()
+                TextField("0.0", text: $weightString)
+                    .font(.system(size: 80, weight: .heavy, design: .rounded))
+                    .foregroundColor(.primary)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: true, vertical: false)
+                
+                Text(unitsManager.weightUnitString())
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(.blue)
+                Spacer()
+            }
+        }
+        .padding(.top, 40)
+    }
+    
+    private var datePickerSection: some View {
+        HStack {
+            ZStack {
+                Circle()
+                    .fill(Color.blue.opacity(0.15))
+                    .frame(width: 40, height: 40)
+                Image(systemName: "calendar")
+                    .foregroundColor(.blue)
+                    .font(.headline)
+            }
+            
+            DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden()
+                .colorInvert()
+                .colorMultiply(colorScheme == .dark ? .white : .black)
+            
+            Spacer()
+        }
+        .padding(16)
+        .background(Color(UIColor.secondarySystemBackground))
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .padding(.horizontal, 24)
+    }
+    
+    private var photoGallerySection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(LocalizedStringKey("Progress Photos"))
+                .font(.headline)
+                .foregroundColor(.primary)
+                .padding(.horizontal, 24)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    Spacer().frame(width: 8)
+                    
+                    // ADD PHOTO BUTTON
+                    if selectedImages.count < 4 {
+                        Menu {
+                            Button {
+                                loadReferenceAndOpenSmartCamera()
+                            } label: {
+                                Label(LocalizedStringKey("Smart Camera (Ghost)"), systemImage: "camera.viewfinder")
+                            }
+                            
+                            PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 4 - selectedImages.count, matching: .images, photoLibrary: .shared()) {
+                                Label(LocalizedStringKey("Choose from Library"), systemImage: "photo.on.rectangle")
+                            }
+                        } label: {
+                            VStack(spacing: 12) {
+                                if isProcessingImage {
+                                    ProgressView().scaleEffect(1.5)
+                                } else {
+                                    Image(systemName: "camera.fill").font(.system(size: 32))
+                                    Text(LocalizedStringKey("Add")).font(.subheadline).fontWeight(.bold)
+                                }
+                            }
+                            .foregroundColor(.blue)
+                            .frame(width: 130, height: 170)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(20)
+                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6])))
+                        }
+                        .disabled(isProcessingImage)
+                    }
+                    
+                    // SELECTED IMAGES
+                    ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, image in
+                        ZStack(alignment: .topTrailing) {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 130, height: 170)
+                                .clipShape(RoundedRectangle(cornerRadius: 20))
+                                .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
+                            
+                            Button {
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.impactOccurred()
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    selectedImages.remove(at: index)
+                                    if index < selectedPhotoItems.count {
+                                        selectedPhotoItems.remove(at: index)
+                                    }
+                                }
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(8)
+                                    .background(Color.black.opacity(0.6))
+                                    .clipShape(Circle())
+                                    .padding(8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .transition(.scale.combined(with: .opacity))
+                    }
+                    
+                    Spacer().frame(width: 8)
+                }
+            }
+            
+            Text(LocalizedStringKey("Attach up to 4 photos to compare your progress later."))
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 24)
+        }
+    }
+    
+    private var floatingSaveButton: some View {
+        Button(action: saveWeight) {
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                Text(LocalizedStringKey("Save"))
+                    .font(.title3)
+                    .fontWeight(.bold)
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background(weightString.isEmpty || isProcessingImage ? Color.gray : Color.blue)
+            .cornerRadius(20)
+            .shadow(color: (weightString.isEmpty || isProcessingImage ? Color.clear : Color.blue.opacity(0.4)), radius: 15, x: 0, y: 8)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 10)
+        .disabled(weightString.isEmpty || isProcessingImage)
+        .animation(.spring(), value: weightString.isEmpty)
+    }
+    
     // MARK: - Logic
+    
+    private func loadReferenceAndOpenSmartCamera() {
+        Task {
+            // ✅ ИСПРАВЛЕНО: Обращаемся к массиву weightHistory из @Query, а не к ViewModel
+            if let lastEntry = weightHistory.first(where: { !$0.imageFileNames.isEmpty }),
+               let fileName = lastEntry.imageFileNames.first {
+                self.previousPhotoRef = await LocalImageStore.shared.loadImage(named: fileName)
+            } else {
+                self.previousPhotoRef = nil
+            }
+            
+            await MainActor.run {
+                showSmartCamera = true
+            }
+        }
+    }
     
     private func processSelectedPhotos(_ items: [PhotosPickerItem]) {
         guard !items.isEmpty else { return }
@@ -224,7 +268,7 @@ struct AddWeightSheet: View {
             
             await MainActor.run {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    self.selectedImages = loadedImages
+                    self.selectedImages.append(contentsOf: loadedImages)
                     self.isProcessingImage = false
                 }
             }

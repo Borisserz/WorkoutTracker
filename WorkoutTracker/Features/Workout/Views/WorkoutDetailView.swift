@@ -280,26 +280,11 @@ struct WorkoutDetailContentView: View {
         }
     }
     private func handleOnDisappear() {
-           timerManager.isHidden = false
-           
-           // Если мы уже удаляем тренировку через Алерт, дальше не идем
-           guard !isDeletingEmptyWorkout, workout.isActive else { return }
-           
-           let hasCompletedSets = workout.exercises.contains { ex in
-               let targets = ex.isSuperset ? ex.subExercises : [ex]
-               return targets.contains { sub in sub.setsList.contains { $0.isCompleted } }
-           }
-           
-           if !hasCompletedSets {
-               isDeletingEmptyWorkout = true // Ставим флаг
-               let safeID = workout.persistentModelID // Безопасно извлекаем ID
-               
-               Task {
-                   await viewModel.deleteEmptyWorkout(workoutID: safeID)
-                   timerManager.stopRestTimer()
-               }
-           }
-       }
+            timerManager.isHidden = false
+            // 👈 ИСПРАВЛЕНИЕ: Мы полностью убрали код автоудаления пустой тренировки.
+            // Теперь вы можете начать пустую тренировку, переключаться между вкладками,
+            // искать упражнения, а плашка активности (Active Banner) будет висеть внизу!
+        }
     
     private func handleExercisesChanged() {
         viewModel.updateWorkoutAnalytics(for: workout)

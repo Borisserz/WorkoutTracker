@@ -292,51 +292,52 @@ struct AddMeasurementSheet: View {
     let latestMeasurement: BodyMeasurement?
     
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    DatePicker(LocalizedStringKey("Date"), selection: $date, displayedComponents: [.date, .hourAndMinute])
+            NavigationStack {
+                Form {
+                    Section {
+                        DatePicker(LocalizedStringKey("Date"), selection: $date, displayedComponents: [.date, .hourAndMinute])
+                    }
+                    
+                    Section(header: Text(LocalizedStringKey("Body Composition"))) {
+                        measurementField("Body Fat (%)", value: $bodyFat, isPercentage: true)
+                    }
+                    
+                    // 👇 ИСПРАВЛЕННЫЕ ЗАГОЛОВКИ СЕКЦИЙ
+                    Section(header: Text("\(String(localized: "Upper Body")) (\(unitsManager.sizeUnitString()))")) {
+                        measurementField("Neck", value: $neck)
+                        measurementField("Shoulders", value: $shoulders)
+                        measurementField("Chest", value: $chest)
+                    }
+                    
+                    Section(header: Text("\(String(localized: "Arms")) (\(unitsManager.sizeUnitString()))")) {
+                        measurementField("Left Bicep", value: $leftBicep)
+                        measurementField("Right Bicep", value: $rightBicep)
+                        measurementField("Left Forearm", value: $leftForearm)
+                        measurementField("Right Forearm", value: $rightForearm)
+                    }
+                    
+                    Section(header: Text("\(String(localized: "Core")) (\(unitsManager.sizeUnitString()))")) {
+                        measurementField("Waist", value: $waist)
+                        measurementField("Abdomen", value: $abdomen)
+                        measurementField("Hips", value: $hips)
+                    }
+                    
+                    Section(header: Text("\(String(localized: "Legs")) (\(unitsManager.sizeUnitString()))")) {
+                        measurementField("Left Thigh", value: $leftThigh)
+                        measurementField("Right Thigh", value: $rightThigh)
+                        measurementField("Left Calf", value: $leftCalf)
+                        measurementField("Right Calf", value: $rightCalf)
+                    }
                 }
-                
-                Section(header: Text(LocalizedStringKey("Body Composition"))) {
-                    measurementField("Body Fat (%)", value: $bodyFat, isPercentage: true)
+                .navigationTitle(LocalizedStringKey("Log Measurements"))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) { Button(LocalizedStringKey("Cancel")) { dismiss() } }
+                    ToolbarItem(placement: .confirmationAction) { Button(LocalizedStringKey("Save")) { save() }.bold() }
                 }
-                
-                Section(header: Text("Upper Body (\(unitsManager.sizeUnitString()))")) {
-                    measurementField("Neck", value: $neck)
-                    measurementField("Shoulders", value: $shoulders)
-                    measurementField("Chest", value: $chest)
-                }
-                
-                Section(header: Text("Arms (\(unitsManager.sizeUnitString()))")) {
-                    measurementField("Left Bicep", value: $leftBicep)
-                    measurementField("Right Bicep", value: $rightBicep)
-                    measurementField("Left Forearm", value: $leftForearm)
-                    measurementField("Right Forearm", value: $rightForearm)
-                }
-                
-                Section(header: Text("Core (\(unitsManager.sizeUnitString()))")) {
-                    measurementField("Waist", value: $waist)
-                    measurementField("Abdomen", value: $abdomen)
-                    measurementField("Hips", value: $hips)
-                }
-                
-                Section(header: Text("Legs (\(unitsManager.sizeUnitString()))")) {
-                    measurementField("Left Thigh", value: $leftThigh)
-                    measurementField("Right Thigh", value: $rightThigh)
-                    measurementField("Left Calf", value: $leftCalf)
-                    measurementField("Right Calf", value: $rightCalf)
-                }
+                .onAppear(perform: prefillData)
             }
-            .navigationTitle(LocalizedStringKey("Log Measurements"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button(LocalizedStringKey("Cancel")) { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button(LocalizedStringKey("Save")) { save() }.bold() }
-            }
-            .onAppear(perform: prefillData)
         }
-    }
     
     private func measurementField(_ title: String, value: Binding<Double?>, isPercentage: Bool = false) -> some View {
         HStack {

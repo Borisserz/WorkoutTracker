@@ -60,12 +60,17 @@ struct TrainingStyleDetailView: View {
     
     // MARK: - Views
     
+
     @ViewBuilder
     private func mechanicDonutChart(stats: TrainingStyleDTO) -> some View {
         let total = stats.totalMechanicSets
         let compPct = total > 0 ? Int((Double(stats.compoundSets) / Double(total)) * 100) : 0
         let isoPct = total > 0 ? Int((Double(stats.isolationSets) / Double(total)) * 100) : 0
-        let dominantText = compPct >= isoPct ? "\(compPct)% Compound" : "\(isoPct)% Isolation"
+        
+        // Разделяем проценты и локализованное слово, чтобы перевод сработал
+        let isCompoundDominant = compPct >= isoPct
+        let dominantPct = isCompoundDominant ? compPct : isoPct
+        let dominantName: LocalizedStringKey = isCompoundDominant ? "Compound" : "Isolation"
         
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Mechanic Breakdown"))
@@ -101,9 +106,14 @@ struct TrainingStyleDetailView: View {
                     Text(LocalizedStringKey("Focus"))
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(LocalizedStringKey(dominantText))
+                    Text("\(dominantPct)% ")
                         .font(.headline)
                         .bold()
+                        .foregroundColor(.primary)
+                    + Text(dominantName)
+                        .font(.headline)
+                        .bold()
+                        .foregroundColor(.primary)
                         .foregroundColor(.primary)
                 }
             }
@@ -202,9 +212,16 @@ struct TrainingStyleDetailView: View {
     private func legendItem(title: String, color: Color, value: Int) -> some View {
         HStack(spacing: 6) {
             Circle().fill(color).frame(width: 8, height: 8)
-            Text(LocalizedStringKey(title)).font(.subheadline).foregroundColor(.secondary)
-            Spacer()
-            Text("\(value)").font(.headline).bold()
+            Text(LocalizedStringKey(title))
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .lineLimit(1)                // Запрещаем перенос на вторую строку
+                .minimumScaleFactor(0.5)     // Разрешаем тексту сжаться, если не влезает
+            Spacer(minLength: 2)             // Позволяем пробелу сжаться сильнее
+            Text("\(value)")
+                .font(.headline)
+                .bold()
+                .lineLimit(1)
         }
         .padding(12)
         .background(Color(UIColor.tertiarySystemFill).opacity(0.5))

@@ -1,7 +1,7 @@
 internal import SwiftUI
 import SwiftData
 import Charts
-
+import Combine
 // MARK: - 1. View Model (Чистая бизнес-логика)
 @Observable
 @MainActor
@@ -573,7 +573,7 @@ struct StatsContentView: View {
                         }
                     }
                     
-                    NavigationLink(destination: MonthlyReportDetailView()) {
+                    NavigationLink(destination: MonthlyReportStoryView()) {
                         AdvancedStatRow(icon: "doc.text", title: "30-Day Report", subtitle: "Recap of your workouts and volume changes.", color: .cyan)
                     }
                 }
@@ -1295,10 +1295,7 @@ struct RadarChartView: View {
     let highlightedAxis: String?
     let color: Color
     
-    private func gridDimension(for level: Int, totalSize: CGFloat) -> CGFloat {
-        let ratio = CGFloat(level) / 4.0
-        return totalSize * ratio * 0.75 // Чуть уменьшили чтобы влезли подписи и точки
-    }
+    // Удалили функцию gridDimension, так как теперь считаем точнее
     
     private func computeAngle(for index: Int, totalCount: Int) -> CGFloat {
         let slice = (2.0 * CGFloat.pi) / CGFloat(totalCount)
@@ -1311,16 +1308,23 @@ struct RadarChartView: View {
             let centerX = geometry.size.width / 2.0
             let centerY = geometry.size.height / 2.0
             let center = CGPoint(x: centerX, y: centerY)
-            let radius = size / 2.5 * 0.95
+            
+            // ЕДИНЫЙ РАДИУС ДЛЯ ВСЕГО ГРАФИКА
+            // 70% от половины ширины, чтобы по краям свободно влезли названия мышц
+            let chartRadius = (size / 2.0) * 0.70
+            let chartDiameter = chartRadius * 2
+            
             let totalCount = currentData.count
             
             ZStack {
                 // 1. Фоновая сетка (4 уровня)
                 ForEach(1...4, id: \.self) { level in
-                    let dimension = gridDimension(for: level, totalSize: size)
+                    let levelRatio = CGFloat(level) / 4.0
+                    let levelDiameter = chartDiameter * levelRatio
+                    
                     PolygonShape(sides: totalCount)
                         .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        .frame(width: dimension, height: dimension)
+                        .frame(width: levelDiameter, height: levelDiameter)
                 }
                 
                 // 2. Оси и подписи
@@ -1329,20 +1333,20 @@ struct RadarChartView: View {
                     let isAxisHighlighted = highlightedAxis == point.axis
                     let isDimmed = highlightedAxis != nil && !isAxisHighlighted
                     
-                    let endX = centerX + (radius * cos(currentAngle))
-                    let endY = centerY + (radius * sin(currentAngle))
+                    let endX = centerX + (chartRadius * cos(currentAngle))
+                    let endY = centerY + (chartRadius * sin(currentAngle))
                     let endPoint = CGPoint(x: endX, y: endY)
                     
-                    // Ось
+                    // Линии осей
                     Path { path in
                         path.move(to: center)
                         path.addLine(to: endPoint)
                     }
                     .stroke(isAxisHighlighted ? color.opacity(0.8) : Color.gray.opacity(0.3), lineWidth: isAxisHighlighted ? 2 : 1)
                     
-                    // Подпись оси
-                    let labelX = centerX + ((radius + 25.0) * cos(currentAngle))
-                    let labelY = centerY + ((radius + 20.0) * sin(currentAngle))
+                    // Подписи осей (отодвинуты за пределы максимального радиуса)
+                    let labelX = centerX + ((chartRadius + 30.0) * cos(currentAngle))
+                    let labelY = centerY + ((chartRadius + 20.0) * sin(currentAngle))
                     
                     Text(LocalizedStringKey(point.axis))
                         .font(.caption2)
@@ -1351,27 +1355,33 @@ struct RadarChartView: View {
                         .position(x: labelX, y: labelY)
                 }
                 
-                // 3. ПРЕДЫДУЩИЙ Period (Ghost Polygon)
+                // 3. ПРЕДЫДУЩИЙ ПЕРИОД (Ghost Polygon)
                 if let prev = previousData {
                     DataPolygonShape(data: prev)
                         .fill(Color.gray.opacity(0.1))
+                        .frame(width: chartDiameter, height: chartDiameter) // Жестко ограничиваем размер
+                    
                     DataPolygonShape(data: prev)
                         .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                        .frame(width: chartDiameter, height: chartDiameter)
                 }
                 
-                // 4. ТЕКУЩИЙ Period (Main Polygon)
+                // 4. ТЕКУЩИЙ ПЕРИОД (Main Polygon)
                 DataPolygonShape(data: currentData)
                     .fill(color.opacity(0.3))
+                    .frame(width: chartDiameter, height: chartDiameter) // Жестко ограничиваем размер
+                
                 DataPolygonShape(data: currentData)
                     .stroke(color, lineWidth: 2)
+                    .frame(width: chartDiameter, height: chartDiameter)
                 
-                // 5. Точки на вершинах текущего Periodа
+                // 5. Точки на вершинах
                 ForEach(Array(currentData.enumerated()), id: \.offset) { index, point in
                     let currentAngle = computeAngle(for: index, totalCount: totalCount)
                     let isAxisHighlighted = highlightedAxis == point.axis
                     
                     let ratio = point.maxValue == 0 ? 0 : CGFloat(point.value / point.maxValue)
-                    let ptRadius = radius * ratio
+                    let ptRadius = chartRadius * ratio
                     
                     let ptX = centerX + (ptRadius * cos(currentAngle))
                     let ptY = centerY + (ptRadius * sin(currentAngle))
@@ -1447,6 +1457,7 @@ struct HeatmapAggregatedData: Sendable {
 }
 
 /// 🚀 Фоновый процессор (Sendable) для защиты Main Thread от тяжелых вычислений
+@MainActor
 struct HeatmapDataProcessor: Sendable {
     static func process(workouts: [Workout], period: SetsTrendDetailView.TrendPeriod) async -> HeatmapAggregatedData {
         let calendar = Calendar.current
@@ -1692,16 +1703,13 @@ struct HeatmapDetailView: View {
     
     private func calculateData() async {
         isProcessing = true
-        // 🚀 Переносим тяжелые вычисления в фоновый поток
-        let processedData = await Task.detached(priority: .userInitiated) {
-            return await HeatmapDataProcessor.process(workouts: allWorkouts, period: selectedPeriod)
-        }.value
         
-        await MainActor.run {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                self.aggregatedData = processedData
-                self.isProcessing = false
-            }
+        // Обрабатываем на MainActor, так как данные из @Query не-Sendable
+        let processedData = await HeatmapDataProcessor.process(workouts: allWorkouts, period: selectedPeriod)
+        
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            self.aggregatedData = processedData
+            self.isProcessing = false
         }
     }
     
@@ -1745,177 +1753,560 @@ struct PeriodReportPayload: Sendable {
     let streakDays: Int
     let radarCurrent: [RadarDataPoint]
     let radarPrevious: [RadarDataPoint]
+    
+    // ✅ НОВЫЕ ПОЛЯ ДЛЯ "STORIES"
+    let topMuscle: String
+    let favoriteDay: String
+    let totalVolumeTons: Double
+    let funFactVolume: String
 }
 
 /// Строго изолированный процессор для отчета за последние 30 дней
+@MainActor
 struct PeriodReportProcessor: Sendable {
     static func process(workouts: [Workout]) async -> PeriodReportPayload {
-            let calendar = Calendar.current
-            let now = Date()
+        let calendar = Calendar.current
+        let now = Date()
+        let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+        
+        let curStart = calendar.date(byAdding: .day, value: -30, to: now)!
+        let prevEnd = curStart
+        let prevStart = calendar.date(byAdding: .day, value: -60, to: now)!
+        
+        let df = DateFormatter()
+        df.dateFormat = "MMMM yyyy"
+        let title = "\(df.string(from: now)) Review"
+        
+        var sCW = 0, sPW = 0, sCD = 0, sPD = 0, sCS = 0, sPS = 0
+        var sCV = 0.0, sPV = 0.0
+        
+        var dictWorkouts: [Date: Double] = [:]
+        var dictDuration: [Date: Double] = [:]
+        var dictVolume: [Date: Double] = [:]
+        var dictSets: [Date: Double] = [:]
+        var activeDays = Set<Date>()
+        var weekdayCounts: [Int: Int] = [:]
+        
+        let axes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
+        var radarCur: [String: Double] = [:]
+        var radarPrev: [String: Double] = [:]
+        
+        for workout in workouts {
+            let isCur = workout.date >= curStart
+            let isPrev = workout.date >= prevStart && workout.date < prevEnd
+            if !isCur && !isPrev { continue }
             
-            // ✅ ДОБАВЛЕНО: Чтение настройки
-            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+            let dayStart = calendar.startOfDay(for: workout.date)
+            var wVolume = 0.0
+            var wSets = 0
             
-            let curStart = calendar.date(byAdding: .day, value: -30, to: now)!
-            let prevEnd = curStart
-            let prevStart = calendar.date(byAdding: .day, value: -60, to: now)!
-            
-            let df = DateFormatter()
-            df.dateFormat = "MMMM yyyy"
-            let title = "\(df.string(from: now)) Report"
-            
-            var sCW = 0, sPW = 0, sCD = 0, sPD = 0, sCS = 0, sPS = 0
-            var sCV = 0.0, sPV = 0.0
-            
-            var dictWorkouts: [Date: Double] = [:]
-            var dictDuration: [Date: Double] = [:]
-            var dictVolume: [Date: Double] = [:]
-            var dictSets: [Date: Double] = [:]
-            var activeDays = Set<Date>()
-            
-            let axes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
-            var radarCur: [String: Double] = [:]
-            var radarPrev: [String: Double] = [:]
-            
-            for workout in workouts {
-                let isCur = workout.date >= curStart
-                let isPrev = workout.date >= prevStart && workout.date < prevEnd
-                if !isCur && !isPrev { continue }
-                
-                let dayStart = calendar.startOfDay(for: workout.date)
-                var wVolume = 0.0
-                var wSets = 0
-                
-                for ex in workout.exercises {
-                    let targets = ex.isSuperset ? ex.subExercises : [ex]
-                    for sub in targets where sub.type == .strength {
-                        // ✅ ИСПРАВЛЕНО: Интеграция тумблера
-                        let cSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }
-                        wSets += cSets.count
-                        
-                        // ✅ ИСПРАВЛЕНО: Упрощенный цикл вместо сложного reduce (решает проблему с компилятором)
-                        var tempSubVol = 0.0
-                        for set in cSets {
-                            let setWeight = set.weight ?? 0.0
-                            let setReps = Double(set.reps ?? 0)
-                            tempSubVol += (setWeight * setReps)
-                        }
-                        wVolume += tempSubVol
-                        
-                        if cSets.count > 0 {
-                            if isCur { radarCur[sub.muscleGroup, default: 0] += Double(cSets.count) }
-                            else if isPrev { radarPrev[sub.muscleGroup, default: 0] += Double(cSets.count) }
+            for ex in workout.exercises {
+                let targets = ex.isSuperset ? ex.subExercises : [ex]
+                for sub in targets where sub.type == .strength {
+                    let cSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }
+                    wSets += cSets.count
+                    
+                    var tempSubVol = 0.0
+                    for set in cSets {
+                        let setWeight = set.weight ?? 0.0
+                        let setReps = Double(set.reps ?? 0)
+                        tempSubVol += (setWeight * setReps)
+                    }
+                    wVolume += tempSubVol
+                    
+                    if cSets.count > 0 {
+                        let category = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
+                        if category != "Other" {
+                            if isCur { radarCur[category, default: 0] += Double(cSets.count) }
+                            else if isPrev { radarPrev[category, default: 0] += Double(cSets.count) }
                         }
                     }
                 }
+            }
+            
+            if isCur {
+                sCW += 1; sCD += workout.durationSeconds / 60; sCV += wVolume; sCS += wSets
+                dictWorkouts[dayStart, default: 0] += 1
+                dictDuration[dayStart, default: 0] += Double(workout.durationSeconds / 60)
+                dictVolume[dayStart, default: 0] += wVolume
+                dictSets[dayStart, default: 0] += Double(wSets)
+                activeDays.insert(dayStart)
                 
-                if isCur {
-                    sCW += 1; sCD += workout.durationSeconds / 60; sCV += wVolume; sCS += wSets
-                    dictWorkouts[dayStart, default: 0] += 1
-                    dictDuration[dayStart, default: 0] += Double(workout.durationSeconds / 60)
-                    dictVolume[dayStart, default: 0] += wVolume
-                    dictSets[dayStart, default: 0] += Double(wSets)
-                    activeDays.insert(dayStart)
-                } else if isPrev {
-                    sPW += 1; sPD += workout.durationSeconds / 60; sPV += wVolume; sPS += wSets
-                }
+                let weekday = calendar.component(.weekday, from: workout.date)
+                weekdayCounts[weekday, default: 0] += 1
+            } else if isPrev {
+                sPW += 1; sPD += workout.durationSeconds / 60; sPV += wVolume; sPS += wSets
             }
-            
-            var cW: [ReportDailyPoint] = [], cD: [ReportDailyPoint] = [], cV: [ReportDailyPoint] = [], cS: [ReportDailyPoint] = []
-            for i in 0..<30 {
-                let date = calendar.date(byAdding: .day, value: i, to: curStart)!
-                let dayStart = calendar.startOfDay(for: date)
-                cW.append(.init(date: dayStart, value: dictWorkouts[dayStart] ?? 0))
-                cD.append(.init(date: dayStart, value: dictDuration[dayStart] ?? 0))
-                cV.append(.init(date: dayStart, value: dictVolume[dayStart] ?? 0))
-                cS.append(.init(date: dayStart, value: dictSets[dayStart] ?? 0))
-            }
-            
-            let globalMax = max(10.0, max(radarCur.values.max() ?? 1, radarPrev.values.max() ?? 1))
-            let rC = axes.map { RadarDataPoint(axis: $0, value: radarCur[$0] ?? 0, maxValue: globalMax) }
-            let rP = axes.map { RadarDataPoint(axis: $0, value: radarPrev[$0] ?? 0, maxValue: globalMax) }
-            
-            return PeriodReportPayload(
-                title: title,
-                summary: ReportSummary(currentWorkouts: sCW, prevWorkouts: sPW, currentDuration: sCD, prevDuration: sPD, currentVolume: sCV, prevVolume: sPV, currentSets: sCS, prevSets: sPS),
-                chartWorkouts: cW, chartDuration: cD, chartVolume: cV, chartSets: cS,
-                activeDays: activeDays,
-                streakDays: StreakCalculator.calculate(from: Array(activeDays), maxRestDays: 2),
-                radarCurrent: rC, radarPrevious: rP
-            )
         }
+        
+        var cW: [ReportDailyPoint] = [], cD: [ReportDailyPoint] = [], cV: [ReportDailyPoint] = [], cS: [ReportDailyPoint] = []
+        for i in 0..<30 {
+            let date = calendar.date(byAdding: .day, value: i, to: curStart)!
+            let dayStart = calendar.startOfDay(for: date)
+            cW.append(.init(date: dayStart, value: dictWorkouts[dayStart] ?? 0))
+            cD.append(.init(date: dayStart, value: dictDuration[dayStart] ?? 0))
+            cV.append(.init(date: dayStart, value: dictVolume[dayStart] ?? 0))
+            cS.append(.init(date: dayStart, value: dictSets[dayStart] ?? 0))
+        }
+        
+        let globalMax = max(10.0, max(radarCur.values.max() ?? 1, radarPrev.values.max() ?? 1))
+        let rC = axes.map { RadarDataPoint(axis: $0, value: radarCur[$0] ?? 0, maxValue: globalMax) }
+        let rP = axes.map { RadarDataPoint(axis: $0, value: radarPrev[$0] ?? 0, maxValue: globalMax) }
+        
+        // ✅ ЛОГИКА ДЛЯ НОВЫХ ПОЛЕЙ
+        let topMuscle = radarCur.max(by: { $0.value < $1.value })?.key ?? "Chest"
+        
+        let topWeekdayIndex = weekdayCounts.max(by: { $0.value < $1.value })?.key ?? 2
+        let favoriteDayStr = calendar.weekdaySymbols[topWeekdayIndex - 1]
+        
+        let tons = sCV / 1000.0
+        let funFact: String
+        if tons > 10 { funFact = "That's like lifting 2 Elephants! 🐘🐘" }
+        else if tons > 5 { funFact = "That's a T-Rex! 🦖" }
+        else if tons > 2 { funFact = "That's a heavy SUV! 🚙" }
+        else if tons > 1 { funFact = "That's a Walrus! 🦏" }
+        else { funFact = "Every kilo counts! 🏋️" }
+        
+        return PeriodReportPayload(
+            title: title,
+            summary: ReportSummary(currentWorkouts: sCW, prevWorkouts: sPW, currentDuration: sCD, prevDuration: sPD, currentVolume: sCV, prevVolume: sPV, currentSets: sCS, prevSets: sPS),
+            chartWorkouts: cW, chartDuration: cD, chartVolume: cV, chartSets: cS,
+            activeDays: activeDays,
+            streakDays: StreakCalculator.calculate(from: Array(activeDays), maxRestDays: 2),
+            radarCurrent: rC, radarPrevious: rP,
+            topMuscle: topMuscle,
+            favoriteDay: favoriteDayStr,
+            totalVolumeTons: tons,
+            funFactVolume: funFact
+        )
+    }
 }
 
-struct MonthlyReportDetailView: View {
+
+// ============================================================
+// MARK: - 2. Story View (Основной экран в стиле Instagram)
+// ============================================================
+
+enum ReportSlide: Int, CaseIterable {
+    case intro = 0
+    case volume = 1
+    case focus = 2
+    case outro = 3
+}
+
+struct MonthlyReportStoryView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
     
+    @Environment(\.dismiss) private var dismiss
     @Environment(UnitsManager.self) var unitsManager
     
     @State private var payload: PeriodReportPayload?
-    @State private var selectedMetric: ReportChartMetric = .workouts
-    @State private var isProcessing = true
+    @State private var currentSlide: ReportSlide = .intro
+    @State private var slideProgress: CGFloat = 0.0
+    @State private var isPaused: Bool = false
+    @State private var isProcessing: Bool = true
+    
+    // Таймер (7 секунд на слайд -> 0.05 сек = 140 тиков)
+    let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    let ticksPerSlide: CGFloat = 140.0
+    
+    @State private var dragStartTime: Date? = nil
     
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                if isProcessing {
-                    ProgressView().frame(height: 300)
-                } else if let data = payload {
-                    
-                    // 1. Chart Section
-                    chartSection(data: data)
-                    
-                    // 2. Summary Grid
-                    summaryGrid(data: data.summary)
-                    
-                    // 3. Calendar / Active Days
-                    calendarSection(data: data)
-                    
-                    // 4. Radar Comparison
-                    radarSection(data: data)
-                    
-                    // 5. Share Button
-                    Button {
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
-                    } label: {
-                        HStack {
-                            Image(systemName: "square.and.arrow.up")
-                            Text(LocalizedStringKey("Share Report"))
-                                .bold()
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 10)
-                }
-            }
-            .padding(.vertical)
-        }
-        .navigationTitle(LocalizedStringKey(payload?.title ?? "Report"))
-        .navigationBarTitleDisplayMode(.inline)
-        .background(Color(UIColor.systemGroupedBackground))
-        .task {
-            isProcessing = true
-            let processed = await Task.detached(priority: .userInitiated) {
-                return await PeriodReportProcessor.process(workouts: allWorkouts)
-            }.value
+        ZStack {
+            Color.black.ignoresSafeArea()
             
-            await MainActor.run {
-                withAnimation {
-                    self.payload = processed
-                    self.isProcessing = false
+            if isProcessing {
+                ProgressView().tint(.white).scaleEffect(1.5)
+            } else if let data = payload {
+                // 1. Контент текущего слайда
+                GeometryReader { geo in
+                    ZStack {
+                        switch currentSlide {
+                        case .intro:
+                            StorySlideIntro(data: data)
+                        case .volume:
+                            StorySlideVolume(data: data, unitsManager: unitsManager)
+                        case .focus:
+                            StorySlideFocus(data: data)
+                        case .outro:
+                            StorySlideOutro(data: data, dismissAction: { dismiss() })
+                        }
+                    }
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .contentShape(Rectangle())
+                    // Обработка Тапов и Удержаний
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in
+                                isPaused = true
+                                if dragStartTime == nil { dragStartTime = Date() }
+                            }
+                            .onEnded { value in
+                                isPaused = false
+                                let duration = Date().timeIntervalSince(dragStartTime ?? Date())
+                                dragStartTime = nil
+                                
+                                // Если жест был коротким (тап)
+                                if duration < 0.3 {
+                                    let generator = UIImpactFeedbackGenerator(style: .light)
+                                    generator.impactOccurred()
+                                    if value.location.x < geo.size.width / 2 {
+                                        prevSlide()
+                                    } else {
+                                        nextSlide()
+                                    }
+                                }
+                            }
+                    )
                 }
+                
+                // 2. Сегментированный Progress Bar наверху
+                VStack {
+                    StoryProgressBar(
+                        slidesCount: ReportSlide.allCases.count,
+                        currentIndex: currentSlide.rawValue,
+                        progress: slideProgress
+                    )
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16) // Отступ от безопасной зоны
+                    
+                    HStack {
+                        Button { dismiss() } label: {
+                            Image(systemName: "xmark")
+                                .font(.title2.bold())
+                                .foregroundColor(.white)
+                                .padding(16)
+                                .shadow(color: .black.opacity(0.5), radius: 5)
+                        }
+                        Spacer()
+                    }
+                    Spacer()
+                }
+                .ignoresSafeArea(edges: .bottom)
+            }
+        }
+        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .tabBar) // Скрываем таб-бар, если он есть
+        .onReceive(timer) { _ in
+            guard !isPaused, !isProcessing else { return }
+            slideProgress += 1.0 / ticksPerSlide
+            if slideProgress >= 1.0 {
+                nextSlide()
+            }
+        }
+        .task {
+            // Убираем Task.detached, обрабатываем на MainActor
+            let processed = await PeriodReportProcessor.process(workouts: allWorkouts)
+            
+            self.payload = processed
+            withAnimation { self.isProcessing = false }
+        }
+    }
+    
+    // MARK: - Navigation Logic
+    
+    private func nextSlide() {
+        slideProgress = 0.0
+        if let next = ReportSlide(rawValue: currentSlide.rawValue + 1) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                currentSlide = next
+            }
+        } else {
+            // Если слайды закончились - закрываем
+            dismiss()
+        }
+    }
+    
+    private func prevSlide() {
+        slideProgress = 0.0
+        if let prev = ReportSlide(rawValue: currentSlide.rawValue - 1) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                currentSlide = prev
+            }
+        } else {
+            slideProgress = 0.0
+        }
+    }
+}
+
+
+// ============================================================
+// MARK: - 3. Story UI Components
+// ============================================================
+
+// Индикатор сверху
+struct StoryProgressBar: View {
+    let slidesCount: Int
+    let currentIndex: Int
+    let progress: CGFloat
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(0..<slidesCount, id: \.self) { index in
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.white.opacity(0.3))
+                        
+                        Capsule()
+                            .fill(Color.white)
+                            .frame(width: geo.size.width * widthMultiplier(for: index))
+                    }
+                }
+                .frame(height: 4)
+            }
+        }
+        .shadow(color: .black.opacity(0.5), radius: 2)
+    }
+    
+    private func widthMultiplier(for index: Int) -> CGFloat {
+        if index < currentIndex { return 1.0 }
+        if index == currentIndex { return progress }
+        return 0.0
+    }
+}
+
+// Слайд 1: Intro
+struct StorySlideIntro: View {
+    let data: PeriodReportPayload
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 30) {
+                Spacer()
+                
+                Image(systemName: "calendar.badge.clock")
+                    .font(.system(size: 80))
+                    .foregroundColor(.white)
+                    .symbolEffect(.pulse)
+                    .shadow(color: .white.opacity(0.5), radius: 20)
+                
+                Text("Your Month\nin Review")
+                    .font(.system(size: 40, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .shadow(radius: 5)
+                
+                VStack(spacing: 16) {
+                    storyStatRow(title: "Workouts Done", value: "\(data.summary.currentWorkouts)", icon: "figure.run")
+                    storyStatRow(title: "Minutes Spent", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill")
+                    storyStatRow(title: "Favorite Day", value: data.favoriteDay, icon: "heart.fill")
+                }
+                .padding(24)
+                .background(.ultraThinMaterial)
+                .cornerRadius(24)
+                .padding(.horizontal, 20)
+                
+                Spacer()
             }
         }
     }
     
+    private func storyStatRow(title: String, value: String, icon: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .font(.title2)
+                .foregroundColor(.white)
+                .frame(width: 30)
+            Text(LocalizedStringKey(title))
+                .font(.headline)
+                .foregroundColor(.white.opacity(0.8))
+            Spacer()
+            Text(value)
+                .font(.title2)
+                .bold()
+                .foregroundColor(.white)
+        }
+    }
+}
+
+// Слайд 2: Volume
+struct StorySlideVolume: View {
+    let data: PeriodReportPayload
+    let unitsManager: UnitsManager
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(hex: "FF416C"), Color(hex: "FF4B2B")], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            
+            VStack(alignment: .leading, spacing: 20) {
+                Spacer()
+                
+                Text("You moved\nmountains.")
+                    .font(.system(size: 44, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .shadow(radius: 5)
+                    .padding(.horizontal, 24)
+                
+                let volConverted = unitsManager.convertFromKilograms(data.summary.currentVolume)
+                Text("\(LocalizationHelper.shared.formatInteger(volConverted)) \(unitsManager.weightUnitString())")
+                    .font(.system(size: 50, weight: .black, design: .rounded))
+                    .foregroundColor(.yellow)
+                    .shadow(color: .yellow.opacity(0.5), radius: 10)
+                    .padding(.horizontal, 24)
+                
+                Text(LocalizedStringKey(data.funFactVolume))
+                    .font(.title3)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white.opacity(0.9))
+                    .padding(.horizontal, 24)
+                
+                // Aesthetic Area Chart without axes
+                Chart(data.chartVolume) { point in
+                    let val = unitsManager.convertFromKilograms(point.value)
+                    LineMark(x: .value("Day", point.date), y: .value("Vol", val))
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(.white)
+                        .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                    
+                    AreaMark(x: .value("Day", point.date), y: .value("Vol", val))
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(LinearGradient(colors: [.white.opacity(0.5), .clear], startPoint: .top, endPoint: .bottom))
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .frame(height: 250)
+                .padding(.top, 20)
+                
+                Spacer()
+            }
+        }
+    }
+}
+
+// Слайд 3: Muscle Focus
+struct StorySlideFocus: View {
+    let data: PeriodReportPayload
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(hex: "1CB5E0"), Color(hex: "000046")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 20) {
+                Spacer()
+                
+                Text("You really love your")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Text(LocalizedStringKey(data.topMuscle))
+                    .font(.system(size: 60, weight: .heavy, design: .rounded))
+                    .foregroundColor(.cyan)
+                    .textCase(.uppercase)
+                    .shadow(color: .cyan.opacity(0.6), radius: 15)
+                
+                // Радарный график из уже существующего в проекте компонента
+                RadarChartView(
+                    currentData: data.radarCurrent,
+                    previousData: nil,
+                    highlightedAxis: data.topMuscle,
+                    color: .cyan
+                )
+                .frame(height: 320)
+                .padding(20)
+                .background(.ultraThinMaterial)
+                .cornerRadius(30)
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                
+                Spacer()
+            }
+        }
+    }
+}
+
+// Слайд 4: Outro & Share
+struct StorySlideOutro: View {
+    let data: PeriodReportPayload
+    var dismissAction: () -> Void
+    
+    @State private var showShareSheet = false
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(hex: "000000"), Color(hex: "434343")], startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 40) {
+                Spacer()
+                
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 100))
+                    .foregroundStyle(LinearGradient(colors: [.yellow, .orange, .red], startPoint: .top, endPoint: .bottom))
+                    .shadow(color: .orange.opacity(0.5), radius: 30)
+                
+                Text("Keep the momentum\ngoing!")
+                    .font(.system(size: 36, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                
+                Button {
+                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    generator.impactOccurred()
+                    // Здесь в будущем можно сделать рендер View в картинку
+                    showShareSheet = true
+                } label: {
+                    HStack {
+                        Image(systemName: "square.and.arrow.up")
+                        Text("Share My Month")
+                            .bold()
+                    }
+                    .font(.title3)
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(Color.white)
+                    .clipShape(Capsule())
+                    .shadow(color: .white.opacity(0.3), radius: 10)
+                }
+                .padding(.horizontal, 40)
+                
+                Button {
+                    dismissAction()
+                } label: {
+                    Text("Close")
+                        .font(.headline)
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                
+                Spacer()
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            // Заглушка для системного окна шаринга.
+            // В идеале сюда передается срендеренная картинка `UIImage`.
+            ActivityViewController(activityItems: ["I just completed \(data.summary.currentWorkouts) workouts this month using WorkoutTracker! 💪"])
+                .presentationDetents([.medium, .large])
+        }
+    }
+}
+    
     // MARK: - UI Components
+   
+struct MonthlyReportDetailsView: View {
+    let data: PeriodReportPayload
+    
+    // Возвращаем потерянные переменные
+    @Environment(UnitsManager.self) var unitsManager
+    @State private var selectedMetric: ReportChartMetric = .workouts
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                summaryGrid(data: data.summary)
+                chartSection(data: data)
+                calendarSection(data: data)
+                radarSection(data: data)
+            }
+        }
+    }
     
     @ViewBuilder
     private func chartSection(data: PeriodReportPayload) -> some View {
@@ -2044,7 +2435,6 @@ struct MonthlyReportDetailView: View {
             }
             .padding(.vertical, 10)
             
-            // Календарь всегда строим для текущего календарного месяца!
             let cal = Calendar.current
             let now = Date()
             let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: now))!
@@ -2117,6 +2507,7 @@ struct MonthlyReportDetailView: View {
         }
     }
 }
+// MARK: - Highlight Card (Кнопки метрик)
 struct HighlightCard: View {
     let title: LocalizedStringKey
     let value: String
@@ -2149,7 +2540,6 @@ struct HighlightCard: View {
         .frame(minWidth: 140, alignment: .leading)
         .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
         .cornerRadius(20)
-        // ✅ ДОБАВЛЕНА ОБВОДКА:
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(isSelected ? Color.white.opacity(0.3) : Color.gray.opacity(0.2), lineWidth: 1)
