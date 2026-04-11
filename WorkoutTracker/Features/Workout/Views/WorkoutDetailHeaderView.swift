@@ -10,9 +10,6 @@ struct WorkoutDetailHeaderView: View {
     var viewModel: WorkoutDetailViewModel
     
     @Environment(UnitsManager.self) var unitsManager
-    @Environment(ThemeManager.self) private var themeManager
-    
-    // ✅ FIX: Removed local completedSetsCount calculation.
     
     var body: some View {
         VStack(spacing: 16) {
@@ -32,27 +29,27 @@ struct WorkoutDetailHeaderView: View {
                         WorkoutTimerView(startDate: workout.date)
                     } else {
                         HStack(spacing: 6) {
-                            Image(systemName: "flag.checkered").foregroundColor(themeManager.current.lightHighlight)
+                            Image(systemName: "flag.checkered").foregroundColor(.cyan)
                             Text(LocalizedStringKey("Completed"))
                                 .font(.subheadline)
                                 .bold()
-                                .foregroundColor(themeManager.current.lightHighlight)
+                                .foregroundColor(.cyan)
                         }
                         Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                             .font(.title3)
                             .fontWeight(.heavy)
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(.primary)
                     }
                 }
                 Spacer()
                 
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(colors: [themeManager.current.lightHighlight.opacity(0.2), themeManager.current.primaryAccent.opacity(0.2)], startPoint: .top, endPoint: .bottom))
+                        .fill(LinearGradient(colors: [.cyan.opacity(0.2), .blue.opacity(0.2)], startPoint: .top, endPoint: .bottom))
                         .frame(width: 50, height: 50)
                     Image(systemName: workout.isActive ? "bolt.fill" : "checkmark.seal.fill")
                         .font(.title2)
-                        .foregroundStyle(themeManager.current.primaryGradient)
+                        .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
             }
             
@@ -63,7 +60,7 @@ struct WorkoutDetailHeaderView: View {
                                Text(LocalizedStringKey("🏋️ Total Lifted"))
                                    .font(.caption)
                                    .fontWeight(.bold)
-                                   .foregroundColor(themeManager.current.secondaryText)
+                                   .foregroundColor(.secondary)
                                    .textCase(.uppercase)
                                
                                let volume = viewModel.workoutAnalytics.volume
@@ -72,12 +69,12 @@ struct WorkoutDetailHeaderView: View {
                                HStack(alignment: .firstTextBaseline, spacing: 4) {
                                    Text("\(LocalizationHelper.shared.formatInteger(convertedVolume))")
                                        .font(.system(size: 28, weight: .heavy, design: .rounded))
-                                       .foregroundColor(themeManager.current.primaryText)
+                                       .foregroundColor(.primary)
                                        .contentTransition(.numericText())
                                    Text(unitsManager.weightUnitString())
                                        .font(.subheadline)
                                        .fontWeight(.bold)
-                                       .foregroundColor(themeManager.current.secondaryText)
+                                       .foregroundColor(.secondary)
                                }
                            }
                            
@@ -87,13 +84,12 @@ struct WorkoutDetailHeaderView: View {
                                Text(LocalizedStringKey("Completed Sets"))
                                    .font(.caption)
                                    .fontWeight(.bold)
-                                   .foregroundColor(themeManager.current.secondaryText)
+                                   .foregroundColor(.secondary)
                                    .textCase(.uppercase)
                                
-                               // ✅ FIX: Bind directly to the ViewModel's reactive DTO
                                Text("\(viewModel.workoutAnalytics.completedSetsCount)")
                                    .font(.system(size: 28, weight: .heavy, design: .rounded))
-                                   .foregroundColor(themeManager.current.lightHighlight)
+                                   .foregroundColor(.cyan)
                                    .contentTransition(.numericText())
                            }
                        }
@@ -105,7 +101,7 @@ struct WorkoutDetailHeaderView: View {
         .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
         .zIndex(10)
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.volume)
-               .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.completedSetsCount) 
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.completedSetsCount)
     }
 }
 
@@ -113,12 +109,12 @@ struct WorkoutDetailHeaderView: View {
 
 struct WorkoutTimerView: View {
     let startDate: Date
-    @Environment(ThemeManager.self) private var themeManager
+    
     var body: some View {
         Text(startDate, style: .timer)
             .font(.title2)
             .bold()
             .monospacedDigit()
-            .foregroundColor(themeManager.current.primaryText)
+            .foregroundColor(.primary)
     }
 }

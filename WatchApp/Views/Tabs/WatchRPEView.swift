@@ -1,12 +1,5 @@
-//
-//  WatchRPEView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 11.04.26.
-//
-
 // ============================================================
-// FILE: WatchApp/Views/WatchRPEView.swift
+// FILE: WatchApp/Views/Tabs/WatchRPEView.swift
 // ============================================================
 internal import SwiftUI
 
@@ -16,60 +9,71 @@ struct WatchRPEView: View {
     
     var body: some View {
         let intRPE = Int(rpe)
-        let color = WatchRPEHelper.getColor(for: intRPE)
         let description = WatchRPEHelper.getDescription(for: intRPE)
         
         ZStack {
             WatchTheme.background.ignoresSafeArea()
             
             VStack(spacing: 4) {
-                Text("Effort (RPE)")
-                    .font(.footnote)
-                    .fontWeight(.bold)
-                    .foregroundColor(color)
-                    .padding(.top, 10)
-                
-                Text("\(intRPE)")
-                    .font(.system(size: 80, weight: .heavy, design: .rounded))
+                // Info Header (From ViewModel)
+                Text(viewModel.nextSetInfo.replacingOccurrences(of: "Next: ", with: ""))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white)
-                    .contentTransition(.numericText())
-                
-                Text(description)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.gray)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
-                    .padding(.horizontal)
+                    .padding(.top, 4)
                 
                 Spacer()
                 
+                // Big Number & RPE label
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text("\(intRPE)")
+                        .font(.system(size: 50, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .contentTransition(.numericText())
+                    
+                    Text("RPE")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                
+                // Description Text
+                Text(description)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                
+                Spacer()
+                
+                // Action Buttons
                 HStack(spacing: 8) {
                     Button("Skip") {
                         WKInterfaceDevice.current().play(.click)
                         viewModel.showRPE = false
                     }
-                    .font(.footnote.bold())
+                    .font(.system(size: 15, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(WatchTheme.surfaceVariant)
-                    .cornerRadius(16)
+                    .background(WatchTheme.buttonGray)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
                     
                     Button("Save") {
                         WKInterfaceDevice.current().play(.success)
-                        // Note: To sync RPE to iOS, you'd extend your SyncPayload. For now, we dismiss.
-                        viewModel.showRPE = false
+                        Task { await viewModel.saveRPE(intRPE) }
                     }
-                    .font(.footnote.bold())
+                    .font(.system(size: 15, weight: .bold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(color)
-                    .foregroundColor(.black)
-                    .cornerRadius(16)
+                    .background(WatchTheme.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
                 }
                 .buttonStyle(.plain)
-                .padding(.horizontal)
-                .padding(.bottom, 10)
+                .padding(.bottom, 8)
             }
+            .padding(.horizontal, 4)
         }
         .focusable()
         .digitalCrownRotation(

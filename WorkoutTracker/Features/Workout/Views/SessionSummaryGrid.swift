@@ -1,10 +1,3 @@
-//
-//  SessionSummaryGrid.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 7.04.26.
-//
-
 // ============================================================
 // FILE: WorkoutTracker/Features/Workout/Views/SessionSummaryGrid.swift
 // ============================================================
@@ -15,10 +8,6 @@ struct SessionSummaryGrid: View {
     var viewModel: WorkoutDetailViewModel
     @Environment(UnitsManager.self) var unitsManager
     
-    // ✅ FIX: Removed local completedSetsCount computation
-    
-        @Environment(ThemeManager.self) private var themeManager
-
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
             // 1. Total Volume
@@ -32,7 +21,6 @@ struct SessionSummaryGrid: View {
             )
             
             // 2. Sets Done
-            // ✅ FIX: Bind directly to the ViewModel's reactive DTO
             SummaryGlassCard(
                 title: "Sets Done",
                 value: "\(viewModel.workoutAnalytics.completedSetsCount)",
@@ -69,8 +57,8 @@ struct SessionSummaryGrid: View {
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.volume)
-               .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.completedSetsCount) // ✅ FIX: Updated animation trigger
-               .animation(.spring(response: 0.4, dampingFraction: 0.7), value: workout.effortPercentage)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.completedSetsCount)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: workout.effortPercentage)
     }
 }
 
@@ -81,8 +69,6 @@ struct SummaryGlassCard: View {
     let icon: String
     let colors: [Color]
     
-        @Environment(ThemeManager.self) private var themeManager
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -102,23 +88,23 @@ struct SummaryGlassCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(value)
                         .font(.system(size: 26, weight: .heavy, design: .rounded))
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(.primary)
                         .contentTransition(.numericText())
                     Text(unit)
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(.secondary)
                 }
                 Text(title)
                     .font(.caption2)
                     .fontWeight(.bold)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(.secondary)
                     .textCase(.uppercase)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(themeManager.current.surface)
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -134,8 +120,6 @@ struct SummaryTimerGlassCard: View {
     let icon: String
     let colors: [Color]
     
-        @Environment(ThemeManager.self) private var themeManager
-
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -158,19 +142,19 @@ struct SummaryTimerGlassCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(startDate, style: .timer)
                     .font(.system(size: 26, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(.primary)
                     .monospacedDigit()
                 
                 Text(title)
                     .font(.caption2)
                     .fontWeight(.bold)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(.secondary)
                     .textCase(.uppercase)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(themeManager.current.surface)
+        .background(Color(UIColor.secondarySystemBackground))
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)

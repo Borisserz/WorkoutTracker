@@ -531,6 +531,8 @@ struct PremiumRecordCard: View {
             Text(record.value)
                 .font(.system(size: 20, weight: .heavy, design: .rounded))
                 .foregroundColor(themeManager.current.primaryText)
+                .lineLimit(1)                // <-- Добавить
+                .minimumScaleFactor(0.5)     // <-- Добавить (текст сожмется, если экран маленький)
         }
         .padding(16)
         .background(themeManager.current.surface)

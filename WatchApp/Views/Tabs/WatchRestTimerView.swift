@@ -1,18 +1,11 @@
-
-//
-//  WatchRestTimerView.swift.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 11.04.26.
-//
-
 // ============================================================
-// FILE: WatchApp/Views/WatchRestTimerView.swift
+// FILE: WatchApp/Views/Tabs/WatchRestTimerView.swift
 // ============================================================
 internal import SwiftUI
 
 struct WatchRestTimerView: View {
     @Bindable var viewModel: WatchActiveWorkoutViewModel
+    @Environment(WatchWorkoutManager.self) private var workoutManager // Нужен для пульса
     
     var progress: Double {
         guard viewModel.initialRestTime > 0 else { return 0 }
@@ -24,58 +17,91 @@ struct WatchRestTimerView: View {
             WatchTheme.background.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Top Skip
-                HStack {
-                    Spacer()
-                    Button("Skip") {
+                // ТАПБАР: Кнопка Skip слева, Время и Пульс справа
+                HStack(alignment: .top) {
+                    Button {
                         WKInterfaceDevice.current().play(.click)
                         viewModel.skipTimer()
+                    } label: {
+                        Text("Skip")
+                            .font(.system(size: 14, weight: .bold))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(WatchTheme.buttonGray)
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
                     }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(WatchTheme.cyan)
+                    .buttonStyle(.plain)
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing, spacing: 2) {
+                        // Время (Например: 15:01)
+                        Text(Date(), format: .dateTime.hour().minute())
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                        
+                        // Пульс (Например: ❤️ 92)
+                        HStack(spacing: 2) {
+                            Image(systemName: "heart.fill")
+                                .foregroundColor(WatchTheme.red)
+                                .font(.system(size: 10))
+                                .symbolEffect(.pulse, options: .repeating, isActive: workoutManager.isRunning)
+                            
+                            Text("\(Int(workoutManager.heartRate))")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                    }
                 }
-                .padding(.horizontal)
-                .padding(.top, 10)
+                .padding(.horizontal, 8)
+                .padding(.top, 8)
                 
                 Spacer()
                 
-                // Huge Timer
+                // ОГРОМНЫЙ ТАЙМЕР В ЦЕНТРЕ
                 Text(timeString(viewModel.restTimeRemaining))
-                    .font(.system(size: 70, weight: .heavy, design: .rounded).monospacedDigit())
+                    .font(.system(size: 48, weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                 
-                // Thick Progress Bar
+                // СИНЯЯ ПОЛОСА PROGRESS BAR
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.1))
+                        Capsule().fill(WatchTheme.blue.opacity(0.3)) // Полупрозрачный фон полосы
                         Capsule()
-                            .fill(WatchTheme.primaryGradient)
+                            .fill(WatchTheme.blue)
                             .frame(width: max(0, geo.size.width * CGFloat(progress)))
                             .animation(.linear(duration: 1.0), value: progress)
                     }
                 }
-                .frame(height: 12)
-                .padding(.horizontal, 20)
+                .frame(height: 8)
+                .padding(.horizontal, 12)
                 .padding(.vertical, 8)
                 
-                // Next Set Info
-                Text(viewModel.nextSetInfo)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                // ИНФОРМАЦИЯ О СЛЕДУЮЩЕМ СЕТЕ (Выровнено по левому краю)
+                HStack {
+                    Text(viewModel.nextSetInfo)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(3)
+                        .lineSpacing(2)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
                 
                 Spacer()
                 
-                // Adjust Controls
+                // КНОПКИ -15s и +15s
                 HStack(spacing: 12) {
                     timerButton(title: "-15s", action: { viewModel.adjustTimer(by: -15) })
                     timerButton(title: "+15s", action: { viewModel.adjustTimer(by: 15) })
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 10)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
             }
         }
     }
@@ -86,12 +112,12 @@ struct WatchRestTimerView: View {
             action()
         }) {
             Text(title)
-                .font(.headline.bold())
+                .font(.system(size: 15, weight: .bold))
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
-                .background(WatchTheme.surfaceVariant)
+                .background(WatchTheme.buttonGray)
                 .foregroundColor(.white)
-                .cornerRadius(12)
+                .cornerRadius(14)
         }
         .buttonStyle(.plain)
     }

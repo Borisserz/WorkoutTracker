@@ -120,6 +120,10 @@ final class WorkoutDetailViewModel {
                 chartExercises: chartExercises,
                 completedSetsCount: totalCompletedSets
             )
+        
+        Task {
+                   await PhoneWatchManager.shared.sendFullActiveStateToWatch()
+               }
         }
 
     func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
@@ -351,6 +355,7 @@ final class WorkoutDetailViewModel {
             }
             
             workoutService.stopLiveActivity()
+        await PhoneWatchManager.shared.sendFinishWorkoutToWatch(workoutID: workout.id.uuidString)
             progressManager.addXP(for: workout)
             try? workout.modelContext?.save()
             

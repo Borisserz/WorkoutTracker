@@ -17,8 +17,6 @@ struct WorkoutDetailView: View {
         self._viewModel = State(initialValue: viewModel)
     }
 
-        @Environment(ThemeManager.self) private var themeManager
-
     var body: some View {
         WorkoutDetailContentView(workout: workout, viewModel: viewModel)
             // ✅ ГЛАВНЫЙ ФИКС: Передаем viewModel в окружение для всех дочерних вью
@@ -75,8 +73,6 @@ struct WorkoutDetailContentView: View {
         .pickerStyle(.segmented)
     }
     
-        @Environment(ThemeManager.self) private var themeManager
-
     var body: some View {
         ZStack {
             ScrollViewReader { proxy in
@@ -118,12 +114,11 @@ struct WorkoutDetailContentView: View {
         .sheet(isPresented: $showTimerSetup) { TimerSetupSheet().environment(timerManager) }
         .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
                Button(LocalizedStringKey("Delete"), role: .destructive) {
-                   isDeletingEmptyWorkout = true // Блокируем логику в onDisappear
-                   let safeID = workout.persistentModelID // Безопасно сохраняем ID до удаления
-                   dismiss() // Сначала закрываем экран
+                   isDeletingEmptyWorkout = true
+                   let safeID = workout.persistentModelID
+                   dismiss()
                    
                    Task {
-                       // Ждем, пока экран полностью закроется, чтобы не сломать Bindable
                        try? await Task.sleep(for: .seconds(0.5))
                        await viewModel.deleteEmptyWorkout(workoutID: safeID)
                    }
@@ -173,7 +168,6 @@ struct WorkoutDetailContentView: View {
                                 }
                             }
                             
-                            // ✅ Отступ внизу зависит от того, открыт таймер или нет
                             Spacer(minLength: timerManager.isRestTimerActive ? 280 : 120)
                         }
                         .padding()
@@ -181,7 +175,6 @@ struct WorkoutDetailContentView: View {
                 }
             }
             
-            // ✅ Кнопка Финиша всплывает НАД таймером
             if workout.isActive && selectedTab != .aiCoach {
                 finishWorkoutButton
             }
@@ -232,12 +225,11 @@ struct WorkoutDetailContentView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
                 .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))
-                .foregroundColor(themeManager.current.background)
+                .foregroundColor(.white)
                 .clipShape(Capsule())
                 .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)
             }
             .padding(.horizontal, 24)
-            // ДИНАМИЧЕСКИЙ ОТСТУП СНИЗУ ДЛЯ КНОПКИ (Чтобы таймер снизу пролезал)
             .padding(.bottom, timerManager.isRestTimerActive ? 180 : 16)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: timerManager.isRestTimerActive)
             .disabled(viewModel.isShowingSnackbar)
@@ -245,7 +237,7 @@ struct WorkoutDetailContentView: View {
         .background(
             VStack {
                 Spacer()
-                LinearGradient(colors: [themeManager.current.background.opacity(0), themeManager.current.background], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [Color(UIColor.systemBackground).opacity(0), Color(UIColor.systemBackground)], startPoint: .top, endPoint: .bottom)
                     .frame(height: timerManager.isRestTimerActive ? 280 : 100)
             }
             .ignoresSafeArea()
@@ -255,7 +247,7 @@ struct WorkoutDetailContentView: View {
     
     private var snackbarOverlay: some View {
         HStack {
-            Text(LocalizedStringKey("Workout finished")).font(.subheadline).foregroundColor(themeManager.current.background)
+            Text(LocalizedStringKey("Workout finished")).font(.subheadline).foregroundColor(.white)
             Spacer()
             Button {
                 let generator = UIImpactFeedbackGenerator(style: .light)
@@ -284,11 +276,8 @@ struct WorkoutDetailContentView: View {
         }
     }
     private func handleOnDisappear() {
-            timerManager.isHidden = false
-            // 👈 ИСПРАВЛЕНИЕ: Мы полностью убрали код автоудаления пустой тренировки.
-            // Теперь вы можете начать пустую тренировку, переключаться между вкладками,
-            // искать упражнения, а плашка активности (Active Banner) будет висеть внизу!
-        }
+        timerManager.isHidden = false
+    }
     
     private func handleExercisesChanged() {
         viewModel.updateWorkoutAnalytics(for: workout)
@@ -327,7 +316,7 @@ struct WorkoutDetailContentView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.accentColor)
-                    .foregroundColor(themeManager.current.background)
+                    .foregroundColor(.white)
                     .cornerRadius(12)
                     .shadow(radius: 5)
                 }
@@ -343,10 +332,10 @@ struct WorkoutDetailContentView: View {
                 Text(LocalizedStringKey("Exercises"))
                     .font(.title2)
                     .bold()
-                    .lineLimit(1) // ✅ Запрещаем перенос заголовка на 2 строки
-                    .minimumScaleFactor(0.5) // ✅ Разрешаем шрифту сжаться, если тесно
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                 
-                Spacer(minLength: 5) // Позволяем спейсеру сжиматься
+                Spacer(minLength: 5)
                 
                 if workout.isActive {
                     Button { showTimerSetup = true } label: {
@@ -363,8 +352,8 @@ struct WorkoutDetailContentView: View {
                     Label(LocalizedStringKey("Superset"), systemImage: "plus")
                         .font(.caption)
                         .bold()
-                        .lineLimit(1) // ✅ Запрещаем перенос текста в кнопке
-                        .minimumScaleFactor(0.7) // ✅ Разрешаем тексту кнопки сжаться
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
                         .foregroundColor(.accentColor)
@@ -375,8 +364,8 @@ struct WorkoutDetailContentView: View {
                     Label(LocalizedStringKey("Exercise"), systemImage: "plus")
                         .font(.caption)
                         .bold()
-                        .lineLimit(1) // ✅ Запрещаем перенос текста в кнопке
-                        .minimumScaleFactor(0.7) // ✅ Разрешаем тексту кнопки сжаться
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
                         .foregroundColor(.accentColor)
@@ -404,7 +393,6 @@ struct WorkoutDetailContentView: View {
                     )
                     .frame(height: 220)
                 } else {
-                    // Динамический заголовок выбранного столбца
                     if let selected = selectedChartExerciseName {
                         Text(LocalizationHelper.shared.translateName(selected.trimmingCharacters(in: .whitespaces)))
                             .font(.headline)
@@ -414,7 +402,7 @@ struct WorkoutDetailContentView: View {
                     } else {
                         Text(LocalizedStringKey("Tap a bar to see full name"))
                             .font(.subheadline)
-                            .foregroundColor(themeManager.current.secondaryText)
+                            .foregroundColor(.secondary)
                             .padding(.bottom, 4)
                             .frame(minHeight: 24)
                     }
@@ -447,7 +435,7 @@ struct WorkoutDetailContentView: View {
                                 } else {
                                     Text("\(Int(convertedWeight))")
                                         .font(.system(size: 10, weight: .semibold, design: .rounded))
-                                        .foregroundColor(themeManager.current.secondaryText)
+                                        .foregroundColor(.secondary)
                                         .contentTransition(.numericText())
                                 }
                             }
@@ -455,7 +443,6 @@ struct WorkoutDetailContentView: View {
                     }
                     .frame(height: 220)
                     .chartXSelection(value: $selectedChartExerciseName)
-                    // Скрываем лишние линии сетки для чистоты дизайна
                     .chartXAxis {
                         AxisMarks(values: .automatic) { value in
                             AxisValueLabel {
@@ -464,14 +451,14 @@ struct WorkoutDetailContentView: View {
 Text(String(translatedName.prefix(3)).capitalized)
                                         .font(.caption2)
                                         .fontWeight(.bold)
-                                        .foregroundColor(themeManager.current.secondaryText)
+                                        .foregroundColor(.secondary)
                                 }
                             }
                         }
                     }
                     .chartYAxis {
                         AxisMarks(position: .leading) { _ in
-                            AxisGridLine().foregroundStyle(themeManager.current.surfaceVariant)
+                            AxisGridLine().foregroundStyle(Color.gray.opacity(0.1))
                             AxisValueLabel().foregroundStyle(Color.secondary)
                         }
                     }
@@ -483,7 +470,7 @@ Text(String(translatedName.prefix(3)).capitalized)
                 }
             }
             .padding(20)
-            .background(themeManager.current.surface)
+            .background(Color(UIColor.secondarySystemBackground))
             .cornerRadius(24)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -525,7 +512,6 @@ Text(String(translatedName.prefix(3)).capitalized)
                 .padding(.horizontal, 4)
                 
                 VStack {
-                    // ✅ ИСПРАВЛЕНИЕ: Передаем rawMuscleCounts и "exercises"
                     BodyHeatmapView(
                         muscleIntensities: viewModel.workoutAnalytics.intensity,
                         rawMuscleCounts: viewModel.workoutAnalytics.rawCounts,
@@ -537,7 +523,7 @@ Text(String(translatedName.prefix(3)).capitalized)
                 }
                 .padding(.vertical, 20)
                 .frame(maxWidth: .infinity)
-                .background(themeManager.current.surface)
+                .background(Color(UIColor.secondarySystemBackground))
                 .cornerRadius(24)
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)

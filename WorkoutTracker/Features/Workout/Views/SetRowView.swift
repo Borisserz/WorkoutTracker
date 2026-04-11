@@ -22,7 +22,7 @@ struct SetRowView: View {
     let isWorkoutCompleted: Bool
     
     var onCheck: (_ set: WorkoutSet, _ shouldStartTimer: Bool, _ suggestedDuration: Int?) -> Void
-    var onDataChange: (() -> Void)? = nil // ✅ FIX: Добавлен триггер обновления
+    var onDataChange: (() -> Void)? = nil
     
     var prevWeight: Double? = nil
     var prevReps: Int? = nil
@@ -40,7 +40,7 @@ struct SetRowView: View {
             get: { set.reps.map { Double($0) } },
             set: {
                 set.reps = $0.map { InputValidator.validateReps(Int($0)).clampedValue }
-                onDataChange?() // ✅ FIX: Мгновенный пересчет при вводе
+                onDataChange?()
             }
         )
     }
@@ -49,7 +49,7 @@ struct SetRowView: View {
             get: { set.time.map { Double($0) } },
             set: {
                 set.time = $0.map { InputValidator.validateTime(Int($0)).clampedValue }
-                onDataChange?() // ✅ FIX: Мгновенный пересчет при вводе
+                onDataChange?()
             }
         )
     }
@@ -58,7 +58,7 @@ struct SetRowView: View {
             get: { set.weight.map { unitsManager.convertFromKilograms($0) } },
             set: {
                 set.weight = $0.map { InputValidator.validateWeight(unitsManager.convertToKilograms($0)).clampedValue }
-                onDataChange?() // ✅ FIX: Мгновенный пересчет при вводе
+                onDataChange?()
             }
         )
     }
@@ -67,18 +67,15 @@ struct SetRowView: View {
             get: { set.distance.map { unitsManager.convertFromMeters($0) } },
             set: {
                 set.distance = $0.map { InputValidator.validateDistance(unitsManager.convertToMeters($0)).clampedValue }
-                onDataChange?() // ✅ FIX: Мгновенный пересчет при вводе
+                onDataChange?()
             }
         )
     }
-
-        @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             indexLabel
             inputsSection
-            // Spacer() удален, теперь инпуты растягиваются на всё доступное пространство
             aiTrackerButton
             checkButton
         }
@@ -171,9 +168,9 @@ struct SetRowView: View {
                 Text(formatValue(binding.wrappedValue, type: type))
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
                     .foregroundColor(binding.wrappedValue != nil ? .primary : .secondary)
-                    .frame(maxWidth: .infinity) // Динамическая ширина вместо жесткой привязки
+                    .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(themeManager.current.background)
+                    .background(Color(UIColor.systemBackground))
                     .cornerRadius(10)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
@@ -183,7 +180,7 @@ struct SetRowView: View {
             .buttonStyle(.plain)
             
             if let ghost = ghostText {
-                Text(ghost).font(.system(size: 10, weight: .medium, design: .rounded)).foregroundColor(themeManager.current.secondaryAccent)
+                Text(ghost).font(.system(size: 10, weight: .medium, design: .rounded)).foregroundColor(.gray)
             }
         }
         .frame(maxWidth: .infinity)
@@ -253,11 +250,9 @@ struct SetRowView: View {
                }
                onCheck(set, autoStartTimer && !isLastSet, autoStartTimer && !isLastSet ? suggestedDuration : nil)
            } else {
-               // ✅ FIX: Ensure the ViewModel recalculates analytics even if the set is unchecked!
                onCheck(set, false, nil)
            }
        }
-
     
     private func formatTime(_ seconds: Int) -> String { "\(seconds / 60):\(String(format: "%02d", seconds % 60))" }
 }

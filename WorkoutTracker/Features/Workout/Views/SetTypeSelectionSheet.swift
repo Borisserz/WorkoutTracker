@@ -2,19 +2,11 @@
 //  SetTypeSelectionSheet.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 6.04.26.
-//
-
-//
-//  SetTypeSelectionSheet.swift
-//  WorkoutTracker
-//
 
 internal import SwiftUI
 
 struct SetTypeSelectionSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(ThemeManager.self) private var themeManager
     @Binding var selectedType: SetType
     let onRemove: () -> Void
     
@@ -58,7 +50,7 @@ struct SetTypeSelectionSheet: View {
                             
                             Text(LocalizedStringKey("Remove Set"))
                                 .font(.body)
-                                .foregroundColor(themeManager.current.primaryText)
+                                .foregroundColor(.primary)
                             
                             Spacer()
                         }
@@ -95,13 +87,13 @@ struct SetTypeSelectionSheet: View {
                     
                     Text(type.title)
                         .font(.body)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(.primary)
                     
                     Spacer()
                     
                     if selectedType == type {
                         Image(systemName: "checkmark")
-                            .foregroundColor(themeManager.current.primaryAccent)
+                            .foregroundColor(.blue)
                             .font(.headline)
                     }
                 }
@@ -115,7 +107,7 @@ struct SetTypeSelectionSheet: View {
                 showInfoAlert = true
             } label: {
                 Image(systemName: "questionmark.circle.fill")
-                    .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
+                    .foregroundColor(.gray.opacity(0.5))
                     .font(.title3)
                     .padding(.leading, 8)
             }
@@ -123,6 +115,6 @@ struct SetTypeSelectionSheet: View {
         }
         .padding(.vertical, 16)
         .padding(.horizontal, 20)
-        .background(selectedType == type ? themeManager.current.primaryAccent.opacity(0.05) : Color.clear)
+        .background(selectedType == type ? Color.blue.opacity(0.05) : Color.clear)
     }
 }

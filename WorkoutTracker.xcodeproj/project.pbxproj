@@ -122,6 +122,8 @@
 				CoreLogic/Managers/UnitsManager.swift,
 				DataLayer/DTOs/AchievementModels.swift,
 				DataLayer/DTOs/WorkoutModels.swift,
+				DataLayer/LocalDB/exercises_ru.json,
+				DataLayer/LocalDB/exercises.json,
 				DataLayer/Models/AIChatModels.swift,
 				DataLayer/Models/BodyMeasurement.swift,
 				DataLayer/Models/CustomExerciseModels.swift,
@@ -548,6 +550,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need to save your workouts and active calories";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need to read your heart rate during workouts";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.borisdev.WorkoutTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -582,6 +587,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need to save your workouts and active calories";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need to read your heart rate during workouts";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.borisdev.WorkoutTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
