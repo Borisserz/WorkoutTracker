@@ -1,12 +1,5 @@
-//
-//  SmartCaptureView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 10.04.26.
-//
-
 // ============================================================
-// FILE: WorkoutTracker/Features/Profile/SmartCamera/SmartCaptureView.swift
+// FILE: WorkoutTracker/Features/Profile/SmartCaptureView.swift
 // ============================================================
 
 internal import SwiftUI
@@ -21,6 +14,8 @@ struct SmartCaptureView: View {
     // UI states
     @State private var overlayOpacity: Double = 0.4
     
+    @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
@@ -62,15 +57,23 @@ struct SmartCaptureView: View {
                 .opacity(overlayOpacity)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
+                // Рамка, если пользователь выровнялся по старому фото
+                .overlay(
+                    Rectangle()
+                        .stroke(viewModel.isBodyAligned ? Color.green : Color.clear, lineWidth: viewModel.isBodyAligned ? 8 : 0)
+                        .ignoresSafeArea()
+                        .animation(.easeInOut(duration: 0.3), value: viewModel.isBodyAligned)
+                )
         } else {
-            // Default Silhouette if no previous photo exists
+            // Дефолтный силуэт (зеленеет, когда стоишь правильно)
             Image(systemName: "figure.stand")
                 .resizable()
                 .scaledToFit()
                 .padding(40)
-                .foregroundColor(.white)
-                .opacity(0.3)
+                .foregroundColor(viewModel.isBodyAligned ? .green : themeManager.current.background)
+                .opacity(viewModel.isBodyAligned ? 0.6 : 0.3)
                 .allowsHitTesting(false)
+                .animation(.easeInOut(duration: 0.3), value: viewModel.isBodyAligned)
         }
     }
     
@@ -100,7 +103,7 @@ struct SmartCaptureView: View {
             if let count = viewModel.countdown {
                 Text("\(count)")
                     .font(.system(size: 150, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .shadow(color: .cyan, radius: 20, x: 0, y: 0)
                     .transition(.scale.combined(with: .opacity))
             }
@@ -110,14 +113,16 @@ struct SmartCaptureView: View {
             // Bottom Instructions & Gesture Status
             VStack(spacing: 16) {
                 if viewModel.countdown == nil {
-                    Text(LocalizedStringKey("Align your body. Show ✌️ to start capture."))
+                    // Динамическая подсказка
+                    Text(viewModel.isBodyAligned ? "Perfect! Show ✌️ to capture." : "Align your body in the frame.")
                         .font(.subheadline)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(viewModel.isBodyAligned ? .green : themeManager.current.background)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(.ultraThinMaterial)
                         .clipShape(Capsule())
+                        .animation(.easeInOut, value: viewModel.isBodyAligned)
                     
                     // Gesture Progress Ring
                     ZStack {
@@ -127,15 +132,19 @@ struct SmartCaptureView: View {
                         
                         Circle()
                             .trim(from: 0, to: CGFloat(viewModel.gestureController.gestureProgress))
-                            .stroke(Color.cyan, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                            // Цвет кольца также меняется
+                            .stroke(viewModel.isBodyAligned ? Color.green : Color.cyan, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                             .frame(width: 60, height: 60)
                             .rotationEffect(.degrees(-90))
                         
                         Image(systemName: "hand.point.up.braille.fill")
                             .font(.title2)
-                            .foregroundColor(viewModel.gestureController.gestureProgress > 0 ? .cyan : .white)
+                            .foregroundColor(viewModel.gestureController.gestureProgress > 0 ? (viewModel.isBodyAligned ? .green : .cyan) : .white)
                     }
                     .padding(.bottom, 30)
+                    // Снижаем непрозрачность жеста, если тело еще не в кадре
+                    .opacity(viewModel.isBodyAligned ? 1.0 : 0.5)
+                    .animation(.easeInOut, value: viewModel.isBodyAligned)
                 }
             }
         }
@@ -158,7 +167,7 @@ struct SmartCaptureView: View {
                     } label: {
                         Text(LocalizedStringKey("Retake"))
                             .font(.headline)
-                            .foregroundColor(.white)
+                            .foregroundColor(themeManager.current.background)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.white.opacity(0.2))
@@ -179,8 +188,9 @@ struct SmartCaptureView: View {
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+                .padding(.bottom, 16)
             }
+            .safeAreaPadding(.bottom)
         }
         .transition(.opacity)
         .zIndex(10)

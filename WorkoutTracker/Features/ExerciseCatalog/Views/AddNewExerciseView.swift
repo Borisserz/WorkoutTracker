@@ -18,7 +18,7 @@ struct AddNewExerciseView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(CatalogViewModel.self) private var catalogViewModel
-    
+    @Environment(ThemeManager.self) private var themeManager
     // ✅ 1. Добавляем стейт для категорий
     @State private var categories: [String] = []
     
@@ -122,7 +122,7 @@ struct AddNewExerciseView: View {
                     Spacer()
                     if selectedMuscles.contains(muscle.slug) {
                         Image(systemName: "checkmark")
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent)
                     }
                 }
                 .contentShape(Rectangle()) // Чтобы область нажатия была по всей ширине строки

@@ -44,6 +44,8 @@ struct EffortInputView: View {
         RPEData.get(for: localEffort)
     }
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -59,7 +61,7 @@ struct EffortInputView: View {
                 
                 Text(LocalizedStringKey("How hard was this exercise overall?"))
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
             .padding(.bottom, 24)
             
@@ -75,12 +77,12 @@ struct EffortInputView: View {
                     Text(currentRPE.title)
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .animation(.none, value: localEffort) // Отключаем кроссфейд для четкости
                     
                     Text(currentRPE.description)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .multilineTextAlignment(.center)
                         .animation(.none, value: localEffort)
                 }
@@ -103,7 +105,7 @@ struct EffortInputView: View {
                     Image(systemName: "checkmark")
                 }
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(themeManager.current.background)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(currentRPE.color)
@@ -146,7 +148,7 @@ struct EffortInputView: View {
                                 .font(.title3)
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .frame(width: 50, height: 50)
-                                .background(isSelected ? currentRPE.color : Color(UIColor.secondarySystemBackground))
+                                .background(isSelected ? currentRPE.color : themeManager.current.surface)
                                 .foregroundColor(isSelected ? .white : .primary)
                                 .clipShape(Circle())
                                 .scaleEffect(isSelected ? 1.1 : 1.0)

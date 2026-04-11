@@ -67,6 +67,8 @@ struct WorkoutHubView: View {
     @State private var isProcessing = false
     @State private var selectedPreview: PreviewItem? = nil
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -216,11 +218,11 @@ struct WorkoutHubView: View {
                 Text(LocalizedStringKey("Start an Empty Workout"))
                     .font(.headline).fontWeight(.bold)
             }
-            .foregroundColor(.white)
+            .foregroundColor(themeManager.current.background)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
-                LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing)
             )
             .cornerRadius(16)
             .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
@@ -241,7 +243,7 @@ struct WorkoutHubView: View {
                 Text("Smart Workout Builder")
                     .font(.headline).fontWeight(.bold)
             }
-            .foregroundColor(.white)
+            .foregroundColor(themeManager.current.background)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(
@@ -265,11 +267,11 @@ struct WorkoutHubView: View {
             HStack(spacing: 12) {
                 Button { presetToEdit = nil; showPresetEditor = true } label: {
                     HStack {
-                        Image(systemName: "clipboard.fill").foregroundColor(.blue)
-                        Text(LocalizedStringKey("New Routine")).font(.subheadline).fontWeight(.semibold).foregroundColor(.primary)
+                        Image(systemName: "clipboard.fill").foregroundColor(themeManager.current.primaryAccent)
+                        Text(LocalizedStringKey("New Routine")).font(.subheadline).fontWeight(.semibold).foregroundColor(themeManager.current.primaryText)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(themeManager.current.surface)
                     .cornerRadius(16)
                     .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                 }
@@ -277,10 +279,10 @@ struct WorkoutHubView: View {
                 Button { navigateToExplore = true } label: {
                     HStack {
                         Image(systemName: "magnifyingglass").foregroundColor(.purple)
-                        Text(LocalizedStringKey("Explore")).font(.subheadline).fontWeight(.semibold).foregroundColor(.primary)
+                        Text(LocalizedStringKey("Explore")).font(.subheadline).fontWeight(.semibold).foregroundColor(themeManager.current.primaryText)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(themeManager.current.surface)
                     .cornerRadius(16)
                     .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                 }
@@ -408,6 +410,8 @@ struct CarouselSectionView: View {
     let onDuplicate: ((WorkoutPreset) -> Void)?
     let onDelete: ((CarouselItemType) -> Void)?
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
@@ -416,7 +420,7 @@ struct CarouselSectionView: View {
                 HStack(alignment: .bottom) {
                     Text(title)
                         .font(.title3).bold()
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                     
                     Spacer()
                     
@@ -431,7 +435,7 @@ struct CarouselSectionView: View {
                     )) {
                         Text(LocalizedStringKey("See all"))
                             .font(.subheadline)
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent)
                     }
                 }
                 .padding(.horizontal)
@@ -467,12 +471,14 @@ struct PremiumCarouselCardView: View {
     let onDuplicate: ((WorkoutPreset) -> Void)?
     let onDelete: ((CarouselItemType) -> Void)?
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         Button(action: onTap) {
             ZStack(alignment: .topLeading) {
                 // Background Base
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : .white)
+                    .fill(colorScheme == .dark ? themeManager.current.surface : .white)
                 
                 // Subtle Accent Glow
                 GeometryReader { geo in
@@ -525,9 +531,9 @@ struct PremiumCarouselCardView: View {
                         } label: {
                             Image(systemName: "ellipsis")
                                 .font(.headline)
-                                .foregroundColor(.gray)
+                                .foregroundColor(themeManager.current.secondaryAccent)
                                 .frame(width: 30, height: 30)
-                                .background(Color.gray.opacity(0.1))
+                                .background(themeManager.current.surfaceVariant)
                                 .clipShape(Circle())
                         }
                         .highPriorityGesture(TapGesture().onEnded { }) // Prevent triggering card tap
@@ -540,13 +546,13 @@ struct PremiumCarouselCardView: View {
                         Text(title)
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                         
                         Text(subtitle)
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                             .lineLimit(1)
                     }
                 }
@@ -616,6 +622,8 @@ struct PresetListView: View {
     
     let columns = [GridItem(.adaptive(minimum: 160), spacing: 16)]
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 16) {

@@ -67,6 +67,8 @@ struct TemplatePreviewSheetView: View {
         return Array(Set(allMuscles)).sorted()
     }
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
@@ -121,14 +123,14 @@ struct TemplatePreviewSheetView: View {
             // Иконка с неоновым сине-голубым свечением
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 80, height: 80)
                     .blur(radius: 25)
                     .opacity(0.5)
                 
                 ZStack {
                     Circle()
-                        .fill(Color(UIColor.secondarySystemBackground))
+                        .fill(themeManager.current.surface)
                         .frame(width: 88, height: 88)
                         .overlay(Circle().stroke(Color.gray.opacity(0.15), lineWidth: 1))
                         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
@@ -136,7 +138,7 @@ struct TemplatePreviewSheetView: View {
                     if item.isSystemIcon {
                         Image(systemName: item.icon)
                             .font(.system(size: 36, weight: .semibold))
-                            .foregroundStyle(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .foregroundStyle(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     } else if UIImage(named: item.icon) != nil {
                         Image(item.icon)
                             .resizable()
@@ -145,7 +147,7 @@ struct TemplatePreviewSheetView: View {
                     } else {
                         Image(systemName: "dumbbell.fill")
                             .font(.system(size: 36, weight: .semibold))
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent)
                     }
                 }
             }
@@ -155,14 +157,14 @@ struct TemplatePreviewSheetView: View {
             VStack(spacing: 6) {
                 Text(LocalizedStringKey(item.title))
                     .font(.system(size: 28, weight: .heavy, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                 
                 Text(LocalizedStringKey("\(item.exercises.count) exercises"))
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
         }
     }
@@ -179,10 +181,10 @@ struct TemplatePreviewSheetView: View {
                             .font(.caption)
                             .fontWeight(.bold)
                             .textCase(.uppercase)
-                            .foregroundColor(.blue) // Текст в цвет акцента
+                            .foregroundColor(themeManager.current.primaryAccent) // Текст в цвет акцента
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.blue.opacity(0.15)) // Полупрозрачный фон акцента
+                            .background(themeManager.current.primaryAccent.opacity(0.15)) // Полупрозрачный фон акцента
                             .clipShape(Capsule())
                     }
                     
@@ -196,7 +198,7 @@ struct TemplatePreviewSheetView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Workout Structure"))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .padding(.horizontal)
             
             VStack(spacing: 12) {
@@ -208,18 +210,18 @@ struct TemplatePreviewSheetView: View {
                             // Иконка упражнения
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(Color.blue.opacity(0.1))
+                                    .fill(themeManager.current.primaryAccent.opacity(0.1))
                                     .frame(width: 50, height: 50)
                                 
                                 Image(systemName: exercise.type == .cardio ? "figure.run" : "dumbbell.fill")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(themeManager.current.primaryAccent)
                                     .font(.title3)
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(LocalizationHelper.shared.translateName(exercise.name))
                                     .font(.headline)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                     .lineLimit(1)
                                 
                                 HStack(spacing: 6) {
@@ -231,22 +233,22 @@ struct TemplatePreviewSheetView: View {
                                         Text("•")
                                         let weight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
                                         Text("\(LocalizationHelper.shared.formatFlexible(weight)) \(unitsManager.weightUnitString())")
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(themeManager.current.primaryAccent)
                                             .bold()
                                     }
                                 }
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                             }
                             
                             Spacer()
                         }
                         .padding(12)
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(themeManager.current.surface)
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                                .stroke(themeManager.current.surfaceVariant, lineWidth: 1)
                         )
                         .shadow(color: .black.opacity(0.04), radius: 5, x: 0, y: 2)
                         .padding(.horizontal)
@@ -275,11 +277,11 @@ struct TemplatePreviewSheetView: View {
                     .font(.title3)
                     .fontWeight(.bold)
             }
-            .foregroundColor(.white)
+            .foregroundColor(themeManager.current.background)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
             .background(
-                LinearGradient(colors: [.blue, .cyan], startPoint: .leading, endPoint: .trailing)
+                LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .leading, endPoint: .trailing)
             )
             .cornerRadius(20)
             .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)

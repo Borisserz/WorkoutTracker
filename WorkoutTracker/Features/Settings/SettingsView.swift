@@ -21,7 +21,7 @@ struct SettingsView: View {
     @State private var showClearAllAlert = false
     @State private var fileToShare: SharedFileWrapper?
     @State private var showExportFormatPicker = false
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         NavigationStack {
             List {
@@ -44,10 +44,10 @@ struct SettingsView: View {
                     Toggle(isOn: $includeWarmupsInStats) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(LocalizedStringKey("Include Warmups in Stats"))
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                             Text(LocalizedStringKey("If enabled, warm-up sets will be counted in total volume and personal records."))
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                         }
                     }
                     .tint(.accentColor)
@@ -68,7 +68,7 @@ struct SettingsView: View {
                         showExportFormatPicker = true
                     } label: {
                         Label(LocalizedStringKey("Export All Data"), systemImage: "square.and.arrow.up")
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                     }
                 }
                 
@@ -81,7 +81,7 @@ struct SettingsView: View {
                         Spacer()
                         Text(LocalizedStringKey("Version 1.0.0"))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                         Spacer()
                     }
                 }
@@ -237,9 +237,24 @@ struct AppearanceSettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
     
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
+    
     var body: some View {
         Form {
-            Section(header: Text(LocalizedStringKey("Theme"))) {
+            // <--- ДОБАВЛЕНА СЕКЦИЯ ВЫБОРА ЦВЕТОВОЙ ПАЛИТРЫ --->
+            Section(header: Text(LocalizedStringKey("App Color Palette"))) {
+                SettingsCheckmarkRow(title: "Classic (Apple System)", isSelected: themeManager.activeThemeType == .classic) {
+                    withAnimation { themeManager.setTheme(.classic) }
+                }
+                SettingsCheckmarkRow(title: "Amethyst (Purple)", isSelected: themeManager.activeThemeType == .amethyst) {
+                    withAnimation { themeManager.setTheme(.amethyst) }
+                }
+                SettingsCheckmarkRow(title: "Coral Teal (Vibrant)", isSelected: themeManager.activeThemeType == .coralTeal) {
+                    withAnimation { themeManager.setTheme(.coralTeal) }
+                }
+            }
+            
+            Section(header: Text(LocalizedStringKey("System Theme"))) {
                 SettingsCheckmarkRow(title: "System", isSelected: appearanceMode == "system") { appearanceMode = "system" }
                 SettingsCheckmarkRow(title: "Light", isSelected: appearanceMode == "light") { appearanceMode = "light" }
                 SettingsCheckmarkRow(title: "Dark", isSelected: appearanceMode == "dark") { appearanceMode = "dark" }
@@ -255,10 +270,10 @@ struct AppearanceSettingsView: View {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 } label: {
                     HStack {
-                        Text(LocalizedStringKey("Language")).foregroundColor(.primary)
+                        Text(LocalizedStringKey("Language")).foregroundColor(themeManager.current.primaryText)
                         Spacer()
-                        Text(Locale.current.language.languageCode?.identifier == "ru" ? "Русский" : "English").foregroundColor(.secondary)
-                        Image(systemName: "arrow.up.forward.app").font(.caption).foregroundColor(.secondary)
+                        Text(Locale.current.language.languageCode?.identifier == "ru" ? "Русский" : "English").foregroundColor(themeManager.current.secondaryText)
+                        Image(systemName: "arrow.up.forward.app").font(.caption).foregroundColor(themeManager.current.secondaryText)
                     }
                 }
             }
@@ -272,7 +287,8 @@ struct TimerSettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.defaultRestTime.rawValue) private var defaultRestTime: Int = 60
     @AppStorage(Constants.UserDefaultsKeys.autoStartTimer.rawValue) private var autoStartTimer: Bool = true
     let restOptions = [30, 45, 60, 90, 120, 180, 300]
-    
+    @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         Form {
             Section(header: Text("Timer Behavior"), footer: Text(LocalizedStringKey("If enabled, the rest timer will start automatically when you check off a set."))) {
@@ -299,7 +315,7 @@ struct TimerSettingsView: View {
 
 struct StreakSettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.streakRestDays.rawValue) private var streakRestDays: Int = 2
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         Form {
             Section(footer: Text(LocalizedStringKey("Your streak will reset if you don't train within this number of rest days."))) {
@@ -308,7 +324,7 @@ struct StreakSettingsView: View {
                         Text(LocalizedStringKey("Max Rest Days"))
                         Spacer()
                         Text(LocalizedStringKey("\(streakRestDays) day\(streakRestDays > 1 ? "s" : "")"))
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                             .bold()
                     }
                 }
@@ -342,7 +358,7 @@ struct SettingsCheckmarkRow: View {
     let title: LocalizedStringKey
     let isSelected: Bool
     let action: () -> Void
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         Button(action: {
             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -351,7 +367,7 @@ struct SettingsCheckmarkRow: View {
         }) {
             HStack {
                 Text(title)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")

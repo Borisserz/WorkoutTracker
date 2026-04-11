@@ -26,57 +26,7 @@ struct WorkoutGenerationService: Sendable {
         }
     }
     
-    /// Генерирует тренировку на основе восстановившихся мышц
-    static func generateFreshWorkout(
-        recoveryStatus: [MuscleRecoveryStatus],
-        catalog: [String: [String]]
-    ) throws -> GeneratedWorkout {
-        
-        // 1. Filter muscles >= 90% recovered and safely map them to catalog categories
-        let freshCatalogCategories = recoveryStatus
-            .filter { $0.recoveryPercentage >= 90 }
-            .compactMap { mapRecoveryNameToCatalogKey($0.muscleGroup) }
-        
-        // 2. Remove duplicates and ensure the category actually exists in the provided catalog
-        let validFreshCategories = Array(Set(freshCatalogCategories).filter { catalog.keys.contains($0) })
-        
-        guard !validFreshCategories.isEmpty else {
-            throw WorkoutGenerationError.tooTired
-        }
-        
-        // 3. Randomly pick 1 or 2 muscle groups (categories) to focus on
-        let selectedCategories = Array(validFreshCategories.shuffled().prefix(2))
-        var generatedExercises: [Exercise] = []
-        
-        // 4. Pick random exercises for these categories
-        for category in selectedCategories {
-            if let availableExercises = catalog[category], !availableExercises.isEmpty {
-                // If 1 category is selected, give 3 exercises. If 2 categories, give 2 for each.
-                let countToPick = selectedCategories.count == 1 ? 3 : 2
-                let pickedNames = Array(availableExercises.shuffled().prefix(countToPick))
-                
-                for name in pickedNames {
-                    let newEx = Exercise(
-                        name: name,
-                        muscleGroup: category,
-                        type: .strength,
-                        sets: 3,
-                        reps: 10,
-                        weight: 0.0,
-                        effort: 5
-                    )
-                    generatedExercises.append(newEx)
-                }
-            }
-        }
-        
-        guard !generatedExercises.isEmpty else {
-            throw WorkoutGenerationError.noExercisesFound
-        }
-        
-        let workoutName = "Fresh: " + selectedCategories.joined(separator: " & ")
-        return GeneratedWorkout(title: workoutName, exercises: generatedExercises)
-    }
+  
     
     
     static func generateProactiveProposal(

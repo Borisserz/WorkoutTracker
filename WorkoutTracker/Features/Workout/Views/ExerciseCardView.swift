@@ -9,6 +9,7 @@ struct ExerciseCardView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(UnitsManager.self) var unitsManager
     @Environment(WorkoutDetailViewModel.self) var detailViewModel
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     @State private var showHistory = false
     let exercise: Exercise
@@ -46,13 +47,13 @@ struct ExerciseCardView: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(exercise.isCompleted ? Color.green.opacity(0.05) : (isActiveExercise ? Color.cyan.opacity(0.05) : Color(UIColor.secondarySystemBackground)))
+                    .fill(exercise.isCompleted ? Color.green.opacity(0.05) : (isActiveExercise ? themeManager.current.lightHighlight.opacity(0.05) : themeManager.current.surface))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(exercise.isCompleted ? Color.green.opacity(0.3) : (isActiveExercise ? Color.cyan.opacity(0.5) : Color.clear), lineWidth: (isActiveExercise || exercise.isCompleted) ? 2 : 0)
+                    .stroke(exercise.isCompleted ? Color.green.opacity(0.3) : (isActiveExercise ? themeManager.current.lightHighlight.opacity(0.5) : Color.clear), lineWidth: (isActiveExercise || exercise.isCompleted) ? 2 : 0)
             )
-            .shadow(color: isActiveExercise ? Color.cyan.opacity(0.2) : .clear, radius: 15, x: 0, y: 5)
+            .shadow(color: isActiveExercise ? themeManager.current.lightHighlight.opacity(0.2) : .clear, radius: 15, x: 0, y: 5)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: exercise.isCompleted)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isActiveExercise)
         }
@@ -117,19 +118,19 @@ struct ExerciseCardView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Image(systemName: "line.3.horizontal").foregroundColor(.gray).font(.caption).frame(width: 20, height: 20)
+                Image(systemName: "line.3.horizontal").foregroundColor(themeManager.current.secondaryAccent).font(.caption).frame(width: 20, height: 20)
                 
                 Button {
                     showHistory = true
                 } label: {
                     HStack {
                         Image(systemName: getIcon()).foregroundColor(getColor()).font(.caption)
-                        Text(LocalizationHelper.shared.translateName(exercise.name)).font(.headline).foregroundColor(.primary)
+                        Text(LocalizationHelper.shared.translateName(exercise.name)).font(.headline).foregroundColor(themeManager.current.primaryText)
                     }
                 }
                 .buttonStyle(.plain)
                 
-                Button { showTechniqueSheet = true } label: { Image(systemName: "info.circle").font(.subheadline).foregroundColor(.secondary).padding(.horizontal, 4) }.buttonStyle(BorderlessButtonStyle())
+                Button { showTechniqueSheet = true } label: { Image(systemName: "info.circle").font(.subheadline).foregroundColor(themeManager.current.secondaryText).padding(.horizontal, 4) }.buttonStyle(BorderlessButtonStyle())
                 
                 Spacer()
                 
@@ -138,22 +139,22 @@ struct ExerciseCardView: View {
                 
                 HStack(spacing: 4) {
                     Image(systemName: completedCount == totalCount && totalCount > 0 ? "checkmark.circle.fill" : "checkmark.circle")
-                        .foregroundColor(completedCount == totalCount && totalCount > 0 ? .green : (completedCount > 0 ? .cyan : .gray)).font(.caption)
-                    Text("\(completedCount)/\(totalCount)").font(.subheadline).foregroundColor(.secondary)
+                        .foregroundColor(completedCount == totalCount && totalCount > 0 ? .green : (completedCount > 0 ? themeManager.current.lightHighlight : .gray)).font(.caption)
+                    Text("\(completedCount)/\(totalCount)").font(.subheadline).foregroundColor(themeManager.current.secondaryText)
                 }
                 
                 Menu {
                     if !isEmbeddedInSuperset { Button { detailViewModel.activeEvent = .showSwapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") } }
                     Button(role: .destructive) { detailViewModel.removeExercise(exercise, from: workout) } label: { Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash") }
-                } label: { Image(systemName: "ellipsis").foregroundColor(.gray).padding(10) }
+                } label: { Image(systemName: "ellipsis").foregroundColor(themeManager.current.secondaryAccent).padding(10) }
                 .highPriorityGesture(TapGesture().onEnded { })
             }
             
             let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exercise.name, muscleGroup: exercise.muscleGroup)
             if !targetMuscles.isEmpty {
                 HStack(spacing: 6) {
-                    Image(systemName: "figure.strengthtraining.traditional").font(.caption2).foregroundColor(.secondary)
-                    Text(targetMuscles.joined(separator: ", ")).font(.caption).foregroundColor(.secondary).lineLimit(1)
+                    Image(systemName: "figure.strengthtraining.traditional").font(.caption2).foregroundColor(themeManager.current.secondaryText)
+                    Text(targetMuscles.joined(separator: ", ")).font(.caption).foregroundColor(themeManager.current.secondaryText).lineLimit(1)
                 }.padding(.leading, 28)
             }
         }
@@ -163,39 +164,39 @@ struct ExerciseCardView: View {
     
     private var columnHeadersSection: some View {
         HStack(spacing: 8) {
-            Text(LocalizedStringKey("Set")).font(.caption2.bold()).frame(width: 32).foregroundColor(.secondary)
+            Text(LocalizedStringKey("Set")).font(.caption2.bold()).frame(width: 32).foregroundColor(themeManager.current.secondaryText)
             
             // Динамический блок колонок (растягивается на все свободное место)
             HStack(spacing: 8) {
                 switch exercise.type {
                 case .strength:
-                    Text(unitsManager.weightUnitString()).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
-                    Text(LocalizedStringKey("Reps")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(unitsManager.weightUnitString()).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(themeManager.current.secondaryText)
+                    Text(LocalizedStringKey("Reps")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(themeManager.current.secondaryText)
                 case .cardio:
-                    Text(unitsManager.distanceUnitString()).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
-                    Text(LocalizedStringKey("Time")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(unitsManager.distanceUnitString()).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(themeManager.current.secondaryText)
+                    Text(LocalizedStringKey("Time")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(themeManager.current.secondaryText)
                 case .duration:
-                    Text(LocalizedStringKey("Time")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Time")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(themeManager.current.secondaryText)
                 }
             }
             
             // Зарезервированное место под кнопки
             if isAISupported {
-                Image(systemName: "brain").font(.caption2.bold()).frame(width: 44).foregroundColor(.secondary)
+                Image(systemName: "brain").font(.caption2.bold()).frame(width: 44).foregroundColor(themeManager.current.secondaryText)
             }
-            Image(systemName: "checkmark").font(.caption2.bold()).frame(width: 44).foregroundColor(.secondary)
+            Image(systemName: "checkmark").font(.caption2.bold()).frame(width: 44).foregroundColor(themeManager.current.secondaryText)
         }.padding(.horizontal, 10).padding(.bottom, 4)
     }
     
     private var collapsedInfoSection: some View {
-        HStack { Spacer(); Text(LocalizedStringKey("Tap to expand")).font(.caption).foregroundColor(.secondary).italic(); Spacer() }.padding(.vertical, 8)
+        HStack { Spacer(); Text(LocalizedStringKey("Tap to expand")).font(.caption).foregroundColor(themeManager.current.secondaryText).italic(); Spacer() }.padding(.vertical, 8)
     }
     
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
             Button(action: { withAnimation { detailViewModel.addSet(to: exercise, context: context) } }) {
                 Text(LocalizedStringKey("+ Add Set"))
-                .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14).background(Color.cyan.opacity(0.15)).foregroundColor(.cyan).cornerRadius(14)
+                .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14).background(themeManager.current.lightHighlight.opacity(0.15)).foregroundColor(themeManager.current.lightHighlight).cornerRadius(14)
             }
             .buttonStyle(BorderlessButtonStyle()).disabled(exercise.isCompleted || isWorkoutCompleted)
             
@@ -205,7 +206,7 @@ struct ExerciseCardView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(exercise.isCompleted ? Color.blue.opacity(0.15) : Color.green.opacity(0.15))
+                        .background(exercise.isCompleted ? themeManager.current.primaryAccent.opacity(0.15) : Color.green.opacity(0.15))
                         .foregroundColor(exercise.isCompleted ? .blue : .green)
                         .cornerRadius(14)
                 }
@@ -223,5 +224,5 @@ struct ExerciseCardView: View {
     }
 
     private func getIcon() -> String { exercise.type == .strength ? "dumbbell.fill" : (exercise.type == .cardio ? "figure.run" : "stopwatch.fill") }
-    private func getColor() -> Color { exercise.type == .strength ? .cyan : (exercise.type == .cardio ? .orange : .purple) }
+    private func getColor() -> Color { exercise.type == .strength ? themeManager.current.lightHighlight : (exercise.type == .cardio ? .orange : .purple) }
 }

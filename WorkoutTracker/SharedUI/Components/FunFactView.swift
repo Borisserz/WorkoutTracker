@@ -8,6 +8,7 @@ internal import SwiftUI
 struct FunFactView: View {
     let totalStrengthVolume: Double
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
 
     private var funFact: (title: LocalizedStringKey, value: String, emoji: String) {
         let kg = totalStrengthVolume
@@ -23,11 +24,7 @@ struct FunFactView: View {
     var body: some View {
         ZStack {
             // Премиальный градиентный фон
-            LinearGradient(
-                colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            themeManager.current.premiumGradient
             
             // Крупный эмодзи на фоне
             HStack {
@@ -48,7 +45,7 @@ struct FunFactView: View {
                 
                 Text(funFact.value)
                     .font(.system(size: 34, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .contentTransition(.numericText())
             }
             .padding(24)
@@ -59,7 +56,7 @@ struct FunFactView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.white.opacity(0.2), lineWidth: 1)
         )
-        .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 15, x: 0, y: 8)
+        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 15, x: 0, y: 8)
         .padding(.vertical, 10)
     }
 }

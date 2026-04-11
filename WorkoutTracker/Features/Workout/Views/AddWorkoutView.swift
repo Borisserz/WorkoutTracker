@@ -18,6 +18,8 @@ struct AddWorkoutView: View {
     
     var onWorkoutCreated: (() -> Void)?
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topTrailing) {
@@ -145,11 +147,11 @@ struct AddWorkoutView: View {
     private func exercisePreviewRow(exercise: Exercise) -> some View {
         HStack(alignment: .center, spacing: 8) {
             Circle().fill(Color.secondary.opacity(0.3)).frame(width: 6, height: 6)
-            Text(LocalizationHelper.shared.translateName(exercise.name)).foregroundColor(.secondary)
+            Text(LocalizationHelper.shared.translateName(exercise.name)).foregroundColor(themeManager.current.secondaryText)
             Spacer()
             Text(exercise.formattedDetails(unitsManager: unitsManager))
                 .font(.caption)
-                .foregroundColor(.secondary.opacity(0.8))
+                .foregroundColor(themeManager.current.secondaryText.opacity(0.8))
         }
     }
     
@@ -157,22 +159,22 @@ struct AddWorkoutView: View {
         HStack {
             Group {
                 if isSystemIcon {
-                    Image(systemName: iconName).font(.title2).foregroundColor(.gray)
+                    Image(systemName: iconName).font(.title2).foregroundColor(themeManager.current.secondaryAccent)
                 } else {
                     if UIImage(named: iconName) != nil {
                         Image(iconName).resizable().aspectRatio(contentMode: .fit).frame(width: 50, height: 50).cornerRadius(8).shadow(radius: 2)
                     } else {
-                        Image(systemName: "dumbbell.fill").resizable().aspectRatio(contentMode: .fit).frame(width: 24, height: 24).padding(13).background(Color.gray.opacity(0.1)).cornerRadius(8).foregroundColor(.blue)
+                        Image(systemName: "dumbbell.fill").resizable().aspectRatio(contentMode: .fit).frame(width: 24, height: 24).padding(13).background(themeManager.current.surfaceVariant).cornerRadius(8).foregroundColor(themeManager.current.primaryAccent)
                     }
                 }
             }
             
             VStack(alignment: .leading) {
-                Text(title).foregroundColor(.primary)
-                Text(subtitle).font(.caption).foregroundColor(.secondary)
+                Text(title).foregroundColor(themeManager.current.primaryText)
+                Text(subtitle).font(.caption).foregroundColor(themeManager.current.secondaryText)
             }
             Spacer()
-            if isSelected { Image(systemName: "checkmark.circle.fill").foregroundColor(.blue) }
+            if isSelected { Image(systemName: "checkmark.circle.fill").foregroundColor(themeManager.current.primaryAccent) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())

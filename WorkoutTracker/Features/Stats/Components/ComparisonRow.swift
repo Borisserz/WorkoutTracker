@@ -14,6 +14,8 @@ struct ComparisonRow: View {
         return (Double(currentValue - previousValue) / Double(previousValue)) * 100.0
     }
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack {
             Image(systemName: icon)
@@ -21,17 +23,17 @@ struct ComparisonRow: View {
                 .frame(width: 20)
             
             Text(LocalizedStringKey(title))
-                .foregroundColor(.white)
+                .foregroundColor(themeManager.current.background)
             
             Spacer()
             
             Text("\(currentValue)")
-                .foregroundColor(.white)
+                .foregroundColor(themeManager.current.background)
             Image(systemName: "arrow.right")
                 .font(.caption)
-                .foregroundColor(.gray)
+                .foregroundColor(themeManager.current.secondaryAccent)
             Text("\(previousValue)")
-                .foregroundColor(.gray)
+                .foregroundColor(themeManager.current.secondaryAccent)
             
             Spacer()
             

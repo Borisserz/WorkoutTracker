@@ -140,13 +140,6 @@
 			);
 			target = ACE68CD82EFBFD1900FD186D /* WorkoutTracker */;
 		};
-		AC7C84222F82C663002B62A1 /* Exceptions for "WatchApp" folder in "WorkoutTrackerWatch Watch App" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Untitled.swift,
-			);
-			target = AC3CB9882F8176AA008A6777 /* WorkoutTrackerWatch Watch App */;
-		};
 		ACDA5B942F06BF1F007FF65F /* Exceptions for "WorkoutTracker" folder in "WorkoutTracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -164,6 +157,7 @@
 		ACDA5BB62F06D002007FF65F /* Exceptions for "WorkoutTracker" folder in "StatsWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				AppCore/OpenWorkoutAppIntent.swift,
 				DataLayer/DTOs/WidgetDataShared.swift,
 			);
 			target = ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */;
@@ -189,7 +183,6 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				AC7C840A2F82B843002B62A1 /* Exceptions for "WatchApp" folder in "WorkoutTracker" target */,
-				AC7C84222F82C663002B62A1 /* Exceptions for "WatchApp" folder in "WorkoutTrackerWatch Watch App" target */,
 			);
 			path = WatchApp;
 			sourceTree = "<group>";

@@ -4,6 +4,7 @@ struct AdvancedFiltersSheet: View {
     @Bindable var filterState: ExerciseFilterState
     let resultsCount: Int
     @Environment(\.dismiss) private var dismiss
+    @Environment(ThemeManager.self) private var themeManager
     
     private let equipmentList = ["barbell", "dumbbell1", "machine", "cable", "bodyweight", "kettlebell", "bands"]
     private let mechanicsList = ["compound", "isolation"]
@@ -34,12 +35,12 @@ struct AdvancedFiltersSheet: View {
                     Text(LocalizedStringKey("Show \(resultsCount) Exercises"))
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .background(themeManager.current.primaryGradient)
                         .cornerRadius(16)
-                        .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                        .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
@@ -72,6 +73,7 @@ struct AdvancedFilterSectionView: View {
     let items: [String]
     @Binding var selectedItems: Set<String>
     var filterState: ExerciseFilterState
+    @Environment(ThemeManager.self) private var themeManager
     
     // Вспомогательная функция для красивого отображения ключей
     private func displayString(for item: String) -> String {
@@ -83,7 +85,7 @@ struct AdvancedFilterSectionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(LocalizedStringKey(title))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .padding(.horizontal, 20)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -105,10 +107,10 @@ struct AdvancedFilterSectionView: View {
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
+                                .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface)
                                 .foregroundColor(isSelected ? .white : .primary)
                                 .cornerRadius(20)
-                                .overlay(RoundedRectangle(cornerRadius: 20).stroke(isSelected ? Color.blue : Color.gray.opacity(0.2), lineWidth: 1))
+                                .overlay(RoundedRectangle(cornerRadius: 20).stroke(isSelected ? themeManager.current.primaryAccent : Color.gray.opacity(0.2), lineWidth: 1))
                         }
                         .buttonStyle(.plain)
                     }

@@ -17,6 +17,8 @@ struct WorkoutDetailView: View {
         self._viewModel = State(initialValue: viewModel)
     }
 
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         WorkoutDetailContentView(workout: workout, viewModel: viewModel)
             // ✅ ГЛАВНЫЙ ФИКС: Передаем viewModel в окружение для всех дочерних вью
@@ -73,6 +75,8 @@ struct WorkoutDetailContentView: View {
         .pickerStyle(.segmented)
     }
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         ZStack {
             ScrollViewReader { proxy in
@@ -228,7 +232,7 @@ struct WorkoutDetailContentView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
                 .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))
-                .foregroundColor(.white)
+                .foregroundColor(themeManager.current.background)
                 .clipShape(Capsule())
                 .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)
             }
@@ -241,7 +245,7 @@ struct WorkoutDetailContentView: View {
         .background(
             VStack {
                 Spacer()
-                LinearGradient(colors: [Color(UIColor.systemBackground).opacity(0), Color(UIColor.systemBackground)], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [themeManager.current.background.opacity(0), themeManager.current.background], startPoint: .top, endPoint: .bottom)
                     .frame(height: timerManager.isRestTimerActive ? 280 : 100)
             }
             .ignoresSafeArea()
@@ -251,7 +255,7 @@ struct WorkoutDetailContentView: View {
     
     private var snackbarOverlay: some View {
         HStack {
-            Text(LocalizedStringKey("Workout finished")).font(.subheadline).foregroundColor(.white)
+            Text(LocalizedStringKey("Workout finished")).font(.subheadline).foregroundColor(themeManager.current.background)
             Spacer()
             Button {
                 let generator = UIImpactFeedbackGenerator(style: .light)
@@ -323,7 +327,7 @@ struct WorkoutDetailContentView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color.accentColor)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .cornerRadius(12)
                     .shadow(radius: 5)
                 }
@@ -410,7 +414,7 @@ struct WorkoutDetailContentView: View {
                     } else {
                         Text(LocalizedStringKey("Tap a bar to see full name"))
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                             .padding(.bottom, 4)
                             .frame(minHeight: 24)
                     }
@@ -443,7 +447,7 @@ struct WorkoutDetailContentView: View {
                                 } else {
                                     Text("\(Int(convertedWeight))")
                                         .font(.system(size: 10, weight: .semibold, design: .rounded))
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(themeManager.current.secondaryText)
                                         .contentTransition(.numericText())
                                 }
                             }
@@ -460,14 +464,14 @@ struct WorkoutDetailContentView: View {
 Text(String(translatedName.prefix(3)).capitalized)
                                         .font(.caption2)
                                         .fontWeight(.bold)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(themeManager.current.secondaryText)
                                 }
                             }
                         }
                     }
                     .chartYAxis {
                         AxisMarks(position: .leading) { _ in
-                            AxisGridLine().foregroundStyle(Color.gray.opacity(0.1))
+                            AxisGridLine().foregroundStyle(themeManager.current.surfaceVariant)
                             AxisValueLabel().foregroundStyle(Color.secondary)
                         }
                     }
@@ -479,7 +483,7 @@ Text(String(translatedName.prefix(3)).capitalized)
                 }
             }
             .padding(20)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(24)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -533,7 +537,7 @@ Text(String(translatedName.prefix(3)).capitalized)
                 }
                 .padding(.vertical, 20)
                 .frame(maxWidth: .infinity)
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(themeManager.current.surface)
                 .cornerRadius(24)
                 .overlay(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)

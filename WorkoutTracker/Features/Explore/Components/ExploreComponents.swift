@@ -74,7 +74,7 @@ struct PremiumProgramCardView: View {
 struct ExploreFiltersSheet: View {
     @Bindable var viewModel: ExploreViewModel
     @Environment(\.dismiss) private var dismiss
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         NavigationStack {
             ZStack {
@@ -112,7 +112,7 @@ struct ExploreFiltersSheet: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.blue)
+                        .background(themeManager.current.primaryAccent)
                         .cornerRadius(16)
                         .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
@@ -133,12 +133,12 @@ struct FilterSection<T: RawRepresentable & Identifiable & Equatable>: View where
     let title: String
     let items: [T]
     @Binding var selection: T?
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(LocalizedStringKey(title))
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
@@ -155,12 +155,12 @@ struct FilterSection<T: RawRepresentable & Identifiable & Equatable>: View where
         }
     }
 }
-
 struct FilterChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
+
     var body: some View {
         Button(action: {
             let gen = UISelectionFeedbackGenerator()
@@ -172,12 +172,12 @@ struct FilterChip: View {
                 .fontWeight(isSelected ? .bold : .medium)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
+                .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface) // <--- ИЗМЕНЕНО
                 .foregroundColor(isSelected ? .white : .primary)
                 .cornerRadius(20)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(isSelected ? Color.blue : Color.gray.opacity(0.2), lineWidth: 1)
+                        .stroke(isSelected ? themeManager.current.primaryAccent : Color.gray.opacity(0.2), lineWidth: 1) // <--- ИЗМЕНЕНО
                 )
         }
         .buttonStyle(.plain)

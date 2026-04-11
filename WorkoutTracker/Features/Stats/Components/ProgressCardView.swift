@@ -12,6 +12,8 @@ struct ProgressCardView: View {
     let currentValue: Double
     let previousValue: Double
     
+    @Environment(ThemeManager.self) private var themeManager
+    
     // Вычисляем процентное изменение
     var percentageChange: Double {
         if previousValue == 0 {
@@ -25,7 +27,7 @@ struct ProgressCardView: View {
             HStack {
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .frame(width: 40, height: 40)
                     .background(color)
                     .clipShape(Circle())
@@ -41,7 +43,7 @@ struct ProgressCardView: View {
                     .font(.system(size: 36, weight: .bold, design: .rounded))
                 Text(unit)
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
             HStack(spacing: 5) {
                 Image(systemName: percentageChange >= 0 ? "arrow.up.right" : "arrow.down.right")
@@ -52,7 +54,7 @@ struct ProgressCardView: View {
                 
                 Text("vs last period")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
             .foregroundColor(percentageChange >= 0 ? .green : .red)
             
@@ -75,7 +77,7 @@ struct ProgressCardView: View {
             .chartYAxis(.hidden)
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
     }

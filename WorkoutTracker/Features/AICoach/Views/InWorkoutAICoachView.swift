@@ -10,6 +10,7 @@ struct InWorkoutAICoachView: View {
     @Bindable var viewModel: InWorkoutAICoachViewModel
     
     @Environment(WorkoutDetailViewModel.self) private var detailViewModel
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО: Инъекция менеджера тем
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
 
     var body: some View {
@@ -21,7 +22,7 @@ struct InWorkoutAICoachView: View {
                     HStack {
                         Image(systemName: "bolt.shield.fill")
                             .font(.title3)
-                            .foregroundColor(.cyan)
+                            .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
                         Text(LocalizedStringKey("Live Tension"))
                             .font(.headline)
                             .bold()
@@ -30,8 +31,8 @@ struct InWorkoutAICoachView: View {
                             .font(.caption2)
                             .bold()
                             .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(Color.cyan.opacity(0.2))
-                            .foregroundColor(.cyan)
+                            .background(themeManager.current.primaryAccent.opacity(0.2)) // <--- ИЗМЕНЕНО
+                            .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
                             .cornerRadius(6)
                     }
                     
@@ -45,16 +46,16 @@ struct InWorkoutAICoachView: View {
                         .frame(width: 80, height: 160)
                         .background(Color.white.opacity(0.05))
                         .cornerRadius(16)
-                        .shadow(color: .cyan.opacity(0.15), radius: 10)
+                        .shadow(color: themeManager.current.primaryAccent.opacity(0.15), radius: 10) // <--- ИЗМЕНЕНО
                         
                         VStack(alignment: .leading, spacing: 10) {
                             Text(LocalizedStringKey("Coach is monitoring your output. High tension detected in target muscle groups."))
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                                 .lineSpacing(4)
                             Spacer()
                             HStack {
-                                Circle().fill(Color.green).frame(width: 8, height: 8).symbolEffect(.pulse)
+                                Circle().fill(Color.green).frame(width: 8, height: 8).symbolEffect(.pulse) // Семантический зеленый оставлен
                                 Text(LocalizedStringKey("Ready for adjustments")).font(.caption).foregroundColor(.green)
                             }
                         }
@@ -73,10 +74,11 @@ struct InWorkoutAICoachView: View {
                         .padding(.horizontal, 4)
                     
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
-                        smartActionTile(id: "busy", title: "Equipment Busy", icon: "lock.fill", command: "Equipment is taken, swap exercise", color: .cyan)
+                        // <--- ИЗМЕНЕНО: Использование темы для нейтральных кнопок, сохранение .orange и .green для семантики
+                        smartActionTile(id: "busy", title: "Equipment Busy", icon: "lock.fill", command: "Equipment is taken, swap exercise", color: themeManager.current.primaryAccent)
                         smartActionTile(id: "heavy", title: "Too Heavy", icon: "arrow.down.circle.fill", command: "Weight is too heavy, reduce load", color: .orange)
                         smartActionTile(id: "easy", title: "Too Easy", icon: "arrow.up.circle.fill", command: "Too easy, increase weight or intensity", color: .green)
-                        smartActionTile(id: "finish", title: "Add Finisher", icon: "flame.fill", command: "Add a final pump isolation exercise", color: .purple)
+                        smartActionTile(id: "finish", title: "Add Finisher", icon: "flame.fill", command: "Add a final pump isolation exercise", color: themeManager.current.deepPremiumAccent)
                     }
                 }
 
@@ -125,7 +127,7 @@ struct InWorkoutAICoachView: View {
                 Text(LocalizedStringKey(title))
                     .font(.subheadline)
                     .fontWeight(.bold)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
@@ -151,15 +153,16 @@ struct AIProposalPremiumCard: View {
     let onApply: () -> Void
     let onDismiss: () -> Void
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО: Инъекция менеджера тем
 
     var body: some View {
         VStack(spacing: 20) {
             HStack {
                 Label(LocalizedStringKey("Coach Recommendation"), systemImage: "sparkles")
                     .font(.caption.bold())
-                    .foregroundColor(.cyan)
+                    .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
                     .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color.cyan.opacity(0.1))
+                    .background(themeManager.current.primaryAccent.opacity(0.1)) // <--- ИЗМЕНЕНО
                     .cornerRadius(8)
                 
                 Spacer()
@@ -173,27 +176,27 @@ struct AIProposalPremiumCard: View {
             
             Text(proposal.reasoning)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .lineSpacing(4)
             
             HStack(spacing: 15) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey("EXERCISE")).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("EXERCISE")).font(.system(size: 10, weight: .bold)).foregroundColor(themeManager.current.secondaryText)
                     Text(LocalizationHelper.shared.translateName(proposal.exerciseName)).font(.subheadline).bold().lineLimit(1)
                 }
                 Divider().frame(height: 30)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey("SETS")).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("SETS")).font(.system(size: 10, weight: .bold)).foregroundColor(themeManager.current.secondaryText)
                     Text("\(proposal.setsRemaining)").font(.subheadline).bold()
                 }
                 Divider().frame(height: 30)
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(LocalizedStringKey("WEIGHT")).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("WEIGHT")).font(.system(size: 10, weight: .bold)).foregroundColor(themeManager.current.secondaryText)
                     Text("\(Int(unitsManager.convertFromKilograms(proposal.weightValue))) \(unitsManager.weightUnitString())")
                         .font(.subheadline)
                         .bold()
-                        .foregroundColor(.cyan)
+                        .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
                 }
             }
             .padding()
@@ -211,16 +214,16 @@ struct AIProposalPremiumCard: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(LinearGradient(colors: [.indigo, .cyan], startPoint: .leading, endPoint: .trailing))
+                .background(themeManager.current.primaryGradient) // <--- ИЗМЕНЕНО
                 .foregroundColor(.white)
                 .cornerRadius(16)
-                .shadow(color: .cyan.opacity(0.4), radius: 10, x: 0, y: 5)
+                .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 5) // <--- ИЗМЕНЕНО
             }
         }
         .padding(24)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(32)
-        .overlay(RoundedRectangle(cornerRadius: 32).stroke(Color.cyan.opacity(0.3), lineWidth: 1.5))
+        .overlay(RoundedRectangle(cornerRadius: 32).stroke(themeManager.current.primaryAccent.opacity(0.3), lineWidth: 1.5)) // <--- ИЗМЕНЕНО
         .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
     }
 }

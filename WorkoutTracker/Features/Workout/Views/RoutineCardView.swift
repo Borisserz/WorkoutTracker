@@ -13,6 +13,8 @@ struct PremiumRoutineCard: View {
     var onDuplicate: (() -> Void)? = nil
     var onDelete: (() -> Void)? = nil // ✅ ДОБАВЛЕНО
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
@@ -20,12 +22,12 @@ struct PremiumRoutineCard: View {
                     Text(LocalizedStringKey(preset.name))
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .lineLimit(1)
                     
                     Text(exercisesPreviewText)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
@@ -59,7 +61,7 @@ struct PremiumRoutineCard: View {
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.title3)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .padding(8)
                         .contentShape(Rectangle())
                 }
@@ -76,17 +78,17 @@ struct PremiumRoutineCard: View {
                 Text(LocalizedStringKey("Start Routine"))
                     .font(.subheadline)
                     .fontWeight(.semibold)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Color.blue)
+                    .background(themeManager.current.primaryAccent)
                     .cornerRadius(10)
             }
         }
         .padding(16)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(colorScheme == .dark ? Color(UIColor.secondarySystemBackground) : Color.white)
+                .fill(colorScheme == .dark ? themeManager.current.surface : Color.white)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 16, style: .continuous)

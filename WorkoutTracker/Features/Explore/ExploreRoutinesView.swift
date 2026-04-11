@@ -58,7 +58,7 @@ struct ExploreRoutinesView: View {
     
     // ✅ ДОБАВЛЕНО: Состояние для вызова ИИ
     @State private var showAIBuilder = false
-    
+    @Environment(ThemeManager.self) private var themeManager
     // ✅ ДОБАВЛЕНО: Доступ к DIContainer для передачи aiLogicService
     @Environment(DIContainer.self) private var di
     
@@ -82,7 +82,7 @@ struct ExploreRoutinesView: View {
                     HStack(spacing: 12) {
                         DebouncedSearchBar(debouncer: viewModel.searchDebouncer)
                             .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(themeManager.current.surface)
                             .cornerRadius(16)
                             .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                         
@@ -94,13 +94,13 @@ struct ExploreRoutinesView: View {
                             ZStack(alignment: .topTrailing) {
                                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
                                     .font(.system(size: 32))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(themeManager.current.primaryAccent)
                                 
                                 if viewModel.activeFilterCount > 0 {
                                     Circle()
                                         .fill(Color.red)
                                         .frame(width: 14, height: 14)
-                                        .overlay(Text("\(viewModel.activeFilterCount)").font(.system(size: 9, weight: .bold)).foregroundColor(.white))
+                                        .overlay(Text("\(viewModel.activeFilterCount)").font(.system(size: 9, weight: .bold)).foregroundColor(themeManager.current.background))
                                         .offset(x: 2, y: -2)
                                 }
                             }
@@ -120,13 +120,13 @@ struct ExploreRoutinesView: View {
                         Button {
                             let generator = UIImpactFeedbackGenerator(style: .medium)
                             generator.impactOccurred()
-                            showAIBuilder = true // Открываем шторку
+                            showAIBuilder = true
                         } label: {
                             PremiumAIBannerView()
                         }
                         .padding(.horizontal)
                         .padding(.top, 16)
-                        .buttonStyle(.plain) // Убирает синюю подсветку при нажатии
+                        .buttonStyle(.plain)
                                 
                         if viewModel.filteredPrograms.isEmpty {
                             EmptyStateView(
@@ -165,9 +165,10 @@ struct ExploreRoutinesView: View {
 }
 // MARK: - Premium AI Banner
 struct PremiumAIBannerView: View {
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
+
     var body: some View {
         HStack(spacing: 16) {
-            // Иконка
             ZStack {
                 Circle()
                     .fill(Color.white.opacity(0.2))
@@ -175,15 +176,14 @@ struct PremiumAIBannerView: View {
                 
                 Image(systemName: "wand.and.stars")
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
             }
             
-            // Тексты
             VStack(alignment: .leading, spacing: 4) {
                 Text("AI Program Architect")
                     .font(.headline)
                     .fontWeight(.heavy)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                 
                 Text("Design your perfect weekly split.")
                     .font(.subheadline)
@@ -197,15 +197,10 @@ struct PremiumAIBannerView: View {
                 .foregroundColor(.white.opacity(0.5))
         }
         .padding(20)
-        // Жестко заданный насыщенный градиент (выглядит премиально в любой теме)
-        .background(
-            LinearGradient(
-                colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], // Яркий фиолетовый к синему
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        // <--- ИЗМЕНЕНО: Используем динамический премиальный градиент
+        .background(themeManager.current.premiumGradient)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 15, x: 0, y: 8)
+        // <--- ИЗМЕНЕНО: Тень теперь тоже зависит от акцента темы
+        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 15, x: 0, y: 8)
     }
 }

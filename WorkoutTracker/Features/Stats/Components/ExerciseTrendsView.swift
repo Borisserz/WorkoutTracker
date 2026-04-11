@@ -11,10 +11,12 @@ internal import SwiftUI
 struct ExerciseTrendsView: View {
     let trends: [ExerciseTrend]
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         if trends.isEmpty {
             Text(LocalizedStringKey("No exercise trends available"))
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .frame(height: 100, alignment: .center)
         } else {
             VStack(alignment: .leading, spacing: 12) {
@@ -57,6 +59,8 @@ struct ExerciseTrendsView: View {
 struct ExerciseTrendRow: View {
     let trend: ExerciseTrend
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack {
             Image(systemName: trend.trend.icon)
@@ -70,11 +74,11 @@ struct ExerciseTrendRow: View {
                 HStack(spacing: 8) {
                     Text("\(Int(trend.previousValue)) kg")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                     
                     Image(systemName: "arrow.right")
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                     
                     Text("\(Int(trend.currentValue)) kg")
                         .font(.caption)
@@ -91,7 +95,7 @@ struct ExerciseTrendRow: View {
                 
                 Text(trend.trend == .growing ? LocalizedStringKey("↑ Growing") : trend.trend == .declining ? LocalizedStringKey("↓ Declining") : LocalizedStringKey("→ Stable"))
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
         }
         .padding(.vertical, 8)

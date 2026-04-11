@@ -21,6 +21,8 @@ struct RecommendationsView: View {
            self.onTap = onTap
        }
        
+        @Environment(ThemeManager.self) private var themeManager
+
        var body: some View {
         if recommendations.isEmpty {
             EmptyStateView(
@@ -42,6 +44,8 @@ struct RecommendationsView: View {
 struct RecommendationRow: View {
     let recommendation: Recommendation
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: recommendation.type.icon)
@@ -68,7 +72,7 @@ struct RecommendationRow: View {
                 
                 Text(recommendation.message)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

@@ -234,6 +234,7 @@ struct MuscleDisplayHelper {
 }
 
 struct EmptyStateView: View {
+    @Environment(ThemeManager.self) private var themeManager
     let icon: String
     let title: LocalizedStringKey
     let message: LocalizedStringKey
@@ -247,8 +248,8 @@ struct EmptyStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: icon).font(.system(size: iconSize)).foregroundColor(iconColor)
-            Text(title).font(.headline).foregroundColor(.primary)
-            Text(message).font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal)
+            Text(title).font(.headline).foregroundColor(themeManager.current.primaryText)
+            Text(message).font(.subheadline).foregroundColor(themeManager.current.secondaryText).multilineTextAlignment(.center).padding(.horizontal)
         }
         .frame(maxWidth: .infinity).padding(.vertical, 40)
     }

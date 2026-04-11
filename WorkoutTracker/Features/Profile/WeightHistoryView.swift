@@ -10,6 +10,7 @@ struct WeightHistoryView: View {
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.dismiss) var dismiss
     
     @State private var selectedPeriod: PeriodFilter = .month
@@ -52,8 +53,8 @@ struct WeightHistoryView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.blue.opacity(0.1))
-                            .foregroundColor(.blue)
+                            .background(themeManager.current.primaryAccent.opacity(0.1))
+                            .foregroundColor(themeManager.current.primaryAccent)
                             .cornerRadius(12)
                             .padding(.horizontal)
                         }
@@ -99,7 +100,7 @@ struct WeightHistoryView: View {
         let ch = cW - fW
         
         HStack(spacing: 20) {
-            WeightStatCard(title: LocalizedStringKey("Start"), value: !weightHistory.isEmpty ? LocalizationHelper.shared.formatDecimal(fW) : "-", unit: unitsManager.weightUnitString(), color: .blue)
+            WeightStatCard(title: LocalizedStringKey("Start"), value: !weightHistory.isEmpty ? LocalizationHelper.shared.formatDecimal(fW) : "-", unit: unitsManager.weightUnitString(), color: themeManager.current.primaryAccent)
             WeightStatCard(title: LocalizedStringKey("Current"), value: !weightHistory.isEmpty ? LocalizationHelper.shared.formatDecimal(cW) : "-", unit: unitsManager.weightUnitString(), color: .green)
             WeightStatCard(title: LocalizedStringKey("Change"), value: !weightHistory.isEmpty ? (ch >= 0 ? "+" : "") + LocalizationHelper.shared.formatDecimal(ch) : "-", unit: unitsManager.weightUnitString(), color: ch >= 0 ? .green : .red)
         }.padding(.horizontal)
@@ -112,23 +113,23 @@ struct WeightHistoryView: View {
             Chart {
                 ForEach(Array(filteredHistory.enumerated()), id: \.offset) { index, entry in
                     let weight = unitsManager.convertFromKilograms(entry.weight)
-                    if filteredHistory.count > 1 { LineMark(x: .value("Date", entry.date), y: .value("Weight", weight)).foregroundStyle(.blue).interpolationMethod(.linear).lineStyle(StrokeStyle(lineWidth: 3)) }
-                    PointMark(x: .value("Date", entry.date), y: .value("Weight", weight)).foregroundStyle(.blue).symbolSize(filteredHistory.count == 1 ? 50 : 30)
-                        .annotation(position: .top) { if selectedPeriod != .threeMonths { Text(LocalizationHelper.shared.formatDecimal(weight)).font(.caption2).foregroundColor(.secondary) } }
+                    if filteredHistory.count > 1 { LineMark(x: .value("Date", entry.date), y: .value("Weight", weight)).foregroundStyle(themeManager.current.primaryAccent).interpolationMethod(.linear).lineStyle(StrokeStyle(lineWidth: 3)) }
+                    PointMark(x: .value("Date", entry.date), y: .value("Weight", weight)).foregroundStyle(themeManager.current.primaryAccent).symbolSize(filteredHistory.count == 1 ? 50 : 30)
+                        .annotation(position: .top) { if selectedPeriod != .threeMonths { Text(LocalizationHelper.shared.formatDecimal(weight)).font(.caption2).foregroundColor(themeManager.current.secondaryText) } }
                 }
             }
             .frame(height: 200)
             .chartXAxis { AxisMarks(values: .automatic) { _ in AxisGridLine(); AxisTick(); AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true) } }
             .chartYAxis { AxisMarks(position: .leading) { _ in AxisGridLine(); AxisTick(); AxisValueLabel() } }
-            .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12).padding(.horizontal)
+            .padding().background(themeManager.current.surface).cornerRadius(12).padding(.horizontal)
         }
     }
     
     @ViewBuilder
     private var emptyChartSection: some View {
         VStack(spacing: 10) {
-            Image(systemName: "chart.line.uptrend.xyaxis").font(.system(size: 50)).foregroundColor(.gray)
-            Text(LocalizedStringKey("No weight data yet")).font(.headline).foregroundColor(.secondary)
+            Image(systemName: "chart.line.uptrend.xyaxis").font(.system(size: 50)).foregroundColor(themeManager.current.secondaryAccent)
+            Text(LocalizedStringKey("No weight data yet")).font(.headline).foregroundColor(themeManager.current.secondaryText)
         }.frame(maxWidth: .infinity).padding(.vertical, 40)
     }
 
@@ -155,7 +156,7 @@ struct WeightHistoryView: View {
                     if entry.id != filteredHistory.last?.id { Divider().padding(.leading, 50) }
                 }
             }
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(12)
             .padding(.horizontal)
         }
@@ -165,27 +166,28 @@ struct WeightHistoryView: View {
 // MARK: - Subcomponents
 
 struct WeightStatCard: View {
+    @Environment(ThemeManager.self) private var themeManager
     let title: LocalizedStringKey; let value: String; let unit: String; let color: Color
     var body: some View {
         VStack(spacing: 5) {
-            Text(title).font(.caption).foregroundColor(.secondary)
+            Text(title).font(.caption).foregroundColor(themeManager.current.secondaryText)
             Text(value).font(.title2).bold().foregroundColor(color)
-            Text(unit).font(.caption2).foregroundColor(.secondary)
-        }.frame(maxWidth: .infinity).padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+            Text(unit).font(.caption2).foregroundColor(themeManager.current.secondaryText)
+        }.frame(maxWidth: .infinity).padding().background(themeManager.current.surface).cornerRadius(12)
     }
 }
 
 struct WeightEntryRow: View {
     let entry: WeightEntry
     let unitsManager: UnitsManager
-    
+    @Environment(ThemeManager.self) private var themeManager
     @State private var loadedImage: UIImage? = nil
     
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.date, style: .date).font(.body)
-                Text(entry.date, style: .time).font(.caption).foregroundColor(.secondary)
+                Text(entry.date, style: .time).font(.caption).foregroundColor(themeManager.current.secondaryText)
             }
             
             Spacer()
@@ -202,14 +204,14 @@ struct WeightEntryRow: View {
                     Text("+\(entry.imageFileNames.count - 1)")
                         .font(.caption2)
                         .bold()
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .padding(.trailing, 8)
                 }
             }
             
             Text("\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(entry.weight))) \(unitsManager.weightUnitString())")
                 .font(.headline)
-                .foregroundColor(.blue)
+                .foregroundColor(themeManager.current.primaryAccent)
         }
         .padding()
         .contentShape(Rectangle())

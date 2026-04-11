@@ -350,27 +350,62 @@ actor AnalyticsService {
     // MARK: - Internal Calculators
     
     func getAllPersonalRecords(workouts: [Workout], unitsManager: UnitsManager) -> [BestResult] {
-            var bests: [String: (result: Double, date: Date, type: ExerciseType)] = [:]
+            // Храним результат, дату, тип и флаг (является ли это упражнением со своим весом)
+            var bests: [String: (result: Double, date: Date, type: ExerciseType, isBodyweight: Bool)] = [:]
+            
+            // Вспомогательная функция для исправления ошибок генератора (Сила важнее Времени)
+            func typeRank(_ type: ExerciseType) -> Int {
+                switch type {
+                case .strength: return 3
+                case .cardio: return 2
+                case .duration: return 1
+                }
+            }
             
             for workout in workouts {
                 for exercise in workout.exercises {
                     let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                     for ex in targetExercises {
                         var currentValue: Double = 0
+                        var isBW = false
                         
                         switch ex.type {
                         case .strength:
-                            // 🚀 ОПТИМИЗАЦИЯ: Больше не дергаем setsList, берем закэшированный максимум!
-                            currentValue = ex.cachedMaxWeight
+                            if ex.cachedMaxWeight > 0 {
+                                currentValue = ex.cachedMaxWeight
+                                isBW = false
+                            } else {
+                                // Если вес = 0 (свой вес), рекордом считаем МАКСИМ. ПОВТОРЕНИЯ в одном подходе
+                                let maxReps = ex.setsList.filter { $0.isCompleted }.compactMap { $0.reps }.max() ?? 0
+                                currentValue = Double(maxReps)
+                                isBW = true
+                            }
                         case .cardio:
-                            // Кардио обычно состоит из 1 сета, но для надежности можно агрегировать безопасно
                             currentValue = ex.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
                         case .duration:
                             currentValue = Double(ex.setsList.filter { $0.isCompleted }.compactMap { $0.time }.reduce(0, +))
                         }
                         
-                        if currentValue > (bests[ex.name]?.result ?? 0) {
-                            bests[ex.name] = (result: currentValue, date: workout.date, type: ex.type)
+                        let currentTypeRank = typeRank(ex.type)
+                        let existing = bests[ex.name]
+                        
+                        if let existingRecord = existing {
+                            let existingRank = typeRank(existingRecord.type)
+                            
+                            // Если новый тип важнее (например, Сила переписывает Время от ошибочного генератора)
+                            if currentTypeRank > existingRank {
+                                if currentValue > 0 {
+                                    bests[ex.name] = (result: currentValue, date: workout.date, type: ex.type, isBodyweight: isBW)
+                                }
+                            } else if currentTypeRank == existingRank {
+                                if currentValue > existingRecord.result {
+                                    bests[ex.name] = (result: currentValue, date: workout.date, type: ex.type, isBodyweight: isBW)
+                                }
+                            }
+                        } else {
+                            if currentValue > 0 {
+                                bests[ex.name] = (result: currentValue, date: workout.date, type: ex.type, isBodyweight: isBW)
+                            }
                         }
                     }
                 }
@@ -379,10 +414,16 @@ actor AnalyticsService {
             return bests.map { name, data in
                 var valString = ""
                 switch data.type {
-                case .strength: valString = String(localized: "\(Int(data.result)) \(unitsManager.weightUnitString())")
+                case .strength:
+                    if data.isBodyweight {
+                        valString = String(localized: "\(Int(data.result)) reps") // Показываем повторения для своего веса
+                    } else {
+                        let convertedWeight = unitsManager.convertFromKilograms(data.result)
+                        valString = String(localized: "\(LocalizationHelper.shared.formatFlexible(convertedWeight)) \(unitsManager.weightUnitString())")
+                    }
                 case .cardio:
-                    let converted = unitsManager.convertFromMeters(data.result)
-                    valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(converted)) \(unitsManager.distanceUnitString())")
+                    let convertedDist = unitsManager.convertFromMeters(data.result)
+                    valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString())")
                 case .duration:
                     let m = Int(data.result) / 60
                     let s = Int(data.result) % 60
@@ -392,7 +433,6 @@ actor AnalyticsService {
                 return BestResult(exerciseName: name, value: valString, date: data.date, type: data.type)
             }.sorted { $0.exerciseName < $1.exerciseName }
         }
-    
     // Теперь Actor просто собирает даты и делегирует расчет:
         func calculateWorkoutStreak(workouts: [Workout]) -> Int {
             let maxRestDaysAllowed = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue)

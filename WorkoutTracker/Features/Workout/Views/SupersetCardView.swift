@@ -9,6 +9,7 @@ struct SupersetCardView: View {
     @Environment(WorkoutDetailViewModel.self) var viewModel
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
     
     @Bindable var superset: Exercise
     var workout: Workout
@@ -33,10 +34,10 @@ struct SupersetCardView: View {
                 }
             }
             .padding()
-            .background(isActiveExercise ? Color.blue.opacity(0.08) : Color(UIColor.secondarySystemBackground))
+            .background(isActiveExercise ? themeManager.current.primaryAccent.opacity(0.08) : themeManager.current.surface)
             .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isActiveExercise ? Color.blue.opacity(0.5) : Color.clear, lineWidth: isActiveExercise ? 2 : 0))
-            .shadow(color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear, radius: isActiveExercise ? 8 : 0, x: 0, y: 2)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isActiveExercise ? themeManager.current.primaryAccent.opacity(0.5) : Color.clear, lineWidth: isActiveExercise ? 2 : 0))
+            .shadow(color: isActiveExercise ? themeManager.current.primaryAccent.opacity(0.2) : Color.clear, radius: isActiveExercise ? 8 : 0, x: 0, y: 2)
         }
         .sheet(isPresented: $showEffortSheet, onDismiss: { if superset.isCompleted { finishSupersetAction() } }) {
             EffortInputView(effort: $superset.effort)
@@ -45,7 +46,7 @@ struct SupersetCardView: View {
     
     var headerView: some View {
         HStack {
-            Image(systemName: "line.3.horizontal").foregroundColor(.gray).font(.caption).frame(width: 20, height: 20)
+            Image(systemName: "line.3.horizontal").foregroundColor(themeManager.current.secondaryAccent).font(.caption).frame(width: 20, height: 20)
             HStack {
                 Image(systemName: "link").foregroundColor(.purple)
                 Text(String(localized: "Superset")).font(.headline).foregroundColor(.purple)
@@ -58,7 +59,7 @@ struct SupersetCardView: View {
                     Label(String(localized: "Remove Superset"), systemImage: "trash")
                 }
             } label: {
-                Image(systemName: "ellipsis").foregroundColor(.gray).padding(10)
+                Image(systemName: "ellipsis").foregroundColor(themeManager.current.secondaryAccent).padding(10)
             }
             .highPriorityGesture(TapGesture().onEnded { })
         }
@@ -69,7 +70,7 @@ struct SupersetCardView: View {
     private var collapsedInfoSection: some View {
         HStack {
             Spacer()
-            Text(String(localized: "Tap to expand")).font(.caption).foregroundColor(.secondary).italic()
+            Text(String(localized: "Tap to expand")).font(.caption).foregroundColor(themeManager.current.secondaryText).italic()
             Spacer()
         }.padding(.vertical, 8)
     }

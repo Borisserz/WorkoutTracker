@@ -63,11 +63,13 @@ struct TechniqueHelper {
     }
 }
 
+
 struct TechniqueSheetView: View {
     let exerciseName: String
     let category: ExerciseCategory
     
     @Environment(\.dismiss) var dismiss
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО: Инъекция менеджера тем
     
     // Стейт для полного объекта из базы
     @State private var dbItem: ExerciseDBItem? = nil
@@ -83,17 +85,18 @@ struct TechniqueSheetView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.top, 50)
                     } else {
-                        // Если упражнение нашлось в JSON
                         if let item = dbItem {
                             
                             // 1. ЦЕЛЕВЫЕ МЫШЦЫ
                             if let primary = item.primaryMuscles, !primary.isEmpty {
-                                musclesSection(title: "Target Muscles", muscles: primary, color: .blue, icon: "figure.strengthtraining.traditional")
+                                // ИЗМЕНЕНО: .blue -> themeManager.current.primaryAccent
+                                musclesSection(title: "Target Muscles", muscles: primary, color: themeManager.current.primaryAccent, icon: "figure.strengthtraining.traditional")
                             }
                             
                             // 2. ВТОРОСТЕПЕННЫЕ МЫШЦЫ
                             if let secondary = item.secondaryMuscles, !secondary.isEmpty {
-                                musclesSection(title: "Synergist Muscles", muscles: secondary, color: .orange, icon: "figure.mixed.cardio")
+                                // ИЗМЕНЕНО: .orange -> themeManager.current.secondaryMidTone
+                                musclesSection(title: "Synergist Muscles", muscles: secondary, color: themeManager.current.secondaryMidTone, icon: "figure.mixed.cardio")
                             }
                             
                             // 3. ИНСТРУКЦИИ
@@ -103,7 +106,7 @@ struct TechniqueSheetView: View {
                                 VStack(alignment: .leading, spacing: 16) {
                                     Text(LocalizedStringKey("How to Perform"))
                                         .font(.headline)
-                                        .foregroundColor(.secondary)
+                                        .foregroundColor(themeManager.current.secondaryText)
                                     
                                     ForEach(Array(stepsToDisplay.enumerated()), id: \.offset) { index, step in
                                         HStack(alignment: .top, spacing: 12) {
@@ -112,25 +115,24 @@ struct TechniqueSheetView: View {
                                                 .fontWeight(.bold)
                                                 .foregroundColor(.white)
                                                 .frame(width: 24, height: 24)
-                                                .background(Color.blue)
+                                                .background(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО: .blue -> primaryAccent
                                                 .clipShape(Circle())
                                             
-                                            Text(step) 
-                                                                .font(.body)
-                                                                .lineSpacing(4)
+                                            Text(step)
+                                                .font(.body)
+                                                .lineSpacing(4)
                                         }
                                     }
                                 }
                                 .padding()
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(themeManager.current.surface)
                                 .cornerRadius(12)
                             } else {
-                                fallbackView // Если инструкций нет
+                                fallbackView
                             }
                             
                         } else {
-                            // ФОЛЛБЭК: Если это кастомное упражнение (которого нет в JSON)
                             fallbackView
                         }
                     }
@@ -145,7 +147,6 @@ struct TechniqueSheetView: View {
                 }
             }
             .task {
-                // Вытягиваем весь объект из базы
                 let item = await ExerciseDatabaseService.shared.getExerciseItem(for: exerciseName)
                 await MainActor.run {
                     self.dbItem = item
@@ -155,7 +156,7 @@ struct TechniqueSheetView: View {
         }
     }
     
-    // Блок для отрисовки тегов мышц
+    // Блок для отрисовки тегов мышц (Остается без изменений, так как цвет передается как параметр)
     private func musclesSection(title: String, muscles: [String], color: Color, icon: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -180,7 +181,7 @@ struct TechniqueSheetView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(12)
     }
     
@@ -190,25 +191,25 @@ struct TechniqueSheetView: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(LocalizedStringKey("How to Perform"))
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 Text(TechniqueHelper.getDescription(for: category))
                     .font(.body)
                     .lineSpacing(4)
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(12)
             
             VStack(alignment: .leading, spacing: 12) {
                 Text(LocalizedStringKey("Key Tips"))
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 
                 ForEach(TechniqueHelper.getTips(for: category), id: \.self) { tip in
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО: .blue -> primaryAccent
                             .font(.caption)
                             .padding(.top, 4)
                         Text(tip).font(.body).lineSpacing(4)
@@ -217,7 +218,7 @@ struct TechniqueSheetView: View {
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(12)
         }
     }

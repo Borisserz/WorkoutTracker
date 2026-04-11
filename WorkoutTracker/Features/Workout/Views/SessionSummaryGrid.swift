@@ -17,6 +17,8 @@ struct SessionSummaryGrid: View {
     
     // ✅ FIX: Removed local completedSetsCount computation
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
             // 1. Total Volume
@@ -79,6 +81,8 @@ struct SummaryGlassCard: View {
     let icon: String
     let colors: [Color]
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -98,23 +102,23 @@ struct SummaryGlassCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(value)
                         .font(.system(size: 26, weight: .heavy, design: .rounded))
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .contentTransition(.numericText())
                     Text(unit)
                         .font(.caption)
                         .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
                 Text(title)
                     .font(.caption2)
                     .fontWeight(.bold)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .textCase(.uppercase)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
@@ -130,6 +134,8 @@ struct SummaryTimerGlassCard: View {
     let icon: String
     let colors: [Color]
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -152,19 +158,19 @@ struct SummaryTimerGlassCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(startDate, style: .timer)
                     .font(.system(size: 26, weight: .heavy, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .monospacedDigit()
                 
                 Text(title)
                     .font(.caption2)
                     .fontWeight(.bold)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .textCase(.uppercase)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)

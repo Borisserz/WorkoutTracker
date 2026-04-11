@@ -3,6 +3,7 @@ internal import SwiftUI
 struct ClearableTextField: View {
     let placeholder: String
     @Binding var value: Double? // Работаем с опциональным Double
+    @Environment(ThemeManager.self) private var themeManager
     
     // Состояние для отслеживания фокуса
     @FocusState private var isFocused: Bool
@@ -13,7 +14,7 @@ struct ClearableTextField: View {
             .keyboardType(.decimalPad)
             .multilineTextAlignment(.center)
             .padding(.vertical, 8)
-            .background(Color.gray.opacity(0.1))
+            .background(themeManager.current.surfaceVariant)
             .cornerRadius(8)
             .focused($isFocused) // Привязываем фокус
             .onChange(of: isFocused) { oldValue, newValue in

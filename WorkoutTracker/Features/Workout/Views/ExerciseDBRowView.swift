@@ -3,6 +3,8 @@ internal import SwiftUI
 struct ExerciseDBRowView: View {
     let exercise: ExerciseDBItem
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack(spacing: 16) {
             ZStack {
@@ -30,7 +32,7 @@ struct ExerciseDBRowView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(LocalizationHelper.shared.translateName(exercise.name))
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .lineLimit(1)
                 
                 HStack(spacing: 6) {
@@ -46,7 +48,7 @@ struct ExerciseDBRowView: View {
             Image(systemName: "chevron.right").font(.caption.bold()).foregroundColor(Color(UIColor.tertiaryLabel))
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(20)
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1))
         .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 3)

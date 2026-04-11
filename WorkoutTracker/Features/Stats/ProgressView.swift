@@ -2,6 +2,7 @@ internal import SwiftUI
 import SwiftData
 import Charts
 import Combine
+
 // MARK: - 1. View Model (Чистая бизнес-логика)
 @Observable
 @MainActor
@@ -22,7 +23,7 @@ final class StatsViewModel {
     var anatomyStats: AnatomyStatsDTO?
     var setsOverTime: [SetsOverTimePoint] = []
     
-    // ✅ ДОБАВЛЕНО: Массив активных целей и словарь их текущих значений
+    // Массив активных целей и словарь их текущих значений
     var activeGoals: [UserGoal] = []
     var activeGoalValues: [UUID: Double] = [:]
     
@@ -65,13 +66,11 @@ final class StatsViewModel {
         self.anatomyStats = anatomy
         self.setsOverTime = setsData
         
-        // ✅ 5. ЗАГРУЖАЕМ ЦЕЛИ
+        // 5. ЗАГРУЖАЕМ ЦЕЛИ
         await loadActiveGoals(prCache: prCache)
         
         self.isDataLoaded = true
     }
-    
-
     
     private func calculateCurrentInterval() -> DateInterval {
         let now = Date()
@@ -142,8 +141,6 @@ final class StatsViewModel {
             self.activeGoalValues = newValues
         }
     }
-
-
 
 
 // MARK: - 2. Smart Container View
@@ -239,6 +236,7 @@ struct StatsContentView: View {
     let currentStats: PeriodStats
     let previousStats: PeriodStats
     @Environment(DIContainer.self) private var di
+    @Environment(ThemeManager.self) private var themeManager
     
     @Environment(\.modelContext) private var context
     @Environment(UserStatsViewModel.self) var userStatsViewModel
@@ -247,7 +245,6 @@ struct StatsContentView: View {
     @AppStorage("userGender") private var userGender = "male"
     
     @State private var showProfile = false
-    @State private var showAIReviewSheet = false
     @State private var showGoalSheet = false
     
     var body: some View {
@@ -260,8 +257,6 @@ struct StatsContentView: View {
                     streakSection
                     
                     activeGoalSection
-                    
-                    aiReviewButtonSection
                     
                     periodPicker
                     
@@ -290,22 +285,13 @@ struct StatsContentView: View {
                 Button { showProfile = true } label: {
                     Image(systemName: "person.crop.circle")
                         .font(.title3)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
             }
         }
         .sheet(isPresented: $showProfile) {
             ProfileView()
                 .environment(userStatsViewModel.progressManager)
-        }
-        .sheet(isPresented: $showAIReviewSheet) {
-            AIWeeklyReviewSheet(
-                currentStats: currentStats,
-                previousStats: previousStats,
-                weakPoints: dashboardViewModel.weakPoints,
-                recentPRs: viewModel.recentPRs,
-                aiLogicService: di.aiLogicService
-            )
         }
         .sheet(isPresented: $showGoalSheet) {
             GoalSelectionSheet(onGoalCreated: {
@@ -325,7 +311,7 @@ struct StatsContentView: View {
             Text(title)
                 .font(.title2)
                 .bold()
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             Spacer()
             if let actionIcon = actionIcon, let action = action {
                 Button(action: {
@@ -335,7 +321,7 @@ struct StatsContentView: View {
                 }) {
                     Image(systemName: actionIcon)
                         .font(.title3)
-                        .foregroundColor(.blue)
+                        .foregroundColor(themeManager.current.primaryAccent)
                 }
             }
         }
@@ -347,12 +333,12 @@ struct StatsContentView: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(Color.orange.opacity(0.15))
+                    .fill(themeManager.current.secondaryMidTone.opacity(0.15))
                     .frame(width: 54, height: 54)
                 Image(systemName: "flame.fill")
                     .font(.title2)
-                    .foregroundColor(.orange)
-                    .shadow(color: .orange.opacity(0.5), radius: 5, x: 0, y: 2)
+                    .foregroundColor(themeManager.current.secondaryMidTone)
+                    .shadow(color: themeManager.current.secondaryMidTone.opacity(0.5), radius: 5, x: 0, y: 2)
             }
             
             VStack(alignment: .leading, spacing: 4) {
@@ -363,12 +349,12 @@ struct StatsContentView: View {
                 let streakMessage: LocalizedStringKey = dashboardViewModel.streakCount > 0 ? "Keep the fire burning!" : "Start your streak today!"
                 Text(streakMessage)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
             Spacer()
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
         .padding(.horizontal, 20)
@@ -400,47 +386,6 @@ struct StatsContentView: View {
                 }
             }
         }
-    }
-
-    private var aiReviewButtonSection: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            showAIReviewSheet = true
-        } label: {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(Color.white.opacity(0.2))
-                        .frame(width: 48, height: 48)
-                    Image(systemName: "sparkles")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                        .shadow(color: .white.opacity(0.8), radius: 8, x: 0, y: 0)
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey("AI Performance Review"))
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                    Text(LocalizedStringKey("Get personalized insights and tips"))
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.white.opacity(0.5))
-                    .font(.body.bold())
-            }
-            .padding(16)
-            .background(
-                LinearGradient(colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
-            .cornerRadius(20)
-            .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 12, x: 0, y: 6)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 20)
     }
 
     private var periodPicker: some View {
@@ -495,24 +440,23 @@ struct StatsContentView: View {
                     if useLineChart {
                         Chart(viewModel.chartData) { dataPoint in
                             LineMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
-                                .foregroundStyle(Color.blue)
+                                .foregroundStyle(themeManager.current.primaryAccent)
                                 .interpolationMethod(.catmullRom)
                                 .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
                             
                             AreaMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
-                                .foregroundStyle(LinearGradient(colors: [Color.blue.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom))
+                                .foregroundStyle(LinearGradient(colors: [themeManager.current.primaryAccent.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom))
                                 .interpolationMethod(.catmullRom)
                             
                             PointMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
-                                // ИСПРАВЛЕНИЕ: Используем .symbol вместо .overlay
                                 .symbol {
                                     Circle()
                                         .fill(Color.white)
                                         .frame(width: 12, height: 12)
                                         .overlay(
-                                            Circle().stroke(Color.blue, lineWidth: 3)
+                                            Circle().stroke(themeManager.current.primaryAccent, lineWidth: 3)
                                         )
-                                        .shadow(color: .blue.opacity(0.3), radius: 3, x: 0, y: 2)
+                                        .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 3, x: 0, y: 2)
                                 }
                         }
                         .frame(height: 220)
@@ -520,7 +464,7 @@ struct StatsContentView: View {
                     } else {
                         Chart(viewModel.chartData) { dataPoint in
                             BarMark(x: .value("Label", dataPoint.label), y: .value("Value", dataPoint.value))
-                                .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
+                                .foregroundStyle(themeManager.current.primaryGradient)
                                 .cornerRadius(6)
                         }
                         .frame(height: 220)
@@ -529,7 +473,7 @@ struct StatsContentView: View {
                 }
             }
             .padding(20)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(24)
             .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
             .padding(.horizontal, 20)
@@ -560,7 +504,7 @@ struct StatsContentView: View {
                     }
                     
                     NavigationLink(destination: SetsTrendDetailView()) {
-                        AdvancedStatRow(icon: "chart.xyaxis.line", title: "Set count per muscle group", subtitle: "Number of sets logged for each muscle group.", color: .blue)
+                        AdvancedStatRow(icon: "chart.xyaxis.line", title: "Set count per muscle group", subtitle: "Number of sets logged for each muscle group.", color: themeManager.current.primaryAccent)
                     }
                     
                     if let anatomy = viewModel.anatomyStats {
@@ -569,12 +513,18 @@ struct StatsContentView: View {
                         }
                         
                         NavigationLink(destination: HeatmapDetailView(gender: userGender)) {
-                            AdvancedStatRow(icon: "figure.arms.open", title: "Muscle distribution (Body)", subtitle: "Heat map of muscles worked during this period.", color: .orange)
+                            AdvancedStatRow(icon: "figure.arms.open", title: "Muscle distribution (Body)", subtitle: "Heat map of muscles worked during this period.", color: themeManager.current.secondaryMidTone)
                         }
                     }
                     
                     NavigationLink(destination: MonthlyReportStoryView()) {
-                        AdvancedStatRow(icon: "doc.text", title: "30-Day Report", subtitle: "Recap of your workouts and volume changes.", color: .cyan)
+                        // ИСПРАВЛЕНИЕ: Заменили lightHighlight на сочный .blue
+                        AdvancedStatRow(
+                            icon: "doc.text",
+                            title: "30-Day Report",
+                            subtitle: "Recap of your workouts and volume changes.",
+                            color: .blue
+                        )
                     }
                 }
                 .padding(.horizontal, 20)
@@ -601,19 +551,19 @@ struct StatsContentView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(LocalizedStringKey(pr.exerciseName))
                                     .font(.headline)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                 Text(pr.date.formatted(date: .abbreviated, time: .omitted))
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(themeManager.current.secondaryText)
                             }
                             Spacer()
                             Text(LocalizedStringKey("\(Int(unitsManager.convertFromKilograms(pr.weight))) \(unitsManager.weightUnitString())"))
                                 .font(.title3)
                                 .bold()
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                         }
                         .padding(16)
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(themeManager.current.surface)
                         .cornerRadius(20)
                         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
                     }
@@ -643,15 +593,15 @@ struct StatsContentView: View {
             }
             Text(title)
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
             Spacer()
             Text("\(count) workouts, \(Int(unitsManager.convertFromKilograms(vol))) \(unitsManager.weightUnitString())")
                 .font(.subheadline)
                 .bold()
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
@@ -690,14 +640,13 @@ struct StatsContentView: View {
     }
 }
 
-
 // MARK: - Advanced Statistics Row UI Redesign
 struct AdvancedStatRow: View {
     let icon: String
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey
     let color: Color
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         HStack(spacing: 16) {
             ZStack {
@@ -708,11 +657,11 @@ struct AdvancedStatRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 
                 Text(subtitle)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .lineLimit(2)
             }
             Spacer()
@@ -721,7 +670,7 @@ struct AdvancedStatRow: View {
                 .foregroundColor(Color(UIColor.tertiaryLabel))
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
@@ -735,6 +684,7 @@ struct AdvancedStatRow: View {
 // MARK: - Beautiful Sets Trend Detail View
 
 struct SetsTrendDetailView: View {
+    @Environment(ThemeManager.self) private var themeManager
     // 1. Изолированный источник данных (SwiftData)
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
@@ -896,7 +846,7 @@ struct SetsTrendDetailView: View {
                             .fontWeight(isSelected ? .bold : .medium)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
-                            .background(isSelected ? muscleColor : Color(UIColor.secondarySystemBackground))
+                            .background(isSelected ? muscleColor : themeManager.current.surface)
                             .foregroundColor(isSelected ? .white : .primary)
                             .cornerRadius(20)
                             .overlay(
@@ -917,7 +867,7 @@ struct SetsTrendDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("Total Sets"))
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 
                 Text("\(totalSets)")
                     .font(.system(size: 40, weight: .heavy, design: .rounded))
@@ -926,7 +876,7 @@ struct SetsTrendDetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(16)
             
             VStack(alignment: .leading, spacing: 4) {
@@ -934,16 +884,16 @@ struct SetsTrendDetailView: View {
                 
                 Text(maxLabel)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 
                 Text("\(maxSetsInPoint)")
                     .font(.system(size: 40, weight: .heavy, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .contentTransition(.numericText())
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(16)
         }
         .padding(.horizontal)
@@ -1001,7 +951,7 @@ struct SetsTrendDetailView: View {
                             Text("\(point.sets)")
                                 .font(.caption2)
                                 .fontWeight(.bold)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                         }
                     }
                 }
@@ -1027,7 +977,7 @@ struct SetsTrendDetailView: View {
             .chartYScale(domain: .automatic(includesZero: true))
             .padding()
         }
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .padding(.horizontal)
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: aggregatedData.count)
@@ -1038,7 +988,7 @@ struct SetsTrendDetailView: View {
 struct RadarChartDetailView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
-    
+    @Environment(ThemeManager.self) private var themeManager
     enum TrendPeriod: String, CaseIterable, Identifiable {
         case week = "Week", month = "Month", year = "Year", allTime = "All Time"
         var id: String { self.rawValue }
@@ -1164,8 +1114,8 @@ struct RadarChartDetailView: View {
                         Spacer()
                         if selectedPeriod != .allTime {
                             HStack(spacing: 12) {
-                                HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption2).foregroundColor(.secondary) }
-                                HStack(spacing: 4) { Circle().fill(Color.blue).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption2).foregroundColor(.secondary) }
+                                HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption2).foregroundColor(themeManager.current.secondaryText) }
+                                HStack(spacing: 4) { Circle().fill(themeManager.current.primaryAccent).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption2).foregroundColor(themeManager.current.secondaryText) }
                             }
                         }
                     }
@@ -1175,21 +1125,21 @@ struct RadarChartDetailView: View {
                         currentData: data.current,
                         previousData: selectedPeriod == .allTime ? nil : data.previous,
                         highlightedAxis: highlightedMuscle,
-                        color: .blue
+                        color: themeManager.current.primaryAccent
                     )
                     .frame(height: 320)
                     .padding()
                 }
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(themeManager.current.surface)
                 .cornerRadius(20)
                 .padding(.horizontal)
                 
                 // Список мышц с интерактивом
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
-                        Text(LocalizedStringKey("Muscle")).font(.caption).foregroundColor(.secondary)
+                        Text(LocalizedStringKey("Muscle")).font(.caption).foregroundColor(themeManager.current.secondaryText)
                         Spacer()
-                        Text(LocalizedStringKey("Sets (Share)")).font(.caption).foregroundColor(.secondary)
+                        Text(LocalizedStringKey("Sets (Share)")).font(.caption).foregroundColor(themeManager.current.secondaryText)
                     }
                     .padding(.horizontal).padding(.vertical, 12)
                     
@@ -1219,12 +1169,12 @@ struct RadarChartDetailView: View {
                                     .foregroundColor(isHighlighted || highlightedMuscle == nil ? .primary : .secondary)
                                 Text("\(percentage, specifier: "%.1f")%")
                                     .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(themeManager.current.secondaryText)
                             }
                         }
                         .padding(.horizontal)
                         .padding(.vertical, 12)
-                        .background(isHighlighted ? Color.blue.opacity(0.1) : Color.clear)
+                        .background(isHighlighted ? themeManager.current.primaryAccent.opacity(0.1) : Color.clear)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             let generator = UISelectionFeedbackGenerator()
@@ -1239,7 +1189,7 @@ struct RadarChartDetailView: View {
                         }
                     }
                 }
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(themeManager.current.surface)
                 .cornerRadius(20)
                 .padding(.horizontal)
             }
@@ -1272,16 +1222,16 @@ struct RadarChartDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("Symmetry Score"))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 Text(message)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .lineLimit(2)
             }
             Spacer()
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .padding(.horizontal)
     }
@@ -1294,7 +1244,7 @@ struct RadarChartView: View {
     let previousData: [RadarDataPoint]?
     let highlightedAxis: String?
     let color: Color
-    
+    @Environment(ThemeManager.self) private var themeManager
     // Удалили функцию gridDimension, так как теперь считаем точнее
     
     private func computeAngle(for index: Int, totalCount: Int) -> CGFloat {
@@ -1358,7 +1308,7 @@ struct RadarChartView: View {
                 // 3. ПРЕДЫДУЩИЙ ПЕРИОД (Ghost Polygon)
                 if let prev = previousData {
                     DataPolygonShape(data: prev)
-                        .fill(Color.gray.opacity(0.1))
+                        .fill(themeManager.current.surfaceVariant)
                         .frame(width: chartDiameter, height: chartDiameter) // Жестко ограничиваем размер
                     
                     DataPolygonShape(data: prev)
@@ -1520,7 +1470,7 @@ struct HeatmapDataProcessor: Sendable {
 struct HeatmapDetailView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
-    
+    @Environment(ThemeManager.self) private var themeManager
     let gender: String
     
     @State private var selectedPeriod: SetsTrendDetailView.TrendPeriod = .month
@@ -1562,7 +1512,7 @@ struct HeatmapDetailView: View {
                         .frame(height: 480)
                         .padding(.vertical)
                     }
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(themeManager.current.surface)
                     .cornerRadius(20)
                     .padding(.horizontal)
                     
@@ -1605,13 +1555,13 @@ struct HeatmapDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("Primary Focus"))
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .textCase(.uppercase)
                 
                 Text(LocalizedStringKey(topMuscle.displayName))
                     .font(.title3)
                     .bold()
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
             }
             
             Spacer()
@@ -1619,7 +1569,7 @@ struct HeatmapDetailView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text(LocalizedStringKey("Sets"))
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .textCase(.uppercase)
                 Text("\(topMuscle.sets)")
                     .font(.title2)
@@ -1628,7 +1578,7 @@ struct HeatmapDetailView: View {
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
@@ -1644,11 +1594,11 @@ struct HeatmapDetailView: View {
             HStack {
                 Text(LocalizedStringKey("Detailed Breakdown"))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 Spacer()
                 Text(LocalizedStringKey("Sets"))
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
             .padding(.horizontal)
             .padding(.vertical, 12)
@@ -1661,7 +1611,7 @@ struct HeatmapDetailView: View {
                         Text(LocalizedStringKey(item.displayName))
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                         
                         // Burn Index Bar
                         GeometryReader { geo in
@@ -1684,7 +1634,7 @@ struct HeatmapDetailView: View {
                         .font(.subheadline)
                         .bold()
                         .monospacedDigit()
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
                 .padding(.horizontal)
                 .padding(.vertical, 12)
@@ -1694,7 +1644,7 @@ struct HeatmapDetailView: View {
                 }
             }
         }
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .padding(.horizontal)
     }
@@ -1764,6 +1714,34 @@ struct PeriodReportPayload: Sendable {
 /// Строго изолированный процессор для отчета за последние 30 дней
 @MainActor
 struct PeriodReportProcessor: Sendable {
+    
+    // ✅ ДОБАВЛЕНО: Калькулятор МАКСИМАЛЬНОГО стрика внутри периода
+    static func calculateMaxStreak(from dates: Set<Date>, maxRestDays: Int) -> Int {
+        let sortedDates = Array(dates).sorted(by: <) // От старых к новым
+        guard !sortedDates.isEmpty else { return 0 }
+        
+        var maxStreak = 1
+        var currentStreak = 1
+        let calendar = Calendar.current
+        
+        for i in 1..<sortedDates.count {
+            let prevDate = sortedDates[i-1]
+            let currDate = sortedDates[i]
+            
+            let daysBetween = calendar.dateComponents([.day], from: prevDate, to: currDate).day ?? 0
+            
+            // Если разница в днях позволяет сохранить стрик (например, 1 день отдыха при maxRest = 2, то daysBetween = 2)
+            if daysBetween <= (maxRestDays + 1) {
+                currentStreak += 1
+                maxStreak = max(maxStreak, currentStreak)
+            } else {
+                currentStreak = 1 // Стрик прервался, начинаем заново
+            }
+        }
+        
+        return maxStreak
+    }
+    
     static func process(workouts: [Workout]) async -> PeriodReportPayload {
         let calendar = Calendar.current
         let now = Date()
@@ -1853,7 +1831,6 @@ struct PeriodReportProcessor: Sendable {
         let rC = axes.map { RadarDataPoint(axis: $0, value: radarCur[$0] ?? 0, maxValue: globalMax) }
         let rP = axes.map { RadarDataPoint(axis: $0, value: radarPrev[$0] ?? 0, maxValue: globalMax) }
         
-        // ✅ ЛОГИКА ДЛЯ НОВЫХ ПОЛЕЙ
         let topMuscle = radarCur.max(by: { $0.value < $1.value })?.key ?? "Chest"
         
         let topWeekdayIndex = weekdayCounts.max(by: { $0.value < $1.value })?.key ?? 2
@@ -1867,12 +1844,16 @@ struct PeriodReportProcessor: Sendable {
         else if tons > 1 { funFact = "That's a Walrus! 🦏" }
         else { funFact = "Every kilo counts! 🏋️" }
         
+        // ✅ ДОБАВЛЕНО: Считаем максимальный стрик в этом месяце с учетом настроек юзера
+        let maxRestDays = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) > 0 ? UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) : 2
+        let monthMaxStreak = calculateMaxStreak(from: activeDays, maxRestDays: maxRestDays)
+        
         return PeriodReportPayload(
             title: title,
             summary: ReportSummary(currentWorkouts: sCW, prevWorkouts: sPW, currentDuration: sCD, prevDuration: sPD, currentVolume: sCV, prevVolume: sPV, currentSets: sCS, prevSets: sPS),
             chartWorkouts: cW, chartDuration: cD, chartVolume: cV, chartSets: cS,
             activeDays: activeDays,
-            streakDays: StreakCalculator.calculate(from: Array(activeDays), maxRestDays: 2),
+            streakDays: monthMaxStreak, // ✅ ТЕПЕРЬ ПЕРЕДАЕМ ПРАВИЛЬНЫЙ СТРИК
             radarCurrent: rC, radarPrevious: rP,
             topMuscle: topMuscle,
             favoriteDay: favoriteDayStr,
@@ -1881,8 +1862,6 @@ struct PeriodReportProcessor: Sendable {
         )
     }
 }
-
-
 // ============================================================
 // MARK: - 2. Story View (Основной экран в стиле Instagram)
 // ============================================================
@@ -2068,223 +2047,384 @@ struct StoryProgressBar: View {
     }
 }
 
-// Слайд 1: Intro
 struct StorySlideIntro: View {
-    let data: PeriodReportPayload
-    
-    var body: some View {
-        ZStack {
-            LinearGradient(colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 30) {
-                Spacer()
-                
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 80))
-                    .foregroundColor(.white)
-                    .symbolEffect(.pulse)
-                    .shadow(color: .white.opacity(0.5), radius: 20)
-                
-                Text("Your Month\nin Review")
-                    .font(.system(size: 40, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-                    .shadow(radius: 5)
-                
-                VStack(spacing: 16) {
-                    storyStatRow(title: "Workouts Done", value: "\(data.summary.currentWorkouts)", icon: "figure.run")
-                    storyStatRow(title: "Minutes Spent", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill")
-                    storyStatRow(title: "Favorite Day", value: data.favoriteDay, icon: "heart.fill")
-                }
-                .padding(24)
-                .background(.ultraThinMaterial)
-                .cornerRadius(24)
-                .padding(.horizontal, 20)
-                
-                Spacer()
-            }
-        }
-    }
-    
-    private func storyStatRow(title: String, value: String, icon: String) -> some View {
-        HStack {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(.white)
-                .frame(width: 30)
-            Text(LocalizedStringKey(title))
-                .font(.headline)
-                .foregroundColor(.white.opacity(0.8))
-            Spacer()
-            Text(value)
-                .font(.title2)
-                .bold()
-                .foregroundColor(.white)
-        }
-    }
+   let data: PeriodReportPayload
+   @Environment(ThemeManager.self) private var themeManager
+   
+   @State private var isAnimatingBg = false
+   @State private var floatAnim1 = false
+   @State private var floatAnim2 = false
+   @State private var floatAnim3 = false
+   
+   var body: some View {
+       ZStack {
+           // Строго темный фон
+           Color.black.ignoresSafeArea()
+           
+           // Гигантские анимированные неоновые сферы
+           ZStack {
+               Circle()
+                   .fill(Color.purple.opacity(0.6))
+                   .frame(width: 400, height: 400)
+                   .blur(radius: 120)
+                   .offset(x: isAnimatingBg ? 150 : -200, y: isAnimatingBg ? -200 : 200)
+               
+               Circle()
+                   .fill(Color.cyan.opacity(0.6))
+                   .frame(width: 350, height: 350)
+                   .blur(radius: 120)
+                   .offset(x: isAnimatingBg ? -150 : 200, y: isAnimatingBg ? 200 : -150)
+           }
+           
+           VStack(spacing: 40) {
+               Spacer()
+               
+               // Кинетическая типографика
+               Text("Your Month\nin Review")
+                   .font(.system(size: 50, weight: .black, design: .rounded))
+                   .foregroundColor(.white)
+                   .multilineTextAlignment(.center)
+                   .lineSpacing(4)
+                   .shadow(color: .purple.opacity(0.8), radius: 20, x: 0, y: 10)
+               
+               // Стеклянные неоновые карточки с левитацией
+               VStack(spacing: 20) {
+                   neoGlassCard(title: "Workouts", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: .cyan)
+                       .offset(y: floatAnim1 ? -8 : 8)
+                       .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: floatAnim1)
+                   
+                   neoGlassCard(title: "Minutes", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: .purple)
+                       .offset(y: floatAnim2 ? 8 : -8)
+                       .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true).delay(0.5), value: floatAnim2)
+                   
+                   neoGlassCard(
+                       title: "Favorite Day",
+                       value: data.favoriteDay.capitalized, // Делаем с большой буквы: "Суббота"
+                       icon: "star.fill",                   // Меняем иконку на 100% рабочую
+                       color: .green
+                   )
+                       .offset(y: floatAnim3 ? -6 : 6)
+                       .animation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true).delay(1.0), value: floatAnim3)
+               }
+               .padding(.horizontal, 24)
+               
+               Spacer()
+           }
+       }
+       .onAppear {
+           withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
+               isAnimatingBg = true
+           }
+           floatAnim1 = true
+           floatAnim2 = true
+           floatAnim3 = true
+       }
+   }
+   
+   private func neoGlassCard(title: String, value: String, icon: String, color: Color) -> some View {
+       HStack {
+           ZStack {
+               Circle().fill(color.opacity(0.2)).frame(width: 50, height: 50)
+               Image(systemName: icon)
+                   .font(.title2)
+                   .foregroundColor(color)
+                   .shadow(color: color, radius: 5)
+           }
+           
+           Text(LocalizedStringKey(title))
+               .font(.headline)
+               .foregroundColor(.white.opacity(0.8))
+           
+           Spacer()
+           
+           Text(value)
+               .font(.system(size: 28, weight: .heavy, design: .rounded))
+               .foregroundColor(.white)
+               .shadow(color: color.opacity(0.8), radius: 10)
+       }
+       .padding(20)
+       .background(.ultraThinMaterial)
+       .environment(\.colorScheme, .dark)
+       .cornerRadius(24)
+       .overlay(
+           RoundedRectangle(cornerRadius: 24)
+               .stroke(LinearGradient(colors: [color.opacity(0.8), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
+       )
+       .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
+   }
 }
 
-// Слайд 2: Volume
+// MARK: - СЛАЙД 2: График объема
 struct StorySlideVolume: View {
-    let data: PeriodReportPayload
-    let unitsManager: UnitsManager
-    
-    var body: some View {
-        ZStack {
-            LinearGradient(colors: [Color(hex: "FF416C"), Color(hex: "FF4B2B")], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
-            
-            VStack(alignment: .leading, spacing: 20) {
-                Spacer()
-                
-                Text("You moved\nmountains.")
-                    .font(.system(size: 44, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
-                    .shadow(radius: 5)
-                    .padding(.horizontal, 24)
-                
-                let volConverted = unitsManager.convertFromKilograms(data.summary.currentVolume)
-                Text("\(LocalizationHelper.shared.formatInteger(volConverted)) \(unitsManager.weightUnitString())")
-                    .font(.system(size: 50, weight: .black, design: .rounded))
-                    .foregroundColor(.yellow)
-                    .shadow(color: .yellow.opacity(0.5), radius: 10)
-                    .padding(.horizontal, 24)
-                
-                Text(LocalizedStringKey(data.funFactVolume))
-                    .font(.title3)
-                    .fontWeight(.medium)
-                    .foregroundColor(.white.opacity(0.9))
-                    .padding(.horizontal, 24)
-                
-                // Aesthetic Area Chart without axes
-                Chart(data.chartVolume) { point in
-                    let val = unitsManager.convertFromKilograms(point.value)
-                    LineMark(x: .value("Day", point.date), y: .value("Vol", val))
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(.white)
-                        .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                    
-                    AreaMark(x: .value("Day", point.date), y: .value("Vol", val))
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(LinearGradient(colors: [.white.opacity(0.5), .clear], startPoint: .top, endPoint: .bottom))
-                }
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                .frame(height: 250)
-                .padding(.top, 20)
-                
-                Spacer()
-            }
-        }
-    }
+   let data: PeriodReportPayload
+   let unitsManager: UnitsManager
+   @Environment(ThemeManager.self) private var themeManager
+   
+   @State private var animateChart = false
+   
+   var body: some View {
+       ZStack {
+           Color.black.ignoresSafeArea()
+           
+           VStack(spacing: 0) {
+               Spacer()
+               
+               VStack(spacing: 8) {
+                   Text(LocalizedStringKey("You moved\nmountains."))
+                       .font(.system(size: 40, weight: .black, design: .rounded))
+                       .foregroundColor(.white)
+                       .multilineTextAlignment(.center)
+                   
+                   let volStr = LocalizationHelper.shared.formatTwoDecimals(data.totalVolumeTons)
+                   
+                   // 1. Стили для главной большой цифры
+                   Text("\(volStr) tons")
+                       .font(.system(size: 65, weight: .black, design: .rounded))
+                       .foregroundColor(.cyan)
+                       .shadow(color: .cyan.opacity(0.8), radius: 25, x: 0, y: 0)
+                       .contentTransition(.numericText())
+                   
+                   // 2. Стили для маленькой подписи
+                   Text("Daily lifting volume over the last 30 days")
+                       .font(.caption)
+                       .fontWeight(.bold)
+                       .foregroundColor(.white.opacity(0.5))
+                       .textCase(.uppercase)
+                       .padding(.bottom, 10) // Отступ перед графиком
+               }
+               .padding(.horizontal, 24)
+               .padding(.bottom, 40)
+               
+               // Плавный AreaMark график без осей
+               Chart(data.chartVolume) { point in
+                   let val = unitsManager.convertFromKilograms(point.value)
+                   
+                   LineMark(
+                       x: .value("Day", point.date),
+                       y: .value("Vol", animateChart ? val : 0)
+                   )
+                   .interpolationMethod(.catmullRom)
+                   .foregroundStyle(.cyan)
+                   .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                   .shadow(color: .cyan.opacity(0.6), radius: 10, y: 5)
+                   
+                   AreaMark(
+                       x: .value("Day", point.date),
+                       y: .value("Vol", animateChart ? val : 0)
+                   )
+                   .interpolationMethod(.catmullRom)
+                   .foregroundStyle(
+                       LinearGradient(
+                           colors: [.cyan.opacity(0.5), .black.opacity(0.0)],
+                           startPoint: .top,
+                           endPoint: .bottom
+                       )
+                   )
+               }
+               .chartXAxis(.hidden)
+               .chartYAxis(.hidden)
+               .frame(height: 300)
+               .padding(.horizontal, -10) // Растягиваем за края экрана
+               
+               Spacer()
+           }
+       }
+       .onAppear {
+           withAnimation(.spring(response: 1.5, dampingFraction: 0.8).delay(0.2)) {
+               animateChart = true
+           }
+       }
+   }
 }
 
-// Слайд 3: Muscle Focus
+// MARK: - СЛАЙД 3: Радар мышц
 struct StorySlideFocus: View {
-    let data: PeriodReportPayload
-    
-    var body: some View {
-        ZStack {
-            LinearGradient(colors: [Color(hex: "1CB5E0"), Color(hex: "000046")], startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 20) {
-                Spacer()
-                
-                Text("You really love your")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.8))
-                
-                Text(LocalizedStringKey(data.topMuscle))
-                    .font(.system(size: 60, weight: .heavy, design: .rounded))
-                    .foregroundColor(.cyan)
-                    .textCase(.uppercase)
-                    .shadow(color: .cyan.opacity(0.6), radius: 15)
-                
-                // Радарный график из уже существующего в проекте компонента
-                RadarChartView(
-                    currentData: data.radarCurrent,
-                    previousData: nil,
-                    highlightedAxis: data.topMuscle,
-                    color: .cyan
-                )
-                .frame(height: 320)
-                .padding(20)
-                .background(.ultraThinMaterial)
-                .cornerRadius(30)
-                .padding(.horizontal, 20)
-                .padding(.top, 20)
-                
-                Spacer()
-            }
-        }
-    }
+   let data: PeriodReportPayload
+   @Environment(ThemeManager.self) private var themeManager
+   
+   var body: some View {
+       ZStack {
+           Color.black.ignoresSafeArea()
+           
+           // Токсичное свечение на фоне
+           Circle()
+               .fill(Color.green.opacity(0.15))
+               .frame(width: 400, height: 400)
+               .blur(radius: 100)
+           
+           VStack(spacing: 30) {
+               Spacer()
+               
+               VStack(spacing: 10) {
+                   Text(LocalizedStringKey("You destroyed your"))
+                       .font(.system(size: 32, weight: .bold, design: .rounded))
+                       .foregroundColor(.white.opacity(0.9))
+                   
+                   Text(LocalizedStringKey(data.topMuscle))
+                       .font(.system(size: 60, weight: .black, design: .rounded))
+                       .textCase(.uppercase)
+                       // Ядовитый градиент
+                       .foregroundStyle(LinearGradient(colors: [.green, .cyan], startPoint: .leading, endPoint: .trailing))
+                       .shadow(color: .green.opacity(0.8), radius: 25, x: 0, y: 0)
+               }
+               .multilineTextAlignment(.center)
+               .padding(.horizontal, 20)
+               
+               // Эпичный Радар
+               RadarChartView(
+                   currentData: data.radarCurrent,
+                   previousData: nil,
+                   highlightedAxis: data.topMuscle,
+                   color: .cyan
+               )
+               .frame(height: 350)
+               .padding(30)
+               .background(Color(white: 0.05))
+               .cornerRadius(40)
+               .overlay(
+                   RoundedRectangle(cornerRadius: 40)
+                       .stroke(LinearGradient(colors: [.cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+               )
+               .shadow(color: .cyan.opacity(0.2), radius: 30, x: 0, y: 15)
+               .padding(.horizontal, 24)
+               
+               Spacer()
+           }
+       }
+   }
 }
 
-// Слайд 4: Outro & Share
+// MARK: - СЛАЙД 4: Финал (Holo Card)
 struct StorySlideOutro: View {
     let data: PeriodReportPayload
     var dismissAction: () -> Void
+    @Environment(ThemeManager.self) private var themeManager
     
-    @State private var showShareSheet = false
+    @State private var dragOffset: CGSize = .zero
+    @State private var isPulsing = false
+    
+    // Подготовка дней для мини-сетки
+    private var last28Days: [Date] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        return (0..<28).compactMap { cal.date(byAdding: .day, value: -$0, to: today) }.reversed()
+    }
     
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(hex: "000000"), Color(hex: "434343")], startPoint: .top, endPoint: .bottom)
-                .ignoresSafeArea()
+            Color.black.ignoresSafeArea()
             
-            VStack(spacing: 40) {
+            VStack(spacing: 0) {
                 Spacer()
                 
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 100))
-                    .foregroundStyle(LinearGradient(colors: [.yellow, .orange, .red], startPoint: .top, endPoint: .bottom))
-                    .shadow(color: .orange.opacity(0.5), radius: 30)
+                // Голографическая карточка
+                ZStack {
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(Color(white: 0.08))
+                    
+                    // Эффект стекла и перелива
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .environment(\.colorScheme, .dark)
+                    
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .stroke(LinearGradient(colors: [.purple, .cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+                    
+                    VStack(spacing: 30) {
+                        Text("DISCIPLINE")
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .tracking(4)
+                            .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .leading, endPoint: .trailing))
+                        
+                        // 3 Новые метрики
+                        HStack(spacing: 20) {
+                            holoStat(value: "\(data.streakDays)", title: "Max Streak", color: .orange)
+                            holoStat(value: "\(data.activeDays.count)", title: "Gym Days", color: .cyan)
+                            holoStat(value: "\(data.summary.currentSets)", title: "Sets Done", color: .green)
+                        }
+                        
+                        Divider().background(Color.white.opacity(0.2))
+                        
+                        // Неоновый GitHub-style Календарь
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("ACTIVITY HEATMAP (LAST 28 DAYS)")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white.opacity(0.5))
+                            
+                            // Сетка 7 колонок (пн-вс)
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                                ForEach(last28Days, id: \.self) { date in
+                                    let isActive = data.activeDays.contains(where: { Calendar.current.isDate($0, inSameDayAs: date) })
+                                    
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(isActive ? Color.cyan : Color.white.opacity(0.1))
+                                        .aspectRatio(1, contentMode: .fit)
+                                        .shadow(color: isActive ? Color.cyan.opacity(0.6) : .clear, radius: 4)
+                                }
+                            }
+                        }
+                    } // <-- ИМЕННО ЭТУ СКОБКУ ТЫ ПОТЕРЯЛ В ПРЕДЫДУЩЕМ КОДЕ
+                    .padding(30)
+                }
+                .frame(width: 340, height: 460)
+                .rotation3DEffect(.degrees(Double(dragOffset.width / 10)), axis: (x: 0, y: 1, z: 0))
+                .rotation3DEffect(.degrees(Double(-dragOffset.height / 10)), axis: (x: 1, y: 0, z: 0))
+                .shadow(color: .cyan.opacity(0.3), radius: 40, x: dragOffset.width/3, y: dragOffset.height/3)
+                .gesture(
+                    DragGesture()
+                        .onChanged { val in withAnimation(.interactiveSpring()) { dragOffset = val.translation } }
+                        .onEnded { _ in withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { dragOffset = .zero } }
+                )
                 
-                Text("Keep the momentum\ngoing!")
-                    .font(.system(size: 36, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
+                Spacer()
                 
+                // Огромная кнопка Share
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
+                    let generator = UIImpactFeedbackGenerator(style: .heavy)
                     generator.impactOccurred()
-                    // Здесь в будущем можно сделать рендер View в картинку
-                    showShareSheet = true
+                    // Здесь в реальном приложении вызов ShareSheet
                 } label: {
-                    HStack {
+                    HStack(spacing: 12) {
                         Image(systemName: "square.and.arrow.up")
-                        Text("Share My Month")
-                            .bold()
+                            .font(.title2.bold())
+                        Text(LocalizedStringKey("SHARE STATS"))
+                            .font(.title2.bold())
+                            .tracking(2)
                     }
-                    .font(.title3)
                     .foregroundColor(.black)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 18)
-                    .background(Color.white)
+                    .padding(.vertical, 22)
+                    .background(LinearGradient(colors: [.cyan, .green], startPoint: .leading, endPoint: .trailing))
                     .clipShape(Capsule())
-                    .shadow(color: .white.opacity(0.3), radius: 10)
+                    .scaleEffect(isPulsing ? 1.05 : 1.0)
+                    .shadow(color: .green.opacity(isPulsing ? 0.8 : 0.4), radius: isPulsing ? 25 : 10, y: 5)
                 }
-                .padding(.horizontal, 40)
-                
-                Button {
-                    dismissAction()
-                } label: {
-                    Text("Close")
-                        .font(.headline)
-                        .foregroundColor(.white.opacity(0.5))
+                .padding(.horizontal, 30)
+                .padding(.bottom, 40)
+                .onAppear {
+                    withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                        isPulsing = true
+                    }
                 }
-                
-                Spacer()
             }
         }
-        .sheet(isPresented: $showShareSheet) {
-            // Заглушка для системного окна шаринга.
-            // В идеале сюда передается срендеренная картинка `UIImage`.
-            ActivityViewController(activityItems: ["I just completed \(data.summary.currentWorkouts) workouts this month using WorkoutTracker! 💪"])
-                .presentationDetents([.medium, .large])
+    }
+    
+    private func holoStat(value: String, title: String, color: Color) -> some View {
+        VStack(spacing: 6) {
+            Text(value)
+                .font(.system(size: 34, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+                .shadow(color: color.opacity(0.8), radius: 10)
+            
+            Text(LocalizedStringKey(title))
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(color)
+                .multilineTextAlignment(.center)
         }
+        .frame(maxWidth: .infinity)
     }
 }
     
@@ -2292,7 +2432,7 @@ struct StorySlideOutro: View {
    
 struct MonthlyReportDetailsView: View {
     let data: PeriodReportPayload
-    
+    @Environment(ThemeManager.self) private var themeManager
     // Возвращаем потерянные переменные
     @Environment(UnitsManager.self) var unitsManager
     @State private var selectedMetric: ReportChartMetric = .workouts
@@ -2334,13 +2474,13 @@ struct MonthlyReportDetailsView: View {
                     x: .value("Date", point.date, unit: .day),
                     y: .value("Value", val)
                 )
-                .foregroundStyle(Color.blue.gradient)
+                .foregroundStyle(themeManager.current.primaryGradient)
                 .cornerRadius(4)
                 .annotation(position: .top) {
                     if val > 0 {
                         Text(LocalizationHelper.shared.formatFlexible(val))
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                     }
                 }
             }
@@ -2356,7 +2496,7 @@ struct MonthlyReportDetailsView: View {
             .padding(.horizontal)
         }
         .padding(.vertical)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
     }
     
     @ViewBuilder
@@ -2364,7 +2504,7 @@ struct MonthlyReportDetailsView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(LocalizedStringKey("Summary"))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .padding(.horizontal)
             
             let cVol = unitsManager.convertFromKilograms(data.currentVolume)
@@ -2391,7 +2531,7 @@ struct MonthlyReportDetailsView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(LocalizedStringKey(title))
                 .font(.subheadline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Text(current)
                 .font(.title2)
@@ -2407,9 +2547,9 @@ struct MonthlyReportDetailsView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.1), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(themeManager.current.surfaceVariant, lineWidth: 1))
     }
     
     @ViewBuilder
@@ -2418,7 +2558,7 @@ struct MonthlyReportDetailsView: View {
             HStack {
                 Text(LocalizedStringKey("Workout Days Log"))
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 Spacer()
             }
             .padding(.horizontal)
@@ -2426,8 +2566,8 @@ struct MonthlyReportDetailsView: View {
             VStack(spacing: 8) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 40))
-                    .foregroundColor(.orange)
-                    .shadow(color: .orange.opacity(0.5), radius: 10, x: 0, y: 5)
+                    .foregroundColor(themeManager.current.secondaryMidTone)
+                    .shadow(color: themeManager.current.secondaryMidTone.opacity(0.5), radius: 10, x: 0, y: 5)
                 
                 Text("\(data.streakDays) Day Streak")
                     .font(.title2)
@@ -2448,7 +2588,7 @@ struct MonthlyReportDetailsView: View {
                     ForEach(0..<7, id: \.self) { i in
                         Text(cal.shortWeekdaySymbols[(cal.firstWeekday - 1 + i) % 7].prefix(1))
                             .font(.caption2)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -2460,7 +2600,7 @@ struct MonthlyReportDetailsView: View {
                         let isActive = data.activeDays.contains(cal.startOfDay(for: date))
                         ZStack {
                             Circle()
-                                .fill(isActive ? Color.blue : Color.gray.opacity(0.1))
+                                .fill(isActive ? themeManager.current.primaryAccent : themeManager.current.surfaceVariant)
                             Text("\(cal.component(.day, from: date))")
                                 .font(.caption)
                                 .fontWeight(isActive ? .bold : .regular)
@@ -2471,7 +2611,7 @@ struct MonthlyReportDetailsView: View {
                 }
             }
             .padding()
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(16)
             .padding(.horizontal)
         }
@@ -2482,7 +2622,7 @@ struct MonthlyReportDetailsView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Muscle Distribution"))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .padding(.horizontal)
             
             VStack {
@@ -2490,18 +2630,18 @@ struct MonthlyReportDetailsView: View {
                     currentData: data.radarCurrent,
                     previousData: data.radarPrevious,
                     highlightedAxis: nil,
-                    color: .blue
+                    color: themeManager.current.primaryAccent
                 )
                 .frame(height: 250)
                 .padding()
                 
                 HStack(spacing: 16) {
                     HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption) }
-                    HStack(spacing: 4) { Circle().fill(Color.blue).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption) }
+                    HStack(spacing: 4) { Circle().fill(themeManager.current.primaryAccent).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption) }
                 }
                 .padding(.bottom, 16)
             }
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(16)
             .padding(.horizontal)
         }
@@ -2514,12 +2654,13 @@ struct HighlightCard: View {
     let icon: String
     let isSelected: Bool
     let change: Double
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Image(systemName: icon)
                 .font(.title2)
-                .foregroundColor(isSelected ? .white : .blue)
+                .foregroundColor(isSelected ? .white : themeManager.current.primaryAccent)
             
             Text(value)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
@@ -2538,13 +2679,13 @@ struct HighlightCard: View {
         }
         .padding()
         .frame(minWidth: 140, alignment: .leading)
-        .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
+        .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface)
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(isSelected ? Color.white.opacity(0.3) : Color.gray.opacity(0.2), lineWidth: 1)
         )
-        .shadow(color: isSelected ? .blue.opacity(0.4) : .black.opacity(0.04), radius: 8, x: 0, y: 4)
+        .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.4) : .black.opacity(0.04), radius: 8, x: 0, y: 4)
         .compositingGroup()
     }
 }

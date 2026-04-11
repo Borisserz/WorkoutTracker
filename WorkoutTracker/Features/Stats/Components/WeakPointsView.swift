@@ -11,6 +11,8 @@ internal import SwiftUI
 struct WeakPointsView: View {
     let weakPoints: [WeakPoint]
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         if weakPoints.isEmpty {
             EmptyStateView(
@@ -32,6 +34,8 @@ struct WeakPointsView: View {
 struct WeakPointRow: View {
     let weakPoint: WeakPoint
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -44,7 +48,7 @@ struct WeakPointRow: View {
                 
                 Text(weakPoint.recommendation)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
             
             Spacer()
@@ -61,7 +65,7 @@ struct WeakPointRow: View {
                 
                 Text(LocalizedStringKey("\(Int(weakPoint.averageVolume)) kg avg"))
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
         }
         .padding(.vertical, 8)

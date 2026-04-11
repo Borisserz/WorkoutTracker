@@ -18,6 +18,8 @@ struct HistoryView: View {
     @State private var showFavoritesOnly = false
     @State private var listViewModel = WorkoutListViewModel()
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -176,6 +178,8 @@ struct CompactStatCard: View {
     let icon: String
     let colors: [Color]
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
@@ -191,7 +195,7 @@ struct CompactStatCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .textCase(.uppercase)
                     .lineLimit(1)                     // ✅ Запрещаем перенос заголовка
                     .minimumScaleFactor(0.6)          // ✅ Разрешаем шрифту сжаться, если текст длинный
@@ -199,7 +203,7 @@ struct CompactStatCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(value)
                         .font(.system(size: 22, weight: .heavy, design: .rounded))
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .contentTransition(.numericText())
                         .lineLimit(1)                 // ✅ Запрещаем перенос цифр (чтобы 7 не улетала вниз)
                         .minimumScaleFactor(0.5)      // ✅ Разрешаем цифрам уменьшиться до 50%
@@ -207,14 +211,14 @@ struct CompactStatCard: View {
                     Text(unit)
                         .font(.caption2)
                         .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .lineLimit(1)                 // ✅ Единицы измерения тоже строго в одну строку
                 }
             }
             Spacer(minLength: 0) // ✅ Позволяем Spacer'у сжиматься до 0, отдавая пространство тексту
         }
         .padding(14)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 4)
     }
@@ -223,10 +227,12 @@ struct CompactStatCard: View {
 struct PremiumSearchBar: View {
     @Bindable var debouncer: SearchDebouncer
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
             
             TextField(LocalizedStringKey("Search workouts..."), text: $debouncer.inputText)
                 .textFieldStyle(.plain)
@@ -237,13 +243,13 @@ struct PremiumSearchBar: View {
                     withAnimation { debouncer.inputText = "" }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .foregroundColor(.gray.opacity(0.6))
+                        .foregroundColor(themeManager.current.secondaryAccent.opacity(0.6))
                 }
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
@@ -258,6 +264,8 @@ struct HistoryFilterChipView: View {
     let isSelected: Bool
     let activeColor: Color
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack(spacing: 6) {
             if let icon = icon {
@@ -273,7 +281,7 @@ struct HistoryFilterChipView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         // Фон всегда делаем плотным, как у остальных кнопок, чтобы избежать прозрачности при скролле
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(20)
         .overlay(
             RoundedRectangle(cornerRadius: 20)

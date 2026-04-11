@@ -72,6 +72,8 @@ struct SetRowView: View {
         )
     }
 
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             indexLabel
@@ -171,7 +173,7 @@ struct SetRowView: View {
                     .foregroundColor(binding.wrappedValue != nil ? .primary : .secondary)
                     .frame(maxWidth: .infinity) // Динамическая ширина вместо жесткой привязки
                     .frame(height: 44)
-                    .background(Color(UIColor.systemBackground))
+                    .background(themeManager.current.background)
                     .cornerRadius(10)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
@@ -181,7 +183,7 @@ struct SetRowView: View {
             .buttonStyle(.plain)
             
             if let ghost = ghostText {
-                Text(ghost).font(.system(size: 10, weight: .medium, design: .rounded)).foregroundColor(.gray)
+                Text(ghost).font(.system(size: 10, weight: .medium, design: .rounded)).foregroundColor(themeManager.current.secondaryAccent)
             }
         }
         .frame(maxWidth: .infinity)

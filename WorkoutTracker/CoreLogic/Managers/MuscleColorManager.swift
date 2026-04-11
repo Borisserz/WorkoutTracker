@@ -10,15 +10,19 @@ class MuscleColorManager: ObservableObject {
     @Published var colors: [String: String] = [:]
     
     // ИСПРАВЛЕНИЕ: Дефолтные красивые цвета для диаграммы, если пользователь их не менял
-    private let defaultColors: [String: Color] = [
-        "Chest": .blue,
-        "Back": .green,
-        "Legs": .orange,
-        "Shoulders": .purple,
-        "Arms": .red,
-        "Core": .yellow,
-        "Cardio": .teal
-    ]
+    private var defaultColors: [String: Color] {
+          let theme = ThemeManager.shared.current
+          
+          return [
+              "Chest": theme.primaryAccent,           // Раньше: .blue
+              "Back": .green,                         // Оставлено для контраста графика
+              "Legs": theme.secondaryMidTone,         // Раньше: .orange
+              "Shoulders": theme.deepPremiumAccent,   // Раньше: .purple
+              "Arms": .red,                           // Оставлено для контраста графика
+              "Core": .yellow,                        // Оставлено для контраста графика
+              "Cardio": theme.lightHighlight          // Раньше: .teal
+          ]
+      }
     
     private var modelContainer: ModelContainer?
     

@@ -6,9 +6,8 @@ import SwiftData
 
 struct AICoachView: View {
     @Environment(DIContainer.self) private var di
-    
-    // ✅ ПОЛУЧАЕМ ГОТОВУЮ ВЬЮМОДЕЛЬ БЕЗ ОПЦИОНАЛОВ И ЗАГРУЗОК
     @Environment(AICoachViewModel.self) private var viewModel
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
     @AppStorage(Constants.UserDefaultsKeys.aiCoachTone.rawValue) private var aiCoachTone = Constants.AIConstants.defaultTone
@@ -49,19 +48,19 @@ struct AICoachView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { showHistorySheet = true } label: { Image(systemName: "clock.arrow.circlepath").foregroundColor(.primary) }
+                    Button { showHistorySheet = true } label: { Image(systemName: "clock.arrow.circlepath").foregroundColor(themeManager.current.primaryText) }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button {
                         withAnimation(.easeInOut) { viewModel.clearChat() }
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
-                    } label: { Image(systemName: "square.and.pencil").foregroundColor(.primary) }
+                    } label: { Image(systemName: "square.and.pencil").foregroundColor(themeManager.current.primaryText) }
                     Button {
                         showAISettings = true
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
-                    } label: { Image(systemName: "slider.horizontal.3").foregroundColor(.primary) }
+                    } label: { Image(systemName: "slider.horizontal.3").foregroundColor(themeManager.current.primaryText) }
                 }
             }
             .sheet(isPresented: $showHistorySheet) {
@@ -104,13 +103,19 @@ struct AICoachView: View {
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            ZStack { Circle().fill(Color.blue.opacity(0.1)).frame(width: 80, height: 80); Image(systemName: "brain.head.profile").font(.system(size: 40)).foregroundColor(.blue) }
-            Text("Ready to help").font(.title2).bold().foregroundColor(.primary)
-            Text("Ask a fitness question or request a workout plan.").font(.subheadline).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal, 32)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(.bottom, 160)
-    }
-    
+          VStack(spacing: 16) {
+              ZStack {
+                  Circle()
+                      .fill(themeManager.current.primaryAccent.opacity(0.1)) // <--- ИЗМЕНЕНО
+                      .frame(width: 80, height: 80)
+                  Image(systemName: "brain.head.profile")
+                      .font(.system(size: 40))
+                      .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
+              }
+              Text("Ready to help").font(.title2).bold().foregroundColor(themeManager.current.primaryText)
+              Text("Ask a fitness question or request a workout plan.").font(.subheadline).foregroundColor(themeManager.current.secondaryText).multilineTextAlignment(.center).padding(.horizontal, 32)
+          }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(.bottom, 160)
+      }
     private func chatScrollView(viewModel vm: AICoachViewModel) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -140,7 +145,7 @@ struct AICoachView: View {
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
                         if action == "Workout" { showSmartBuilder = true } else if action == "Progress" { showProgressSheet = true } else if action == "Rest" { showRecoverySheet = true }
-                    }) { Text(action).font(.caption).fontWeight(.medium).lineLimit(1).minimumScaleFactor(0.8).padding(.horizontal, 6).padding(.vertical, 10).frame(maxWidth: .infinity).background(Color(UIColor.systemBackground)).foregroundColor(.primary).cornerRadius(16).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.3), lineWidth: 1)) }
+                    }) { Text(action).font(.caption).fontWeight(.medium).lineLimit(1).minimumScaleFactor(0.8).padding(.horizontal, 6).padding(.vertical, 10).frame(maxWidth: .infinity).background(themeManager.current.background).foregroundColor(themeManager.current.primaryText).cornerRadius(16).overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.gray.opacity(0.3), lineWidth: 1)) }
                 }
             }.padding(.horizontal, 12).padding(.bottom, 12).disabled(vm.isGenerating).opacity(vm.isGenerating ? 0.5 : 1.0)
             Divider().background(Color.gray.opacity(0.3))
@@ -153,7 +158,7 @@ struct AICoachView: View {
                     .lineLimit(1...5)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(themeManager.current.surface)
                     .cornerRadius(20)
                     .focused($isInputFocused)
                     .disabled(vm.isGenerating)
@@ -163,7 +168,7 @@ struct AICoachView: View {
                     Button {
                         isInputFocused = false
                         Task { await vm.sendMessage(userWeight: userBodyWeight) }
-                    } label: { Image(systemName: "arrow.up.circle.fill").font(.system(size: 34)).foregroundColor(isSendDisabled ? .gray.opacity(0.5) : .accentColor) }.disabled(isSendDisabled)
+                    } label: { Image(systemName: "arrow.up.circle.fill").font(.system(size: 34)) .foregroundColor(isSendDisabled ? .gray.opacity(0.5) : themeManager.current.primaryAccent)  }.disabled(isSendDisabled)
                 }
             }.padding(.horizontal).padding(.vertical, 12).background(.ultraThinMaterial)
         }
@@ -175,8 +180,8 @@ struct AICoachView: View {
 // MARK: - Chat History Sheet
 struct ChatHistorySheetView: View {
     let userRepository: UserRepositoryProtocol
-    
     @Environment(\.dismiss) private var dismiss
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     
     @State private var sessions: [AIChatSession] = []
     
@@ -224,13 +229,13 @@ struct ChatHistorySheetView: View {
                     VStack(spacing: 20) {
                         Image(systemName: "bubble.left.and.bubble.right.fill")
                             .font(.system(size: 60))
-                            .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .foregroundStyle(themeManager.current.premiumGradient) // <--- ИЗМЕНЕНО
                         Text("Chat history is empty.")
                             .font(.title2).bold()
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                         Text("Your previous conversations with the AI coach will appear here.")
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
                     }
@@ -254,12 +259,12 @@ struct ChatHistorySheetView: View {
                                         VStack(alignment: .leading, spacing: 6) {
                                             Text(session.title)
                                                 .font(.headline)
-                                                .foregroundColor(.primary)
+                                                .foregroundColor(themeManager.current.primaryText)
                                                 .lineLimit(1)
                                             
                                             Text(session.date, style: .time)
                                                 .font(.caption)
-                                                .foregroundColor(.secondary)
+                                                .foregroundColor(themeManager.current.secondaryText)
                                         }
                                         .padding(.vertical, 4)
                                     }
@@ -270,7 +275,7 @@ struct ChatHistorySheetView: View {
                             } label: {
                                 Text(group.rawValue)
                                     .font(.headline)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                             }
                         }
                     }

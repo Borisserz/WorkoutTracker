@@ -8,7 +8,7 @@ import SwiftData
 struct ExerciseView: View {
     @Environment(\.modelContext) private var context
     @Environment(CatalogViewModel.self) var catalogViewModel
-    
+    @Environment(ThemeManager.self) private var themeManager
     @State private var showAddSheet = false
     @State private var showDeleteAlert = false
     @State private var exercisesToDelete: [(name: String, category: String)] = []
@@ -138,41 +138,41 @@ struct ExerciseView: View {
     }
     
     private func filterButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-        Button {
-            let gen = UISelectionFeedbackGenerator()
-            gen.selectionChanged()
-            action()
-        } label: {
-            Text(LocalizedStringKey(title))
-                .font(.subheadline)
-                .fontWeight(isSelected ? .bold : .medium)
-                .foregroundColor(isSelected ? .white : .primary)
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
-                .cornerRadius(20)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(isSelected ? Color.blue : Color.gray.opacity(0.2), lineWidth: 1)
-                )
-                .shadow(color: isSelected ? Color.blue.opacity(0.2) : .clear, radius: 5, x: 0, y: 2)
-        }
-        .buttonStyle(.plain)
-    }
+           Button {
+               let gen = UISelectionFeedbackGenerator()
+               gen.selectionChanged()
+               action()
+           } label: {
+               Text(LocalizedStringKey(title))
+                   .font(.subheadline)
+                   .fontWeight(isSelected ? .bold : .medium)
+                   .foregroundColor(isSelected ? .white : .primary)
+                   .padding(.horizontal, 18)
+                   .padding(.vertical, 10)
+                   .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface) // <--- ИЗМЕНЕНО
+                   .cornerRadius(20)
+                   .overlay(
+                       RoundedRectangle(cornerRadius: 20)
+                           .stroke(isSelected ? themeManager.current.primaryAccent : Color.gray.opacity(0.2), lineWidth: 1) // <--- ИЗМЕНЕНО
+                   )
+                   .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.2) : .clear, radius: 5, x: 0, y: 2) // <--- ИЗМЕНЕНО
+           }
+           .buttonStyle(.plain)
+       }
     
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 60))
-                .foregroundColor(.gray.opacity(0.4))
+                .foregroundColor(themeManager.current.secondaryAccent.opacity(0.4))
             
             Text(LocalizedStringKey("No exercises found"))
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Text(LocalizedStringKey("Try adjusting search or clear advanced filters."))
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

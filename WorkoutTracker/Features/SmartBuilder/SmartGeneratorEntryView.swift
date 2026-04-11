@@ -3,6 +3,7 @@ internal import SwiftUI
 struct SmartGeneratorEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(DashboardViewModel.self) private var dashboard // Получаем историю
+    @Environment(ThemeManager.self) private var themeManager
     @State private var vm = SmartGeneratorViewModel()
     
     // Возвращаем DTO!
@@ -11,7 +12,7 @@ struct SmartGeneratorEntryView: View {
     var body: some View {
         NavigationStack(path: $vm.path) {
             ZStack {
-                Color(UIColor.systemBackground).ignoresSafeArea()
+                themeManager.current.background.ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 32) {
@@ -32,13 +33,13 @@ struct SmartGeneratorEntryView: View {
                             Image(systemName: "wand.and.stars").font(.title3)
                             Text("Custom Builder").font(.title3).bold()
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         // ✅ ИСПОЛЬЗУЕМ СВЕТЛО-СИНИЙ/CYAN
-                        .background(LinearGradient(colors: [.blue, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .background(themeManager.current.primaryGradient)
                         .clipShape(Capsule())
-                        .shadow(color: .cyan.opacity(0.4), radius: 15, x: 0, y: 8)
+                        .shadow(color: themeManager.current.lightHighlight.opacity(0.4), radius: 15, x: 0, y: 8)
                         .padding(.horizontal, 24)
                     }
                 }
@@ -49,13 +50,13 @@ struct SmartGeneratorEntryView: View {
                     ZStack {
                         Color.black.opacity(0.4).ignoresSafeArea() // Легкое затемнение
                         VStack(spacing: 20) {
-                            ProgressView().controlSize(.large).tint(.cyan)
+                            ProgressView().controlSize(.large).tint(themeManager.current.lightHighlight)
                             Text("Building your perfect workout...")
                                 .font(.headline)
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                         }
                         .padding(30)
-                        .background(Color(UIColor.systemBackground)) // Чистый фон карточки
+                        .background(themeManager.current.background) // Чистый фон карточки
                         .cornerRadius(24)
                         .shadow(color: .black.opacity(0.2), radius: 20)
                     }
@@ -91,7 +92,7 @@ struct SmartGeneratorEntryView: View {
                 .padding(.top, 24)
             Text(LocalizedStringKey("Select a quick preset or build a custom routine in seconds."))
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
         }
@@ -102,13 +103,13 @@ struct SmartGeneratorEntryView: View {
             Text("Quick Generation").font(.headline).padding(.horizontal, 24)
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                quickCard(title: "At Home Shred", icon: "house.fill", color: .orange, desc: "Bodyweight, 30m") {
+                quickCard(title: "At Home Shred", icon: "house.fill", color: themeManager.current.secondaryMidTone, desc: "Bodyweight, 30m") {
                     vm.applyQuickPreset(name: "Home Shred", muscles: ["Chest", "Core", "Legs"], duration: 30, equipment: .bodyweight, historyCache: dashboard.lastPerformancesCache)
                 }
                 quickCard(title: "Dumbbell Only", icon: "scalemass.fill", color: .purple, desc: "Full Body, 45m") {
                     vm.applyQuickPreset(name: "Dumbbell Full Body", muscles: ["Chest", "Back", "Legs"], duration: 45, equipment: .dumbbellsOnly, historyCache: dashboard.lastPerformancesCache)
                 }
-                quickCard(title: "Quick Pump", icon: "bolt.fill", color: .blue, desc: "Arms & Chest, 20m") {
+                quickCard(title: "Quick Pump", icon: "bolt.fill", color: themeManager.current.primaryAccent, desc: "Arms & Chest, 20m") {
                     vm.applyQuickPreset(name: "Quick Pump", muscles: ["Arms", "Chest"], duration: 20, equipment: .fullGym, historyCache: dashboard.lastPerformancesCache)
                 }
                 quickCard(title: "Cardio Blast", icon: "heart.fill", color: .red, desc: "Sweat session, 30m") {
@@ -125,13 +126,13 @@ struct SmartGeneratorEntryView: View {
                 Image(systemName: icon).font(.title2).foregroundColor(color)
                     .frame(width: 40, height: 40).background(color.opacity(0.15)).clipShape(Circle())
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey(title)).font(.headline).foregroundColor(.primary)
-                    Text(LocalizedStringKey(desc)).font(.caption).foregroundColor(.secondary)
+                    Text(LocalizedStringKey(title)).font(.headline).foregroundColor(themeManager.current.primaryText)
+                    Text(LocalizedStringKey(desc)).font(.caption).foregroundColor(themeManager.current.secondaryText)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(20)
         }
         .buttonStyle(.plain)

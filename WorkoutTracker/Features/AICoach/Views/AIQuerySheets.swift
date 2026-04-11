@@ -9,7 +9,7 @@ internal import SwiftUI
 struct ProgressAnalysisSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onGenerate: (String) -> Void
-    
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     @State private var selectedPeriod = "Past Week"
     @State private var selectedFocus = "General Overview"
     
@@ -47,12 +47,12 @@ struct ProgressAnalysisSheet: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(themeManager.current.primaryAccent)
                         .foregroundColor(.white)
                         .cornerRadius(16)
                 }
                 .padding()
-                .background(Color(UIColor.systemBackground).shadow(radius: 5, y: -2))
+                .background(themeManager.current.background.shadow(radius: 5, y: -2))
             }
         }
         .presentationDetents([.medium])
@@ -63,7 +63,7 @@ struct ProgressAnalysisSheet: View {
 struct RecoveryAdvisorSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onGenerate: (String) -> Void
-    
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     @State private var feeling = "Light soreness"
     @State private var goal = "Everything hurtsWhat can I train?"
     
@@ -82,11 +82,11 @@ struct RecoveryAdvisorSheet: View {
                             HStack {
                                 Text(f)
                                     .font(.subheadline)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                 Spacer()
                                 if feeling == f {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(themeManager.current.primaryAccent)
                                 }
                             }
                         }
@@ -101,11 +101,11 @@ struct RecoveryAdvisorSheet: View {
                             HStack {
                                 Text(g)
                                     .font(.subheadline)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                 Spacer()
                                 if goal == g {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(themeManager.current.primaryAccent)
                                 }
                             }
                         }
@@ -131,12 +131,12 @@ struct RecoveryAdvisorSheet: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue) // Сделали синим
+                        .background(themeManager.current.primaryAccent) 
                         .foregroundColor(.white)
                         .cornerRadius(16)
                 }
                 .padding()
-                .background(Color(UIColor.systemBackground).shadow(radius: 5, y: -2))
+                .background(themeManager.current.background.shadow(radius: 5, y: -2))
             }
         }
         .presentationDetents([.medium, .large])

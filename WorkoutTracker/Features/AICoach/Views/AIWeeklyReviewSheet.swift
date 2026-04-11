@@ -7,19 +7,18 @@ internal import SwiftUI
 
 struct AIWeeklyReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
-    
+    @Environment(ThemeManager.self) private var themeManager
     // Используем глобальные модели, которые мы вынесли
     let currentStats: PeriodStats
     let previousStats: PeriodStats
     let weakPoints: [WeakPoint]
-    let recentPRs: [PersonalRecord] // ИСПРАВЛЕНО: Убран префикс 
+    let recentPRs: [PersonalRecord]
     
     private let aiLogicService: AILogicService
 
     @State private var isAnalyzing = false
     @State private var reviewText: String? = nil
     
-    // ИСПРАВЛЕНО: Обновлен инициализатор
     init(currentStats: PeriodStats, previousStats: PeriodStats, weakPoints: [WeakPoint], recentPRs: [PersonalRecord], aiLogicService: AILogicService) {
         self.currentStats = currentStats
         self.previousStats = previousStats
@@ -30,10 +29,20 @@ struct AIWeeklyReviewSheet: View {
     
     var body: some View {
         ZStack {
-            Color(UIColor.systemBackground).ignoresSafeArea()
+            themeManager.current.background.ignoresSafeArea()
             
-            Circle().fill(Color.purple.opacity(0.3)).blur(radius: 60).frame(width: 300, height: 300).offset(x: -100, y: -200)
-            Circle().fill(Color.blue.opacity(0.3)).blur(radius: 60).frame(width: 300, height: 300).offset(x: 150, y: 200)
+            // Динамические фоновые свечения
+            Circle()
+                .fill(themeManager.current.deepPremiumAccent.opacity(0.3))
+                .blur(radius: 60)
+                .frame(width: 300, height: 300)
+                .offset(x: -100, y: -200)
+            
+            Circle()
+                .fill(themeManager.current.primaryAccent.opacity(0.3))
+                .blur(radius: 60)
+                .frame(width: 300, height: 300)
+                .offset(x: 150, y: 200)
             
             VStack(spacing: 0) {
                 header
@@ -55,10 +64,10 @@ struct AIWeeklyReviewSheet: View {
     
     private var header: some View {
         HStack {
-            Image(systemName: "sparkles").foregroundColor(.purple).font(.title2)
+            Image(systemName: "sparkles").foregroundColor(themeManager.current.deepPremiumAccent)
             Text(LocalizedStringKey("AI Performance Review")).font(.title2).bold()
             Spacer()
-            Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").foregroundColor(.secondary).font(.title2) }
+            Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").foregroundColor(themeManager.current.secondaryText).font(.title2) }
         }
         .padding().background(.ultraThinMaterial).zIndex(1)
     }
@@ -68,8 +77,16 @@ struct AIWeeklyReviewSheet: View {
             Text(.init(text))
                 .font(.body).lineSpacing(6).padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial).shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [.purple.opacity(0.5), .blue.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(.ultraThinMaterial)
+                        .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(themeManager.current.premiumGradient, lineWidth: 1)
+                        .opacity(0.5) // Applied opacity to the entire gradient stroke
+                )
                 .padding()
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -78,23 +95,43 @@ struct AIWeeklyReviewSheet: View {
     private var analyzingView: some View {
         VStack(spacing: 24) {
             ZStack {
-                Circle().fill(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)).frame(width: 80, height: 80).modifier(PulsatingGlowEffect())
+                Circle()
+                    .fill(themeManager.current.premiumGradient)
+                    .frame(width: 80, height: 80)
+                    .modifier(PulsatingGlowEffect())
+                
                 Image(systemName: "brain.head.profile").font(.system(size: 40)).foregroundColor(.white)
             }
-            Text(LocalizedStringKey("Analyzing your week...")).font(.headline).foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing)).modifier(BlinkingTextModifier())
+            Text(LocalizedStringKey("Analyzing your week..."))
+                .font(.headline)
+                .foregroundStyle(
+                    LinearGradient(colors: [themeManager.current.deepPremiumAccent, themeManager.current.primaryAccent], startPoint: .leading, endPoint: .trailing)
+                )
+                .modifier(BlinkingTextModifier())
         }
         .frame(maxHeight: .infinity).transition(.opacity)
     }
     
     private var initialStateView: some View {
         VStack(spacing: 24) {
-            Image(systemName: "brain.head.profile").font(.system(size: 100)).foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)).shadow(color: .purple.opacity(0.4), radius: 15, x: 0, y: 10)
-            Text(LocalizedStringKey("Ready to dive into your stats?")).font(.headline).foregroundColor(.secondary)
+            Image(systemName: "brain.head.profile")
+                .font(.system(size: 100))
+                .foregroundStyle(themeManager.current.premiumGradient)
+                .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 15, x: 0, y: 10)
+            
+            Text(LocalizedStringKey("Ready to dive into your stats?"))
+                .font(.headline)
+                .foregroundColor(themeManager.current.secondaryText)
+            
             Button { generateReview() } label: {
                 HStack { Image(systemName: "bolt.fill"); Text(LocalizedStringKey("Analyze My Week")).bold() }
                 .font(.title3).frame(maxWidth: .infinity).padding()
-                .background(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing)).foregroundColor(.white)
-                .cornerRadius(16).shadow(color: .purple.opacity(0.4), radius: 10, x: 0, y: 5)
+                .background(
+                    LinearGradient(colors: [themeManager.current.deepPremiumAccent, themeManager.current.primaryAccent], startPoint: .leading, endPoint: .trailing)
+                )
+                .foregroundColor(.white)
+                .cornerRadius(16)
+                .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 10, x: 0, y: 5)
             }
             .padding(.horizontal, 40).padding(.top, 20)
         }
@@ -156,14 +193,28 @@ struct AIWeeklyReviewSheet: View {
 // MARK: - Animations
 
 struct PulsatingGlowEffect: ViewModifier {
+    @Environment(ThemeManager.self) private var themeManager // Внедрено для получения темы модификатором
     @State private var scale: CGFloat = 1.0
     @State private var opacity: Double = 0.5
     
     func body(content: Content) -> some View {
         content
-            .background(Circle().fill(Color.purple.opacity(opacity)).scaleEffect(scale).blur(radius: 10))
-            .onAppear { withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) { scale = 1.3; opacity = 0.1 } }
-            .onDisappear { scale = 1.0; opacity = 0.5 }
+            .background(
+                Circle()
+                    .fill(themeManager.current.deepPremiumAccent.opacity(opacity))
+                    .scaleEffect(scale)
+                    .blur(radius: 10)
+            )
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    scale = 1.3
+                    opacity = 0.1
+                }
+            }
+            .onDisappear {
+                scale = 1.0
+                opacity = 0.5
+            }
     }
 }
 

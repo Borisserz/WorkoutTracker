@@ -77,7 +77,7 @@ final class ExerciseHistoryViewModel {
             self.selectedFormula = formula
         }
     }
-
+    
     // MARK: - Data Loading
     
     func loadData(unitsManager: UnitsManager) async {
@@ -179,8 +179,16 @@ final class ExerciseHistoryViewModel {
     }
     
     // MARK: - UI Helpers
-    
     var unitLabel: String { switch exerciseType { case .strength: return UnitsManager.shared.weightUnitString(); case .cardio: return UnitsManager.shared.distanceUnitString(); case .duration: return "min" } }
     var chartTitle: LocalizedStringKey { switch exerciseType { case .strength: return "Progress (Weight)"; case .cardio: return "Progress (Distance)"; case .duration: return "Progress (Time)" } }
-    var chartColor: Color { switch exerciseType { case .strength: return .blue; case .cardio: return .orange; case .duration: return .purple } }
+    
+    // <--- ИЗМЕНЕНО: Динамические цвета для графиков в зависимости от темы
+    var chartColor: Color {
+        let theme = ThemeManager.shared.current
+        switch exerciseType {
+        case .strength: return theme.primaryAccent
+        case .cardio: return theme.secondaryMidTone
+        case .duration: return theme.deepPremiumAccent
+        }
+    }
 }

@@ -6,7 +6,6 @@ import SwiftData
 
 struct WatchWorkoutHubView: View {
     @Environment(\.modelContext) private var context
-    
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
     private var myPresets: [WorkoutPreset]
     
@@ -14,51 +13,86 @@ struct WatchWorkoutHubView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Button(action: {
-                        // Привязываем контекст к менеджеру и запрашиваем пресеты
+            ScrollView {
+                VStack(spacing: 12) {
+                    
+                    // Sync Button
+                    Button {
+                        WKInterfaceDevice.current().play(.click)
                         WatchSyncManager.shared.modelContext = context
                         WatchSyncManager.shared.requestPresetsFromPhone()
-                    }) {
-                        Label("Sync with iPhone", systemImage: "arrow.triangle.2.circlepath")
-                            .foregroundColor(.blue)
+                    } label: {
+                        HStack {
+                            Image(systemName: "arrow.triangle.2.circlepath")
+                            Text("Sync with iPhone")
+                        }
+                        .font(.headline)
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(WatchTheme.primaryGradient)
+                        .cornerRadius(20)
                     }
-                }
-                
-                Section {
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                    
+                    // Empty Workout
                     Button(action: startEmptyWorkout) {
                         HStack {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundColor(.green)
-                                .font(.title2)
+                                .foregroundColor(WatchTheme.cyan)
+                                .font(.title3)
                             Text("Empty Workout")
-                                .bold()
+                                .fontWeight(.semibold)
+                            Spacer()
                         }
-                        .padding(.vertical, 8)
+                        .padding()
+                        .background(WatchTheme.surface)
+                        .cornerRadius(16)
                     }
-                }
-                
-                Section(header: Text("My Routines")) {
+                    .buttonStyle(.plain)
+                    .padding(.horizontal)
+                    
+                    // My Routines
                     if myPresets.isEmpty {
                         Text("No routines found.\nTap Sync to load from iPhone.")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 20)
                     } else {
-                        ForEach(myPresets) { preset in
-                            Button(action: { startPresetWorkout(preset) }) {
-                                VStack(alignment: .leading) {
-                                    Text(LocalizedStringKey(preset.name)).font(.headline)
-                                    Text("\(preset.exercises.count) exercises")
-                                        .font(.caption2).foregroundColor(.secondary)
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("MY ROUTINES")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(.gray)
+                                .padding(.horizontal)
+                                .padding(.top, 8)
+                            
+                            ForEach(myPresets) { preset in
+                                Button(action: { startPresetWorkout(preset) }) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(preset.name)
+                                            .font(.headline)
+                                            .foregroundColor(.white)
+                                            .lineLimit(1)
+                                        Text("\(preset.exercises.count) Exercises")
+                                            .font(.footnote)
+                                            .foregroundColor(WatchTheme.cyan)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding()
+                                    .background(WatchTheme.surface)
+                                    .cornerRadius(16)
                                 }
-                                .padding(.vertical, 4)
+                                .buttonStyle(.plain)
+                                .padding(.horizontal)
                             }
                         }
                     }
                 }
             }
-            .navigationTitle("Workout")
+            .background(WatchTheme.background.ignoresSafeArea())
+            .navigationTitle("Workouts")
             .navigationDestination(isPresented: Binding(
                 get: { workoutToStart != nil },
                 set: { if !$0 { workoutToStart = nil } }
@@ -74,17 +108,11 @@ struct WatchWorkoutHubView: View {
                 }
             }
             .onAppear {
-                // Устанавливаем контекст при появлении экрана
                 WatchSyncManager.shared.modelContext = context
             }
         }
     }
     
-    private func startEmptyWorkout() {
-        workoutToStart = (id: UUID(), title: "Watch Workout", presetDTO: nil)
-    }
-    
-    private func startPresetWorkout(_ preset: WorkoutPreset) {
-        workoutToStart = (id: UUID(), title: preset.name, presetDTO: preset.toDTO())
-    }
+    private func startEmptyWorkout() { workoutToStart = (id: UUID(), title: "Watch Workout", presetDTO: nil) }
+    private func startPresetWorkout(_ preset: WorkoutPreset) { workoutToStart = (id: UUID(), title: preset.name, presetDTO: preset.toDTO()) }
 }

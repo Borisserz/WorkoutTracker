@@ -14,6 +14,7 @@ internal import SwiftUI
 // MARK: - Step 1: Muscle Selection
 struct MuscleSelectionView: View {
     @Bindable var vm: SmartGeneratorViewModel
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -34,7 +35,7 @@ struct MuscleSelectionView: View {
                                 VStack {
                                     Image(systemName: icon(for: muscle))
                                         .font(.title)
-                                        .foregroundColor(isSelected ? .cyan : .secondary)
+                                        .foregroundColor(isSelected ? themeManager.current.lightHighlight : .secondary)
                                         .padding(.bottom, 4)
                                     
                                     Text(LocalizedStringKey(muscle))
@@ -45,18 +46,18 @@ struct MuscleSelectionView: View {
                                 .padding(.vertical, 24)
                                 .background(
                                     ZStack {
-                                        Color(UIColor.secondarySystemBackground)
+                                        themeManager.current.surface
                                         if isSelected {
-                                            Color.blue.opacity(0.2)
+                                            themeManager.current.primaryAccent.opacity(0.2)
                                         }
                                     }
                                 )
                                 .cornerRadius(20)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 20)
-                                        .stroke(isSelected ? Color.cyan : Color.clear, lineWidth: 2)
+                                        .stroke(isSelected ? themeManager.current.lightHighlight : Color.clear, lineWidth: 2)
                                 )
-                                .shadow(color: isSelected ? .cyan.opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
+                                .shadow(color: isSelected ? themeManager.current.lightHighlight.opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
                             }
                             .buttonStyle(.plain)
                             .scaleEffect(isSelected ? 1.02 : 1.0)
@@ -76,12 +77,12 @@ struct MuscleSelectionView: View {
             } label: {
                 Text("Next Step")
                     .font(.headline).bold()
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
-                    .background(vm.targetMuscles.isEmpty ? Color.gray : Color.blue)
+                    .background(vm.targetMuscles.isEmpty ? Color.gray : themeManager.current.primaryAccent)
                     .clipShape(Capsule())
-                    .shadow(color: vm.targetMuscles.isEmpty ? .clear : .blue.opacity(0.4), radius: 10, x: 0, y: 5)
+                    .shadow(color: vm.targetMuscles.isEmpty ? .clear : themeManager.current.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 5)
                     .padding(.horizontal, 24)
                     .padding(.bottom, 16)
             }
@@ -107,6 +108,7 @@ struct MuscleSelectionView: View {
 // MARK: - Step 2: Settings
 struct GeneratorSettingsView: View {
     @Bindable var vm: SmartGeneratorViewModel
+    @Environment(ThemeManager.self) private var themeManager
     
     // ✅ ИСПРАВЛЕНИЕ 1: Добавляем Environment для доступа к истории твоих весов
     @Environment(DashboardViewModel.self) private var dashboard
@@ -119,11 +121,11 @@ struct GeneratorSettingsView: View {
                         HStack {
                             Text("\(Int(vm.durationMinutes)) minutes")
                                 .font(.title2).bold()
-                                .foregroundColor(.cyan)
+                                .foregroundColor(themeManager.current.lightHighlight)
                             Spacer()
                         }
                         Slider(value: $vm.durationMinutes, in: 15...120, step: 5)
-                            .tint(.cyan)
+                            .tint(themeManager.current.lightHighlight)
                     }
                     .padding(.vertical, 8)
                 }
@@ -159,14 +161,14 @@ struct GeneratorSettingsView: View {
                     Text("Generate Routine")
                         .font(.headline).bold()
                 }
-                .foregroundColor(.white)
+                .foregroundColor(themeManager.current.background)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
                 .background(
-                    LinearGradient(colors: [.blue, .cyan], startPoint: .leading, endPoint: .trailing)
+                    themeManager.current.primaryGradient
                 )
                 .clipShape(Capsule())
-                .shadow(color: .cyan.opacity(0.4), radius: 15, x: 0, y: 8)
+                .shadow(color: themeManager.current.lightHighlight.opacity(0.4), radius: 15, x: 0, y: 8)
                 .padding(.horizontal, 24)
                 .padding(.bottom, 16)
             }

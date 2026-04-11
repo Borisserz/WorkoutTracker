@@ -6,6 +6,7 @@ internal import SwiftUI
 
 struct RestTimerView: View {
     @Environment(RestTimerManager.self) var timerManager
+    @Environment(ThemeManager.self) private var themeManager
     @State private var isPulsing = false
     
     var body: some View {
@@ -18,7 +19,7 @@ struct RestTimerView: View {
                             .fill(Color.black.opacity(0.2))
                         
                         Rectangle()
-                            .fill(timerManager.restTimerFinished ? Color.green : Color.blue)
+                            .fill(timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent)
                             .frame(width: geo.size.width * CGFloat(timerManager.progress))
                             .animation(.linear(duration: 1.0), value: timerManager.progress)
                     }
@@ -37,7 +38,7 @@ struct RestTimerView: View {
                         } else {
                             Text(timeString(time: timerManager.restTimeRemaining))
                                 .font(.system(size: 56, weight: .bold, design: .monospaced))
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                                 .contentTransition(.numericText())
                                 .animation(.default, value: timerManager.restTimeRemaining)
                         }
@@ -56,7 +57,7 @@ struct RestTimerView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 50)
                                     .background(Color(UIColor.secondarySystemFill))
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                     .cornerRadius(12)
                             }
                             
@@ -69,7 +70,7 @@ struct RestTimerView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 50)
                                     .background(Color(UIColor.secondarySystemFill))
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                     .cornerRadius(12)
                             }
                         }
@@ -84,10 +85,10 @@ struct RestTimerView: View {
                                 .font(.headline)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 50)
-                                .background(timerManager.restTimerFinished ? Color.green : Color.blue)
-                                .foregroundColor(.white)
+                                .background(timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent)
+                                .foregroundColor(themeManager.current.background)
                                 .cornerRadius(12)
-                                .shadow(color: (timerManager.restTimerFinished ? Color.green : Color.blue).opacity(0.3), radius: 5, x: 0, y: 3)
+                                .shadow(color: (timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent).opacity(0.3), radius: 5, x: 0, y: 3)
                         }
                     }
                 }

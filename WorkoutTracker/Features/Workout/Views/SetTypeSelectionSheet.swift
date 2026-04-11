@@ -14,6 +14,7 @@ internal import SwiftUI
 
 struct SetTypeSelectionSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(ThemeManager.self) private var themeManager
     @Binding var selectedType: SetType
     let onRemove: () -> Void
     
@@ -57,7 +58,7 @@ struct SetTypeSelectionSheet: View {
                             
                             Text(LocalizedStringKey("Remove Set"))
                                 .font(.body)
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                             
                             Spacer()
                         }
@@ -94,13 +95,13 @@ struct SetTypeSelectionSheet: View {
                     
                     Text(type.title)
                         .font(.body)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                     
                     Spacer()
                     
                     if selectedType == type {
                         Image(systemName: "checkmark")
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent)
                             .font(.headline)
                     }
                 }
@@ -114,7 +115,7 @@ struct SetTypeSelectionSheet: View {
                 showInfoAlert = true
             } label: {
                 Image(systemName: "questionmark.circle.fill")
-                    .foregroundColor(.gray.opacity(0.5))
+                    .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
                     .font(.title3)
                     .padding(.leading, 8)
             }
@@ -122,6 +123,6 @@ struct SetTypeSelectionSheet: View {
         }
         .padding(.vertical, 16)
         .padding(.horizontal, 20)
-        .background(selectedType == type ? Color.blue.opacity(0.05) : Color.clear)
+        .background(selectedType == type ? themeManager.current.primaryAccent.opacity(0.05) : Color.clear)
     }
 }

@@ -7,6 +7,8 @@ struct StatOverviewCard: View {
     let color: Color
     let percentageChange: Double?
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
@@ -27,15 +29,15 @@ struct StatOverviewCard: View {
             
             Text(value)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Text(LocalizedStringKey(title))
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
     }
 }

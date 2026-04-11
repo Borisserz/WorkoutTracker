@@ -160,7 +160,7 @@ struct ProfileHeaderView: View {
     @Binding var profileImage: UIImage?
     @Binding var selectedPhotoItem: PhotosPickerItem?
     @Binding var userName: String
-    
+    @Environment(ThemeManager.self) private var themeManager
     let userBodyWeight: Double
     let progressManager: ProgressManager
     let unitsManager: UnitsManager
@@ -183,7 +183,7 @@ struct ProfileHeaderView: View {
                     } else {
                         Text(userAvatar.isEmpty ? "🦍" : userAvatar)
                             .font(.system(size: 60))
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(themeManager.current.surface)
                     }
                 }
                 .frame(width: 114, height: 114)
@@ -202,7 +202,7 @@ struct ProfileHeaderView: View {
                         Image(systemName: "scalemass.fill").font(.title3)
                         Text(LocalizedStringKey("Weight")).font(.caption2.bold()).textCase(.uppercase)
                     }
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .frame(maxWidth: .infinity)
                 }
                 
@@ -215,11 +215,11 @@ struct ProfileHeaderView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
                         Text(LocalizationHelper.shared.formatFlexible(convertedWeight))
                             .font(.system(size: 22, weight: .heavy, design: .rounded))
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent)
                         Text(unitsManager.weightUnitString())
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(.blue.opacity(0.8))
+                            .foregroundColor(themeManager.current.primaryAccent.opacity(0.8))
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -231,7 +231,7 @@ struct ProfileHeaderView: View {
                         Image(systemName: "ruler.fill").font(.title3)
                         Text(LocalizedStringKey("Measures")).font(.caption2.bold()).textCase(.uppercase)
                     }
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .frame(maxWidth: .infinity)
                 }
             }
@@ -250,6 +250,7 @@ struct ProfileStatsRow: View {
     let stats: UserStats
     let streak: Int
     let unitsManager: UnitsManager
+    @Environment(ThemeManager.self) private var themeManager
     
     // ВЫНОСИМ ЛОГИКУ В ОТДЕЛЬНОЕ СВОЙСТВО, чтобы не путать компилятор
     private var volumeInfo: (value: String, unit: String) {
@@ -265,7 +266,8 @@ struct ProfileStatsRow: View {
     
     var body: some View {
         HStack(spacing: 12) {
-            ProfileStatCard(title: "Workouts", value: "\(stats.totalWorkouts)", icon: "figure.run.circle.fill", color: .cyan)
+            // ✅ ИСПРАВЛЕНИЕ: Заменили lightHighlight на primaryAccent
+            ProfileStatCard(title: "Workouts", value: "\(stats.totalWorkouts)", icon: "figure.run.circle.fill", color: themeManager.current.primaryAccent)
             
             ProfileStatCard(title: "Volume", value: volumeInfo.value, unit: volumeInfo.unit, icon: "dumbbell.fill", color: .purple)
             
@@ -276,6 +278,7 @@ struct ProfileStatsRow: View {
 }
 
 struct ProfileStatCard: View {
+    @Environment(ThemeManager.self) private var themeManager
     let title: LocalizedStringKey
     let value: String
     var unit: String? = nil
@@ -292,7 +295,7 @@ struct ProfileStatCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(value)
                         .font(.system(size: 20, weight: .heavy, design: .rounded))
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .minimumScaleFactor(0.4)
                         .lineLimit(1)
                     
@@ -300,7 +303,7 @@ struct ProfileStatCard: View {
                         Text(u)
                             .font(.caption2)
                             .fontWeight(.bold)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                             .minimumScaleFactor(0.5)
                             .lineLimit(1)
                     }
@@ -309,7 +312,7 @@ struct ProfileStatCard: View {
                 Text(title)
                     .font(.caption2)
                     .fontWeight(.bold)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .textCase(.uppercase)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
@@ -317,7 +320,7 @@ struct ProfileStatCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading) // Фиксирует одинаковую ширину колонок
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
@@ -327,6 +330,7 @@ struct ProfileStatCard: View {
 struct ProfileForecastBanner: View {
     let forecast: ProgressForecast
     let unitsManager: UnitsManager
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         let convertedWeight = unitsManager.convertFromKilograms(forecast.predictedMax)
@@ -335,14 +339,14 @@ struct ProfileForecastBanner: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle().fill(Color.white.opacity(0.2)).frame(width: 48, height: 48)
-                Image(systemName: "sparkles").font(.title2).foregroundColor(.white)
+                Image(systemName: "sparkles").font(.title2).foregroundColor(themeManager.current.background)
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("AI Forecast"))
                     .font(.headline)
                     .fontWeight(.heavy)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                 
                 let translatedExName = LocalizationHelper.shared.translateName(forecast.exerciseName)
 Text(String(localized: "In \(forecast.timeframe) your \(translatedExName) is predicted to reach \(weightStr) \(unitsManager.weightUnitString())!"))
@@ -354,10 +358,10 @@ Text(String(localized: "In \(forecast.timeframe) your \(translatedExName) is pre
         }
         .padding(16)
         .background(
-            LinearGradient(colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], startPoint: .topLeading, endPoint: .bottomTrailing)
+            themeManager.current.premiumGradient
         )
         .cornerRadius(20)
-        .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 10, x: 0, y: 5)
+        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 10, x: 0, y: 5)
         .padding(.horizontal, 20)
     }
 }
@@ -389,13 +393,14 @@ struct ProfileAchievementsSection: View {
 struct PremiumAchievementBadge: View {
     let achievement: Achievement
     @State private var animateIcon = false
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(spacing: 10) {
             ZStack {
                 // Background Shape
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(achievement.isUnlocked ? AnyShapeStyle(gradientForTier(achievement.tier)) : AnyShapeStyle(Color(UIColor.secondarySystemBackground)))
+                    .fill(achievement.isUnlocked ? AnyShapeStyle(gradientForTier(achievement.tier)) : AnyShapeStyle(themeManager.current.surface))
                     .aspectRatio(1, contentMode: .fit)
                 
                 // Inner Glass or Border
@@ -405,13 +410,13 @@ struct PremiumAchievementBadge: View {
                 if achievement.isUnlocked {
                     Image(systemName: achievement.icon)
                         .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 2)
                         .symbolEffect(.bounce, value: animateIcon)
                 } else {
                     Image(systemName: "lock.fill")
                         .font(.system(size: 28, weight: .medium))
-                        .foregroundColor(.gray.opacity(0.4))
+                        .foregroundColor(themeManager.current.secondaryAccent.opacity(0.4))
                 }
             }
             .shadow(color: achievement.isUnlocked ? colorForTier(achievement.tier).opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
@@ -427,7 +432,7 @@ struct PremiumAchievementBadge: View {
                 if !achievement.isUnlocked && !achievement.progress.isEmpty {
                     Text(achievement.progress)
                         .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.gray)
+                        .foregroundColor(themeManager.current.secondaryAccent)
                         .lineLimit(1)            // 👈 Запрещаем перенос на вторую строку
                         .minimumScaleFactor(0.4) // 👈 Разрешаем тексту сжиматься
                 }
@@ -449,7 +454,7 @@ struct PremiumAchievementBadge: View {
         case .bronze: return .brown
         case .silver: return .gray
         case .gold: return .yellow
-        case .diamond: return .cyan
+        case .diamond: return themeManager.current.lightHighlight
         }
     }
     
@@ -458,7 +463,7 @@ struct PremiumAchievementBadge: View {
         case .bronze: return LinearGradient(colors: [.orange, .brown], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .silver: return LinearGradient(colors: [Color(white: 0.8), Color(white: 0.5)], startPoint: .topLeading, endPoint: .bottomTrailing)
         case .gold: return LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .diamond: return LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
+        case .diamond: return themeManager.current.primaryGradient
         default: return LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom)
         }
     }
@@ -497,6 +502,7 @@ struct ProfileRecordsSection: View {
 
 struct PremiumRecordCard: View {
     let record: BestResult
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         HStack(spacing: 16) {
@@ -513,21 +519,21 @@ struct PremiumRecordCard: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizationHelper.shared.translateName(record.exerciseName))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 
                 Text(record.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
             
             Spacer()
             
             Text(record.value)
                 .font(.system(size: 20, weight: .heavy, design: .rounded))
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 4)
     }
@@ -537,13 +543,14 @@ struct PremiumRecordCard: View {
     }
     
     private func getColor(_ type: ExerciseType) -> Color {
-        type == .strength ? .blue : (type == .cardio ? .orange : .purple)
+        type == .strength ? themeManager.current.primaryAccent : (type == .cardio ? .orange : .purple)
     }
 }
 
 // MARK: - Legacy Popup Keep (Unmodified logic, styled)
 
 struct AchievementPopupView: View {
+    @Environment(ThemeManager.self) private var themeManager
     let achievement: Achievement
     let onClose: () -> Void
     @State private var isAnimating = false
@@ -580,14 +587,14 @@ struct AchievementPopupView: View {
                 } else {
                     Text(LocalizedStringKey("Locked"))
                         .font(.headline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(themeManager.current.secondaryAccent)
                         .textCase(.uppercase)
                         .tracking(2)
                 }
                 
                 Text(achievement.title)
                     .font(.system(size: 32, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .multilineTextAlignment(.center)
                 
                 Text(achievement.description)
@@ -609,7 +616,7 @@ struct AchievementPopupView: View {
                 } else if !achievement.progress.isEmpty {
                     Text(achievement.progress)
                         .font(.headline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(themeManager.current.secondaryAccent)
                         .padding(.top, 10)
                 }
                 

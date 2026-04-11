@@ -24,7 +24,7 @@ struct AddWeightSheet: View {
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var isProcessingImage = false
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topTrailing) {
@@ -80,7 +80,7 @@ struct AddWeightSheet: View {
         VStack(spacing: 8) {
             Text(LocalizedStringKey("Current Weight"))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .textCase(.uppercase)
                 .tracking(1.5)
             
@@ -88,14 +88,14 @@ struct AddWeightSheet: View {
                 Spacer()
                 TextField("0.0", text: $weightString)
                     .font(.system(size: 80, weight: .heavy, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: true, vertical: false)
                 
                 Text(unitsManager.weightUnitString())
                     .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundColor(.blue)
+                    .foregroundColor(themeManager.current.primaryAccent)
                 Spacer()
             }
         }
@@ -105,13 +105,12 @@ struct AddWeightSheet: View {
     private var datePickerSection: some View {
         HStack {
             ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                Image(systemName: "calendar")
-                    .foregroundColor(.blue)
-                    .font(.headline)
-            }
+                            Circle()
+                                .fill(themeManager.current.primaryAccent.opacity(0.15)) // <--- ИЗМЕНЕНО
+                            Image(systemName: "calendar")
+                                .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
+                                .font(.headline)
+                        }
             
             DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
                 .labelsHidden()
@@ -121,7 +120,7 @@ struct AddWeightSheet: View {
             Spacer()
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
         .padding(.horizontal, 24)
@@ -131,7 +130,7 @@ struct AddWeightSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Progress Photos"))
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
                 .padding(.horizontal, 24)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -159,11 +158,11 @@ struct AddWeightSheet: View {
                                     Text(LocalizedStringKey("Add")).font(.subheadline).fontWeight(.bold)
                                 }
                             }
-                            .foregroundColor(.blue)
-                            .frame(width: 130, height: 170)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(20)
-                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6])))
+                            .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
+                                                      .frame(width: 130, height: 170)
+                                                      .background(themeManager.current.primaryAccent.opacity(0.1)) // <--- ИЗМЕНЕНО
+                                                      .cornerRadius(20)
+                                                      .overlay(RoundedRectangle(cornerRadius: 20).stroke(themeManager.current.primaryAccent.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6])))
                         }
                         .disabled(isProcessingImage)
                     }
@@ -190,7 +189,7 @@ struct AddWeightSheet: View {
                             } label: {
                                 Image(systemName: "xmark")
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(themeManager.current.background)
                                     .padding(8)
                                     .background(Color.black.opacity(0.6))
                                     .clipShape(Circle())
@@ -207,7 +206,7 @@ struct AddWeightSheet: View {
             
             Text(LocalizedStringKey("Attach up to 4 photos to compare your progress later."))
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .padding(.horizontal, 24)
         }
     }
@@ -221,12 +220,12 @@ struct AddWeightSheet: View {
                     .font(.title3)
                     .fontWeight(.bold)
             }
-            .foregroundColor(.white)
+            .foregroundColor(themeManager.current.background)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(weightString.isEmpty || isProcessingImage ? Color.gray : Color.blue)
-            .cornerRadius(20)
-            .shadow(color: (weightString.isEmpty || isProcessingImage ? Color.clear : Color.blue.opacity(0.4)), radius: 15, x: 0, y: 8)
+            .background(weightString.isEmpty || isProcessingImage ? Color.gray : themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО: .blue -> тема
+                        .cornerRadius(20)
+                        .shadow(color: (weightString.isEmpty || isProcessingImage ? Color.clear : themeManager.current.primaryAccent.opacity(0.4)), radius: 15, x: 0, y: 8) // <--- ИЗМЕНЕНО
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 10)

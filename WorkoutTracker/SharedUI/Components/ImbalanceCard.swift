@@ -1,6 +1,7 @@
 internal import SwiftUI
 
 struct ImbalanceCard: View {
+    @Environment(ThemeManager.self) private var themeManager
     let title: String
     let message: String
     let icon: String
@@ -22,18 +23,18 @@ struct ImbalanceCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text(LocalizedStringKey(title))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 
                 Text(message)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             
             Spacer()
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)

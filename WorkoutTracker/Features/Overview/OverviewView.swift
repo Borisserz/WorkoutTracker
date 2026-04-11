@@ -18,7 +18,6 @@ final class OverviewRouter {
         case addWorkout
         case muscleColor
         case profile
-        case freshWorkout(GeneratedWorkout)
         
         var id: String {
             switch self {
@@ -26,7 +25,6 @@ final class OverviewRouter {
             case .addWorkout: return "addWorkout"
             case .muscleColor: return "muscleColor"
             case .profile: return "profile"
-            case .freshWorkout(let w): return "fresh_\(w.id)"
             }
         }
     }
@@ -54,6 +52,7 @@ final class OverviewRouter {
 
 struct OverviewView: View {
     // MARK: - Environment
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(WorkoutService.self) var workoutService
@@ -70,6 +69,11 @@ struct OverviewView: View {
     @State private var selectedChartMuscle: String? = nil
     @StateObject private var colorManager = MuscleColorManager.shared
     
+    // AI Review State
+    @State private var showAIReviewSheet = false
+    @State private var isFetchingReviewData = false
+    @State private var reviewData: StatsDataResultDTO?
+    
     var body: some View {
         NavigationStack(path: $router.path) {
             ZStack(alignment: .topTrailing) {
@@ -79,7 +83,7 @@ struct OverviewView: View {
                         recoverySection
                         
                         if !recentWorkouts.isEmpty {
-                            proactiveAutopilotBanner
+                            aiReviewButtonSection
                             topExercisesSection
                         }
                     }
@@ -100,7 +104,7 @@ struct OverviewView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { router.present(.settings) } label: {
-                        Image(systemName: "gearshape.fill").foregroundColor(.primary)
+                        Image(systemName: "gearshape.fill").foregroundColor(themeManager.current.primaryText)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -129,10 +133,20 @@ struct OverviewView: View {
                     ProfileView()
                         .environment(userStatsViewModel)
                         .environment(userStatsViewModel.progressManager)
-                case .freshWorkout(let generated):
-                    FreshWorkoutPreviewSheet(generatedWorkout: generated) {
-                        handleFreshWorkoutAccept(generated)
-                    }
+                }
+            }
+            .sheet(isPresented: $showAIReviewSheet) {
+                if let data = reviewData {
+                    AIWeeklyReviewSheet(
+                        currentStats: data.currentStats,
+                        previousStats: data.previousStats,
+                        weakPoints: dashboardViewModel.weakPoints,
+                        recentPRs: data.recentPRs,
+                        aiLogicService: di.aiLogicService
+                    )
+                } else {
+                    ProgressView("Loading data...")
+                        .presentationDetents([.medium])
                 }
             }
         }
@@ -154,48 +168,66 @@ struct OverviewView: View {
     // MARK: - View Sections
     
     private var recoverySection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Button {
-                router.push(.detailedRecovery)
-            } label: {
-                HStack {
-                    Text(LocalizedStringKey("Muscle Recovery")).font(.headline).foregroundColor(.primary)
-                    Spacer()
-                    Text(LocalizedStringKey("See details")).font(.caption).foregroundColor(.blue)
-                    Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center) {
+                Text(LocalizedStringKey("Muscle Recovery"))
+                    .font(.title3)
+                    .bold()
+                    .foregroundColor(themeManager.current.primaryText)
+                
+                Spacer()
+                
+                Button {
+                    router.push(.detailedRecovery)
+                } label: {
+                    HStack(spacing: 4) {
+                        Text(LocalizedStringKey("See details"))
+                            .font(.subheadline)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                    }
+                    .foregroundColor(themeManager.current.primaryAccent)
                 }
             }
-            .buttonStyle(PlainButtonStyle())
+            .padding(.horizontal, 4)
             
             Divider()
             
-            BodyHeatmapView(muscleIntensities: recoveryDict, isRecoveryMode: true, userGender: userGender)
+            BodyHeatmapView(
+                muscleIntensities: recoveryDict,
+                isRecoveryMode: true,
+                isCompactMode: false,
+                userGender: userGender
+            )
         }
-        .padding().background(Color.gray.opacity(0.1)).cornerRadius(12)
+        .padding(16)
+        .background(themeManager.current.surface)
+        .cornerRadius(20)
+        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
     
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text(LocalizedStringKey("Muscles Worked")).font(.headline).foregroundColor(.secondary)
+                Text(LocalizedStringKey("Muscles Worked")).font(.headline).foregroundColor(themeManager.current.secondaryText)
                 Spacer()
-                Button { router.present(.muscleColor) } label: { Image(systemName: "gearshape.fill").font(.caption).foregroundColor(.secondary) }
+                Button { router.present(.muscleColor) } label: { Image(systemName: "gearshape.fill").font(.caption).foregroundColor(themeManager.current.secondaryText) }
             }
             if dashboardViewModel.dashboardMuscleData.isEmpty {
                 ZStack {
                     Circle()
-                        .stroke(Color.gray.opacity(0.2), lineWidth: 30)
+                        .stroke(themeManager.current.secondaryAccent.opacity(0.2), lineWidth: 30)
                         .frame(height: 180)
                     VStack {
-                        Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(.secondary)
-                        Text("0").font(.title).bold().foregroundColor(.primary)
+                        Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(themeManager.current.secondaryText)
+                        Text("0").font(.title).bold().foregroundColor(themeManager.current.primaryText)
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .frame(height: 220)
             } else {
                 Chart(dashboardViewModel.dashboardMuscleData, id: \.muscle) { item in
-                    // 1. Можно чуть-чуть увеличить внутренний радиус с 0.6 до 0.65 для большего "воздуха"
                     SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.65), angularInset: 2)
                         .cornerRadius(5)
                         .foregroundStyle(colorManager.getColor(for: item.muscle))
@@ -209,29 +241,27 @@ struct OverviewView: View {
                                 Text(LocalizedStringKey(selected.muscle))
                                     .font(.headline)
                                     .multilineTextAlignment(.center)
-                                    .lineLimit(1) // Запрещаем перенос названия мышцы
-                                    .minimumScaleFactor(0.6) // Разрешаем уменьшаться до 60%
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.6)
                                 
                                 Text(LocalizedStringKey("\(selected.count) sets"))
                                     .font(.title2)
                                     .bold()
-                                    .foregroundColor(.blue)
-                                    .lineLimit(1) // Запрещаем перенос
-                                    .minimumScaleFactor(0.25) // Разрешаем тексту сжаться в 2 раза, если он не влезает
+                                    .foregroundColor(themeManager.current.primaryAccent)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.25)
                             } else {
                                 Text(LocalizedStringKey("Total"))
                                     .font(.caption)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(themeManager.current.secondaryText)
                                 Text("\(dashboardViewModel.dashboardTotalExercises)")
                                     .font(.title)
                                     .bold()
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                     .lineLimit(1)
                                     .minimumScaleFactor(0.5)
                             }
                         }
-                        // 2. Ограничиваем ширину VStack.
-                        // Внутренний радиус = 65% от всей ширины. Мы даем тексту максимум 55% ширины (чтобы были отступы по бокам).
                         .frame(maxWidth: geometry.size.width * 0.40)
                         .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     }
@@ -254,17 +284,19 @@ struct OverviewView: View {
                 }.padding(.top, 8).padding(.horizontal, 4)
             }
         }
-        .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+        .padding().background(themeManager.current.surface).cornerRadius(12)
     }
     
     private var topExercisesSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            if !dashboardViewModel.dashboardTopExercises.isEmpty {
-                HStack {
-                    Text(LocalizedStringKey("Exercises")).font(.title2).bold()
-                    Spacer()
-                    Button { router.push(.exercises) } label: { Text(LocalizedStringKey("See all")).font(.subheadline).foregroundColor(.blue) }
-                }
+           VStack(alignment: .leading, spacing: 10) {
+               if !dashboardViewModel.dashboardTopExercises.isEmpty {
+                   HStack {
+                       Text(LocalizedStringKey("Exercises")).font(.title2).bold()
+                       Spacer()
+                       Button { router.push(.exercises) } label: {
+                           Text(LocalizedStringKey("See all")).font(.subheadline).foregroundColor(themeManager.current.primaryAccent)
+                       }
+                   }
                 .padding(.top, 10)
                 
                 ForEach(Array(dashboardViewModel.dashboardTopExercises.enumerated()), id: \.element.name) { index, item in
@@ -272,201 +304,115 @@ struct OverviewView: View {
                         HStack {
                             rankIcon(rank: index + 1)
                             
-                            // Используем кастомный переводчик из JSON
                             Text(LocalizationHelper.shared.translateName(item.name))
                                 .font(.headline)
-                                .foregroundColor(.primary)
-                                .lineLimit(1) // Защита от очень длинных русских названий
-                                .minimumScaleFactor(0.8) // Разрешаем шрифту чуть сжаться
+                                .foregroundColor(themeManager.current.primaryText)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                             
                             Spacer(minLength: 8)
                             
                             Text("\(item.count) times")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                             
                             Image(systemName: "chevron.right")
                                 .font(.caption)
-                                .foregroundColor(.gray)
+                                .foregroundColor(themeManager.current.secondaryAccent)
                         }
-                        .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(10).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                        .padding().background(themeManager.current.surface).cornerRadius(10).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                     }
                 }
             }
         }
     }
     
-    @ViewBuilder
-    private var proactiveAutopilotBanner: some View {
-        if let proposal = dashboardViewModel.proactiveProposal {
-            VStack(alignment: .leading, spacing: 16) {
-                // Header
-                HStack {
-                    Image(systemName: "brain.head.profile")
-                        .font(.title2)
-                        .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Text("AI Autopilot")
+    // MARK: - AI Weekly Review Section
+    
+    private var aiReviewButtonSection: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            fetchReviewDataAndShowSheet()
+        } label: {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.2))
+                        .frame(width: 48, height: 48)
+                    
+                    if isFetchingReviewData {
+                        ProgressView().tint(.white)
+                    } else {
+                        Image(systemName: "sparkles")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                            .shadow(color: .white.opacity(0.8), radius: 8, x: 0, y: 0)
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("AI Performance Review"))
                         .font(.headline)
-                        .fontWeight(.heavy)
-                        .foregroundColor(.primary)
-                    Spacer()
-                    ActiveWorkoutIndicator()
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    Text(LocalizedStringKey("Get personalized insights and tips"))
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
                 }
-                
-                // Context Message
-                Text(LocalizedStringKey(proposal.message))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                // One-Tap Start Button
-                Button {
-                    let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
-                    
-                    // Блокируем двойное нажатие
-                    dashboardViewModel.proactiveProposal = nil
-                    
-                    Task {
-                        await workoutService.startGeneratedWorkout(proposal.workout)
-                        if let newWorkout = await workoutService.fetchLatestWorkout() {
-                            await MainActor.run {
-                                router.push(.workoutDetail(newWorkout))
-                            }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text("Start Now")
-                            .font(.headline)
-                        Image(systemName: "arrow.right.circle.fill")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing))
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .shadow(color: .purple.opacity(0.3), radius: 8, x: 0, y: 4)
-                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.white.opacity(0.5))
+                    .font(.body.bold())
             }
-            .padding(20)
-            .background(Color(UIColor.secondarySystemBackground))
-            .cornerRadius(20)
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(LinearGradient(colors: [.purple.opacity(0.5), .blue.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+            .padding(16)
+            .background(
+                LinearGradient(colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], startPoint: .topLeading, endPoint: .bottomTrailing)
             )
-            .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
-        } else {
-            Button(action: {
-                Task {
-                    do {
-                        let currentCatalog = await ExerciseDatabaseService.shared.getCatalog()
-                        let generated = try WorkoutGenerationService.generateFreshWorkout(
-                            recoveryStatus: dashboardViewModel.recoveryStatus,
-                            catalog: currentCatalog
-                        )
-                        await MainActor.run {
-                            router.present(.freshWorkout(generated))
-                        }
-                    } catch {
-                        await MainActor.run {
-                            di.appState.showError(title: String(localized: "Too Tired!"), message: error.localizedDescription)
-                        }
-                    }
-                }
-            }) {
-                HStack(spacing: 16) {
-                    ZStack {
-                        Circle().fill(Color.yellow.opacity(0.2)).frame(width: 44, height: 44)
-                        Image(systemName: "bolt.fill").foregroundColor(.yellow).font(.title2)
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizedStringKey("Fresh Muscle Workout")).font(.headline).foregroundColor(.primary)
-                        Text(LocalizedStringKey("Generate a routine for fully recovered muscles")).font(.caption).foregroundColor(.secondary).lineLimit(1)
-                    }
-                    Spacer()
-                    Image(systemName: "chevron.right").font(.caption).foregroundColor(.gray)
-                }
-                .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(16).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 2)
+            .cornerRadius(20)
+            .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 12, x: 0, y: 6)
+        }
+        .buttonStyle(.plain)
+        .disabled(isFetchingReviewData)
+    }
+
+    private func fetchReviewDataAndShowSheet() {
+        guard !isFetchingReviewData else { return }
+        isFetchingReviewData = true
+        
+        Task {
+            let calendar = Calendar.current
+            let now = Date()
+            let currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
+            let lastWeek = calendar.date(byAdding: .day, value: -7, to: now)!
+            let previousInterval = calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
+            
+            // Вытягиваем данные для текущей недели прямо из AnalyticsService
+            let data = await di.analyticsService.fetchStatsData(
+                period: .week,
+                metric: .volume,
+                currentInterval: currentInterval,
+                previousInterval: previousInterval,
+                prCache: dashboardViewModel.personalRecordsCache
+            )
+            
+            await MainActor.run {
+                self.reviewData = data
+                self.isFetchingReviewData = false
+                self.showAIReviewSheet = true
             }
-            .buttonStyle(PlainButtonStyle())
         }
     }
 
     @ViewBuilder
     private func rankIcon(rank: Int) -> some View {
-        ZStack {
-            Circle().fill(rank == 1 ? Color.yellow : rank == 2 ? Color.gray : rank == 3 ? Color.brown : Color.blue.opacity(0.1)).frame(width: 30, height: 30)
-            Text("\(rank)").font(.caption).bold().foregroundColor(rank <= 3 ? .white : .blue)
-        }.padding(.trailing, 5)
-    }
-    
-    // MARK: - Actions
-    
-    private func handleFreshWorkoutAccept(_ generated: GeneratedWorkout) {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        
-        let dto = GeneratedWorkoutDTO(
-            title: generated.title,
-            aiMessage: "",
-            exercises: generated.exercises.map { ex in
-                GeneratedExerciseDTO(
-                    name: ex.name, muscleGroup: ex.muscleGroup, type: ex.type.rawValue,
-                    sets: ex.setsCount, reps: ex.firstSetReps, recommendedWeightKg: ex.firstSetWeight > 0 ? ex.firstSetWeight : nil, restSeconds: nil
-                )
-            }
-        )
-        
-        Task {
-            await workoutService.startGeneratedWorkout(dto)
-            if let newWorkout = await workoutService.fetchLatestWorkout() {
-                await MainActor.run {
-                    router.dismissSheet()
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                        router.push(.workoutDetail(newWorkout))
-                    }
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Fresh Workout Preview Models & Views
-struct GeneratedWorkout: Identifiable {
-    let id = UUID()
-    let title: String
-    let exercises: [Exercise]
-}
-
-struct FreshWorkoutPreviewSheet: View {
-    let generatedWorkout: GeneratedWorkout
-    let onStart: () -> Void
-    @Environment(\.dismiss) private var dismiss
-    
-    var body: some View {
-        NavigationStack {
-            List {
-                ForEach(generatedWorkout.exercises) { ex in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(LocalizationHelper.shared.translateName(ex.name)).font(.headline)
-                            Text(ex.muscleGroup).font(.caption).foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        Text("\(ex.setsCount) sets").foregroundColor(.secondary)
-                    }
-                }
-            }
-            .navigationTitle(LocalizedStringKey("Ready to Train"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button(LocalizedStringKey("Cancel")) { dismiss() } } }
-            .safeAreaInset(edge: .bottom) {
-                Button { onStart() } label: {
-                    Text(LocalizedStringKey("Start Workout")).font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(Color.blue).cornerRadius(12).shadow(radius: 5)
-                }.padding().background(Color(UIColor.systemBackground).shadow(color: .black.opacity(0.1), radius: 5, y: -5))
-            }
-        }
-    }
+           ZStack {
+               Circle()
+                   .fill(rank == 1 ? Color.yellow : rank == 2 ? Color.gray : rank == 3 ? Color.brown : themeManager.current.primaryAccent.opacity(0.1))
+                   .frame(width: 30, height: 30)
+               
+               Text("\(rank)")
+                   .font(.caption).bold()
+                   .foregroundColor(rank <= 3 ? themeManager.current.background : themeManager.current.primaryAccent)
+           }.padding(.trailing, 5)
+       }
 }

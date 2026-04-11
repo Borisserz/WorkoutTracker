@@ -37,7 +37,7 @@ struct SliderSheetView: View {
     let fieldType: InputFieldType
     @Binding var value: Double?
     @Binding var isPresented: Bool
-    
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(UnitsManager.self) var unitsManager
     
     // Локальное состояние
@@ -90,7 +90,7 @@ struct SliderSheetView: View {
                 VStack(spacing: 8) {
                     Text(fieldType.title(unitsManager: unitsManager).uppercased())
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .tracking(1.5)
                     
                     TextField("0", text: $textValue)
@@ -143,14 +143,14 @@ struct SliderSheetView: View {
                         Button { adjustValue(by: -mainStep) } label: {
                             Image(systemName: "minus.circle.fill")
                                 .font(.system(size: 60))
-                                .foregroundColor(.blue)
+                                .foregroundColor(themeManager.current.primaryAccent)
                         }
                         .buttonStyle(BorderlessButtonStyle())
                         
                         Button { adjustValue(by: mainStep) } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 60))
-                                .foregroundColor(.blue)
+                                .foregroundColor(themeManager.current.primaryAccent)
                         }
                         .buttonStyle(BorderlessButtonStyle())
                     }
@@ -218,8 +218,8 @@ struct SliderSheetView: View {
                 .fontWeight(.bold)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .background(isPositive ? Color.blue.opacity(0.15) : Color.red.opacity(0.1))
-                .foregroundColor(isPositive ? .blue : .red)
+                .background(isPositive ? themeManager.current.primaryAccent.opacity(0.15) : Color.red.opacity(0.1))
+                .foregroundColor(isPositive ? themeManager.current.primaryAccent : .red)
                 .cornerRadius(12)
         }
         .buttonStyle(.plain)
@@ -290,6 +290,7 @@ struct SliderSheetView: View {
 // MARK: - Slider Input View (Компактный компонент для встроенного использования)
 
 struct SliderInputView: View {
+    @Environment(ThemeManager.self) private var themeManager
     let fieldType: InputFieldType
     @Binding var value: Double?
     
@@ -332,7 +333,7 @@ struct SliderInputView: View {
                 Button(action: decrement) {
                     Image(systemName: "minus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.blue)
+                        .foregroundColor(themeManager.current.primaryAccent)
                 }
                 .buttonStyle(BorderlessButtonStyle())
                 
@@ -398,7 +399,7 @@ struct SliderInputView: View {
                 Button(action: increment) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.blue)
+                        .foregroundColor(themeManager.current.primaryAccent)
                     }
                 .buttonStyle(BorderlessButtonStyle())
             }
@@ -421,7 +422,7 @@ struct SliderInputView: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 4)
-        .background(Color.gray.opacity(0.1))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(8)
         .onDisappear {
             updateTask?.cancel()

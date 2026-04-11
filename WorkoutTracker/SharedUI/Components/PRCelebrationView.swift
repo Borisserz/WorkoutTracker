@@ -14,6 +14,8 @@ struct PRCelebrationView: View {
 
     @State private var isAnimating = false
 
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         ZStack {
             Color.black.opacity(0.8).ignoresSafeArea().onTapGesture(perform: onClose)
@@ -21,7 +23,7 @@ struct PRCelebrationView: View {
             VStack(spacing: 20) {
                 Text(prLevel.title)
                     .font(.system(size: 36, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .padding()
             }
             .scaleEffect(isAnimating ? 1.0 : 0.5)

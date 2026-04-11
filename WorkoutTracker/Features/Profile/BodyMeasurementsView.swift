@@ -12,7 +12,8 @@ struct BodyMeasurementsView: View {
     @Query(sort: \BodyMeasurement.date, order: .reverse) private var measurements: [BodyMeasurement]
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
-
+    @Environment(ThemeManager.self) private var themeManager
+    
     @State private var selectedMetric: MeasurementType = .bodyFat
     @State private var selectedPeriod: PeriodFilter = .sixMonths
     @State private var showingAddMeasurement = false
@@ -97,7 +98,7 @@ struct BodyMeasurementsView: View {
                             Image(systemName: "chevron.up.chevron.down")
                         }
                         .padding()
-                        .background(Color(UIColor.secondarySystemBackground))
+                        .background(themeManager.current.surface)
                         .cornerRadius(12)
                     }
                     .padding(.horizontal)
@@ -152,35 +153,41 @@ struct BodyMeasurementsView: View {
         let change = currentVal - firstVal
         
         return HStack(spacing: 16) {
-            WeightStatCard(title: LocalizedStringKey("Start"), value: LocalizationHelper.shared.formatDecimal(firstVal), unit: unitString, color: .blue)
-            WeightStatCard(title: LocalizedStringKey("Current"), value: LocalizationHelper.shared.formatDecimal(currentVal), unit: unitString, color: .green)
-            WeightStatCard(title: LocalizedStringKey("Change"), value: (change >= 0 ? "+" : "") + LocalizationHelper.shared.formatDecimal(change), unit: unitString, color: change >= 0 ? (selectedMetric == .bodyFat || selectedMetric == .waist ? .red : .green) : (selectedMetric == .bodyFat || selectedMetric == .waist ? .green : .red))
-        }
-        .padding(.horizontal)
-    }
-    
-    private var chartSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Chart {
-                ForEach(Array(chartData.enumerated()), id: \.offset) { index, data in
-                    if chartData.count > 1 {
-                        LineMark(x: .value("Date", data.date), y: .value("Value", data.value))
-                            .foregroundStyle(.purple)
-                            .interpolationMethod(.catmullRom)
-                            .lineStyle(StrokeStyle(lineWidth: 3))
-                        
-                        AreaMark(x: .value("Date", data.date), y: .value("Value", data.value))
-                            .foregroundStyle(LinearGradient(colors: [.purple.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom))
-                            .interpolationMethod(.catmullRom)
-                    }
-                    
-                    PointMark(x: .value("Date", data.date), y: .value("Value", data.value))
-                        .foregroundStyle(.purple)
+                   // "Start" карточка теперь в основном акценте, остальные семантические
+                   WeightStatCard(title: LocalizedStringKey("Start"), value: LocalizationHelper.shared.formatDecimal(firstVal), unit: unitString, color: themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
+                   WeightStatCard(title: LocalizedStringKey("Current"), value: LocalizationHelper.shared.formatDecimal(currentVal), unit: unitString, color: .green)
+                   WeightStatCard(
+                       title: LocalizedStringKey("Change"),
+                       value: (change >= 0 ? "+" : "") + LocalizationHelper.shared.formatDecimal(change),
+                       unit: unitString,
+                       color: change >= 0 ? .green : .red
+                   )
+               }
+               .padding(.horizontal)
+           }
+           
+           private var chartSection: some View {
+               VStack(alignment: .leading, spacing: 10) {
+                   Chart {
+                       ForEach(Array(chartData.enumerated()), id: \.offset) { index, data in
+                           if chartData.count > 1 {
+                               LineMark(x: .value("Date", data.date), y: .value("Value", data.value))
+                                   .foregroundStyle(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО: .purple -> тема
+                                   .interpolationMethod(.catmullRom)
+                                   .lineStyle(StrokeStyle(lineWidth: 3))
+                               
+                               AreaMark(x: .value("Date", data.date), y: .value("Value", data.value))
+                                   .foregroundStyle(LinearGradient(colors: [themeManager.current.deepPremiumAccent.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom)) // <--- ИЗМЕНЕНО
+                                   .interpolationMethod(.catmullRom)
+                           }
+                           
+                           PointMark(x: .value("Date", data.date), y: .value("Value", data.value))
+                               .foregroundStyle(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО
                         .symbolSize(chartData.count == 1 ? 50 : 30)
                         .annotation(position: .top) {
                             if chartData.count < 15 {
                                 Text(LocalizationHelper.shared.formatDecimal(data.value))
-                                    .font(.caption2).foregroundColor(.secondary)
+                                    .font(.caption2).foregroundColor(themeManager.current.secondaryText)
                             }
                         }
                 }
@@ -189,7 +196,7 @@ struct BodyMeasurementsView: View {
             .chartXAxis { AxisMarks(values: .automatic) { _ in AxisGridLine(); AxisTick(); AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true) } }
             .chartYScale(domain: .automatic(includesZero: false))
             .padding()
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(16)
             .padding(.horizontal)
         }
@@ -199,10 +206,10 @@ struct BodyMeasurementsView: View {
         VStack(spacing: 12) {
             Image(systemName: "ruler.fill")
                 .font(.system(size: 50))
-                .foregroundColor(.purple.opacity(0.5))
+                .foregroundColor(themeManager.current.deepPremiumAccent.opacity(0.5))
             Text(LocalizedStringKey("No data for this period"))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 40)
@@ -230,7 +237,7 @@ struct BodyMeasurementsView: View {
                     }
                 }
             }
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(12)
             .padding(.horizontal)
         }
@@ -242,12 +249,12 @@ struct MeasurementEntryRow: View {
     let entry: BodyMeasurement
     let selectedMetric: BodyMeasurementsView.MeasurementType
     let unitsManager: UnitsManager
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(entry.date, style: .date).font(.body)
-                Text(entry.date, style: .time).font(.caption).foregroundColor(.secondary)
+                Text(entry.date, style: .time).font(.caption).foregroundColor(themeManager.current.secondaryText)
             }
             Spacer()
             if let val = selectedMetric.getValue(from: entry) {
@@ -255,9 +262,9 @@ struct MeasurementEntryRow: View {
                 let unit = selectedMetric.isPercentage ? "%" : unitsManager.sizeUnitString()
                 Text("\(LocalizationHelper.shared.formatDecimal(displayVal)) \(unit)")
                     .font(.headline)
-                    .foregroundColor(.purple)
+                    .foregroundColor(themeManager.current.deepPremiumAccent)
             } else {
-                Text("-").foregroundColor(.secondary)
+                Text("-").foregroundColor(themeManager.current.secondaryText)
             }
         }
         .padding()
