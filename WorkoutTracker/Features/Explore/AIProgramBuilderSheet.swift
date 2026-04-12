@@ -302,3 +302,15 @@ extension AIBuilderState {
         return false
     }
 }
+public struct GeneratedProgramDTO: Codable, Sendable {
+    let title: String
+    let description: String
+    let durationWeeks: Int
+    let schedule: [GeneratedRoutineDTO]
+}
+
+public struct GeneratedRoutineDTO: Codable, Sendable {
+    let dayName: String
+    let focus: String
+    let exercises: [GeneratedExerciseDTO]
+}

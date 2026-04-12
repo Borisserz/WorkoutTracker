@@ -67,20 +67,21 @@ struct ChatMessageView: View {
     }
 }
 // MARK: - Typewriter Text View
-// 🎼 ОПТИМИЗАЦИЯ: Локальная анимация текста. Защищает ScrollView от перерисовок
 struct TypewriterTextView: View {
     let fullText: String
     let isAnimating: Bool
     
     @State private var displayedText: String = ""
     @State private var timer: Timer?
+    @State private var hasAnimated: Bool = false // ✅ ИСПРАВЛЕНИЕ: Локальный стейт
     
     var body: some View {
-        // Использование .init позволяет SwiftUI парсить Markdown налету
         Text(.init(displayedText))
             .onAppear {
-                if isAnimating {
+                // ✅ Защита от повторной анимации при возврате на экран чата
+                if isAnimating && !hasAnimated {
                     startAnimating()
+                    hasAnimated = true
                 } else {
                     displayedText = fullText
                 }

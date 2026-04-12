@@ -196,7 +196,7 @@ struct MockProgramCatalog {
             ),
             
             WorkoutProgramDefinition(
-                title: "Arnold's 6-Day Split",
+                title: "Golden Era High Volume",
                 description: "A high-volume, 6-day split favored by the Austrian Oak. Chest & Back, Shoulders & Arms, Legs. Repeat.",
                 level: .advanced,
                 goal: .buildMuscle,
@@ -395,7 +395,7 @@ struct MockProgramCatalog {
             // MARK: - SINGLE ROUTINES
             
             WorkoutProgramDefinition(
-                title: "Arnold's Golden Six",
+                title: "Classic Foundation Six",
                 description: "A legendary full-body single routine. Arnold Schwarzenegger used this to build his early mass.",
                 level: .intermediate,
                 goal: .buildMuscle,

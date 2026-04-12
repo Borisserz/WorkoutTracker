@@ -36,12 +36,13 @@ struct ProgressAnalysisSheet: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Button {
-                    let prompt = "Проанализируй мой Progress. Period: \(selectedPeriod). Сделай акцент на: \(selectedFocus). НЕ создавай план тренировки, только текстовый анализ."
+                Button {let isRussian = Locale.current.language.languageCode?.identifier == "ru"
+                    let langRule = isRussian ? "ОТВЕЧАЙ НА РУССКОМ." : "REPLY IN ENGLISH."
+                    let prompt = isRussian
+                        ? "Проанализируй мой прогресс. Период: \(selectedPeriod). Сделай акцент на: \(selectedFocus). НЕ создавай план тренировки, только текстовый анализ. \(langRule)"
+                        : "Analyze my progress. Period: \(selectedPeriod). Focus on: \(selectedFocus). Do NOT create a workout plan, text analysis only. \(langRule)"
                     onGenerate(prompt)
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
-                    dismiss()
+                    
                 } label: {
                     Text("Ask Coach")
                         .font(.headline)
@@ -121,11 +122,12 @@ struct RecoveryAdvisorSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button {
-                    let prompt = "Оцени мое восстановление с учетом уставших мышц (в твоем контексте). Мое самочувствие: \(feeling). Мой вопрос/цель: \(goal). Дай короткий и четкий совет. НЕ создавай план тренировки, если я явно не выбрал 'Everything hurtsWhat can I train?'."
+                    let isRussian = Locale.current.language.languageCode?.identifier == "ru"
+                    let langRule = isRussian ? "ОТВЕЧАЙ НА РУССКОМ." : "REPLY IN ENGLISH."
+                    let prompt = isRussian
+                        ? "Оцени мое восстановление. Самочувствие: \(feeling). Цель: \(goal). Дай короткий совет. НЕ создавай план тренировки (если я не просил). \(langRule)"
+                        : "Assess my recovery. I feel: \(feeling). My goal: \(goal). Give brief advice. Do NOT create a workout plan unless requested. \(langRule)"
                     onGenerate(prompt)
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
-                    dismiss()
                 } label: {
                     Text("Get Status")
                         .font(.headline)

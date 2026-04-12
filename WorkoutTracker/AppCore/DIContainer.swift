@@ -48,7 +48,7 @@ final class DIContainer: @unchecked Sendable {
         self.progressManager = ProgressManager()
         
         // 2. Инициализируем сеть и ИИ
-        let geminiClient = GeminiNetworkClient(apiKey: Secrets.geminiApiKey)
+        let geminiClient = GeminiNetworkClient() // Больше не прокидываем apiKey!
         self.aiLogicService = AILogicService(networkClient: geminiClient)
         
         // 3. Инициализируем бизнес-сервисы
@@ -83,8 +83,8 @@ final class DIContainer: @unchecked Sendable {
     
     @MainActor func makeAICoachViewModel() -> AICoachViewModel {
         AICoachViewModel(
+            modelContext: modelContainer.mainContext, // ✅ ПЕРЕДАЕМ MAIN CONTEXT
             workoutService: workoutService,
-            userRepository: userRepository,
             aiLogicService: aiLogicService,
             analyticsService: analyticsService,
             exerciseCatalogService: exerciseCatalogService,

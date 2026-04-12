@@ -9,14 +9,11 @@ import Observation
 @Observable
 @MainActor
 final class InWorkoutAICoachViewModel {
-    
-    // MARK: - Published State
     var activeProposal: SmartActionDTO? = nil
     var isProcessing: Bool = false
     var activeCommandId: String? = nil
     
-    // MARK: - Private Dependencies & State
-    @ObservationIgnored private let voiceCoach = VoiceCoach()
+    // Удалили voiceCoach
     @ObservationIgnored private var currentTask: Task<Void, Never>? = nil
     
     private let workoutService: WorkoutService
@@ -24,14 +21,7 @@ final class InWorkoutAICoachViewModel {
     private let exerciseCatalogService: ExerciseCatalogService
     private let appState: AppStateManager
     
-    // MARK: - Initializer
-    init(
-        workoutService: WorkoutService,
-        aiLogicService: AILogicService,
-        analyticsService: AnalyticsService,
-        exerciseCatalogService: ExerciseCatalogService,
-        appState: AppStateManager
-    ) {
+    init(workoutService: WorkoutService, aiLogicService: AILogicService, analyticsService: AnalyticsService, exerciseCatalogService: ExerciseCatalogService, appState: AppStateManager) {
         self.workoutService = workoutService
         self.aiLogicService = aiLogicService
         self.exerciseCatalogService = exerciseCatalogService
@@ -40,7 +30,6 @@ final class InWorkoutAICoachViewModel {
     
     deinit { currentTask?.cancel() }
     
-    // MARK: - Public Methods
     func sendSmartCommand(_ command: String, currentWorkout: Workout) {
         guard !isProcessing, currentWorkout.isActive else { return }
         
@@ -53,26 +42,27 @@ final class InWorkoutAICoachViewModel {
         currentTask?.cancel()
         currentTask = Task {
             do {
-                let context = await buildWorkoutContext(currentWorkout)
+                let context = await buildWorkoutContext(currentWorkout, userCommand: command)
                 let weightUnit = UnitsManager.shared.weightUnitString()
+                let language = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
                 
                 let result = try await aiLogicService.processSmartAction(
                     commandType: command,
                     workoutContext: context.workout,
                     catalogContext: context.catalog,
-                    weightUnit: weightUnit
+                    weightUnit: weightUnit,
+                    language: language // Передаем локаль
                 )
                 
                 guard !Task.isCancelled else {
-                    self.isProcessing = false
-                    self.activeCommandId = nil
-                    return
+                    self.isProcessing = false; self.activeCommandId = nil; return
                 }
                 
                 self.activeProposal = result
                 self.isProcessing = false
                 self.activeCommandId = nil
-                self.voiceCoach.speak(result.reasoning)
+                
+                // Убрали self.voiceCoach.speak(result.reasoning)
                 
                 let successGen = UINotificationFeedbackGenerator()
                 successGen.notificationOccurred(.success)
@@ -89,38 +79,40 @@ final class InWorkoutAICoachViewModel {
         guard let proposal = activeProposal else { return }
         Task {
             await workoutService.applySmartAction(proposal, to: workout)
-            withAnimation(.spring()) {
-                self.activeProposal = nil
-            }
+            withAnimation(.spring()) { self.activeProposal = nil }
         }
     }
     
     func discardProposal() {
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            activeProposal = nil
-        }
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { activeProposal = nil }
     }
     
-    // MARK: - Private Context Builder
-    private func buildWorkoutContext(_ workout: Workout) async -> (workout: String, catalog: String) {
+    // MARK: - Private Context Builder (RAG Integration)
+    private func buildWorkoutContext(_ workout: Workout, userCommand: String) async -> (workout: String, catalog: String) {
         guard let activeEx = workout.exercises.first(where: { !$0.isCompleted }) else {
             return ("Workout is already completed.", "")
         }
         
         let remainingSetsCount = activeEx.setsList.filter({ !$0.isCompleted }).count
         let currentWeight = activeEx.setsList.last(where: { $0.weight != nil })?.weight ?? 0.0
+        let unit = UnitsManager.shared.weightUnitString()
         
-        let workoutContextString = "Current exercise: \(activeEx.name). Sets remaining: \(remainingSetsCount). Last used weight: \(currentWeight) kg."
+        let workoutContextString = """
+        CURRENT EXERCISE: \(activeEx.name) (Target: \(activeEx.muscleGroup))
+        REMAINING SETS: \(remainingSetsCount)
+        CURRENT WEIGHT: \(currentWeight) \(unit)
+        """
         
-        let customExercises = (try? await exerciseCatalogService.fetchCustomExercises())?.map { $0.name } ?? []
-        let catalog = await ExerciseDatabaseService.shared.getCatalog()
-
-        // Получаем широкую категорию, так как каталог сгруппирован по "Chest", "Back" и т.д.
-        let broadCategory = MuscleCategoryMapper.getBroadCategory(for: activeEx.muscleGroup)
-        let catalogExercises = catalog[broadCategory] ?? []
-
-        let fullCatalog = Array(Set(catalogExercises + customExercises)).joined(separator: ", ")
+        let combinedQuery = "\(activeEx.muscleGroup) \(userCommand)"
         
-        return (workout: workoutContextString, catalog: fullCatalog)
+        let relevantCatalog = await ExerciseDatabaseService.shared.getRelevantExercisesContext(
+            for: combinedQuery,
+            equipmentPref: "any",
+            limit: 15
+        )
+        
+        let catalogString = relevantCatalog.joined(separator: ", ")
+        
+        return (workout: workoutContextString, catalog: catalogString)
     }
 }

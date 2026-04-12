@@ -1,7 +1,6 @@
 // ============================================================
 // FILE: WorkoutTracker/Features/Workout/Views/HistoryView.swift
 // ============================================================
-
 internal import SwiftUI
 import SwiftData
 
@@ -18,7 +17,7 @@ struct HistoryView: View {
     @State private var showFavoritesOnly = false
     @State private var listViewModel = WorkoutListViewModel()
     
-        @Environment(ThemeManager.self) private var themeManager
+    @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         NavigationStack {
@@ -47,12 +46,15 @@ struct HistoryView: View {
                     } header: {
                         stickyControlBar
                     }
+                    // Оставляем отступы только для карточек, шапка отрисуется на всю ширину сама
                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 12, trailing: 16))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                // ✅ ИСПРАВЛЕНИЕ: Убиваем невидимый системный отступ над шапкой в List
+                .environment(\.defaultMinListHeaderHeight, 0)
             }
             .navigationTitle(LocalizedStringKey("History"))
         }
@@ -61,100 +63,107 @@ struct HistoryView: View {
     // MARK: - View Components
     
     private var statsSection: some View {
-            // Вычисляем тонны
-            let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
-            let formattedTons = LocalizationHelper.shared.formatTwoDecimals(tons)
+        // Вычисляем тонны
+        let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
+        let formattedTons = LocalizationHelper.shared.formatTwoDecimals(tons)
+        
+        return HStack(spacing: 12) {
+            CompactStatCard(
+                title: "Avg Duration",
+                value: "\(listViewModel.calculatedAvgDuration)",
+                unit: "min",
+                icon: "stopwatch.fill",
+                colors: [.purple, .indigo]
+            )
             
-            return HStack(spacing: 12) {
-                CompactStatCard(
-                    title: "Avg Duration",
-                    value: "\(listViewModel.calculatedAvgDuration)",
-                    unit: "min",
-                    icon: "stopwatch.fill",
-                    colors: [.purple, .indigo]
-                )
-                
-                CompactStatCard(
-                    title: "Avg Volume",
-                    value: formattedTons,
-                    unit: "tons", // Жестко задаем тонны
-                    icon: "scalemass.fill",
-                    colors: [.cyan, .blue]
-                )
-            }
+            CompactStatCard(
+                title: "Avg Volume",
+                value: formattedTons,
+                unit: "tons",
+                icon: "scalemass.fill",
+                colors: [.cyan, .blue]
+            )
         }
+    }
     
     private var stickyControlBar: some View {
-            VStack(spacing: 12) {
-                PremiumSearchBar(debouncer: searchDebouncer)
-                    .padding(.horizontal, 16)
-                
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
-                        Spacer().frame(width: 6)
-                        
-                        // Кнопка: Избранное
+        VStack(spacing: 12) {
+            PremiumSearchBar(debouncer: searchDebouncer)
+                .padding(.horizontal, 16)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    Spacer().frame(width: 6)
+                    
+                    // Кнопка: Избранное
+                    Button {
+                        triggerFeedback()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            showFavoritesOnly.toggle()
+                        }
+                    } label: {
+                        HistoryFilterChipView(
+                            title: "Favorites",
+                            icon: "star.fill",
+                            isSelected: showFavoritesOnly,
+                            activeColor: .yellow
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    Menu {
+                        ForEach(WorkoutView.SortOption.allCases, id: \.self) { option in
+                            Button {
+                                triggerFeedback()
+                                sortOption = option
+                            } label: {
+                                Label(option.localizedName, systemImage: sortIcon(for: option))
+                            }
+                        }
+                    } label: {
+                        HistoryFilterChipView(
+                            title: sortOption.localizedName,
+                            icon: "arrow.up.arrow.down",
+                            isSelected: false,
+                            activeColor: .clear
+                        )
+                    }
+                    
+                    // Кнопки: Periodы
+                    ForEach(WorkoutView.FilterPeriod.allCases, id: \.self) { period in
                         Button {
                             triggerFeedback()
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                showFavoritesOnly.toggle()
+                                selectedFilter = period
                             }
                         } label: {
                             HistoryFilterChipView(
-                                title: "Favorites",
-                                icon: "star.fill",
-                                isSelected: showFavoritesOnly,
-                                activeColor: .yellow
+                                title: period.localizedName,
+                                icon: nil,
+                                isSelected: selectedFilter == period,
+                                activeColor: .blue
                             )
                         }
                         .buttonStyle(.plain)
-                        
-                        Menu {
-                                                ForEach(WorkoutView.SortOption.allCases, id: \.self) { option in
-                                                    Button {
-                                                        triggerFeedback()
-                                                        sortOption = option
-                                                    } label: {
-                                                        Label(option.localizedName, systemImage: sortIcon(for: option)) // ✅ ИСПОЛЬЗУЕМ localizedName
-                                                    }
-                                                }
-                                            } label: {
-                                                // Используем только View, без Button внутри, чтобы Menu не ломало стили
-                                                HistoryFilterChipView(
-                                                    title: sortOption.localizedName, // ✅ ИСПОЛЬЗУЕМ localizedName
-                                                    icon: "arrow.up.arrow.down",
-                                                    isSelected: false, // Делаем серым/белым как обычный фильтр
-                                                    activeColor: .clear
-                                                )
-                                            }
-                                            
-                                            // Кнопки: Periodы
-                                            ForEach(WorkoutView.FilterPeriod.allCases, id: \.self) { period in
-                                                Button {
-                                                    triggerFeedback()
-                                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                                        selectedFilter = period
-                                                    }
-                                                } label: {
-                                                    HistoryFilterChipView(
-                                                        title: period.localizedName, // ✅ ИСПОЛЬЗУЕМ localizedName
-                                                        icon: nil,
-                                                        isSelected: selectedFilter == period,
-                                                        activeColor: .blue
-                                                    )
-                                                }
-                                                .buttonStyle(.plain)
-                                            }
-                        
-                        Spacer().frame(width: 6)
                     }
-                    .padding(.bottom, 12)
+                    
+                    Spacer().frame(width: 6)
                 }
+                .padding(.bottom, 12)
             }
-            .padding(.top, 12)
-            .background(.ultraThinMaterial) // Эффект Glassmorphism
-            .padding(.horizontal, -20) // Растягиваем на всю ширину списка
         }
+        .padding(.top, 16) // Отступ от навбара
+        // ✅ ИСПРАВЛЕНИЕ: Фон вынесен так, чтобы залезать под Navigation Bar
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .ignoresSafeArea(edges: .top)
+        )
+        // ✅ Компенсация стандартных отступов секции List
+        .padding(.horizontal, -20)
+        .padding(.top, -8) // Сдвигаем саму вьюху вплотную к верхней границе
+    }
+    
     private func triggerFeedback() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
