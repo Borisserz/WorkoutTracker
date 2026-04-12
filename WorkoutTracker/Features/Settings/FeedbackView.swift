@@ -33,6 +33,8 @@ struct FeedbackView: View {
         }
     }
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         Form {
             Section(header: Text(LocalizedStringKey("Feedback Type"))) {
@@ -76,11 +78,11 @@ struct FeedbackView: View {
                 } label: {
                     HStack {
                         Label(LocalizedStringKey("Email Support"), systemImage: "envelope.fill")
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                         Spacer()
                         Image(systemName: "arrow.up.forward.app")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                     }
                 }
             }

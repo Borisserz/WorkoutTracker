@@ -27,6 +27,8 @@ struct MilestoneShareCard: View {
     let icon: String
     let colors: [Color]
     
+    @Environment(ThemeManager.self) private var themeManager
+    
     var body: some View {
         ZStack {
             LinearGradient(
@@ -36,7 +38,7 @@ struct MilestoneShareCard: View {
             )
             
             Circle()
-                .fill(colors.first?.opacity(0.2) ?? Color.blue.opacity(0.2))
+                .fill(colors.first?.opacity(0.2) ?? themeManager.current.primaryAccent.opacity(0.2))
                 .frame(width: 400)
                 .offset(x: -200, y: -300)
             
@@ -78,7 +80,7 @@ struct MilestoneShareCard: View {
                 
                 Text(subtitle)
                     .font(.system(size: 60, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                     .padding(.top, 20)
@@ -100,7 +102,7 @@ struct MilestoneShareCard: View {
                     Text(LocalizedStringKey("Tracked with WorkoutTracker"))
                 }
                 .font(.title)
-                .foregroundColor(.gray.opacity(0.5))
+                .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
                 .padding(.bottom, 80)
             }
         }
@@ -109,6 +111,7 @@ struct MilestoneShareCard: View {
 }
 
 struct WorkoutShareCard: View {
+    @Environment(ThemeManager.self) private var themeManager
     
     // MARK: - Properties
     
@@ -178,7 +181,7 @@ struct WorkoutShareCard: View {
             
             // Декоративные круги
             Circle()
-                .fill(Color.blue.opacity(0.1))
+                .fill(themeManager.current.primaryAccent.opacity(0.1))
                 .frame(width: 300)
                 .offset(x: -150, y: -200)
             
@@ -193,7 +196,7 @@ struct WorkoutShareCard: View {
         HStack {
             Image(systemName: "dumbbell.fill")
                 .font(.title)
-                .foregroundColor(.blue)
+                .foregroundColor(themeManager.current.primaryAccent)
             
             Text(LocalizedStringKey("WORKOUT COMPLETE"))
                 .font(.headline)
@@ -207,12 +210,12 @@ struct WorkoutShareCard: View {
         VStack(spacing: 5) {
             Text(workout.title)
                 .font(.system(size: 32, weight: .heavy, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(themeManager.current.background)
                 .multilineTextAlignment(.center)
             
             Text(workout.date.formatted(date: .long, time: .omitted))
                 .font(.subheadline)
-                .foregroundColor(.gray)
+                .foregroundColor(themeManager.current.secondaryAccent)
         }
     }
     
@@ -220,7 +223,7 @@ struct WorkoutShareCard: View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 30) {
             statCell(title: "DURATION", value: "\(workout.durationSeconds / 60) min", icon: "stopwatch", color: .yellow)
             statCell(title: "TOTAL VOLUME", value: "\(totalVolume) kg", icon: "scalemass", color: .green)
-            statCell(title: "EXERCISES", value: "\(workout.exercises.count)", icon: "list.bullet", color: .blue)
+            statCell(title: "EXERCISES", value: "\(workout.exercises.count)", icon: "list.bullet", color: themeManager.current.primaryAccent)
             statCell(title: "AVG EFFORT", value: "\(workout.effortPercentage)%", icon: "flame.fill", color: .red)
         }
         .padding(.horizontal)
@@ -233,7 +236,7 @@ struct WorkoutShareCard: View {
                 Text(LocalizedStringKey("TARGETED MUSCLES"))
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(.gray)
+                    .foregroundColor(themeManager.current.secondaryAccent)
                 
                 HStack {
                     ForEach(topMuscles, id: \.self) { muscle in
@@ -243,7 +246,7 @@ struct WorkoutShareCard: View {
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .background(Color.white.opacity(0.1))
-                            .foregroundColor(.white)
+                            .foregroundColor(themeManager.current.background)
                             .cornerRadius(20)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 20)
@@ -261,7 +264,7 @@ struct WorkoutShareCard: View {
             Text(LocalizedStringKey("Tracked with WorkoutTracker"))
         }
         .font(.caption)
-        .foregroundColor(.gray.opacity(0.5))
+        .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
         .padding(.bottom, 30)
     }
     
@@ -279,42 +282,13 @@ struct WorkoutShareCard: View {
             Text(value)
                 .font(.title3)
                 .bold()
-                .foregroundColor(.white)
+                .foregroundColor(themeManager.current.background)
             
             Text(title)
                 .font(.caption2)
                 .fontWeight(.bold)
-                .foregroundColor(.gray)
+                .foregroundColor(themeManager.current.secondaryAccent)
         }
-    }
-}
-
-// MARK: - Extensions
-
-extension Color {
-    /// Initializing цвета через HEX строку (например "1a1a1a")
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: // RGB (12-bit)
-            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: // RGB (24-bit)
-            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: // ARGB (32-bit)
-            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default:
-            (a, r, g, b) = (1, 1, 1, 0)
-        }
-        self.init(
-            .sRGB,
-            red: Double(r) / 255,
-            green: Double(g) / 255,
-            blue:  Double(b) / 255,
-            opacity: Double(a) / 255
-        )
     }
 }
 

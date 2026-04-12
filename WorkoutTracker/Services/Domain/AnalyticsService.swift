@@ -350,27 +350,79 @@ actor AnalyticsService {
     // MARK: - Internal Calculators
     
     func getAllPersonalRecords(workouts: [Workout], unitsManager: UnitsManager) -> [BestResult] {
-            var bests: [String: (result: Double, date: Date, type: ExerciseType)] = [:]
+            // Храним результат, количество повторений, дату, тип и флаг
+            var bests: [String: (result: Double, reps: Int, date: Date, type: ExerciseType, isBodyweight: Bool)] = [:]
+            
+            // Вспомогательная функция для исправления ошибок генератора (Сила важнее Времени)
+            func typeRank(_ type: ExerciseType) -> Int {
+                switch type {
+                case .strength: return 3
+                case .cardio: return 2
+                case .duration: return 1
+                }
+            }
             
             for workout in workouts {
                 for exercise in workout.exercises {
                     let targetExercises = exercise.isSuperset ? exercise.subExercises : [exercise]
                     for ex in targetExercises {
                         var currentValue: Double = 0
+                        var currentReps: Int = 0
+                        var isBW = false
                         
                         switch ex.type {
                         case .strength:
-                            // 🚀 ОПТИМИЗАЦИЯ: Больше не дергаем setsList, берем закэшированный максимум!
-                            currentValue = ex.cachedMaxWeight
+                            // Фильтруем только выполненные сеты без разминки
+                            let validSets = ex.setsList.filter { $0.isCompleted && $0.type != .warmup }
+                            
+                            // Находим сет с максимальным весом, а при равном весе - с максимальным кол-вом повторений
+                            if let bestSet = validSets.max(by: {
+                                let w1 = $0.weight ?? 0.0
+                                let w2 = $1.weight ?? 0.0
+                                if w1 == w2 { return ($0.reps ?? 0) < ($1.reps ?? 0) }
+                                return w1 < w2
+                            }) {
+                                currentValue = bestSet.weight ?? 0.0
+                                currentReps = bestSet.reps ?? 0
+                                isBW = (currentValue <= 0.0)
+                                
+                                // Если вес 0 (упражнение со своим весом), то рекорд - это максимальные повторения
+                                if isBW {
+                                    currentValue = Double(validSets.compactMap { $0.reps }.max() ?? 0)
+                                    currentReps = Int(currentValue)
+                                }
+                            }
+                            
                         case .cardio:
-                            // Кардио обычно состоит из 1 сета, но для надежности можно агрегировать безопасно
                             currentValue = ex.setsList.filter { $0.isCompleted }.compactMap { $0.distance }.reduce(0, +)
                         case .duration:
                             currentValue = Double(ex.setsList.filter { $0.isCompleted }.compactMap { $0.time }.reduce(0, +))
                         }
                         
-                        if currentValue > (bests[ex.name]?.result ?? 0) {
-                            bests[ex.name] = (result: currentValue, date: workout.date, type: ex.type)
+                        let currentTypeRank = typeRank(ex.type)
+                        let existing = bests[ex.name]
+                        
+                        if let existingRecord = existing {
+                            let existingRank = typeRank(existingRecord.type)
+                            
+                            // Если новый тип важнее
+                            if currentTypeRank > existingRank {
+                                if currentValue > 0 {
+                                    bests[ex.name] = (result: currentValue, reps: currentReps, date: workout.date, type: ex.type, isBodyweight: isBW)
+                                }
+                            } else if currentTypeRank == existingRank {
+                                // Если тип такой же, проверяем вес
+                                if currentValue > existingRecord.result {
+                                    bests[ex.name] = (result: currentValue, reps: currentReps, date: workout.date, type: ex.type, isBodyweight: isBW)
+                                } else if currentValue == existingRecord.result && currentReps > existingRecord.reps {
+                                    // Если вес совпадает, но повторений больше - обновляем рекорд!
+                                    bests[ex.name] = (result: currentValue, reps: currentReps, date: workout.date, type: ex.type, isBodyweight: isBW)
+                                }
+                            }
+                        } else {
+                            if currentValue > 0 {
+                                bests[ex.name] = (result: currentValue, reps: currentReps, date: workout.date, type: ex.type, isBodyweight: isBW)
+                            }
                         }
                     }
                 }
@@ -379,10 +431,20 @@ actor AnalyticsService {
             return bests.map { name, data in
                 var valString = ""
                 switch data.type {
-                case .strength: valString = String(localized: "\(Int(data.result)) \(unitsManager.weightUnitString())")
+                case .strength:
+                    if data.isBodyweight {
+                        // Если вес 0 (отжимания/подтягивания), оставляем просто "14 reps"
+                        valString = String(localized: "\(data.reps) reps")
+                    } else {
+                        // Новый красивый формат: "100 kg × 12"
+                        let convertedWeight = unitsManager.convertFromKilograms(data.result)
+                        let weightStr = LocalizationHelper.shared.formatFlexible(convertedWeight)
+                        let unitStr = unitsManager.weightUnitString()
+                        valString = "\(weightStr) \(unitStr) × \(data.reps)"
+                    }
                 case .cardio:
-                    let converted = unitsManager.convertFromMeters(data.result)
-                    valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(converted)) \(unitsManager.distanceUnitString())")
+                    let convertedDist = unitsManager.convertFromMeters(data.result)
+                    valString = String(localized: "\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString())")
                 case .duration:
                     let m = Int(data.result) / 60
                     let s = Int(data.result) % 60
@@ -392,7 +454,6 @@ actor AnalyticsService {
                 return BestResult(exerciseName: name, value: valString, date: data.date, type: data.type)
             }.sorted { $0.exerciseName < $1.exerciseName }
         }
-    
     // Теперь Actor просто собирает даты и делегирует расчет:
         func calculateWorkoutStreak(workouts: [Workout]) -> Int {
             let maxRestDaysAllowed = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue)

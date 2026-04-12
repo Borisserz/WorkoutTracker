@@ -8,9 +8,9 @@ internal import SwiftUI
 // MARK: - Chat Bubble View
 struct ChatMessageView: View {
     let message: AIChatMessage
-    
-    // Замыкание для передачи события нажатия кнопки наверх
     var onAcceptWorkout: ((GeneratedWorkoutDTO) -> Void)? = nil
+    
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     
     var body: some View {
         HStack(alignment: .bottom) {
@@ -20,7 +20,7 @@ struct ChatMessageView: View {
                 // Иконка AI
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .fill(themeManager.current.premiumGradient) // <--- ИЗМЕНЕНО
                         .frame(width: 32, height: 32)
                     Image(systemName: "brain.head.profile")
                         .font(.system(size: 14, weight: .bold))
@@ -44,8 +44,8 @@ struct ChatMessageView: View {
                 .padding(.vertical, 12)
                 .background(
                     message.isUser
-                    ? Color.accentColor
-                    : Color(UIColor.secondarySystemBackground)
+                    ? themeManager.current.primaryAccent // <--- ИЗМЕНЕНО
+                    : themeManager.current.surface
                 )
                 .clipShape(ChatBubbleShape(isUser: message.isUser))
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
@@ -66,22 +66,22 @@ struct ChatMessageView: View {
         .transition(.move(edge: message.isUser ? .trailing : .leading).combined(with: .opacity))
     }
 }
-
 // MARK: - Typewriter Text View
-// 🎼 ОПТИМИЗАЦИЯ: Локальная анимация текста. Защищает ScrollView от перерисовок
 struct TypewriterTextView: View {
     let fullText: String
     let isAnimating: Bool
     
     @State private var displayedText: String = ""
     @State private var timer: Timer?
+    @State private var hasAnimated: Bool = false // ✅ ИСПРАВЛЕНИЕ: Локальный стейт
     
     var body: some View {
-        // Использование .init позволяет SwiftUI парсить Markdown налету
         Text(.init(displayedText))
             .onAppear {
-                if isAnimating {
+                // ✅ Защита от повторной анимации при возврате на экран чата
+                if isAnimating && !hasAnimated {
                     startAnimating()
+                    hasAnimated = true
                 } else {
                     displayedText = fullText
                 }
@@ -136,12 +136,13 @@ struct ChatBubbleShape: Shape {
 // MARK: - Smart AI Loading Indicator
 struct AILoadingIndicator: View {
     @State private var isAnimating = false
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(themeManager.current.premiumGradient) // <--- ИЗМЕНЕНО
                     .frame(width: 32, height: 32)
                 Image(systemName: "brain.head.profile")
                     .font(.system(size: 14, weight: .bold))
@@ -164,7 +165,7 @@ struct AILoadingIndicator: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .clipShape(ChatBubbleShape(isUser: false))
         }
         .onAppear {
@@ -177,6 +178,7 @@ struct AILoadingIndicator: View {
 struct ProposedWorkoutCardView: View {
     let workout: GeneratedWorkoutDTO
     var onAccept: () -> Void
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -186,14 +188,14 @@ struct ProposedWorkoutCardView: View {
                     .foregroundColor(.yellow)
                 Text(LocalizedStringKey(workout.title))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 Spacer()
                 Text("\(workout.exercises.count) exercises")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
             .padding()
-            .background(Color.accentColor.opacity(0.1))
+            .background(themeManager.current.primaryAccent.opacity(0.1)) // <--- ИЗМЕНЕНО
             
             // Exercises List
             VStack(spacing: 12) {
@@ -210,7 +212,7 @@ struct ProposedWorkoutCardView: View {
                                 Text(LocalizedStringKey(exercise.muscleGroup))
                                     .font(.caption)
                             }
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 4) {
@@ -221,7 +223,7 @@ struct ProposedWorkoutCardView: View {
                             if let weight = exercise.recommendedWeightKg, weight > 0 {
                                 Text("\(Int(weight)) kg")
                                     .font(.caption)
-                                    .foregroundColor(.accentColor)
+                                    .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
                             }
                         }
                     }
@@ -245,18 +247,18 @@ struct ProposedWorkoutCardView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.accentColor)
+                .background(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
                 .foregroundColor(.white)
                 .cornerRadius(12)
             }
             .padding(.horizontal)
             .padding(.bottom)
         }
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.accentColor.opacity(0.3), lineWidth: 1)
+                .stroke(themeManager.current.primaryAccent.opacity(0.3), lineWidth: 1) // <--- ИЗМЕНЕНО
         )
         .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
         .frame(maxWidth: 340)

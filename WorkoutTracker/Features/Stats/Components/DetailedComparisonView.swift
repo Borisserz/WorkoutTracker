@@ -12,6 +12,8 @@ struct DetailedComparisonView: View {
     let comparisons: [DetailedComparison]
     let period: String
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         if comparisons.isEmpty {
             EmptyStateView(
@@ -43,6 +45,8 @@ struct DetailedComparisonRow: View {
         return ("chart.bar.fill", .gray)
     }
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack(spacing: 16) {
             let style = iconAndColor(for: comparison.metric)
@@ -55,19 +59,19 @@ struct DetailedComparisonRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(LocalizedStringKey(comparison.metric))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 
                 HStack(spacing: 6) {
                     Text(LocalizationHelper.shared.formatSmart(comparison.previousValue))
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                     Image(systemName: "arrow.right")
                         .font(.caption2)
-                        .foregroundColor(.gray)
+                        .foregroundColor(themeManager.current.secondaryAccent)
                     Text(LocalizationHelper.shared.formatSmart(comparison.currentValue))
                         .font(.subheadline)
                         .bold()
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
             }
             
@@ -84,7 +88,7 @@ struct DetailedComparisonRow: View {
                 .clipShape(Capsule())
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(20)
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }

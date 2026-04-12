@@ -17,6 +17,7 @@ struct ActiveGoalCard: View {
     let onReplaceTapped: () -> Void
     
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -30,10 +31,10 @@ struct ActiveGoalCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title(for: goal))
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                         Text(subtitle(for: goal))
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                     }
                     Spacer()
                     
@@ -43,9 +44,9 @@ struct ActiveGoalCard: View {
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.title3)
-                            .foregroundColor(.gray)
+                            .foregroundColor(themeManager.current.secondaryAccent)
                             .padding(8)
-                            .background(Color.gray.opacity(0.1))
+                            .background(themeManager.current.surfaceVariant)
                             .clipShape(Circle())
                     }
                 }
@@ -57,12 +58,12 @@ struct ActiveGoalCard: View {
                         Text(currentText(goal: goal))
                             .font(.subheadline)
                             .bold()
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                             .contentTransition(.numericText())
                         Spacer()
                         Text(targetText(goal: goal))
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                     }
                     
                     GeometryReader { geo in
@@ -72,9 +73,9 @@ struct ActiveGoalCard: View {
                                 .frame(height: 14)
                             
                             Capsule()
-                                .fill(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))
+                                .fill(themeManager.current.primaryGradient)
                                 .frame(width: max(0, geo.size.width * CGFloat(progress)), height: 14)
-                                .shadow(color: .cyan.opacity(0.4), radius: 5, x: 0, y: 0)
+                                .shadow(color: themeManager.current.lightHighlight.opacity(0.4), radius: 5, x: 0, y: 0)
                         }
                     }
                     .frame(height: 14)
@@ -87,8 +88,8 @@ struct ActiveGoalCard: View {
                         .fontWeight(.bold)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundColor(.blue)
+                        .background(themeManager.current.primaryAccent.opacity(0.1))
+                        .foregroundColor(themeManager.current.primaryAccent)
                         .clipShape(Capsule())
                 }
                 
@@ -97,10 +98,10 @@ struct ActiveGoalCard: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(LocalizedStringKey("Challenge yourself"))
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                     Text(LocalizedStringKey("Define your next goal to lock in."))
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                     
                     Button(action: {
                         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -112,10 +113,10 @@ struct ActiveGoalCard: View {
                             Text(LocalizedStringKey("Add Goal"))
                         }
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(Color.blue)
+                        .background(themeManager.current.primaryAccent)
                         .cornerRadius(12)
                     }
                     .buttonStyle(BorderlessButtonStyle())
@@ -123,7 +124,7 @@ struct ActiveGoalCard: View {
             }
         }
         .padding(20)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(24)
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
@@ -132,7 +133,12 @@ struct ActiveGoalCard: View {
         switch type { case .strength: return "dumbbell.fill"; case .bodyweight: return "scalemass.fill"; case .consistency: return "flame.fill" }
     }
     private func iconColor(for type: GoalType) -> Color {
-        switch type { case .strength: return .blue; case .bodyweight: return .purple; case .consistency: return .orange }
+        @Environment(ThemeManager.self) var themeManager
+        switch type { 
+            case .strength: return ThemeManager.shared.current.primaryAccent
+            case .bodyweight: return .purple
+            case .consistency: return ThemeManager.shared.current.secondaryMidTone
+        }
     }
     private func title(for goal: UserGoal) -> LocalizedStringKey {
         switch goal.type { case .strength: return LocalizedStringKey("\(goal.exerciseName ?? "Exercise")"); case .bodyweight: return LocalizedStringKey("Target Bodyweight"); case .consistency: return LocalizedStringKey("Workout Streak") }
@@ -178,6 +184,7 @@ struct ActiveGoalCard: View {
 struct GoalSelectionSheet: View {
     @Environment(\.dismiss) var dismiss
     var onGoalCreated: () -> Void
+    @Environment(ThemeManager.self) private var themeManager
     
     @State private var navigateToStrength = false
     @State private var navigateToBodyweight = false
@@ -191,7 +198,7 @@ struct GoalSelectionSheet: View {
                         title: "Strength Goal",
                         subtitle: "Crush your personal records and get stronger!",
                         icon: "dumbbell.fill",
-                        color: .blue,
+                        color: themeManager.current.primaryAccent,
                         action: { navigateToStrength = true }
                     )
                     
@@ -207,7 +214,7 @@ struct GoalSelectionSheet: View {
                         title: "Consistency Goal",
                         subtitle: "Build momentum with workout streaks!",
                         icon: "flame.fill",
-                        color: .orange,
+                        color: themeManager.current.secondaryMidTone,
                         action: { navigateToConsistency = true }
                     )
                 }
@@ -253,18 +260,18 @@ struct GoalSelectionSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title)
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .multilineTextAlignment(.leading)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.gray.opacity(0.5))
+                    .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
             }
             .padding()
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(16)
         }
         .buttonStyle(.plain)
@@ -290,7 +297,7 @@ struct GoalSetupDetailView: View {
     @State private var targetReps: Int = 1
     @State private var targetDate: Date = Calendar.current.date(byAdding: .month, value: 1, to: Date())!
     @State private var selectedExercise: String = "" // Оставляем пустым до загрузки
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         Form {
             Section(header: Text(LocalizedStringKey("Goal Parameters"))) {
@@ -306,7 +313,7 @@ struct GoalSetupDetailView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    .tint(.blue)
+                    .tint(themeManager.current.primaryAccent)
                 }
                 
                 if type == .strength || type == .bodyweight {
@@ -316,7 +323,7 @@ struct GoalSetupDetailView: View {
                         TextField("0", text: $targetWeightString)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent)
                             .bold()
                     }
                     
@@ -327,7 +334,7 @@ struct GoalSetupDetailView: View {
                                 Text(LocalizedStringKey("Target Reps"))
                                 Spacer()
                                 Text("\(targetReps)")
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(themeManager.current.primaryAccent)
                                     .bold()
                             }
                         }
@@ -338,7 +345,7 @@ struct GoalSetupDetailView: View {
                             Text(LocalizedStringKey("Target Streak"))
                             Spacer()
                             Text(LocalizedStringKey("\(targetDays) days"))
-                                .foregroundColor(.blue)
+                                .foregroundColor(themeManager.current.primaryAccent)
                                 .bold()
                         }
                     }
@@ -354,9 +361,9 @@ struct GoalSetupDetailView: View {
                               Text(LocalizedStringKey("Set Goal"))
                                   .font(.headline)
                                   .frame(maxWidth: .infinity)
-                                  .foregroundColor(.white)
+                                  .foregroundColor(themeManager.current.background)
                           }
-                          .listRowBackground(Color.blue)
+                          .listRowBackground(themeManager.current.primaryAccent)
                           .disabled(type == .strength && selectedExercise.isEmpty) // Защита
                       }
                   }

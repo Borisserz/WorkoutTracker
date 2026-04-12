@@ -9,7 +9,7 @@ internal import SwiftUI
 struct ProgressAnalysisSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onGenerate: (String) -> Void
-    
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     @State private var selectedPeriod = "Past Week"
     @State private var selectedFocus = "General Overview"
     
@@ -36,23 +36,24 @@ struct ProgressAnalysisSheet: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Button {
-                    let prompt = "Проанализируй мой Progress. Period: \(selectedPeriod). Сделай акцент на: \(selectedFocus). НЕ создавай план тренировки, только текстовый анализ."
+                Button {let isRussian = Locale.current.language.languageCode?.identifier == "ru"
+                    let langRule = isRussian ? "ОТВЕЧАЙ НА РУССКОМ." : "REPLY IN ENGLISH."
+                    let prompt = isRussian
+                        ? "Проанализируй мой прогресс. Период: \(selectedPeriod). Сделай акцент на: \(selectedFocus). НЕ создавай план тренировки, только текстовый анализ. \(langRule)"
+                        : "Analyze my progress. Period: \(selectedPeriod). Focus on: \(selectedFocus). Do NOT create a workout plan, text analysis only. \(langRule)"
                     onGenerate(prompt)
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
-                    dismiss()
+                    
                 } label: {
                     Text("Ask Coach")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(themeManager.current.primaryAccent)
                         .foregroundColor(.white)
                         .cornerRadius(16)
                 }
                 .padding()
-                .background(Color(UIColor.systemBackground).shadow(radius: 5, y: -2))
+                .background(themeManager.current.background.shadow(radius: 5, y: -2))
             }
         }
         .presentationDetents([.medium])
@@ -63,7 +64,7 @@ struct ProgressAnalysisSheet: View {
 struct RecoveryAdvisorSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onGenerate: (String) -> Void
-    
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     @State private var feeling = "Light soreness"
     @State private var goal = "Everything hurtsWhat can I train?"
     
@@ -82,11 +83,11 @@ struct RecoveryAdvisorSheet: View {
                             HStack {
                                 Text(f)
                                     .font(.subheadline)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                 Spacer()
                                 if feeling == f {
                                     Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(themeManager.current.primaryAccent)
                                 }
                             }
                         }
@@ -101,11 +102,11 @@ struct RecoveryAdvisorSheet: View {
                             HStack {
                                 Text(g)
                                     .font(.subheadline)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                 Spacer()
                                 if goal == g {
                                     Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(themeManager.current.primaryAccent)
                                 }
                             }
                         }
@@ -121,22 +122,23 @@ struct RecoveryAdvisorSheet: View {
             }
             .safeAreaInset(edge: .bottom) {
                 Button {
-                    let prompt = "Оцени мое восстановление с учетом уставших мышц (в твоем контексте). Мое самочувствие: \(feeling). Мой вопрос/цель: \(goal). Дай короткий и четкий совет. НЕ создавай план тренировки, если я явно не выбрал 'Everything hurtsWhat can I train?'."
+                    let isRussian = Locale.current.language.languageCode?.identifier == "ru"
+                    let langRule = isRussian ? "ОТВЕЧАЙ НА РУССКОМ." : "REPLY IN ENGLISH."
+                    let prompt = isRussian
+                        ? "Оцени мое восстановление. Самочувствие: \(feeling). Цель: \(goal). Дай короткий совет. НЕ создавай план тренировки (если я не просил). \(langRule)"
+                        : "Assess my recovery. I feel: \(feeling). My goal: \(goal). Give brief advice. Do NOT create a workout plan unless requested. \(langRule)"
                     onGenerate(prompt)
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
-                    dismiss()
                 } label: {
                     Text("Get Status")
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue) // Сделали синим
+                        .background(themeManager.current.primaryAccent) 
                         .foregroundColor(.white)
                         .cornerRadius(16)
                 }
                 .padding()
-                .background(Color(UIColor.systemBackground).shadow(radius: 5, y: -2))
+                .background(themeManager.current.background.shadow(radius: 5, y: -2))
             }
         }
         .presentationDetents([.medium, .large])

@@ -10,6 +10,7 @@ internal import SwiftUI
 
 struct TimerSetupSheet: View {
     @Environment(RestTimerManager.self) var timerManager
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.dismiss) private var dismiss
     
     @State private var minutes: Int = 1
@@ -21,11 +22,11 @@ struct TimerSetupSheet: View {
                 // Header
                 ZStack {
                     Circle()
-                        .fill(Color.blue.opacity(0.1))
+                        .fill(themeManager.current.primaryAccent.opacity(0.1))
                         .frame(width: 70, height: 70)
                     Image(systemName: "timer")
                         .font(.system(size: 32, weight: .light))
-                        .foregroundColor(.blue)
+                        .foregroundColor(themeManager.current.primaryAccent)
                 }
                 .padding(.top, 24)
                 
@@ -54,7 +55,7 @@ struct TimerSetupSheet: View {
                     .clipped()
                 }
                 .padding(.horizontal)
-                .background(Color(UIColor.secondarySystemBackground).cornerRadius(20))
+                .background(themeManager.current.surface.cornerRadius(20))
                 .padding(.horizontal, 30)
                 
                 Spacer()
@@ -70,8 +71,8 @@ struct TimerSetupSheet: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(Color(UIColor.secondarySystemBackground))
-                            .foregroundColor(.primary)
+                            .background(themeManager.current.surface)
+                            .foregroundColor(themeManager.current.primaryText)
                             .cornerRadius(16)
                     }
                     
@@ -86,10 +87,10 @@ struct TimerSetupSheet: View {
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 16)
-                            .background(Color.blue)
-                            .foregroundColor(.white)
+                            .background(themeManager.current.primaryAccent)
+                            .foregroundColor(themeManager.current.background)
                             .cornerRadius(16)
-                            .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                            .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 8, x: 0, y: 4)
                     }
                 }
                 .padding(.horizontal, 24)

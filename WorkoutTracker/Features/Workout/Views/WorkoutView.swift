@@ -6,6 +6,7 @@ import UIKit
 
 struct WorkoutView: View {
     @Environment(DIContainer.self) private var di
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
@@ -129,10 +130,10 @@ struct WorkoutView: View {
                 } label: {
                     Text(LocalizedStringKey("Start Workout"))
                         .font(.headline)
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.blue)
+                        .background(themeManager.current.primaryAccent)
                         .cornerRadius(12)
                 }
             }
@@ -207,7 +208,7 @@ struct WorkoutView: View {
             
             DebouncedSearchBar(debouncer: searchDebouncer)
                 .padding()
-                .background(Color(UIColor.secondarySystemBackground))
+                .background(themeManager.current.surface)
                 .cornerRadius(12)
                 .padding(.horizontal)
             
@@ -224,7 +225,7 @@ struct WorkoutView: View {
                     .font(.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(themeManager.current.surface)
                     .cornerRadius(8)
                 }
                 
@@ -240,7 +241,7 @@ struct WorkoutView: View {
                     .font(.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(themeManager.current.surface)
                     .cornerRadius(8)
                 }
             }
@@ -261,6 +262,7 @@ struct WorkoutView: View {
 // MARK: - Dynamic Workout List (OOM Protection)
 
 struct DynamicWorkoutListView: View {
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     @Query private var workouts: [Workout]
     @Environment(DashboardViewModel.self) var dashboardViewModel
@@ -318,13 +320,13 @@ struct DynamicWorkoutListView: View {
             VStack(spacing: 12) {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 50))
-                    .foregroundColor(.gray.opacity(0.3))
+                    .foregroundColor(themeManager.current.secondaryAccent.opacity(0.3))
                 Text(LocalizedStringKey("No workouts found"))
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 Text(LocalizedStringKey("Try adjusting your search or filters"))
                     .font(.caption)
-                    .foregroundColor(.gray)
+                    .foregroundColor(themeManager.current.secondaryAccent)
             }
             .padding(.vertical, 60)
             .frame(maxWidth: .infinity)
@@ -360,6 +362,7 @@ struct DynamicWorkoutListView: View {
 // MARK: - Premium Workout Row
 
 struct WorkoutRow: View {
+    @Environment(ThemeManager.self) private var themeManager
     let workout: Workout
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.colorScheme) private var colorScheme
@@ -375,12 +378,12 @@ struct WorkoutRow: View {
                 // Иконка
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(colors: [.blue.opacity(0.15), .cyan.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .fill(LinearGradient(colors: [themeManager.current.primaryAccent.opacity(0.15), themeManager.current.primaryAccent.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 50, height: 50)
                     
                     Image(systemName: safeIcon)
                         .font(.title2)
-                        .foregroundStyle(LinearGradient(colors: [.blue, .cyan], startPoint: .top, endPoint: .bottom))
+                        .foregroundStyle(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .top, endPoint: .bottom))
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
@@ -388,7 +391,7 @@ struct WorkoutRow: View {
                         Text(workout.title)
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                             .lineLimit(1)
                         
                         Spacer()
@@ -412,7 +415,7 @@ struct WorkoutRow: View {
                     
                     Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
             }
             
@@ -442,13 +445,13 @@ struct WorkoutRow: View {
             }
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(20)
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 8, x: 0, y: 4)
         // Пульсирующая обводка для активной тренировки
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(workout.isActive ? Color.blue.opacity(isBlinking ? 0.8 : 0.2) : Color.clear, lineWidth: workout.isActive ? 2 : 0)
+                .stroke(workout.isActive ? themeManager.current.primaryAccent.opacity(isBlinking ? 0.8 : 0.2) : Color.clear, lineWidth: workout.isActive ? 2 : 0)
         )
         .onAppear {
             if workout.isActive {
@@ -463,11 +466,11 @@ struct WorkoutRow: View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.caption2)
-                .foregroundColor(.gray)
+                .foregroundColor(themeManager.current.secondaryAccent)
             Text(value)
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
         }
     }
     
@@ -488,17 +491,17 @@ struct WorkoutRow: View {
 
 struct DebouncedSearchBar: View {
     @Bindable var debouncer: SearchDebouncer
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         HStack {
-            Image(systemName: "magnifyingglass").foregroundColor(.secondary)
+            Image(systemName: "magnifyingglass").foregroundColor(themeManager.current.secondaryText)
             
             TextField(LocalizedStringKey("Search workouts..."), text: $debouncer.inputText)
                 .textFieldStyle(.plain)
             
             if !debouncer.inputText.isEmpty {
                 Button(action: { debouncer.inputText = "" }) {
-                    Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
+                    Image(systemName: "xmark.circle.fill").foregroundColor(themeManager.current.secondaryAccent)
                 }
             }
         }
@@ -510,7 +513,7 @@ struct DebouncedSearchBar: View {
 struct ImbalanceDetailSheet: View {
     let advice: (title: String, message: String)
     @Environment(\.dismiss) var dismiss
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         VStack(spacing: 20) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -526,7 +529,7 @@ struct ImbalanceDetailSheet: View {
                 
                 Text(LocalizedStringKey(advice.message))
                     .font(.body)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
@@ -558,6 +561,7 @@ struct ActiveWorkoutIndicator: View {
 
 
 struct StatCard: View {
+    @Environment(ThemeManager.self) private var themeManager
     let title: LocalizedStringKey
     let value: String
     let subtitle: LocalizedStringKey
@@ -567,7 +571,7 @@ struct StatCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Image(systemName: icon)
-                    .foregroundColor(.blue)
+                    .foregroundColor(themeManager.current.primaryAccent)
                     .font(.title3)
                 Spacer()
             }
@@ -577,16 +581,16 @@ struct StatCard: View {
                         .font(.system(size: 28, weight: .bold, design: .rounded))
                     Text(subtitle)
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
                 Text(title)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(12)
         .compositingGroup()
     }

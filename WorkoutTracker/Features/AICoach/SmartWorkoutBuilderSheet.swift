@@ -41,6 +41,8 @@ struct SmartWorkoutBuilderSheet: View {
     @State private var selectedEquipment: Equipment = .fullGym
     @State private var duration: Double = 45.0
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -50,7 +52,7 @@ struct SmartWorkoutBuilderSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(LocalizedStringKey("Target Muscles"))
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                         
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                             ForEach(availableMuscles, id: \.self) { muscle in
@@ -69,7 +71,7 @@ struct SmartWorkoutBuilderSheet: View {
                                         .fontWeight(.medium)
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 12)
-                                        .background(selectedMuscles.contains(muscle) ? Color.accentColor : Color(UIColor.secondarySystemBackground))
+                                        .background(selectedMuscles.contains(muscle) ? Color.accentColor : themeManager.current.surface)
                                         .foregroundColor(selectedMuscles.contains(muscle) ? .white : .primary)
                                         .cornerRadius(12)
                                         .overlay(
@@ -86,7 +88,7 @@ struct SmartWorkoutBuilderSheet: View {
                     VStack(alignment: .leading, spacing: 12) {
                         Text(LocalizedStringKey("Equipment"))
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                         
                         Picker("Equipment", selection: $selectedEquipment) {
                             ForEach(Equipment.allCases, id: \.self) { eq in
@@ -101,7 +103,7 @@ struct SmartWorkoutBuilderSheet: View {
                         HStack {
                             Text(LocalizedStringKey("Duration"))
                                 .font(.headline)
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                             Spacer()
                             Text("\(Int(duration)) min")
                                 .font(.title3)
@@ -113,9 +115,9 @@ struct SmartWorkoutBuilderSheet: View {
                             .tint(.accentColor)
                         
                         HStack {
-                            Text("15 min").font(.caption).foregroundColor(.secondary)
+                            Text("15 min").font(.caption).foregroundColor(themeManager.current.secondaryText)
                             Spacer()
-                            Text("120 min").font(.caption).foregroundColor(.secondary)
+                            Text("120 min").font(.caption).foregroundColor(themeManager.current.secondaryText)
                         }
                     }
                 }
@@ -142,7 +144,7 @@ struct SmartWorkoutBuilderSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(Color.accentColor)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                     .cornerRadius(16)
                     .shadow(color: Color.accentColor.opacity(0.3), radius: 10, x: 0, y: 5)
                 }
@@ -150,7 +152,7 @@ struct SmartWorkoutBuilderSheet: View {
                 .padding(.top, 10)
                 .padding(.bottom, 10)
                 .background(
-                    Color(UIColor.systemBackground)
+                    themeManager.current.background
                         .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: -5)
                 )
             }

@@ -4,7 +4,14 @@
 
 import Foundation
 import SwiftData
-
+public struct AIWeeklyReviewDTO: Codable, Sendable {
+    let weeklyScore: Int
+    let title: String
+    let topHighlight: String
+    let weakPointAlert: String
+    let coachAdvice: String
+    let coachMood: String // "fire", "ice", "warning"
+}
 // MARK: - AI Data Transfer Objects (DTOs)
 
 public enum AIActionType: String, Codable, Sendable {
@@ -88,24 +95,39 @@ final class AIChatSession {
 struct AIChatMessage: Identifiable, Equatable, Codable, Sendable {
     var id = UUID()
     let isUser: Bool
-    let text: String
+    var text: String // ✅ ИЗМЕНЕНО: let -> var
     let proposedWorkout: GeneratedWorkoutDTO?
     var isAnimating: Bool = false
     
     enum CodingKeys: String, CodingKey { case id, isUser, text, proposedWorkout }
     
+    // Стандартный инициализатор
+    init(id: UUID = UUID(), isUser: Bool, text: String, proposedWorkout: GeneratedWorkoutDTO? = nil, isAnimating: Bool = false) {
+        self.id = id
+        self.isUser = isUser
+        self.text = text
+        self.proposedWorkout = proposedWorkout
+        self.isAnimating = isAnimating
+    }
+    
+    // ✅ БЕЗОПАСНЫЙ DECODER (SwiftData больше не будет крашиться)
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        self.isUser = try container.decode(Bool.self, forKey: .isUser)
+        self.text = try container.decode(String.self, forKey: .text)
+        self.proposedWorkout = try container.decodeIfPresent(GeneratedWorkoutDTO.self, forKey: .proposedWorkout)
+        self.isAnimating = false // При загрузке из БД анимация больше не нужна
+    }
+    
+    // ✅ БЕЗОПАСНЫЙ ENCODER
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(isUser, forKey: .isUser)
+        try container.encode(text, forKey: .text)
+        try container.encodeIfPresent(proposedWorkout, forKey: .proposedWorkout)
+    }
+    
     static func == (lhs: AIChatMessage, rhs: AIChatMessage) -> Bool { lhs.id == rhs.id }
-}
-
-public struct GeneratedProgramDTO: Codable, Sendable {
-    let title: String
-    let description: String
-    let durationWeeks: Int
-    let schedule: [GeneratedRoutineDTO]
-}
-
-public struct GeneratedRoutineDTO: Codable, Sendable {
-    let dayName: String
-    let focus: String
-    let exercises: [GeneratedExerciseDTO]
 }

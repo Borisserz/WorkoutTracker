@@ -45,6 +45,7 @@ struct PresetEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(PresetService.self) private var presetService
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
     
     var preset: WorkoutPreset? // Existing preset (if editing)
     
@@ -94,16 +95,16 @@ struct PresetEditorView: View {
                     Text(preset == nil ? LocalizedStringKey("Save Template") : LocalizedStringKey("Save Changes"))
                         .font(.headline)
                         .bold()
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .background(
                             (!vm.nameIsValid || !vm.exercisesAreValid)
                             ? AnyShapeStyle(Color.gray.opacity(0.8))
-                            : AnyShapeStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            : AnyShapeStyle(themeManager.current.primaryGradient)
                         )
                         .cornerRadius(20)
-                        .shadow(color: (!vm.nameIsValid || !vm.exercisesAreValid) ? .clear : .blue.opacity(0.4), radius: 10, x: 0, y: 5)
+                        .shadow(color: (!vm.nameIsValid || !vm.exercisesAreValid) ? .clear : themeManager.current.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 5)
                 }
                 .disabled(!vm.nameIsValid || !vm.exercisesAreValid)
                 .padding(.horizontal, 20)
@@ -118,7 +119,7 @@ struct PresetEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Cancel")) { dismiss() }
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
             }
             .alert(LocalizedStringKey("Delete Template?"), isPresented: $showDeleteAlert) {
@@ -200,10 +201,10 @@ struct PresetEditorView: View {
                     ZStack {
                         Circle()
                             .fill(isSelected
-                                  ? LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                  : LinearGradient(colors: [Color(UIColor.secondarySystemBackground), Color(UIColor.secondarySystemBackground)], startPoint: .top, endPoint: .bottom))
+                                  ? themeManager.current.primaryGradient
+                                  : LinearGradient(colors: [themeManager.current.surface, themeManager.current.surface], startPoint: .top, endPoint: .bottom))
                             .frame(width: 60, height: 60)
-                            .shadow(color: isSelected ? .cyan.opacity(0.4) : .black.opacity(0.05), radius: 8, x: 0, y: 4)
+                            .shadow(color: isSelected ? themeManager.current.lightHighlight.opacity(0.4) : .black.opacity(0.05), radius: 8, x: 0, y: 4)
                         
                         Image(iconName)
                             .renderingMode(.template)
@@ -232,7 +233,7 @@ struct PresetEditorView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Exercises"))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .padding(.horizontal, 24)
             
             if vm.exercises.isEmpty {
@@ -244,18 +245,18 @@ struct PresetEditorView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent)
                         Text(LocalizedStringKey("Add First Exercise"))
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
-                    .background(Color.blue.opacity(0.08))
+                    .background(themeManager.current.primaryAccent.opacity(0.08))
                     .cornerRadius(20)
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6]))
+                            .stroke(themeManager.current.primaryAccent.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6]))
                     )
                     .padding(.horizontal, 20)
                 }
@@ -283,10 +284,10 @@ struct PresetEditorView: View {
                         Text(LocalizedStringKey("Add Exercise"))
                     }
                     .font(.headline)
-                    .foregroundColor(.blue)
+                    .foregroundColor(themeManager.current.primaryAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(Color.blue.opacity(0.1))
+                    .background(themeManager.current.primaryAccent.opacity(0.1))
                     .cornerRadius(16)
                 }
                 .padding(.horizontal, 20)
@@ -300,13 +301,13 @@ struct PresetEditorView: View {
         HStack(spacing: 16) {
             Image(systemName: "line.3.horizontal")
                 .font(.title3)
-                .foregroundColor(.gray.opacity(0.4))
+                .foregroundColor(themeManager.current.secondaryAccent.opacity(0.4))
             
             VStack(alignment: .leading, spacing: 4) {
                 NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name)) {
                     Text(LocalizationHelper.shared.translateName(exercise.name))
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
                 .buttonStyle(.plain)
                 
@@ -326,7 +327,7 @@ struct PresetEditorView: View {
                     }
                 }
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
             }
             
             Spacer()
@@ -338,9 +339,9 @@ struct PresetEditorView: View {
             } label: {
                 Image(systemName: "slider.horizontal.3")
                     .font(.subheadline)
-                    .foregroundColor(.blue)
+                    .foregroundColor(themeManager.current.primaryAccent)
                     .padding(10)
-                    .background(Color.blue.opacity(0.1))
+                    .background(themeManager.current.primaryAccent.opacity(0.1))
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -363,7 +364,7 @@ struct PresetEditorView: View {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
@@ -476,7 +477,7 @@ final class PresetExerciseFormViewModel {
 struct PresetExerciseEditor: View {
     var exercise: Exercise
     var onSave: (Exercise) -> Void
-    
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.dismiss) var dismiss
     @Environment(UnitsManager.self) var unitsManager
     @State private var vm = PresetExerciseFormViewModel()
@@ -515,12 +516,12 @@ struct PresetExerciseEditor: View {
                     Text(LocalizedStringKey("Save Changes"))
                         .font(.headline)
                         .bold()
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
-                        .background(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .background(themeManager.current.primaryGradient)
                         .cornerRadius(20)
-                        .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
+                        .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 5)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
@@ -540,7 +541,7 @@ struct PresetExerciseEditor: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Cancel")) { dismiss() }
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
             }
             .onAppear {
@@ -592,7 +593,7 @@ struct PresetExerciseEditor: View {
         HStack {
             Text(LocalizedStringKey(title))
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Spacer()
             
@@ -604,7 +605,7 @@ struct PresetExerciseEditor: View {
                 } label: {
                     Image(systemName: "minus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(value.wrappedValue > range.lowerBound ? .blue : .gray.opacity(0.3))
+                        .foregroundColor(value.wrappedValue > range.lowerBound ? themeManager.current.primaryAccent : .gray.opacity(0.3))
                 }
                 
                 Text("\(value.wrappedValue)")
@@ -619,16 +620,16 @@ struct PresetExerciseEditor: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(value.wrappedValue < range.upperBound ? .blue : .gray.opacity(0.3))
+                        .foregroundColor(value.wrappedValue < range.upperBound ? themeManager.current.primaryAccent : .gray.opacity(0.3))
                 }
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
-            .background(Color.gray.opacity(0.1))
+            .background(themeManager.current.surfaceVariant)
             .cornerRadius(12)
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
@@ -637,7 +638,7 @@ struct PresetExerciseEditor: View {
         HStack {
             Text(LocalizedStringKey(title))
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Spacer()
             
@@ -647,7 +648,7 @@ struct PresetExerciseEditor: View {
                 .padding(.vertical, 4)
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
@@ -656,7 +657,7 @@ struct PresetExerciseEditor: View {
         HStack {
             Text(LocalizedStringKey(title))
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Spacer()
             
@@ -667,12 +668,12 @@ struct PresetExerciseEditor: View {
                     .font(.headline)
                     .frame(width: 50)
                     .padding(.vertical, 8)
-                    .background(Color.gray.opacity(0.1))
+                    .background(themeManager.current.surfaceVariant)
                     .cornerRadius(8)
                 
                 Text(LocalizedStringKey("min"))
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 
                 TextField("0", value: $vm.seconds, format: .number)
                     .keyboardType(.numberPad)
@@ -680,7 +681,7 @@ struct PresetExerciseEditor: View {
                     .font(.headline)
                     .frame(width: 50)
                     .padding(.vertical, 8)
-                    .background(Color.gray.opacity(0.1))
+                    .background(themeManager.current.surfaceVariant)
                     .cornerRadius(8)
                     .onChange(of: vm.seconds) { _, newValue in
                         let clampedSeconds = max(0, min(newValue, 59))
@@ -691,11 +692,11 @@ struct PresetExerciseEditor: View {
                 
                 Text(LocalizedStringKey("sec"))
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }

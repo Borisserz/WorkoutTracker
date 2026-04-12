@@ -38,3 +38,6 @@ main.sh
 q.py
 script.py
 names.json
+
+# Google Cloud Vertex AI Credentials
+vertex_credentials.json

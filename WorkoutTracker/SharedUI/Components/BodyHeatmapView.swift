@@ -14,6 +14,7 @@ struct BodyHeatmapView: View {
     
     @State private var isFrontView = true
     @State private var selectedMuscleName: String? = nil
+    @Environment(ThemeManager.self) private var themeManager
     
     let canvasWidth: CGFloat = 740
     let canvasHeight: CGFloat = 1450
@@ -107,7 +108,7 @@ struct BodyHeatmapView: View {
         VStack(spacing: 4) {
             Text(LocalizedStringKey(name))
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(themeManager.current.background)
             
             if !isExceptionPart(slug) {
                 if isRecoveryMode {
@@ -200,7 +201,7 @@ struct BodyHeatmapView: View {
                     .fill(colorForMuscle(muscle.slug, isSelected: isSelected), style: FillStyle(eoFill: false))
                     .overlay(
                         finalPath.stroke(
-                            isSelected ? Color.blue : (isCompactMode ? Color.black.opacity(0.3) : Color.primary.opacity(0.15)),
+                            isSelected ? themeManager.current.primaryAccent : (isCompactMode ? Color.black.opacity(0.3) : themeManager.current.primaryText.opacity(0.15)),
                             lineWidth: isSelected ? 2.0 : (isCompactMode ? 1.5 : 1.0)
                         )
                     )
@@ -210,10 +211,10 @@ struct BodyHeatmapView: View {
     }
     
     func colorForMuscle(_ slug: String, isSelected: Bool) -> Color {
-        if isSelected { return Color.blue.opacity(0.8) }
+        if isSelected { return themeManager.current.primaryAccent.opacity(0.8) }
         
-        let emptyColor = isCompactMode ? Color.gray.opacity(0.2) : Color.primary.opacity(0.05)
-        let hairColor = isCompactMode ? Color.black.opacity(0.8) : Color.primary.opacity(0.7)
+        let emptyColor = isCompactMode ? themeManager.current.secondaryAccent.opacity(0.2) : themeManager.current.primaryText.opacity(0.05)
+        let hairColor = isCompactMode ? Color.black.opacity(0.8) : themeManager.current.primaryText.opacity(0.7)
         
         if slug == "hair" { return hairColor }
         if isExceptionPart(slug) { return emptyColor }

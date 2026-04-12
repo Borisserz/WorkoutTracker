@@ -2,13 +2,6 @@
 //  SetTypeSelectionSheet.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 6.04.26.
-//
-
-//
-//  SetTypeSelectionSheet.swift
-//  WorkoutTracker
-//
 
 internal import SwiftUI
 

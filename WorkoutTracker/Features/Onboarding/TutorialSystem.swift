@@ -79,6 +79,7 @@ struct SpotlightOverlayView: View {
     let alignment: VerticalAlignment
     let xOffset: CGFloat
     let yOffset: CGFloat
+    @Environment(ThemeManager.self) private var themeManager
     
     @State private var shakeTrigger: CGFloat = 0
     
@@ -125,8 +126,8 @@ struct SpotlightOverlayView: View {
                     
                     // Рамка
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.blue, lineWidth: 3)
-                        .shadow(color: .blue.opacity(0.8), radius: 8)
+                        .stroke(themeManager.current.primaryAccent, lineWidth: 3)
+                        .shadow(color: themeManager.current.primaryAccent.opacity(0.8), radius: 8)
                         .frame(width: w + 8, height: h + 8)
                         .position(x: frame.midX, y: frame.midY)
                         .modifier(PulsatingEffect())

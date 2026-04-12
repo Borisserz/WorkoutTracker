@@ -50,7 +50,13 @@ final class RestTimerManager {
                 stopRestTimer()
             }
         }
-    }
+        Task {
+                for await _ in NotificationCenter.default.notifications(named: NSNotification.Name("restTimerAdd15s")) {
+                    self.addRestTime(15)
+                }
+            }
+        }
+    
     
     
     private func saveTimerState() {

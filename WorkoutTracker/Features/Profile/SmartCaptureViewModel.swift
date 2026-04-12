@@ -1,10 +1,3 @@
-//
-//  SmartCaptureViewModel.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 10.04.26.
-//
-
 // ============================================================
 // FILE: WorkoutTracker/Features/Profile/SmartCamera/SmartCaptureViewModel.swift
 // ============================================================
@@ -24,6 +17,9 @@ final class SmartCaptureViewModel: NSObject {
     var showFlash: Bool = false
     var capturedImage: UIImage? = nil
     var isProcessing: Bool = false
+    
+    // Флаг для отслеживания правильной позиции тела
+    var isBodyAligned: Bool = false
     
     // Core Components
     let session = AVCaptureSession()
@@ -134,12 +130,49 @@ final class SmartCaptureViewModel: NSObject {
         countdownTask?.cancel()
         countdownTask = nil
     }
+    
+    // МАТЕМАТИКА: Проверка положения тела в кадре
+    private func checkBodyAlignment(joints: [VNHumanBodyPoseObservation.JointName: CGPoint]) {
+        guard let leftShoulder = joints[.leftShoulder],
+              let rightShoulder = joints[.rightShoulder],
+              let leftHip = joints[.leftHip],
+              let rightHip = joints[.rightHip] else {
+            if isBodyAligned { isBodyAligned = false }
+            return
+        }
+        
+        // Координаты Vision нормализованы от 0.0 до 1.0.
+        // Безопасная зона: отступаем по 15% с боков и по 10% сверху/снизу
+        let minX: CGFloat = 0.15
+        let maxX: CGFloat = 0.85
+        let minY: CGFloat = 0.10
+        let maxY: CGFloat = 0.90
+        
+        let allPoints = [leftShoulder, rightShoulder, leftHip, rightHip]
+        
+        // Человек должен быть внутри кадра
+        let isInsideBounds = allPoints.allSatisfy { pt in
+            pt.x > minX && pt.x < maxX && pt.y > minY && pt.y < maxY
+        }
+        
+        // Человек не должен стоять слишком далеко (торс занимает минимум 15% кадра)
+        let torsoHeight = abs(((leftShoulder.y + rightShoulder.y) / 2) - ((leftHip.y + rightHip.y) / 2))
+        let isLargeEnough = torsoHeight > 0.15
+        
+        let aligned = isInsideBounds && isLargeEnough
+        
+        if isBodyAligned != aligned {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isBodyAligned = aligned
+            }
+        }
+    }
 }
 
 // MARK: - Video & Photo Delegates
 extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, AVCapturePhotoCaptureDelegate {
     
-    // Video frames for Vision (Gesture recognition)
+    // Video frames for Vision (Gesture recognition & Body Alignment)
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         Task { @MainActor in
             guard countdown == nil, capturedImage == nil else { return } // Stop ML if counting down or captured
@@ -149,11 +182,20 @@ extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, A
             
             do {
                 let result = try await visionProcessor.process(sampleBuffer: sampleBuffer)
+                
+                // 1. Проверяем положение тела
+                self.checkBodyAlignment(joints: result.joints)
+                
+                // 2. Обрабатываем жесты
                 if let hand = result.handPose {
                     gestureController.processHandPose(observation: hand)
+                    
+                    // Таймер запускается ТОЛЬКО если юзер показал жест И стоит ровно в кадре
                     if gestureController.didConfirmSet {
                         gestureController.didConfirmSet = false
-                        startCountdown()
+                        if self.isBodyAligned {
+                            startCountdown()
+                        }
                     }
                 }
             } catch {

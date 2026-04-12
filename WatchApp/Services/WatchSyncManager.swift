@@ -12,7 +12,6 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
     static let shared = WatchSyncManager()
     var isReachable: Bool = false
     
-    // Ссылка на контекст для сохранения пришедших данных
     var modelContext: ModelContext?
 
     private override init() {
@@ -31,10 +30,23 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
         }
     }
     
-    // Запрос пресетов у телефона
     func requestPresetsFromPhone() {
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(["request": "presets"], replyHandler: nil)
+        }
+    }
+    
+    func requestActiveStateFromPhone() {
+        guard WCSession.default.isReachable else { return }
+        let payload = LiveSyncPayload(action: .requestActiveState, workoutID: "")
+        if let data = try? JSONEncoder().encode(payload) {
+            WCSession.default.sendMessage(["syncPayload": data], replyHandler: nil)
+        }
+    }
+
+    func transferGuaranteedPayload(_ payload: LiveSyncPayload) {
+        if let data = try? JSONEncoder().encode(payload) {
+            WCSession.default.transferUserInfo(["guaranteedSyncPayload": data])
         }
     }
 
@@ -48,13 +60,16 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
         Task { @MainActor in
-            // 1. Обработка живых событий (сеты, старт)
             if let data = message["syncPayload"] as? Data,
                let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
-                NotificationCenter.default.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": payload])
+                
+                if payload.action == .syncFullState {
+                    NotificationCenter.default.post(name: NSNotification.Name("WatchStateRecoveryEvent"), object: nil, userInfo: ["payload": payload])
+                } else {
+                    NotificationCenter.default.post(name: NSNotification.Name("WatchLiveSyncEvent"), object: nil, userInfo: ["payload": payload])
+                }
             }
             
-            // 2. Получение пресетов от телефона
             if let presetsData = message["presetsBatch"] as? Data,
                let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
                 await self.savePresetsLocally(dtos)
@@ -65,13 +80,11 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
     private func savePresetsLocally(_ dtos: [WorkoutPresetDTO]) async {
         guard let context = modelContext else { return }
         
-        // Удаляем Older, чтобы не дублировать (простой способ синхронизации без iCloud)
         let fetchDescriptor = FetchDescriptor<WorkoutPreset>()
         if let existing = try? context.fetch(fetchDescriptor) {
             for p in existing { context.delete(p) }
         }
         
-        // Вставляем новые
         for dto in dtos {
             let preset = WorkoutPreset(from: dto)
             context.insert(preset)

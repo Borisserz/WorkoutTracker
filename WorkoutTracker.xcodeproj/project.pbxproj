@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AC0DA9862F8BA39900249DEA /* SwiftJWT in Frameworks */ = {isa = PBXBuildFile; productRef = AC0DA9852F8BA39900249DEA /* SwiftJWT */; };
 		AC3CB9932F8176AB008A6777 /* WorkoutTrackerWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = AC3CB9892F8176AA008A6777 /* WorkoutTrackerWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACDA5B9F2F06CF77007FF65F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
 		ACDA5BA02F06CF77007FF65F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
@@ -118,10 +119,13 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				AppCore/Constants.swift,
+				AppCore/vertex_credentials.json,
 				CoreLogic/Helpers/LocalizationHelper.swift,
 				CoreLogic/Managers/UnitsManager.swift,
 				DataLayer/DTOs/AchievementModels.swift,
 				DataLayer/DTOs/WorkoutModels.swift,
+				DataLayer/LocalDB/exercises_ru.json,
+				DataLayer/LocalDB/exercises.json,
 				DataLayer/Models/AIChatModels.swift,
 				DataLayer/Models/BodyMeasurement.swift,
 				DataLayer/Models/CustomExerciseModels.swift,
@@ -140,13 +144,6 @@
 			);
 			target = ACE68CD82EFBFD1900FD186D /* WorkoutTracker */;
 		};
-		AC7C84222F82C663002B62A1 /* Exceptions for "WatchApp" folder in "WorkoutTrackerWatch Watch App" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Untitled.swift,
-			);
-			target = AC3CB9882F8176AA008A6777 /* WorkoutTrackerWatch Watch App */;
-		};
 		ACDA5B942F06BF1F007FF65F /* Exceptions for "WorkoutTracker" folder in "WorkoutTracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -164,6 +161,7 @@
 		ACDA5BB62F06D002007FF65F /* Exceptions for "WorkoutTracker" folder in "StatsWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				AppCore/OpenWorkoutAppIntent.swift,
 				DataLayer/DTOs/WidgetDataShared.swift,
 			);
 			target = ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */;
@@ -189,7 +187,6 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				AC7C840A2F82B843002B62A1 /* Exceptions for "WatchApp" folder in "WorkoutTracker" target */,
-				AC7C84222F82C663002B62A1 /* Exceptions for "WatchApp" folder in "WorkoutTrackerWatch Watch App" target */,
 			);
 			path = WatchApp;
 			sourceTree = "<group>";
@@ -244,6 +241,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AC0DA9862F8BA39900249DEA /* SwiftJWT in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -368,6 +366,7 @@
 			);
 			name = WorkoutTracker;
 			packageProductDependencies = (
+				AC0DA9852F8BA39900249DEA /* SwiftJWT */,
 			);
 			productName = WorkoutTracker;
 			productReference = ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */;
@@ -429,6 +428,9 @@
 			);
 			mainGroup = ACE68CD02EFBFD1900FD186D;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AC0DA9842F8BA39900249DEA /* XCRemoteSwiftPackageReference "Swift-JWT" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = ACE68CDA2EFBFD1A00FD186D /* Products */;
 			projectDirPath = "";
@@ -555,6 +557,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need to save your workouts and active calories";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need to read your heart rate during workouts";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.borisdev.WorkoutTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -589,6 +594,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch;
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need to save your workouts and active calories";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need to read your heart rate during workouts";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.borisdev.WorkoutTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -996,6 +1004,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AC0DA9842F8BA39900249DEA /* XCRemoteSwiftPackageReference "Swift-JWT" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Kitura/Swift-JWT.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.0.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AC0DA9852F8BA39900249DEA /* SwiftJWT */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC0DA9842F8BA39900249DEA /* XCRemoteSwiftPackageReference "Swift-JWT" */;
+			productName = SwiftJWT;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = ACE68CD12EFBFD1900FD186D /* Project object */;
 }

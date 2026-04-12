@@ -612,7 +612,6 @@ actor WorkoutStore: WorkoutStoreProtocol {
             return try modelContext.fetch(descriptor).first
         }
 }// В файл: WorkoutTracker/DataLayer/Repositories/WorkoutStore.swift
-
 extension WorkoutStore {
     func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier) async throws {
         guard let workout = modelContext.model(for: inWorkoutID) as? Workout else {
@@ -629,23 +628,23 @@ extension WorkoutStore {
                 weight: proposal.weightValue
             )
             modelContext.insert(finisher)
-            for set in finisher.setsList { modelContext.insert(set) }
             finisher.workout = workout
+            // Для SwiftData связь нужно устанавливать явно с обеих сторон, если массив
             workout.exercises.append(finisher)
+            for set in finisher.setsList { modelContext.insert(set) }
             
         } else {
-            // Ищем текущее незавершенное упражнение
             guard let activeExIndex = workout.exercises.firstIndex(where: { !$0.isCompleted }),
                   let activeEx = workout.exercises[activeExIndex] as Exercise? else { return }
             
             if proposal.action == "swap" {
-                // Удаляем невыполненные сеты
+                // Безопасное удаление из Relationships
                 let uncompletedSets = activeEx.setsList.filter { !$0.isCompleted }
+                activeEx.removeSafeSets(uncompletedSets) // Твой метод из модели
                 for set in uncompletedSets { modelContext.delete(set) }
-                activeEx.setsList.removeAll(where: { !$0.isCompleted })
+                
                 activeEx.isCompleted = true
                 
-                // Вставляем новое
                 let newEx = Exercise(
                     name: proposal.exerciseName,
                     muscleGroup: activeEx.muscleGroup,
@@ -658,10 +657,11 @@ extension WorkoutStore {
                 for set in newEx.setsList { modelContext.insert(set) }
                 
                 newEx.workout = workout
+                // ВНИМАНИЕ: Если ты не добавишь свойство orderIndex в Exercise,
+                // .insert(at:) может не пережить перезапуск приложения.
                 workout.exercises.insert(newEx, at: activeExIndex + 1)
                 
             } else {
-                // reduce_weight или increase_weight для оставшихся сетов
                 for set in activeEx.setsList where !set.isCompleted {
                     set.weight = proposal.weightValue
                 }
@@ -670,3 +670,4 @@ extension WorkoutStore {
         try modelContext.save()
     }
 }
+

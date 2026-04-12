@@ -1,10 +1,3 @@
-//
-//  SessionSummaryGrid.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 7.04.26.
-//
-
 // ============================================================
 // FILE: WorkoutTracker/Features/Workout/Views/SessionSummaryGrid.swift
 // ============================================================
@@ -14,8 +7,6 @@ struct SessionSummaryGrid: View {
     @Bindable var workout: Workout
     var viewModel: WorkoutDetailViewModel
     @Environment(UnitsManager.self) var unitsManager
-    
-    // ✅ FIX: Removed local completedSetsCount computation
     
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
@@ -30,7 +21,6 @@ struct SessionSummaryGrid: View {
             )
             
             // 2. Sets Done
-            // ✅ FIX: Bind directly to the ViewModel's reactive DTO
             SummaryGlassCard(
                 title: "Sets Done",
                 value: "\(viewModel.workoutAnalytics.completedSetsCount)",
@@ -67,8 +57,8 @@ struct SessionSummaryGrid: View {
             }
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.volume)
-               .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.completedSetsCount) // ✅ FIX: Updated animation trigger
-               .animation(.spring(response: 0.4, dampingFraction: 0.7), value: workout.effortPercentage)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.completedSetsCount)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: workout.effortPercentage)
     }
 }
 

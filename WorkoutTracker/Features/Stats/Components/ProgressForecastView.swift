@@ -10,11 +10,12 @@ internal import SwiftUI
 
 struct ProgressForecastView: View {
     let forecasts: [ProgressForecast]
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         if forecasts.isEmpty {
             Text(LocalizedStringKey("Not enough data for forecasting"))
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .frame(height: 100, alignment: .center)
         } else {
             VStack(alignment: .leading, spacing: 12) {
@@ -28,6 +29,7 @@ struct ProgressForecastView: View {
 
 struct ProgressForecastRow: View {
     let forecast: ProgressForecast
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -45,7 +47,7 @@ struct ProgressForecastRow: View {
                         .frame(width: 8, height: 8)
                     Text("\(forecast.confidence)%")
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
             }
             
@@ -53,23 +55,23 @@ struct ProgressForecastRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(LocalizedStringKey("Current"))
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                     Text(LocalizedStringKey("\(Int(forecast.currentMax)) kg"))
                         .font(.subheadline)
                         .bold()
                 }
                 
                 Image(systemName: "arrow.right")
-                    .foregroundColor(.blue)
+                    .foregroundColor(themeManager.current.primaryAccent)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(LocalizedStringKey("Predicted"))
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                     Text(LocalizedStringKey("\(Int(forecast.predictedMax)) kg"))
                         .font(.subheadline)
                         .bold()
-                        .foregroundColor(.blue)
+                        .foregroundColor(themeManager.current.primaryAccent)
                 }
                 
                 Spacer()
@@ -81,7 +83,7 @@ struct ProgressForecastRow: View {
                         .foregroundColor(.green)
                     Text(LocalizedStringKey("in \(forecast.timeframe)"))
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
             }
             
@@ -94,7 +96,7 @@ struct ProgressForecastRow: View {
                         .cornerRadius(3)
                     
                     Rectangle()
-                        .fill(Color.blue.gradient)
+                        .fill(themeManager.current.primaryGradient)
                         .frame(
                             width: geometry.size.width * min(1.0, forecast.predictedMax / max(forecast.currentMax, 1)),
                             height: 6

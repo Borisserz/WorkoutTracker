@@ -221,10 +221,11 @@ actor TestDataGenerator {
             ex += fetchCardio(count: 2, index: workoutIndex)
             ex += fetchDuration(group: "Core", count: 2, index: workoutIndex)
         case .hiit:
-            ex += fetchCardio(count: 1, index: workoutIndex)
-            ex += fetchDuration(group: "Core", count: 1, index: workoutIndex)
-            ex += fetchDuration(group: "Legs", count: 1, index: workoutIndex)
-        }
+                    ex += fetchCardio(count: 1, index: workoutIndex)
+                    ex += fetchDuration(group: "Core", count: 1, index: workoutIndex)
+                    // ИСПРАВЛЕНИЕ: Ноги должны быть силовыми, а не на время
+                    ex += fetchStrength(group: "Legs", count: 1, index: workoutIndex)
+                }
         return ex
     }
     
@@ -321,11 +322,12 @@ actor TestDataGenerator {
     }
     
     private func buildCardio(name: String, index: Int) -> Exercise {
-        let distance = 2.0 + (Double(index) / 100.0) + Double.random(in: -0.5...1.5)
-        let timeMinutes = Int(10 + (distance * 6) + Double.random(in: -3...3))
-        let set = WorkoutSet(index: 1, distance: max(1.0, distance), time: timeMinutes * 60, isCompleted: true, type: .normal)
-        return Exercise(name: name, muscleGroup: "Cardio", type: .cardio, sets: 1, reps: 0, weight: 0, distance: max(1.0, distance), timeSeconds: timeMinutes * 60, effort: Int.random(in: 5...9), setsList: [set], isCompleted: true)
-    }
+            let distanceKm = 2.0 + (Double(index) / 100.0) + Double.random(in: -0.5...1.5)
+            let distanceMeters = distanceKm * 1000.0 // <-- ИСПРАВЛЕНИЕ: Переводим км в метры
+            let timeMinutes = Int(10 + (distanceKm * 6) + Double.random(in: -3...3))
+            let set = WorkoutSet(index: 1, distance: max(100.0, distanceMeters), time: timeMinutes * 60, isCompleted: true, type: .normal)
+            return Exercise(name: name, muscleGroup: "Cardio", type: .cardio, sets: 1, reps: 0, weight: 0, distance: max(100.0, distanceMeters), timeSeconds: timeMinutes * 60, effort: Int.random(in: 5...9), setsList: [set], isCompleted: true)
+        }
     
     private func buildDuration(name: String, group: String, index: Int) -> Exercise {
         let time = 30 + Int.random(in: -10...30)

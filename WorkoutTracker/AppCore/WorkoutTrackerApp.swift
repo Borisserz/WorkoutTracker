@@ -1,11 +1,11 @@
-//
-//  WorkoutTrackerApp.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/AppCore/WorkoutTrackerApp.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
 import UserNotifications
+import AppIntents
 
 @main
 struct WorkoutTrackerApp: App {
@@ -20,7 +20,6 @@ struct WorkoutTrackerApp: App {
     @State private var catalogViewModel: CatalogViewModel?
     @State private var profileViewModel: ProfileViewModel?
     
-    // Удален @AppStorage("hasCompletedOnboarding")
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     @State private var showImportAlert = false
     
@@ -76,7 +75,6 @@ struct WorkoutTrackerApp: App {
         cvm: CatalogViewModel,
         pvm: ProfileViewModel
     ) -> some View {
-        // Убраны проверки OnboardingFlowView. Сразу показываем ContentView.
         ContentView()
             .transition(.opacity)
             .animation(.default, value: true)
@@ -87,6 +85,7 @@ struct WorkoutTrackerApp: App {
             .environment(restTimerManager)
             .environment(tutorialManager)
             .environment(UnitsManager.shared)
+            .environment(ThemeManager.shared)
             .environment(dvm)
             .environment(usvm)
             .environment(aicvm)
@@ -100,55 +99,73 @@ struct WorkoutTrackerApp: App {
                     }
                 }
             }
+            // ✅ ЛОВИМ НАЖАТИЯ ИЗ ВИДЖЕТА
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("widgetActionTriggered"))) { notification in
+                if let action = notification.object as? String {
+                    handleWidgetAction(action, appState: di.appState)
+                }
+            }
             .alert("Template Imported!", isPresented: $showImportAlert) {
                 Button("OK", role: .cancel) { }
             }
     }
     
-    @MainActor
-    private func setupDependencies() async {
-          do {
-              // ✅ УБИРАЕМ Task.detached. Ждем загрузки базы (парсинг локального JSON занимает миллисекунды)
-              await ExerciseDatabaseService.shared.loadDatabase()
-              
-              let schema = Schema([
-                  Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
-                  ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
-                  AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
-              ])
-             
-             let modelConfiguration = ModelConfiguration(
-                 schema: schema,
-                 isStoredInMemoryOnly: false,
-                 cloudKitDatabase: .automatic
-             )
-             
-             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-             let di = DIContainer(modelContainer: container)
-             
-             let migrator = LegacyDataMigrator(modelContainer: container)
-             await migrator.migrateAllIfNeeded()
-             try? await di.exerciseCatalogService.checkAndGenerateDefaultPresets()
-             MuscleColorManager.shared.initialize(modelContainer: container)
-             
-             self.dashboardViewModel = di.makeDashboardViewModel()
-             self.userStatsViewModel = di.makeUserStatsViewModel()
-             self.aiCoachViewModel = di.makeAICoachViewModel()
-             self.catalogViewModel = di.makeCatalogViewModel()
-             self.profileViewModel = di.makeProfileViewModel()
-             
-              self.diContainer = di
-                      
-                      // 👉 ДОБАВИТЬ ЭТУ СТРОКУ: Подгружаем распарсенный JSON во ViewModel
-                      await self.catalogViewModel?.loadDictionary()
-                      
-                  } catch {
-                      self.databaseLoadError = error
-                      print("❌ SwiftData Initialization Failed: \(error)")
-                  }
-              }
+    // ✅ ЛОГИКА МАРШРУТИЗАЦИИ ВИДЖЕТОВ
+    private func handleWidgetAction(_ action: String, appState: AppStateManager) {
+        appState.requestedWidgetAction = action
+        
+        if action == "empty_workout" || action == "smart_builder" {
+            appState.selectedTab = 2 // Переходим на WorkoutHub
+        } else if action == "log_weight" {
+            appState.selectedTab = 0 // Переходим на Overview (где профиль с весом)
+        }
+    }
     
+    @MainActor
+        private func setupDependencies() async {
+            do {
+                await ExerciseDatabaseService.shared.loadDatabase()
+                
+                let schema = Schema([
+                    Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
+                    ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
+                    AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
+                ])
+                
+                let modelConfiguration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: false,
+                    cloudKitDatabase: .automatic
+                )
+                
+                let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+                let di = DIContainer(modelContainer: container)
+                
+                // 👇 ДОБАВИТЬ ЭТУ СТРОКУ 👇
+                PhoneWatchManager.shared.start(with: container)
+                // 👆 ======================= 👆
+                
+                let migrator = LegacyDataMigrator(modelContainer: container)
+                await migrator.migrateAllIfNeeded()
+                try? await di.exerciseCatalogService.checkAndGenerateDefaultPresets()
+                MuscleColorManager.shared.initialize(modelContainer: container)
+                
+                self.dashboardViewModel = di.makeDashboardViewModel()
+                self.userStatsViewModel = di.makeUserStatsViewModel()
+                self.aiCoachViewModel = di.makeAICoachViewModel()
+                self.catalogViewModel = di.makeCatalogViewModel()
+                self.profileViewModel = di.makeProfileViewModel()
+                
+                self.diContainer = di
+                await self.catalogViewModel?.loadDictionary()
+                
+            } catch {
+                self.databaseLoadError = error
+                print("❌ SwiftData Initialization Failed: \(error)")
+            }
+        }
     struct DatabaseErrorView: View {
+        @Environment(ThemeManager.self) private var themeManager
         let error: Error?
         var body: some View {
             VStack(spacing: 24) {
@@ -158,13 +175,13 @@ struct WorkoutTrackerApp: App {
                 Text("Database Error")
                     .font(.title).fontWeight(.bold).multilineTextAlignment(.center)
                 Text("There was an issue loading your data. Please do not delete the app, as this could result in permanent data loss.\n\nTry restarting the app or contact support.")
-                    .multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal)
+                    .multilineTextAlignment(.center).foregroundColor(themeManager.current.secondaryText).padding(.horizontal)
                 if let error = error {
                     ScrollView {
-                        Text(error.localizedDescription).font(.caption).foregroundColor(.primary).padding()
+                        Text(error.localizedDescription).font(.caption).foregroundColor(themeManager.current.primaryText).padding()
                     }
                     .frame(maxHeight: 150)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(themeManager.current.surface)
                     .cornerRadius(12).padding(.horizontal)
                 }
             }

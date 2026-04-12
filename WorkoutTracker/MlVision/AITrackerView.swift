@@ -8,6 +8,7 @@ import AVFoundation
 import Vision
 struct AITrackerView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(ThemeManager.self) private var themeManager
     
     @StateObject private var cameraManager = CameraManager()
     @StateObject private var engine: AITrackerEngine
@@ -149,10 +150,10 @@ struct AITrackerView: View {
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(engine.isTrackingAction ? Color.blue.opacity(0.8) : Color.gray.opacity(0.5),
+                    .stroke(engine.isTrackingAction ? themeManager.current.primaryAccent.opacity(0.8) : Color.gray.opacity(0.5),
                             lineWidth: engine.isTrackingAction ? 3 : 2)
             )
-            .shadow(color: engine.isTrackingAction ? .blue.opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
+            .shadow(color: engine.isTrackingAction ? themeManager.current.primaryAccent.opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
             .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
             .animation(.easeInOut(duration: 0.1), value: engine.liveMuscleTension)
         }
@@ -200,7 +201,7 @@ struct AITrackerView: View {
             
             HStack(spacing: 8) {
                 Circle()
-                    .fill(engine.isTrackingAction ? Color.blue : Color.white.opacity(0.5))
+                    .fill(engine.isTrackingAction ? themeManager.current.primaryAccent : Color.white.opacity(0.5))
                     .frame(width: 10, height: 10)
                     .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
                 
@@ -245,9 +246,9 @@ struct AITrackerView: View {
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 20)
-            .background(Color.blue)
+            .background(themeManager.current.primaryAccent)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .shadow(color: .blue.opacity(0.5), radius: 10, x: 0, y: 5)
+            .shadow(color: themeManager.current.primaryAccent.opacity(0.5), radius: 10, x: 0, y: 5)
         }
         .padding(.bottom, 20)
     }

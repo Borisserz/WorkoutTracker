@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: WatchApp/DataLayer/WatchWorkoutStore.swift
+// FILE: WatchApp/WatchWorkoutStore.swift
 // ============================================================
 import Foundation
 import SwiftData
@@ -53,4 +53,16 @@ actor WatchWorkoutStore {
         for ex in workout.exercises { ex.isCompleted = true }
         try modelContext.save()
     }
+
+    // 👇 ДОБАВЛЯЕМ ЭТОТ МЕТОД 👇
+    func updateExerciseEffort(workoutID: String, exerciseName: String, effort: Int) throws {
+        let desc = FetchDescriptor<Workout>()
+        guard let allWorkouts = try? modelContext.fetch(desc),
+              let workout = allWorkouts.first(where: { $0.id.uuidString == workoutID }),
+              let exercise = workout.exercises.first(where: { $0.name == exerciseName && !$0.isCompleted }) else { return }
+        
+        exercise.effort = effort
+        try modelContext.save()
+    }
+    // 👆 ===================== 👆
 }

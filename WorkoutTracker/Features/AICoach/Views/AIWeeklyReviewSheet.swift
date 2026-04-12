@@ -5,21 +5,22 @@
 
 internal import SwiftUI
 
+// MARK: - Main Sheet View
 struct AIWeeklyReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(ThemeManager.self) private var themeManager
     
-    // Используем глобальные модели, которые мы вынесли
     let currentStats: PeriodStats
     let previousStats: PeriodStats
     let weakPoints: [WeakPoint]
-    let recentPRs: [PersonalRecord] // ИСПРАВЛЕНО: Убран префикс 
+    let recentPRs: [PersonalRecord]
     
     private let aiLogicService: AILogicService
 
     @State private var isAnalyzing = false
-    @State private var reviewText: String? = nil
+    @State private var reviewData: AIWeeklyReviewDTO? = nil
+    @State private var errorText: String? = nil
     
-    // ИСПРАВЛЕНО: Обновлен инициализатор
     init(currentStats: PeriodStats, previousStats: PeriodStats, weakPoints: [WeakPoint], recentPRs: [PersonalRecord], aiLogicService: AILogicService) {
         self.currentStats = currentStats
         self.previousStats = previousStats
@@ -30,93 +31,166 @@ struct AIWeeklyReviewSheet: View {
     
     var body: some View {
         ZStack {
-            Color(UIColor.systemBackground).ignoresSafeArea()
+            // Базовый фон
+            themeManager.current.background.ignoresSafeArea()
             
-            Circle().fill(Color.purple.opacity(0.3)).blur(radius: 60).frame(width: 300, height: 300).offset(x: -100, y: -200)
-            Circle().fill(Color.blue.opacity(0.3)).blur(radius: 60).frame(width: 300, height: 300).offset(x: 150, y: 200)
+            // Динамический фон (Свечение зависит от настроения тренера)
+            MoodBackgroundView(mood: reviewData?.coachMood ?? "neutral")
             
             VStack(spacing: 0) {
                 header
                 
-                if let text = reviewText {
-                    reviewResultView(text: text)
+                if let data = reviewData {
+                    ReviewDashboardView(data: data)
                 } else if isAnalyzing {
                     analyzingView
+                } else if let error = errorText {
+                    errorView(error)
                 } else {
                     initialStateView
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large]) // Bento Box требует много места
         .presentationDragIndicator(.hidden)
     }
     
-    // MARK: - Subviews
-    
+    // MARK: - Header
     private var header: some View {
         HStack {
-            Image(systemName: "sparkles").foregroundColor(.purple).font(.title2)
-            Text(LocalizedStringKey("AI Performance Review")).font(.title2).bold()
+            Image(systemName: "sparkles")
+                .foregroundColor(themeManager.current.primaryText)
+            Text(LocalizedStringKey("AI Weekly Brief"))
+                .font(.system(.title3, design: .rounded, weight: .heavy))
+                .foregroundColor(themeManager.current.primaryText)
+            
             Spacer()
-            Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").foregroundColor(.secondary).font(.title2) }
+            
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.secondary, Color(UIColor.tertiarySystemFill))
+            }
         }
-        .padding().background(.ultraThinMaterial).zIndex(1)
+        .padding(20)
+        .background(.ultraThinMaterial)
+        .zIndex(10)
     }
     
-    private func reviewResultView(text: String) -> some View {
-        ScrollView {
-            Text(.init(text))
-                .font(.body).lineSpacing(6).padding(20)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 20).fill(.ultraThinMaterial).shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [.purple.opacity(0.5), .blue.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
-                .padding()
+    // MARK: - States
+    private var initialStateView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(themeManager.current.primaryAccent.opacity(0.1))
+                    .frame(width: 120, height: 120)
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 60))
+                    .foregroundStyle(themeManager.current.premiumGradient)
+                    .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 20, y: 10)
+            }
+            
+            VStack(spacing: 8) {
+                Text(LocalizedStringKey("Ready for your review?"))
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .foregroundColor(themeManager.current.primaryText)
+                
+                Text(LocalizedStringKey("The AI Coach will analyze your volume, PRs, and weak points to generate a personalized action plan."))
+                    .font(.subheadline)
+                    .foregroundColor(themeManager.current.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 30)
+            }
+            
+            Spacer()
+            
+            Button { generateReview() } label: {
+                HStack {
+                    Image(systemName: "bolt.fill")
+                    Text(LocalizedStringKey("Analyze My Week")).bold()
+                }
+                .font(.title3)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(themeManager.current.primaryAccent)
+                .foregroundColor(themeManager.current.background)
+                .clipShape(Capsule())
+                .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, y: 8)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 30)
         }
-        .transition(.move(edge: .bottom).combined(with: .opacity))
+        .transition(.opacity.combined(with: .scale(scale: 0.95)))
     }
     
     private var analyzingView: some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 30) {
+            Spacer()
             ZStack {
-                Circle().fill(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)).frame(width: 80, height: 80).modifier(PulsatingGlowEffect())
-                Image(systemName: "brain.head.profile").font(.system(size: 40)).foregroundColor(.white)
+                Circle()
+                    .fill(themeManager.current.primaryAccent.opacity(0.2))
+                    .frame(width: 100, height: 100)
+                    .modifier(PulsatingGlowEffect())
+                
+                Image(systemName: "cpu")
+                    .font(.system(size: 40))
+                    .foregroundColor(themeManager.current.primaryText)
             }
-            Text(LocalizedStringKey("Analyzing your week...")).font(.headline).foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing)).modifier(BlinkingTextModifier())
+            Text(LocalizedStringKey("Crunching the numbers..."))
+                .font(.system(.headline, design: .rounded))
+                .foregroundColor(themeManager.current.primaryText)
+                .modifier(BlinkingTextModifier())
+            Spacer()
         }
-        .frame(maxHeight: .infinity).transition(.opacity)
+        .transition(.opacity)
     }
     
-    private var initialStateView: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "brain.head.profile").font(.system(size: 100)).foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)).shadow(color: .purple.opacity(0.4), radius: 15, x: 0, y: 10)
-            Text(LocalizedStringKey("Ready to dive into your stats?")).font(.headline).foregroundColor(.secondary)
-            Button { generateReview() } label: {
-                HStack { Image(systemName: "bolt.fill"); Text(LocalizedStringKey("Analyze My Week")).bold() }
-                .font(.title3).frame(maxWidth: .infinity).padding()
-                .background(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing)).foregroundColor(.white)
-                .cornerRadius(16).shadow(color: .purple.opacity(0.4), radius: 10, x: 0, y: 5)
-            }
-            .padding(.horizontal, 40).padding(.top, 20)
+    private func errorView(_ error: String) -> some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 50))
+                .foregroundColor(.red)
+            Text(LocalizedStringKey("Analysis Failed"))
+                .font(.headline)
+            Text(error)
+                .font(.caption)
+                .foregroundColor(themeManager.current.secondaryText)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
+            Spacer()
         }
-        .frame(maxHeight: .infinity).transition(.opacity)
+        .transition(.opacity)
     }
     
     // MARK: - Logic
-    
     private func generateReview() {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
-        withAnimation(.easeInOut) { isAnalyzing = true }
+        withAnimation(.easeInOut(duration: 0.3)) { isAnalyzing = true }
         
         Task {
             let context = buildStatsContext()
             let lang = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
             
             do {
-                let markdownResponse = try await aiLogicService.generatePerformanceReview(statsContext: context, language: lang)
-                await handleSuccess(response: markdownResponse)
+                let dto = try await aiLogicService.generatePerformanceReview(statsContext: context, language: lang)
+                await MainActor.run {
+                    let successGen = UINotificationFeedbackGenerator()
+                    successGen.notificationOccurred(.success)
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        self.reviewData = dto
+                        self.isAnalyzing = false
+                    }
+                }
             } catch {
-                await handleError(error)
+                await MainActor.run {
+                    withAnimation {
+                        self.errorText = error.localizedDescription
+                        self.isAnalyzing = false
+                    }
+                }
             }
         }
     }
@@ -130,50 +204,271 @@ struct AIWeeklyReviewSheet: View {
             THIS WEEK: \(currentStats.workoutCount) workouts, \(Int(currentStats.totalVolume)) \(safeUnits) total volume.
             PREVIOUS WEEK: \(previousStats.workoutCount) workouts, \(Int(previousStats.totalVolume)) \(safeUnits) total volume.
             NEW PERSONAL RECORDS THIS WEEK: \(prNames).
-            IDENTIFIED WEAK POINTS (based on last 30 days): \(weakNames).
+            IDENTIFIED WEAK POINTS: \(weakNames).
             """
     }
+}
+
+// MARK: - Animated Dashboard (Bento Box)
+struct ReviewDashboardView: View {
+    let data: AIWeeklyReviewDTO
+    @Environment(ThemeManager.self) private var themeManager
     
-    @MainActor
-    private func handleSuccess(response: String) {
-        let successGen = UINotificationFeedbackGenerator()
-        successGen.notificationOccurred(.success)
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-            self.reviewText = response
-            self.isAnalyzing = false
+    // Staggered Animation States
+    @State private var showGauge = false
+    @State private var showTitle = false
+    @State private var showTopRow = false
+    @State private var showBottomRow = false
+    
+    // Цветовая палитра на основе настроения ИИ
+    private var moodColor: Color {
+        switch data.coachMood.lowercased() {
+        case "fire": return .orange
+        case "ice": return .cyan
+        case "warning": return .yellow
+        default: return themeManager.current.primaryAccent
         }
     }
     
-    @MainActor
-    private func handleError(_ error: Error) {
-        withAnimation {
-            self.reviewText = "❌ **Error:** \(error.localizedDescription)"
-            self.isAnalyzing = false
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(spacing: 20) {
+                
+                // 1. Hero: Score Gauge
+                VStack(spacing: 12) {
+                    ScoreGaugeView(score: data.weeklyScore, color: moodColor, triggerAnimation: showGauge)
+                        .frame(width: 180, height: 180)
+                    
+                    if showTitle {
+                        Text(data.title)
+                            .font(.system(size: 28, weight: .heavy, design: .rounded))
+                            .foregroundColor(themeManager.current.primaryText)
+                            .multilineTextAlignment(.center)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+                .padding(.vertical, 20)
+                
+                // 2. Bento Grid: 2 Columns
+                if showTopRow {
+                    Grid(horizontalSpacing: 16, verticalSpacing: 16) {
+                        GridRow {
+                            BentoInsightCard(
+                                title: "Highlight",
+                                icon: "star.fill",
+                                color: .green,
+                                content: data.topHighlight
+                            )
+                            
+                            BentoInsightCard(
+                                title: "Attention",
+                                icon: "exclamationmark.triangle.fill",
+                                color: .red,
+                                content: data.weakPointAlert
+                            )
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                
+                // 3. Bento Bottom: Wide Card
+                if showBottomRow {
+                    BentoInsightCard(
+                        title: "Coach Advice",
+                        icon: "brain.head.profile",
+                        color: moodColor,
+                        content: data.coachAdvice
+                    )
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 40)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+        }
+        .onAppear { animateIn() }
+    }
+    
+    private func animateIn() {
+        // Хореография появления элементов (Staggered Animation)
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { showGauge = true }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            let gen = UIImpactFeedbackGenerator(style: .light); gen.impactOccurred()
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { showTitle = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            let gen = UIImpactFeedbackGenerator(style: .rigid); gen.impactOccurred()
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) { showTopRow = true }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+            let gen = UIImpactFeedbackGenerator(style: .medium); gen.impactOccurred()
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { showBottomRow = true }
         }
     }
 }
 
-// MARK: - Animations
+// MARK: - Animated Score Gauge
+struct ScoreGaugeView: View {
+    let score: Int
+    let color: Color
+    let triggerAnimation: Bool
+    
+    @State private var animatedScore: Int = 0
+    @State private var animatedProgress: CGFloat = 0.0
+    @Environment(ThemeManager.self) private var themeManager
+    
+    var body: some View {
+        ZStack {
+            // Shadow / Glow
+            Circle()
+                .fill(color.opacity(0.15))
+                .blur(radius: 20)
+            
+            // Background Track
+            Circle()
+                .stroke(Color.gray.opacity(0.15), lineWidth: 16)
+            
+            // Animated Progress Track
+            Circle()
+                .trim(from: 0, to: animatedProgress)
+                .stroke(
+                    AngularGradient(colors: [color.opacity(0.5), color], center: .center, startAngle: .degrees(-90), endAngle: .degrees(270)),
+                    style: StrokeStyle(lineWidth: 16, lineCap: .round)
+                )
+                .rotationEffect(.degrees(-90))
+            
+            // Inner Content
+            VStack(spacing: 4) {
+                Text(LocalizedStringKey("SCORE"))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(themeManager.current.secondaryText)
+                
+                Text("\(animatedScore)")
+                    .font(.system(size: 54, weight: .heavy, design: .rounded))
+                    .foregroundColor(themeManager.current.primaryText)
+                    .contentTransition(.numericText())
+            }
+        }
+        .onChange(of: triggerAnimation) { _, newValue in
+            if newValue {
+                // Плавная анимация кольца
+                withAnimation(.spring(response: 1.5, dampingFraction: 0.8)) {
+                    animatedProgress = CGFloat(score) / 100.0
+                }
+                // Анимация бегущих цифр
+                withAnimation(.easeOut(duration: 1.5)) {
+                    animatedScore = score
+                }
+            }
+        }
+    }
+}
 
+// MARK: - Bento Box Insight Card (Glassmorphism)
+struct BentoInsightCard: View {
+    let title: LocalizedStringKey
+    let icon: String
+    let color: Color
+    let content: String
+    @Environment(ThemeManager.self) private var themeManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.2))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(color)
+                }
+                Text(title)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(themeManager.current.secondaryText)
+                    .textCase(.uppercase)
+            }
+            
+            Text(content)
+                .font(.system(size: 16, weight: .medium, design: .rounded))
+                .foregroundColor(themeManager.current.primaryText)
+                .lineSpacing(4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(20)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(.ultraThinMaterial) // Эффект матового стекла
+        .cornerRadius(24)
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(
+                    LinearGradient(colors: [color.opacity(0.5), Color.clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    lineWidth: 1
+                )
+        )
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
+    }
+}
+
+// MARK: - Dynamic Mood Background
+struct MoodBackgroundView: View {
+    let mood: String
+    @State private var animateBg = false
+    
+    private var moodColors: [Color] {
+        switch mood {
+        case "fire": return [.red, .orange]
+        case "ice": return [.cyan, .blue]
+        case "warning": return [.yellow, .orange]
+        default: return [.purple, .indigo]
+        }
+    }
+    
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(moodColors[0].opacity(0.25))
+                .frame(width: 400, height: 400)
+                .blur(radius: 80)
+                .offset(x: animateBg ? 100 : -100, y: animateBg ? -150 : -250)
+            
+            Circle()
+                .fill(moodColors[1].opacity(0.25))
+                .frame(width: 350, height: 350)
+                .blur(radius: 80)
+                .offset(x: animateBg ? -150 : 150, y: animateBg ? 200 : 100)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
+                animateBg = true
+            }
+        }
+    }
+}
+
+// MARK: - UI Utilities
 struct PulsatingGlowEffect: ViewModifier {
     @State private var scale: CGFloat = 1.0
     @State private var opacity: Double = 0.5
-    
     func body(content: Content) -> some View {
         content
-            .background(Circle().fill(Color.purple.opacity(opacity)).scaleEffect(scale).blur(radius: 10))
-            .onAppear { withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) { scale = 1.3; opacity = 0.1 } }
-            .onDisappear { scale = 1.0; opacity = 0.5 }
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    scale = 1.3
+                    opacity = 0.1
+                }
+            }
     }
 }
 
 struct BlinkingTextModifier: ViewModifier {
     @State private var isBlinking = false
-    
     func body(content: Content) -> some View {
         content
             .opacity(isBlinking ? 0.4 : 1.0)
             .onAppear { withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { isBlinking = true } }
-            .onDisappear { isBlinking = false }
     }
 }

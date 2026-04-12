@@ -2,314 +2,202 @@
 // FILE: WatchApp/Views/WatchActiveWorkoutView.swift
 // ============================================================
 internal import SwiftUI
-import SwiftData
 
-// Enum для колесика (переключатель между весом и повторениями)
-enum CrownFocus { case weight, reps }
-
-// MARK: - 1. ГЛАВНЫЙ ЭКРАН ТРЕНИРОВКИ
 struct WatchActiveWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(WatchWorkoutManager.self) private var workoutManager
     @Bindable var viewModel: WatchActiveWorkoutViewModel
     
-    @State private var startDate = Date()
-    @State private var finalDuration: TimeInterval = 0
-    @State private var showSummary = false
     @State private var showExerciseList = false
+    @State private var showCancelAlert = false
     
     var body: some View {
         ZStack {
+            WatchTheme.background.ignoresSafeArea()
+            
             ScrollView {
                 VStack(spacing: 12) {
-                    hudSection
+                    headerSection
                     
                     if viewModel.exercises.isEmpty {
-                        Text("No exercises yet.\nTap + to add one.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        Text("No exercises.\nTap Add below.")
+                            .font(.footnote)
+                            .foregroundColor(.gray)
+                            .padding(.vertical, 20)
                             .multilineTextAlignment(.center)
-                            .padding(.top, 10)
                     } else {
                         ForEach(viewModel.exercises.indices, id: \.self) { index in
-                            NavigationLink {
-                                WatchExerciseSetView(viewModel: viewModel, exerciseIndex: index)
+                            Button {
+                                viewModel.activeExercise = ActiveExerciseWrapper(index: index)
                             } label: {
-                                exerciseRow(for: viewModel.exercises[index])
+                                exerciseCard(for: viewModel.exercises[index])
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                     
-                    Button {
-                        showExerciseList = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "plus")
-                            Text("Add Exercise")
-                        }
-                        .foregroundColor(.blue)
-                    }
-                    .background(Color.blue.opacity(0.15))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    
-                    HStack(spacing: 8) {
-                        Button(role: .destructive) {
-                            Task {
-                                await viewModel.cancelWorkout()
-                                await workoutManager.endWorkout()
-                                dismiss()
-                            }
-                        } label: {
-                            Image(systemName: "xmark")
-                        }
-                        .background(Color.red.opacity(0.2))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        
-                        Button {
-                            Task {
-                                finalDuration = Date().timeIntervalSince(startDate)
-                                await workoutManager.endWorkout()
-                                await viewModel.finishWorkout()
-                                showSummary = true
-                            }
-                        } label: {
-                            Text("Finish").bold()
-                        }
-                        .background(Color.green)
-                        .foregroundColor(.black)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
+                    actionsMenuSection
                 }
-                .padding(.bottom, 20)
+                .padding(.bottom, 24)
             }
         }
         .navigationBarHidden(true)
         .task {
-            await workoutManager.startWorkout()
-            await viewModel.initializeWorkout()
-        }
-        .onAppear { startDate = Date() }
+                    // 🛠️ FIX: Безопасный запуск сессии. Не сбрасывает таймер.
+                    if !viewModel.isInitialized {
+                        // ✅ ИСПРАВЛЕНИЕ: Запрашиваем доступ к HealthKit, иначе калории и пульс будут 0
+                        try? await workoutManager.requestAuthorization()
+                        
+                        await workoutManager.startWorkout()
+                        await viewModel.initializeWorkout()
+                    }
+                }
+        .onDisappear { viewModel.cleanup() }
         .sheet(isPresented: $showExerciseList) {
             WatchExerciseSelectionView { exerciseName in
-                // ✅ ИСПРАВЛЕНИЕ ЗДЕСЬ
-                Task {
-                    await viewModel.addExercise(name: exerciseName)
-                }
+                Task { await viewModel.addExercise(name: exerciseName) }
                 showExerciseList = false
             }
         }
-        .fullScreenCover(isPresented: $showSummary) {
-            WatchSummaryView(
-                duration: finalDuration,
-                totalVolume: viewModel.totalVolume,
-                totalSets: viewModel.totalSets
-            ) { dismiss() }
+        // 🛠️ FIX: Используем sheet вместо fullScreenCover для защиты от схлопывания стека
+        .sheet(isPresented: $viewModel.showRestTimer) {
+            WatchRestTimerView(viewModel: viewModel)
         }
-    }
-    
-    private var hudSection: some View {
-        HStack {
-            TimelineView(.periodic(from: startDate, by: 1.0)) { context in
-                let elapsed = context.date.timeIntervalSince(startDate)
-                Text(Duration.seconds(elapsed), format: .time(pattern: .minuteSecond))
-                    .font(.system(size: 24, weight: .bold, design: .rounded).monospacedDigit())
-                    .foregroundColor(.yellow)
-            }
-            
-            Spacer()
-            
-            HStack(spacing: 4) {
-                Text("\(Int(workoutManager.heartRate))")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                Image(systemName: "heart.fill")
-                    .foregroundColor(.red)
-                    .font(.system(size: 12))
-                    .symbolEffect(.pulse, options: .repeating, isActive: workoutManager.isRunning)
+        .sheet(isPresented: $viewModel.showRPE) {
+            WatchRPEView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $viewModel.showSummary) {
+            WatchSummaryView(viewModel: viewModel) {
+                viewModel.showSummary = false
+                dismiss()
             }
         }
-        .padding()
-        .background(Color.white.opacity(0.1))
-        .cornerRadius(16)
-    }
-    
-    private func exerciseRow(for exercise: ExerciseDTO) -> some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(LocalizationHelper.shared.translateName(exercise.name)).font(.headline).lineLimit(1)
-                
-                // ✅ ИСПРАВЛЕНИЕ: Безопасное обращение к опциональному массиву
-                let setsCount = (exercise.setsList ?? []).count
-                Text("\(setsCount) sets completed")
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-                .font(.caption2)
-                .foregroundColor(.gray)
-        }
-        .padding(.vertical, 4)
-    }}
-
-// MARK: - 2. ЭКРАН ДОБАВЛЕНИЯ СЕТА
-struct WatchExerciseSetView: View {
-    @Environment(\.dismiss) private var dismiss
-    @Bindable var viewModel: WatchActiveWorkoutViewModel
-    let exerciseIndex: Int
-    
-    @State private var weight: Double = 20.0
-    @State private var reps: Double = 10.0
-    @State private var focus: CrownFocus = .weight
-    
-    private var crownBinding: Binding<Double> {
-        Binding(
-            get: { focus == .weight ? weight : reps },
-            set: { newValue in
-                if focus == .weight { weight = max(0, newValue) } else { reps = max(1, newValue) }
-            }
-        )
-    }
-    
-    var body: some View {
-        let exerciseName = viewModel.exercises[exerciseIndex].name
-        
-        VStack(spacing: 12) {
-            Text(exerciseName)
-                .font(.headline)
-                .foregroundColor(.blue)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            
-            HStack(spacing: 8) {
-                inputButton(title: "WEIGHT", value: String(format: "%.1f", weight), type: .weight, color: .blue)
-                inputButton(title: "REPS", value: "\(Int(reps))", type: .reps, color: .orange)
-            }
-            
-            Button {
+        .alert("Cancel Workout?", isPresented: $showCancelAlert) {
+            Button("Discard", role: .destructive) {
                 Task {
-                    await viewModel.logSet(for: exerciseIndex, weight: weight, reps: Int(reps))
+                    await viewModel.cancelWorkout()
+                    await workoutManager.endWorkout()
                     dismiss()
                 }
+            }
+            Button("Keep Training", role: .cancel) { }
+        } message: {
+            Text("Are you sure you want to discard this workout?")
+        }
+        .navigationDestination(item: $viewModel.activeExercise) { wrapper in
+            WatchExerciseSetView(viewModel: viewModel, exerciseIndex: wrapper.id)
+        }
+        .onChange(of: viewModel.goBackToWorkoutView) { _, shouldGoBack in
+            if shouldGoBack {
+                viewModel.activeExercise = nil
+                viewModel.goBackToWorkoutView = false
+                
+                if let nextIndex = viewModel.pendingNextExerciseIndex {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        viewModel.activeExercise = ActiveExerciseWrapper(index: nextIndex)
+                        viewModel.pendingNextExerciseIndex = nil
+                    }
+                }
+            }
+        }
+    }
+    
+    private var headerSection: some View {
+        HStack(alignment: .top) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(viewModel.workoutTitle)
+                    .font(.headline)
+                    .foregroundColor(.white)
+                
+                TimelineView(.periodic(from: viewModel.startDate, by: 1.0)) { context in
+                    let elapsed = context.date.timeIntervalSince(viewModel.startDate)
+                    Text(Duration.seconds(elapsed), format: .time(pattern: .minuteSecond))
+                        .font(.system(size: 16, weight: .bold, design: .rounded).monospacedDigit())
+                        .foregroundColor(.white)
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 4)
+        .padding(.bottom, 4)
+    }
+    
+    private func exerciseCard(for exercise: ExerciseDTO) -> some View {
+        let completedSets = (exercise.setsList ?? []).filter { $0.isCompleted }.count
+        // ✅ ИСПРАВЛЕНИЕ: "Всего сетов" - это просто текущее количество сетов в массиве.
+        // Это автоматически учитывает добавленные и удаленные сеты.
+        let totalSets = (exercise.setsList ?? []).count
+        let isDone = completedSets >= totalSets && totalSets > 0
+        
+        return HStack(spacing: 12) {
+            // ... (остальной UI без изменений) ...
+            VStack(alignment: .leading, spacing: 2) {
+                Text(exercise.name)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(isDone ? .gray : .white)
+                    .lineLimit(2)
+                
+                // ✅ ИСПОЛЬЗУЕМ ИСПРАВЛЕННУЮ ПЕРЕМЕННУЮ
+                Text("\(completedSets)/\(totalSets) Sets")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(isDone ? WatchTheme.green : WatchTheme.cyan)
+            }
+            Spacer()
+        }
+        .padding(12)
+        .background(WatchTheme.cardBackground)
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(isDone ? WatchTheme.green.opacity(0.3) : Color.clear, lineWidth: 1))
+    }
+    private var actionsMenuSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Actions")
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.top, 16)
+                .padding(.horizontal, 4)
+            
+            Button {
+                showExerciseList = true
             } label: {
-                HStack {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("Save Set").bold()
-                }
-            }
-            .background(Color.green)
-            .foregroundColor(.black)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-        }
-        .focusable()
-        .digitalCrownRotation(
-            crownBinding,
-            from: 0, through: 500, by: focus == .weight ? 2.5 : 1.0,
-            sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true
-        )
-    }
-    
-    private func inputButton(title: String, value: String, type: CrownFocus, color: Color) -> some View {
-        let isFocused = focus == type
-        return Button {
-            withAnimation { focus = type }
-        } label: {
-            VStack {
-                Text(LocalizedStringKey(title)).font(.system(size: 10, weight: .bold)).foregroundColor(isFocused ? color : .gray)
-                Text(value).font(.system(size: 24, weight: .bold, design: .rounded))
-            }
-            .frame(maxWidth: .infinity).padding(.vertical, 8)
-            .background(isFocused ? color.opacity(0.2) : Color.white.opacity(0.1))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(isFocused ? color : Color.clear, lineWidth: 2))
-        }
-        .buttonStyle(PlainButtonStyle())
-    }
-}
-
-// MARK: - 3. СПИСОК УПРАЖНЕНИЙ
-struct WatchExerciseSelectionView: View {
-    var onSelect: (String) -> Void
-    
-    // ✅ 1. Заменяем статический массив на @State
-    @State private var allExercises: [String] = []
-
-    var body: some View {
-        NavigationStack {
-            // ✅ 2. Используем @State
-            List(allExercises, id: \.self) { name in
-                Button(action: { onSelect(name) }) {
-                    Text(name)
-                        .padding(.vertical, 4)
-                }
-            }
-            .navigationTitle("Exercises")
-            // ✅ 3. Асинхронно загружаем данные при появлении
-            .task {
-                let catalog = await ExerciseDatabaseService.shared.getCatalog()
-                // Превращаем словарь в плоский отсортированный массив
-                self.allExercises = Array(Set(catalog.values.flatMap { $0 })).sorted()
-            }
-        }
-    }
-}
-
-// MARK: - 4. ФИНАЛЬНЫЙ ЭКРАН
-struct WatchSummaryView: View {
-    let duration: TimeInterval
-    let totalVolume: Double
-    let totalSets: Int
-    var onDismiss: () -> Void
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                Image(systemName: "trophy.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.yellow)
-                    .padding(.top, 10)
-                
-                Text("Workout Complete!")
-                    .font(.title3)
-                    .bold()
-                
-                VStack(spacing: 8) {
-                    summaryRow(title: "Time", value: formattedDuration(duration))
-                    summaryRow(title: "Sets", value: "\(totalSets)")
-                    summaryRow(title: "Volume", value: "\(Int(totalVolume)) kg")
-                }
-                .padding(.vertical, 8)
-                .background(Color.gray.opacity(0.15))
-                .cornerRadius(12)
-                
-                Button(action: onDismiss) {
-                    Text("Done")
-                        .bold()
+                Text("Add Exercise")
+                    .font(.system(size: 15, weight: .bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(WatchTheme.buttonGray)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+            }.buttonStyle(.plain)
+            
+            HStack(spacing: 10) {
+                Button(role: .destructive) {
+                    showCancelAlert = true
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.title2.bold())
                         .frame(maxWidth: .infinity)
                         .padding()
-                }
-                .background(Color.blue)
-                .foregroundColor(.white)
-                .cornerRadius(16)
-                .padding(.top, 10)
+                        .background(WatchTheme.buttonGray)
+                        .foregroundColor(WatchTheme.red)
+                        .cornerRadius(16)
+                }.buttonStyle(.plain)
+                
+                Button {
+                    Task {
+                        await workoutManager.endWorkout()
+                        // ✅ ИСПРАВЛЕНИЕ: Передаем калории из workoutManager в viewModel
+                        await viewModel.finishWorkout(activeEnergy: workoutManager.activeEnergy)
+                    }
+                } label: {
+                    Text("Finish")
+                        .font(.headline.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(WatchTheme.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(16)
+                }.buttonStyle(.plain)
             }
-            .padding(.horizontal)
         }
-        .navigationBarHidden(true)
-    }
-    
-    private func summaryRow(title: String, value: String) -> some View {
-        HStack {
-            Text(LocalizedStringKey(title)).foregroundColor(.secondary)
-            Spacer()
-            Text(value).bold()
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 4)
-    }
-    
-    private func formattedDuration(_ time: TimeInterval) -> String {
-        let formatter = DateComponentsFormatter()
-        formatter.allowedUnits = [.hour, .minute]
-        formatter.unitsStyle = .abbreviated
-        return formatter.string(from: time) ?? "0m"
     }
 }

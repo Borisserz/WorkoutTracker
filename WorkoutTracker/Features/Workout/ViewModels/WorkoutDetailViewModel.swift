@@ -120,6 +120,10 @@ final class WorkoutDetailViewModel {
                 chartExercises: chartExercises,
                 completedSetsCount: totalCompletedSets
             )
+        
+        Task {
+                   await PhoneWatchManager.shared.sendFullActiveStateToWatch()
+               }
         }
 
     func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
@@ -351,6 +355,7 @@ final class WorkoutDetailViewModel {
             }
             
             workoutService.stopLiveActivity()
+            await PhoneWatchManager.shared.sendFinishWorkoutToWatch(workoutID: workout.id.uuidString)
             progressManager.addXP(for: workout)
             try? workout.modelContext?.save()
             
@@ -415,6 +420,26 @@ final class WorkoutDetailViewModel {
                     }
                     try? context.save()
                 }
+                
+                // 👇 ИСПРАВЛЕННЫЙ БЛОК РАСЧЕТА ДЛЯ УМНЫХ ПУШЕЙ 👇
+                let bgContext = ModelContext(analyticsService.modelContainer)
+                let allDesc = FetchDescriptor<Workout>(
+                    predicate: #Predicate<Workout> { $0.endTime != nil },
+                    sortBy: [SortDescriptor(\.date, order: .reverse)]
+                )
+                let allWorkouts = (try? bgContext.fetch(allDesc)) ?? []
+                
+                // Вычисляем стрик и прогноз безопасно через AnalyticsService
+                let currentStreak = await analyticsService.calculateWorkoutStreak(workouts: allWorkouts)
+                let forecast = await analyticsService.getProgressForecast(workouts: allWorkouts).first
+                
+                NotificationManager.shared.scheduleSmartRetentions(
+                    workout: workout,
+                    currentStreak: currentStreak,
+                    forecast: forecast,
+                    unitsManager: UnitsManager.shared
+                )
+                // 👆 ========================================== 👆
                 
                 NotificationCenter.default.post(name: .workoutCompletedEvent, object: workout.persistentModelID, userInfo: ["modelContainer": analyticsService.modelContainer])
                 self.updateWorkoutAnalytics(for: workout)

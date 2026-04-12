@@ -20,6 +20,8 @@ struct ProgressComparisonView: View {
     @State private var showLeftPicker = false
     @State private var showRightPicker = false
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
@@ -93,19 +95,19 @@ struct ProgressComparisonView: View {
                             .font(.caption)
                             .fontWeight(.bold)
                             .textCase(.uppercase)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                         
                         if let entry = leftEntry {
                             Text(entry.date.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                             let weight = unitsManager.convertFromKilograms(entry.weight)
                             Text("\(LocalizationHelper.shared.formatDecimal(weight)) \(unitsManager.weightUnitString())")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                         } else {
-                            Text("-").font(.caption).foregroundColor(.secondary)
-                            Text("-").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundColor(.primary)
+                            Text("-").font(.caption).foregroundColor(themeManager.current.secondaryText)
+                            Text("-").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundColor(themeManager.current.primaryText)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -126,19 +128,19 @@ struct ProgressComparisonView: View {
                             .font(.caption)
                             .fontWeight(.bold)
                             .textCase(.uppercase)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                         
                         if let entry = rightEntry {
                             Text(entry.date.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                             let weight = unitsManager.convertFromKilograms(entry.weight)
                             Text("\(LocalizationHelper.shared.formatDecimal(weight)) \(unitsManager.weightUnitString())")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                         } else {
-                            Text("-").font(.caption).foregroundColor(.secondary)
-                            Text("-").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundColor(.primary)
+                            Text("-").font(.caption).foregroundColor(themeManager.current.secondaryText)
+                            Text("-").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundColor(themeManager.current.primaryText)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .trailing)
@@ -198,17 +200,17 @@ struct ProgressComparisonView: View {
                             VStack(alignment: .leading) {
                                 Text(entry.date.formatted(date: .abbreviated, time: .omitted))
                                     .font(.headline)
-                                    .foregroundColor(.primary)
+                                    .foregroundColor(themeManager.current.primaryText)
                                 let weight = unitsManager.convertFromKilograms(entry.weight)
                                 Text("\(LocalizationHelper.shared.formatDecimal(weight)) \(unitsManager.weightUnitString())")
                                     .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(themeManager.current.secondaryText)
                             }
                             Spacer()
                             if (isLeft && leftEntry?.id == entry.id) || (!isLeft && rightEntry?.id == entry.id) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.title3)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(themeManager.current.primaryAccent)
                             }
                         }
                     }
@@ -260,6 +262,8 @@ struct BeforeAfterSliderView: View {
     @State private var sliderPercentage: CGFloat = 0.5
     @State private var isDragging: Bool = false
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
@@ -311,7 +315,7 @@ struct BeforeAfterSliderView: View {
                         .overlay(
                             Image(systemName: "chevron.left.and.right")
                                 .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
+                                .foregroundColor(themeManager.current.background)
                         )
                         .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
                         .scaleEffect(isDragging ? 1.1 : 1.0)
@@ -352,7 +356,7 @@ struct BeforeAfterSliderView: View {
                 Text("Select \(title) Photo")
                     .font(.headline)
             }
-            .foregroundColor(.gray.opacity(0.6))
+            .foregroundColor(themeManager.current.secondaryAccent.opacity(0.6))
         }
     }
 }

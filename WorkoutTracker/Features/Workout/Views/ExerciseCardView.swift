@@ -61,58 +61,56 @@ struct ExerciseCardView: View {
             EffortInputView(effort: $bindableExercise.effort)
         }
         .sheet(isPresented: $showTechniqueSheet) {
-            // ✅ ДОБАВИЛИ exerciseName
             TechniqueSheetView(exerciseName: exercise.name, category: exercise.category)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .navigationDestination(isPresented: $showHistory) {
-                    ExerciseHistoryView(exerciseName: exercise.name)
-                }
+            ExerciseHistoryView(exerciseName: exercise.name)
+        }
     }
     
-    
     @ViewBuilder
-        private var setsSection: some View {
-            let lastExerciseData = detailViewModel.lastPerformancesCache[exercise.name]
-            let sortedSets = exercise.sortedSets
-            let sortedPrevSets: [WorkoutSet] = lastExerciseData?.sortedSets ?? []
+    private var setsSection: some View {
+        let lastExerciseData = detailViewModel.lastPerformancesCache[exercise.name]
+        let sortedSets = exercise.sortedSets
+        let sortedPrevSets: [WorkoutSet] = lastExerciseData?.sortedSets ?? []
+        
+        ForEach(Array(sortedSets.enumerated()), id: \.element.id) { currentIndex, set in
+            let isLast = currentIndex == sortedSets.count - 1
+            let prevSet: WorkoutSet? = currentIndex < sortedPrevSets.count ? sortedPrevSets[currentIndex] : nil
             
-            ForEach(Array(sortedSets.enumerated()), id: \.element.id) { currentIndex, set in
-                let isLast = currentIndex == sortedSets.count - 1
-                let prevSet: WorkoutSet? = currentIndex < sortedPrevSets.count ? sortedPrevSets[currentIndex] : nil
-                
-                SetRowView(
-                    set: set,
-                    exerciseName: exercise.name,
-                    cached1RM: detailViewModel.personalRecordsCache[exercise.name] ?? 0.0,
-                    effort: exercise.effort,
-                    exerciseType: exercise.type,
-                    isLastSet: isLast,
-                    isExerciseCompleted: exercise.isCompleted,
-                    isWorkoutCompleted: isWorkoutCompleted,
-                    onCheck: { checkedSet, shouldStartTimer, suggestedDuration in
-                        detailViewModel.startTimerIfNeeded(shouldStartTimer: shouldStartTimer, suggestedDuration: suggestedDuration)
-                        detailViewModel.handleSetCompleted(set: checkedSet, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
-                    },
-                    onDataChange: { // ✅ FIX: Поставлено в правильное место (после onCheck)
-                        detailViewModel.updateWorkoutAnalytics(for: workout)
-                    },
-                    prevWeight: prevSet?.weight,
-                    prevReps: prevSet?.reps,
-                    prevDist: prevSet?.distance,
-                    prevTime: prevSet?.time,
-                    autoFocus: set.id == detailViewModel.newlyAddedSetId
-                )
-                .swipeActions(edge: .trailing) {
-                    if !exercise.isCompleted && !isWorkoutCompleted {
-                        Button(role: .destructive) {
-                            withAnimation { detailViewModel.removeSet(set, from: exercise, context: context) }
-                        } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
-                    }
+            SetRowView(
+                set: set,
+                exerciseName: exercise.name,
+                cached1RM: detailViewModel.personalRecordsCache[exercise.name] ?? 0.0,
+                effort: exercise.effort,
+                exerciseType: exercise.type,
+                isLastSet: isLast,
+                isExerciseCompleted: exercise.isCompleted,
+                isWorkoutCompleted: isWorkoutCompleted,
+                onCheck: { checkedSet, shouldStartTimer, suggestedDuration in
+                    detailViewModel.startTimerIfNeeded(shouldStartTimer: shouldStartTimer, suggestedDuration: suggestedDuration)
+                    detailViewModel.handleSetCompleted(set: checkedSet, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
+                },
+                onDataChange: {
+                    detailViewModel.updateWorkoutAnalytics(for: workout)
+                },
+                prevWeight: prevSet?.weight,
+                prevReps: prevSet?.reps,
+                prevDist: prevSet?.distance,
+                prevTime: prevSet?.time,
+                autoFocus: set.id == detailViewModel.newlyAddedSetId
+            )
+            .swipeActions(edge: .trailing) {
+                if !exercise.isCompleted && !isWorkoutCompleted {
+                    Button(role: .destructive) {
+                        withAnimation { detailViewModel.removeSet(set, from: exercise, context: context) }
+                    } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
                 }
             }
         }
+    }
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -165,7 +163,6 @@ struct ExerciseCardView: View {
         HStack(spacing: 8) {
             Text(LocalizedStringKey("Set")).font(.caption2.bold()).frame(width: 32).foregroundColor(.secondary)
             
-            // Динамический блок колонок (растягивается на все свободное место)
             HStack(spacing: 8) {
                 switch exercise.type {
                 case .strength:
@@ -179,7 +176,6 @@ struct ExerciseCardView: View {
                 }
             }
             
-            // Зарезервированное место под кнопки
             if isAISupported {
                 Image(systemName: "brain").font(.caption2.bold()).frame(width: 44).foregroundColor(.secondary)
             }

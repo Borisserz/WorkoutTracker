@@ -1,4 +1,6 @@
-// MARK: - FILE: WorkoutTracker/AppCore/AppStateManager.swift
+// ============================================================
+// FILE: WorkoutTracker/AppCore/AppStateManager.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -11,11 +13,13 @@ final class AppStateManager {
     var currentError: AppError?
     
     // Глобальная навигация и баннер активной тренировки
-    // Выставляем 2 (WorkoutHubView) как стартовую вкладку по умолчанию
     var selectedTab: Int = 2
     
     var isInsideActiveWorkout: Bool = false
     var returnToActiveWorkoutId: PersistentIdentifier? = nil
+    
+    // ✅ ДОБАВЛЕНО: Для перехвата действий из виджетов
+    var requestedWidgetAction: String? = nil
     
     func showError(title: String, message: String) {
         self.currentError = AppError(title: title, message: message)

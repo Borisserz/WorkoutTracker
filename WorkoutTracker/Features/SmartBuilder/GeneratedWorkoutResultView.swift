@@ -3,6 +3,7 @@ internal import SwiftUI
 struct GeneratedWorkoutResultView: View {
     @Bindable var vm: SmartGeneratorViewModel
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
     
     // Передаем DTO!
     var onStart: ([ExerciseDTO]) -> Void
@@ -25,7 +26,7 @@ struct GeneratedWorkoutResultView: View {
                 VStack(spacing: 24) {
                     // Инфографика (БЕЗ грязного блюра, чистый фон)
                     VStack(alignment: .leading, spacing: 16) {
-                        Text(LocalizedStringKey("Workout Focus")).font(.headline).foregroundColor(.secondary)
+                        Text(LocalizedStringKey("Workout Focus")).font(.headline).foregroundColor(themeManager.current.secondaryText)
                         
                         VStack(spacing: 12) {
                             ForEach(muscleDistribution, id: \.0) { item in
@@ -34,7 +35,7 @@ struct GeneratedWorkoutResultView: View {
                                     GeometryReader { geo in
                                         ZStack(alignment: .leading) {
                                             Capsule().fill(Color.gray.opacity(0.2))
-                                            Capsule().fill(LinearGradient(colors: [.blue, .cyan], startPoint: .leading, endPoint: .trailing))
+                                            Capsule().fill(themeManager.current.primaryGradient)
                                                 .frame(width: geo.size.width * CGFloat(item.1 / 100.0))
                                         }
                                     }.frame(height: 8)
@@ -44,7 +45,7 @@ struct GeneratedWorkoutResultView: View {
                         }
                     }
                     .padding(20)
-                    .background(Color(UIColor.secondarySystemBackground))
+                    .background(themeManager.current.surface)
                     .cornerRadius(24)
                     .padding(.horizontal)
                     
@@ -56,13 +57,13 @@ struct GeneratedWorkoutResultView: View {
                             ForEach(vm.generatedExercises, id: \.name) { ex in
                                 HStack(spacing: 16) {
                                     ZStack {
-                                        RoundedRectangle(cornerRadius: 12).fill(Color.cyan.opacity(0.15)).frame(width: 50, height: 50)
-                                        Image(systemName: ex.type == .strength ? "dumbbell.fill" : "figure.run").foregroundColor(.cyan)
+                                        RoundedRectangle(cornerRadius: 12).fill(themeManager.current.lightHighlight.opacity(0.15)).frame(width: 50, height: 50)
+                                        Image(systemName: ex.type == .strength ? "dumbbell.fill" : "figure.run").foregroundColor(themeManager.current.lightHighlight)
                                     }
                                     
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(LocalizationHelper.shared.translateName(ex.name)).font(.headline)
-                                        Text(LocalizedStringKey(ex.muscleGroup)).font(.caption).foregroundColor(.secondary)
+                                        Text(LocalizedStringKey(ex.muscleGroup)).font(.caption).foregroundColor(themeManager.current.secondaryText)
                                     }
                                     Spacer()
                                     
@@ -80,7 +81,7 @@ struct GeneratedWorkoutResultView: View {
                                                                             if weight > 0 {
                                                                                 let conv = unitsManager.convertFromKilograms(weight)
                                                                                 Text("\(Int(conv)) \(unitsManager.weightUnitString())")
-                                                                                    .font(.caption).foregroundColor(.cyan)
+                                                                                    .font(.caption).foregroundColor(themeManager.current.lightHighlight)
                                                                             }
                                                                         } else {
                                                                             // Если кардио/время
@@ -91,7 +92,7 @@ struct GeneratedWorkoutResultView: View {
                                                                     }
                                 }
                                 .padding()
-                                .background(Color(UIColor.secondarySystemBackground))
+                                .background(themeManager.current.surface)
                                 .cornerRadius(16)
                                 .padding(.horizontal)
                             }
@@ -112,10 +113,10 @@ struct GeneratedWorkoutResultView: View {
                         Image(systemName: "bolt.fill").font(.title2)
                         Text(LocalizedStringKey("START WORKOUT")).font(.title3).bold().tracking(1.5)
                     }
-                    .foregroundColor(.white).frame(maxWidth: .infinity).padding(.vertical, 20)
-                    .background(Color.blue)
+                    .foregroundColor(themeManager.current.background).frame(maxWidth: .infinity).padding(.vertical, 20)
+                    .background(themeManager.current.primaryAccent)
                     .clipShape(Capsule())
-                    .shadow(color: .blue.opacity(0.5), radius: 20, x: 0, y: 10)
+                    .shadow(color: themeManager.current.primaryAccent.opacity(0.5), radius: 20, x: 0, y: 10)
                     .padding(.horizontal, 24)
                 }
             }

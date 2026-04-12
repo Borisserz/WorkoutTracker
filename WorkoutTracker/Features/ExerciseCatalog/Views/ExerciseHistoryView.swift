@@ -8,7 +8,7 @@ struct ExerciseHistoryView: View {
     @Environment(DIContainer.self) private var di
     @Environment(UnitsManager.self) var unitsManager
     @FocusState private var isInputActive: Bool
-    
+    @Environment(ThemeManager.self) private var themeManager
     let exerciseName: String
     @State private var viewModel: ExerciseHistoryViewModel?
     
@@ -121,7 +121,7 @@ struct ExerciseHistoryView: View {
                 }
             }
         .padding(4)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .clipShape(Capsule())
         .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 4)
         .padding(.horizontal, 16)
@@ -166,15 +166,15 @@ struct ExerciseHistoryView: View {
                         .foregroundColor(vm.chartColor)
                     Text(LocalizedStringKey("How to Perform"))
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
                 Text(TechniqueHelper.getDescription(for: vm.exerciseCategory))
                     .font(.body)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .lineSpacing(6)
             }
             .padding(20)
-            .background(Color(UIColor.secondarySystemGroupedBackground))
+            .background(themeManager.current.surfaceVariant)
             .cornerRadius(20)
             .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
             
@@ -184,7 +184,7 @@ struct ExerciseHistoryView: View {
                         .foregroundColor(.yellow)
                     Text(LocalizedStringKey("Key Tips"))
                         .font(.headline)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
                 
                 ForEach(TechniqueHelper.getTips(for: vm.exerciseCategory), id: \.self) { tip in
@@ -195,13 +195,13 @@ struct ExerciseHistoryView: View {
                             .padding(.top, 2)
                         Text(tip)
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                             .lineSpacing(4)
                     }
                 }
             }
             .padding(20)
-            .background(Color(UIColor.secondarySystemGroupedBackground))
+            .background(themeManager.current.surfaceVariant)
             .cornerRadius(20)
             .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
             
@@ -210,7 +210,7 @@ struct ExerciseHistoryView: View {
                          VStack(alignment: .leading, spacing: 16) {
                              HStack(spacing: 8) {
                                  Image(systemName: "figure.strengthtraining.traditional").foregroundColor(vm.chartColor)
-                                 Text(LocalizedStringKey("Target (Primary) Muscles")).font(.headline).foregroundColor(.primary)
+                                 Text(LocalizedStringKey("Target (Primary) Muscles")).font(.headline).foregroundColor(themeManager.current.primaryText)
                              }
                              
                              // Теги с мышцами
@@ -231,43 +231,43 @@ struct ExerciseHistoryView: View {
                              }
                          }
                          .padding(20)
-                         .background(Color(UIColor.secondarySystemGroupedBackground))
+                         .background(themeManager.current.surfaceVariant)
                          .cornerRadius(20)
                          .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
                      }
                      
                      // ✅ Блок: ВТОРОСТЕПЕННЫЕ МЫШЦЫ (Secondary)
-                     if !vm.secondaryMuscles.isEmpty {
-                         VStack(alignment: .leading, spacing: 16) {
-                             HStack(spacing: 8) {
-                                 Image(systemName: "figure.mixed.cardio").foregroundColor(.orange)
-                                 Text(LocalizedStringKey("Synergist (Secondary) Muscles")).font(.headline).foregroundColor(.primary)
-                             }
-                             
-                             // Теги с мышцами
-                             ScrollView(.horizontal, showsIndicators: false) {
-                                 HStack(spacing: 10) {
-                                     ForEach(vm.secondaryMuscles, id: \.self) { muscle in
-                                         HStack(spacing: 6) {
-                                             Circle().fill(Color.orange).frame(width: 6, height: 6)
-                                             Text(LocalizedStringKey(muscle.capitalized))
-                                                 .font(.subheadline).fontWeight(.medium)
-                                         }
-                                         .padding(.horizontal, 14).padding(.vertical, 10)
-                                         .background(Color.orange.opacity(0.1))
-                                         .foregroundColor(.orange)
-                                         .cornerRadius(12)
-                                     }
-                                 }
-                             }
-                         }
-                         .padding(20)
-                         .background(Color(UIColor.secondarySystemGroupedBackground))
-                         .cornerRadius(20)
-                         .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
-                     }
-                 }
-             }
+            if !vm.secondaryMuscles.isEmpty {
+                                   VStack(alignment: .leading, spacing: 16) {
+                                       HStack(spacing: 8) {
+                                           Image(systemName: "figure.mixed.cardio").foregroundColor(themeManager.current.secondaryMidTone) // <--- ИЗМЕНЕНО
+                                           Text(LocalizedStringKey("Synergist (Secondary) Muscles")).font(.headline).foregroundColor(themeManager.current.primaryText)
+                                       }
+                                       
+                                       // Теги с мышцами
+                                       ScrollView(.horizontal, showsIndicators: false) {
+                                           HStack(spacing: 10) {
+                                               ForEach(vm.secondaryMuscles, id: \.self) { muscle in
+                                                   HStack(spacing: 6) {
+                                                       Circle().fill(themeManager.current.secondaryMidTone).frame(width: 6, height: 6) // <--- ИЗМЕНЕНО
+                                                       Text(LocalizedStringKey(muscle.capitalized))
+                                                           .font(.subheadline).fontWeight(.medium)
+                                                   }
+                                                   .padding(.horizontal, 14).padding(.vertical, 10)
+                                                   .background(themeManager.current.secondaryMidTone.opacity(0.1)) // <--- ИЗМЕНЕНО
+                                                   .foregroundColor(themeManager.current.secondaryMidTone) // <--- ИЗМЕНЕНО
+                                                   .cornerRadius(12)
+                                               }
+                                           }
+                                       }
+                                   }
+                                   .padding(20)
+                                   .background(themeManager.current.surfaceVariant)
+                                   .cornerRadius(20)
+                                   .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
+                               }
+                           }
+                       }
     private func historyContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("History"))
@@ -301,7 +301,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(vm.chartTitle)
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 
                 Spacer()
                 
@@ -323,7 +323,7 @@ struct ExerciseHistoryView: View {
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(Color(UIColor.tertiarySystemFill))
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .clipShape(Capsule())
                     }
                 }
@@ -335,7 +335,7 @@ struct ExerciseHistoryView: View {
             if vm.displayedGraphData.isEmpty {
                 Text(LocalizedStringKey("Not enough data"))
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .frame(maxWidth: .infinity, minHeight: 200)
                     .background(Color(UIColor.tertiarySystemFill).opacity(0.5))
                     .cornerRadius(12)
@@ -371,7 +371,7 @@ struct ExerciseHistoryView: View {
             }
             .padding(.bottom, 20)
         }
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(24)
         .shadow(color: .black.opacity(0.04), radius: 15, x: 0, y: 5)
     }
@@ -408,7 +408,7 @@ struct ExerciseHistoryView: View {
                     )
                     .symbol {
                         Circle()
-                            .fill(Color(UIColor.systemBackground))
+                            .fill(themeManager.current.background)
                             .frame(width: vm.displayedGraphData.count == 1 ? 16 : 10, height: vm.displayedGraphData.count == 1 ? 16 : 10)
                             .overlay(
                                 Circle().stroke(vm.chartColor, lineWidth: 3)
@@ -427,10 +427,10 @@ struct ExerciseHistoryView: View {
                         Text("\(val, format: .number.precision(.fractionLength(1))) \(vm.unitLabel)")
                             .font(.caption)
                             .bold()
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color(UIColor.systemBackground).opacity(0.95))
+                            .background(themeManager.current.background.opacity(0.95))
                             .cornerRadius(6)
                             .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15), lineWidth: 1))
                     }
@@ -447,10 +447,10 @@ struct ExerciseHistoryView: View {
                                 Text("\(LocalizationHelper.shared.formatDecimal(closestPoint.value)) \(vm.unitLabel)")
                                     .font(.headline)
                                     .bold()
-                                    .foregroundColor(Color(UIColor.systemBackground))
+                                    .foregroundColor(themeManager.current.background)
                                 Text(closestPoint.date, format: .dateTime.month(.abbreviated).day())
                                     .font(.caption)
-                                    .foregroundColor(Color(UIColor.systemBackground).opacity(0.8))
+                                    .foregroundColor(themeManager.current.background.opacity(0.8))
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
@@ -501,7 +501,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("Exercise Trend"))
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 Spacer()
                 HStack(spacing: 4) {
                     Image(systemName: trend.trend.icon)
@@ -521,19 +521,19 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Previous"))
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .textCase(.uppercase)
                     let prev = unitsManager.convertFromKilograms(trend.previousValue)
                     Text("\(LocalizationHelper.shared.formatInteger(prev))")
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
                 
                 Spacer()
                 
                 Image(systemName: "arrow.right")
-                    .foregroundColor(.gray.opacity(0.5))
+                    .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
                     .font(.title3)
                 
                 Spacer()
@@ -547,10 +547,10 @@ struct ExerciseHistoryView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
                         Text("\(LocalizationHelper.shared.formatInteger(curr))")
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                         Text(unitsManager.weightUnitString())
                             .font(.subheadline)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                     }
                 }
             }
@@ -560,7 +560,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("Overall Progress"))
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 Spacer()
                 Text("\(trend.changePercentage > 0 ? "+" : "")\(trend.changePercentage, specifier: "%.1f")%")
                     .font(.headline)
@@ -569,7 +569,7 @@ struct ExerciseHistoryView: View {
             }
         }
         .padding(20)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(24)
         .shadow(color: glowColor.opacity(0.15), radius: 15, x: 0, y: 5)
         .overlay(
@@ -584,7 +584,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("AI Forecast"))
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 Spacer()
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
@@ -593,10 +593,10 @@ struct ExerciseHistoryView: View {
                         .font(.caption)
                         .fontWeight(.bold)
                 }
-                .foregroundColor(.purple)
+                .foregroundColor(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(Color.purple.opacity(0.15))
+                .background(themeManager.current.deepPremiumAccent.opacity(0.15)) // <--- ИЗМЕНЕНО
                 .clipShape(Capsule())
             }
             
@@ -604,7 +604,7 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Current 1RM"))
                         .font(.caption2)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .textCase(.uppercase)
                     let cur = unitsManager.convertFromKilograms(forecast.currentMax)
                     Text("\(LocalizationHelper.shared.formatInteger(cur)) \(unitsManager.weightUnitString())")
@@ -614,20 +614,20 @@ struct ExerciseHistoryView: View {
                 
                 Spacer()
                 Image(systemName: "arrow.right.circle.fill")
-                    .foregroundColor(.purple)
+                    .foregroundColor(themeManager.current.deepPremiumAccent)
                     .font(.title2)
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(LocalizedStringKey("Predicted 1RM"))
                         .font(.caption2)
-                        .foregroundColor(.purple)
+                        .foregroundColor(themeManager.current.deepPremiumAccent)
                         .textCase(.uppercase)
                     let pred = unitsManager.convertFromKilograms(forecast.predictedMax)
                     Text("\(LocalizationHelper.shared.formatInteger(pred)) \(unitsManager.weightUnitString())")
                         .font(.title2)
                         .bold()
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
             }
             
@@ -635,7 +635,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("Expected gains in \(forecast.timeframe)"))
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                 Spacer()
                 Text("+\(LocalizationHelper.shared.formatDecimal(diff)) \(unitsManager.weightUnitString())")
                     .font(.subheadline)
@@ -644,12 +644,12 @@ struct ExerciseHistoryView: View {
             }
         }
         .padding(20)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(24)
-        .shadow(color: .purple.opacity(0.1), radius: 15, x: 0, y: 5)
+        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.1), radius: 15, x: 0, y: 5) // <--- ИЗМЕНЕНО
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.purple.opacity(0.2), lineWidth: 1)
+                .stroke(themeManager.current.deepPremiumAccent.opacity(0.2), lineWidth: 1) // <--- ИЗМЕНЕНО
         )
     }
     
@@ -666,12 +666,12 @@ struct ExerciseHistoryView: View {
                     Text(dataPoint.date, format: .dateTime.month(.abbreviated))
                         .font(.caption2)
                         .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .textCase(.uppercase)
                     Text(dataPoint.date, format: .dateTime.day())
                         .font(.title2)
                         .fontWeight(.heavy)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
                 .frame(width: 50)
                 .padding(.vertical, 8)
@@ -682,7 +682,7 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Session Max"))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .textCase(.uppercase)
                     
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
@@ -692,7 +692,7 @@ struct ExerciseHistoryView: View {
                         Text(vm.unitLabel)
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(themeManager.current.secondaryText)
                     }
                 }
                 
@@ -704,7 +704,7 @@ struct ExerciseHistoryView: View {
                     .foregroundColor(Color(UIColor.tertiaryLabel))
             }
             .padding(16)
-            .background(Color(UIColor.secondarySystemGroupedBackground))
+            .background(themeManager.current.surfaceVariant)
             .cornerRadius(20)
             .shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)
         }
@@ -716,7 +716,7 @@ struct ExerciseHistoryView: View {
 struct ExerciseNoteEditor: View {
     let exerciseName: String
     var isInputActive: FocusState<Bool>.Binding
-    
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     @Query private var notes: [ExerciseNote]
     @Environment(UserStatsViewModel.self) var userStatsViewModel
@@ -735,10 +735,10 @@ struct ExerciseNoteEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "pencil.and.outline")
-                    .foregroundColor(.blue)
+                    .foregroundColor(themeManager.current.primaryAccent)
                 Text(LocalizedStringKey("My Notes"))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
             }
             
             ZStack(alignment: .topLeading) {
@@ -769,7 +769,7 @@ struct ExerciseNoteEditor: View {
             }
         }
         .padding(20)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(24)
         .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
         .toolbar {
@@ -828,13 +828,13 @@ struct WorkoutDetailWrapperView: View {
 struct PersonalRecordsCardView: View {
     let records: ExerciseRecordsDTO
     @Environment(UnitsManager.self) var unitsManager
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Personal Records"))
                 .font(.title2)
                 .bold()
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
                 .padding(.bottom, 4)
             
             recordRow(title: "Max Set Reps", value: records.maxSetReps > 0 ? "\(records.maxSetReps)" : "--")
@@ -856,7 +856,7 @@ struct PersonalRecordsCardView: View {
             recordRow(title: "Max Workout Volume", value: woVolStr)
         }
         .padding(20)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .background(themeManager.current.surfaceVariant)
         .cornerRadius(24)
         .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
     }
@@ -865,13 +865,13 @@ struct PersonalRecordsCardView: View {
         HStack {
             Text(title)
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
             
             Spacer()
             
             Text(value)
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
         }
     }
 }

@@ -16,7 +16,7 @@ struct OneRepMaxTabView: View {
     @Bindable var vm: ExerciseHistoryViewModel
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.colorScheme) private var colorScheme
-    
+    @Environment(ThemeManager.self) private var themeManager
     @State private var showSettingsSheet = false
     
     var body: some View {
@@ -28,10 +28,10 @@ struct OneRepMaxTabView: View {
                     Text(LocalizedStringKey("1RM Tables"))
                         .font(.title2)
                         .fontWeight(.heavy)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                     Text(LocalizedStringKey("Estimate your max weight for any rep level"))
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                 }
                 Spacer()
                 Button {
@@ -41,7 +41,7 @@ struct OneRepMaxTabView: View {
                 } label: {
                     Image(systemName: "slider.horizontal.3")
                         .font(.title2)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .padding(12)
                         .background(Color(UIColor.tertiarySystemFill))
                         .clipShape(Circle())
@@ -55,17 +55,17 @@ struct OneRepMaxTabView: View {
                 HStack {
                     Text(LocalizedStringKey("Reps"))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .frame(width: 60, alignment: .leading)
                     
                     Text(LocalizedStringKey("Max Estimate"))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .frame(maxWidth: .infinity, alignment: .center)
                     
                     Text(LocalizedStringKey("% of 1RM"))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .frame(width: 80, alignment: .trailing)
                 }
                 .padding(.horizontal, 20)
@@ -86,7 +86,7 @@ struct OneRepMaxTabView: View {
                         HStack {
                             Text("\(reps)")
                                 .font(.headline)
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                                 .frame(width: 60, alignment: .leading)
                             
                             Text("\(LocalizationHelper.shared.formatFlexible(displayWeight)) \(unitsManager.weightUnitString())")
@@ -97,7 +97,7 @@ struct OneRepMaxTabView: View {
                             Text("\(Int(percentage))%")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                                 .frame(width: 80, alignment: .trailing)
                         }
                         .padding(.horizontal, 20)
@@ -113,7 +113,7 @@ struct OneRepMaxTabView: View {
                     .padding(.vertical, 40)
                 }
             }
-            .background(Color(UIColor.secondarySystemGroupedBackground))
+            .background(themeManager.current.surfaceVariant)
             .cornerRadius(24)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -132,7 +132,7 @@ struct OneRepMaxSettingsSheet: View {
     @Bindable var vm: ExerciseHistoryViewModel
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
-    
+    @Environment(ThemeManager.self) private var themeManager
     // Local State for TextFields to handle smooth typing
     @State private var weightString: String = ""
     @State private var repsString: String = ""
@@ -162,7 +162,7 @@ struct OneRepMaxSettingsSheet: View {
                         TextField("0.0", text: $weightString)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
-                            .foregroundColor(vm.chartColor)
+                            .foregroundColor(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО:
                             .fontWeight(.bold)
                             .onChange(of: weightString) { _, newValue in
                                 if let val = Double(newValue.replacingOccurrences(of: ",", with: ".")) {

@@ -32,7 +32,7 @@ struct WorkoutCalendarView: View {
     
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
-    
+    @Environment(ThemeManager.self) private var themeManager
     @State private var selectedTimeRange: TimeRange = .month
     @State private var totalWorkoutCount: Int = 0
     
@@ -158,13 +158,13 @@ struct WorkoutCalendarView: View {
                 
                 Text(LocalizedStringKey("workouts done"))
                     .font(.headline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .padding(.bottom, 6)
             }
             .animation(.default, value: totalWorkoutCount)
         }
         .padding()
-        .background(Color(UIColor.systemBackground))
+        .background(themeManager.current.background)
     }
     
     private var calendarList: some View {
@@ -206,7 +206,7 @@ struct WorkoutCalendarView: View {
 struct MonthView: View {
     let monthDate: Date
     let monthWorkouts: [MiniWorkout]
-    
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     // ✅ ИСПРАВЛЕНИЕ: Инжектим контейнер зависимостей
     @Environment(DIContainer.self) private var di
@@ -240,13 +240,13 @@ struct MonthView: View {
             Text(monthTitle)
                 .font(.title3)
                 .bold()
-                .foregroundColor(.blue)
+                .foregroundColor(themeManager.current.primaryAccent)
             
             weekDaysHeader
             daysGrid
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(12)
     }
     
@@ -257,7 +257,7 @@ struct MonthView: View {
                 Text(calendar.shortWeekdaySymbols[daySymbolIndex].prefix(1))
                     .font(.caption2)
                     .bold()
-                    .foregroundColor(.gray)
+                    .foregroundColor(themeManager.current.secondaryAccent)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -293,10 +293,10 @@ struct MonthView: View {
 }
 
 // MARK: - Day Cell Component
-
 struct DayCell: View {
     let date: Date
     let isWorkout: Bool
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
     
     private var dayNumber: String { "\(Calendar.current.component(.day, from: date))" }
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
@@ -308,17 +308,18 @@ struct DayCell: View {
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
                     if isToday {
-                        RoundedRectangle(cornerRadius: 6).stroke(Color.blue, lineWidth: 2)
+                        // <--- ИЗМЕНЕНО: .blue -> тема
+                        RoundedRectangle(cornerRadius: 6).stroke(themeManager.current.primaryAccent, lineWidth: 2)
                     }
                 }
             
             Text(dayNumber)
                 .font(.caption2)
                 .fontWeight(isToday ? .bold : .regular)
-                .foregroundColor(textColor)
+                // <--- ИЗМЕНЕНО: .blue -> тема
+                .foregroundColor(isWorkout ? .white : (isToday ? themeManager.current.primaryAccent : .primary))
         }
     }
     
-    private var backgroundColor: Color { isWorkout ? Color.green : Color.gray.opacity(0.1) }
-    private var textColor: Color { isWorkout ? .white : (isToday ? .blue : .primary) }
+    private var backgroundColor: Color { isWorkout ? Color.green : themeManager.current.surfaceVariant }
 }

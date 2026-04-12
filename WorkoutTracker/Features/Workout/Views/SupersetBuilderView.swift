@@ -35,6 +35,8 @@ struct SupersetBuilderView: View {
     
     // MARK: - Body
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         NavigationStack {
             Form {
@@ -111,7 +113,7 @@ struct SupersetBuilderView: View {
         Section(header: Text(LocalizedStringKey("Exercises in Superset"))) {
             if addedExercises.isEmpty {
                 Text(LocalizedStringKey("Add at least 2 exercises"))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .italic()
             }
             
@@ -124,7 +126,7 @@ struct SupersetBuilderView: View {
                             let convertedWeight = unitsManager.convertFromKilograms(weight)
                             Text(LocalizedStringKey("\(ex.setsList.count) sets • \(Int(convertedWeight))\(unitsManager.weightUnitString()) x \(firstSet.reps ?? 0) reps"))
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                         }
                     }
                     Spacer()
@@ -132,7 +134,7 @@ struct SupersetBuilderView: View {
                         exerciseToEdit = ex
                     } label: {
                         Image(systemName: "slider.horizontal.3")
-                            .foregroundColor(.blue)
+                            .foregroundColor(themeManager.current.primaryAccent)
                     }
                     .buttonStyle(BorderlessButtonStyle())
                 }
@@ -309,6 +311,8 @@ struct EditSupersetItemView: View {
     
     // MARK: - Body
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         NavigationStack {
             Form {

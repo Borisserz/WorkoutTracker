@@ -10,7 +10,7 @@ struct ExerciseSelectionView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(\.dismiss) private var dismiss
     @Environment(CatalogViewModel.self) private var catalogViewModel
-    
+    @Environment(ThemeManager.self) private var themeManager
     /// Замыкание для добавления нового упражнения
     var onAdd: (Exercise) -> Void
     
@@ -142,12 +142,12 @@ struct ExerciseSelectionView: View {
                 .foregroundColor(isSelected ? .white : .primary)
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
-                .background(isSelected ? Color.blue : Color(UIColor.secondarySystemBackground))
-                .cornerRadius(20)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(isSelected ? Color.blue : Color.gray.opacity(0.2), lineWidth: 1)
-                )
+                .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface) // <--- ИЗМЕНЕНО
+                                .cornerRadius(20)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        .stroke(isSelected ? themeManager.current.primaryAccent : Color.gray.opacity(0.2), lineWidth: 1) // <--- ИЗМЕНЕНО
+                                )
         }
     }
     
@@ -155,15 +155,15 @@ struct ExerciseSelectionView: View {
         VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 60))
-                .foregroundColor(.gray.opacity(0.4))
+                .foregroundColor(themeManager.current.secondaryAccent.opacity(0.4))
             
             Text(LocalizedStringKey("No exercises found"))
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Text(LocalizedStringKey("Try adjusting your search or clear advanced filters."))
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
         }

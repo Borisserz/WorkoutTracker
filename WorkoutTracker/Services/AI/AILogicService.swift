@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: WorkoutTracker/ai_agent/AILogicService.swift
+// FILE: WorkoutTracker/Services/AI/AILogicService.swift
 // ============================================================
 
 import Foundation
@@ -21,144 +21,194 @@ public enum AILogicError: Error, LocalizedError, Sendable {
         }
     }
 }
+nonisolated private var weeklyReviewSchema: GeminiSchema {
+      GeminiSchema(
+          type: .object,
+          properties: [
+              "weeklyScore": GeminiSchema(type: .integer, description: "Overall score from 0 to 100 based on performance and consistency."),
+              "title": GeminiSchema(type: .string, description: "Short, punchy title (e.g. 'Unstoppable!', 'Slipping Up')."),
+              "topHighlight": GeminiSchema(type: .string, description: "Short sentence about their best achievement this week."),
+              "weakPointAlert": GeminiSchema(type: .string, description: "Short sentence about what they neglected or need to fix."),
+              "coachAdvice": GeminiSchema(type: .string, description: "Main actionable advice for next week."),
+              "coachMood": GeminiSchema(type: .string, description: "Must be exactly one of: 'fire' (great job), 'ice' (steady/cold logic), 'warning' (bad performance).")
+          ],
+          required: ["weeklyScore", "title", "topHighlight", "weakPointAlert", "coachAdvice", "coachMood"]
+      )
+  }
+// Вспомогательная структура для умного чата
+private struct ChatNetworkResponse: Codable, Sendable {
+    let aiMessage: String
+    let hasWorkout: Bool
+    let workoutTitle: String?
+    let exercises: [GeneratedExerciseDTO]?
+}
+
+// Вспомогательная структура для умного восстановления
+private struct RecoveryResponseDTO: Codable, Sendable {
+    let recommendedHours: Double
+}
 
 // MARK: - Service
 
 /// Бизнес-логика ИИ. Отвечает только за промпты и парсинг наших DTO.
+/// Использует Gemini Structured Outputs (JSON Schema) для гарантии формата.
 public actor AILogicService {
     
-    // Внедряем сетевой клиент
     private let networkClient: GeminiNetworkClient
     
     init(networkClient: GeminiNetworkClient) {
         self.networkClient = networkClient
     }
+
+    // MARK: - 1. JSON Schemas (Structured Outputs)
     
-    // --- ДЛЯ ГЕНЕРАЦИИ НАЗВАНИЯ ЧАТА ---
-    public func generateChatTitle(for userMessage: String) async throws -> String {
-        let systemPrompt = "Придумай очень краткое название (максимум 3-4 слова) для чата о фитнесе, который начинается с запроса пользователя. Верни только текст названия без кавычек и лишних символов."
+    private var exerciseSchema: GeminiSchema {
+        GeminiSchema(type: .object, properties: [
+            "name": GeminiSchema(type: .string),
+            "muscleGroup": GeminiSchema(type: .string),
+            "type": GeminiSchema(type: .string),
+            "sets": GeminiSchema(type: .integer),
+            "reps": GeminiSchema(type: .integer),
+            "recommendedWeightKg": GeminiSchema(type: .number),
+            "restSeconds": GeminiSchema(type: .integer)
+        ], required: ["name", "muscleGroup", "type", "sets", "reps"])
+    }
+
+    private var smartActionSchema: GeminiSchema {
+            GeminiSchema(
+                type: .object,
+                properties: [
+                    "action": GeminiSchema(type: .string, description: "One of: swap, reduce_weight, increase_weight, add_finisher"),
+                    "exerciseName": GeminiSchema(type: .string, description: "Name of the target exercise in English"),
+                    "setsRemaining": GeminiSchema(type: .integer, description: "Number of sets to add or modify"),
+                    "weightValue": GeminiSchema(type: .number, description: "New recommended weight"),
+                    // Убрали "in Russian", теперь ИИ будет опираться на основной промпт:
+                    "reasoning": GeminiSchema(type: .string, description: "Short, motivational reasoning explaining the change.")
+                ],
+                required: ["action", "exerciseName", "setsRemaining", "weightValue", "reasoning"]
+            )
+        }
+    
+    private var inWorkoutResponseSchema: GeminiSchema {
+        GeminiSchema(
+            type: .object,
+            properties: [
+                "explanation": GeminiSchema(type: .string, description: "Short motivational reasoning"),
+                "actionType": GeminiSchema(type: .string, description: "One of: dropWeight, addSet, replaceExercise, skipExercise, reduceRemainingLoad, none"),
+                "targetExerciseName": GeminiSchema(type: .string),
+                "valuePercentage": GeminiSchema(type: .number),
+                "valueReps": GeminiSchema(type: .integer),
+                "valueWeightKg": GeminiSchema(type: .number),
+                "replacementExerciseName": GeminiSchema(type: .string)
+            ],
+            required: ["explanation", "actionType"]
+        )
+    }
+    
+    private var multiDayProgramSchema: GeminiSchema {
+        let routineSchema = GeminiSchema(
+            type: .object,
+            properties: [
+                "dayName": GeminiSchema(type: .string),
+                "focus": GeminiSchema(type: .string),
+                "exercises": GeminiSchema(type: .array, items: exerciseSchema)
+            ],
+            required: ["dayName", "focus", "exercises"]
+        )
+        
+        return GeminiSchema(
+            type: .object,
+            properties: [
+                "title": GeminiSchema(type: .string),
+                "description": GeminiSchema(type: .string),
+                "durationWeeks": GeminiSchema(type: .integer),
+                "schedule": GeminiSchema(type: .array, items: routineSchema)
+            ],
+            required: ["title", "description", "durationWeeks", "schedule"]
+        )
+    }
+
+    private var chatResponseSchema: GeminiSchema {
+        GeminiSchema(
+            type: .object,
+            properties: [
+                "aiMessage": GeminiSchema(type: .string, description: "Your conversational response or answer to the user's question."),
+                "hasWorkout": GeminiSchema(type: .boolean, description: "Set to true ONLY IF the user explicitly asked you to generate a workout routine/plan."),
+                "workoutTitle": GeminiSchema(type: .string, description: "Title of the workout (only if hasWorkout is true)"),
+                "exercises": GeminiSchema(type: .array, items: exerciseSchema, description: "The exercises (only if hasWorkout is true)")
+            ],
+            required: ["aiMessage", "hasWorkout"] // Упражнения и title опциональны
+        )
+    }
+
+    private var recoverySchema: GeminiSchema {
+        GeminiSchema(
+            type: .object,
+            properties: [
+                "recommendedHours": GeminiSchema(type: .number, description: "Recommended recovery time in hours (e.g., 24, 48, 72, 96).")
+            ],
+            required: ["recommendedHours"]
+        )
+    }
+
+    // MARK: - 2. Smart Routing & Classifiers
+    
+    /// Молниеносный запрос, чтобы понять: юзер просто болтает или просит составить тренировку?
+    public func classifyIntent(userMessage: String) async throws -> Bool {
+        let systemPrompt = "Analyze the user's message. Does the user explicitly ask to create, build, or generate a workout plan or routine? Reply ONLY with 'true' or 'false'."
         
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
             contents: [.init(role: "user", parts: [.init(text: userMessage)])],
-            generationConfig: .init(temperature: 0.7, responseMimeType: "text/plain")
+            generationConfig: .init(temperature: 0.1, responseMimeType: "text/plain", responseSchema: nil)
         )
         let response = try await networkClient.generateText(from: requestBody)
-        return response.trimmingCharacters(in: .whitespacesAndNewlines)
+        return response.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "true"
     }
+
+    // MARK: - 3. Text / Markdown Generators
     
-    // --- 1. ДЛЯ ГЕНЕРАЦИИ ОТВЕТА / НОВОЙ ТРЕНИРОВКИ ---
-    public func generateWorkoutPlan(userRequest: String, userProfile: UserProfileContext) async throws -> AICoachResponseDTO {
-        let requestBody = GeminiRequest(
-            systemInstruction: .init(parts: [.init(text: createSystemPrompt(language: userProfile.language, tone: userProfile.aiCoachTone, weightUnit: userProfile.weightUnit, availableExercises: userProfile.availableExercises))]),
-            contents: [.init(role: "user", parts: [.init(text: createUserPrompt(request: userRequest, profile: userProfile))])],
-            generationConfig: .init(temperature: 0.5, responseMimeType: "application/json")
-        )
-        
-        let responseText = try await networkClient.generateText(from: requestBody)
-        return try await parseCoachResponse(from: responseText)
-    }
-    
-    // --- 2. ДЛЯ СОВЕТОВ ВО ВРЕМЯ ТРЕНИРОВКИ ---
-    public func analyzeActiveWorkout(userMessage: String, workoutContext: String, catalogContext: String, tone: String, weightUnit: String) async throws -> InWorkoutResponseDTO {
+    public func generateChatTitle(for userMessage: String) async throws -> String {
         let isRussian = Locale.current.language.languageCode?.identifier == "ru"
-        let langInstruction = isRussian ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ, НО НАЗВАНИЯ УПРАЖНЕНИЙ ОСТАВЛЯЙ НА АНГЛИЙСКОМ!" : "REPLY STRICTLY IN ENGLISH!"
-
-        let systemPrompt = """
-        You are an elite AI Strength Coach. 
-        \(langInstruction)
-        
-        ПРАВИЛА:
-        1. YOU MUST ALWAYS RETURN A VALID JSON OBJECT.
-        2. All weight values MUST be in \(weightUnit).
-        3. "explanation" — твой ответ НА РУССКОМ.
-        4. Если Workout ЗАВЕРШЕНА, "actionType" ВСЕГДА должен быть "none".
-        5. "actionType" ДОЛЖЕН БЫТЬ одним из: replaceExercise, dropWeight, reduceRemainingLoad, skipExercise, addSet, none.
-        
-        ДОСТУПНЫЕ УПРАЖНЕНИЯ ДЛЯ ЗАМЕНЫ:
-        \(catalogContext)
-        """
-        
-        let userPrompt = "WORKOUT CONTEXT:\n\(workoutContext)\n\nUSER MESSAGE:\n\"\(userMessage)\""
+        let systemPrompt = isRussian
+            ? "Придумай очень краткое название (максимум 2-3 слова) для чата о фитнесе. Верни только текст без кавычек."
+            : "Create a very short title (max 2-3 words) for a fitness chat. Return ONLY the text without quotes."
         
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-            contents: [.init(role: "user", parts: [.init(text: userPrompt)])],
-            generationConfig: .init(temperature: 0.3, responseMimeType: "application/json")
+            contents: [.init(role: "user", parts: [.init(text: userMessage)])],
+            generationConfig: .init(temperature: 0.7, responseMimeType: "text/plain", responseSchema: nil)
         )
-        
-        let responseText = try await networkClient.generateText(from: requestBody)
-        var text = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
-        else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
-        if text.hasSuffix("```") { text = String(text.dropLast(3)) }
-        
-        guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
-        
-        return try await MainActor.run {
-            try JSONDecoder().decode(InWorkoutResponseDTO.self, from: jsonData)
-        }
-    }
-
-    // --- 3. ДЛЯ ЕЖЕНЕДЕЛЬНОГО РЕВЬЮ ---
-    public func generatePerformanceReview(statsContext: String, language: String) async throws -> String {
-        let isRussian = language == "Russian"
-        let systemPrompt: String
-        let userStatsHeader: String
-        
-        if isRussian {
-            systemPrompt = "Ты — элитный аналитик. Напиши Motivational обзор в Markdown. ОТВЕЧАЙ НА РУССКОМ. Не используй блоки кода ```markdown."
-            userStatsHeader = "Вот моя статистика:"
-        } else {
-            systemPrompt = "You are an elite data analyst. Write a motivational review in Markdown. REPLY IN ENGLISH. Do not use code blocks like ```markdown."
-            userStatsHeader = "Here are my statistics:"
-        }
-        
-        let requestBody = GeminiRequest(
-            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-            contents: [.init(role: "user", parts: [.init(text: "\(userStatsHeader)\n\(statsContext)")])],
-            generationConfig: .init(temperature: 0.7, responseMimeType: nil)
-        )
-        
-        return try await networkClient.generateText(from: requestBody)
+        return try await networkClient.generateText(from: requestBody).trimmingCharacters(in: .whitespacesAndNewlines)
     }
     
-    // --- PRIVATE PROMPT HELPERS ---
-    private func createSystemPrompt(language: String, tone: String, weightUnit: String, availableExercises: [String]) -> String {
-        var prompt = "ALWAYS RETURN VALID JSON. Weights must be in \(weightUnit).\n"
-        if language == "Russian" { prompt += "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ.\n" }
-        if !availableExercises.isEmpty { prompt += "AVAILABLE EXERCISES:\n\(availableExercises.joined(separator: ", "))" }
-        return prompt
-    }
-    
-    private func createUserPrompt(request: String, profile: UserProfileContext) -> String {
-        return "ПРОФИЛЬ: Вес: \(profile.weightKg)\nЗАПРОС: \"\(request)\""
-    }
-    
-    private func parseCoachResponse(from rawContent: String) async throws -> AICoachResponseDTO {
-        let text = rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let startIndex = text.firstIndex(of: "{"), let endIndex = text.lastIndex(of: "}") else {
-            throw AILogicError.invalidData
+    public func generatePerformanceReview(statsContext: String, language: String) async throws -> AIWeeklyReviewDTO {
+            let isRussian = language == "Russian"
+            let langInstruction = isRussian ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (но значения ключей JSON оставь английскими). Будь кратким, дерзким и мотивирующим." : "REPLY STRICTLY IN ENGLISH. Be brief, punchy, and motivational."
+            let systemPrompt = """
+            You are an elite, savage data analyst and AI strength coach. 
+            Analyze the user's weekly statistics. 
+            Calculate a weeklyScore (0-100).
+            Assign a coachMood ('fire' for great week, 'ice' for average/consistent, 'warning' for skipped workouts or low volume).
+            \(langInstruction)
+            """
+            
+            let userStatsHeader = isRussian ? "Моя статистика:" : "My stats:"
+            
+            let requestBody = GeminiRequest(
+                systemInstruction: .init(parts: [.init(text: systemPrompt)]),
+                contents: [.init(role: "user", parts: [.init(text: "\(userStatsHeader)\n\(statsContext)")])],
+                generationConfig: .init(
+                    temperature: 0.4,
+                    responseMimeType: "application/json",
+                    responseSchema: weeklyReviewSchema // ВАЖНО: Требуем JSON
+                )
+            )
+            
+            let responseText = try await networkClient.generateText(from: requestBody)
+            guard let jsonData = responseText.data(using: .utf8) else { throw AILogicError.noDataReturned }
+            return try JSONDecoder().decode(AIWeeklyReviewDTO.self, from: jsonData)
         }
-        
-        let jsonString = String(text[startIndex...endIndex])
-        guard let jsonData = jsonString.data(using: .utf8) else { throw AILogicError.noDataReturned }
-        
-        do {
-            let workoutDTO = try await MainActor.run {
-                try JSONDecoder().decode(GeneratedWorkoutDTO.self, from: jsonData)
-            }
-            if workoutDTO.exercises.isEmpty && workoutDTO.title.isEmpty {
-                return AICoachResponseDTO(text: workoutDTO.aiMessage, workout: nil)
-            }
-            return AICoachResponseDTO(text: workoutDTO.aiMessage, workout: workoutDTO)
-        } catch {
-            throw AILogicError.friendlyError
-        }
-    }
-}
-
-extension AILogicService {
     
     public func generateFormRoast(exercise: String, reps: Int, language: String) async throws -> String {
         let isRussian = language == "Russian"
@@ -177,128 +227,180 @@ extension AILogicService {
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
             contents: [.init(role: "user", parts: [.init(text: userPrompt)])],
-            generationConfig: .init(temperature: 0.9, responseMimeType: "text/plain") // Higher temp for more creativity
+            generationConfig: .init(temperature: 0.9, responseMimeType: "text/plain", responseSchema: nil)
+        )
+        return try await networkClient.generateText(from: requestBody).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    /// ПОТОКОВЫЙ ЧАТ (Для обычного общения)
+    public func streamChatResponse(userRequest: String, userProfile: UserProfileContext) async throws -> AsyncThrowingStream<String, Error> {
+        let prompt = """
+        You are an elite AI Strength Coach. Your tone is \(userProfile.aiCoachTone).
+        Answer the user's fitness questions conversationally. DO NOT generate structured workout plans here.
+        Weights must be in \(userProfile.weightUnit).
+        \(userProfile.language == "Russian" ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ." : "")
+        """
+        
+        let requestBody = GeminiRequest(
+            systemInstruction: .init(parts: [.init(text: prompt)]),
+            contents: [.init(role: "user", parts: [.init(text: userRequest)])],
+            generationConfig: .init(temperature: 0.7, responseMimeType: "text/plain", responseSchema: nil)
+        )
+        return try await networkClient.streamText(from: requestBody)
+    }
+    
+    // MARK: - 4. JSON Structured Outputs Generators
+    
+    public func generateWorkoutPlan(userRequest: String, userProfile: UserProfileContext) async throws -> AICoachResponseDTO {
+        let requestBody = GeminiRequest(
+            systemInstruction: .init(parts: [.init(text: createSystemPrompt(profile: userProfile))]),
+            contents: [.init(role: "user", parts: [.init(text: "ПРОФИЛЬ: Вес: \(userProfile.weightKg)\nЗАПРОС: \"\(userRequest)\"")])],
+            generationConfig: .init(
+                temperature: 0.4,
+                responseMimeType: "application/json",
+                responseSchema: chatResponseSchema
+            )
         )
         
-        let response = try await networkClient.generateText(from: requestBody)
-        return response.trimmingCharacters(in: .whitespacesAndNewlines)
+        let responseText = try await networkClient.generateText(from: requestBody)
+        guard let jsonData = responseText.data(using: String.Encoding.utf8) else { throw AILogicError.noDataReturned }
+        
+        let networkResponse = try JSONDecoder().decode(ChatNetworkResponse.self, from: jsonData)
+        
+        // Роутинг: тренировка или просто текст?
+        if networkResponse.hasWorkout, let exs = networkResponse.exercises, !exs.isEmpty {
+            let workoutDTO = GeneratedWorkoutDTO(
+                title: networkResponse.workoutTitle ?? "Custom Workout",
+                aiMessage: networkResponse.aiMessage,
+                exercises: exs
+            )
+            return AICoachResponseDTO(text: networkResponse.aiMessage, workout: workoutDTO)
+        } else {
+            return AICoachResponseDTO(text: networkResponse.aiMessage, workout: nil)
+        }
     }
-}
-extension AILogicService {
+
+    public func processSmartAction(commandType: String, workoutContext: String, catalogContext: String, weightUnit: String, language: String) async throws -> SmartActionDTO {
+            
+            let isRussian = language == "Russian"
+            let langInstruction = isRussian ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (но ключи JSON оставь на английском)." : "REPLY STRICTLY IN ENGLISH."
+            
+            let systemPrompt = """
+            You are an elite AI-coach. Your task is to instantly adjust the current workout upon request.
+            If switching from barbell to dumbbells — reduce weight by 15-20%. If "Too Heavy" - reduce by 10%.
+            \(langInstruction)
+            
+            AVAILABLE EXERCISES FOR SWAP:
+            \(catalogContext)
+            """
+            
+            let userPrompt = "Current workout:\n\(workoutContext)\n\nUser command: \(commandType)"
+            
+            let requestBody = GeminiRequest(
+                systemInstruction: .init(parts: [.init(text: systemPrompt)]),
+                contents: [.init(role: "user", parts: [.init(text: userPrompt)])],
+                generationConfig: .init(temperature: 0.3, responseMimeType: "application/json", responseSchema: smartActionSchema)
+            )
+            
+            let responseText = try await networkClient.generateText(from: requestBody)
+            guard let jsonData = responseText.data(using: String.Encoding.utf8) else { throw AILogicError.noDataReturned }
+            
+            return try JSONDecoder().decode(SmartActionDTO.self, from: jsonData)
+        }
     
-    // --- 4. FOR MULTI-DAY PROGRAM GENERATION ---
-    public func generateMultiDayProgram(
-        goal: String,
-        level: String,
-        days: Int,
-        equipment: String,
-        musclesToGrow: [String],
-        musclesToExclude: [String]
-    ) async throws -> GeneratedProgramDTO {
+    public func analyzeActiveWorkout(userMessage: String, workoutContext: String, catalogContext: String, tone: String, weightUnit: String) async throws -> InWorkoutResponseDTO {
+        let isRussian = Locale.current.language.languageCode?.identifier == "ru"
+        let langInstruction = isRussian ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ. Названия упражнений оставляй на английском." : "REPLY STRICTLY IN ENGLISH."
+
+        let systemPrompt = """
+        You are an elite AI Strength Coach. \(langInstruction)
+        All weights are in \(weightUnit).
+        AVAILABLE EXERCISES FOR SWAP:
+        \(catalogContext)
+        """
+        
+        let requestBody = GeminiRequest(
+            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
+            contents: [.init(role: "user", parts: [.init(text: "CONTEXT:\n\(workoutContext)\nUSER: \"\(userMessage)\"")])],
+            generationConfig: .init(temperature: 0.2, responseMimeType: "application/json", responseSchema: inWorkoutResponseSchema)
+        )
+        
+        let responseText = try await networkClient.generateText(from: requestBody)
+        guard let jsonData = responseText.data(using: String.Encoding.utf8) else { throw AILogicError.noDataReturned }
+        
+        return try JSONDecoder().decode(InWorkoutResponseDTO.self, from: jsonData)
+    }
+    
+    public func generateMultiDayProgram(goal: String, level: String, days: Int, equipment: String, musclesToGrow: [String], musclesToExclude: [String], language: String, catalogContext: String) async throws -> GeneratedProgramDTO {
+        let isRussian = language == "Russian"
+        let langInstruction = isRussian ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (ключи JSON оставь на английском)." : "REPLY STRICTLY IN ENGLISH."
         
         let systemPrompt = """
-        You are an elite AI Strength & Conditioning Architect.
-        Design a premium multi-day workout program based on the user's parameters.
-        
+        You are an elite AI Strength & Conditioning Architect. Design a premium multi-day workout program.
+        \(langInstruction)
         RULES:
-        1. YOU MUST RETURN ONLY A RAW, VALID JSON OBJECT. NO markdown formatting, NO ```json wrappers, NO explanations.
-        2. Create EXACTLY \(days) workout days in the "schedule" array.
-        3. Goal: \(goal). Experience Level: \(level). Available Equipment: \(equipment).
-        4. FOCUS HEAVILY on growing these muscles: \(musclesToGrow.isEmpty ? "None specified" : musclesToGrow.joined(separator: ", ")).
-        5. COMPLETELY EXCLUDE exercises targeting these muscles (e.g., due to injury): \(musclesToExclude.isEmpty ? "None specified" : musclesToExclude.joined(separator: ", ")).
-        6. Use standard exercise names from the catalog.
-        7. Provide appropriate sets, reps, and restSeconds for the goal.
-        
-        JSON STRUCTURE:
-        {
-          "title": "Program Name",
-          "description": "Short motivational description",
-          "durationWeeks": 4,
-          "schedule": [
-            {
-              "dayName": "Day 1",
-              "focus": "Chest & Triceps",
-              "exercises": [
-                {
-                  "name": "Bench Press",
-                  "muscleGroup": "Chest",
-                  "type": "Strength",
-                  "sets": 4,
-                  "reps": 8,
-                  "recommendedWeightKg": null,
-                  "restSeconds": 90
-                }
-              ]
-            }
-          ]
-        }
+        1. Create EXACTLY \(days) workout days.
+        2. Goal: \(goal). Experience Level: \(level). Available Equipment: \(equipment).
+        3. FOCUS HEAVILY on growing: \(musclesToGrow.isEmpty ? "None specified" : musclesToGrow.joined(separator: ", ")).
+        4. EXCLUDE exercises targeting: \(musclesToExclude.isEmpty ? "None specified" : musclesToExclude.joined(separator: ", ")).
+        5. MUST use exercises EXCLUSIVELY from this approved list: \(catalogContext). Do NOT invent exercises.
         """
         
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
             contents: [.init(role: "user", parts: [.init(text: "Generate my \(days)-day program.")])],
-            generationConfig: .init(temperature: 0.4, responseMimeType: "application/json")
+            generationConfig: .init(temperature: 0.4, responseMimeType: "application/json", responseSchema: multiDayProgramSchema)
         )
         
         let responseText = try await networkClient.generateText(from: requestBody)
-        var text = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
-        else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
-        if text.hasSuffix("```") { text = String(text.dropLast(3)) }
+        guard let jsonData = responseText.data(using: String.Encoding.utf8) else { throw AILogicError.noDataReturned }
         
-        guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
-        
-        do {
-            return try await MainActor.run {
-                try JSONDecoder().decode(GeneratedProgramDTO.self, from: jsonData)
-            }
-        } catch {
-            print("Decoding Error: \(error)")
-            throw AILogicError.invalidData
-        }
+        return try JSONDecoder().decode(GeneratedProgramDTO.self, from: jsonData)
     }
-}
-// В файл: WorkoutTracker/Services/AI/AILogicService.swift
-extension AILogicService {
-    public func processSmartAction(
-        commandType: String,
-        workoutContext: String,
-        catalogContext: String,
-        weightUnit: String
-    ) async throws -> SmartActionDTO {
-        
+
+    /// Анализирует тяжесть тренировки и выдает оптимальное время восстановления в часах (Умное восстановление)
+    public func calculateOptimalRecoveryTime(workoutContext: String) async throws -> Double {
         let systemPrompt = """
-        Ты — элитный AI-тренер. Твоя задача — мгновенно корректировать текущую тренировку по запросу.
-        
-        ПРАВИЛА ОТВЕТА (ТОЛЬКО JSON):
-        1. "action": тип действия ("swap", "reduce_weight", "increase_weight", "add_finisher").
-        2. "exerciseName": название целевого упражнения (СТРОГО ИЗ КАТАЛОГА НА АНГЛИЙСКОМ).
-        3. "setsRemaining": количество оставшихся сетов (integer).
-        4. "weightValue": новый рабочий вес (double) в \(weightUnit). Если переход со штанги на гантели — снижай вес на 15-20%. Если "Too Heavy" - снижай на 10%.
-        5. "reasoning": короткая дерзкая фраза НА РУССКОМ для голосового ассистента (макс 2 предложения). Пример: "Тренажер занят? Не беда, сделаем жим гантелей. Бери по 30 килограмм и погнали!"
-        
-        ДОСТУПНЫЕ УПРАЖНЕНИЯ:
-        \(catalogContext)
+        You are an elite sports scientist. Analyze the workout summary provided by the user.
+        Based on the total volume, number of sets, and average effort (RPE/Intensity), calculate the optimal muscle recovery time in hours.
+        Return ONLY a JSON object containing 'recommendedHours'.
         """
-        
-        let userPrompt = "Текущий статус тренировки:\n\(workoutContext)\n\nКоманда пользователя: \(commandType)"
         
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-            contents: [.init(role: "user", parts: [.init(text: userPrompt)])],
-            generationConfig: .init(temperature: 0.3, responseMimeType: "application/json")
+            contents: [.init(role: "user", parts: [.init(text: "WORKOUT SUMMARY:\n\(workoutContext)")])],
+            generationConfig: .init(temperature: 0.1, responseMimeType: "application/json", responseSchema: recoverySchema)
         )
         
         let responseText = try await networkClient.generateText(from: requestBody)
-        var text = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
-        if text.hasPrefix("```json") { text = String(text.dropFirst(7)) }
-        else if text.hasPrefix("```") { text = String(text.dropFirst(3)) }
-        if text.hasSuffix("```") { text = String(text.dropLast(3)) }
+        guard let jsonData = responseText.data(using: String.Encoding.utf8) else { throw AILogicError.noDataReturned }
         
-        guard let jsonData = text.data(using: .utf8) else { throw AILogicError.noDataReturned }
+        let response = try JSONDecoder().decode(RecoveryResponseDTO.self, from: jsonData)
+        return min(max(response.recommendedHours, 12.0), 120.0)
+    }
+
+    // MARK: - Private Prompt Helpers
+    
+    private func createSystemPrompt(profile: UserProfileContext) -> String {
+        var prompt = """
+        You are an elite AI Strength Coach. Your tone is \(profile.aiCoachTone).
+        You can chat, answer fitness questions, OR generate workout plans.
         
-        return try await MainActor.run {
-            try JSONDecoder().decode(SmartActionDTO.self, from: jsonData)
+        RULES FOR JSON RESPONSE:
+        1. "aiMessage": ALWAYS provide your conversational response here.
+        2. "hasWorkout": Set to true ONLY if the user explicitly asks for a workout plan or routine. If they just say "Hello" or ask a general question, set it to false.
+        3. "workoutTitle" and "exercises": ONLY fill these if hasWorkout is true.
+        
+        Weights must be in \(profile.weightUnit).
+        CRITICAL RULE: Do NOT mention the user's body weight in your conversational response. Focus entirely on the workout or the question.
+        """
+        
+        if profile.language == "Russian" {
+            prompt += "\nОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (кроме названий упражнений)."
         }
+        if !profile.availableExercises.isEmpty {
+            prompt += "\nAVAILABLE EXERCISES FOR WORKOUTS:\n\(profile.availableExercises.joined(separator: ", "))"
+        }
+        return prompt
     }
 }

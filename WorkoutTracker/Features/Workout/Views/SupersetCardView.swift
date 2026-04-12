@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: WorkoutTracker/Views/Workout/SupersetCardView.swift
+// FILE: WorkoutTracker/Features/Workout/Views/SupersetCardView.swift
 // ============================================================
 
 internal import SwiftUI
@@ -118,7 +118,6 @@ struct SupersetCardView: View {
         .disabled(isWorkoutCompleted)
     }
     
-    // ✅ ИСПРАВЛЕНИЕ: Убрали tutorialManager, используем новый чистый API
     private func finishSupersetAction() {
         viewModel.handleExerciseFinished(
             exerciseId: superset.id,

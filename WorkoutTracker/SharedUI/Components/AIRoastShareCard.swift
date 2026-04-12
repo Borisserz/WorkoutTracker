@@ -15,6 +15,8 @@ struct AIRoastShareCard: View {
     let roastText: String
     let exerciseName: String
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         ZStack {
             // Dark Gradient Background
@@ -56,12 +58,12 @@ struct AIRoastShareCard: View {
                 VStack(spacing: 16) {
                     Text(LocalizationHelper.shared.translateName(exerciseName).uppercased())
                         .font(.headline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(themeManager.current.secondaryAccent)
                         .tracking(2)
                     
                     Text("\"\(roastText)\"")
                         .font(.system(size: 42, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .multilineTextAlignment(.center)
                         .minimumScaleFactor(0.5)
                         .padding(.horizontal, 40)
@@ -76,7 +78,7 @@ struct AIRoastShareCard: View {
                     Text(LocalizedStringKey("Tracked with WorkoutTracker"))
                 }
                 .font(.title2)
-                .foregroundColor(.gray.opacity(0.6))
+                .foregroundColor(themeManager.current.secondaryAccent.opacity(0.6))
                 .padding(.bottom, 60)
             }
         }

@@ -11,8 +11,6 @@ struct WorkoutDetailHeaderView: View {
     
     @Environment(UnitsManager.self) var unitsManager
     
-    // ✅ FIX: Removed local completedSetsCount calculation.
-    
     var body: some View {
         VStack(spacing: 16) {
             HStack {
@@ -89,7 +87,6 @@ struct WorkoutDetailHeaderView: View {
                                    .foregroundColor(.secondary)
                                    .textCase(.uppercase)
                                
-                               // ✅ FIX: Bind directly to the ViewModel's reactive DTO
                                Text("\(viewModel.workoutAnalytics.completedSetsCount)")
                                    .font(.system(size: 28, weight: .heavy, design: .rounded))
                                    .foregroundColor(.cyan)
@@ -104,7 +101,7 @@ struct WorkoutDetailHeaderView: View {
         .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
         .zIndex(10)
         .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.volume)
-               .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.completedSetsCount) 
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: viewModel.workoutAnalytics.completedSetsCount)
     }
 }
 

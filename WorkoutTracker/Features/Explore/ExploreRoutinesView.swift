@@ -52,37 +52,36 @@ final class ExploreViewModel {
         selectedEquipment = nil
     }
 }
+
 struct ExploreRoutinesView: View {
     @State private var viewModel = ExploreViewModel()
     @State private var showFilters = false
-    
-    // ✅ ДОБАВЛЕНО: Состояние для вызова ИИ
     @State private var showAIBuilder = false
     
-    // ✅ ДОБАВЛЕНО: Доступ к DIContainer для передачи aiLogicService
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(DIContainer.self) private var di
     
     var body: some View {
         ZStack {
-            Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+            themeManager.current.background.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Fixed Header Area
+                // MARK: - 1. Fixed Header Area
                 VStack(spacing: 12) {
                     // Type Picker
                     Picker(LocalizedStringKey("Workout Type"), selection: $viewModel.selectedTab) {
                         Text(LocalizedStringKey("Programs")).tag(ExploreTabType.programs)
                         Text(LocalizedStringKey("Single Routines")).tag(ExploreTabType.singles)
                     }
-                    .pickerStyle(.segmented) // ✅ Модификаторы теперь применяются прямо к Picker
+                    .pickerStyle(.segmented)
                     .padding(.horizontal)
                     .padding(.top, 8)
                     
-                    // Search & Filter
+                    // Search & Filter Row
                     HStack(spacing: 12) {
                         DebouncedSearchBar(debouncer: viewModel.searchDebouncer)
                             .padding()
-                            .background(Color(UIColor.secondarySystemBackground))
+                            .background(themeManager.current.surface)
                             .cornerRadius(16)
                             .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
                         
@@ -94,13 +93,17 @@ struct ExploreRoutinesView: View {
                             ZStack(alignment: .topTrailing) {
                                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
                                     .font(.system(size: 32))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(themeManager.current.primaryAccent)
                                 
                                 if viewModel.activeFilterCount > 0 {
                                     Circle()
                                         .fill(Color.red)
                                         .frame(width: 14, height: 14)
-                                        .overlay(Text("\(viewModel.activeFilterCount)").font(.system(size: 9, weight: .bold)).foregroundColor(.white))
+                                        .overlay(
+                                            Text("\(viewModel.activeFilterCount)")
+                                                .font(.system(size: 9, weight: .bold))
+                                                .foregroundColor(.white)
+                                        )
                                         .offset(x: 2, y: -2)
                                 }
                             }
@@ -109,24 +112,38 @@ struct ExploreRoutinesView: View {
                     .padding(.horizontal)
                     .padding(.bottom, 8)
                 }
-                .background(Color(UIColor.systemGroupedBackground))
+                .background(themeManager.current.background)
                 .zIndex(1)
                 
-                // Scrollable Storefront
+                // MARK: - 2. Scrollable Content
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 20) {
                         
-                        // ✅ ИСПРАВЛЕНО: Теперь кнопка меняет State
+                        // NEW: Hall of Fame Entry (Golden Era Vibe)
+                        NavigationLink(destination: LegendaryRoutinesView()) {
+                            HallOfFameBanner()
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal)
+                        .padding(.top, 16)
+                        
+                        // AI Program Builder Banner
                         Button {
                             let generator = UIImpactFeedbackGenerator(style: .medium)
                             generator.impactOccurred()
-                            showAIBuilder = true // Открываем шторку
+                            showAIBuilder = true
                         } label: {
                             PremiumAIBannerView()
                         }
+                        .buttonStyle(.plain)
                         .padding(.horizontal)
-                        .padding(.top, 16)
-                        .buttonStyle(.plain) // Убирает синюю подсветку при нажатии
+                        
+                        // Section Divider
+                        Text(viewModel.selectedTab == .programs ? "All Programs" : "Single Routines")
+                            .font(.headline)
+                            .foregroundColor(themeManager.current.secondaryText)
+                            .padding(.horizontal)
+                            .padding(.top, 10)
                                 
                         if viewModel.filteredPrograms.isEmpty {
                             EmptyStateView(
@@ -145,7 +162,6 @@ struct ExploreRoutinesView: View {
                                 }
                             }
                             .padding(.horizontal)
-                            .padding(.top, 16)
                         }
                     }
                     .padding(.bottom, 40)
@@ -157,17 +173,68 @@ struct ExploreRoutinesView: View {
         .sheet(isPresented: $showFilters) {
             ExploreFiltersSheet(viewModel: viewModel)
         }
-        // ✅ ДОБАВЛЕНО: Вызов самой шторки AI Program Builder
         .sheet(isPresented: $showAIBuilder) {
             AIProgramBuilderSheet(aiLogicService: di.aiLogicService)
         }
     }
 }
-// MARK: - Premium AI Banner
-struct PremiumAIBannerView: View {
+
+// MARK: - Hall of Fame Banner (Sub-component)
+struct HallOfFameBanner: View {
+    @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         HStack(spacing: 16) {
-            // Иконка
+            ZStack {
+                Circle()
+                    .fill(Color.yellow.opacity(0.2))
+                    .frame(width: 48, height: 48)
+                
+                Image(systemName: "star.fill")
+                    .font(.title2)
+                    .foregroundColor(.yellow)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Hall of Fame")
+                    .font(.headline)
+                    .fontWeight(.heavy)
+                    .foregroundColor(.white)
+                
+                Text("Train with legendary workout protocols.")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .font(.body.bold())
+                .foregroundColor(.white.opacity(0.5))
+        }
+        .padding(20)
+        .background(
+            LinearGradient(
+                colors: [Color(hex: "0F2027"), Color(hex: "203A43")],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.3), radius: 15, x: 0, y: 8)
+    }
+}
+
+// MARK: - Premium AI Banner
+struct PremiumAIBannerView: View {
+    @Environment(ThemeManager.self) private var themeManager
+
+    var body: some View {
+        HStack(spacing: 16) {
             ZStack {
                 Circle()
                     .fill(Color.white.opacity(0.2))
@@ -175,15 +242,14 @@ struct PremiumAIBannerView: View {
                 
                 Image(systemName: "wand.and.stars")
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
             }
             
-            // Тексты
             VStack(alignment: .leading, spacing: 4) {
                 Text("AI Program Architect")
                     .font(.headline)
                     .fontWeight(.heavy)
-                    .foregroundColor(.white)
+                    .foregroundColor(themeManager.current.background)
                 
                 Text("Design your perfect weekly split.")
                     .font(.subheadline)
@@ -197,15 +263,8 @@ struct PremiumAIBannerView: View {
                 .foregroundColor(.white.opacity(0.5))
         }
         .padding(20)
-        // Жестко заданный насыщенный градиент (выглядит премиально в любой теме)
-        .background(
-            LinearGradient(
-                colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], // Яркий фиолетовый к синему
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
+        .background(themeManager.current.premiumGradient)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 15, x: 0, y: 8)
+        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 15, x: 0, y: 8)
     }
 }

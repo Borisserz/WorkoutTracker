@@ -1,12 +1,13 @@
+// FILE: WorkoutTracker/Features/ExerciseCatalog/Views/ConfigureExerciseView.swift
 internal import SwiftUI
 
 struct ConfigureExerciseView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО: Инъекция темы
     
     var onAdd: (Exercise) -> Void
-    
     @State private var viewModel: ConfigureExerciseViewModel
     
     init(exerciseName: String, muscleGroup: String, exerciseType: ExerciseType = .strength, onAdd: @escaping (Exercise) -> Void) {
@@ -18,13 +19,13 @@ struct ConfigureExerciseView: View {
         ))
     }
     
-    // Биндинги: Добавлено округление (round) в get-блоках для фикса бага с длинными дробями при конвертации
+    // (Binding properties remain exactly the same)
     private var weightBinding: Binding<Double?> {
         Binding(
             get: {
                 guard let w = viewModel.form.weight else { return nil }
                 let converted = unitsManager.convertFromKilograms(w)
-                return (converted * 10).rounded() / 10 // Фикс дробей в UI
+                return (converted * 10).rounded() / 10
             },
             set: { viewModel.form.weight = $0.map { unitsManager.convertToKilograms($0) } }
         )
@@ -35,7 +36,7 @@ struct ConfigureExerciseView: View {
             get: {
                 guard let d = viewModel.form.distance else { return nil }
                 let converted = unitsManager.convertFromMeters(d)
-                return (converted * 100).rounded() / 100 // Фикс дробей в UI
+                return (converted * 100).rounded() / 100
             },
             set: { viewModel.form.distance = $0.map { unitsManager.convertToMeters($0) } }
         )
@@ -52,17 +53,13 @@ struct ConfigureExerciseView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Премиальный фон
-                Color(UIColor.systemGroupedBackground)
-                    .ignoresSafeArea()
+                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        
-                        // Главный заголовок
                         Text(LocalizationHelper.shared.translateName(viewModel.exerciseName))
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                             .padding(.horizontal, 20)
                             .padding(.top, 16)
                         
@@ -80,7 +77,7 @@ struct ConfigureExerciseView: View {
                         }
                         .padding(.horizontal, 20)
                         
-                        Spacer(minLength: 100) // Место под плавающую кнопку
+                        Spacer(minLength: 100)
                     }
                 }
             }
@@ -118,14 +115,12 @@ struct ConfigureExerciseView: View {
                     .font(.headline)
                     .fontWeight(.bold)
             }
-            .foregroundColor(.white)
+            .foregroundColor(themeManager.current.background)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(
-                LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
+            .background(themeManager.current.primaryGradient) // <--- ИЗМЕНЕНО: Используем градиент темы
             .cornerRadius(20)
-            .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)
+            .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, x: 0, y: 8) // <--- ИЗМЕНЕНО
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 10)
@@ -135,6 +130,7 @@ struct ConfigureExerciseView: View {
         )
     }
     
+    // (overloadBannerCard remains exactly the same as it uses semantic .green)
     private var overloadBannerCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
@@ -156,7 +152,7 @@ struct ConfigureExerciseView: View {
             
             Text(LocalizedStringKey("Your forecast allows it! Try **\(weightStr) \(unitsManager.weightUnitString())** today for better results."))
                 .font(.subheadline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
                 .lineSpacing(4)
             
             HStack(spacing: 12) {
@@ -170,7 +166,7 @@ struct ConfigureExerciseView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(Color.gray.opacity(0.15))
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                         .cornerRadius(12)
                 }
                 
@@ -184,7 +180,7 @@ struct ConfigureExerciseView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(Color.green)
-                        .foregroundColor(.white)
+                        .foregroundColor(themeManager.current.background)
                         .cornerRadius(12)
                         .shadow(color: .green.opacity(0.3), radius: 5, x: 0, y: 3)
                 }
@@ -228,15 +224,18 @@ struct ConfigureExerciseView: View {
 // MARK: - Custom UI Components
 
 struct CustomStepperCard: View {
+    @Environment(ThemeManager.self) private var themeManager
     let title: LocalizedStringKey
     @Binding var value: Int
     let range: ClosedRange<Int>
+    
+
     
     var body: some View {
         HStack {
             Text(title)
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Spacer()
             
@@ -248,7 +247,7 @@ struct CustomStepperCard: View {
                 } label: {
                     Image(systemName: "minus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(value > range.lowerBound ? .blue : .gray.opacity(0.3))
+                        .foregroundColor(value > range.lowerBound ? themeManager.current.primaryAccent : .gray.opacity(0.3)) // <--- ИЗМЕНЕНО
                 }
                 
                 Text("\(value)")
@@ -263,22 +262,23 @@ struct CustomStepperCard: View {
                 } label: {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
-                        .foregroundColor(value < range.upperBound ? .blue : .gray.opacity(0.3))
+                        .foregroundColor(value < range.upperBound ? themeManager.current.primaryAccent : .gray.opacity(0.3)) // <--- ИЗМЕНЕНО
                 }
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)
-            .background(Color.gray.opacity(0.1))
+            .background(themeManager.current.surfaceVariant)
             .cornerRadius(12)
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 3)
     }
 }
 
 struct CustomInputCard: View {
+    @Environment(ThemeManager.self) private var themeManager
     let title: LocalizedStringKey
     let placeholder: String
     let binding: Binding<Double?>
@@ -287,7 +287,7 @@ struct CustomInputCard: View {
         HStack {
             Text(title)
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Spacer()
             
@@ -297,13 +297,14 @@ struct CustomInputCard: View {
                 .padding(.vertical, 4)
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 3)
     }
 }
 
 struct CustomTimeCard: View {
+    @Environment(ThemeManager.self) private var themeManager
     let title: LocalizedStringKey
     let minBinding: Binding<Double?>
     let secBinding: Binding<Double?>
@@ -312,7 +313,7 @@ struct CustomTimeCard: View {
         HStack {
             Text(title)
                 .font(.headline)
-                .foregroundColor(.primary)
+                .foregroundColor(themeManager.current.primaryText)
             
             Spacer()
             
@@ -320,7 +321,7 @@ struct CustomTimeCard: View {
                 ClearableTextField(placeholder: "0", value: minBinding)
                     .frame(width: 50)
                 Text(LocalizedStringKey("min"))
-                    .font(.subheadline).foregroundColor(.secondary)
+                    .font(.subheadline).foregroundColor(themeManager.current.secondaryText)
                 
                 ClearableTextField(placeholder: "0", value: secBinding)
                     .frame(width: 50)
@@ -328,11 +329,11 @@ struct CustomTimeCard: View {
                         if let s = newValue, s > 59 { secBinding.wrappedValue = 59 }
                     }
                 Text(LocalizedStringKey("sec"))
-                    .font(.subheadline).foregroundColor(.secondary)
+                    .font(.subheadline).foregroundColor(themeManager.current.secondaryText)
             }
         }
         .padding(16)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 3)
     }

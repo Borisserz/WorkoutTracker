@@ -23,6 +23,8 @@ struct TrainingStyleDetailView: View {
     @State private var selectedPeriod: TrendPeriod = .month
     @State private var stats: TrainingStyleDTO? = nil
     
+        @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 24) {
@@ -75,7 +77,7 @@ struct TrainingStyleDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Mechanic Breakdown"))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
             
             Chart {
                 SectorMark(
@@ -86,7 +88,7 @@ struct TrainingStyleDetailView: View {
                 .cornerRadius(6)
                 .foregroundStyle(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom))
                 .annotation(position: .overlay) {
-                    if compPct > 10 { Text("\(compPct)%").font(.caption.bold()).foregroundColor(.white) }
+                    if compPct > 10 { Text("\(compPct)%").font(.caption.bold()).foregroundColor(themeManager.current.background) }
                 }
                 
                 SectorMark(
@@ -97,7 +99,7 @@ struct TrainingStyleDetailView: View {
                 .cornerRadius(6)
                 .foregroundStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom))
                 .annotation(position: .overlay) {
-                    if isoPct > 10 { Text("\(isoPct)%").font(.caption.bold()).foregroundColor(.white) }
+                    if isoPct > 10 { Text("\(isoPct)%").font(.caption.bold()).foregroundColor(themeManager.current.background) }
                 }
             }
             .frame(height: 240)
@@ -105,16 +107,16 @@ struct TrainingStyleDetailView: View {
                 VStack {
                     Text(LocalizedStringKey("Focus"))
                         .font(.caption)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                     Text("\(dominantPct)% ")
                         .font(.headline)
                         .bold()
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
                     + Text(dominantName)
                         .font(.headline)
                         .bold()
-                        .foregroundColor(.primary)
-                        .foregroundColor(.primary)
+                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(themeManager.current.primaryText)
                 }
             }
             
@@ -124,7 +126,7 @@ struct TrainingStyleDetailView: View {
             }
         }
         .padding(20)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(24)
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
         .padding(.horizontal)
@@ -135,7 +137,7 @@ struct TrainingStyleDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Equipment Arsenal"))
                 .font(.headline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
             
             let totalEq = stats.totalEquipmentSets
             
@@ -156,7 +158,7 @@ struct TrainingStyleDetailView: View {
                                     .font(.subheadline).bold()
                                 Spacer()
                                 Text("\(count) sets (\(Int(pct * 100))%)")
-                                    .font(.caption).foregroundColor(.secondary)
+                                    .font(.caption).foregroundColor(themeManager.current.secondaryText)
                             }
                             
                             GeometryReader { geo in
@@ -174,7 +176,7 @@ struct TrainingStyleDetailView: View {
             }
         }
         .padding(20)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(24)
         .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
         .padding(.horizontal)
@@ -193,16 +195,16 @@ struct TrainingStyleDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("AI Insight: \(insight.title)"))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 Text(LocalizedStringKey(insight.message))
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(themeManager.current.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
         }
         .padding(20)
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(24)
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(insight.color.opacity(0.3), lineWidth: 1))
         .shadow(color: insight.color.opacity(0.1), radius: 10, x: 0, y: 4)
@@ -214,7 +216,7 @@ struct TrainingStyleDetailView: View {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(LocalizedStringKey(title))
                 .font(.subheadline)
-                .foregroundColor(.secondary)
+                .foregroundColor(themeManager.current.secondaryText)
                 .lineLimit(1)                // Запрещаем перенос на вторую строку
                 .minimumScaleFactor(0.5)     // Разрешаем тексту сжаться, если не влезает
             Spacer(minLength: 2)             // Позволяем пробелу сжаться сильнее

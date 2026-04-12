@@ -26,6 +26,7 @@ struct ActiveWorkoutBannerContainer: View {
 struct ActiveWorkoutBanner: View {
     @Environment(DIContainer.self) private var di
     @Environment(WorkoutService.self) private var workoutService
+    @Environment(ThemeManager.self) private var themeManager
     let workout: Workout
     
     @State private var showDeleteAlert = false
@@ -50,9 +51,9 @@ struct ActiveWorkoutBanner: View {
             } label: {
                 Image(systemName: "chevron.up")
                     .font(.title3)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                     .frame(width: 40, height: 40)
-                    .background(Color.gray.opacity(0.1))
+                    .background(themeManager.current.secondaryAccent.opacity(0.1))
                     .clipShape(Circle())
             }
             
@@ -70,17 +71,17 @@ struct ActiveWorkoutBanner: View {
                         
                         Text(LocalizedStringKey("Workout"))
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                         
                         Text(workout.date, style: .timer)
                             .font(.headline)
                             .monospacedDigit()
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                     }
                     
                     Text(LocalizationHelper.shared.translateName(currentExerciseName))
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundColor(themeManager.current.secondaryText)
                         .lineLimit(1)
                 }
             }
@@ -108,7 +109,7 @@ struct ActiveWorkoutBanner: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                .stroke(themeManager.current.secondaryAccent.opacity(0.2), lineWidth: 1)
         )
         .onAppear {
             isBlinking = true

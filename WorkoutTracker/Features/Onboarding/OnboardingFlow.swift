@@ -18,14 +18,14 @@ struct OnboardingItem: Identifiable {
 struct OnboardingFlowView: View {
     @Binding var isOnboardingCompleted: Bool
     @Environment(TutorialManager.self) var tutorialManager
-    
+    @Environment(ThemeManager.self) private var themeManager
     @State private var currentTab = 0
     @AppStorage("userName") private var userName = ""
     @AppStorage("userBodyWeight") private var userBodyWeight = 0.0
     
     var body: some View {
         ZStack {
-            Color(UIColor.systemBackground).ignoresSafeArea()
+            themeManager.current.background.ignoresSafeArea()
             
             TabView(selection: $currentTab) {
                 OnboardingIntroView(onNext: { nextStep() }).tag(0)
@@ -50,6 +50,7 @@ struct OnboardingFlowView: View {
 // MARK: - ШАГ 1: Интро
 struct OnboardingIntroView: View {
     var onNext: () -> Void
+    @Environment(ThemeManager.self) private var themeManager
     let items: [OnboardingItem] = [
         OnboardingItem(image: "dumbbell.fill", title: "Track Workouts", description: "Log your sets, reps, and weights with ease. Support for supersets included.", color: .blue),
         OnboardingItem(image: "figure.mind.and.body", title: "Muscle Recovery", description: "Smart heatmap tracks your muscle fatigue and suggests recovery times.", color: .red),
@@ -67,7 +68,7 @@ struct OnboardingIntroView: View {
                             .resizable().scaledToFit().frame(height: 120).foregroundColor(items[index].color)
                             .padding().background(Circle().fill(items[index].color.opacity(0.1)).frame(width: 220, height: 220))
                         Text(items[index].title).font(.system(size: 28, weight: .bold, design: .rounded)).padding(.top, 20)
-                        Text(items[index].description).multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal, 30)
+                        Text(items[index].description).multilineTextAlignment(.center).foregroundColor(themeManager.current.secondaryText).padding(.horizontal, 30)
                         Spacer()
                     }
                     .tag(index)
@@ -80,7 +81,7 @@ struct OnboardingIntroView: View {
                 if slideIndex < items.count - 1 { withAnimation { slideIndex += 1 } } else { onNext() }
             }) {
                 let buttonTitle: LocalizedStringKey = slideIndex == items.count - 1 ? "Let's Set Up Profile" : "Next"
-                Text(buttonTitle).font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(Color.blue).cornerRadius(12)
+                Text(buttonTitle).font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12)
             }
             .padding(.horizontal, 30).padding(.bottom, 50)
         }
@@ -92,6 +93,7 @@ struct UserDataInputView: View {
     @Binding var name: String
     @Binding var weight: Double
     var onNext: () -> Void
+    @Environment(ThemeManager.self) private var themeManager
     
     private enum Field { case name, weight }
     @FocusState private var focusedField: Field?
@@ -107,14 +109,14 @@ struct UserDataInputView: View {
                 VStack(spacing: 25) {
                     Spacer(minLength: 20)
                     Text(LocalizedStringKey("About You")).font(.largeTitle).bold()
-                    Text(LocalizedStringKey("This helps us personalize your profile and calculate stats.")).foregroundColor(.secondary).multilineTextAlignment(.center).padding(.horizontal)
+                    Text(LocalizedStringKey("This helps us personalize your profile and calculate stats.")).foregroundColor(themeManager.current.secondaryText).multilineTextAlignment(.center).padding(.horizontal)
                     
                     VStack(spacing: 20) {
                         VStack(alignment: .leading) {
                             Text("Your Name").font(.caption).foregroundColor(isNameInvalid ? .red : .gray)
                             TextField(LocalizedStringKey("Champion"), text: $name)
                                 .font(.title3).padding()
-                                .background(isNameInvalid ? Color.red.opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .background(isNameInvalid ? Color.red.opacity(0.1) : themeManager.current.surface)
                                 .cornerRadius(12)
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(isNameInvalid ? Color.red : Color.clear, lineWidth: 1))
                                 .focused($focusedField, equals: .name)
@@ -128,7 +130,7 @@ struct UserDataInputView: View {
                             Text("Body Weight (\(UnitsManager.shared.weightUnitString()))").font(.caption).foregroundColor(isWeightInvalid ? .red : .gray)
                             TextField("75", text: $weightString)
                                 .font(.title3).keyboardType(.decimalPad).padding()
-                                .background(isWeightInvalid ? Color.red.opacity(0.1) : Color(UIColor.secondarySystemBackground))
+                                .background(isWeightInvalid ? Color.red.opacity(0.1) : themeManager.current.surface)
                                 .cornerRadius(12)
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(isWeightInvalid ? Color.red : Color.clear, lineWidth: 1))
                                 .focused($focusedField, equals: .weight)
@@ -144,7 +146,7 @@ struct UserDataInputView: View {
                     Spacer(minLength: 20)
                     
                     Button(action: validateAndContinue) {
-                        Text("Continue").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(Color.blue).cornerRadius(12)
+                        Text("Continue").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12)
                     }
                     .padding(.horizontal, 30).padding(.bottom, 50)
                 }
@@ -195,23 +197,24 @@ struct ShakeEffectModifier: ViewModifier {
 // MARK: - ШАГ 3: Разрешения
 struct PermissionsView: View {
     var onNext: () -> Void
+    @Environment(ThemeManager.self) private var themeManager
     @State private var notificationsAllowed = false
     
     var body: some View {
         VStack(spacing: 30) {
             Spacer()
-            Image(systemName: "bell.badge.fill").font(.system(size: 80)).foregroundColor(.orange).padding().background(Circle().fill(Color.orange.opacity(0.1)).frame(width: 150, height: 150))
+            Image(systemName: "bell.badge.fill").font(.system(size: 80)).foregroundColor(themeManager.current.secondaryMidTone).padding().background(Circle().fill(themeManager.current.secondaryMidTone.opacity(0.1)).frame(width: 150, height: 150))
             Text("Stay on Track").font(.largeTitle).bold()
-            Text("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam.").multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal)
+            Text("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam.").multilineTextAlignment(.center).foregroundColor(themeManager.current.secondaryText).padding(.horizontal)
             
             Button { requestNotifications() } label: {
                 HStack { Text(notificationsAllowed ? "Allowed" : "Enable Notifications"); if notificationsAllowed { Image(systemName: "checkmark") } }
-                .fontWeight(.semibold).padding().frame(maxWidth: .infinity).background(notificationsAllowed ? Color.green : Color.orange).foregroundColor(.white).cornerRadius(12)
+                .fontWeight(.semibold).padding().frame(maxWidth: .infinity).background(notificationsAllowed ? Color.green : themeManager.current.secondaryMidTone).foregroundColor(.white).cornerRadius(12)
             }
             .padding(.horizontal, 50).disabled(notificationsAllowed)
             
             Spacer()
-            Button(action: onNext) { Text("Continue").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(Color.blue).cornerRadius(12) }
+            Button(action: onNext) { Text("Continue").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12) }
             .padding(.horizontal, 30).padding(.bottom, 50)
         }
     }
@@ -228,17 +231,18 @@ struct PermissionsView: View {
 struct TutorialChoiceView: View {
     var onFinish: () -> Void
     @Environment(TutorialManager.self) var tutorialManager
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(spacing: 30) {
             Spacer()
             Image(systemName: "graduationcap.fill").font(.system(size: 80)).foregroundColor(.purple).padding().background(Circle().fill(Color.purple.opacity(0.1)).frame(width: 150, height: 150))
             Text("Quick Tutorial").font(.largeTitle).bold()
-            Text("Would you like a quick interactive tour to learn how to create workouts and track progress?").multilineTextAlignment(.center).foregroundColor(.secondary).padding(.horizontal)
+            Text("Would you like a quick interactive tour to learn how to create workouts and track progress?").multilineTextAlignment(.center).foregroundColor(themeManager.current.secondaryText).padding(.horizontal)
             Spacer()
             VStack(spacing: 15) {
-                Button { tutorialManager.reset(); onFinish() } label: { Text("Start Tutorial").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(Color.blue).cornerRadius(12).shadow(radius: 5) }
-                Button { tutorialManager.complete(); onFinish() } label: { Text("No, I'll figure it out").font(.headline).foregroundColor(.gray).padding() }
+                Button { tutorialManager.reset(); onFinish() } label: { Text("Start Tutorial").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12).shadow(radius: 5) }
+                Button { tutorialManager.complete(); onFinish() } label: { Text("No, I'll figure it out").font(.headline).foregroundColor(themeManager.current.secondaryAccent).padding() }
             }
             .padding(.horizontal, 30).padding(.bottom, 40)
         }

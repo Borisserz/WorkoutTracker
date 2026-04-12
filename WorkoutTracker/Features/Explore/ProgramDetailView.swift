@@ -6,7 +6,7 @@ internal import SwiftUI
 
 struct ProgramDetailView: View {
     let program: WorkoutProgramDefinition
-    
+    @Environment(ThemeManager.self) private var themeManager
     @Environment(PresetService.self) private var presetService
     @Environment(\.dismiss) private var dismiss
     
@@ -40,17 +40,17 @@ struct ProgramDetailView: View {
                         VStack(alignment: .leading, spacing: 12) {
                             Text(LocalizedStringKey(program.title))
                                 .font(.system(size: 32, weight: .heavy, design: .rounded))
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                             
                             HStack(spacing: 8) {
-                                ProgramTag(text: program.level.rawValue, icon: "chart.bar.fill", color: .blue)
-                                ProgramTag(text: program.goal.rawValue, icon: "target", color: .purple)
-                                ProgramTag(text: program.equipment.rawValue, icon: program.equipment.icon, color: .orange)
-                            }
+                                ProgramTag(text: program.level.rawValue, icon: "chart.bar.fill", color: themeManager.current.primaryAccent)
+                                                               ProgramTag(text: program.goal.rawValue, icon: "target", color: themeManager.current.deepPremiumAccent)
+                                                               ProgramTag(text: program.equipment.rawValue, icon: program.equipment.icon, color: themeManager.current.secondaryMidTone)
+                                                           }
                             
                             Text(LocalizedStringKey(program.description))
                                 .font(.body)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                                 .lineSpacing(4)
                                 .padding(.top, 4)
                         }
@@ -140,6 +140,7 @@ struct ProgramDetailView: View {
 
 // MARK: - Morphing Save Button
 struct MorphingSaveButton: View {
+    @Environment(ThemeManager.self) private var themeManager
     var isSaving: Bool
     var isSaved: Bool
     var defaultTitle: String
@@ -170,7 +171,7 @@ struct MorphingSaveButton: View {
                         .fontWeight(.bold)
                 }
             }
-            .foregroundColor(.white)
+            .foregroundColor(themeManager.current.background)
             // Morph the width down to a pill shape when saved
             .frame(maxWidth: isSaved ? 140 : .infinity)
             .padding(.vertical, 18)
@@ -209,6 +210,7 @@ struct MorphingSaveButton: View {
 struct RoutinePreviewCard: View {
     let routine: WorkoutPresetDTO
     let hideHeader: Bool
+    @Environment(ThemeManager.self) private var themeManager
     var dayIndex: Int? = nil
     @State private var selectedHistoryExercise: String? = nil
     var body: some View {
@@ -220,20 +222,20 @@ struct RoutinePreviewCard: View {
                     if UIImage(named: routine.icon) != nil {
                         Image(routine.icon).resizable().scaledToFit().frame(width: 24, height: 24)
                     } else {
-                        Image(systemName: routine.icon).foregroundColor(.blue).font(.title3)
+                        Image(systemName: routine.icon) .foregroundColor(themeManager.current.primaryAccent)
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
                         if let day = dayIndex {
                             Text("Day \(day)")
                                 .font(.caption)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.primaryAccent)
                                 .textCase(.uppercase)
                                 .fontWeight(.bold)
                         }
                         Text(LocalizedStringKey(routine.name))
                             .font(.headline)
-                            .foregroundColor(.primary)
+                            .foregroundColor(themeManager.current.primaryText)
                     }
                     Spacer()
                 }
@@ -250,12 +252,12 @@ struct RoutinePreviewCard: View {
                         HStack {
                             Image(systemName: ex.type == .cardio ? "figure.run" : "dumbbell.fill")
                                 .font(.caption)
-                                .foregroundColor(.blue)
+                                .foregroundColor(themeManager.current.primaryAccent)
                                 .frame(width: 20)
                             
                             Text(LocalizationHelper.shared.translateName(ex.name))
                                 .font(.subheadline)
-                                .foregroundColor(.primary)
+                                .foregroundColor(themeManager.current.primaryText)
                             
                             Spacer()
                             
@@ -264,7 +266,7 @@ struct RoutinePreviewCard: View {
                             
                             Text("\(safeSets.count) x \(repsCount) reps")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(themeManager.current.secondaryText)
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -280,7 +282,7 @@ struct RoutinePreviewCard: View {
                 
                 .padding(.vertical, hideHeader ? 8 : 0)
             }
-            .background(Color(UIColor.secondarySystemBackground))
+            .background(themeManager.current.surface)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)

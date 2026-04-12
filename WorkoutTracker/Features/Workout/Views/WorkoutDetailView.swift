@@ -114,12 +114,11 @@ struct WorkoutDetailContentView: View {
         .sheet(isPresented: $showTimerSetup) { TimerSetupSheet().environment(timerManager) }
         .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
                Button(LocalizedStringKey("Delete"), role: .destructive) {
-                   isDeletingEmptyWorkout = true // Блокируем логику в onDisappear
-                   let safeID = workout.persistentModelID // Безопасно сохраняем ID до удаления
-                   dismiss() // Сначала закрываем экран
+                   isDeletingEmptyWorkout = true
+                   let safeID = workout.persistentModelID
+                   dismiss()
                    
                    Task {
-                       // Ждем, пока экран полностью закроется, чтобы не сломать Bindable
                        try? await Task.sleep(for: .seconds(0.5))
                        await viewModel.deleteEmptyWorkout(workoutID: safeID)
                    }
@@ -169,7 +168,6 @@ struct WorkoutDetailContentView: View {
                                 }
                             }
                             
-                            // ✅ Отступ внизу зависит от того, открыт таймер или нет
                             Spacer(minLength: timerManager.isRestTimerActive ? 280 : 120)
                         }
                         .padding()
@@ -177,7 +175,6 @@ struct WorkoutDetailContentView: View {
                 }
             }
             
-            // ✅ Кнопка Финиша всплывает НАД таймером
             if workout.isActive && selectedTab != .aiCoach {
                 finishWorkoutButton
             }
@@ -233,7 +230,6 @@ struct WorkoutDetailContentView: View {
                 .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)
             }
             .padding(.horizontal, 24)
-            // ДИНАМИЧЕСКИЙ ОТСТУП СНИЗУ ДЛЯ КНОПКИ (Чтобы таймер снизу пролезал)
             .padding(.bottom, timerManager.isRestTimerActive ? 180 : 16)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: timerManager.isRestTimerActive)
             .disabled(viewModel.isShowingSnackbar)
@@ -280,11 +276,8 @@ struct WorkoutDetailContentView: View {
         }
     }
     private func handleOnDisappear() {
-            timerManager.isHidden = false
-            // 👈 ИСПРАВЛЕНИЕ: Мы полностью убрали код автоудаления пустой тренировки.
-            // Теперь вы можете начать пустую тренировку, переключаться между вкладками,
-            // искать упражнения, а плашка активности (Active Banner) будет висеть внизу!
-        }
+        timerManager.isHidden = false
+    }
     
     private func handleExercisesChanged() {
         viewModel.updateWorkoutAnalytics(for: workout)
@@ -339,10 +332,10 @@ struct WorkoutDetailContentView: View {
                 Text(LocalizedStringKey("Exercises"))
                     .font(.title2)
                     .bold()
-                    .lineLimit(1) // ✅ Запрещаем перенос заголовка на 2 строки
-                    .minimumScaleFactor(0.5) // ✅ Разрешаем шрифту сжаться, если тесно
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
                 
-                Spacer(minLength: 5) // Позволяем спейсеру сжиматься
+                Spacer(minLength: 5)
                 
                 if workout.isActive {
                     Button { showTimerSetup = true } label: {
@@ -359,8 +352,8 @@ struct WorkoutDetailContentView: View {
                     Label(LocalizedStringKey("Superset"), systemImage: "plus")
                         .font(.caption)
                         .bold()
-                        .lineLimit(1) // ✅ Запрещаем перенос текста в кнопке
-                        .minimumScaleFactor(0.7) // ✅ Разрешаем тексту кнопки сжаться
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
                         .foregroundColor(.accentColor)
@@ -371,8 +364,8 @@ struct WorkoutDetailContentView: View {
                     Label(LocalizedStringKey("Exercise"), systemImage: "plus")
                         .font(.caption)
                         .bold()
-                        .lineLimit(1) // ✅ Запрещаем перенос текста в кнопке
-                        .minimumScaleFactor(0.7) // ✅ Разрешаем тексту кнопки сжаться
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
                         .foregroundColor(.accentColor)
@@ -400,7 +393,6 @@ struct WorkoutDetailContentView: View {
                     )
                     .frame(height: 220)
                 } else {
-                    // Динамический заголовок выбранного столбца
                     if let selected = selectedChartExerciseName {
                         Text(LocalizationHelper.shared.translateName(selected.trimmingCharacters(in: .whitespaces)))
                             .font(.headline)
@@ -451,7 +443,6 @@ struct WorkoutDetailContentView: View {
                     }
                     .frame(height: 220)
                     .chartXSelection(value: $selectedChartExerciseName)
-                    // Скрываем лишние линии сетки для чистоты дизайна
                     .chartXAxis {
                         AxisMarks(values: .automatic) { value in
                             AxisValueLabel {
@@ -521,7 +512,6 @@ Text(String(translatedName.prefix(3)).capitalized)
                 .padding(.horizontal, 4)
                 
                 VStack {
-                    // ✅ ИСПРАВЛЕНИЕ: Передаем rawMuscleCounts и "exercises"
                     BodyHeatmapView(
                         muscleIntensities: viewModel.workoutAnalytics.intensity,
                         rawMuscleCounts: viewModel.workoutAnalytics.rawCounts,

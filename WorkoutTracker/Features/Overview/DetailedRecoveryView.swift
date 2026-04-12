@@ -20,7 +20,7 @@ struct MuscleStatusItem: Identifiable {
 
 // MARK: - Main View
 struct DetailedRecoveryView: View {
-    
+    @Environment(ThemeManager.self) private var themeManager
     // MARK: - Environment & Storage
     @Environment(\.modelContext) private var context
     @Environment(DIContainer.self) private var di
@@ -100,9 +100,9 @@ struct DetailedRecoveryView: View {
             
             VStack {
                 HStack {
-                    Text(LocalizedStringKey("Full Recovery Time:")).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Full Recovery Time:")).foregroundColor(themeManager.current.secondaryText)
                     Spacer()
-                    Text(LocalizedStringKey("\(Int(localRecoveryHours)) hours")).bold().foregroundColor(.blue)
+                    Text(LocalizedStringKey("\(Int(localRecoveryHours)) hours")).bold().foregroundColor(themeManager.current.primaryAccent)
                 }
                 
                 Slider(
@@ -113,11 +113,11 @@ struct DetailedRecoveryView: View {
                         if !isEditing { storedRecoveryHours = localRecoveryHours }
                     }
                 )
-                .tint(.blue)
+                .tint(themeManager.current.primaryAccent)
             }
-            .padding().background(Color(UIColor.secondarySystemBackground)).cornerRadius(12)
+            .padding().background(themeManager.current.surface).cornerRadius(12)
             
-            Text(LocalizedStringKey("Adjust this based on how fast you recover. Standard is 48h.")).font(.caption).foregroundColor(.gray).padding(.horizontal, 5)
+            Text(LocalizedStringKey("Adjust this based on how fast you recover. Standard is 48h.")).font(.caption).foregroundColor(themeManager.current.secondaryAccent).padding(.horizontal, 5)
         }
         .padding(.horizontal).padding(.top)
         .spotlight(step: .recoverySlider, manager: tutorialManager, text: "Adjust your recovery speed here. Tap to finish.", alignment: .top, yOffset: -20)
@@ -126,7 +126,7 @@ struct DetailedRecoveryView: View {
     
     private var muscleListSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(LocalizedStringKey("Full Muscle Breakdown")).font(.headline).foregroundColor(.secondary).padding(.horizontal)
+            Text(LocalizedStringKey("Full Muscle Breakdown")).font(.headline).foregroundColor(themeManager.current.secondaryText).padding(.horizontal)
             LazyVStack(spacing: 12) {
                 ForEach(musclesData) { item in MuscleStatusRow(name: item.name, percentage: item.percent) }
             }.padding(.horizontal)
@@ -139,13 +139,13 @@ struct DetailedRecoveryView: View {
 struct MuscleStatusRow: View {
     let name: String
     let percentage: Int
-    
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey(name))
                     .font(.headline)
-                    .foregroundColor(.primary)
+                    .foregroundColor(themeManager.current.primaryText)
                 
                 Text(LocalizedStringKey(statusText))
                     .font(.caption)
@@ -173,17 +173,17 @@ struct MuscleStatusRow: View {
             }
         }
         .padding()
-        .background(Color(UIColor.secondarySystemBackground))
+        .background(themeManager.current.surface)
         .cornerRadius(12)
         .shadow(color: percentage < 100 ? .black.opacity(0.05) : .clear, radius: 2, x: 0, y: 1)
     }
     
     private var statusColor: Color {
-        if percentage < 50 { return .red }
-        if percentage < 80 { return .orange }
-        return .green
-    }
-    
+            if percentage < 50 { return .red }
+            // <--- ИЗМЕНЕНО: Вместо жесткого оранжевого используем MidTone темы
+            if percentage < 80 { return themeManager.current.secondaryMidTone }
+            return .green
+        }
     private var statusText: String {
         if percentage >= 100 { return NSLocalizedString("Fully Recovered", comment: "") }
         if percentage >= 80 { return NSLocalizedString("Ready to Train", comment: "") }
