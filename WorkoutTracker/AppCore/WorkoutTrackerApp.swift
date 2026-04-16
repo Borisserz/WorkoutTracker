@@ -132,11 +132,15 @@ struct WorkoutTrackerApp: App {
                     AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
                 ])
                 
-                let modelConfiguration = ModelConfiguration(
-                    schema: schema,
-                    isStoredInMemoryOnly: false,
-                    cloudKitDatabase: .automatic
-                )
+                let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker")!
+                            let dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite") // СВОЕ ИМЯ ФАЙЛА
+                            
+                            let modelConfiguration = ModelConfiguration(
+                                schema: schema,
+                                url: dbURL, // УКАЗЫВАЕМ ПУТЬ
+                                cloudKitDatabase: .automatic
+                            )
+                            
                 
                 let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
                 let di = DIContainer(modelContainer: container)

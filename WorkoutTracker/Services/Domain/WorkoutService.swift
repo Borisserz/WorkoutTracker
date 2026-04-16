@@ -272,37 +272,37 @@ final class WorkoutService {
     }
 
     func processCompletedWorkout(_ workout: Workout) async {
-        do {
-            try await workoutStore.processCompletedWorkout(workoutID: workout.persistentModelID)
-            liveActivityManager.stopAllActivities()
-            
-            let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
-            let safeWeight = userWeight > 0 ? userWeight : 75.0
-            
-            let wTitle = workout.title
-            let wStart = workout.date
-            let wEnd = workout.endTime ?? Date()
-            let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
-            
-            Task.detached {
-                do {
-                    try await HealthKitManager.shared.requestAuthorization()
-                    try await HealthKitManager.shared.saveWorkout(
-                        title: wTitle,
-                        startDate: wStart,
-                        endDate: wEnd,
-                        durationSeconds: wDuration,
-                        userWeightKg: safeWeight
-                    )
-                } catch {
-                    print("⚠️ Failed to sync workout to HealthKit: \(error)")
+            do {
+                try await workoutStore.processCompletedWorkout(workoutID: workout.persistentModelID)
+                liveActivityManager.stopAllActivities()
+                
+                let wTitle = workout.title
+                let wStart = workout.date
+                let wEnd = workout.endTime ?? Date()
+                let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
+                
+                // ✅ Считаем калории
+                let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+                let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+                
+                Task.detached {
+                    do {
+                        try await HealthKitManager.shared.requestAuthorization()
+                        try await HealthKitManager.shared.saveWorkout(
+                            title: wTitle,
+                            startDate: wStart,
+                            endDate: wEnd,
+                            durationSeconds: wDuration,
+                            calories: burnedCalories // <--- Передаем готовые калории
+                        )
+                    } catch {
+                        print("⚠️ Failed to sync workout to HealthKit: \(error)")
+                    }
                 }
+            } catch {
+                appState.showError(title: "Process Failed", message: "Could not process completed workout: \(error.localizedDescription)")
             }
-        } catch {
-            appState.showError(title: "Process Failed", message: "Could not process completed workout: \(error.localizedDescription)")
         }
-    }
-
     func stopLiveActivity() {
         liveActivityManager.stopAllActivities()
     }

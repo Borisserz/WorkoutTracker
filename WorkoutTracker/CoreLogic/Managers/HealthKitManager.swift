@@ -87,7 +87,10 @@ actor HealthKitManager: Sendable {
     
     // ✅ FIX: Renamed back to `saveWorkout` and using direct HKWorkout initialization instead of WatchOS Builder
     /// Saves workout and estimated active energy to HealthKit to close Activity Rings
-    func saveWorkout(title: String, startDate: Date, endDate: Date, durationSeconds: Int, userWeightKg: Double) async throws {
+    // MARK: - Workout Sync
+    
+    /// Saves workout and estimated active energy to HealthKit to close Activity Rings
+    func saveWorkout(title: String, startDate: Date, endDate: Date, durationSeconds: Int, calories: Int) async throws {
         print("🔄 HealthKitManager: Initiating save...")
         guard isAvailable else {
             print("❌ HealthKit: Not available on this device")
@@ -95,7 +98,7 @@ actor HealthKitManager: Sendable {
         }
         
         let actualDuration = max(Double(durationSeconds), endDate.timeIntervalSince(startDate))
-        print("📊 Data: Duration = \(actualDuration) sec, Weight = \(userWeightKg) kg")
+        print("📊 Data: Duration = \(actualDuration) sec, Calories = \(calories) kcal")
         
         guard actualDuration >= 60 else {
             print("⚠️ Cancelled: Workout is under 60 seconds. Apple Health will ignore it.")
@@ -103,15 +106,7 @@ actor HealthKitManager: Sendable {
         }
         
         let activityType: HKWorkoutActivityType = title.lowercased().contains("cardio") ? .running : .traditionalStrengthTraining
-        
-        let durationHours = actualDuration / 3600.0
-        let metValue: Double = activityType == .running ? 9.8 : 6.0
-        let safeWeight = userWeightKg > 10 ? userWeightKg : 75.0
-        let estimatedCalories = metValue * safeWeight * durationHours
-        
-        print("🔥 Calorie calculation (MET): \(estimatedCalories) kcal")
-        
-        let energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: estimatedCalories)
+        let energyQuantity = HKQuantity(unit: .kilocalorie(), doubleValue: Double(calories))
         
         let workout = HKWorkout(
             activityType: activityType,
@@ -130,7 +125,7 @@ actor HealthKitManager: Sendable {
             try await healthStore.save(workout)
             print("✅ SUCCESS: HKWorkout written to DB!")
             
-            // ✅ FIX: Explicitly save Active Energy Burned sample to ensure Move Ring closes
+            // Explicitly save Active Energy Burned sample to ensure Move Ring closes
             if let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
                 let energySample = HKQuantitySample(type: energyType, quantity: energyQuantity, start: startDate, end: endDate)
                 try await healthStore.save(energySample)
@@ -142,4 +137,3 @@ actor HealthKitManager: Sendable {
         }
     }
 }
-// ✅ FIX: Removed the extraneous trailing '}' that caused the build to fail.

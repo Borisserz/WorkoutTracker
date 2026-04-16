@@ -340,12 +340,27 @@ actor WorkoutStore: WorkoutStoreProtocol {
                     }
                 }
             }
-            
-            // 6. Сохраняем все изменения в БД одним коммитом
-            try modelContext.save()
-        }
-    
-    func findActiveWorkoutsAndCleanup() async throws -> [PersistentIdentifier] {
+        
+        // 1. Высчитываем потраченные калории (как ты делаешь для HealthKit)
+        let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+           let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+
+           // Записываем в общую папку App Group для FoodTracker
+           if let sharedDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker") {
+               let formatter = DateFormatter()
+               formatter.dateFormat = "yyyy-MM-dd"
+               let dateKey = "workout_calories_\(formatter.string(from: workout.date))"
+               
+               // Плюсуем, если в этот день было несколько тренировок
+               let currentCals = sharedDefaults.integer(forKey: dateKey)
+               sharedDefaults.set(currentCals + burnedCalories, forKey: dateKey)
+           }
+           
+           // 6. Сохраняем все изменения в БД одним коммитом
+           try modelContext.save()
+           }
+       
+       func findActiveWorkoutsAndCleanup() async throws -> [PersistentIdentifier] {
         let desc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime == nil })
         let activeWorkouts = (try? modelContext.fetch(desc)) ?? []
         var remainingActiveIDs: [PersistentIdentifier] = []
