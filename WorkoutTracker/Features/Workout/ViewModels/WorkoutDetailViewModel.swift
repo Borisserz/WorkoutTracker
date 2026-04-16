@@ -359,26 +359,29 @@ final class WorkoutDetailViewModel {
             progressManager.addXP(for: workout)
             try? workout.modelContext?.save()
             
-            let workoutID = workout.persistentModelID
-            let wTitle = workout.title
-            let wStart = workout.date
-            let wEnd = workout.endTime ?? Date()
-            let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
-            let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
-            
-            Task {
-                do {
-                    try await HealthKitManager.shared.saveWorkout(
-                        title: wTitle,
-                        startDate: wStart,
-                        endDate: wEnd,
-                        durationSeconds: wDuration,
-                        userWeightKg: userWeight
-                    )
-                } catch {
-                    print("❌ ViewModel: Ошибка вызова HealthKit - \(error)")
-                }
-            }
+        let workoutID = workout.persistentModelID
+                    let wTitle = workout.title
+                    let wStart = workout.date
+                    let wEnd = workout.endTime ?? Date()
+                    let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
+                    
+                    // ✅ Считаем калории перед отправкой
+                    let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+                    let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+                    
+                    Task {
+                        do {
+                            try await HealthKitManager.shared.saveWorkout(
+                                title: wTitle,
+                                startDate: wStart,
+                                endDate: wEnd,
+                                durationSeconds: wDuration,
+                                calories: burnedCalories // <--- Передаем готовые калории
+                            )
+                        } catch {
+                            print("❌ ViewModel: Ошибка вызова HealthKit - \(error)")
+                        }
+                    }
             
             do {
                 let result = try await analyticsService.finishWorkoutAndCalculateAchievements(workoutID: workoutID)
