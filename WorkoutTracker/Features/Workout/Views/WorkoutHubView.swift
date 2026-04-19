@@ -22,30 +22,26 @@ struct WorkoutHubView: View {
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(PresetService.self) var presetService
+    @Environment(DashboardViewModel.self) var dashboardViewModel // Для получения Стрика
+    @Environment(ThemeManager.self) private var themeManager
     
     // 1. Все пользовательские шаблоны (Созданные юзером + Скачанные из Explore)
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
     private var userPresets: [WorkoutPreset]
-    
-    @State private var showSmartBuilder = false
     
     // 2. Избранные тренировки (из Истории)
     @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
     private var favoriteWorkouts: [Workout]
     
     // MARK: - Динамическая сортировка по папкам
-    
-    // Личные тренировки юзера (без папки)
     private var myRoutines: [WorkoutPreset] {
-        userPresets.filter { ($0.folderName ?? "").isEmpty }
-    }
+            userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "План на сегодня" }
+        }
     
-    // Одиночные скачанные тренировки из магазина
     private var savedSingleRoutines: [WorkoutPreset] {
         userPresets.filter { $0.folderName == PresetService.savedRoutinesFolderName }
     }
     
-    // Многодневные программы (Группируются по названию программы)
     private var programFolders: [String: [WorkoutPreset]] {
         var dict = [String: [WorkoutPreset]]()
         for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName {
@@ -58,90 +54,57 @@ struct WorkoutHubView: View {
     @State private var navigateToActiveWorkout: Workout? = nil
     @State private var navigateToExplore = false
     
+    @State private var showSmartBuilder = false
     @State private var showPresetEditor = false
     @State private var presetToEdit: WorkoutPreset? = nil
+    @State private var showStreakPopup = false // Новый стейт для 3D Маскота
     
     @State private var itemToDelete: CarouselItemType? = nil
     @State private var showDeleteAlert = false
     @State private var showActiveWorkoutAlert = false
     @State private var isProcessing = false
     @State private var selectedPreview: PreviewItem? = nil
-    
-        @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         NavigationStack {
             ZStack {
                 // Premium Dark Background
-                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                themeManager.current.background.ignoresSafeArea()
                 
-                ScrollView {
+                ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 32) {
-                        // Top Action Rows
-                        VStack(spacing: 24) {
-                            quickStartButton
-                            smartBuilderButton
-                            routinesActionRow
-                        }
-                        .padding(.top, 20)
                         
-                        // My Routines (user-created)
-                        CarouselSectionView(
-                            title: "My Routines",
-                            folderName: nil,
-                            items: myRoutines.map { .preset($0) },
-                            onItemTapped: handleItemStart,
-                            onEdit: { presetToEdit = $0; showPresetEditor = true },
-                            onDuplicate: duplicatePreset,
-                            onDelete: promptDelete
-                        )
+                        // 1. ЗАГОЛОВОК И СТРИК (Интегрировано с дизайном)
+                        headerSection
                         
-                        // Saved Single Routines
-                        if !savedSingleRoutines.isEmpty {
-                            CarouselSectionView(
-                                title: "Saved Routines",
-                                folderName: PresetService.savedRoutinesFolderName,
-                                items: savedSingleRoutines.map { .preset($0) },
-                                onItemTapped: handleItemStart,
-                                onEdit: { presetToEdit = $0; showPresetEditor = true },
-                                onDuplicate: duplicatePreset,
-                                onDelete: promptDelete
-                            )
-                        }
+                        // 2. КНОПКИ ДЕЙСТВИЙ (Dribbble Style)
+                        topActionsSection
                         
-                        // Dynamic Program Carousels
-                        ForEach(programFolders.keys.sorted(), id: \.self) { folderName in
-                            if let programRoutines = programFolders[folderName] {
-                                CarouselSectionView(
-                                    title: LocalizedStringKey(folderName),
-                                    folderName: folderName,
-                                    items: programRoutines.map { .preset($0) },
-                                    onItemTapped: handleItemStart,
-                                    onEdit: { presetToEdit = $0; showPresetEditor = true },
-                                    onDuplicate: duplicatePreset,
-                                    onDelete: promptDelete
-                                )
-                            }
-                        }
+                        // 3. КАРУСЕЛИ СОХРАНЕННЫХ ТРЕНИРОВОК
+                        carouselsSection
                         
-                        // Favorites
-                        if !favoriteWorkouts.isEmpty {
-                            CarouselSectionView(
-                                title: "Favorites",
-                                folderName: nil,
-                                items: favoriteWorkouts.map { .favorite($0) },
-                                onItemTapped: handleItemStart,
-                                onEdit: nil,
-                                onDuplicate: nil,
-                                onDelete: promptDelete
-                            )
-                        }
-                        
-                        Spacer(minLength: 40)
+                        Spacer(minLength: 120)
                     }
+                    .padding(.top, 20)
+                }
+                
+                // 4. МАСКОТ-ПОПАП (Поверх всего контента)
+                if showStreakPopup {
+                    StreakMascotPopup(
+                        streakDays: dashboardViewModel.streakCount,
+                        isShowing: $showStreakPopup
+                    )
+                    .transition(.asymmetric(
+                        insertion: .scale(scale: 0.8).combined(with: .opacity),
+                        removal: .scale(scale: 0.9).combined(with: .opacity)
+                    ))
+                    .zIndex(100)
                 }
             }
             .navigationTitle(LocalizedStringKey("Workout"))
+            .navigationBarHidden(true) // Скрываем стандартный бар
+            
+            // Навигация и Модалки
             .navigationDestination(item: $navigateToActiveWorkout) { workout in
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
@@ -165,19 +128,13 @@ struct WorkoutHubView: View {
                             exercises: exerciseDTOs.map { dto in
                                 let safeSetsList = dto.setsList ?? []
                                 return GeneratedExerciseDTO(
-                                    name: dto.name,
-                                    muscleGroup: dto.muscleGroup,
-                                    type: dto.type.rawValue,
-                                    sets: safeSetsList.count,
-                                    reps: safeSetsList.first?.reps ?? 10,
-                                    recommendedWeightKg: safeSetsList.first?.weight,
-                                    restSeconds: nil
+                                    name: dto.name, muscleGroup: dto.muscleGroup, type: dto.type.rawValue,
+                                    sets: safeSetsList.count, reps: safeSetsList.first?.reps ?? 10,
+                                    recommendedWeightKg: safeSetsList.first?.weight, restSeconds: nil
                                 )
                             }
                         )
-                        
                         await workoutService.startGeneratedWorkout(generatedDTO)
-                        
                         if let newWorkout = await workoutService.fetchLatestWorkout() {
                             self.navigateToActiveWorkout = newWorkout
                         }
@@ -186,17 +143,11 @@ struct WorkoutHubView: View {
             }
             .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
-            } message: {
-                Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one."))
-            }
+            } message: { Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one.")) }
             .alert(LocalizedStringKey("Delete Item?"), isPresented: $showDeleteAlert) {
-                Button(LocalizedStringKey("Delete"), role: .destructive) {
-                    confirmDelete()
-                }
+                Button(LocalizedStringKey("Delete"), role: .destructive) { confirmDelete() }
                 Button(LocalizedStringKey("Cancel"), role: .cancel) { itemToDelete = nil }
-            } message: {
-                Text(LocalizedStringKey("This action cannot be undone."))
-            }
+            } message: { Text(LocalizedStringKey("This action cannot be undone.")) }
             .onChange(of: di.appState.returnToActiveWorkoutId) { _, newId in
                 if let id = newId {
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
@@ -209,85 +160,175 @@ struct WorkoutHubView: View {
         }
     }
     
-    // MARK: - Top Actions
-    private var quickStartButton: some View {
-        Button { startEmptyWorkout() } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "plus")
-                    .font(.headline).fontWeight(.bold)
-                Text(LocalizedStringKey("Start an Empty Workout"))
-                    .font(.headline).fontWeight(.bold)
-            }
-            .foregroundColor(themeManager.current.background)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
-            .cornerRadius(16)
-            .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
-        }
-        .padding(.horizontal)
-        .disabled(isProcessing)
-    }
+    // MARK: - View Components
     
-    private var smartBuilderButton: some View {
-        Button {
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
-            showSmartBuilder = true
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: "wand.and.stars")
-                    .font(.headline).fontWeight(.bold)
-                Text("Smart Workout Builder")
-                    .font(.headline).fontWeight(.bold)
-            }
-            .foregroundColor(themeManager.current.background)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(
-                LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
-            .cornerRadius(16)
-            .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
-        }
-        .padding(.horizontal)
-        .disabled(isProcessing)
-    }
-    
-    private var routinesActionRow: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStringKey("Routines")).font(.title2).bold()
-                Spacer()
-            }
-            .padding(.horizontal)
+    private var headerSection: some View {
+        HStack {
+            Text(LocalizedStringKey("Тренировка"))
+                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .foregroundStyle(.white)
             
-            HStack(spacing: 12) {
-                Button { presetToEdit = nil; showPresetEditor = true } label: {
-                    HStack {
-                        Image(systemName: "clipboard.fill").foregroundColor(themeManager.current.primaryAccent)
-                        Text(LocalizedStringKey("New Routine")).font(.subheadline).fontWeight(.semibold).foregroundColor(themeManager.current.primaryText)
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(themeManager.current.surface)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+            Spacer()
+            
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) { showStreakPopup = true }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill").foregroundStyle(Color.orange)
+                    Text("\(dashboardViewModel.streakCount) \(String(localized: "дня"))")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
                 }
+                .padding(.horizontal, 12).padding(.vertical, 8)
+                .background(.ultraThinMaterial, in: Capsule())
+                .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                .shadow(color: Color.orange.opacity(0.4), radius: 10, x: 0, y: 4)
+            }.buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+    }
+    
+    private var topActionsSection: some View {
+        VStack(alignment: .leading, spacing: 32) {
+            VStack(spacing: 16) {
+                PremiumHubGlassButton(
+                    title: "Начать пустую тренировку",
+                    subtitle: "Свободный режим",
+                    icon: "play.circle.fill",
+                    colorTint: .blue
+                ) { startEmptyWorkout() }
                 
-                Button { navigateToExplore = true } label: {
-                    HStack {
-                        Image(systemName: "magnifyingglass").foregroundColor(.purple)
-                        Text(LocalizedStringKey("Explore")).font(.subheadline).fontWeight(.semibold).foregroundColor(themeManager.current.primaryText)
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(themeManager.current.surface)
-                    .cornerRadius(16)
-                    .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                PremiumHubGlassButton(
+                    title: "Умный конструктор",
+                    subtitle: "Сгенерировано под вас",
+                    icon: "wand.and.stars",
+                    colorTint: .purple
+                ) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    showSmartBuilder = true
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 20)
+            
+            VStack(alignment: .leading, spacing: 16) {
+                Text(LocalizedStringKey("Программы"))
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 20)
+                
+                HStack(spacing: 16) {
+                    PremiumHubGlassButton(
+                        title: "Новая\nпрограмма",
+                        icon: "plus.app.fill",
+                        colorTint: .green,
+                        isSmall: true
+                    ) {
+                        presetToEdit = nil
+                        showPresetEditor = true
+                    }
+                    
+                    PremiumHubGlassButton(
+                        title: "Исследовать\nбазу",
+                        icon: "safari.fill",
+                        colorTint: .orange,
+                        isSmall: true
+                    ) {
+                        navigateToExplore = true
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+    
+    private var carouselsSection: some View {
+            VStack(alignment: .leading, spacing: 32) {
+                
+                // ВСТАВЛЯЕМ БЛОК ПЛАНА НА СЕГОДНЯ
+                if let dailyPlan = userPresets.first(where: { $0.name == "План на сегодня" }), !dailyPlan.exercises.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("План на сегодня")
+                            .font(.title3).bold()
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                        
+                        // Широкая премиальная карточка
+                        PremiumRoutineCard(
+                            preset: dailyPlan,
+                            onStart: { startWorkoutFromPreview(item: .preset(dailyPlan)) },
+                            onEdit: { presetToEdit = dailyPlan; showPresetEditor = true },
+                            onDuplicate: nil, // План на сегодня не дублируем
+                            onDelete: {
+                                Task { @MainActor in
+                                    await presetService.deletePreset(dailyPlan)
+                                }
+                            }
+                        )
+                        .padding(.horizontal, 20)
+                    }
+                }
+                // --- КОНЕЦ ВСТАВКИ ---
+
+                CarouselSectionView(
+                title: "Мои программы", folderName: nil, items: myRoutines.map { .preset($0) },
+                onItemTapped: handleItemStart, onEdit: { presetToEdit = $0; showPresetEditor = true },
+                onDuplicate: duplicatePreset, onDelete: promptDelete
+            )
+            
+            if !savedSingleRoutines.isEmpty {
+                CarouselSectionView(
+                    title: "Сохраненные тренировки", folderName: PresetService.savedRoutinesFolderName, items: savedSingleRoutines.map { .preset($0) },
+                    onItemTapped: handleItemStart, onEdit: { presetToEdit = $0; showPresetEditor = true },
+                    onDuplicate: duplicatePreset, onDelete: promptDelete
+                )
+            }
+            
+            ForEach(programFolders.keys.sorted(), id: \.self) { folderName in
+                if let programRoutines = programFolders[folderName] {
+                    CarouselSectionView(
+                        title: LocalizedStringKey(folderName), folderName: folderName, items: programRoutines.map { .preset($0) },
+                        onItemTapped: handleItemStart, onEdit: { presetToEdit = $0; showPresetEditor = true },
+                        onDuplicate: duplicatePreset, onDelete: promptDelete
+                    )
+                }
+            }
+            
+            if !favoriteWorkouts.isEmpty {
+                CarouselSectionView(
+                    title: "Избранное", folderName: nil, items: favoriteWorkouts.map { .favorite($0) },
+                    onItemTapped: handleItemStart, onEdit: nil, onDuplicate: nil, onDelete: promptDelete
+                )
+            }
+        }
+    }
+    
+    // MARK: - Logic
+    private func startEmptyWorkout() {
+        guard !isProcessing else { return }
+        isProcessing = true
+        Task { @MainActor in
+            if await workoutService.hasActiveWorkout() {
+                showActiveWorkoutAlert = true; isProcessing = false; return
+            }
+            let title = LocalizationHelper.shared.formatWorkoutDateName()
+            if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
+                di.liveActivityManager.startWorkoutActivity(title: title)
+                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
+                if let newWorkout = try? context.fetch(descriptor).first { self.navigateToActiveWorkout = newWorkout }
+            }
+            isProcessing = false
+        }
+    }
+    
+    // ИСПРАВЛЕНО: Преобразование типов для Preview
+    private func handleItemStart(item: CarouselItemType) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        switch item {
+        case .preset(let preset):
+            selectedPreview = .preset(preset)
+        case .favorite(let workout):
+            selectedPreview = .favorite(workout)
         }
     }
     
@@ -309,7 +350,6 @@ struct WorkoutHubView: View {
             case .favorite(let workout):
                 if let _ = await workoutService.createWorkout(title: workout.title, presetID: nil, isAIGenerated: false) {
                     di.liveActivityManager.startWorkoutActivity(title: workout.title)
-                    
                     var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
                     if let newWorkout = try? context.fetch(descriptor).first {
                         for ex in workout.exercises {
@@ -332,42 +372,9 @@ struct WorkoutHubView: View {
         }
     }
     
-    // MARK: - Logic
-    private func startEmptyWorkout() {
-        guard !isProcessing else { return }
-        isProcessing = true
-        Task { @MainActor in
-            if await workoutService.hasActiveWorkout() {
-                showActiveWorkoutAlert = true; isProcessing = false; return
-            }
-            let title = LocalizationHelper.shared.formatWorkoutDateName()
-            if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
-                di.liveActivityManager.startWorkoutActivity(title: title)
-                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
-                if let newWorkout = try? context.fetch(descriptor).first { self.navigateToActiveWorkout = newWorkout }
-            }
-            isProcessing = false
-        }
-    }
-    
-    private func handleItemStart(item: CarouselItemType) {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
-        
-        switch item {
-        case .preset(let preset):
-            selectedPreview = .preset(preset)
-        case .favorite(let workout):
-            selectedPreview = .favorite(workout)
-        }
-    }
-    
     private func routeToLatestWorkout() {
-        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        descriptor.fetchLimit = 1
-        if let newWorkout = try? context.fetch(descriptor).first {
-            self.navigateToActiveWorkout = newWorkout
-        }
+        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
+        if let newWorkout = try? context.fetch(descriptor).first { self.navigateToActiveWorkout = newWorkout }
     }
     
     private func duplicatePreset(_ preset: WorkoutPreset) {
@@ -379,26 +386,21 @@ struct WorkoutHubView: View {
         }
     }
     
-    private func promptDelete(item: CarouselItemType) {
-        itemToDelete = item
-        showDeleteAlert = true
-    }
+    private func promptDelete(item: CarouselItemType) { itemToDelete = item; showDeleteAlert = true }
     
     private func confirmDelete() {
         guard let item = itemToDelete else { return }
         Task { @MainActor in
             switch item {
-            case .preset(let preset):
-                await presetService.deletePreset(preset)
-            case .favorite(let workout):
-                await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: false)
+            case .preset(let preset): await presetService.deletePreset(preset)
+            case .favorite(let workout): await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: false)
             }
             itemToDelete = nil
         }
     }
 }
 
-// MARK: - Carousel Section View
+// MARK: - ВОССТАНОВЛЕННЫЕ КОМПОНЕНТЫ КАРУСЕЛЕЙ (ОНИ БЫЛИ ПОТЕРЯНЫ)
 
 struct CarouselSectionView: View {
     let title: LocalizedStringKey
@@ -410,7 +412,7 @@ struct CarouselSectionView: View {
     let onDuplicate: ((WorkoutPreset) -> Void)?
     let onDelete: ((CarouselItemType) -> Void)?
     
-        @Environment(ThemeManager.self) private var themeManager
+    @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         if !items.isEmpty {
@@ -420,7 +422,7 @@ struct CarouselSectionView: View {
                 HStack(alignment: .bottom) {
                     Text(title)
                         .font(.title3).bold()
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(.white)
                     
                     Spacer()
                     
@@ -433,7 +435,7 @@ struct CarouselSectionView: View {
                         onDuplicate: onDuplicate,
                         onDelete: onDelete
                     )) {
-                        Text(LocalizedStringKey("See all"))
+                        Text(LocalizedStringKey("Смотреть все"))
                             .font(.subheadline)
                             .foregroundColor(themeManager.current.primaryAccent)
                     }
@@ -461,7 +463,6 @@ struct CarouselSectionView: View {
     }
 }
 
-// MARK: - Premium Carousel Card
 struct PremiumCarouselCardView: View {
     @Environment(\.colorScheme) private var colorScheme
     let item: CarouselItemType
@@ -471,14 +472,14 @@ struct PremiumCarouselCardView: View {
     let onDuplicate: ((WorkoutPreset) -> Void)?
     let onDelete: ((CarouselItemType) -> Void)?
     
-        @Environment(ThemeManager.self) private var themeManager
+    @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         Button(action: onTap) {
             ZStack(alignment: .topLeading) {
                 // Background Base
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? themeManager.current.surface : .white)
+                    .fill(Color(UIColor.secondarySystemGroupedBackground))
                 
                 // Subtle Accent Glow
                 GeometryReader { geo in
@@ -531,9 +532,9 @@ struct PremiumCarouselCardView: View {
                         } label: {
                             Image(systemName: "ellipsis")
                                 .font(.headline)
-                                .foregroundColor(themeManager.current.secondaryAccent)
+                                .foregroundColor(.white.opacity(0.8))
                                 .frame(width: 30, height: 30)
-                                .background(themeManager.current.surfaceVariant)
+                                .background(Color.white.opacity(0.1))
                                 .clipShape(Circle())
                         }
                         .highPriorityGesture(TapGesture().onEnded { }) // Prevent triggering card tap
@@ -546,13 +547,13 @@ struct PremiumCarouselCardView: View {
                         Text(title)
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(.white)
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
                         
                         Text(subtitle)
                             .font(.subheadline)
-                            .foregroundColor(themeManager.current.secondaryText)
+                            .foregroundColor(.gray)
                             .lineLimit(1)
                     }
                 }
@@ -561,7 +562,7 @@ struct PremiumCarouselCardView: View {
             .frame(width: 160, height: 200)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(colorScheme == .dark ? 0.1 : 0.4), lineWidth: 1)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
             )
             .shadow(color: .black.opacity(0.15), radius: 15, x: 0, y: 8)
         }
@@ -578,8 +579,8 @@ struct PremiumCarouselCardView: View {
     
     private var subtitle: LocalizedStringKey {
         switch item {
-        case .preset(let p): return LocalizedStringKey("\(p.exercises.count) exercises")
-        case .favorite(let w): return LocalizedStringKey("\(w.exercises.count) exercises")
+        case .preset(let p): return LocalizedStringKey("\(p.exercises.count) упражнений")
+        case .favorite(let w): return LocalizedStringKey("\(w.exercises.count) упражнений")
         }
     }
     
@@ -593,7 +594,7 @@ struct PremiumCarouselCardView: View {
     private var isSystemIcon: Bool {
         switch item {
         case .preset(let p): return p.isSystem
-        case .favorite: return true // Workouts generally use SF Symbols
+        case .favorite: return true
         }
     }
     
@@ -610,37 +611,185 @@ struct PremiumCarouselCardView: View {
     }
 }
 
-// MARK: - "See All" Grid View
-struct PresetListView: View {
+// MARK: - Premium Glass Button (Dribbble Style)
+struct PremiumHubGlassButton: View {
     let title: LocalizedStringKey
-    let items: [CarouselItemType]
+    var subtitle: LocalizedStringKey? = nil
+    let icon: String
+    let colorTint: Color
+    var isSmall: Bool = false
+    let action: () -> Void
     
-    let onItemTapped: (CarouselItemType) -> Void
-    let onEdit: ((WorkoutPreset) -> Void)?
-    let onDuplicate: ((WorkoutPreset) -> Void)?
-    let onDelete: ((CarouselItemType) -> Void)?
-    
-    let columns = [GridItem(.adaptive(minimum: 160), spacing: 16)]
-    
-        @Environment(ThemeManager.self) private var themeManager
-
     var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 16) {
-                ForEach(items, id: \.id) { item in
-                    PremiumCarouselCardView(
-                        item: item,
-                        onTap: { onItemTapped(item) },
-                        onEdit: onEdit,
-                        onDuplicate: onDuplicate,
-                        onDelete: onDelete
-                    )
+        Button(action: action) {
+            if isSmall {
+                // Вертикальная маленькая кнопка
+                VStack(alignment: .leading, spacing: 12) {
+                    ZStack {
+                        Circle().fill(colorTint.opacity(0.2)).frame(width: 44, height: 44)
+                        Image(systemName: icon).font(.title3).foregroundColor(colorTint)
+                    }
+                    Text(title)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.leading)
+                        .lineLimit(2)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [colorTint.opacity(0.5), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+                .shadow(color: colorTint.opacity(0.15), radius: 15, x: 0, y: 8)
+            } else {
+                // Горизонтальная большая кнопка
+                HStack(spacing: 16) {
+                    ZStack {
+                        Circle().fill(colorTint.opacity(0.2)).frame(width: 48, height: 48)
+                        Image(systemName: icon).font(.title2).foregroundColor(colorTint)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title).font(.headline).fontWeight(.bold).foregroundColor(.white)
+                        if let sub = subtitle {
+                            Text(sub).font(.caption).foregroundColor(.white.opacity(0.7))
+                        }
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundColor(.white.opacity(0.5))
+                }
+                .padding(16)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [colorTint.opacity(0.5), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+                .shadow(color: colorTint.opacity(0.15), radius: 15, x: 0, y: 8)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - 3D Маскот и Пузырь
+struct StreakMascotPopup: View {
+    var streakDays: Int
+    @Binding var isShowing: Bool
+    @State private var dragOffset: CGSize = .zero
+    @State private var isGlowing: Bool = false
+    @State private var isFloating: Bool = false
+    
+    var body: some View {
+        ZStack {
+            // Размытый темный фон
+            Color.black.opacity(0.6)
+                .background(.ultraThinMaterial)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    withAnimation(.spring()) { isShowing = false }
+                }
+            
+            VStack(spacing: 5) {
+                // Пузырь с текстом
+                FierySpeechBubble(text: String(localized: "Так держать!\nТы в огне! 🔥"))
+                    .offset(y: 15)
+                    .zIndex(1)
+                    .rotation3DEffect(.degrees(isGlowing ? 10 : 0), axis: (x: -dragOffset.height, y: dragOffset.width, z: 0.0), perspective: 0.3)
+                    .offset(y: isFloating ? -5 : 5)
+                
+                // Карточка Маскота
+                ZStack {
+                    RoundedRectangle(cornerRadius: 30)
+                        .fill(LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 300, height: 300)
+                        .overlay(
+                            Group {
+                                if UIImage(named: "fire_mascot") != nil {
+                                    Image("fire_mascot")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 250, height: 250)
+                                        .shadow(color: .black.opacity(0.4), radius: 10, y: 10)
+                                } else {
+                                    Image(systemName: "flame.fill")
+                                        .font(.system(size: 150))
+                                        .foregroundStyle(.white)
+                                }
+                            }
+                        )
+                        .overlay(RoundedRectangle(cornerRadius: 30).stroke(.white.opacity(0.5), lineWidth: 2))
+                    
+                    // Плашка со стриком
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(LinearGradient(colors: [.red, .orange], startPoint: .top, endPoint: .bottom))
+                            .frame(width: 100, height: 46)
+                            .rotationEffect(.degrees(-3))
+                            .shadow(color: .black.opacity(0.5), radius: 10)
+                        
+                        Text("\(streakDays) ДНЯ")
+                            .font(.system(size: 26, weight: .black, design: .rounded))
+                            .foregroundStyle(.white)
+                            .rotationEffect(.degrees(-3))
+                    }
+                    .offset(x: -85, y: -94)
+                }
+                .shadow(color: Color.orange.opacity(isGlowing ? 1.0 : 0.6), radius: isGlowing ? 60 : 30, x: 0, y: isGlowing ? 0 : 15)
+                .rotation3DEffect(
+                    .degrees(isGlowing ? 25 : (isFloating ? 3 : -3)),
+                    axis: isGlowing ? (x: -dragOffset.height, y: dragOffset.width, z: 0.0) : (x: 1, y: 0, z: 0),
+                    perspective: 0.3
+                )
+                .scaleEffect(isGlowing ? 1.05 : 1.0)
+                .offset(y: isFloating ? -8 : 8)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            withAnimation(.interactiveSpring(response: 0.3, dampingFraction: 0.6)) {
+                                isGlowing = true
+                                dragOffset = CGSize(width: (value.location.x - 160) / 4, height: (value.location.y - 160) / 4)
+                            }
+                        }
+                        .onEnded { _ in
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) {
+                                isGlowing = false
+                                dragOffset = .zero
+                            }
+                        }
+                )
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) {
+                    isFloating = true
                 }
             }
-            .padding()
         }
-        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct FierySpeechBubble: View {
+    var text: String
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(text)
+                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing))
+                )
+                .shadow(color: Color.red.opacity(0.8), radius: 20, x: 0, y: 10)
+                .overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.4), lineWidth: 1))
+            
+            Path { path in
+                path.move(to: CGPoint(x: 0, y: 0))
+                path.addLine(to: CGPoint(x: 24, y: 0))
+                path.addLine(to: CGPoint(x: 12, y: 16))
+                path.closeSubpath()
+            }
+            .fill(Color.red)
+            .frame(width: 24, height: 16)
+            .offset(x: 20)
+        }
     }
 }

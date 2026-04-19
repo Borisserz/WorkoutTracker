@@ -1,131 +1,55 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/Workout/Views/ExerciseDBRowView.swift
+// ============================================================
+
 internal import SwiftUI
 
 struct ExerciseDBRowView: View {
     let exercise: ExerciseDBItem
+    var isSelectionMode: Bool = true // true для поиска (плюсик), false для каталога (стрелочка)
     
-        @Environment(ThemeManager.self) private var themeManager
-
+    @Environment(ThemeManager.self) private var themeManager
+    @StateObject private var colorManager = MuscleColorManager.shared
+    
     var body: some View {
+        // ✅ ИСПРАВЛЕНИЕ: Берем конкретную мышцу и переводим в базовую группу (как в диаграмме)
+        let rawMuscle = exercise.primaryMuscles?.first ?? "Other"
+        let broadCategory = MuscleCategoryMapper.getBroadCategory(for: rawMuscle)
+        let muscleColor = colorManager.getColor(for: broadCategory)
+        
         HStack(spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(equipmentColor.opacity(0.15))
-                    .frame(width: 54, height: 54)
-                
-                if UIImage(named: equipmentIcon) != nil {
-                    // 1. Отрисовка ВАШИХ кастомных картинок из Assets
-                    Image(equipmentIcon)
-                        .renderingMode(.template) // Обязательно для перекраски
-                        .resizable()
-                        .scaledToFit()
-                        // 👇 Используем новую переменную для размера
-                        .frame(width: iconSize, height: iconSize)
-                        .foregroundColor(equipmentColor)
-                } else {
-                    // 2. Отрисовка СИСТЕМНЫХ SF Symbols (если картинка вдруг не найдется)
-                    Image(systemName: equipmentIcon)
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(equipmentColor)
-                }
-            }
+            // Светящаяся точка правильного цвета!
+            Circle()
+                .fill(muscleColor)
+                .frame(width: 14, height: 14)
+                .shadow(color: muscleColor.opacity(0.8), radius: 5)
             
-            VStack(alignment: .leading, spacing: 6) {
-                Text(LocalizationHelper.shared.translateName(exercise.name))
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(themeManager.current.primaryText)
-                    .lineLimit(1)
-                
-                HStack(spacing: 6) {
-                    if let level = exercise.level {
-                        tagView(text: level.capitalized, icon: levelIcon(level), color: levelColor(level))
-                    }
-                    if let primary = exercise.primaryMuscles?.first {
-                        tagView(text: primary.capitalized, icon: "figure.strengthtraining.traditional", color: .blue)
-                    }
-                }
-            }
-            Spacer(minLength: 8)
-            Image(systemName: "chevron.right").font(.caption.bold()).foregroundColor(Color(UIColor.tertiaryLabel))
-        }
-        .padding(16)
-        .background(themeManager.current.surfaceVariant)
-        .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1))
-        .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 3)
-    }
-    
-    private func tagView(text: String, icon: String, color: Color) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 9, weight: .bold))
+            // Название упражнения
+            Text(LocalizationHelper.shared.translateName(exercise.name))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             
-            Text(LocalizedStringKey(text))
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .lineLimit(1)            // 👈 Запрещаем перенос на новую строку
-                .minimumScaleFactor(0.7) // 👈 Разрешаем тексту сжаться до 70% от оригинала, если не влезает
+            Spacer()
+            
+            // Иконка действия
+            if isSelectionMode {
+                Image(systemName: "plus.circle")
+                    .font(.title2)
+                    .foregroundStyle(themeManager.current.primaryAccent)
+            } else {
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundColor(Color.white.opacity(0.3))
+            }
         }
-        .foregroundColor(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(color.opacity(0.1))
-        .clipShape(Capsule())
-    }
-    
-    // MARK: - Иконки и Цвета
-    
-    // 👇 НОВАЯ ПЕРЕМЕННАЯ: Удобное управление размерами кастомных иконок
-    private var iconSize: CGFloat {
-        switch equipmentIcon {
-        case "person-standing":
-            return 44 // Размер для человечка
-        case "barbell-2":
-            return 44 // Размер для штанги (можете сделать 40 или 46, если нужно)
-        default:
-            return 30 // Стандартный размер для всех остальных (гантели, тренажеры и т.д.)
-        }
-    }
-    
-    private var equipmentIcon: String {
-        let eq = exercise.equipment?.lowercased() ?? "body only"
-        
-        if eq.contains("barbell") { return "barbell-2" }
-        if eq.contains("dumbbell") { return "dumbbell" }
-        if eq.contains("machine") || eq.contains("cable") { return "gym" }
-        if eq.contains("kettlebell") { return "kettlebell" }
-        if eq.contains("band") { return "fitness" }
-        if eq.contains("ball") { return "ball" }
-        if eq.contains("foam roll") { return "matress" }
-        
-        // Если ничего не подошло (свой вес)
-        return "person-standing"
-    }
-     
-    private var equipmentColor: Color {
-        let eq = exercise.equipment?.lowercased() ?? "bodyweight"
-        
-        if eq.contains("barbell") { return .blue }
-        if eq.contains("dumbbell") { return .cyan }
-        if eq.contains("machine") || eq.contains("cable") { return .purple }
-        if eq.contains("kettlebell") { return .orange }
-        if eq.contains("band") { return .pink }
-        if eq.contains("ball") { return .yellow }
-        if eq.contains("foam roll") { return .red }
-        
-        return .green // Свой вес
-    }
-    
-    private func levelColor(_ level: String) -> Color {
-        let lvl = level.lowercased()
-        if lvl == "beginner" { return .green }
-        if lvl == "intermediate" { return .orange }
-        if lvl == "expert" || lvl == "advanced" { return .red }
-        return .gray
-    }
-    
-    private func levelIcon(_ level: String) -> String {
-        let lvl = level.lowercased()
-        if lvl == "beginner" { return "1.circle.fill" }
-        if lvl == "intermediate" { return "2.circle.fill" }
-        return "3.circle.fill"
+        .padding()
+        // Стеклянная подложка
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(LinearGradient(colors: [.white.opacity(0.3), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+        )
     }
 }

@@ -1,11 +1,9 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Profile/ProfileView.swift
-// ============================================================
-
 internal import SwiftUI
 import SwiftData
 import PhotosUI
+import Charts
 
+// MARK: - Главный экран профиля
 struct ProfileView: View {
     @Environment(DIContainer.self) private var di
     @Environment(\.modelContext) private var context
@@ -16,105 +14,80 @@ struct ProfileView: View {
     
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
     @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = ""
-    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 0.0
+    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
+    @AppStorage("userHeight") private var userHeight = 180
+    @AppStorage("userAge") private var userAge = 25
     
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
-    
     @Environment(ProfileViewModel.self) private var profileVM
     @Environment(UserStatsViewModel.self) private var userStatsViewModel
     
-    @State private var selectedAchievement: Achievement?
-    @State private var showingWeightHistory = false
-    @State private var showingMeasurements = false
-    @State private var showEditWeight = false
-    @State private var newWeightString = ""
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var profileImage: UIImage?
     
     // Анимации при появлении
     @State private var isAppeared = false
     
+    // Дебаунсер для сохранения веса, чтобы не спамить БД при быстрых кликах +/-
+    @State private var weightSaveTask: Task<Void, Never>? = nil
+    
     var body: some View {
-        ZStack {
-            Color(UIColor.systemGroupedBackground)
-                .ignoresSafeArea()
-            
-            NavigationStack {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 28) {
-                        ProfileHeaderView(
+        NavigationStack {
+            ZStack {
+                ProfileBreathingBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 32) {
+                        ProfileHeader(
                             profileImage: $profileImage,
                             selectedPhotoItem: $selectedPhotoItem,
-                            userName: $userName,
-                            userBodyWeight: userBodyWeight,
-                            progressManager: userStatsViewModel.progressManager,
-                            unitsManager: unitsManager,
-                            onEditWeight: {
-                                newWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(userBodyWeight == 0.0 ? 75.0 : userBodyWeight))
-                                showEditWeight = true
-                            },
-                            onWeightTracking: { showingWeightHistory = true },
-                            onMeasurements: { showingMeasurements = true }
-                        )
-                        .padding(.top, 10)
-                        
-                        ProfileStatsRow(
-                            stats: userStats.first ?? UserStats(),
-                            streak: dashboardViewModel.streakCount,
-                            unitsManager: unitsManager
+                            userName: $userName
                         )
                         
-                        if let forecast = profileVM.topForecast {
-                            ProfileForecastBanner(forecast: forecast, unitsManager: unitsManager)
+                        LevelProgressBar(progressManager: userStatsViewModel.progressManager)
+                        
+                        if weightHistory.count >= 2 {
+                            YearlyTransformationView(
+                                startWeight: weightHistory.last?.weight ?? 0.0,
+                                currentWeight: weightHistory.first?.weight ?? 0.0,
+                                unitsManager: unitsManager
+                            )
                         }
                         
-                        ProfileAchievementsSection(
-                            achievements: profileVM.cachedAchievements,
-                            onTap: { achievement in
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                    selectedAchievement = achievement
-                                }
-                            }
-                        )
+                        if !profileVM.cachedAchievements.isEmpty {
+                            AchievementsCarousel(achievements: profileVM.cachedAchievements)
+                        }
                         
-                        ProfileRecordsSection(records: profileVM.cachedPersonalRecords)
+                        if !profileVM.cachedPersonalRecords.isEmpty {
+                            PersonalRecordsView(records: profileVM.cachedPersonalRecords, unitsManager: unitsManager)
+                        }
+                        
+                        if !weightHistory.isEmpty {
+                            BodyProgressChartView(weightHistory: weightHistory, unitsManager: unitsManager)
+                        }
+                        
+                        BodyStatsView(weight: $userBodyWeight, height: $userHeight, age: $userAge)
+                            .onChange(of: userBodyWeight) { _, newValue in
+                                debounceWeightSave(newWeight: newValue)
+                            }
+                        
+                        Spacer().frame(height: 40)
                     }
-                    .padding(.bottom, 60)
+                    .padding(.top, 30)
                     .opacity(isAppeared ? 1 : 0)
                     .offset(y: isAppeared ? 0 : 20)
-                    .frame(maxWidth: .infinity)
                 }
-                .navigationTitle(LocalizedStringKey("Profile"))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button(LocalizedStringKey("Close")) { dismiss() }
-                            .fontWeight(.bold)
-                    }
-                }
-                .background(Color(UIColor.systemGroupedBackground))
             }
-            
-            // Achievement Popup Overlay
-            if let achievement = selectedAchievement {
-                AchievementPopupView(achievement: achievement) {
-                    withAnimation { selectedAchievement = nil }
+            .navigationBarHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Закрыть") { dismiss() }
+                        .foregroundColor(.gray)
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.9)))
-                .zIndex(100)
             }
         }
-        .sheet(isPresented: $showingWeightHistory) { WeightHistoryView() }
-        .sheet(isPresented: $showingMeasurements) { BodyMeasurementsView() }
-        .alert(LocalizedStringKey("Update Body Weight"), isPresented: $showEditWeight) {
-            TextField("Weight", text: $newWeightString).keyboardType(.decimalPad)
-            Button("Save") { saveNewWeight() }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Enter your current weight in \(unitsManager.weightUnitString())")
-        }
+        .preferredColorScheme(.dark)
         .onAppear {
             loadInitialData()
             withAnimation(.easeOut(duration: 0.6)) { isAppeared = true }
@@ -123,14 +96,12 @@ struct ProfileView: View {
     }
     
     // MARK: - Logic
-    
-    private func saveNewWeight() {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        if let number = formatter.number(from: newWeightString)?.doubleValue ?? Double(newWeightString.replacingOccurrences(of: ",", with: ".")) {
-            let weightKg = unitsManager.convertToKilograms(number)
-            userBodyWeight = weightKg
-            Task { await userStatsViewModel.addWeightEntry(weight: weightKg) }
+    private func debounceWeightSave(newWeight: Double) {
+        weightSaveTask?.cancel()
+        weightSaveTask = Task {
+            try? await Task.sleep(nanoseconds: 800_000_000) // Ждем 0.8 сек после последнего нажатия
+            guard !Task.isCancelled else { return }
+            await userStatsViewModel.addWeightEntry(weight: newWeight)
         }
     }
     
@@ -156,509 +127,486 @@ struct ProfileView: View {
     }
 }
 
-struct ProfileHeaderView: View {
+// MARK: - 1. Хедер
+struct ProfileHeader: View {
     @Binding var profileImage: UIImage?
     @Binding var selectedPhotoItem: PhotosPickerItem?
     @Binding var userName: String
-    @Environment(ThemeManager.self) private var themeManager
-    let userBodyWeight: Double
-    let progressManager: ProgressManager
-    let unitsManager: UnitsManager
-    
-    let onEditWeight: () -> Void
-    let onWeightTracking: () -> Void
-    let onMeasurements: () -> Void
-    
-    @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = ""
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Аватар без лишних кругов
+        VStack(spacing: 12) {
             PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
-                Group {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [.red, .orange], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 80, height: 80)
+                        .shadow(color: .red.opacity(0.6), radius: 20, x: 0, y: 10)
+                    
                     if let profileImage {
                         Image(uiImage: profileImage)
                             .resizable()
                             .scaledToFill()
+                            .frame(width: 76, height: 76)
+                            .clipShape(Circle())
+                    } else if UIImage(named: "fire_mascot") != nil {
+                        Image("fire_mascot")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 70, height: 70)
+                            .offset(y: -5)
                     } else {
-                        Text(userAvatar.isEmpty ? "🦍" : userAvatar)
-                            .font(.system(size: 60))
-                            .background(themeManager.current.surface)
+                        Image(systemName: "person.fill")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 40, height: 40)
+                            .foregroundColor(.white)
                     }
                 }
-                .frame(width: 114, height: 114)
-                .clipShape(Circle())
             }
             
-            // Имя пользователя
-            TextField("Champion", text: $userName)
-                .font(.system(size: 28, weight: .heavy, design: .rounded))
-                .multilineTextAlignment(.center)
-            
-            // Слой кнопок (Measures / Weight)
-            HStack(spacing: 0) {
-                Button(action: onWeightTracking) {
-                    VStack(spacing: 4) {
-                        Image(systemName: "scalemass.fill").font(.title3)
-                        Text(LocalizedStringKey("Weight")).font(.caption2.bold()).textCase(.uppercase)
-                    }
-                    .foregroundColor(themeManager.current.primaryText)
-                    .frame(maxWidth: .infinity)
-                }
+            VStack(spacing: 4) {
+                TextField("Атлет", text: $userName)
+                    .font(.title2).bold()
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
                 
-                Divider().frame(height: 30).background(Color.gray.opacity(0.3))
-                
-                Button(action: onEditWeight) {
-                    let displayWeight = userBodyWeight == 0.0 ? 75.0 : userBodyWeight
-                    let convertedWeight = unitsManager.convertFromKilograms(displayWeight)
-                    
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
-                        Text(LocalizationHelper.shared.formatFlexible(convertedWeight))
-                            .font(.system(size: 22, weight: .heavy, design: .rounded))
-                            .foregroundColor(themeManager.current.primaryAccent)
-                        Text(unitsManager.weightUnitString())
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(themeManager.current.primaryAccent.opacity(0.8))
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                
-                Divider().frame(height: 30).background(Color.gray.opacity(0.3))
-                
-                Button(action: onMeasurements) {
-                    VStack(spacing: 4) {
-                        Image(systemName: "ruler.fill").font(.title3)
-                        Text(LocalizedStringKey("Measures")).font(.caption2.bold()).textCase(.uppercase)
-                    }
-                    .foregroundColor(themeManager.current.primaryText)
-                    .frame(maxWidth: .infinity)
-                }
+                Text("@" + (userName.isEmpty ? "athlete" : userName.lowercased().replacingOccurrences(of: " ", with: "_")))
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.5))
             }
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 1))
-            .padding(.horizontal, 24)
         }
     }
 }
 
-// MARK: - Stats Grid (Блоки одинакового размера)
-
-struct ProfileStatsRow: View {
-    let stats: UserStats
-    let streak: Int
-    let unitsManager: UnitsManager
-    @Environment(ThemeManager.self) private var themeManager
-    
-    // ВЫНОСИМ ЛОГИКУ В ОТДЕЛЬНОЕ СВОЙСТВО, чтобы не путать компилятор
-    private var volumeInfo: (value: String, unit: String) {
-        let rawKg = stats.totalVolume
-        if rawKg >= 1000 {
-            let tons = rawKg / 1000.0
-            return (LocalizationHelper.shared.formatFlexible(tons), String(localized: "tons"))
-        } else {
-            let converted = unitsManager.convertFromKilograms(rawKg)
-            return (LocalizationHelper.shared.formatSmart(converted), unitsManager.weightUnitString())
-        }
-    }
+// MARK: - 2. Полоса прогресса (Подключена к ProgressManager)
+struct LevelProgressBar: View {
+    let progressManager: ProgressManager
     
     var body: some View {
-        HStack(spacing: 12) {
-            // ✅ ИСПРАВЛЕНИЕ: Заменили lightHighlight на primaryAccent
-            ProfileStatCard(title: "Workouts", value: "\(stats.totalWorkouts)", icon: "figure.run.circle.fill", color: themeManager.current.primaryAccent)
+        let progress = CGFloat(progressManager.progressPercentage)
+        
+        VStack(spacing: 12) {
+            HStack {
+                Text("Уровень \(progressManager.level)")
+                    .font(.caption).bold()
+                    .foregroundColor(progress > 0 ? .orange : .gray)
+                Spacer()
+                Text("\(progressManager.currentXPInLevel) XP")
+                    .font(.subheadline).bold()
+                    .foregroundColor(.red)
+                Spacer()
+                Text("Уровень \(progressManager.level + 1)")
+                    .font(.caption).bold()
+                    .foregroundColor(.gray)
+            }
             
-            ProfileStatCard(title: "Volume", value: volumeInfo.value, unit: volumeInfo.unit, icon: "dumbbell.fill", color: .purple)
-            
-            ProfileStatCard(title: "Streak", value: "\(streak)", unit: String(localized: "Days"), icon: "flame.fill", color: .orange)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.05)).frame(height: 12)
+                    Capsule()
+                        .fill(LinearGradient(colors: [.orange, .red, .purple], startPoint: .leading, endPoint: .trailing))
+                        .frame(width: geo.size.width * progress, height: 12)
+                        .shadow(color: .red.opacity(0.5), radius: 8, x: 0, y: 0)
+                }
+            }
+            .frame(height: 12)
         }
+        .padding()
+        .background(Color.white.opacity(0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
         .padding(.horizontal, 20)
     }
 }
 
-struct ProfileStatCard: View {
-    @Environment(ThemeManager.self) private var themeManager
-    let title: LocalizedStringKey
-    let value: String
-    var unit: String? = nil
-    let icon: String
-    let color: Color
+// MARK: - 3. Трансформация
+struct YearlyTransformationView: View {
+    let startWeight: Double
+    let currentWeight: Double
+    let unitsManager: UnitsManager
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
+        HStack {
+            VStack(alignment: .leading) {
+                Text("Начальный вес").font(.caption).foregroundColor(.gray)
+                let sWeight = unitsManager.convertFromKilograms(startWeight)
+                Text("\(LocalizationHelper.shared.formatDecimal(sWeight)) \(unitsManager.weightUnitString())")
+                    .font(.headline).foregroundColor(.white.opacity(0.7))
+            }
+            Spacer()
             
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
-                    Text(value)
-                        .font(.system(size: 20, weight: .heavy, design: .rounded))
-                        .foregroundColor(themeManager.current.primaryText)
-                        .minimumScaleFactor(0.4)
-                        .lineLimit(1)
+            let diff = currentWeight - startWeight
+            let icon = diff > 0 ? "arrow.up.right" : (diff < 0 ? "arrow.down.right" : "arrow.right")
+            let color: Color = diff > 0 ? .orange : (diff < 0 ? .green : .gray)
+            
+            Image(systemName: icon).foregroundColor(color).font(.system(size: 20, weight: .bold))
+            Spacer()
+            VStack(alignment: .trailing) {
+                Text("Сейчас").font(.caption).foregroundColor(.gray)
+                let cWeight = unitsManager.convertFromKilograms(currentWeight)
+                Text("\(LocalizationHelper.shared.formatDecimal(cWeight)) \(unitsManager.weightUnitString())")
+                    .font(.headline).foregroundColor(color)
+            }
+        }
+        .padding()
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 20)
+    }
+}
+
+// MARK: - 4. 3D Карусель (Интегрирована с БД ачивок)
+struct AchievementsCarousel: View {
+    let achievements: [Achievement]
+    
+    @State private var currentIndex: CGFloat = 0
+    @GestureState private var dragOffset: CGFloat = 0
+    
+    var body: some View {
+        let total = CGFloat(achievements.count)
+        let current = currentIndex - (dragOffset / 250)
+        
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Ваши трофеи (Свайп)")
+                .font(.title3).bold()
+                .foregroundColor(.white)
+                .padding(.horizontal, 20)
+            
+            ZStack {
+                ForEach(0..<achievements.count, id: \.self) { i in
+                    let distance = shortestDistance(from: current, to: CGFloat(i), total: total)
+                    let angle = distance * (360.0 / total)
+                    let angleRad = angle * .pi / 180
                     
-                    if let u = unit {
-                        Text(u)
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .foregroundColor(themeManager.current.secondaryText)
-                            .minimumScaleFactor(0.5)
+                    let x = sin(angleRad) * 280
+                    let z = cos(angleRad)
+                    
+                    let scale = 0.75 + 0.25 * z
+                    let opacity = max(0, 0.1 + 0.9 * z)
+                    
+                    AchievementDesignerCard(
+                        achievement: achievements[i]
+                    )
+                    .offset(x: x)
+                    .scaleEffect(scale)
+                    .opacity(z > -0.3 ? opacity : 0)
+                    .zIndex(z)
+                    .rotation3DEffect(.degrees(angle * 0.7), axis: (x: 0, y: 1, z: 0))
+                }
+            }
+            .frame(height: 240)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture()
+                    .updating($dragOffset) { val, state, _ in
+                        state = val.translation.width
+                    }
+                    .onEnded { val in
+                        let moved = val.translation.width / 250
+                        let target = round(currentIndex - moved)
+                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                            currentIndex = target
+                        }
+                    }
+            )
+        }
+    }
+    
+    func shortestDistance(from current: CGFloat, to target: CGFloat, total: CGFloat) -> CGFloat {
+        let diff = target - current
+        var wrapped = diff.truncatingRemainder(dividingBy: total)
+        if wrapped < 0 { wrapped += total }
+        if wrapped > total / 2.0 { wrapped -= total }
+        return wrapped
+    }
+}
+
+struct AchievementDesignerCard: View {
+    let achievement: Achievement
+    
+    @State private var isBreathing = false
+    @State private var showCloud = false
+    
+    // ВЕРНУЛИ КРАСОЧНЫЕ НЕОНОВЫЕ ЦВЕТА ДИЗАЙНЕРА ДЛЯ УРОВНЕЙ
+    private var glowColor: Color {
+        guard achievement.isUnlocked else { return Color.white.opacity(0.1) }
+        switch achievement.tier {
+        case .none: return .clear
+        case .bronze: return .orange  // Яркий оранжевый вместо скучного коричневого
+        case .silver: return .cyan    // Кибер-синий вместо серого
+        case .gold: return .yellow    // Яркий желтый
+        case .diamond: return .purple // Неоновый фиолетовый
+        }
+    }
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 12) {
+                Image(systemName: achievement.isUnlocked ? achievement.icon : "lock.fill")
+                    .font(.system(size: 40))
+                    // ГРАДИЕНТ ДИЗАЙНЕРА
+                    .foregroundStyle(LinearGradient(colors: [.white, glowColor], startPoint: .topLeading, endPoint: .bottomTrailing))
+                
+                VStack(spacing: 4) {
+                    Text(achievement.title)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.7)
+                    
+                    if achievement.isUnlocked {
+                        Text(achievement.tier.name)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    } else {
+                        Text(achievement.progress)
+                            .font(.caption)
+                            .foregroundColor(.gray)
                             .lineLimit(1)
                     }
                 }
-                
-                Text(title)
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundColor(themeManager.current.secondaryText)
-                    .textCase(.uppercase)
-                    .minimumScaleFactor(0.6)
-                    .lineLimit(1)
             }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading) // Фиксирует одинаковую ширину колонок
-        .background(themeManager.current.surface)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
-    }
-}
-// MARK: - Forecast Banner
-
-struct ProfileForecastBanner: View {
-    let forecast: ProgressForecast
-    let unitsManager: UnitsManager
-    @Environment(ThemeManager.self) private var themeManager
-    
-    var body: some View {
-        let convertedWeight = unitsManager.convertFromKilograms(forecast.predictedMax)
-        let weightStr = LocalizationHelper.shared.formatFlexible(convertedWeight)
-        
-        HStack(spacing: 16) {
-            ZStack {
-                Circle().fill(Color.white.opacity(0.2)).frame(width: 48, height: 48)
-                Image(systemName: "sparkles").font(.title2).foregroundColor(themeManager.current.background)
+            .frame(width: 130, height: 160)
+            .background(.ultraThinMaterial)
+            // ПОДСВЕТКА ФОНА ДИЗАЙНЕРА
+            .background(glowColor.opacity(achievement.isUnlocked ? 0.15 : 0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
+            // ТЕНИ ДИЗАЙНЕРА
+            .shadow(color: glowColor.opacity(isBreathing && achievement.isUnlocked ? 0.6 : 0.1), radius: isBreathing ? 20 : 5)
+            .onLongPressGesture(minimumDuration: 0.1, maximumDistance: 50, perform: {}, onPressingChanged: { isPressing in
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                    showCloud = isPressing
+                    if isPressing { HapticManager.shared.impact(.soft) }
+                }
+            })
+            .onAppear {
+                if achievement.isUnlocked {
+                    withAnimation(.easeInOut(duration: .random(in: 1.5...2.5)).repeatForever(autoreverses: true)) {
+                        isBreathing = true
+                    }
+                }
             }
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(LocalizedStringKey("AI Forecast"))
-                    .font(.headline)
-                    .fontWeight(.heavy)
-                    .foregroundColor(themeManager.current.background)
-                
-                let translatedExName = LocalizationHelper.shared.translateName(forecast.exerciseName)
-Text(String(localized: "In \(forecast.timeframe) your \(translatedExName) is predicted to reach \(weightStr) \(unitsManager.weightUnitString())!"))
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.9))
-                    .fixedSize(horizontal: false, vertical: true)
+            // ТУЛТИП ДИЗАЙНЕРА
+            if showCloud {
+                VStack(spacing: 0) {
+                    Text(achievement.description)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.black.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.95))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .shadow(color: .white.opacity(0.4), radius: 10, y: 5)
+                    
+                    BubbleTail()
+                        .fill(Color.white.opacity(0.95))
+                        .frame(width: 14, height: 8)
+                }
+                .offset(y: -175)
+                .transition(.scale(scale: 0.5, anchor: .bottom).combined(with: .opacity))
+                .zIndex(10)
             }
-            Spacer()
         }
-        .padding(16)
-        .background(
-            themeManager.current.premiumGradient
-        )
-        .cornerRadius(20)
-        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 10, x: 0, y: 5)
+    }
+}
+struct BubbleTail: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - 5. Личные Рекорды (Интегрировано с БД)
+struct PersonalRecordsView: View {
+    let records: [BestResult]
+    let unitsManager: UnitsManager
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Личные рекорды")
+                .font(.title3).bold()
+                .foregroundColor(.white)
+            
+            VStack(spacing: 12) {
+                ForEach(records.prefix(5)) { record in
+                    RecordRow(
+                        title: LocalizationHelper.shared.translateName(record.exerciseName),
+                        value: record.value,
+                        period: record.date.formatted(date: .abbreviated, time: .omitted)
+                    )
+                }
+            }
+            .padding()
+            .background(Color.white.opacity(0.03))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+        }
         .padding(.horizontal, 20)
     }
 }
 
-// MARK: - Gamified Achievements Section
-
-struct ProfileAchievementsSection: View {
-    let achievements: [Achievement]
-    let onTap: (Achievement) -> Void
+struct RecordRow: View {
+    var title: String
+    var value: String
+    var period: String
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Achievements"))
-                .font(.title2)
-                .bold()
-                .padding(.horizontal, 24)
-            
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 16), count: 3), spacing: 20) {
-                ForEach(achievements) { achievement in
-                    PremiumAchievementBadge(achievement: achievement)
-                        .onTapGesture { onTap(achievement) }
-                }
+        HStack {
+            VStack(alignment: .leading) {
+                Text(title).font(.headline).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.8)
+                Text(period).font(.caption).foregroundColor(.gray)
             }
-            .padding(.horizontal, 20)
+            Spacer()
+            Text(value)
+                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
+        .padding(.vertical, 8)
     }
 }
 
-struct PremiumAchievementBadge: View {
-    let achievement: Achievement
-    @State private var animateIcon = false
-    @Environment(ThemeManager.self) private var themeManager
+// MARK: - 6. График прогресса (Интегрирован с БД)
+struct BodyProgressChartView: View {
+    let weightHistory: [WeightEntry]
+    let unitsManager: UnitsManager
+    @State private var mascotBreathe = false
     
-    var body: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                // Background Shape
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(achievement.isUnlocked ? AnyShapeStyle(gradientForTier(achievement.tier)) : AnyShapeStyle(themeManager.current.surface))
-                    .aspectRatio(1, contentMode: .fit)
-                
-                // Inner Glass or Border
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .stroke(Color.white.opacity(achievement.isUnlocked ? 0.3 : 0.05), lineWidth: 1)
-                
-                if achievement.isUnlocked {
-                    Image(systemName: achievement.icon)
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(themeManager.current.background)
-                        .shadow(color: .black.opacity(0.2), radius: 2, x: 0, y: 2)
-                        .symbolEffect(.bounce, value: animateIcon)
-                } else {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 28, weight: .medium))
-                        .foregroundColor(themeManager.current.secondaryAccent.opacity(0.4))
-                }
-            }
-            .shadow(color: achievement.isUnlocked ? colorForTier(achievement.tier).opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
-            
-            VStack(spacing: 2) {
-                Text(achievement.title)
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(achievement.isUnlocked ? .primary : .secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.4) // 👈 Уменьшаем до 0.4 для длинных слов типа "Путешественник"
-                
-                if !achievement.isUnlocked && !achievement.progress.isEmpty {
-                    Text(achievement.progress)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(themeManager.current.secondaryAccent)
-                        .lineLimit(1)            // 👈 Запрещаем перенос на вторую строку
-                        .minimumScaleFactor(0.4) // 👈 Разрешаем тексту сжиматься
-                }
-            }
-            .frame(maxWidth: .infinity) // 👈 Жестко ограничиваем ширину по размеру колонки
-        }
-        .onAppear {
-            if achievement.isUnlocked {
-                DispatchQueue.main.asyncAfter(deadline: .now() + Double.random(in: 0.1...0.5)) {
-                    animateIcon.toggle()
-                }
-            }
-        }
+    var chartData: [WeightEntry] {
+        // Берем последние 10 записей и разворачиваем для хронологического порядка слева направо
+        Array(weightHistory.prefix(10)).reversed()
     }
-    
-    private func colorForTier(_ tier: AchievementTier) -> Color {
-        switch tier {
-        case .none: return .clear
-        case .bronze: return .brown
-        case .silver: return .gray
-        case .gold: return .yellow
-        case .diamond: return themeManager.current.lightHighlight
-        }
-    }
-    
-    private func gradientForTier(_ tier: AchievementTier) -> LinearGradient {
-        switch tier {
-        case .bronze: return LinearGradient(colors: [.orange, .brown], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .silver: return LinearGradient(colors: [Color(white: 0.8), Color(white: 0.5)], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .gold: return LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .diamond: return themeManager.current.primaryGradient
-        default: return LinearGradient(colors: [.clear], startPoint: .top, endPoint: .bottom)
-        }
-    }
-}
-
-// MARK: - Records Section
-
-struct ProfileRecordsSection: View {
-    let records: [BestResult]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Personal Records"))
-                .font(.title2)
-                .bold()
-                .padding(.horizontal, 24)
-            
-            if records.isEmpty {
-                EmptyStateView(
-                    icon: "trophy",
-                    title: LocalizedStringKey("No Records Yet"),
-                    message: LocalizedStringKey("Complete workouts to see your records!")
-                )
-                .padding(.horizontal)
-            } else {
-                VStack(spacing: 12) {
-                    ForEach(records) { record in
-                        PremiumRecordCard(record: record)
+            HStack {
+                Text("Динамика веса").font(.title3).bold().foregroundColor(.white)
+                Spacer()
+                if let first = weightHistory.last?.weight, let last = weightHistory.first?.weight {
+                    let diff = last - first
+                    if abs(diff) > 0.1 {
+                        let diffConverted = unitsManager.convertFromKilograms(diff)
+                        let sign = diff > 0 ? "+" : ""
+                        let color: Color = diff < 0 ? .green : .orange
+                        Text("\(sign)\(LocalizationHelper.shared.formatDecimal(diffConverted)) \(unitsManager.weightUnitString())")
+                            .font(.caption).bold()
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .background(color.opacity(0.2)).foregroundColor(color).clipShape(Capsule())
                     }
                 }
-                .padding(.horizontal, 20)
             }
+            
+            Chart {
+                ForEach(Array(chartData.enumerated()), id: \.element.id) { index, item in
+                    let w = unitsManager.convertFromKilograms(item.weight)
+                    LineMark(x: .value("Date", item.date), y: .value("Weight", w))
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing))
+                        .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
+                    
+                    AreaMark(x: .value("Date", item.date), y: .value("Weight", w))
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(LinearGradient(colors: [.red.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom))
+                    
+                    if index == chartData.count - 1 {
+                        PointMark(x: .value("Date", item.date), y: .value("Weight", w))
+                            .foregroundStyle(.clear)
+                            .annotation(position: .top, alignment: .center) {
+                                if UIImage(named: "fire_mascot") != nil {
+                                    Image("fire_mascot")
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(width: 45, height: 45)
+                                        .shadow(color: .orange, radius: mascotBreathe ? 10 : 2)
+                                        .scaleEffect(mascotBreathe ? 1.15 : 0.95)
+                                        .offset(y: -15)
+                                        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: mascotBreathe)
+                                        .onAppear { mascotBreathe = true }
+                                } else {
+                                    Image(systemName: "flame.fill")
+                                        .foregroundColor(.orange)
+                                        .font(.title2)
+                                        .offset(y: -10)
+                                }
+                            }
+                    }
+                }
+            }
+            .frame(height: 140)
+            .chartYScale(domain: .automatic(includesZero: false))
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
         }
+        .padding()
+        .background(Color.white.opacity(0.03))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .padding(.horizontal, 20)
     }
 }
 
-struct PremiumRecordCard: View {
-    let record: BestResult
-    @Environment(ThemeManager.self) private var themeManager
+// MARK: - 7. Антропометрия
+struct BodyStatsView: View {
+    @Binding var weight: Double
+    @Binding var height: Int
+    @Binding var age: Int
     
     var body: some View {
-        HStack(spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(getColor(record.type).opacity(0.15))
-                    .frame(width: 50, height: 50)
-                
-                Image(systemName: getIcon(record.type))
-                    .font(.title3)
-                    .foregroundColor(getColor(record.type))
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(LocalizationHelper.shared.translateName(record.exerciseName))
-                    .font(.headline)
-                    .foregroundColor(themeManager.current.primaryText)
-                
-                Text(record.date.formatted(date: .abbreviated, time: .omitted))
-                    .font(.caption)
-                    .foregroundColor(themeManager.current.secondaryText)
-            }
-            
-            Spacer()
-            
-            Text(record.value)
-                .font(.system(size: 20, weight: .heavy, design: .rounded))
-                .foregroundColor(themeManager.current.primaryText)
-                .lineLimit(1)                // <-- Добавить
-                .minimumScaleFactor(0.5)     // <-- Добавить (текст сожмется, если экран маленький)
+        HStack(spacing: 12) {
+            StatAdjuster(title: "Вес", value: String(format: "%.1f", weight), unit: "кг", onMinus: { weight -= 0.5 }, onPlus: { weight += 0.5 })
+            StatAdjuster(title: "Рост", value: "\(height)", unit: "см", onMinus: { height -= 1 }, onPlus: { height += 1 })
+            StatAdjuster(title: "Возраст", value: "\(age)", unit: "лет", onMinus: { age -= 1 }, onPlus: { age += 1 })
         }
-        .padding(16)
-        .background(themeManager.current.surface)
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 4)
-    }
-    
-    private func getIcon(_ type: ExerciseType) -> String {
-        type == .strength ? "dumbbell.fill" : (type == .cardio ? "figure.run" : "stopwatch.fill")
-    }
-    
-    private func getColor(_ type: ExerciseType) -> Color {
-        type == .strength ? themeManager.current.primaryAccent : (type == .cardio ? .orange : .purple)
+        .padding(.horizontal, 20)
     }
 }
 
-// MARK: - Legacy Popup Keep (Unmodified logic, styled)
+struct StatAdjuster: View {
+    var title: String; var value: String; var unit: String
+    var onMinus: () -> Void; var onPlus: () -> Void
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(title).font(.caption).foregroundColor(.gray)
+            HStack(spacing: 0) {
+                Text(value).font(.system(size: 20, weight: .bold)).monospacedDigit()
+                Text(unit).font(.caption).foregroundColor(.gray).padding(.leading, 2)
+            }
+            .foregroundColor(.white)
+            HStack(spacing: 16) {
+                Button(action: { UIImpactFeedbackGenerator(style: .light).impactOccurred(); withAnimation { onMinus() } }) { Image(systemName: "minus.circle.fill").foregroundColor(.white.opacity(0.3)) }
+                Button(action: { UIImpactFeedbackGenerator(style: .light).impactOccurred(); withAnimation { onPlus() } }) { Image(systemName: "plus.circle.fill").foregroundColor(.white.opacity(0.3)) }
+            }
+            .font(.title3)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+    }
+}
 
-struct AchievementPopupView: View {
-    @Environment(ThemeManager.self) private var themeManager
-    let achievement: Achievement
-    let onClose: () -> Void
-    @State private var isAnimating = false
-    
+// MARK: - Фон
+struct ProfileBreathingBackground: View {
+    @State private var phase = false
     var body: some View {
         ZStack {
-            Color.black.opacity(0.85).ignoresSafeArea()
-            
-            VStack(spacing: 24) {
-                ZStack {
-                    if achievement.isUnlocked {
-                        Circle()
-                            .fill(tierColor(achievement.tier).opacity(0.2))
-                            .frame(width: 160, height: 160)
-                            .scaleEffect(isAnimating ? 1.2 : 0.9)
-                            .opacity(isAnimating ? 0 : 1)
-                            .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false), value: isAnimating)
-                    }
-                    
-                    Image(systemName: achievement.isUnlocked ? achievement.icon : "lock.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(achievement.isUnlocked ? tierColor(achievement.tier) : .gray)
-                        .shadow(color: achievement.isUnlocked ? tierColor(achievement.tier).opacity(0.8) : .clear, radius: 20, x: 0, y: 0)
-                }
-                .padding(.bottom, 10)
-                
-                if achievement.isUnlocked {
-                    Text("🏆").font(.largeTitle)
-                    Text(LocalizedStringKey("Achievement Unlocked!"))
-                        .font(.headline)
-                        .foregroundColor(.yellow)
-                        .textCase(.uppercase)
-                        .tracking(2)
-                } else {
-                    Text(LocalizedStringKey("Locked"))
-                        .font(.headline)
-                        .foregroundColor(themeManager.current.secondaryAccent)
-                        .textCase(.uppercase)
-                        .tracking(2)
-                }
-                
-                Text(achievement.title)
-                    .font(.system(size: 32, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.background)
-                    .multilineTextAlignment(.center)
-                
-                Text(achievement.description)
-                    .font(.title3)
-                    .foregroundColor(.white.opacity(0.8))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 30)
-                
-                if achievement.isUnlocked {
-                    HStack(spacing: 6) {
-                        Text(LocalizedStringKey("Level:"))
-                            .font(.headline)
-                            .foregroundColor(.white.opacity(0.7))
-                        Text(achievement.tier.name)
-                            .font(.headline)
-                            .foregroundColor(tierColor(achievement.tier))
-                    }
-                    .padding(.top, 10)
-                } else if !achievement.progress.isEmpty {
-                    Text(achievement.progress)
-                        .font(.headline)
-                        .foregroundColor(themeManager.current.secondaryAccent)
-                        .padding(.top, 10)
-                }
-                
-                Button(action: onClose) {
-                    Text(LocalizedStringKey("Close"))
-                        .font(.headline)
-                        .foregroundColor(.black)
-                        .frame(width: 200)
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(16)
-                }
-                .padding(.top, 20)
-            }
-            .padding(30)
-            .background(.ultraThinMaterial)
-            .environment(\.colorScheme, .dark)
-            .cornerRadius(32)
-            .overlay(
-                RoundedRectangle(cornerRadius: 32)
-                    .stroke(achievement.isUnlocked ? tierColor(achievement.tier).opacity(0.5) : Color.gray.opacity(0.3), lineWidth: 1)
-            )
-            .shadow(color: .black.opacity(0.3), radius: 30, x: 0, y: 15)
-            .padding(.horizontal, 20)
-        }
-        .onAppear {
-            if achievement.isUnlocked {
-                isAnimating = true
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-            }
-        }
-    }
-    
-    private func tierColor(_ tier: AchievementTier) -> Color {
-        switch tier {
-        case .none: return .clear
-        case .bronze: return .brown
-        case .silver: return .gray
-        case .gold: return .yellow
-        case .diamond: return .cyan
+            Color(red: 0.05, green: 0.05, blue: 0.07).edgesIgnoringSafeArea(.all)
+            Circle().fill(Color.red.opacity(0.08)).frame(width: 350, height: 350).blur(radius: 120)
+                .offset(x: phase ? 40 : -40, y: phase ? -30 : 30)
+                .scaleEffect(phase ? 1.2 : 0.8)
+                .animation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true), value: phase)
+                .onAppear { phase = true }
         }
     }
 }

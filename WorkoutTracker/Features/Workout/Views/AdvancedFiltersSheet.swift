@@ -13,44 +13,49 @@ struct AdvancedFiltersSheet: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                // Фон темы
+                themeManager.current.background.ignoresSafeArea()
                 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 28) {
+                        AdvancedFilterSectionView(title: "Уровень опыта", items: levelsList, selectedItems: $filterState.selectedLevel, filterState: filterState)
+                        AdvancedFilterSectionView(title: "Механика", items: mechanicsList, selectedItems: $filterState.selectedMechanic, filterState: filterState)
+                        AdvancedFilterSectionView(title: "Оборудование", items: equipmentList, selectedItems: $filterState.selectedEquipment, filterState: filterState)
                         
-                        AdvancedFilterSectionView(title: "Experience Level", items: levelsList, selectedItems: $filterState.selectedLevel, filterState: filterState)
-                        AdvancedFilterSectionView(title: "Mechanic", items: mechanicsList, selectedItems: $filterState.selectedMechanic, filterState: filterState)
-                        AdvancedFilterSectionView(title: "Equipment", items: equipmentList, selectedItems: $filterState.selectedEquipment, filterState: filterState)
-                        
-                        Spacer(minLength: 100)
+                        Spacer(minLength: 100) // Отступ под плавающую кнопку
                     }
                     .padding(.vertical, 24)
                 }
                 
+                // Элегантная парящая кнопка (Floating Action Button)
                 Button {
                     let gen = UINotificationFeedbackGenerator()
                     gen.notificationOccurred(.success)
                     dismiss()
                 } label: {
-                    Text(LocalizedStringKey("Show \(resultsCount) Exercises"))
+                    Text(LocalizedStringKey("Показать \(resultsCount) упражнений"))
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(themeManager.current.primaryGradient)
-                        .cornerRadius(16)
-                        .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
+                        .background(themeManager.current.primaryAccent) // Ровный неоновый цвет вместо агрессивного градиента
+                        .clipShape(Capsule()) // Делаем ее круглой (капсулой)
+                        .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, x: 0, y: 8)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 10)
-                .background(LinearGradient(colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0)], startPoint: .bottom, endPoint: .top).ignoresSafeArea())
+                .padding(.horizontal, 32) // Отступы по краям, чтобы кнопка не давила
+                .padding(.bottom, 20)
+                .background(
+                    // Градиент для затемнения под кнопкой
+                    LinearGradient(colors: [themeManager.current.background, themeManager.current.background.opacity(0)], startPoint: .bottom, endPoint: .top)
+                        .ignoresSafeArea()
+                )
             }
-            .navigationTitle(LocalizedStringKey("Advanced Filters"))
+            .navigationTitle(LocalizedStringKey("Дополнительно"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Clear")) {
+                    Button(LocalizedStringKey("Очистить")) {
                         let gen = UIImpactFeedbackGenerator(style: .rigid)
                         gen.impactOccurred()
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { filterState.clearAdvancedFilters() }
@@ -59,7 +64,7 @@ struct AdvancedFiltersSheet: View {
                     .foregroundColor(filterState.activeAdvancedFiltersCount == 0 ? .gray : .red)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(LocalizedStringKey("Done")) { dismiss() }.fontWeight(.bold)
+                    Button(LocalizedStringKey("Готово")) { dismiss() }.fontWeight(.bold).foregroundColor(themeManager.current.primaryAccent)
                 }
             }
         }
@@ -75,7 +80,6 @@ struct AdvancedFilterSectionView: View {
     var filterState: ExerciseFilterState
     @Environment(ThemeManager.self) private var themeManager
     
-    // Вспомогательная функция для красивого отображения ключей
     private func displayString(for item: String) -> String {
         if item == "dumbbell1" { return "Dumbbell" }
         return item.capitalized
@@ -93,7 +97,7 @@ struct AdvancedFilterSectionView: View {
                     Spacer().frame(width: 10)
                     ForEach(items, id: \.self) { item in
                         let isSelected = selectedItems.contains(item)
-                        let buttonTitle = displayString(for: item) // 👈 Получаем чистое имя
+                        let buttonTitle = displayString(for: item)
                         
                         Button {
                             let gen = UIImpactFeedbackGenerator(style: .light)
@@ -102,15 +106,19 @@ struct AdvancedFilterSectionView: View {
                                 filterState.toggle(item: item, in: &selectedItems)
                             }
                         } label: {
-                            Text(LocalizedStringKey(buttonTitle)) // 👈 Переводим чистое имя
+                            Text(LocalizedStringKey(buttonTitle))
                                 .font(.subheadline)
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface)
-                                .foregroundColor(isSelected ? .white : .primary)
-                                .cornerRadius(20)
-                                .overlay(RoundedRectangle(cornerRadius: 20).stroke(isSelected ? themeManager.current.primaryAccent : Color.gray.opacity(0.2), lineWidth: 1))
+                                // Стеклянный дизайн чипсов
+                                .background(isSelected ? themeManager.current.primaryAccent.opacity(0.15) : Color.white.opacity(0.05))
+                                .foregroundColor(isSelected ? themeManager.current.primaryAccent : .white.opacity(0.8))
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        .stroke(isSelected ? themeManager.current.primaryAccent : Color.white.opacity(0.1), lineWidth: 1)
+                                )
                         }
                         .buttonStyle(.plain)
                     }

@@ -38,7 +38,11 @@ struct ExerciseHistoryPayload: Sendable {
     let forecast: ProgressForecast?
     let records: ExerciseRecordsDTO? // ✅ ДОБАВЛЕНО
 }
-struct MuscleCountDTO: Sendable { let muscle: String; let count: Int }
+struct MuscleCountDTO: Sendable, Identifiable {
+    var id: String { muscle } // Используем название мышцы как уникальный ID
+    let muscle: String
+    let count: Int
+}
 struct ExerciseCountDTO: Sendable { let name: String; let count: Int }
 
 

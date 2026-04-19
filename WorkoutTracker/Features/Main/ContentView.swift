@@ -1,5 +1,3 @@
-// MARK: - FILE: WorkoutTracker/Features/Main/ContentView.swift
-
 internal import SwiftUI
 import SwiftData
 
@@ -13,31 +11,48 @@ struct ContentView: View {
         @Bindable var appState = di.appState
         
         ZStack {
-            // 1. Основной UI с TabView
+            // 1. Основной UI со стандартным системным TabView
             TabView(selection: $appState.selectedTab) {
                 OverviewView()
-                    .tabItem { Image(systemName: "chart.pie"); Text(LocalizedStringKey("Overview")) }
+                    .tabItem {
+                        Image(systemName: "chart.pie")
+                        Text(LocalizedStringKey("Overview"))
+                    }
                     .tag(0)
                 
                 HistoryView()
-                    .tabItem { Image(systemName: "clock.arrow.circlepath"); Text(LocalizedStringKey("History")) }
+                    .tabItem {
+                        Image(systemName: "clock.arrow.circlepath")
+                        Text(LocalizedStringKey("History"))
+                    }
                     .tag(1)
                 
                 WorkoutHubView()
-                    .tabItem { Image(systemName: "plus.circle.fill"); Text(LocalizedStringKey("Workout")) }
+                    .tabItem {
+                        Image(systemName: "plus.circle.fill")
+                        Text(LocalizedStringKey("Workout"))
+                    }
                     .tag(2)
                 
                 AICoachView()
-                    .tabItem { Image(systemName: "brain.head.profile"); Text(LocalizedStringKey("AI Coach")) }
+                    .tabItem {
+                        Image(systemName: "brain.head.profile")
+                        Text(LocalizedStringKey("AI Coach"))
+                    }
                     .tag(3)
                 
                 StatsView()
-                    .tabItem { Image(systemName: "trophy"); Text(LocalizedStringKey("Progress")) }
+                    .tabItem {
+                        Image(systemName: "trophy")
+                        Text(LocalizedStringKey("Progress"))
+                    }
                     .tag(4)
             }
-            .zIndex(1) // TabView всегда будет на заднем плане
+            // Форсируем темную тему для таб-бара, чтобы он подходил к дизайну
+            .preferredColorScheme(.dark)
+            .zIndex(1)
             
-            // 2. Глобальные оверлеи поверх всего UI
+            // 2. Глобальные оверлеи (Таймер отдыха и плашка активной тренировки)
             VStack {
                 Spacer() // Прижимает контент к низу
                 
