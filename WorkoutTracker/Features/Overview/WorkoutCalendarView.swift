@@ -33,6 +33,8 @@ struct WorkoutCalendarView: View {
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
+    
     @State private var selectedTimeRange: TimeRange = .month
     @State private var totalWorkoutCount: Int = 0
     
@@ -89,6 +91,7 @@ struct WorkoutCalendarView: View {
                 Spacer()
             }
         }
+        .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
         .navigationTitle(LocalizedStringKey("Calendar"))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
@@ -164,7 +167,7 @@ struct WorkoutCalendarView: View {
             .animation(.default, value: totalWorkoutCount)
         }
         .padding()
-        .background(themeManager.current.background)
+        .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
     }
     
     private var calendarList: some View {
@@ -208,8 +211,8 @@ struct MonthView: View {
     let monthWorkouts: [MiniWorkout]
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
-    // ✅ ИСПРАВЛЕНИЕ: Инжектим контейнер зависимостей
     @Environment(DIContainer.self) private var di
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
@@ -246,8 +249,9 @@ struct MonthView: View {
             daysGrid
         }
         .padding()
-        .background(themeManager.current.surface)
+        .background(colorScheme == .dark ? themeManager.current.surface : Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(12)
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
     }
     
     private var weekDaysHeader: some View {
@@ -280,7 +284,6 @@ struct MonthView: View {
         if let mw = monthWorkouts.first(where: { calendar.isDate($0.date, inSameDayAs: date) }),
            let workout = context.model(for: mw.id) as? Workout {
             
-            // ✅ ИСПРАВЛЕНИЕ: Передаем viewModel через DIContainer
             NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
                 DayCell(date: date, isWorkout: true)
             }
@@ -296,7 +299,8 @@ struct MonthView: View {
 struct DayCell: View {
     let date: Date
     let isWorkout: Bool
-    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     private var dayNumber: String { "\(Calendar.current.component(.day, from: date))" }
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
@@ -308,7 +312,6 @@ struct DayCell: View {
                 .aspectRatio(1, contentMode: .fit)
                 .overlay {
                     if isToday {
-                        // <--- ИЗМЕНЕНО: .blue -> тема
                         RoundedRectangle(cornerRadius: 6).stroke(themeManager.current.primaryAccent, lineWidth: 2)
                     }
                 }
@@ -316,10 +319,11 @@ struct DayCell: View {
             Text(dayNumber)
                 .font(.caption2)
                 .fontWeight(isToday ? .bold : .regular)
-                // <--- ИЗМЕНЕНО: .blue -> тема
-                .foregroundColor(isWorkout ? .white : (isToday ? themeManager.current.primaryAccent : .primary))
+                .foregroundColor(isWorkout ? .white : (isToday ? themeManager.current.primaryAccent : (colorScheme == .dark ? .white : .black)))
         }
     }
     
-    private var backgroundColor: Color { isWorkout ? Color.green : themeManager.current.surfaceVariant }
+    private var backgroundColor: Color {
+        isWorkout ? Color.green : (colorScheme == .dark ? themeManager.current.surfaceVariant : Color(UIColor.tertiarySystemFill))
+    }
 }

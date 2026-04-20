@@ -12,6 +12,7 @@ struct AddNewExerciseView: View {
     @Environment(\.modelContext) private var context
     @Environment(CatalogViewModel.self) private var catalogViewModel
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     @State private var categories: [String] = []
     
@@ -20,7 +21,6 @@ struct AddNewExerciseView: View {
     @State private var selectedType: ExerciseType = .strength
     @State private var selectedMuscles: Set<String> = []
     
-    // Словарь: Отображаемое имя -> Технический слаг (slug)
     private let availableMuscles: [(name: String, slug: String)] = [
         ("Chest", "chest"),
         ("Upper Back", "upper-back"), ("Lats", "lats"), ("Traps", "trapezius"), ("Lower Back", "lower-back"),
@@ -33,32 +33,29 @@ struct AddNewExerciseView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // 1. Премиальный фон
+                // Адаптивный фон
                 Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 32) {
                         
-                        // Заголовок (кастомный)
-                        Text(LocalizedStringKey("New Exercise"))
+                        Text(LocalizedStringKey("Новое упражнение"))
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
-                            .foregroundColor(themeManager.current.primaryText)
+                            // 👈 АДАПТИВНЫЙ ТЕКСТ
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                             .padding(.horizontal, 20)
                             .padding(.top, 20)
                         
-                        // 2. Блок базовой информации
                         basicInfoSection
                             .padding(.horizontal, 20)
                         
-                        // 3. Блок выбора мышц (Сетка)
                         muscleSelectionSection
                             .padding(.horizontal, 20)
                         
-                        Spacer(minLength: 120) // Место под плавающую кнопку
+                        Spacer(minLength: 120)
                     }
                 }
                 
-                // 4. Плавающая кнопка сохранения
                 saveButton
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -88,33 +85,31 @@ struct AddNewExerciseView: View {
     
     private var basicInfoSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Basic Info"))
+            Text(LocalizedStringKey("Базовая информация"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
             
             VStack(spacing: 0) {
-                // Ввод имени
                 HStack(spacing: 12) {
                     Image(systemName: "dumbbell.fill")
                         .foregroundColor(themeManager.current.primaryAccent)
                     
-                    TextField(LocalizedStringKey("Exercise Name"), text: $name)
+                    TextField(LocalizedStringKey("Название упражнения"), text: $name)
                         .font(.headline)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                         .submitLabel(.done)
                 }
                 .padding()
                 
                 Divider().padding(.leading, 45)
                 
-                // Выбор категории
                 HStack(spacing: 12) {
                     Image(systemName: "folder.fill")
                         .foregroundColor(themeManager.current.primaryAccent)
                     
-                    Text(LocalizedStringKey("Category"))
+                    Text(LocalizedStringKey("Категория"))
                         .font(.headline)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                     
                     Spacer()
                     
@@ -128,67 +123,68 @@ struct AddNewExerciseView: View {
                         }
                     }
                     .pickerStyle(.menu)
-                    .tint(themeManager.current.secondaryText)
+                    .tint(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
                 .padding()
             }
-            .background(themeManager.current.surface)
+            // 👈 АДАПТИВНЫЙ ФОН И ТЕНЬ КАРТОЧКИ
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
             .cornerRadius(16)
-            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.05), lineWidth: 1))
-            .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.08), radius: 10, x: 0, y: 5)
         }
     }
     
     private var muscleSelectionSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStringKey("Affected Muscles (for Heatmap)"))
-                    .font(.headline)
-                    .foregroundColor(themeManager.current.secondaryText)
-                Spacer()
-                Text("\(selectedMuscles.count)")
-                    .font(.caption.bold())
-                    .foregroundColor(.white)
-                    .frame(width: 24, height: 24)
-                    .background(themeManager.current.primaryAccent)
-                    .clipShape(Circle())
-                    .opacity(selectedMuscles.isEmpty ? 0 : 1)
-            }
-            
-            // Используем LazyVGrid для красивого расположения "чипсов"
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
-                ForEach(availableMuscles, id: \.slug) { muscle in
-                    let isSelected = selectedMuscles.contains(muscle.slug)
-                    
-                    Button {
-                        let gen = UISelectionFeedbackGenerator()
-                        gen.selectionChanged()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            toggleMuscle(muscle.slug)
-                        }
-                    } label: {
-                        Text(LocalizedStringKey(muscle.name))
-                            .font(.subheadline)
-                            .fontWeight(isSelected ? .bold : .medium)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .padding(.horizontal, 4)
-                            .background(isSelected ? themeManager.current.primaryAccent.opacity(0.15) : themeManager.current.surface)
-                            .foregroundColor(isSelected ? themeManager.current.primaryAccent : themeManager.current.primaryText.opacity(0.8))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(isSelected ? themeManager.current.primaryAccent : Color.white.opacity(0.05), lineWidth: 1)
-                            )
-                            .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.3) : .clear, radius: 5, x: 0, y: 2)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
+         VStack(alignment: .leading, spacing: 16) {
+             HStack {
+                 Text(LocalizedStringKey("Задействованные мышцы"))
+                     .font(.headline)
+                     .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
+                 Spacer()
+                 Text("\(selectedMuscles.count)")
+                     .font(.caption.bold())
+                     .foregroundColor(.white)
+                     .frame(width: 24, height: 24)
+                     .background(themeManager.current.primaryAccent)
+                     .clipShape(Circle())
+                     .opacity(selectedMuscles.isEmpty ? 0 : 1)
+             }
+             
+             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
+                 ForEach(availableMuscles, id: \.slug) { muscle in
+                     let isSelected = selectedMuscles.contains(muscle.slug)
+                     
+                     Button {
+                         let gen = UISelectionFeedbackGenerator()
+                         gen.selectionChanged()
+                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                             toggleMuscle(muscle.slug)
+                         }
+                     } label: {
+                         Text(LocalizedStringKey(muscle.name))
+                             .font(.subheadline)
+                             .fontWeight(isSelected ? .bold : .medium)
+                             .lineLimit(1)
+                             .minimumScaleFactor(0.7)
+                             .frame(maxWidth: .infinity)
+                             .padding(.vertical, 12)
+                             .padding(.horizontal, 4)
+                             // ✅ ИСПРАВЛЕНИЕ ОШИБКИ КОМПИЛЯТОРА: Разбили сложную логику на функции
+                             .background(chipBackgroundColor(isSelected: isSelected))
+                             .foregroundColor(chipForegroundColor(isSelected: isSelected))
+                             .cornerRadius(12)
+                             .overlay(
+                                 RoundedRectangle(cornerRadius: 12)
+                                     .stroke(chipBorderColor(isSelected: isSelected), lineWidth: 1)
+                             )
+                             .shadow(color: chipShadowColor(isSelected: isSelected), radius: 5, x: 0, y: 2)
+                     }
+                     .buttonStyle(.plain)
+                 }
+             }
+         }
+     }
     
     private var saveButton: some View {
         let isFormValid = !name.trimmingCharacters(in: .whitespaces).isEmpty && !selectedMuscles.isEmpty && !categories.isEmpty
@@ -201,7 +197,7 @@ struct AddNewExerciseView: View {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.title3)
-                Text(LocalizedStringKey("Save Exercise"))
+                Text(LocalizedStringKey("Сохранить упражнение"))
                     .font(.headline)
                     .fontWeight(.bold)
             }
@@ -242,4 +238,33 @@ struct AddNewExerciseView: View {
             dismiss()
         }
     }
+    
+    
+    private func chipBackgroundColor(isSelected: Bool) -> Color {
+            if isSelected {
+                return themeManager.current.primaryAccent.opacity(0.15)
+            } else {
+                return colorScheme == .dark ? themeManager.current.surface : Color.white
+            }
+        }
+        
+        private func chipForegroundColor(isSelected: Bool) -> Color {
+            if isSelected {
+                return themeManager.current.primaryAccent
+            } else {
+                return colorScheme == .dark ? themeManager.current.primaryText.opacity(0.8) : Color.black.opacity(0.8)
+            }
+        }
+        
+        private func chipBorderColor(isSelected: Bool) -> Color {
+            if isSelected {
+                return themeManager.current.primaryAccent
+            } else {
+                return colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)
+            }
+        }
+        
+        private func chipShadowColor(isSelected: Bool) -> Color {
+            return isSelected ? themeManager.current.primaryAccent.opacity(0.3) : .clear
+        }
 }

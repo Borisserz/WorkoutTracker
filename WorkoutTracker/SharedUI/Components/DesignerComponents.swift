@@ -4,7 +4,6 @@
 //
 //  Created by Boris Serzhanovich on 18.04.26.
 //
-
 internal import SwiftUI
 
 // MARK: - Haptic Manager
@@ -76,7 +75,10 @@ struct PulseEffect: ViewModifier {
 }
 
 // MARK: - Backgrounds
+
+// 👈 ИСПРАВЛЕНИЕ: Добавлен colorScheme, черный фон заменен на адаптивный
 struct HistoryBreathingBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var phase = false
     var cnsScore: Double
     var color3: Color { cnsScore > 50 ? .blue : .red }
@@ -84,11 +86,12 @@ struct HistoryBreathingBackground: View {
     
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
-            Circle().fill(Color.purple.opacity(0.15)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? -100 : 100, y: phase ? -150 : 50)
-            Circle().fill(Color.cyan.opacity(0.12)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? 100 : -100, y: phase ? 150 : -50)
-            Circle().fill(color3.opacity(0.1)).frame(width: 300, height: 300).blur(radius: 80).offset(x: phase ? 0 : 50, y: phase ? 50 : -100)
-            Circle().fill(color4.opacity(0.08)).frame(width: 250, height: 250).blur(radius: 100).offset(x: phase ? 50 : -150, y: phase ? -50 : 150)
+            (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground)).ignoresSafeArea()
+            
+            Circle().fill(Color.purple.opacity(colorScheme == .dark ? 0.15 : 0.08)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? -100 : 100, y: phase ? -150 : 50)
+            Circle().fill(Color.cyan.opacity(colorScheme == .dark ? 0.12 : 0.05)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? 100 : -100, y: phase ? 150 : -50)
+            Circle().fill(color3.opacity(colorScheme == .dark ? 0.1 : 0.05)).frame(width: 300, height: 300).blur(radius: 80).offset(x: phase ? 0 : 50, y: phase ? 50 : -100)
+            Circle().fill(color4.opacity(colorScheme == .dark ? 0.08 : 0.04)).frame(width: 250, height: 250).blur(radius: 100).offset(x: phase ? 50 : -150, y: phase ? -50 : 150)
         }
         .rotationEffect(.degrees(phase ? 15 : -15)).scaleEffect(phase ? 1.05 : 0.95).drawingGroup()
         .onAppear { withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) { phase.toggle() } }
@@ -104,7 +107,7 @@ struct DotGridBackground: View {
                         path.addEllipse(in: CGRect(x: x, y: y, width: 1.5, height: 1.5))
                     }
                 }
-            }.fill(Color.white.opacity(0.03))
+            }.fill(Color.gray.opacity(0.05)) // 👈 Слегка поправил для видимости в обеих темах
         }.ignoresSafeArea().allowsHitTesting(false)
     }
 }
@@ -115,7 +118,7 @@ struct FloatingParticles: View {
         ZStack {
             ForEach(0..<8, id: \.self) { i in
                 Circle()
-                    .fill(Color.white.opacity(Double.random(in: 0.1...0.3)))
+                    .fill(Color.gray.opacity(Double.random(in: 0.1...0.3))) // 👈 Заменил белый на серый
                     .frame(width: CGFloat.random(in: 2...4), height: CGFloat.random(in: 2...4))
                     .position(x: CGFloat.random(in: 0...400), y: animate ? -50 : CGFloat.random(in: 400...800))
                     .animation(.linear(duration: Double.random(in: 8...20)).repeatForever(autoreverses: false).delay(Double.random(in: 0...5)), value: animate)
@@ -152,7 +155,7 @@ struct CustomDonutChart: View {
         }.drawingGroup()
     }
 }
-// MARK: - Всплывающее окно получения достижения (Achievement Popup)
+
 struct AchievementPopupView: View {
     let achievement: Achievement
     let onClose: () -> Void

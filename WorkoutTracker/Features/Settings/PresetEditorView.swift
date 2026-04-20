@@ -1,5 +1,5 @@
 // ============================================================
-// FILE: WorkoutTracker/Views/Settings/PresetEditorView.swift
+// FILE: WorkoutTracker/Features/Settings/PresetEditorView.swift
 // ============================================================
 
 internal import SwiftUI
@@ -46,6 +46,7 @@ struct PresetEditorView: View {
     @Environment(PresetService.self) private var presetService
     @Environment(UnitsManager.self) var unitsManager
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     
     var preset: WorkoutPreset? // Existing preset (if editing)
     
@@ -69,7 +70,8 @@ struct PresetEditorView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                Color(UIColor.systemGroupedBackground)
+                // 👈 АДАПТИВНЫЙ ФОН
+                (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white)
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -92,7 +94,7 @@ struct PresetEditorView: View {
                     generator.impactOccurred()
                     Task { await savePreset() }
                 } label: {
-                    Text(preset == nil ? LocalizedStringKey("Save Template") : LocalizedStringKey("Save Changes"))
+                    Text(preset == nil ? LocalizedStringKey("Сохранить шаблон") : LocalizedStringKey("Save Changes"))
                         .font(.headline)
                         .bold()
                         .foregroundColor(themeManager.current.background)
@@ -110,16 +112,17 @@ struct PresetEditorView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
                 .background(
-                    LinearGradient(colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0)], startPoint: .bottom, endPoint: .top)
+                    // 👈 АДАПТИВНЫЙ ГРАДИЕНТ
+                    LinearGradient(colors: [(colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white), (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white).opacity(0)], startPoint: .bottom, endPoint: .top)
                         .ignoresSafeArea()
                 )
             }
-            .navigationTitle(preset == nil ? LocalizedStringKey("New Template") : LocalizedStringKey("Edit Template"))
+            .navigationTitle(preset == nil ? LocalizedStringKey("Новый шаблон") : LocalizedStringKey("Edit Template"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Cancel")) { dismiss() }
-                        .foregroundColor(themeManager.current.secondaryText)
+                    Button(LocalizedStringKey("Отмена")) { dismiss() }
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 АДАПТАЦИЯ
                 }
             }
             .alert(LocalizedStringKey("Delete Template?"), isPresented: $showDeleteAlert) {
@@ -183,8 +186,9 @@ struct PresetEditorView: View {
     // MARK: - View Components
     
     private var headerSection: some View {
-        TextField(LocalizedStringKey("Workout Name..."), text: $vm.name)
+        TextField(LocalizedStringKey("Название тренировки..."), text: $vm.name)
             .font(.system(size: 32, weight: .heavy, design: .rounded))
+            .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
             .padding(.horizontal, 24)
             .padding(.top, 24)
             .onChange(of: vm.name) { _, _ in vm.validate() }
@@ -199,19 +203,21 @@ struct PresetEditorView: View {
                     let isSelected = vm.selectedIcon == iconName
                     
                     ZStack {
+                        // 👈 АДАПТАЦИЯ ФОНА ИКОНОК
                         Circle()
                             .fill(isSelected
                                   ? themeManager.current.primaryGradient
-                                  : LinearGradient(colors: [themeManager.current.surface, themeManager.current.surface], startPoint: .top, endPoint: .bottom))
+                                  : (colorScheme == .dark ? LinearGradient(colors: [themeManager.current.surface, themeManager.current.surface], startPoint: .top, endPoint: .bottom) : LinearGradient(colors: [Color(UIColor.secondarySystemGroupedBackground), Color(UIColor.secondarySystemGroupedBackground)], startPoint: .top, endPoint: .bottom)))
                             .frame(width: 60, height: 60)
-                            .shadow(color: isSelected ? themeManager.current.lightHighlight.opacity(0.4) : .black.opacity(0.05), radius: 8, x: 0, y: 4)
+                            .shadow(color: isSelected ? themeManager.current.lightHighlight.opacity(0.4) : .black.opacity(colorScheme == .dark ? 0.05 : 0.1), radius: 8, x: 0, y: 4)
                         
+                        // 👈 ИСПРАВЛЕНИЕ: Иконка в светлой теме не сливается
                         Image(iconName)
                             .renderingMode(.template)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 30, height: 30)
-                            .foregroundColor(isSelected ? .white : .gray.opacity(0.6))
+                            .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .gray.opacity(0.6) : .black.opacity(0.6)))
                     }
                     .scaleEffect(isSelected ? 1.1 : 1.0)
                     .padding(.vertical, 10)
@@ -231,9 +237,9 @@ struct PresetEditorView: View {
     
     private var exerciseListSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Exercises"))
+            Text(LocalizedStringKey("Упражнения"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 АДАПТАЦИЯ
                 .padding(.horizontal, 24)
             
             if vm.exercises.isEmpty {
@@ -245,18 +251,20 @@ struct PresetEditorView: View {
                     VStack(spacing: 16) {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 40))
-                            .foregroundColor(themeManager.current.primaryAccent)
-                        Text(LocalizedStringKey("Add First Exercise"))
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue)
+                        Text(LocalizedStringKey("Добавить первое упражнение"))
                             .font(.headline)
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .blue) // 👈 АДАПТАЦИЯ ТЕКСТА КНОПКИ
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
-                    .background(themeManager.current.primaryAccent.opacity(0.08))
+                    // 👈 АДАПТАЦИЯ КНОПКИ В СВЕТЛОЙ ТЕМЕ
+                    .background(colorScheme == .dark ? themeManager.current.primaryAccent.opacity(0.08) : Color.blue.opacity(0.1))
+                    .foregroundColor(colorScheme == .dark ? .white : .blue)
                     .cornerRadius(20)
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
-                            .stroke(themeManager.current.primaryAccent.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6]))
+                            .stroke(colorScheme == .dark ? themeManager.current.primaryAccent.opacity(0.3) : Color.blue.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6]))
                     )
                     .padding(.horizontal, 20)
                 }
@@ -281,13 +289,13 @@ struct PresetEditorView: View {
                 } label: {
                     HStack {
                         Image(systemName: "plus")
-                        Text(LocalizedStringKey("Add Exercise"))
+                        Text(LocalizedStringKey("Добавить еще"))
                     }
                     .font(.headline)
-                    .foregroundColor(themeManager.current.primaryAccent)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue) // 👈 АДАПТАЦИЯ
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(themeManager.current.primaryAccent.opacity(0.1))
+                    .background(colorScheme == .dark ? themeManager.current.primaryAccent.opacity(0.1) : Color.blue.opacity(0.1))
                     .cornerRadius(16)
                 }
                 .padding(.horizontal, 20)
@@ -301,13 +309,13 @@ struct PresetEditorView: View {
         HStack(spacing: 16) {
             Image(systemName: "line.3.horizontal")
                 .font(.title3)
-                .foregroundColor(themeManager.current.secondaryAccent.opacity(0.4))
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryAccent.opacity(0.4) : .gray.opacity(0.5)) // 👈 АДАПТАЦИЯ
             
             VStack(alignment: .leading, spacing: 4) {
                 NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name)) {
                     Text(LocalizationHelper.shared.translateName(exercise.name))
                         .font(.headline)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈 АДАПТАЦИЯ
                 }
                 .buttonStyle(.plain)
                 
@@ -327,7 +335,7 @@ struct PresetEditorView: View {
                     }
                 }
                 .font(.subheadline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 АДАПТАЦИЯ
             }
             
             Spacer()
@@ -339,9 +347,9 @@ struct PresetEditorView: View {
             } label: {
                 Image(systemName: "slider.horizontal.3")
                     .font(.subheadline)
-                    .foregroundColor(themeManager.current.primaryAccent)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue)
                     .padding(10)
-                    .background(themeManager.current.primaryAccent.opacity(0.1))
+                    .background(colorScheme == .dark ? themeManager.current.primaryAccent.opacity(0.1) : Color.blue.opacity(0.1))
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
@@ -364,9 +372,11 @@ struct PresetEditorView: View {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(themeManager.current.surface)
+        // 👈 АДАПТИВНЫЙ ФОН КАРТОЧЕК
+        .background(colorScheme == .dark ? themeManager.current.surface : Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(16)
-        .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 5, x: 0, y: 2)
     }
     
     private var deleteButtonSection: some View {
@@ -402,6 +412,8 @@ struct PresetEditorView: View {
         return String(format: "%d:%02d", m, s)
     }
 }
+
+// 👈 ДОБАВЛЕННЫЕ СТРУКТУРЫ ДЛЯ ОШИБКИ ПРЕСЕТА
 
 // MARK: - Inner Exercise Editor ViewModel
 @Observable
@@ -485,7 +497,6 @@ struct PresetExerciseEditor: View {
     
     var body: some View {
         NavigationStack {
-            // 1. УБРАЛИ ZStack. Используем чистый ScrollView
             ScrollView {
                 VStack(spacing: 24) {
                     Text(LocalizationHelper.shared.translateName(exercise.name))
@@ -502,13 +513,10 @@ struct PresetExerciseEditor: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    
-                    // Небольшой отступ для визуального "воздуха", 120 больше не нужно
                     Spacer(minLength: 20)
                 }
             }
             .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
-            // 2. ИСПОЛЬЗУЕМ safeAreaInset для кнопки
             .safeAreaInset(edge: .bottom) {
                 Button {
                     save()
@@ -525,9 +533,8 @@ struct PresetExerciseEditor: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
-                .padding(.top, 24) // Отступ от контента до кнопки
+                .padding(.top, 24)
                 .background(
-                    // Плавный градиент, скрывающий уходящий под кнопку контент
                     LinearGradient(
                         colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0)],
                         startPoint: .bottom,

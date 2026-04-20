@@ -11,6 +11,7 @@ struct ExerciseSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(CatalogViewModel.self) private var catalogViewModel
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     /// Замыкание для добавления нового упражнения
     var onAdd: (Exercise) -> Void
@@ -25,8 +26,8 @@ struct ExerciseSelectionView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                // Премиальный фон
-                Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea()
+                // Адаптивный премиальный фон
+                (colorScheme == .dark ? Color(red: 0.05, green: 0.05, blue: 0.07) : Color(UIColor.systemGroupedBackground)).ignoresSafeArea()
                 
                 VStack(spacing: 0) {
                     // 1. Стеклянная строка поиска с кнопкой фильтров
@@ -81,7 +82,7 @@ struct ExerciseSelectionView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Закрыть")) { dismiss() }
-                        .foregroundStyle(.white.opacity(0.6))
+                        .foregroundStyle(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Готово")) { dismiss() }
@@ -98,7 +99,6 @@ struct ExerciseSelectionView: View {
                     resultsCount: filterState.filter(exercises: allItems).count
                 )
             }
-            .preferredColorScheme(.dark)
         }
     }
     
@@ -146,19 +146,22 @@ struct ExerciseSelectionView: View {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(isSelected ? .bold : .medium)
-                .foregroundColor(isSelected ? themeManager.current.primaryAccent : .white.opacity(0.8))
+                // 👈 АДАПТИВНЫЙ ТЕКСТ
+                .foregroundColor(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)))
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
-                .background(isSelected ? themeManager.current.primaryAccent.opacity(0.15) : Color.white.opacity(0.05))
+                // 👈 АДАПТИВНЫЙ ФОН
+                .background(isSelected ? themeManager.current.primaryAccent.opacity(0.15) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color(UIColor.secondarySystemGroupedBackground)))
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
-                        .stroke(isSelected ? themeManager.current.primaryAccent : Color.white.opacity(0.1), lineWidth: 1)
+                        .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)), lineWidth: 1)
                 )
                 .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.3) : .clear, radius: 8, x: 0, y: 0)
         }
         .buttonStyle(.plain)
     }
+    
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
@@ -167,11 +170,11 @@ struct ExerciseSelectionView: View {
             
             Text(LocalizedStringKey("Упражнения не найдены"))
                 .font(.headline)
-                .foregroundColor(.white)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
             
             Text(LocalizedStringKey("Попробуйте изменить запрос или очистить фильтры."))
                 .font(.subheadline)
-                .foregroundColor(.white.opacity(0.6))
+                .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
         }

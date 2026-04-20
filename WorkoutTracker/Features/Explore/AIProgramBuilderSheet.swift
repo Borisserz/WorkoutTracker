@@ -8,7 +8,8 @@ struct AIProgramBuilderSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(DIContainer.self) private var di
     @Environment(PresetService.self) private var presetService
-    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО: Инъекция темы
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     @State private var viewModel: AIProgramBuilderViewModel
     
@@ -19,7 +20,8 @@ struct AIProgramBuilderSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                // 👈 АДАПТАЦИЯ ФОНА (Серый в светлой теме)
+                (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
                 
                 switch viewModel.state {
                 case .idle, .error:
@@ -30,12 +32,12 @@ struct AIProgramBuilderSheet: View {
                     resultView(dto: dto)
                 }
             }
-            .navigationTitle("AI Architect")
+            .navigationTitle("ИИ архитектор")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
-                        .foregroundColor(themeManager.current.secondaryText)
+                    Button("Закрыть") { dismiss() }
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
             }
         }
@@ -51,7 +53,7 @@ struct AIProgramBuilderSheet: View {
                 if case .error(let msg) = viewModel.state {
                     Text("Error: \(msg)")
                         .font(.caption)
-                        .foregroundColor(.red) // Семантический красный, оставляем
+                        .foregroundColor(.red)
                         .padding()
                         .background(Color.red.opacity(0.1))
                         .cornerRadius(12)
@@ -59,10 +61,10 @@ struct AIProgramBuilderSheet: View {
                 
                 // Physique Goal
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Physique Goal").font(.headline).foregroundColor(themeManager.current.secondaryText)
+                    Text("Цель телосложения").font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     Picker("Goal", selection: $viewModel.goal) {
                         ForEach(ProgramGoal.allCases) { goal in
-                            Text(goal.rawValue).tag(goal)
+                            Text(LocalizedStringKey(goal.rawValue)).tag(goal)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -71,41 +73,45 @@ struct AIProgramBuilderSheet: View {
                 
                 // Customization (Experience, Equipment, Schedule)
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("Customization").font(.headline).foregroundColor(themeManager.current.secondaryText)
+                    Text("Настройка").font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     
                     VStack(spacing: 0) {
-                        Picker("Experience", selection: $viewModel.level) {
-                            ForEach(ProgramLevel.allCases) { lvl in Text(lvl.rawValue).tag(lvl) }
+                        Picker("Уровень", selection: $viewModel.level) {
+                            ForEach(ProgramLevel.allCases) { lvl in Text(LocalizedStringKey(lvl.rawValue)).tag(lvl) }
                         }
                         .pickerStyle(.menu)
+                        .tint(.blue)
                         .padding()
                         
                         Divider().padding(.leading)
                         
-                        Picker("Equipment", selection: $viewModel.equipment) {
-                            ForEach(ProgramEquipment.allCases) { eq in Text(eq.rawValue).tag(eq) }
+                        Picker("Оборудование", selection: $viewModel.equipment) {
+                            ForEach(ProgramEquipment.allCases) { eq in Text(LocalizedStringKey(eq.rawValue)).tag(eq) }
                         }
                         .pickerStyle(.menu)
+                        .tint(.blue)
                         .padding()
                         
                         Divider().padding(.leading)
                         
                         Stepper(value: $viewModel.daysPerWeek, in: 2...6) {
-                            Text("Schedule: \(viewModel.daysPerWeek) Days/Week")
+                            Text("Расписание: \(viewModel.daysPerWeek) дней/неделю")
                         }
                         .padding()
                     }
-                    .background(themeManager.current.surface)
+                    // 👈 АДАПТАЦИЯ КАРТОЧКИ
+                    .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
                     .cornerRadius(16)
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 5, x: 0, y: 2)
                 }
                 .padding(.horizontal)
                 
                 // Target Areas (Tri-state)
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("Target Areas").font(.headline).foregroundColor(themeManager.current.secondaryText)
+                        Text("Целевые зоны").font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         Spacer()
-                        Text("Tap to cycle: Grow / Exclude").font(.caption2).foregroundColor(themeManager.current.secondaryAccent)
+                        Text("Нажмите, чтобы переключить:\nУвеличение / Исключить").font(.caption2).foregroundColor(.purple).multilineTextAlignment(.trailing)
                     }
                     
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
@@ -126,18 +132,20 @@ struct AIProgramBuilderSheet: View {
             } label: {
                 HStack {
                     Image(systemName: "wand.and.stars")
-                    Text("Generate Program").bold()
+                    Text("Сгенерировать программу").bold()
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(themeManager.current.premiumGradient) // <--- ИЗМЕНЕНО: [purple, cyan] -> премиальный градиент темы
-                .foregroundColor(themeManager.current.background)
+                .background(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing))
+                .foregroundColor(.white)
                 .cornerRadius(16)
-                .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 10, x: 0, y: 5) // <--- ИЗМЕНЕНО
+                .shadow(color: .purple.opacity(0.4), radius: 10, x: 0, y: 5)
             }
             .padding(.horizontal, 20)
             .padding(.bottom, 10)
-            .background(Color(UIColor.systemGroupedBackground).shadow(radius: 5, y: -5))
+            .background(
+                LinearGradient(colors: [colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground), Color.clear], startPoint: .bottom, endPoint: .top).ignoresSafeArea()
+            )
         }
     }
     
@@ -155,14 +163,16 @@ struct AIProgramBuilderSheet: View {
             HStack(spacing: 6) {
                 if state == .grow { Image(systemName: "flame.fill") }
                 if state == .exclude { Image(systemName: "xmark.circle.fill") }
-                Text(muscle).font(.subheadline).fontWeight(.medium)
+                Text(LocalizedStringKey(muscle)).font(.subheadline).fontWeight(.medium)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
+            // 👈 АДАПТАЦИЯ КНОПОК МЫШЦ
             .background(triStateBackground(state))
             .foregroundColor(triStateForeground(state))
             .cornerRadius(12)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(triStateBorder(state), lineWidth: 1))
+            .shadow(color: state != .neutral ? triStateBorder(state).opacity(0.3) : .clear, radius: 5, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -172,17 +182,17 @@ struct AIProgramBuilderSheet: View {
         VStack(spacing: 24) {
             ZStack {
                 Circle()
-                    .fill(themeManager.current.premiumGradient) // <--- ИЗМЕНЕНО
+                    .fill(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing))
                     .frame(width: 80, height: 80)
                     .modifier(PulsatingEffect())
                 
                 Image(systemName: "brain.head.profile")
                     .font(.system(size: 40))
-                    .foregroundColor(themeManager.current.background)
+                    .foregroundColor(.white)
             }
-            Text("Architecting your plan...")
+            Text("Архитектор создает ваш план...")
                 .font(.headline)
-                .foregroundStyle(themeManager.current.premiumGradient) // <--- ИЗМЕНЕНО
+                .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing))
                 .modifier(BlinkingTextModifier())
         }
     }
@@ -191,49 +201,50 @@ struct AIProgramBuilderSheet: View {
     private func resultView(dto: GeneratedProgramDTO) -> some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Header Card
                 VStack(spacing: 12) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 50))
-                        .foregroundStyle(themeManager.current.premiumGradient) // <--- ИЗМЕНЕНО
+                        .foregroundStyle(LinearGradient(colors: [.blue, .purple], startPoint: .leading, endPoint: .trailing))
                     
                     Text(dto.title)
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                         .multilineTextAlignment(.center)
                     
                     Text(dto.description)
                         .font(.subheadline)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal)
                 }
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(themeManager.current.surface)
+                .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
                 .cornerRadius(20)
+                .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
                 .padding(.horizontal)
                 
-                // Days List
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Schedule").font(.headline).foregroundColor(themeManager.current.secondaryText).padding(.horizontal)
+                    Text("Расписание").font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray).padding(.horizontal)
                     
                     ForEach(dto.schedule, id: \.dayName) { day in
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(day.dayName).font(.subheadline).bold().foregroundColor(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО: purple -> тема
-                                Text(day.focus).font(.headline)
+                                Text(day.dayName).font(.subheadline).bold().foregroundColor(.blue)
+                                Text(day.focus).font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
                             }
                             Spacer()
-                            Text("\(day.exercises.count) Exs")
+                            Text("\(day.exercises.count) упр.")
                                 .font(.caption)
                                 .padding(.horizontal, 10).padding(.vertical, 4)
-                                .background(themeManager.current.primaryAccent.opacity(0.15)) // <--- ИЗМЕНЕНО: cyan -> тема
-                                .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО: cyan -> тема
+                                .background(Color.blue.opacity(0.15))
+                                .foregroundColor(.blue)
                                 .clipShape(Capsule())
                         }
                         .padding()
-                        .background(themeManager.current.surface)
+                        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
                         .cornerRadius(12)
+                        .shadow(color: .black.opacity(0.03), radius: 5, y: 2)
                         .padding(.horizontal)
                     }
                 }
@@ -255,53 +266,53 @@ struct AIProgramBuilderSheet: View {
                         ProgressView().tint(.white)
                     } else {
                         Image(systemName: "square.and.arrow.down.fill")
-                        Text("Save to My Routines").bold()
+                        Text("Сохранить в мои программы").bold()
                     }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(viewModel.isSaving ? Color.gray : themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО: .blue -> тема
-                .foregroundColor(themeManager.current.background)
+                .background(viewModel.isSaving ? Color.gray : Color.blue)
+                .foregroundColor(.white)
                 .cornerRadius(16)
-                .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 5) // <--- ИЗМЕНЕНО
+                .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 5)
             }
             .disabled(viewModel.isSaving)
             .padding(.horizontal, 20)
             .padding(.bottom, 10)
-            .background(Color(UIColor.systemGroupedBackground).shadow(radius: 5, y: -5))
+            .background(Color(colorScheme == .dark ? UIColor.systemGroupedBackground : UIColor.secondarySystemBackground).shadow(radius: 5, y: -5))
         }
     }
     
     // MARK: - Helpers
     private func triStateBackground(_ state: MuscleTargetState) -> Color {
         switch state {
-        case .neutral: return themeManager.current.surface
-        case .grow: return themeManager.current.primaryAccent.opacity(0.15) // <--- ИЗМЕНЕНО
-        case .exclude: return Color.red.opacity(0.15) // Семантика, оставляем
+        case .neutral: return colorScheme == .dark ? themeManager.current.surface : Color.white // 👈
+        case .grow: return Color.blue.opacity(0.15)
+        case .exclude: return Color.red.opacity(0.15)
         }
     }
     private func triStateForeground(_ state: MuscleTargetState) -> Color {
         switch state {
-        case .neutral: return .primary
-        case .grow: return themeManager.current.primaryAccent // <--- ИЗМЕНЕНО
-        case .exclude: return .red // Семантика, оставляем
+        case .neutral: return colorScheme == .dark ? .white : .black // 👈
+        case .grow: return .blue
+        case .exclude: return .red
         }
     }
     private func triStateBorder(_ state: MuscleTargetState) -> Color {
         switch state {
-        case .neutral: return Color.gray.opacity(0.2)
-        case .grow: return themeManager.current.primaryAccent // <--- ИЗМЕНЕНО
-        case .exclude: return .red // Семантика, оставляем
+        case .neutral: return colorScheme == .dark ? Color.gray.opacity(0.2) : Color.black.opacity(0.1) // 👈
+        case .grow: return .blue
+        case .exclude: return .red
         }
     }
 }
-
 extension AIBuilderState {
     var isLoading: Bool {
         if case .loading = self { return true }
         return false
     }
 }
+
 public struct GeneratedProgramDTO: Codable, Sendable {
     let title: String
     let description: String

@@ -1,22 +1,27 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/Workout/Views/PremiumExerciseSearchBar.swift
+// ============================================================
+
 internal import SwiftUI
 
 struct PremiumExerciseSearchBar: View {
     @Bindable var filterState: ExerciseFilterState
     var onFilterTap: () -> Void
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     var body: some View {
         HStack(spacing: 12) {
             // Стеклянная поисковая строка
             HStack {
                 Image(systemName: "magnifyingglass")
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
                     .font(.body)
                 
                 TextField(LocalizedStringKey("Поиск упражнений..."), text: $filterState.searchText)
                     .textFieldStyle(.plain)
                     .font(.subheadline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(colorScheme == .dark ? .white : .primary)
                     .tint(themeManager.current.primaryAccent)
                     .autocorrectionDisabled()
                 
@@ -29,16 +34,17 @@ struct PremiumExerciseSearchBar: View {
                         }
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.white.opacity(0.5))
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
             }
             .padding(12)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(.white.opacity(0.2), lineWidth: 1))
+            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground)), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 1))
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
             
-            // Кнопка расширенных фильтров (Теперь с четким фоном)
+            // Кнопка расширенных фильтров
             Button {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
@@ -50,7 +56,7 @@ struct PremiumExerciseSearchBar: View {
                         .foregroundStyle(
                             filterState.activeAdvancedFiltersCount > 0
                             ? themeManager.current.primaryAccent
-                            : Color.white.opacity(0.8)
+                            : (colorScheme == .dark ? Color.white.opacity(0.8) : Color.black.opacity(0.6))
                         )
                     
                     if filterState.activeAdvancedFiltersCount > 0 {
@@ -65,12 +71,13 @@ struct PremiumExerciseSearchBar: View {
                             .transition(.scale.combined(with: .opacity))
                     }
                 }
-                .padding(12) // Размер подгоняем под высоту поиска
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .padding(12)
+                .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground)), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(filterState.activeAdvancedFiltersCount > 0 ? themeManager.current.primaryAccent.opacity(0.5) : Color.white.opacity(0.2), lineWidth: 1)
+                        .stroke(filterState.activeAdvancedFiltersCount > 0 ? themeManager.current.primaryAccent.opacity(0.5) : (colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1)), lineWidth: 1)
                 )
+                .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
             }
             .buttonStyle(.plain)
         }

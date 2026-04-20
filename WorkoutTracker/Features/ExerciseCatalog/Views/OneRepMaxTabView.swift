@@ -2,20 +2,13 @@
 //  OneRepMaxTabView.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 7.04.26.
-//
-
-//
-//  OneRepMaxTabView.swift
-//  WorkoutTracker
-//
 
 internal import SwiftUI
 
 struct OneRepMaxTabView: View {
     @Bindable var vm: ExerciseHistoryViewModel
     @Environment(UnitsManager.self) var unitsManager
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ АДАПТАЦИИ
     @Environment(ThemeManager.self) private var themeManager
     @State private var showSettingsSheet = false
     
@@ -28,10 +21,10 @@ struct OneRepMaxTabView: View {
                     Text(LocalizedStringKey("1RM Tables"))
                         .font(.title2)
                         .fontWeight(.heavy)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                     Text(LocalizedStringKey("Estimate your max weight for any rep level"))
                         .font(.subheadline)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
                 Spacer()
                 Button {
@@ -41,9 +34,9 @@ struct OneRepMaxTabView: View {
                 } label: {
                     Image(systemName: "slider.horizontal.3")
                         .font(.title2)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                         .padding(12)
-                        .background(Color(UIColor.tertiarySystemFill))
+                        .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : Color(UIColor.systemGray6))
                         .clipShape(Circle())
                 }
             }
@@ -55,17 +48,17 @@ struct OneRepMaxTabView: View {
                 HStack {
                     Text(LocalizedStringKey("Reps"))
                         .font(.caption)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .frame(width: 60, alignment: .leading)
                     
                     Text(LocalizedStringKey("Max Estimate"))
                         .font(.caption)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .frame(maxWidth: .infinity, alignment: .center)
                     
                     Text(LocalizedStringKey("% of 1RM"))
                         .font(.caption)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .frame(width: 80, alignment: .trailing)
                 }
                 .padding(.horizontal, 20)
@@ -86,7 +79,7 @@ struct OneRepMaxTabView: View {
                         HStack {
                             Text("\(reps)")
                                 .font(.headline)
-                                .foregroundColor(themeManager.current.primaryText)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                                 .frame(width: 60, alignment: .leading)
                             
                             Text("\(LocalizationHelper.shared.formatFlexible(displayWeight)) \(unitsManager.weightUnitString())")
@@ -97,7 +90,7 @@ struct OneRepMaxTabView: View {
                             Text("\(Int(percentage))%")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
-                                .foregroundColor(themeManager.current.secondaryText)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                                 .frame(width: 80, alignment: .trailing)
                         }
                         .padding(.horizontal, 20)
@@ -113,13 +106,13 @@ struct OneRepMaxTabView: View {
                     .padding(.vertical, 40)
                 }
             }
-            .background(themeManager.current.surfaceVariant)
+            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
             .cornerRadius(24)
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(Color.primary.opacity(0.05), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
         }
         .sheet(isPresented: $showSettingsSheet) {
             OneRepMaxSettingsSheet(vm: vm)
@@ -162,7 +155,7 @@ struct OneRepMaxSettingsSheet: View {
                         TextField("0.0", text: $weightString)
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
-                            .foregroundColor(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО:
+                            .foregroundColor(themeManager.current.deepPremiumAccent)
                             .fontWeight(.bold)
                             .onChange(of: weightString) { _, newValue in
                                 if let val = Double(newValue.replacingOccurrences(of: ",", with: ".")) {

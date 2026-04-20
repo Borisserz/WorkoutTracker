@@ -1,18 +1,23 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/SmartBuilder/SmartGeneratorEntryView.swift
+// ============================================================
+
 internal import SwiftUI
 
 struct SmartGeneratorEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(DashboardViewModel.self) private var dashboard // Получаем историю
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО АДАПТАЦИЯ
     @State private var vm = SmartGeneratorViewModel()
     
-    // Возвращаем DTO!
     var onWorkoutReady: ([ExerciseDTO]) -> Void
     
     var body: some View {
         NavigationStack(path: $vm.path) {
             ZStack {
-                themeManager.current.background.ignoresSafeArea()
+                // 👈 АДАПТАЦИЯ ФОНА
+                (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground)).ignoresSafeArea()
                 
                 ScrollView {
                     VStack(spacing: 32) {
@@ -22,41 +27,40 @@ struct SmartGeneratorEntryView: View {
                     .padding(.bottom, 100)
                 }
                 
-                // Плавающая кнопка (Cyan)
-                VStack {
-                    Spacer()
-                    Button {
-                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-                        vm.path.append("MuscleSelection")
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "wand.and.stars").font(.title3)
-                            Text("Custom Builder").font(.title3).bold()
-                        }
-                        .foregroundColor(themeManager.current.background)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        // ✅ ИСПОЛЬЗУЕМ СВЕТЛО-СИНИЙ/CYAN
-                        .background(themeManager.current.primaryGradient)
-                        .clipShape(Capsule())
-                        .shadow(color: themeManager.current.lightHighlight.opacity(0.4), radius: 15, x: 0, y: 8)
-                        .padding(.horizontal, 24)
-                    }
-                }
-                .padding(.bottom, 16)
+                // Плавающая кнопка
+                                VStack {
+                                    Spacer()
+                                    Button {
+                                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                        vm.path.append("MuscleSelection")
+                                    } label: {
+                                        HStack(spacing: 12) {
+                                            Image(systemName: "wand.and.stars").font(.title3)
+                                            Text("Пользовательский конструктор").font(.title3).bold()
+                                        }
+                                        .foregroundColor(.white) // 👈 ИСПРАВЛЕНИЕ: Всегда белый текст
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 18)
+                                        .background(themeManager.current.primaryAccent) // 👈 ИСПРАВЛЕНИЕ: Сплошной цвет без градиента
+                                        .clipShape(Capsule())
+                                        .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, x: 0, y: 8)
+                                        .padding(.horizontal, 24)
+                                    }
+                                }
+                                .padding(.bottom, 16)
                 
-                // ✅ ЧИСТЫЙ ЛОАДЕР (БЕЗ ПЛЕНКИ НА ВЕСЬ ЭКРАН)
+                // ЛОАДЕР
                 if vm.isGenerating {
                     ZStack {
-                        Color.black.opacity(0.4).ignoresSafeArea() // Легкое затемнение
+                        Color.black.opacity(0.4).ignoresSafeArea()
                         VStack(spacing: 20) {
                             ProgressView().controlSize(.large).tint(themeManager.current.lightHighlight)
-                            Text("Building your perfect workout...")
+                            Text("Создаю идеальную тренировку...")
                                 .font(.headline)
-                                .foregroundColor(themeManager.current.primaryText)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈 АДАПТАЦИЯ
                         }
                         .padding(30)
-                        .background(themeManager.current.background) // Чистый фон карточки
+                        .background(colorScheme == .dark ? themeManager.current.background : Color.white) // 👈 АДАПТАЦИЯ
                         .cornerRadius(24)
                         .shadow(color: .black.opacity(0.2), radius: 20)
                     }
@@ -64,7 +68,7 @@ struct SmartGeneratorEntryView: View {
                     .transition(.opacity)
                 }
             }
-            .navigationTitle("Smart Builder")
+            .navigationTitle("Умный генератор")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -87,12 +91,13 @@ struct SmartGeneratorEntryView: View {
     
     private var headerSection: some View {
         VStack(spacing: 12) {
-            Text(LocalizedStringKey("Don't want to think?"))
+            Text(LocalizedStringKey("Не хотите думать?"))
                 .font(.system(size: 28, weight: .heavy, design: .rounded))
+                .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                 .padding(.top, 24)
-            Text(LocalizedStringKey("Select a quick preset or build a custom routine in seconds."))
+            Text(LocalizedStringKey("Выберите быстрый пресет или создайте пользовательскую программу за секунды."))
                 .font(.subheadline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 АДАПТАЦИЯ
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
         }
@@ -100,7 +105,10 @@ struct SmartGeneratorEntryView: View {
     
     private var quickPresetsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Quick Generation").font(.headline).padding(.horizontal, 24)
+            Text("Быстрая генерация")
+                .font(.headline)
+                .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
+                .padding(.horizontal, 24)
             
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                 quickCard(title: "At Home Shred", icon: "house.fill", color: themeManager.current.secondaryMidTone, desc: "Bodyweight, 30m") {
@@ -126,14 +134,17 @@ struct SmartGeneratorEntryView: View {
                 Image(systemName: icon).font(.title2).foregroundColor(color)
                     .frame(width: 40, height: 40).background(color.opacity(0.15)).clipShape(Circle())
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey(title)).font(.headline).foregroundColor(themeManager.current.primaryText)
-                    Text(LocalizedStringKey(desc)).font(.caption).foregroundColor(themeManager.current.secondaryText)
+                    // 👈 АДАПТАЦИЯ ТЕКСТА КАРТОЧКИ
+                    Text(LocalizedStringKey(title)).font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                    Text(LocalizedStringKey(desc)).font(.caption).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(themeManager.current.surface)
+            // 👈 АДАПТАЦИЯ ФОНА КАРТОЧКИ
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
             .cornerRadius(20)
+            .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }

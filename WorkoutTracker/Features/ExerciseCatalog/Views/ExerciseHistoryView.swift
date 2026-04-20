@@ -1,4 +1,7 @@
-// MARK: - Imports
+// ============================================================
+// FILE: WorkoutTracker/Features/ExerciseCatalog/Views/ExerciseHistoryView.swift
+// ============================================================
+
 internal import SwiftUI
 import SwiftData
 import Charts
@@ -9,6 +12,7 @@ struct ExerciseHistoryView: View {
     @Environment(UnitsManager.self) var unitsManager
     @FocusState private var isInputActive: Bool
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ АДАПТАЦИИ
     let exerciseName: String
     @State private var viewModel: ExerciseHistoryViewModel?
     
@@ -63,7 +67,6 @@ struct ExerciseHistoryView: View {
                                 case .technique: techniqueContent(vm: vm)
                                 case .oneRepMax: OneRepMaxTabView(vm: vm)
                                 case .history: historyContent(vm: vm)
-                                
                                 }
                             }
                             .padding(.horizontal, 16)
@@ -87,43 +90,45 @@ struct ExerciseHistoryView: View {
     
     // MARK: - Modern Tab Picker
     private func customTabBar(vm: ExerciseHistoryViewModel) -> some View {
-            HStack(spacing: 0) {
-                ForEach(ExerciseHistoryViewModel.Tab.allCases, id: \.self) { tab in
-                    // ✅ ПРОВЕРКА: Скрываем 1RM для несиловых тренировок
-                    if tab == .oneRepMax && vm.exerciseType != .strength {
-                        EmptyView()
-                    } else {
-                        let isSelected = vm.selectedTab == tab
-                        
-                        Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                                vm.selectedTab = tab
-                            }
-                        } label: {
-                            Text(tab.localizedName)
-                                .font(.subheadline)
-                                .fontWeight(isSelected ? .bold : .medium)
-                                .foregroundColor(isSelected ? .white : .primary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background {
-                                    if isSelected {
-                                        Capsule()
-                                            .fill(vm.chartColor)
-                                            .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
-                                            .shadow(color: vm.chartColor.opacity(0.3), radius: 5, x: 0, y: 2)
-                                    }
-                                }
+        HStack(spacing: 0) {
+            ForEach(ExerciseHistoryViewModel.Tab.allCases, id: \.self) { tab in
+                // ПРОВЕРКА: Скрываем 1RM для несиловых тренировок
+                if tab == .oneRepMax && vm.exerciseType != .strength {
+                    EmptyView()
+                } else {
+                    let isSelected = vm.selectedTab == tab
+                    
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                            vm.selectedTab = tab
                         }
-                        .buttonStyle(PlainButtonStyle())
+                    } label: {
+                        Text(tab.localizedName)
+                            .font(.subheadline)
+                            .fontWeight(isSelected ? .bold : .medium)
+                            // 👈 АДАПТИВНЫЙ ТЕКСТ ТАБОВ
+                            .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background {
+                                if isSelected {
+                                    Capsule()
+                                        .fill(vm.chartColor)
+                                        .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
+                                        .shadow(color: vm.chartColor.opacity(0.3), radius: 5, x: 0, y: 2)
+                                }
+                            }
                     }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
+        }
         .padding(4)
-        .background(themeManager.current.surfaceVariant)
+        // 👈 АДАПТИВНЫЙ ФОН ПИКЕРА
+        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
         .clipShape(Capsule())
-        .shadow(color: .black.opacity(0.03), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 8, x: 0, y: 4)
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 8)
@@ -131,28 +136,27 @@ struct ExerciseHistoryView: View {
     
     // MARK: - Tab Contents
     private func summaryContent(vm: ExerciseHistoryViewModel) -> some View {
-           VStack(spacing: 24) {
-               proChartContainerView(vm: vm)
-               
-               if let trend = vm.exerciseTrend {
-                   proExerciseTrendSection(trend: trend)
-               }
-               
-               if let forecast = vm.exerciseForecast {
-                   proForecastSection(forecast: forecast)
-               }
-               
-               // ✅ ДОБАВЛЕНО: Интеграция нового блока Personal Records
-               if let records = vm.personalRecords, vm.exerciseType == .strength {
-                   PersonalRecordsCardView(records: records)
-               }
-               
-               ExerciseNoteEditor(exerciseName: vm.exerciseName, isInputActive: $isInputActive)
-                   .id("notesSection")
-           }
-       }
+        VStack(spacing: 24) {
+            proChartContainerView(vm: vm)
+            
+            if let trend = vm.exerciseTrend {
+                proExerciseTrendSection(trend: trend)
+            }
+            
+            if let forecast = vm.exerciseForecast {
+                proForecastSection(forecast: forecast)
+            }
+            
+            // Интеграция нового блока Personal Records
+            if let records = vm.personalRecords, vm.exerciseType == .strength {
+                PersonalRecordsCardView(records: records)
+            }
+            
+            ExerciseNoteEditor(exerciseName: vm.exerciseName, isInputActive: $isInputActive)
+                .id("notesSection")
+        }
+    }
 
-    
     private func techniqueContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading, spacing: 20) {
             Text(LocalizedStringKey("Exercise Technique"))
@@ -166,17 +170,17 @@ struct ExerciseHistoryView: View {
                         .foregroundColor(vm.chartColor)
                     Text(LocalizedStringKey("How to Perform"))
                         .font(.headline)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                 }
                 Text(TechniqueHelper.getDescription(for: vm.exerciseCategory))
                     .font(.body)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     .lineSpacing(6)
             }
             .padding(20)
-            .background(themeManager.current.surfaceVariant)
+            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
             .cornerRadius(20)
-            .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
             
             VStack(alignment: .leading, spacing: 16) {
                 HStack(spacing: 8) {
@@ -184,7 +188,7 @@ struct ExerciseHistoryView: View {
                         .foregroundColor(.yellow)
                     Text(LocalizedStringKey("Key Tips"))
                         .font(.headline)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                 }
                 
                 ForEach(TechniqueHelper.getTips(for: vm.exerciseCategory), id: \.self) { tip in
@@ -195,79 +199,80 @@ struct ExerciseHistoryView: View {
                             .padding(.top, 2)
                         Text(tip)
                             .font(.subheadline)
-                            .foregroundColor(themeManager.current.secondaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                             .lineSpacing(4)
                     }
                 }
             }
             .padding(20)
-            .background(themeManager.current.surfaceVariant)
+            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
             .cornerRadius(20)
-            .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
             
             let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: vm.exerciseName, muscleGroup: vm.muscleGroup)
             if !vm.primaryMuscles.isEmpty {
-                         VStack(alignment: .leading, spacing: 16) {
-                             HStack(spacing: 8) {
-                                 Image(systemName: "figure.strengthtraining.traditional").foregroundColor(vm.chartColor)
-                                 Text(LocalizedStringKey("Target (Primary) Muscles")).font(.headline).foregroundColor(themeManager.current.primaryText)
-                             }
-                             
-                             // Теги с мышцами
-                             ScrollView(.horizontal, showsIndicators: false) {
-                                 HStack(spacing: 10) {
-                                     ForEach(vm.primaryMuscles, id: \.self) { muscle in
-                                         HStack(spacing: 6) {
-                                             Circle().fill(vm.chartColor).frame(width: 8, height: 8)
-                                             Text(LocalizedStringKey(muscle.capitalized))
-                                                 .font(.subheadline).fontWeight(.semibold)
-                                         }
-                                         .padding(.horizontal, 14).padding(.vertical, 10)
-                                         .background(vm.chartColor.opacity(0.15))
-                                         .foregroundColor(vm.chartColor)
-                                         .cornerRadius(12)
-                                     }
-                                 }
-                             }
-                         }
-                         .padding(20)
-                         .background(themeManager.current.surfaceVariant)
-                         .cornerRadius(20)
-                         .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
-                     }
-                     
-                     // ✅ Блок: ВТОРОСТЕПЕННЫЕ МЫШЦЫ (Secondary)
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "figure.strengthtraining.traditional").foregroundColor(vm.chartColor)
+                        Text(LocalizedStringKey("Target (Primary) Muscles")).font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                    }
+                    
+                    // Теги с мышцами
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(vm.primaryMuscles, id: \.self) { muscle in
+                                HStack(spacing: 6) {
+                                    Circle().fill(vm.chartColor).frame(width: 8, height: 8)
+                                    Text(LocalizedStringKey(muscle.capitalized))
+                                        .font(.subheadline).fontWeight(.semibold)
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 10)
+                                .background(vm.chartColor.opacity(0.15))
+                                .foregroundColor(vm.chartColor)
+                                .cornerRadius(12)
+                            }
+                        }
+                    }
+                }
+                .padding(20)
+                .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+                .cornerRadius(20)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+            }
+            
+            // Блок: ВТОРОСТЕПЕННЫЕ МЫШЦЫ (Secondary)
             if !vm.secondaryMuscles.isEmpty {
-                                   VStack(alignment: .leading, spacing: 16) {
-                                       HStack(spacing: 8) {
-                                           Image(systemName: "figure.mixed.cardio").foregroundColor(themeManager.current.secondaryMidTone) // <--- ИЗМЕНЕНО
-                                           Text(LocalizedStringKey("Synergist (Secondary) Muscles")).font(.headline).foregroundColor(themeManager.current.primaryText)
-                                       }
-                                       
-                                       // Теги с мышцами
-                                       ScrollView(.horizontal, showsIndicators: false) {
-                                           HStack(spacing: 10) {
-                                               ForEach(vm.secondaryMuscles, id: \.self) { muscle in
-                                                   HStack(spacing: 6) {
-                                                       Circle().fill(themeManager.current.secondaryMidTone).frame(width: 6, height: 6) // <--- ИЗМЕНЕНО
-                                                       Text(LocalizedStringKey(muscle.capitalized))
-                                                           .font(.subheadline).fontWeight(.medium)
-                                                   }
-                                                   .padding(.horizontal, 14).padding(.vertical, 10)
-                                                   .background(themeManager.current.secondaryMidTone.opacity(0.1)) // <--- ИЗМЕНЕНО
-                                                   .foregroundColor(themeManager.current.secondaryMidTone) // <--- ИЗМЕНЕНО
-                                                   .cornerRadius(12)
-                                               }
-                                           }
-                                       }
-                                   }
-                                   .padding(20)
-                                   .background(themeManager.current.surfaceVariant)
-                                   .cornerRadius(20)
-                                   .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
-                               }
-                           }
-                       }
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "figure.mixed.cardio").foregroundColor(themeManager.current.secondaryMidTone)
+                        Text(LocalizedStringKey("Synergist (Secondary) Muscles")).font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                    }
+                    
+                    // Теги с мышцами
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 10) {
+                            ForEach(vm.secondaryMuscles, id: \.self) { muscle in
+                                HStack(spacing: 6) {
+                                    Circle().fill(themeManager.current.secondaryMidTone).frame(width: 6, height: 6)
+                                    Text(LocalizedStringKey(muscle.capitalized))
+                                        .font(.subheadline).fontWeight(.medium)
+                                }
+                                .padding(.horizontal, 14).padding(.vertical, 10)
+                                .background(themeManager.current.secondaryMidTone.opacity(0.1))
+                                .foregroundColor(themeManager.current.secondaryMidTone)
+                                .cornerRadius(12)
+                            }
+                        }
+                    }
+                }
+                .padding(20)
+                .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+                .cornerRadius(20)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+            }
+        }
+    }
+    
     private func historyContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("History"))
@@ -301,7 +306,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(vm.chartTitle)
                     .font(.headline)
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                 
                 Spacer()
                 
@@ -322,8 +327,8 @@ struct ExerciseHistoryView: View {
                         .fontWeight(.semibold)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(Color(UIColor.tertiarySystemFill))
-                        .foregroundColor(themeManager.current.primaryText)
+                        .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : Color(UIColor.systemGray6))
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                         .clipShape(Capsule())
                     }
                 }
@@ -335,9 +340,9 @@ struct ExerciseHistoryView: View {
             if vm.displayedGraphData.isEmpty {
                 Text(LocalizedStringKey("Not enough data"))
                     .font(.subheadline)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     .frame(maxWidth: .infinity, minHeight: 200)
-                    .background(Color(UIColor.tertiarySystemFill).opacity(0.5))
+                    .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill).opacity(0.5) : Color(UIColor.systemGray6))
                     .cornerRadius(12)
                     .padding(.horizontal, 20)
             } else {
@@ -360,8 +365,8 @@ struct ExerciseHistoryView: View {
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 8)
-                                .background(isSelected ? vm.chartColor : Color(UIColor.tertiarySystemFill))
-                                .foregroundColor(isSelected ? .white : .primary)
+                                .background(isSelected ? vm.chartColor : (colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : Color(UIColor.systemGray6)))
+                                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
                                 .clipShape(Capsule())
                         }
                         .buttonStyle(PlainButtonStyle())
@@ -371,14 +376,12 @@ struct ExerciseHistoryView: View {
             }
             .padding(.bottom, 20)
         }
-        .background(themeManager.current.surfaceVariant)
+        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
         .cornerRadius(24)
-        .shadow(color: .black.opacity(0.04), radius: 15, x: 0, y: 5)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.04 : 0.08), radius: 15, x: 0, y: 5)
     }
     
-  
     private func proChartView(vm: ExerciseHistoryViewModel) -> some View {
-        // Вычисляем динамический размер осей, чтобы тултипы никогда не обрезались
         let minVal = vm.displayedGraphData.map { $0.value }.min() ?? 0
         let maxVal = vm.displayedGraphData.map { $0.value }.max() ?? 10
         let diff = maxVal - minVal
@@ -389,18 +392,15 @@ struct ExerciseHistoryView: View {
         return Chart {
             ForEach(vm.displayedGraphData) { dataPoint in
                 if vm.displayedGraphData.count > 1 {
-                    // Главная линия тренда (Без заливки)
                     LineMark(
                         x: .value("Date", dataPoint.date),
                         y: .value("Value", dataPoint.value)
                     )
                     .foregroundStyle(vm.chartColor)
                     .interpolationMethod(.catmullRom)
-                    // Чуть толще основная линия для большей четкости
                     .lineStyle(StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
                 }
                 
-                // Рисуем точки ТОЛЬКО если данных мало (чтобы не было "каши")
                 if vm.displayedGraphData.count < 20 {
                     PointMark(
                         x: .value("Date", dataPoint.date),
@@ -408,7 +408,7 @@ struct ExerciseHistoryView: View {
                     )
                     .symbol {
                         Circle()
-                            .fill(themeManager.current.background)
+                            .fill(colorScheme == .dark ? themeManager.current.background : Color.white)
                             .frame(width: vm.displayedGraphData.count == 1 ? 16 : 10, height: vm.displayedGraphData.count == 1 ? 16 : 10)
                             .overlay(
                                 Circle().stroke(vm.chartColor, lineWidth: 3)
@@ -418,7 +418,6 @@ struct ExerciseHistoryView: View {
                 }
             }
             
-            // Четкая пунктирная линия Average / Max
             if let val = vm.currentMetricValue, vm.displayedGraphData.count > 1, vm.selectedMetric != .none {
                 RuleMark(y: .value("Metric", val))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
@@ -427,16 +426,15 @@ struct ExerciseHistoryView: View {
                         Text("\(val, format: .number.precision(.fractionLength(1))) \(vm.unitLabel)")
                             .font(.caption)
                             .bold()
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(themeManager.current.background.opacity(0.95))
+                            .background(colorScheme == .dark ? themeManager.current.background.opacity(0.95) : Color.white.opacity(0.95))
                             .cornerRadius(6)
                             .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15), lineWidth: 1))
                     }
             }
             
-            // Выбранная точка (Tooltip)
             if let selectedDate = selectedX {
                 if let closestPoint = vm.displayedGraphData.min(by: { abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate)) }) {
                     RuleMark(x: .value("Selected", closestPoint.date))
@@ -447,13 +445,14 @@ struct ExerciseHistoryView: View {
                                 Text("\(LocalizationHelper.shared.formatDecimal(closestPoint.value)) \(vm.unitLabel)")
                                     .font(.headline)
                                     .bold()
-                                    .foregroundColor(themeManager.current.background)
+                                    .foregroundColor(colorScheme == .dark ? themeManager.current.background : .white)
                                 Text(closestPoint.date, format: .dateTime.month(.abbreviated).day())
                                     .font(.caption)
-                                    .foregroundColor(themeManager.current.background.opacity(0.8))
+                                    .foregroundColor(colorScheme == .dark ? themeManager.current.background.opacity(0.8) : Color.white.opacity(0.8))
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
+                            // Темная подложка тултипа работает отлично в обеих темах
                             .background(Color(UIColor.label).opacity(0.9))
                             .cornerRadius(8)
                             .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
@@ -465,7 +464,6 @@ struct ExerciseHistoryView: View {
         .chartXSelection(value: $selectedX)
         .chartXScale(range: .plotDimension(padding: 15))
         .chartYScale(domain: yDomainMin...yDomainMax, range: .plotDimension(padding: 15))
-        // Настройка осей и сетки
         .chartXAxis {
             AxisMarks(values: .automatic) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -489,6 +487,7 @@ struct ExerciseHistoryView: View {
             }
         }
     }
+    
     // MARK: - Widget-Style Cards
     
     @ViewBuilder
@@ -501,7 +500,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("Exercise Trend"))
                     .font(.headline)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 Spacer()
                 HStack(spacing: 4) {
                     Image(systemName: trend.trend.icon)
@@ -521,13 +520,13 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Previous"))
                         .font(.caption2)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .textCase(.uppercase)
                     let prev = unitsManager.convertFromKilograms(trend.previousValue)
                     Text("\(LocalizationHelper.shared.formatInteger(prev))")
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
                 
                 Spacer()
@@ -547,10 +546,10 @@ struct ExerciseHistoryView: View {
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
                         Text("\(LocalizationHelper.shared.formatInteger(curr))")
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                         Text(unitsManager.weightUnitString())
                             .font(.subheadline)
-                            .foregroundColor(themeManager.current.secondaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     }
                 }
             }
@@ -560,7 +559,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("Overall Progress"))
                     .font(.subheadline)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 Spacer()
                 Text("\(trend.changePercentage > 0 ? "+" : "")\(trend.changePercentage, specifier: "%.1f")%")
                     .font(.headline)
@@ -569,9 +568,9 @@ struct ExerciseHistoryView: View {
             }
         }
         .padding(20)
-        .background(themeManager.current.surfaceVariant)
+        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
         .cornerRadius(24)
-        .shadow(color: glowColor.opacity(0.15), radius: 15, x: 0, y: 5)
+        .shadow(color: glowColor.opacity(colorScheme == .dark ? 0.15 : 0.2), radius: 15, x: 0, y: 5)
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(glowColor.opacity(0.3), lineWidth: 1)
@@ -584,7 +583,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("AI Forecast"))
                     .font(.headline)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 Spacer()
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
@@ -593,10 +592,10 @@ struct ExerciseHistoryView: View {
                         .font(.caption)
                         .fontWeight(.bold)
                 }
-                .foregroundColor(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО
+                .foregroundColor(themeManager.current.deepPremiumAccent)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(themeManager.current.deepPremiumAccent.opacity(0.15)) // <--- ИЗМЕНЕНО
+                .background(themeManager.current.deepPremiumAccent.opacity(0.15))
                 .clipShape(Capsule())
             }
             
@@ -604,7 +603,7 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Current 1RM"))
                         .font(.caption2)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .textCase(.uppercase)
                     let cur = unitsManager.convertFromKilograms(forecast.currentMax)
                     Text("\(LocalizationHelper.shared.formatInteger(cur)) \(unitsManager.weightUnitString())")
@@ -627,7 +626,7 @@ struct ExerciseHistoryView: View {
                     Text("\(LocalizationHelper.shared.formatInteger(pred)) \(unitsManager.weightUnitString())")
                         .font(.title2)
                         .bold()
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                 }
             }
             
@@ -635,7 +634,7 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("Expected gains in \(forecast.timeframe)"))
                     .font(.caption)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 Spacer()
                 Text("+\(LocalizationHelper.shared.formatDecimal(diff)) \(unitsManager.weightUnitString())")
                     .font(.subheadline)
@@ -644,12 +643,12 @@ struct ExerciseHistoryView: View {
             }
         }
         .padding(20)
-        .background(themeManager.current.surfaceVariant)
+        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
         .cornerRadius(24)
-        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.1), radius: 15, x: 0, y: 5) // <--- ИЗМЕНЕНО
+        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.1), radius: 15, x: 0, y: 5)
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(themeManager.current.deepPremiumAccent.opacity(0.2), lineWidth: 1) // <--- ИЗМЕНЕНО
+                .stroke(themeManager.current.deepPremiumAccent.opacity(0.2), lineWidth: 1)
         )
     }
     
@@ -666,23 +665,23 @@ struct ExerciseHistoryView: View {
                     Text(dataPoint.date, format: .dateTime.month(.abbreviated))
                         .font(.caption2)
                         .fontWeight(.bold)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .textCase(.uppercase)
                     Text(dataPoint.date, format: .dateTime.day())
                         .font(.title2)
                         .fontWeight(.heavy)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                 }
                 .frame(width: 50)
                 .padding(.vertical, 8)
-                .background(Color(UIColor.tertiarySystemFill))
+                .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : Color(UIColor.systemGray6))
                 .cornerRadius(12)
                 
                 // Center: Minimal info
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Session Max"))
                         .font(.caption)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .textCase(.uppercase)
                     
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
@@ -692,7 +691,7 @@ struct ExerciseHistoryView: View {
                         Text(vm.unitLabel)
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(themeManager.current.secondaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     }
                 }
                 
@@ -704,9 +703,9 @@ struct ExerciseHistoryView: View {
                     .foregroundColor(Color(UIColor.tertiaryLabel))
             }
             .padding(16)
-            .background(themeManager.current.surfaceVariant)
+            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
             .cornerRadius(20)
-            .shadow(color: .black.opacity(0.02), radius: 5, x: 0, y: 2)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.02 : 0.06), radius: 5, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -717,6 +716,7 @@ struct ExerciseNoteEditor: View {
     let exerciseName: String
     var isInputActive: FocusState<Bool>.Binding
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     @Environment(\.modelContext) private var context
     @Query private var notes: [ExerciseNote]
     @Environment(UserStatsViewModel.self) var userStatsViewModel
@@ -738,7 +738,7 @@ struct ExerciseNoteEditor: View {
                     .foregroundColor(themeManager.current.primaryAccent)
                 Text(LocalizedStringKey("My Notes"))
                     .font(.headline)
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
             }
             
             ZStack(alignment: .topLeading) {
@@ -747,7 +747,7 @@ struct ExerciseNoteEditor: View {
                     .frame(minHeight: 120, maxHeight: 200)
                     .padding(12)
                     .scrollContentBackground(.hidden)
-                    .background(Color(UIColor.tertiarySystemFill).opacity(0.5))
+                    .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill).opacity(0.5) : Color(UIColor.systemGray6))
                     .cornerRadius(12)
                     .focused(isInputActive)
                     .onChange(of: exerciseNote) { _, newValue in
@@ -769,9 +769,9 @@ struct ExerciseNoteEditor: View {
             }
         }
         .padding(20)
-        .background(themeManager.current.surfaceVariant)
+        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
         .cornerRadius(24)
-        .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -796,6 +796,59 @@ struct ExerciseNoteEditor: View {
     }
 }
 
+// MARK: - Personal Records Card View
+struct PersonalRecordsCardView: View {
+    let records: ExerciseRecordsDTO
+    @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(LocalizedStringKey("Personal Records"))
+                .font(.title2)
+                .bold()
+                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                .padding(.bottom, 4)
+            
+            recordRow(title: "Max Set Reps", value: records.maxSetReps > 0 ? "\(records.maxSetReps)" : "--")
+            
+            Divider().opacity(0.5)
+            
+            recordRow(title: "Max Workout Reps", value: records.maxWorkoutReps > 0 ? "\(records.maxWorkoutReps)" : "--")
+            
+            Divider().opacity(0.5)
+            
+            let setVol = unitsManager.convertFromKilograms(records.maxSetVolume)
+            let setVolStr = records.maxSetVolume > 0 ? "\(LocalizationHelper.shared.formatInteger(setVol)) \(unitsManager.weightUnitString())" : "--"
+            recordRow(title: "Max Set Volume", value: setVolStr)
+            
+            Divider().opacity(0.5)
+            
+            let woVol = unitsManager.convertFromKilograms(records.maxWorkoutVolume)
+            let woVolStr = records.maxWorkoutVolume > 0 ? "\(LocalizationHelper.shared.formatInteger(woVol)) \(unitsManager.weightUnitString())" : "--"
+            recordRow(title: "Max Workout Volume", value: woVolStr)
+        }
+        .padding(20)
+        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+        .cornerRadius(24)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+    }
+    
+    private func recordRow(title: LocalizedStringKey, value: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.body)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+            
+            Spacer()
+            
+            Text(value)
+                .font(.headline)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+        }
+    }
+}
 // MARK: - WorkoutDetailWrapperView (FIX: Restored to resolve compilation error)
 struct WorkoutDetailWrapperView: View {
     let workoutID: PersistentIdentifier
@@ -820,58 +873,6 @@ struct WorkoutDetailWrapperView: View {
             if let fetchedWorkout = context.model(for: workoutID) as? Workout {
                 self.workout = fetchedWorkout
             }
-        }
-    }
-}
-
-// MARK: - Personal Records Card View
-struct PersonalRecordsCardView: View {
-    let records: ExerciseRecordsDTO
-    @Environment(UnitsManager.self) var unitsManager
-    @Environment(ThemeManager.self) private var themeManager
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Personal Records"))
-                .font(.title2)
-                .bold()
-                .foregroundColor(themeManager.current.primaryText)
-                .padding(.bottom, 4)
-            
-            recordRow(title: "Max Set Reps", value: records.maxSetReps > 0 ? "\(records.maxSetReps)" : "--")
-            
-            Divider().opacity(0.5)
-            
-            recordRow(title: "Max Workout Reps", value: records.maxWorkoutReps > 0 ? "\(records.maxWorkoutReps)" : "--")
-            
-            Divider().opacity(0.5)
-            
-            let setVol = unitsManager.convertFromKilograms(records.maxSetVolume)
-            let setVolStr = records.maxSetVolume > 0 ? "\(LocalizationHelper.shared.formatInteger(setVol)) \(unitsManager.weightUnitString())" : "--"
-            recordRow(title: "Max Set Volume", value: setVolStr)
-            
-            Divider().opacity(0.5)
-            
-            let woVol = unitsManager.convertFromKilograms(records.maxWorkoutVolume)
-            let woVolStr = records.maxWorkoutVolume > 0 ? "\(LocalizationHelper.shared.formatInteger(woVol)) \(unitsManager.weightUnitString())" : "--"
-            recordRow(title: "Max Workout Volume", value: woVolStr)
-        }
-        .padding(20)
-        .background(themeManager.current.surfaceVariant)
-        .cornerRadius(24)
-        .shadow(color: .black.opacity(0.03), radius: 10, x: 0, y: 5)
-    }
-    
-    private func recordRow(title: LocalizedStringKey, value: String) -> some View {
-        HStack {
-            Text(title)
-                .font(.body)
-                .foregroundColor(themeManager.current.secondaryText)
-            
-            Spacer()
-            
-            Text(value)
-                .font(.headline)
-                .foregroundColor(themeManager.current.primaryText)
         }
     }
 }

@@ -1,3 +1,7 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/Workout/Views/HistoryView.swift
+// ============================================================
+
 internal import SwiftUI
 import SwiftData
 
@@ -15,6 +19,7 @@ struct HistoryView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     
     @State private var searchText = ""
     @State private var isSearching = false
@@ -27,6 +32,9 @@ struct HistoryView: View {
     @State private var sortOption: WorkoutView.SortOption = .dateDescending
     @State private var showFavoritesOnly = false
     @State private var listViewModel = WorkoutListViewModel()
+    
+    // 👈 ДОБАВЛЕНО: Стейт для режима редактирования (удаления)
+    @State private var isEditingList = false
     
     // БАЗА ДИЗАЙНЕРА ДЛЯ БЫСТРОГО ДОБАВЛЕНИЯ
     @State private var searchDatabase: [SearchedWorkout] = [
@@ -41,12 +49,16 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Фон дизайнера с пульсацией
-                HistoryBreathingBackground(cnsScore: 100) // Используем из DesignerComponents
+                // 👈 ИСПРАВЛЕНИЕ: Статичный фон в светлой теме, живой фон в темной
+                if colorScheme == .dark {
+                    HistoryBreathingBackground(cnsScore: 100)
+                } else {
+                    Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                }
                 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 28) {
-                        HistoryHeader()
+                        HistoryHeader(isEditing: $isEditingList) // 👈 Передаем стейт редактирования
                         
                         TopStatsIslandsView(listViewModel: listViewModel, unitsManager: unitsManager)
                         
@@ -78,15 +90,16 @@ struct HistoryView: View {
                         VStack(alignment: .leading, spacing: 16) {
                             Text("История тренировок")
                                 .font(.title3).bold()
-                                .foregroundColor(.white)
+                                .foregroundColor(colorScheme == .dark ? .white : .primary)
                                 .padding(.horizontal, 20)
                             
                             DynamicWorkoutListView(
-                                searchText: "", // Поиск вынесли в дропдаун
+                                searchText: "",
                                 filter: selectedFilter,
                                 sort: sortOption,
                                 favoritesOnly: showFavoritesOnly,
-                                listViewModel: listViewModel
+                                listViewModel: listViewModel,
+                                isEditing: isEditingList // 👈 Передаем флаг редактирования
                             )
                         }
                         
@@ -99,7 +112,8 @@ struct HistoryView: View {
                     withAnimation { isSearching = false }
                 }
                 
-                if showSparks {
+                // 👈 ИСПРАВЛЕНИЕ: Искры только в темной теме, чтобы не портить светлую
+                if showSparks && colorScheme == .dark {
                     ParticleExplosionView().allowsHitTesting(false)
                 }
             }
@@ -111,7 +125,6 @@ struct HistoryView: View {
                         workout: $searchDatabase[index],
                         onAddWorkout: {
                             Task {
-                                // РЕАЛЬНОЕ СОЗДАНИЕ В БАЗЕ ДАННЫХ!
                                 _ = await workoutService.createWorkout(title: searchDatabase[index].name, presetID: nil, isAIGenerated: true)
                             }
                             showDetailSheet = false
@@ -134,15 +147,35 @@ struct HistoryView: View {
     }
 }
 
-// MARK: - ХЕДЕР И ФОН
+// MARK: - ХЕДЕР С КНОПКОЙ РЕДАКТИРОВАНИЯ
 struct HistoryHeader: View {
+    @Binding var isEditing: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    
     var body: some View {
         HStack {
             Text("История")
                 .font(.system(size: 34, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-            Text("🕒").font(.system(size: 30))
+                .foregroundColor(colorScheme == .dark ? .white : .primary)
+            
             Spacer()
+            
+            // 👈 ИСПРАВЛЕНИЕ: Кнопка Правки
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    isEditing.toggle()
+                }
+            }) {
+                Text(isEditing ? "Готово" : "Править")
+                    .font(.subheadline)
+                    .fontWeight(.bold)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .clipShape(Capsule())
+            }
         }
         .padding(.horizontal, 20)
     }
@@ -212,22 +245,36 @@ struct TopStatsIslandsView: View {
 }
 
 struct StatIslandWithTooltip: View {
+    @Environment(\.colorScheme) private var colorScheme
     var icon: String; var title: String; var value: String; var color: Color
     var tooltipTitle: String; var tooltipDesc: String; var statusText: String?; var statusColor: Color?
-    @State private var isBreathing = false; @State private var showCloud = false
+    @State private var isBreathing = false
+    @State private var showCloud = false
     
     var body: some View {
         ZStack(alignment: .top) {
             VStack(spacing: 8) {
-                Image(systemName: icon).font(.title2).foregroundStyle(LinearGradient(colors: [.white, color], startPoint: .topLeading, endPoint: .bottomTrailing))
-                VStack(spacing: 2) { Text(value).font(.system(size: 16, weight: .bold)).foregroundColor(.white); Text(title).font(.system(size: 11)).foregroundColor(.gray) }
+                Image(systemName: icon).font(.title2).foregroundStyle(LinearGradient(colors: [colorScheme == .dark ? .white : color, color], startPoint: .topLeading, endPoint: .bottomTrailing))
+                VStack(spacing: 2) {
+                    Text(value).font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
+                    Text(title).font(.system(size: 11)).foregroundColor(.gray)
+                }
             }
             .frame(maxWidth: .infinity).padding(.vertical, 16).background(.ultraThinMaterial).background(color.opacity(0.1))
-            .clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.1), lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.primary.opacity(0.05), lineWidth: 1))
             .shadow(color: color.opacity(isBreathing ? 0.3 : 0.05), radius: isBreathing ? 15 : 5, y: 5)
-            .onLongPressGesture(minimumDuration: 0.1, maximumDistance: 50, perform: {}, onPressingChanged: { isPressing in
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) { showCloud = isPressing; if isPressing { HapticManager.shared.impact(.medium) } }
-            })
+            // 👈 ИСПРАВЛЕНИЕ: Обычный тап + автоскрытие тултипа
+            .onTapGesture {
+                HapticManager.shared.impact(.medium)
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    showCloud.toggle()
+                }
+                if showCloud {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                        withAnimation { showCloud = false }
+                    }
+                }
+            }
             .onAppear { withAnimation(.easeInOut(duration: .random(in: 1.5...2.5)).repeatForever(autoreverses: true)) { isBreathing = true } }
             
             if showCloud {
@@ -249,6 +296,7 @@ struct StatIslandWithTooltip: View {
 struct HistorySearchBar: View {
     @Binding var text: String
     @Binding var isSearching: Bool
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         HStack {
@@ -259,7 +307,7 @@ struct HistorySearchBar: View {
             }
             
             TextField("Найти или добавить (напр. Тренировка Арнольда)", text: $text)
-                .foregroundColor(.white)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
                 .onTapGesture { withAnimation { isSearching = true } }
                 .onChange(of: text) { _ in withAnimation { isSearching = true } }
             
@@ -270,7 +318,7 @@ struct HistorySearchBar: View {
             }
         }
         .padding(14).background(.ultraThinMaterial).background(isSearching ? Color.cyan.opacity(0.1) : Color.clear)
-        .clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(isSearching ? Color.cyan.opacity(0.5) : Color.white.opacity(0.1), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 16)).overlay(RoundedRectangle(cornerRadius: 16).stroke(isSearching ? Color.cyan.opacity(0.5) : Color.primary.opacity(0.05), lineWidth: 1))
         .shadow(color: isSearching ? .cyan.opacity(0.2) : .clear, radius: 10).padding(.horizontal, 20)
     }
 }
@@ -279,6 +327,7 @@ struct SearchResultsDropdown: View {
     @Binding var results: [SearchedWorkout]
     var searchText: String
     var onSelect: (SearchedWorkout) -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var filtered: [SearchedWorkout] {
         if searchText.isEmpty { return results }
@@ -292,7 +341,7 @@ struct SearchResultsDropdown: View {
             ForEach(filtered.indices, id: \.self) { index in
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(filtered[index].name).font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                        Text(filtered[index].name).font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
                         Text(filtered[index].description).font(.system(size: 12)).foregroundColor(.gray).lineLimit(1)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -307,19 +356,20 @@ struct SearchResultsDropdown: View {
                             .font(.system(size: 20))
                             .foregroundColor(filtered[index].isFavorite ? .yellow : .gray.opacity(0.5))
                             .padding(12)
-                            .background(Color.white.opacity(0.05))
+                            .background(Color.primary.opacity(0.05))
                             .clipShape(Circle())
                     }
                 }
-                .padding(.vertical, 12).padding(.horizontal, 16).background(Color.white.opacity(0.01))
+                .padding(.vertical, 12).padding(.horizontal, 16).background(Color.primary.opacity(0.01))
                 
                 if index < filtered.count - 1 {
-                    Divider().background(Color.white.opacity(0.1)).padding(.horizontal, 16)
+                    Divider().background(Color.primary.opacity(0.1)).padding(.horizontal, 16)
                 }
             }
         }
-        .background(Color(red: 0.1, green: 0.1, blue: 0.12)).clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 1)).padding(.horizontal, 20)
+        .background(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.12) : Color.white).clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.05), lineWidth: 1)).padding(.horizontal, 20)
+        .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
     }
 }
 
@@ -367,6 +417,7 @@ struct PremiumCategoryCard: View {
     let title: String; let icon: String; let color: Color; let isActive: Bool
     let action: () -> Void
     @State private var isBreathing = false
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         Button(action: {
@@ -376,21 +427,23 @@ struct PremiumCategoryCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Image(systemName: icon)
                     .font(.title2)
-                    .foregroundStyle(LinearGradient(colors: [.white, color], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .foregroundStyle(LinearGradient(colors: [colorScheme == .dark ? .white : color, color], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .shadow(color: color.opacity(0.5), radius: isBreathing && isActive ? 8 : 2)
                 
                 Text(title)
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(isActive ? .white : .gray)
+                    // 👈 ИСПРАВЛЕНИЕ: Черный текст в активном состоянии в светлой теме для контраста
+                    .foregroundColor(isActive ? (colorScheme == .dark ? .white : color) : .gray)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(.ultraThinMaterial)
+            // 👈 ИСПРАВЛЕНИЕ: Белый матовый фон в светлой теме
+            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
             .background(color.opacity(isActive ? 0.15 : 0.05))
             .clipShape(RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(isActive ? color.opacity(0.5) : Color.white.opacity(0.1), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(isActive ? color.opacity(0.5) : Color.primary.opacity(0.05), lineWidth: 1))
             .shadow(color: color.opacity(isBreathing && isActive ? 0.3 : 0.05), radius: isBreathing && isActive ? 15 : 5, y: 5)
             .onAppear {
                 withAnimation(.easeInOut(duration: .random(in: 1.5...2.5)).repeatForever(autoreverses: true)) { isBreathing = true }
@@ -400,21 +453,25 @@ struct PremiumCategoryCard: View {
     }
 }
 
+// MARK: - ПРЕМИАЛЬНАЯ КАРТОЧКА С ИКОНКАМИ ИЗ ШАБЛОНОВ
+
+
 // MARK: - МОДАЛЬНОЕ ОКНО БЫСТРОГО ДОБАВЛЕНИЯ
 struct QuickWorkoutDetailSheet: View {
     @Binding var workout: SearchedWorkout
     var onAddWorkout: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         ZStack {
-            Color(red: 0.1, green: 0.1, blue: 0.12).edgesIgnoringSafeArea(.all)
+            (colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.12) : Color.white).edgesIgnoringSafeArea(.all)
             
             VStack(spacing: 24) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(workout.name)
                             .font(.system(size: 26, weight: .heavy, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
                         
                         Text("Информация о тренировке")
                             .font(.subheadline)
@@ -430,7 +487,7 @@ struct QuickWorkoutDetailSheet: View {
                             .font(.system(size: 24))
                             .foregroundColor(workout.isFavorite ? .yellow : .gray.opacity(0.5))
                             .padding(14)
-                            .background(Color.white.opacity(0.05))
+                            .background(Color.primary.opacity(0.05))
                             .clipShape(Circle())
                             .scaleEffect(workout.isFavorite ? 1.1 : 1.0)
                     }
@@ -439,14 +496,14 @@ struct QuickWorkoutDetailSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "doc.text.fill").foregroundColor(.cyan)
-                        Text("Описание").font(.headline).foregroundColor(.white)
+                        Text("Описание").font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
                     }
                     Text(workout.description)
                         .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(.white.opacity(0.8))
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
                         .lineSpacing(6)
                 }
-                .padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Color.white.opacity(0.03)).cornerRadius(20).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+                .padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Color.primary.opacity(0.03)).cornerRadius(20).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.primary.opacity(0.05), lineWidth: 1))
                 
                 Spacer()
                 
@@ -464,7 +521,6 @@ struct QuickWorkoutDetailSheet: View {
             }
             .padding(.horizontal, 24).padding(.top, 40)
         }
-        .preferredColorScheme(.dark)
     }
 }
 // MARK: - Утилиты (Управление клавиатурой)

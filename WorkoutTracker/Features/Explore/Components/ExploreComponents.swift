@@ -159,7 +159,8 @@ struct FilterChip: View {
     let title: String
     let isSelected: Bool
     let action: () -> Void
-    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
 
     var body: some View {
         Button(action: {
@@ -172,18 +173,18 @@ struct FilterChip: View {
                 .fontWeight(isSelected ? .bold : .medium)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface) // <--- ИЗМЕНЕНО
-                .foregroundColor(isSelected ? .white : .primary)
+                // 👈 АДАПТАЦИЯ: В светлой теме фон серый, в темной — темно-серый. При выборе — синий.
+                .background(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? themeManager.current.surface : Color(UIColor.systemGray6)))
+                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
                 .cornerRadius(20)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(isSelected ? themeManager.current.primaryAccent : Color.gray.opacity(0.2), lineWidth: 1) // <--- ИЗМЕНЕНО
+                        .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)), lineWidth: 1)
                 )
         }
         .buttonStyle(.plain)
     }
 }
-
 // MARK: - Reusable Tag Component
 struct ProgramTag: View {
     let text: String

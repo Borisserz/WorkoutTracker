@@ -1,3 +1,7 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/Workout/Views/AdvancedFiltersSheet.swift
+// ============================================================
+
 internal import SwiftUI
 
 struct AdvancedFiltersSheet: View {
@@ -5,6 +9,7 @@ struct AdvancedFiltersSheet: View {
     let resultsCount: Int
     @Environment(\.dismiss) private var dismiss
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     private let equipmentList = ["barbell", "dumbbell1", "machine", "cable", "bodyweight", "kettlebell", "bands"]
     private let mechanicsList = ["compound", "isolation"]
@@ -13,8 +18,9 @@ struct AdvancedFiltersSheet: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Фон темы
-                themeManager.current.background.ignoresSafeArea()
+                // Адаптивный фон темы
+                (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
                 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 28) {
@@ -46,8 +52,8 @@ struct AdvancedFiltersSheet: View {
                 .padding(.horizontal, 32) // Отступы по краям, чтобы кнопка не давила
                 .padding(.bottom, 20)
                 .background(
-                    // Градиент для затемнения под кнопкой
-                    LinearGradient(colors: [themeManager.current.background, themeManager.current.background.opacity(0)], startPoint: .bottom, endPoint: .top)
+                    // Адаптивный градиент для затемнения под кнопкой
+                    LinearGradient(colors: [colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground), (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground)).opacity(0)], startPoint: .bottom, endPoint: .top)
                         .ignoresSafeArea()
                 )
             }
@@ -79,6 +85,7 @@ struct AdvancedFilterSectionView: View {
     @Binding var selectedItems: Set<String>
     var filterState: ExerciseFilterState
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     private func displayString(for item: String) -> String {
         if item == "dumbbell1" { return "Dumbbell" }
@@ -89,7 +96,7 @@ struct AdvancedFilterSectionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(LocalizedStringKey(title))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
                 .padding(.horizontal, 20)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -111,13 +118,13 @@ struct AdvancedFilterSectionView: View {
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                // Стеклянный дизайн чипсов
-                                .background(isSelected ? themeManager.current.primaryAccent.opacity(0.15) : Color.white.opacity(0.05))
-                                .foregroundColor(isSelected ? themeManager.current.primaryAccent : .white.opacity(0.8))
+                                // Адаптивный стеклянный дизайн чипсов
+                                .background(isSelected ? themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.15 : 1.0) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)))
+                                .foregroundColor(isSelected ? (colorScheme == .dark ? themeManager.current.primaryAccent : .white) : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)))
                                 .clipShape(Capsule())
                                 .overlay(
                                     Capsule()
-                                        .stroke(isSelected ? themeManager.current.primaryAccent : Color.white.opacity(0.1), lineWidth: 1)
+                                        .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)

@@ -1,25 +1,29 @@
+// ============================================================
+// FILE: WorkoutTracker/SharedUI/Components/ClearableTextField.swift
+// ============================================================
+
 internal import SwiftUI
 
 struct ClearableTextField: View {
     let placeholder: String
-    @Binding var value: Double? // Работаем с опциональным Double
+    @Binding var value: Double?
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
-    // Состояние для отслеживания фокуса
     @FocusState private var isFocused: Bool
     
     var body: some View {
-        // Напрямую привязываем опциональное значение. Если nil — поле будет пустым.
         TextField(placeholder, value: $value, format: .number)
             .keyboardType(.decimalPad)
             .multilineTextAlignment(.center)
             .padding(.vertical, 8)
-            .background(themeManager.current.surfaceVariant)
+            // 👈 ИСПРАВЛЕНИЕ: Светло-серый фон в светлой теме, чтобы не было черного прямоугольника
+            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color(UIColor.systemGray6))
+            .foregroundColor(colorScheme == .dark ? .white : .black)
             .cornerRadius(8)
-            .focused($isFocused) // Привязываем фокус
+            .focused($isFocused)
             .onChange(of: isFocused) { oldValue, newValue in
-                if newValue { // Поле получило фокус
-                    // Если текущее значение 0, очищаем его, чтобы можно было сразу вводить новое
+                if newValue {
                     if value == 0 {
                         value = nil
                     }

@@ -1,4 +1,6 @@
-// MARK: - FILE: WorkoutTracker/Features/Workout/Views/WorkoutHubView.swift
+// ============================================================
+// FILE: WorkoutTracker/Features/Workout/Views/WorkoutHubView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -22,42 +24,39 @@ struct WorkoutHubView: View {
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(PresetService.self) var presetService
-    @Environment(DashboardViewModel.self) var dashboardViewModel // Для получения Стрика
+    @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ АДАПТАЦИИ
     
-    // 1. Все пользовательские шаблоны (Созданные юзером + Скачанные из Explore)
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
     private var userPresets: [WorkoutPreset]
     
-    // 2. Избранные тренировки (из Истории)
     @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
     private var favoriteWorkouts: [Workout]
     
-    // MARK: - Динамическая сортировка по папкам
     private var myRoutines: [WorkoutPreset] {
-            userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "План на сегодня" }
-        }
+        userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "План на сегодня" }
+    }
     
     private var savedSingleRoutines: [WorkoutPreset] {
         userPresets.filter { $0.folderName == PresetService.savedRoutinesFolderName }
     }
     
     private var programFolders: [String: [WorkoutPreset]] {
-        var dict = [String: [WorkoutPreset]]()
-        for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName {
-            dict[p.folderName!, default: []].append(p)
+            var dict = [String: [WorkoutPreset]]()
+            for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName && p.folderName != "СкрытаяПапка" { // 👈 ИСПРАВЛЕНИЕ: Исключаем скрытую папку
+                dict[p.folderName!, default: []].append(p)
+            }
+            return dict
         }
-        return dict
-    }
     
-    // MARK: - State & Navigation
     @State private var navigateToActiveWorkout: Workout? = nil
     @State private var navigateToExplore = false
     
     @State private var showSmartBuilder = false
     @State private var showPresetEditor = false
     @State private var presetToEdit: WorkoutPreset? = nil
-    @State private var showStreakPopup = false // Новый стейт для 3D Маскота
+    @State private var showStreakPopup = false
     
     @State private var itemToDelete: CarouselItemType? = nil
     @State private var showDeleteAlert = false
@@ -68,27 +67,20 @@ struct WorkoutHubView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Premium Dark Background
-                themeManager.current.background.ignoresSafeArea()
+                // 👈 АДАПТИВНЫЙ ФОН
+                (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 32) {
-                        
-                        // 1. ЗАГОЛОВОК И СТРИК (Интегрировано с дизайном)
                         headerSection
-                        
-                        // 2. КНОПКИ ДЕЙСТВИЙ (Dribbble Style)
                         topActionsSection
-                        
-                        // 3. КАРУСЕЛИ СОХРАНЕННЫХ ТРЕНИРОВОК
                         carouselsSection
-                        
                         Spacer(minLength: 120)
                     }
                     .padding(.top, 20)
                 }
                 
-                // 4. МАСКОТ-ПОПАП (Поверх всего контента)
                 if showStreakPopup {
                     StreakMascotPopup(
                         streakDays: dashboardViewModel.streakCount,
@@ -102,9 +94,7 @@ struct WorkoutHubView: View {
                 }
             }
             .navigationTitle(LocalizedStringKey("Workout"))
-            .navigationBarHidden(true) // Скрываем стандартный бар
-            
-            // Навигация и Модалки
+            .navigationBarHidden(true)
             .navigationDestination(item: $navigateToActiveWorkout) { workout in
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
@@ -166,7 +156,7 @@ struct WorkoutHubView: View {
         HStack {
             Text(LocalizedStringKey("Тренировка"))
                 .font(.system(size: 34, weight: .heavy, design: .rounded))
-                .foregroundStyle(.white)
+                .foregroundStyle(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
             
             Spacer()
             
@@ -178,12 +168,12 @@ struct WorkoutHubView: View {
                     Image(systemName: "flame.fill").foregroundStyle(Color.orange)
                     Text("\(dashboardViewModel.streakCount) \(String(localized: "дня"))")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
                 }
                 .padding(.horizontal, 12).padding(.vertical, 8)
-                .background(.ultraThinMaterial, in: Capsule())
-                .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
-                .shadow(color: Color.orange.opacity(0.4), radius: 10, x: 0, y: 4)
+                .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white), in: Capsule())
+                .overlay(Capsule().stroke(colorScheme == .dark ? Color.white.opacity(0.3) : Color.black.opacity(0.1), lineWidth: 1))
+                .shadow(color: Color.orange.opacity(0.2), radius: 8, x: 0, y: 4)
             }.buttonStyle(.plain)
         }
         .padding(.horizontal, 20)
@@ -214,7 +204,7 @@ struct WorkoutHubView: View {
             VStack(alignment: .leading, spacing: 16) {
                 Text(LocalizedStringKey("Программы"))
                     .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
                     .padding(.horizontal, 20)
                 
                 HStack(spacing: 16) {
@@ -244,21 +234,18 @@ struct WorkoutHubView: View {
     
     private var carouselsSection: some View {
             VStack(alignment: .leading, spacing: 32) {
-                
-                // ВСТАВЛЯЕМ БЛОК ПЛАНА НА СЕГОДНЯ
                 if let dailyPlan = userPresets.first(where: { $0.name == "План на сегодня" }), !dailyPlan.exercises.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("План на сегодня")
                             .font(.title3).bold()
-                            .foregroundColor(.white)
+                            .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                             .padding(.horizontal, 20)
                         
-                        // Широкая премиальная карточка
                         PremiumRoutineCard(
                             preset: dailyPlan,
                             onStart: { startWorkoutFromPreview(item: .preset(dailyPlan)) },
                             onEdit: { presetToEdit = dailyPlan; showPresetEditor = true },
-                            onDuplicate: nil, // План на сегодня не дублируем
+                            onDuplicate: nil,
                             onDelete: {
                                 Task { @MainActor in
                                     await presetService.deletePreset(dailyPlan)
@@ -268,7 +255,6 @@ struct WorkoutHubView: View {
                         .padding(.horizontal, 20)
                     }
                 }
-                // --- КОНЕЦ ВСТАВКИ ---
 
                 CarouselSectionView(
                 title: "Мои программы", folderName: nil, items: myRoutines.map { .preset($0) },
@@ -321,7 +307,6 @@ struct WorkoutHubView: View {
         }
     }
     
-    // ИСПРАВЛЕНО: Преобразование типов для Preview
     private func handleItemStart(item: CarouselItemType) {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         switch item {
@@ -400,11 +385,11 @@ struct WorkoutHubView: View {
     }
 }
 
-// MARK: - ВОССТАНОВЛЕННЫЕ КОМПОНЕНТЫ КАРУСЕЛЕЙ (ОНИ БЫЛИ ПОТЕРЯНЫ)
+// MARK: - ВОССТАНОВЛЕННЫЕ КОМПОНЕНТЫ КАРУСЕЛЕЙ
 
 struct CarouselSectionView: View {
     let title: LocalizedStringKey
-    let folderName: String? // Used to identify the folder for deletion logic
+    let folderName: String?
     let items: [CarouselItemType]
     
     let onItemTapped: (CarouselItemType) -> Void
@@ -413,16 +398,15 @@ struct CarouselSectionView: View {
     let onDelete: ((CarouselItemType) -> Void)?
     
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
 
     var body: some View {
         if !items.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                
-                // Header with "See All"
                 HStack(alignment: .bottom) {
                     Text(title)
                         .font(.title3).bold()
-                        .foregroundColor(.white)
+                        .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                     
                     Spacer()
                     
@@ -442,7 +426,6 @@ struct CarouselSectionView: View {
                 }
                 .padding(.horizontal)
                 
-                // Horizontal Carousel
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 16) {
                         ForEach(items.prefix(7), id: \.id) { item in
@@ -464,7 +447,7 @@ struct CarouselSectionView: View {
 }
 
 struct PremiumCarouselCardView: View {
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     let item: CarouselItemType
     
     let onTap: () -> Void
@@ -476,95 +459,111 @@ struct PremiumCarouselCardView: View {
 
     var body: some View {
         Button(action: onTap) {
-            ZStack(alignment: .topLeading) {
-                // Background Base
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(Color(UIColor.secondarySystemGroupedBackground))
-                
-                // Subtle Accent Glow
-                GeometryReader { geo in
-                    Circle()
-                        .fill(accentColor.opacity(0.15))
-                        .blur(radius: 30)
-                        .frame(width: geo.size.width * 1.5)
-                        .offset(x: -geo.size.width * 0.2, y: -geo.size.height * 0.2)
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                
-                VStack(alignment: .leading, spacing: 0) {
-                    // Top Row: Icon & Menu
-                    HStack(alignment: .top) {
-                        // Icon
-                        ZStack {
-                            Circle()
-                                .fill(.ultraThinMaterial)
-                                .frame(width: 44, height: 44)
-                            
-                            if isSystemIcon {
-                                Image(systemName: iconName)
-                                    .font(.title3)
-                                    .foregroundColor(accentColor)
-                            } else if UIImage(named: iconName) != nil {
-                                Image(iconName)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 24, height: 24)
-                            } else {
-                                Image(systemName: "dumbbell.fill")
-                                    .font(.title3)
-                                    .foregroundColor(accentColor)
-                            }
-                        }
+            VStack(alignment: .leading, spacing: 0) {
+                // Top Row: Icon & Menu
+                HStack(alignment: .top) {
+                    ZStack {
+                        Circle()
+                            .fill(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.black.opacity(0.05)))
+                            .frame(width: 44, height: 44)
                         
-                        Spacer()
-                        
-                        // Action Menu
-                        Menu {
-                            if let p = extractPreset(), let onEdit = onEdit {
-                                Button { onEdit(p) } label: { Label(LocalizedStringKey("Edit"), systemImage: "pencil") }
-                            }
-                            if let p = extractPreset(), let onDuplicate = onDuplicate {
-                                Button { onDuplicate(p) } label: { Label(LocalizedStringKey("Duplicate"), systemImage: "plus.square.on.square") }
-                            }
-                            if let onDelete = onDelete {
-                                Button(role: .destructive) { onDelete(item) } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .font(.headline)
-                                .foregroundColor(.white.opacity(0.8))
-                                .frame(width: 30, height: 30)
-                                .background(Color.white.opacity(0.1))
-                                .clipShape(Circle())
+                        if isSystemIcon {
+                            Image(systemName: iconName)
+                                .font(.title3)
+                                .foregroundColor(accentColor)
+                        } else if UIImage(named: iconName) != nil {
+                            Image(iconName)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 24, height: 24)
+                        } else {
+                            Image(systemName: "dumbbell.fill")
+                                .font(.title3)
+                                .foregroundColor(accentColor)
                         }
-                        .highPriorityGesture(TapGesture().onEnded { }) // Prevent triggering card tap
                     }
                     
                     Spacer()
                     
-                    // Bottom Row: Text
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(title)
+                    Menu {
+                        if let p = extractPreset(), let onEdit = onEdit {
+                            Button { onEdit(p) } label: { Label(LocalizedStringKey("Edit"), systemImage: "pencil") }
+                        }
+                        if let p = extractPreset(), let onDuplicate = onDuplicate {
+                            Button { onDuplicate(p) } label: { Label(LocalizedStringKey("Duplicate"), systemImage: "plus.square.on.square") }
+                        }
+                        if let onDelete = onDelete {
+                            Button(role: .destructive) { onDelete(item) } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
                             .font(.headline)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .lineLimit(2)
-                            .multilineTextAlignment(.leading)
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.6))
+                            .frame(width: 30, height: 30)
+                            .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                            .clipShape(Circle())
+                    }
+                    .highPriorityGesture(TapGesture().onEnded { })
+                }
+                
+                Spacer()
+                
+                // Bottom Row: Text
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .fontWeight(.bold)
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                }
+            }
+            .padding(16)
+            .frame(width: 160, height: 200)
+            // 👈 ИСПРАВЛЕНИЕ: Делаем фон светлее (Стекло) и добавляем свечение
+            .background(
+                ZStack {
+                    if colorScheme == .dark {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(.ultraThinMaterial)
                         
-                        Text(subtitle)
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .lineLimit(1)
+                        // Дополнительное легкое осветление карточки
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color.white.opacity(0.05))
+                    } else {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color.white)
+                    }
+                    
+                    // Красивое свечение акцентным цветом под текстом
+                    GeometryReader { geo in
+                        Circle()
+                            .fill(accentColor.opacity(colorScheme == .dark ? 0.25 : 0.15))
+                            .blur(radius: 30)
+                            .frame(width: geo.size.width * 1.5)
+                            .offset(x: -geo.size.width * 0.2, y: -geo.size.height * 0.2)
                     }
                 }
-                .padding(16)
-            }
-            .frame(width: 160, height: 200)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            )
+            // 👈 ИСПРАВЛЕНИЕ: Добавляем цветную градиентную обводку
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [accentColor.opacity(colorScheme == .dark ? 0.6 : 0.3), .clear],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
-            .shadow(color: .black.opacity(0.15), radius: 15, x: 0, y: 8)
+            .shadow(color: accentColor.opacity(colorScheme == .dark ? 0.15 : 0.05), radius: 15, x: 0, y: 8)
         }
         .buttonStyle(.plain)
     }
@@ -613,6 +612,7 @@ struct PremiumCarouselCardView: View {
 
 // MARK: - Premium Glass Button (Dribbble Style)
 struct PremiumHubGlassButton: View {
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     let title: LocalizedStringKey
     var subtitle: LocalizedStringKey? = nil
     let icon: String
@@ -623,26 +623,26 @@ struct PremiumHubGlassButton: View {
     var body: some View {
         Button(action: action) {
             if isSmall {
-                // Вертикальная маленькая кнопка
                 VStack(alignment: .leading, spacing: 12) {
                     ZStack {
                         Circle().fill(colorTint.opacity(0.2)).frame(width: 44, height: 44)
                         Image(systemName: icon).font(.title3).foregroundColor(colorTint)
                     }
+                    // 👈 АДАПТИВНЫЙ ТЕКСТ
                     Text(title)
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                         .multilineTextAlignment(.leading)
                         .lineLimit(2)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [colorTint.opacity(0.5), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+                // 👈 АДАПТИВНЫЙ ФОН
+                .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white), in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [colorTint.opacity(colorScheme == .dark ? 0.5 : 0.2), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
                 .shadow(color: colorTint.opacity(0.15), radius: 15, x: 0, y: 8)
             } else {
-                // Горизонтальная большая кнопка
                 HStack(spacing: 16) {
                     ZStack {
                         Circle().fill(colorTint.opacity(0.2)).frame(width: 48, height: 48)
@@ -650,17 +650,19 @@ struct PremiumHubGlassButton: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(title).font(.headline).fontWeight(.bold).foregroundColor(.white)
+                        // 👈 АДАПТИВНЫЙ ТЕКСТ
+                        Text(title).font(.headline).fontWeight(.bold).foregroundColor(colorScheme == .dark ? .white : .black)
                         if let sub = subtitle {
-                            Text(sub).font(.caption).foregroundColor(.white.opacity(0.7))
+                            Text(sub).font(.caption).foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .gray)
                         }
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").foregroundColor(.white.opacity(0.5))
+                    Image(systemName: "chevron.right").foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .gray.opacity(0.5))
                 }
                 .padding(16)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [colorTint.opacity(0.5), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
+                // 👈 АДАПТИВНЫЙ ФОН
+                .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white), in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [colorTint.opacity(colorScheme == .dark ? 0.5 : 0.2), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
                 .shadow(color: colorTint.opacity(0.15), radius: 15, x: 0, y: 8)
             }
         }
@@ -668,33 +670,32 @@ struct PremiumHubGlassButton: View {
     }
 }
 
-// MARK: - 3D Маскот и Пузырь
+// 3D Маскот и Пузырь (Без изменений, он всегда темный)
 struct StreakMascotPopup: View {
     var streakDays: Int
     @Binding var isShowing: Bool
     @State private var dragOffset: CGSize = .zero
     @State private var isGlowing: Bool = false
     @State private var isFloating: Bool = false
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     var body: some View {
         ZStack {
-            // Размытый темный фон
-            Color.black.opacity(0.6)
-                .background(.ultraThinMaterial)
+            // 👈 ИСПРАВЛЕНИЕ: Светлый размытый фон в светлой теме
+            Color.black.opacity(colorScheme == .dark ? 0.6 : 0.15)
+                .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(.regularMaterial))
                 .ignoresSafeArea()
                 .onTapGesture {
                     withAnimation(.spring()) { isShowing = false }
                 }
             
             VStack(spacing: 5) {
-                // Пузырь с текстом
                 FierySpeechBubble(text: String(localized: "Так держать!\nТы в огне! 🔥"))
                     .offset(y: 15)
                     .zIndex(1)
                     .rotation3DEffect(.degrees(isGlowing ? 10 : 0), axis: (x: -dragOffset.height, y: dragOffset.width, z: 0.0), perspective: 0.3)
                     .offset(y: isFloating ? -5 : 5)
                 
-                // Карточка Маскота
                 ZStack {
                     RoundedRectangle(cornerRadius: 30)
                         .fill(LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -716,7 +717,6 @@ struct StreakMascotPopup: View {
                         )
                         .overlay(RoundedRectangle(cornerRadius: 30).stroke(.white.opacity(0.5), lineWidth: 2))
                     
-                    // Плашка со стриком
                     ZStack {
                         RoundedRectangle(cornerRadius: 6)
                             .fill(LinearGradient(colors: [.red, .orange], startPoint: .top, endPoint: .bottom))
@@ -763,7 +763,6 @@ struct StreakMascotPopup: View {
         }
     }
 }
-
 struct FierySpeechBubble: View {
     var text: String
     var body: some View {

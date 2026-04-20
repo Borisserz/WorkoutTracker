@@ -36,6 +36,7 @@ final class OverviewRouter {
 // MARK: - 2. Главный экран (Обзор)
 
 struct OverviewView: View {
+    @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
@@ -46,7 +47,7 @@ struct OverviewView: View {
     @AppStorage("userGender") private var userGender = "male"
     @AppStorage("cnsScore") private var cnsScore: Double = 85.0
     @Query(sort: \Workout.date, order: .reverse) private var recentWorkouts: [Workout]
-    @Environment(\.colorScheme) var colorScheme 
+    
     @State private var router = OverviewRouter()
     @State private var isFrontView = true
     
@@ -424,6 +425,7 @@ struct OverviewView: View {
         
         var body: some View {
             ZStack(alignment: .trailing) {
+                // Кнопка удаления сзади (Скрыта под карточкой)
                 Button(action: {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     withAnimation(.spring()) { offset = 0 }
@@ -438,18 +440,20 @@ struct OverviewView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 
+                // Сама карточка (Спереди)
                 HStack(spacing: 16) {
-                    // ВОЗВРАЩЕНА ЦВЕТНАЯ ТОЧКА (Для светлой темы добавлена обводка, чтобы не сливалась)
-                    let muscleColor = colorManager.getColor(for: exercise.muscleGroup)
+                    // ✅ ИСПРАВЛЕНИЕ: Форматируем группу мышц, чтобы цвет всегда находился
+                    let broadCategory = MuscleCategoryMapper.getBroadCategory(for: exercise.muscleGroup)
+                    let muscleColor = colorManager.getColor(for: broadCategory)
+                    
                     Circle()
                         .fill(muscleColor)
                         .frame(width: 12, height: 12)
-                        .shadow(color: muscleColor.opacity(0.4), radius: 6)
-                        .overlay(Circle().stroke(Color.black.opacity(0.1), lineWidth: colorScheme == .light ? 1 : 0))
+                        .shadow(color: muscleColor.opacity(0.6), radius: 4)
                     
                     Text(LocalizationHelper.shared.translateName(exercise.name))
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black) // Исходный белый
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                         .lineLimit(1)
                     
                     Spacer()
@@ -457,24 +461,32 @@ struct OverviewView: View {
                     Image(systemName: isCompleted ? "checkmark.circle.fill" : "checkmark.circle")
                         .font(.title3)
                         .foregroundColor(isCompleted ? .green : (colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.15)))
-                        .shadow(color: isCompleted ? Color.green.opacity(0.5) : .clear, radius: 5)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 18)
-                // Исходный цвет подложки для темной темы
+                // ✅ ИСПРАВЛЕНИЕ: Фон ДОЛЖЕН БЫТЬ непрозрачным (Color.white в светлой теме), чтобы скрыть мусорку
                 .background(colorScheme == .dark ? Color(red: 0.15, green: 0.15, blue: 0.18) : Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1.5))
+                .shadow(color: Color.black.opacity(0.06), radius: 15, x: 0, y: 4)
                 .offset(x: offset)
                 .gesture(
                     DragGesture()
                         .onChanged { value in
-                            if value.translation.width < 0 { offset = max(value.translation.width, -80) }
-                            else if offset < 0 { offset = min(0, -80 + value.translation.width) }
+                            if value.translation.width < 0 {
+                                offset = max(value.translation.width, -80)
+                            } else if offset < 0 {
+                                offset = min(0, -80 + value.translation.width)
+                            }
                         }
                         .onEnded { value in
+                            // ✅ ИСПРАВЛЕНИЕ СВАЙПА: Открываем или закрываем в зависимости от того, как далеко свайпнули
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                if offset < -40 { offset = -80 } else { offset = 0 }
+                                if offset < -40 {
+                                    offset = -80
+                                } else {
+                                    offset = 0
+                                }
                             }
                         }
                 )
@@ -486,7 +498,7 @@ struct OverviewView: View {
         let index: Int
         let item: ExerciseCountDTO
         @Environment(ThemeManager.self) private var themeManager
-        @Environment(\.colorScheme) var colorScheme
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
         
         private var rankColor: Color {
             switch index {
@@ -517,33 +529,35 @@ struct OverviewView: View {
                 
                 Spacer(minLength: 16)
                 
+                // 👇 ИСПРАВЛЕНО: VStack вместо Stack
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizationHelper.shared.translateName(item.name))
                         .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black) // Исходный белый
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     
                     Text("\(item.count) подходов")
                         .font(.caption)
                         .fontWeight(.medium)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // Исходный
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
             }
             .padding(16)
             .frame(width: 150, height: 150, alignment: .leading)
-            // Исходный цвет подложки для темной темы
-            .background(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.13).opacity(0.8) : Color.white.opacity(0.8))
-            .background(.ultraThinMaterial)
+            .background(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.13).opacity(0.8) : Color(UIColor.secondarySystemGroupedBackground))
+            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(
-                        LinearGradient(colors: [rankColor.opacity(0.6), .clear, .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        colorScheme == .dark
+                        ? LinearGradient(colors: [rankColor.opacity(0.4), .clear, .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        : LinearGradient(colors: [Color.primary.opacity(0.05)], startPoint: .top, endPoint: .bottom),
                         lineWidth: 1.5
                     )
             )
-            .shadow(color: index == 1 ? rankColor.opacity(0.2) : .black.opacity(0.05), radius: 10, x: 0, y: 5)
+            .shadow(color: colorScheme == .dark ? (index == 1 ? rankColor.opacity(0.2) : .black.opacity(0.05)) : .black.opacity(0.08), radius: 15, x: 0, y: 5)
         }
     }
     // MARK: - Кольца Активности (Новый дизайн)
@@ -585,6 +599,7 @@ struct OverviewView: View {
         var icon: String
         var title: String
         @State private var currentProgress: CGFloat = 0
+        @Environment(\.colorScheme) var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ ПРОВЕРКИ ТЕМЫ
         
         var body: some View {
             VStack(spacing: 12) {
@@ -607,7 +622,8 @@ struct OverviewView: View {
                 
                 Text(title)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.8))
+                // 👈 ИСПРАВЛЕНИЕ: Черный текст для светлой темы, белый для темной
+                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
             }
             .onAppear {
                 withAnimation(.easeOut(duration: 1.5)) { currentProgress = progress }
@@ -617,6 +633,7 @@ struct OverviewView: View {
     
     // MARK: - Пульс Карточка
     struct LiveVitalsCard: View {
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme 
         @State private var isPulsing = false
         var body: some View {
             HStack(spacing: 16) {
@@ -636,19 +653,19 @@ struct OverviewView: View {
                 Image(systemName: "waveform.path.ecg").font(.system(size: 30)).foregroundStyle(Color.red.opacity(0.5))
             }
             .padding(20)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
-            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.primary.opacity(0.05), lineWidth: 1))
-            .shadow(color: Color.red.opacity(0.1), radius: 20, x: 0, y: 5)
+            // 👇 УНИФИЦИРОВАННЫЙ СТИЛЬ: Фон, рамка 1.5, мягкая тень
+            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground)), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1.5))
+            .shadow(color: colorScheme == .dark ? Color.red.opacity(0.1) : Color.black.opacity(0.08), radius: 20, x: 0, y: 5)
             .onAppear { withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { isPulsing = true } }
         }
     }
-    
     // MARK: - Интеграция Диаграммы Мышц
     struct MusclePieChartIsland: View {
         let viewModel: DashboardViewModel
         @StateObject private var colorManager = MuscleColorManager.shared
         @State private var animateChart = false
-        @Environment(\.colorScheme) var colorScheme // Для проверки темы
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
         
         var chartData: [(color: Color, percentage: Double, name: String)] {
             let total = max(1, viewModel.dashboardTotalExercises)
@@ -657,11 +674,19 @@ struct OverviewView: View {
             }
         }
         
+        // Вспомогательные переменные для быстрого рендера
+        private var cardBackground: AnyShapeStyle {
+            colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground))
+        }
+        private var cardOverlayGradient: LinearGradient {
+            LinearGradient(colors: [colorScheme == .dark ? .white.opacity(0.3) : .black.opacity(0.2), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+        
         var body: some View {
             VStack {
                 Text("Задействованные мышцы")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)) // Исходный для темной
+                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
                 
                 ZStack {
                     Circle().stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 20).frame(width: 150, height: 150)
@@ -686,16 +711,15 @@ struct OverviewView: View {
                         VStack {
                             Text("\(viewModel.dashboardTotalExercises)")
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundColor(colorScheme == .dark ? .white : .black) // Исходный
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
                             Text("Подходы")
                                 .font(.caption)
-                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6)) // Исходный
+                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))
                         }
                     }
                 }
                 .padding(.vertical, 10)
                 
-                // ВОЗВРАЩЕНЫ КНОПКИ С НАЗВАНИЯМИ МЫШЦ
                 if !viewModel.dashboardMuscleData.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 16) {
@@ -704,7 +728,7 @@ struct OverviewView: View {
                                     Circle().fill(colorManager.getColor(for: item.muscle)).frame(width: 10, height: 10)
                                     Text(LocalizedStringKey(item.muscle))
                                         .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)) // Исходный
+                                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
                                 }
                             }
                         }
@@ -714,8 +738,8 @@ struct OverviewView: View {
             }
             .frame(maxWidth: .infinity)
             .padding(24)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 32).stroke(LinearGradient(colors: [colorScheme == .dark ? .white.opacity(0.3) : .black.opacity(0.2), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5))
+            .background(cardBackground, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 32).stroke(cardOverlayGradient, lineWidth: 1.5))
             .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 5)
             .onAppear { animateChart = true }
         }
@@ -738,7 +762,7 @@ struct OverviewView: View {
         var router: OverviewRouter
         
         @Environment(DashboardViewModel.self) private var dashboardViewModel
-        @Environment(\.colorScheme) var colorScheme
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
         
         @State private var pulseReady = false
         @State private var showRecoverySettings = false
@@ -749,12 +773,23 @@ struct OverviewView: View {
             return total / recoveryDict.count
         }
         
+        // Вспомогательные свойства для ускорения компиляции
+        private var islandBackground: Color {
+            colorScheme == .dark ? Color.clear : Color(UIColor.secondarySystemGroupedBackground)
+        }
+        private var silhouetteBackground: Color {
+            colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.black.opacity(0.06)
+        }
+        private var buttonBackground: AnyShapeStyle {
+            colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white.opacity(0.8))
+        }
+        
         var body: some View {
             VStack(alignment: .leading, spacing: 20) {
                 
                 Text("Восстановление мышц")
                     .font(.system(size: 24, weight: .heavy, design: .rounded))
-                    .foregroundStyle(colorScheme == .dark ? .white : .black) // Исходный белый
+                    .foregroundStyle(colorScheme == .dark ? .white : .black)
                 
                 HStack(spacing: 12) {
                     AnatomyToggleButton(title: "Спереди", isSelected: isFrontView) { isFrontView = true }
@@ -762,12 +797,11 @@ struct OverviewView: View {
                 }
                 
                 ZStack {
-                    // Исходный цвет подложки человечка для темной темы
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.white)
+                        .fill(silhouetteBackground)
                         .overlay(
                             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
                         )
                     
                     BodyHeatmapView(
@@ -799,7 +833,7 @@ struct OverviewView: View {
                                     
                                     Text("Готовность")
                                         .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                        .foregroundStyle(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)) // Исходный
+                                        .foregroundStyle(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
                                     
                                     Text("\(muscleReadiness)%")
                                         .font(.system(size: 14, weight: .black, design: .rounded))
@@ -812,7 +846,7 @@ struct OverviewView: View {
                                 }
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 8)
-                                .background(.ultraThinMaterial)
+                                .background(buttonBackground)
                                 .clipShape(Capsule())
                                 .overlay(Capsule().stroke(colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.1), lineWidth: 1))
                                 .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
@@ -825,7 +859,10 @@ struct OverviewView: View {
                     .zIndex(10)
                 }
                 .frame(height: 580)
+                .background(islandBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1.5))
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 5)
             }
             .onAppear {
                 withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
@@ -847,7 +884,7 @@ struct OverviewView: View {
         let title: String
         let isSelected: Bool
         let action: () -> Void
-        @Environment(\.colorScheme) var colorScheme
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
         
         var body: some View {
             Button(action: {
@@ -859,7 +896,7 @@ struct OverviewView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
                     .background(isSelected ? Color.blue.opacity(0.2) : Color.clear)
-                    .foregroundStyle(isSelected ? Color.blue : (colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))) // Исходный белый
+                    .foregroundStyle(isSelected ? Color.blue : (colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6)))
                     .clipShape(Capsule())
                     .overlay(
                         Capsule().stroke(isSelected ? Color.blue : (colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.15)), lineWidth: 1)
@@ -867,20 +904,20 @@ struct OverviewView: View {
             }
         }
     }
-    
     // MARK: - UI Шторки настроек отдыха (Redesign)
     struct RecoverySettingsQuickSheet: View {
         @Environment(ThemeManager.self) private var themeManager
         @Environment(\.dismiss) private var dismiss
+        @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
         
-        // Строго используем тот же ключ, что и в бизнес-логике
         @AppStorage(Constants.UserDefaultsKeys.userRecoveryHours.rawValue) private var storedRecoveryHours: Double = 48.0
         @State private var localRecoveryHours: Double = 48.0
         
         var body: some View {
             ZStack {
-                // Фон шторки в цвет темы
-                themeManager.current.surface.ignoresSafeArea()
+                // 👈 АДАПТИВНЫЙ ФОН ШТОРКИ
+                (colorScheme == .dark ? themeManager.current.surface : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
                 
                 VStack(spacing: 24) {
                     // Заголовок
@@ -896,7 +933,8 @@ struct OverviewView: View {
                         
                         Text("Настройки отдыха")
                             .font(.title2.bold())
-                            .foregroundStyle(themeManager.current.primaryText)
+                        // 👈 АДАПТИВНЫЙ ТЕКСТ
+                            .foregroundStyle(colorScheme == .dark ? themeManager.current.primaryText : .black)
                         
                         Spacer()
                         
@@ -914,7 +952,7 @@ struct OverviewView: View {
                         HStack {
                             Text("Базовое время восстановления")
                                 .font(.subheadline)
-                                .foregroundColor(themeManager.current.secondaryText)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
                             Spacer()
                             Text("\(Int(localRecoveryHours)) часов")
                                 .font(.headline)
@@ -929,7 +967,7 @@ struct OverviewView: View {
                             onEditingChanged: { isEditing in
                                 if !isEditing {
                                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                    storedRecoveryHours = localRecoveryHours // Сохраняем в AppStorage только при отпускании пальца
+                                    storedRecoveryHours = localRecoveryHours
                                 }
                             }
                         )
@@ -937,13 +975,15 @@ struct OverviewView: View {
                         
                         Text("Настрой этот параметр под особенности своего организма. Изменение скорости напрямую повлияет на карту Готовности и рекомендации ИИ-тренера.")
                             .font(.caption)
-                            .foregroundColor(themeManager.current.secondaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
                             .lineSpacing(4)
                     }
                     .padding(20)
-                    .background(themeManager.current.surfaceVariant)
+                    // 👈 АДАПТИВНЫЙ ФОН КАРТОЧКИ
+                    .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
                     .cornerRadius(20)
-                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, x: 0, y: 5)
                     
                     Spacer()
                 }

@@ -1,10 +1,3 @@
-//
-//  BuilderStepsViews.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 7.04.26.
-//
-
 // ============================================================
 // FILE: WorkoutTracker/Features/SmartBuilder/BuilderStepsViews.swift
 // ============================================================
@@ -15,53 +8,58 @@ internal import SwiftUI
 struct MuscleSelectionView: View {
     @Bindable var vm: SmartGeneratorViewModel
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     
     var body: some View {
         ZStack(alignment: .bottom) {
+            // 👈 АДАПТАЦИЯ ФОНА СТРАНИЦЫ
+            (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+                .ignoresSafeArea()
+            
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("What are we hitting today?")
+                    Text("Что сегодня тренируем?")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                         .padding(.horizontal)
                         .padding(.top, 10)
                     
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                         ForEach(vm.availableMuscles, id: \.self) { muscle in
                             let isSelected = vm.targetMuscles.contains(muscle)
-                            
                             Button {
-                                vm.toggleMuscle(muscle)
-                            } label: {
-                                VStack {
-                                    Image(systemName: icon(for: muscle))
-                                        .font(.title)
-                                        .foregroundColor(isSelected ? themeManager.current.lightHighlight : .secondary)
-                                        .padding(.bottom, 4)
-                                    
-                                    Text(LocalizedStringKey(muscle))
-                                        .font(.headline)
-                                        .foregroundColor(isSelected ? .white : .primary)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 24)
-                                .background(
-                                    ZStack {
-                                        themeManager.current.surface
-                                        if isSelected {
-                                            themeManager.current.primaryAccent.opacity(0.2)
-                                        }
-                                    }
-                                )
-                                .cornerRadius(20)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .stroke(isSelected ? themeManager.current.lightHighlight : Color.clear, lineWidth: 2)
-                                )
-                                .shadow(color: isSelected ? themeManager.current.lightHighlight.opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
-                            }
-                            .buttonStyle(.plain)
-                            .scaleEffect(isSelected ? 1.02 : 1.0)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                                                            vm.toggleMuscle(muscle)
+                                                        } label: {
+                                                            VStack {
+                                                                Image(systemName: icon(for: muscle))
+                                                                    .font(.title)
+                                                                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .secondary : themeManager.current.primaryAccent)) // 👈 ИСПРАВЛЕНИЕ ИКОНКИ
+                                                                    .padding(.bottom, 4)
+                                                                
+                                                                Text(LocalizedStringKey(muscle))
+                                                                    .font(.headline)
+                                                                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .primary : .black))
+                                                            }
+                                                            .frame(maxWidth: .infinity)
+                                                            .padding(.vertical, 24)
+                                                            .background(
+                                                                ZStack {
+                                                                    (colorScheme == .dark ? themeManager.current.surface : Color.white)
+                                                                    if isSelected {
+                                                                        themeManager.current.primaryAccent // 👈 ИСПРАВЛЕНИЕ: Сплошной синий цвет при выборе
+                                                                    }
+                                                                }
+                                                            )
+                                                            .cornerRadius(20)
+                                                            .overlay(
+                                                                RoundedRectangle(cornerRadius: 20)
+                                                                    .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.clear : Color.black.opacity(0.05)), lineWidth: isSelected ? 0 : 1)
+                                                            )
+                                                            .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.4) : .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, x: 0, y: 5)
+                                                        }
+                                                        .buttonStyle(.plain)
+                                                        .scaleEffect(isSelected ? 1.02 : 1.0)
+                                                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
                         }
                     }
                     .padding(.horizontal)
@@ -75,7 +73,7 @@ struct MuscleSelectionView: View {
                 gen.impactOccurred()
                 vm.path.append("Settings")
             } label: {
-                Text("Next Step")
+                Text("Следующий шаг")
                     .font(.headline).bold()
                     .foregroundColor(themeManager.current.background)
                     .frame(maxWidth: .infinity)
@@ -109,29 +107,32 @@ struct MuscleSelectionView: View {
 struct GeneratorSettingsView: View {
     @Bindable var vm: SmartGeneratorViewModel
     @Environment(ThemeManager.self) private var themeManager
-    
-    // ✅ ИСПРАВЛЕНИЕ 1: Добавляем Environment для доступа к истории твоих весов
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     @Environment(DashboardViewModel.self) private var dashboard
     
     var body: some View {
         ZStack(alignment: .bottom) {
+            // 👈 АДАПТАЦИЯ ФОНА ПОД ФОРМОЙ
+            (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+                .ignoresSafeArea()
+            
             Form {
-                Section(header: Text("Duration")) {
+                Section(header: Text("Продолжительность")) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("\(Int(vm.durationMinutes)) minutes")
+                            Text("\(Int(vm.durationMinutes)) минут")
                                 .font(.title2).bold()
-                                .foregroundColor(themeManager.current.lightHighlight)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.lightHighlight : .blue) // 👈 АДАПТАЦИЯ ЦВЕТА
                             Spacer()
                         }
                         Slider(value: $vm.durationMinutes, in: 15...120, step: 5)
-                            .tint(themeManager.current.lightHighlight)
+                            .tint(colorScheme == .dark ? themeManager.current.lightHighlight : .blue)
                     }
                     .padding(.vertical, 8)
                 }
                 
-                Section(header: Text("Experience Level")) {
-                    Picker("Difficulty", selection: $vm.difficulty) {
+                Section(header: Text("Уровень опыта")) {
+                    Picker("Уровень", selection: $vm.difficulty) {
                         ForEach(WorkoutDifficulty.allCases, id: \.self) { diff in
                             Text(LocalizedStringKey(diff.rawValue)).tag(diff)
                         }
@@ -140,8 +141,8 @@ struct GeneratorSettingsView: View {
                     .padding(.vertical, 8)
                 }
                 
-                Section(header: Text("Available Equipment")) {
-                    Picker("Equipment", selection: $vm.equipment) {
+                Section(header: Text("Доступное оборудование")) {
+                    Picker("Оборудование", selection: $vm.equipment) {
                         ForEach(WorkoutEquipment.allCases, id: \.self) { eq in
                             Text(LocalizedStringKey(eq.rawValue)).tag(eq)
                         }
@@ -152,13 +153,12 @@ struct GeneratorSettingsView: View {
             .padding(.bottom, 100)
             
             Button {
-                // ✅ ИСПРАВЛЕНИЕ 2: Передаем историю твоих упражнений в алгоритм!
                 Task { await vm.generateWorkout(historyCache: dashboard.lastPerformancesCache) }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.title3)
-                    Text("Generate Routine")
+                    Text("Сгенерировать рутину")
                         .font(.headline).bold()
                 }
                 .foregroundColor(themeManager.current.background)
@@ -173,7 +173,7 @@ struct GeneratorSettingsView: View {
                 .padding(.bottom, 16)
             }
         }
-        .navigationTitle("Parameters")
+        .navigationTitle("Параметры")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

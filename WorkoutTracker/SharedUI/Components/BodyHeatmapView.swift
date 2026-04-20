@@ -14,15 +14,15 @@ struct BodyHeatmapView: View {
     let countLabel: String
     
     @State private var isFrontViewLocal = true
-    @State private var selectedMuscleName: String? = nil
+    // 👈 ИСПРАВЛЕНИЕ: Теперь храним весь объект мышцы, чтобы знать ее slug для счетчика
+    @State private var selectedMuscle: MuscleGroup? = nil
     
     @Environment(ThemeManager.self) private var themeManager
-    
+    @Environment(\.colorScheme) var colorScheme
     let canvasWidth: CGFloat = 740
     let canvasHeight: CGFloat = 1450
     let backViewOffset: CGFloat = 740
     
-    // ✅ ДОБАВЛЕНЫ "calves" (Икры) ДЛЯ ВИДА СЗАДИ
     private let frontTags = ["chest", "deltoids", "biceps", "abs", "quadriceps"]
     private let backTags = ["upper-back", "deltoids", "triceps", "lower-back", "hamstring", "calves"]
     
@@ -35,7 +35,7 @@ struct BodyHeatmapView: View {
         isCompactMode: Bool = false,
         defaultToBack: Bool = false,
         userGender: String = "male",
-        countLabel: String = "sets"
+        countLabel: String = "упр." // По умолчанию "упр."
     ) {
         self.muscleIntensities = muscleIntensities
         self.rawMuscleCounts = rawMuscleCounts
@@ -60,7 +60,7 @@ struct BodyHeatmapView: View {
                 .pickerStyle(.segmented)
                 .padding([.horizontal, .top])
                 .onChange(of: isFrontViewLocal) { _, _ in
-                    withAnimation { selectedMuscleName = nil }
+                    withAnimation { selectedMuscle = nil }
                 }
             }
             
@@ -71,7 +71,7 @@ struct BodyHeatmapView: View {
                 let tagsToShow = activeIsFront ? frontTags : backTags
                 
                 ZStack {
-                    // 1. ОТРИСОВКА СИЛУЭТА (На него можно нажимать)
+                    // 1. ОТРИСОВКА СИЛУЭТА
                     ZStack {
                         ForEach(currentMuscles) { muscle in
                             drawGhostMuscle(muscle, centeringOffset: centeringOffset)
@@ -79,7 +79,7 @@ struct BodyHeatmapView: View {
                     }
                     .drawingGroup()
                     
-                    // 2. ОТРИСОВКА ИНТЕРАКТИВНЫХ ПЛАШЕК
+                    // 2. ОТРИСОВКА ПЛАШЕК В РЕЖИМЕ ОТДЫХА
                     if isRecoveryMode {
                         ForEach(currentMuscles.filter { tagsToShow.contains($0.slug) }) { muscle in
                             drawMuscleTag(muscle, centeringOffset: centeringOffset, scale: scale)
@@ -92,19 +92,22 @@ struct BodyHeatmapView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.clear)
                 
-                // 3. ВСПЛЫВАЮЩАЯ НАДПИСЬ СНИЗУ (для мышц без плашек)
+                // 3. ВСПЛЫВАЮЩАЯ НАДПИСЬ СНИЗУ С КОЛИЧЕСТВОМ УПРАЖНЕНИЙ
                 .overlay(alignment: .bottom) {
-                    if let name = selectedMuscleName {
-                        Text(LocalizedStringKey(name))
+                    if let muscle = selectedMuscle {
+                        // 👈 ИСПРАВЛЕНИЕ: Берем количество из rawMuscleCounts по slug мышцы
+                        let count = rawMuscleCounts?[muscle.slug] ?? 0
+                        
+                        Text("\(LocalizedStringKey(muscle.name)): \(count) \(countLabel)")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .padding(.horizontal, 20)
                             .padding(.vertical, 10)
-                            .background(activeIsFront ? Color.blue.opacity(0.8) : Color.red.opacity(0.8))
+                            .background(activeIsFront ? Color.blue.opacity(0.9) : Color.purple.opacity(0.9))
                             .clipShape(Capsule())
                             .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
-                            .shadow(color: (activeIsFront ? Color.blue : Color.red).opacity(0.6), radius: 10, y: 5)
-                            .padding(.bottom, 60) // ✅ ПОДНЯЛИ ВЫШЕ, чтобы не резалась краем экрана
+                            .shadow(color: (activeIsFront ? Color.blue : Color.purple).opacity(0.6), radius: 10, y: 5)
+                            .padding(.bottom, 60)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
                 }
@@ -112,75 +115,68 @@ struct BodyHeatmapView: View {
             .frame(height: isCompactMode ? nil : 500)
             .background(Color.clear)
         }
-        // Сбрасываем выделение при перевороте модели
         .onChange(of: activeIsFront) { _, _ in
-            withAnimation(.spring()) { selectedMuscleName = nil }
+            withAnimation(.spring()) { selectedMuscle = nil }
         }
     }
     
-    // MARK: - Рендеринг Силуэта мышц (С нажатием)
+    // MARK: - Рендеринг Силуэта мышц
     func drawGhostMuscle(_ muscle: MuscleGroup, centeringOffset: CGFloat) -> some View {
-          let rawPath = combinedPath(from: muscle.paths)
-          let baseXOffset: CGFloat = activeIsFront ? 0 : -backViewOffset
-          let xOffset = baseXOffset + centeringOffset
-          let finalXOffset = (activeIsFront == false && muscle.slug == "head") ? xOffset + 37.0 : xOffset
-          let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
-          
-          let isSelected = selectedMuscleName == muscle.name
-          let themeColor = activeIsFront ? Color.blue : Color.red
-          
-          let intensity = muscleIntensities[muscle.slug]
-          var fillColor: Color = Color.white.opacity(0.12) // Базовый серый цвет
-          
-          if let val = intensity {
-              if isRecoveryMode {
-                  // РЕЖИМ ВОССТАНОВЛЕНИЯ (100 = Свежая, 0 = Убита)
-                  if val >= 95 {
-                      // Мышца полностью восстановлена -> оставляем серый цвет
-                      fillColor = Color.white.opacity(0.12)
-                  } else {
-                      // Вычисляем процент усталости (чем меньше val, тем больше усталость)
-                      let fatigue = 100.0 - Double(val)
-                      // Чем больше усталость, тем плотнее и ярче красный цвет (от 0.2 до 0.9)
-                      let redOpacity = 0.2 + (0.7 * (fatigue / 100.0))
-                      fillColor = Color.red.opacity(redOpacity)
-                  }
-              } else {
-                  // РЕЖИМ НАГРУЗКИ / ТРЕНИРОВКИ (LIVE TENSION) (0 = Отдыхает, 100 = Памп)
-                  if val > 0 {
-                      let opacity = min(1.0, max(0.3, Double(val) / 100.0))
-                      fillColor = themeColor.opacity(opacity)
-                  }
-              }
-          }
-          
-          // Если пользователь тапнул на мышцу — подсвечиваем её ярко синим/красным
-          if isSelected {
-              fillColor = themeColor.opacity(0.8)
-          }
-          
-          return Button {
-              let generator = UISelectionFeedbackGenerator()
-              generator.selectionChanged()
-              withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                  selectedMuscleName = isSelected ? nil : muscle.name
-              }
-          } label: {
-              ZStack {
-                  finalPath.fill(fillColor)
-                  
-                  if isSelected {
-                      finalPath.stroke(themeColor, lineWidth: 3.0)
-                          .shadow(color: themeColor.opacity(0.8), radius: 10)
-                  } else {
-                      // Контур мышц
-                      finalPath.stroke(Color(red: 0.13, green: 0.13, blue: 0.15), lineWidth: 1.5)
-                  }
-              }
-          }
-          .buttonStyle(.plain)
-      }
-    // MARK: - Рендеринг Плашек
+        let rawPath = combinedPath(from: muscle.paths)
+        let baseXOffset: CGFloat = activeIsFront ? 0 : -backViewOffset
+        let xOffset = baseXOffset + centeringOffset
+        let finalXOffset = (activeIsFront == false && muscle.slug == "head") ? xOffset + 37.0 : xOffset
+        let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
+        
+        let isSelected = selectedMuscle?.id == muscle.id
+        let themeColor = activeIsFront ? Color.blue : Color.red
+        
+        let intensity = muscleIntensities[muscle.slug]
+        var fillColor: Color = colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.15)
+        
+        if let val = intensity {
+            if isRecoveryMode {
+                if val >= 95 {
+                    fillColor = colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.15)
+                } else {
+                    let fatigue = 100.0 - Double(val)
+                    let redOpacity = 0.2 + (0.7 * (fatigue / 100.0))
+                    fillColor = Color.red.opacity(redOpacity)
+                }
+            } else {
+                if val > 0 {
+                    let opacity = min(1.0, max(0.3, Double(val) / 100.0))
+                    fillColor = themeColor.opacity(opacity)
+                }
+            }
+        }
+        
+        return Button {
+            let generator = UISelectionFeedbackGenerator()
+            generator.selectionChanged()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                // Если нажали на уже выбранную - скрываем, иначе показываем
+                selectedMuscle = isSelected ? nil : muscle
+            }
+            // Авто-скрытие тултипа через 3 секунды
+            if !isSelected {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    withAnimation { if selectedMuscle?.id == muscle.id { selectedMuscle = nil } }
+                }
+            }
+        } label: {
+            ZStack {
+                finalPath.fill(fillColor)
+                
+                // 👈 ИСПРАВЛЕНИЕ: УБРАНА ЖИРНАЯ ОБВОДКА И СВЕЧЕНИЕ ПРИ ВЫБОРЕ. Теперь только контур.
+                let strokeColor = colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.black.opacity(0.5)
+                finalPath.stroke(strokeColor, lineWidth: 1.5)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+    
+    // MARK: - Рендеринг Плашек (Без изменений)
     func drawMuscleTag(_ muscle: MuscleGroup, centeringOffset: CGFloat, scale: CGFloat) -> some View {
         let rawPath = combinedPath(from: muscle.paths)
         let baseXOffset: CGFloat = activeIsFront ? 0 : -backViewOffset
@@ -192,23 +188,22 @@ struct BodyHeatmapView: View {
         var centerX = bounds.midX
         var centerY = bounds.midY
         
-        // ✅ ЖЕСТКИЙ РАЗНОС ПЛАШЕК В СТОРОНЫ (Чтобы тело было видно на 100%)
         if activeIsFront {
-            if muscle.slug == "chest" { centerX -= 220; centerY -= 20 }         // Грудь левее
-            if muscle.slug == "deltoids" { centerX += 220; centerY -= 50 }      // Плечи справа
-            if muscle.slug == "biceps" { centerX += 300; centerY += 60 }        // Бицепс правее
-            if muscle.slug == "abs" { centerX -= 180; centerY += 90 }           // Пресс левее
-            if muscle.slug == "quadriceps" { centerX += 190; centerY += 190 }   // Квадры правее
+            if muscle.slug == "chest" { centerX -= 220; centerY -= 20 }
+            if muscle.slug == "deltoids" { centerX += 220; centerY -= 50 }
+            if muscle.slug == "biceps" { centerX += 300; centerY += 60 }
+            if muscle.slug == "abs" { centerX -= 180; centerY += 90 }
+            if muscle.slug == "quadriceps" { centerX += 190; centerY += 190 }
         } else {
-            if muscle.slug == "upper-back" { centerX -= 240; centerY -= 20 }    // Верх спины левее
-            if muscle.slug == "deltoids" { centerX += 220; centerY -= 50 }      // Плечи справа
-            if muscle.slug == "triceps" { centerX += 230; centerY += 130 }      // Трицепс правее и НИЖЕ
-            if muscle.slug == "lower-back" { centerX -= 200; centerY += 100 }   // Поясница левее
-            if muscle.slug == "hamstring" { centerX += 230; centerY += 180 }    // Бицепс бедра правее
-            if muscle.slug == "calves" { centerX -= 200; centerY += 190 }       // Икры слева в самом низу
+            if muscle.slug == "upper-back" { centerX -= 240; centerY -= 20 }
+            if muscle.slug == "deltoids" { centerX += 220; centerY -= 50 }
+            if muscle.slug == "triceps" { centerX += 230; centerY += 130 }
+            if muscle.slug == "lower-back" { centerX -= 200; centerY += 100 }
+            if muscle.slug == "hamstring" { centerX += 230; centerY += 180 }
+            if muscle.slug == "calves" { centerX -= 200; centerY += 190 }
         }
         
-        let isSelected = selectedMuscleName == muscle.name
+        let isSelected = selectedMuscle?.name == muscle.name
         let themeColor = activeIsFront ? Color.blue : Color.red
         
         return InteractiveMuscleTag(
@@ -222,13 +217,12 @@ struct BodyHeatmapView: View {
             let generator = UISelectionFeedbackGenerator()
             generator.selectionChanged()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                selectedMuscleName = isSelected ? nil : muscle.name
+                selectedMuscle = isSelected ? nil : muscle
             }
         }
     }
     
-    // MARK: - Математика и Хелперы
-    
+    // MARK: - Математика
     private func getMuscles(isFront: Bool) -> [MuscleGroup] {
         if userGender == "female" {
             return isFront ? BodyData.frontMusclesFemale : BodyData.backMusclesFemale
@@ -269,18 +263,8 @@ struct BodyHeatmapView: View {
         for str in strings { result.addPath(SVGParser.path(from: str)) }
         return result
     }
-    
-    func findSlug(forName name: String) -> String {
-        let all = userGender == "female" ? (BodyData.frontMusclesFemale + BodyData.backMusclesFemale) : (BodyData.frontMuscles + BodyData.backMuscles)
-        return all.first(where: { $0.name == name })?.slug ?? ""
-    }
-    
-    func isExceptionPart(_ slug: String) -> Bool {
-        return ["head", "face", "hands", "hand", "feet", "foot", "left-hand", "right-hand", "left-foot", "right-foot", "neck"].contains(slug)
-    }
 }
 
-// MARK: - ИЗОЛИРОВАННАЯ ПЛАШКА ДЛЯ БЕСКОНЕЧНОЙ АНИМАЦИИ
 struct InteractiveMuscleTag: View {
     let name: String
     let scale: CGFloat
@@ -291,29 +275,25 @@ struct InteractiveMuscleTag: View {
     let action: () -> Void
     
     @State private var isFloating = false
+    @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
         let floatOffset = isFloating ? CGFloat(-5) : CGFloat(5)
-        let delay = Double(name.count) * 0.15 // У каждой плашки свой рассинхрон
+        let delay = Double(name.count) * 0.15
         
         Text(LocalizedStringKey(name))
-            // ✅ УМЕНЬШЕНЫ РАЗМЕР ШРИФТА И ПАДДИНГИ ДЛЯ АККУРАТНОСТИ
             .font(.system(size: 15 / scale, weight: .bold, design: .rounded))
-            .foregroundColor(.white)
+            .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black.opacity(0.8)))
             .padding(.horizontal, 16 / scale)
             .padding(.vertical, 8 / scale)
-            .background(isSelected ? themeColor : Color.white.opacity(0.1))
+            .background(isSelected ? themeColor : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.15)))
             .clipShape(Capsule())
-            .overlay(
-                Capsule().stroke(isSelected ? Color.clear : Color.white.opacity(0.3), lineWidth: 2 / scale)
-            )
-            .shadow(color: isSelected ? themeColor.opacity(0.8) : .black.opacity(0.3), radius: isSelected ? 15 / scale : 5 / scale, x: 0, y: 5 / scale)
+            .overlay(Capsule().stroke(isSelected ? Color.clear : (colorScheme == .dark ? Color.white.opacity(0.3) : Color.black.opacity(0.4)), lineWidth: 2 / scale))
+            .shadow(color: isSelected ? themeColor.opacity(0.8) : .black.opacity(0.1), radius: isSelected ? 15 / scale : 5 / scale, x: 0, y: 5 / scale)
             .position(x: centerX, y: centerY)
             .offset(y: floatOffset)
             .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true).delay(delay), value: isFloating)
             .onTapGesture { action() }
-            .onAppear {
-                isFloating = true
-            }
+            .onAppear { isFloating = true }
     }
 }
