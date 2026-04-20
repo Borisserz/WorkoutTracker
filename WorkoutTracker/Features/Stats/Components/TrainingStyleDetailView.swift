@@ -23,7 +23,8 @@ struct TrainingStyleDetailView: View {
     @State private var selectedPeriod: TrendPeriod = .month
     @State private var stats: TrainingStyleDTO? = nil
     
-        @Environment(ThemeManager.self) private var themeManager
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ ТЕМЫ
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -54,22 +55,19 @@ struct TrainingStyleDetailView: View {
         }
         .navigationTitle(LocalizedStringKey("Training Style"))
         .navigationBarTitleDisplayMode(.inline)
-        .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+        // 👈 Адаптивный фон экрана
+        .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
         .task(id: selectedPeriod) {
             await loadData()
         }
     }
     
-    // MARK: - Views
-    
-
     @ViewBuilder
     private func mechanicDonutChart(stats: TrainingStyleDTO) -> some View {
         let total = stats.totalMechanicSets
         let compPct = total > 0 ? Int((Double(stats.compoundSets) / Double(total)) * 100) : 0
         let isoPct = total > 0 ? Int((Double(stats.isolationSets) / Double(total)) * 100) : 0
         
-        // Разделяем проценты и локализованное слово, чтобы перевод сработал
         let isCompoundDominant = compPct >= isoPct
         let dominantPct = isCompoundDominant ? compPct : isoPct
         let dominantName: LocalizedStringKey = isCompoundDominant ? "Compound" : "Isolation"
@@ -77,46 +75,29 @@ struct TrainingStyleDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Mechanic Breakdown"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             
             Chart {
-                SectorMark(
-                    angle: .value("Sets", stats.compoundSets),
-                    innerRadius: .ratio(0.65),
-                    angularInset: 2
-                )
-                .cornerRadius(6)
-                .foregroundStyle(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom))
-                .annotation(position: .overlay) {
-                    if compPct > 10 { Text("\(compPct)%").font(.caption.bold()).foregroundColor(themeManager.current.background) }
-                }
+                SectorMark(angle: .value("Sets", stats.compoundSets), innerRadius: .ratio(0.65), angularInset: 2)
+                    .cornerRadius(6)
+                    .foregroundStyle(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom))
                 
-                SectorMark(
-                    angle: .value("Sets", stats.isolationSets),
-                    innerRadius: .ratio(0.65),
-                    angularInset: 2
-                )
-                .cornerRadius(6)
-                .foregroundStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom))
-                .annotation(position: .overlay) {
-                    if isoPct > 10 { Text("\(isoPct)%").font(.caption.bold()).foregroundColor(themeManager.current.background) }
-                }
+                SectorMark(angle: .value("Sets", stats.isolationSets), innerRadius: .ratio(0.65), angularInset: 2)
+                    .cornerRadius(6)
+                    .foregroundStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom))
             }
             .frame(height: 240)
             .chartBackground { proxy in
                 VStack {
                     Text(LocalizedStringKey("Focus"))
                         .font(.caption)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     Text("\(dominantPct)% ")
-                        .font(.headline)
-                        .bold()
-                        .foregroundColor(themeManager.current.primaryText)
+                        .font(.headline).bold()
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                     + Text(dominantName)
-                        .font(.headline)
-                        .bold()
-                        .foregroundColor(themeManager.current.primaryText)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .font(.headline).bold()
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                 }
             }
             
@@ -126,9 +107,11 @@ struct TrainingStyleDetailView: View {
             }
         }
         .padding(20)
-        .background(themeManager.current.surface)
+        // 👈 Адаптивный фон карточки
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(24)
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
         .padding(.horizontal)
     }
     
@@ -137,77 +120,71 @@ struct TrainingStyleDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Equipment Arsenal"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             
             let totalEq = stats.totalEquipmentSets
-            
             ForEach(EquipmentCategory.allCases) { category in
                 let count = stats.equipmentDistribution[category] ?? 0
-                if count > 0 || category != .other { // Show zero for main categories
+                if count > 0 || category != .other {
                     let pct = totalEq > 0 ? Double(count) / Double(totalEq) : 0.0
-                    
                     HStack(spacing: 12) {
                         ZStack {
                             Circle().fill(category.color.opacity(0.15)).frame(width: 36, height: 36)
                             Image(systemName: category.icon).font(.caption.bold()).foregroundColor(category.color)
                         }
-                        
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text(LocalizedStringKey(category.rawValue))
                                     .font(.subheadline).bold()
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
                                 Spacer()
                                 Text("\(count) sets (\(Int(pct * 100))%)")
-                                    .font(.caption).foregroundColor(themeManager.current.secondaryText)
+                                    .font(.caption).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                             }
-                            
                             GeometryReader { geo in
                                 ZStack(alignment: .leading) {
                                     Capsule().fill(Color.gray.opacity(0.15))
-                                    Capsule()
-                                        .fill(LinearGradient(colors: [category.color.opacity(0.6), category.color], startPoint: .leading, endPoint: .trailing))
+                                    Capsule().fill(LinearGradient(colors: [category.color.opacity(0.6), category.color], startPoint: .leading, endPoint: .trailing))
                                         .frame(width: geo.size.width * CGFloat(pct))
                                 }
-                            }
-                            .frame(height: 8)
+                            }.frame(height: 8)
                         }
                     }
                 }
             }
         }
         .padding(20)
-        .background(themeManager.current.surface)
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(24)
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
         .padding(.horizontal)
     }
     
     @ViewBuilder
     private func aiInsightCard(stats: TrainingStyleDTO) -> some View {
         let insight = generateInsight(stats: stats)
-        
         HStack(spacing: 16) {
             ZStack {
                 Circle().fill(insight.color.opacity(0.2)).frame(width: 50, height: 50)
                 Image(systemName: insight.icon).font(.title2).foregroundColor(insight.color)
             }
-            
             VStack(alignment: .leading, spacing: 4) {
-                Text(LocalizedStringKey("AI Insight: \(insight.title)"))
+                Text(LocalizedStringKey("ИИ инсайт: \(insight.title)"))
                     .font(.headline)
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
                 Text(LocalizedStringKey(insight.message))
                     .font(.subheadline)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
         }
         .padding(20)
-        .background(themeManager.current.surface)
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(24)
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(insight.color.opacity(0.3), lineWidth: 1))
-        .shadow(color: insight.color.opacity(0.1), radius: 10, x: 0, y: 4)
+        .shadow(color: insight.color.opacity(0.1), radius: 10, y: 4)
         .padding(.horizontal)
     }
     
@@ -216,41 +193,30 @@ struct TrainingStyleDetailView: View {
             Circle().fill(color).frame(width: 8, height: 8)
             Text(LocalizedStringKey(title))
                 .font(.subheadline)
-                .foregroundColor(themeManager.current.secondaryText)
-                .lineLimit(1)                // Запрещаем перенос на вторую строку
-                .minimumScaleFactor(0.5)     // Разрешаем тексту сжаться, если не влезает
-            Spacer(minLength: 2)             // Позволяем пробелу сжаться сильнее
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                .lineLimit(1).minimumScaleFactor(0.5)
+            Spacer(minLength: 2)
             Text("\(value)")
-                .font(.headline)
-                .bold()
+                .font(.headline).bold()
+                .foregroundColor(colorScheme == .dark ? .white : .black)
                 .lineLimit(1)
         }
         .padding(12)
-        .background(Color(UIColor.tertiarySystemFill).opacity(0.5))
+        .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill).opacity(0.5) : Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(12)
     }
     
-    // MARK: - Logic
-    
+    // Logic (Оставляем как было)
     private func loadData() async {
-        let calendar = Calendar.current
-        let now = Date()
-        let interval: DateInterval?
-        
+        let calendar = Calendar.current; let now = Date(); let interval: DateInterval?
         switch selectedPeriod {
         case .week: interval = calendar.dateInterval(of: .weekOfYear, for: now)
         case .month: interval = calendar.dateInterval(of: .month, for: now)
         case .year: interval = calendar.dateInterval(of: .year, for: now)
         case .allTime: interval = nil
         }
-        
         let newStats = await di.analyticsService.fetchTrainingStyleStats(for: interval, workouts: allWorkouts)
-        
-        await MainActor.run {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                self.stats = newStats
-            }
-        }
+        await MainActor.run { withAnimation(.spring()) { self.stats = newStats } }
     }
     
     private func generateInsight(stats: TrainingStyleDTO) -> (title: String, message: String, icon: String, color: Color) {
@@ -259,16 +225,10 @@ struct TrainingStyleDetailView: View {
         let bwPct = Double(stats.equipmentDistribution[.bodyweight] ?? 0) / Double(max(stats.totalEquipmentSets, 1))
         let compPct = Double(stats.compoundSets) / Double(max(stats.totalMechanicSets, 1))
         
-        if compPct > 0.6 && fwPct > 0.5 {
-            return ("Free Weight Warrior", "You focus heavily on heavy, functional compound movements. Incredible for raw power and strength!", "flame.fill", .orange)
-        } else if machPct > 0.5 {
-            return ("Machine Master", "You heavily utilize machines and cables. This is an excellent, safe approach for targeted hypertrophy.", "gearshape.2.fill", .purple)
-        } else if bwPct > 0.5 {
-            return ("Calisthenics Ninja", "Bodyweight mastery is your game. This builds incredible core strength and absolute body control.", "figure.core.training", .cyan)
-        } else if stats.isolationSets > stats.compoundSets {
-            return ("The Sculptor", "You emphasize isolation movements. Perfect for detailing muscles and bringing up weak points.", "paintpalette.fill", .pink)
-        } else {
-            return ("Well-Rounded Lifter", "Your training is highly balanced across different exercise mechanics and equipment styles.", "scale.3d", .green)
-        }
+        if compPct > 0.6 && fwPct > 0.5 { return ("Воин свободных весов", "Вы фокусируетесь на тяжелых базовых движениях. Отлично для силы!", "flame.fill", .orange) }
+        else if machPct > 0.5 { return ("Мастер тренажеров", "Вы часто используете тренажеры. Это безопасный подход для гипертрофии.", "gearshape.2.fill", .purple) }
+        else if bwPct > 0.5 { return ("Calisthenics Ninja", "Работа с собственным весом строит невероятный контроль тела.", "figure.core.training", .cyan) }
+        else if stats.isolationSets > stats.compoundSets { return ("Скульптор", "Вы делаете акцент на изоляцию. Идеально для детализации мышц.", "paintpalette.fill", .pink) }
+        else { return ("Сбалансированный атлет", "Ваши тренировки отлично сбалансированы по механикам.", "scale.3d", .green) }
     }
 }

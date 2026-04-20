@@ -1,10 +1,6 @@
-//
-//  DetailedComparisonView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Детальное сравнение с предыдущим Periodом
+// ============================================================
+// FILE: WorkoutTracker/Features/Stats/Components/DetailedComparisonView.swift
+// ============================================================
 
 internal import SwiftUI
 
@@ -12,7 +8,7 @@ struct DetailedComparisonView: View {
     let comparisons: [DetailedComparison]
     let period: String
     
-        @Environment(ThemeManager.self) private var themeManager
+    @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         if comparisons.isEmpty {
@@ -32,21 +28,21 @@ struct DetailedComparisonView: View {
     }
 }
 
-
 struct DetailedComparisonRow: View {
     let comparison: DetailedComparison
     
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
+    
     private func iconAndColor(for metric: String) -> (icon: String, color: Color) {
         let m = metric.lowercased()
-        if m.contains("workout") { return ("figure.run", .blue) }
-        if m.contains("volume") { return ("scalemass.fill", .purple) }
-        if m.contains("distance") { return ("map.fill", .orange) }
-        if m.contains("time") { return ("stopwatch.fill", .cyan) }
+        if m.contains("workout") || m.contains("тренировки") { return ("figure.run", themeManager.current.primaryAccent) }
+        if m.contains("volume") || m.contains("объем") { return ("scalemass.fill", .purple) }
+        if m.contains("distance") || m.contains("дистанция") { return ("map.fill", .orange) }
+        if m.contains("time") || m.contains("время") { return ("stopwatch.fill", .cyan) }
         return ("chart.bar.fill", .gray)
     }
     
-        @Environment(ThemeManager.self) private var themeManager
-
     var body: some View {
         HStack(spacing: 16) {
             let style = iconAndColor(for: comparison.metric)
@@ -56,22 +52,22 @@ struct DetailedComparisonRow: View {
                 Image(systemName: style.icon).font(.title3).foregroundColor(style.color)
             }
             
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey(comparison.metric))
                     .font(.headline)
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
                 
                 HStack(spacing: 6) {
                     Text(LocalizationHelper.shared.formatSmart(comparison.previousValue))
                         .font(.subheadline)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(.gray)
                     Image(systemName: "arrow.right")
                         .font(.caption2)
-                        .foregroundColor(themeManager.current.secondaryAccent)
+                        .foregroundColor(.gray.opacity(0.5))
                     Text(LocalizationHelper.shared.formatSmart(comparison.currentValue))
                         .font(.subheadline)
                         .bold()
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                 }
             }
             
@@ -88,13 +84,8 @@ struct DetailedComparisonRow: View {
                 .clipShape(Capsule())
         }
         .padding(16)
-        .background(themeManager.current.surface)
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(20)
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.05), radius: 8, x: 0, y: 4)
     }
 }
-
-#Preview {
-    DetailedComparisonView(comparisons: [], period: "Month")
-}
-

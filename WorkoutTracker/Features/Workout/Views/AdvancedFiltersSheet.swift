@@ -1,3 +1,7 @@
+// ============================================================
+// FILE: WorkoutTracker/Features/Workout/Views/AdvancedFiltersSheet.swift
+// ============================================================
+
 internal import SwiftUI
 
 struct AdvancedFiltersSheet: View {
@@ -5,6 +9,7 @@ struct AdvancedFiltersSheet: View {
     let resultsCount: Int
     @Environment(\.dismiss) private var dismiss
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
     private let equipmentList = ["barbell", "dumbbell1", "machine", "cable", "bodyweight", "kettlebell", "bands"]
     private let mechanicsList = ["compound", "isolation"]
@@ -13,44 +18,50 @@ struct AdvancedFiltersSheet: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                // Адаптивный фон темы
+                (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
                 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 28) {
+                        AdvancedFilterSectionView(title: "Уровень опыта", items: levelsList, selectedItems: $filterState.selectedLevel, filterState: filterState)
+                        AdvancedFilterSectionView(title: "Механика", items: mechanicsList, selectedItems: $filterState.selectedMechanic, filterState: filterState)
+                        AdvancedFilterSectionView(title: "Оборудование", items: equipmentList, selectedItems: $filterState.selectedEquipment, filterState: filterState)
                         
-                        AdvancedFilterSectionView(title: "Experience Level", items: levelsList, selectedItems: $filterState.selectedLevel, filterState: filterState)
-                        AdvancedFilterSectionView(title: "Mechanic", items: mechanicsList, selectedItems: $filterState.selectedMechanic, filterState: filterState)
-                        AdvancedFilterSectionView(title: "Equipment", items: equipmentList, selectedItems: $filterState.selectedEquipment, filterState: filterState)
-                        
-                        Spacer(minLength: 100)
+                        Spacer(minLength: 100) // Отступ под плавающую кнопку
                     }
                     .padding(.vertical, 24)
                 }
                 
+                // Элегантная парящая кнопка (Floating Action Button)
                 Button {
                     let gen = UINotificationFeedbackGenerator()
                     gen.notificationOccurred(.success)
                     dismiss()
                 } label: {
-                    Text(LocalizedStringKey("Show \(resultsCount) Exercises"))
+                    Text(LocalizedStringKey("Показать \(resultsCount) упражнений"))
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(themeManager.current.primaryGradient)
-                        .cornerRadius(16)
-                        .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
+                        .background(themeManager.current.primaryAccent) // Ровный неоновый цвет вместо агрессивного градиента
+                        .clipShape(Capsule()) // Делаем ее круглой (капсулой)
+                        .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, x: 0, y: 8)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 10)
-                .background(LinearGradient(colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0)], startPoint: .bottom, endPoint: .top).ignoresSafeArea())
+                .padding(.horizontal, 32) // Отступы по краям, чтобы кнопка не давила
+                .padding(.bottom, 20)
+                .background(
+                    // Адаптивный градиент для затемнения под кнопкой
+                    LinearGradient(colors: [colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground), (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground)).opacity(0)], startPoint: .bottom, endPoint: .top)
+                        .ignoresSafeArea()
+                )
             }
-            .navigationTitle(LocalizedStringKey("Advanced Filters"))
+            .navigationTitle(LocalizedStringKey("Дополнительно"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Clear")) {
+                    Button(LocalizedStringKey("Очистить")) {
                         let gen = UIImpactFeedbackGenerator(style: .rigid)
                         gen.impactOccurred()
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { filterState.clearAdvancedFilters() }
@@ -59,7 +70,7 @@ struct AdvancedFiltersSheet: View {
                     .foregroundColor(filterState.activeAdvancedFiltersCount == 0 ? .gray : .red)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(LocalizedStringKey("Done")) { dismiss() }.fontWeight(.bold)
+                    Button(LocalizedStringKey("Готово")) { dismiss() }.fontWeight(.bold).foregroundColor(themeManager.current.primaryAccent)
                 }
             }
         }
@@ -74,8 +85,8 @@ struct AdvancedFilterSectionView: View {
     @Binding var selectedItems: Set<String>
     var filterState: ExerciseFilterState
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     
-    // Вспомогательная функция для красивого отображения ключей
     private func displayString(for item: String) -> String {
         if item == "dumbbell1" { return "Dumbbell" }
         return item.capitalized
@@ -85,7 +96,7 @@ struct AdvancedFilterSectionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(LocalizedStringKey(title))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
                 .padding(.horizontal, 20)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -93,7 +104,7 @@ struct AdvancedFilterSectionView: View {
                     Spacer().frame(width: 10)
                     ForEach(items, id: \.self) { item in
                         let isSelected = selectedItems.contains(item)
-                        let buttonTitle = displayString(for: item) // 👈 Получаем чистое имя
+                        let buttonTitle = displayString(for: item)
                         
                         Button {
                             let gen = UIImpactFeedbackGenerator(style: .light)
@@ -102,15 +113,21 @@ struct AdvancedFilterSectionView: View {
                                 filterState.toggle(item: item, in: &selectedItems)
                             }
                         } label: {
-                            Text(LocalizedStringKey(buttonTitle)) // 👈 Переводим чистое имя
+                            Text(LocalizedStringKey(buttonTitle))
                                 .font(.subheadline)
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface)
-                                .foregroundColor(isSelected ? .white : .primary)
-                                .cornerRadius(20)
-                                .overlay(RoundedRectangle(cornerRadius: 20).stroke(isSelected ? themeManager.current.primaryAccent : Color.gray.opacity(0.2), lineWidth: 1))
+                                // 👇 ИСПРАВЛЕНО: Явный белый цвет в светлой теме для невыбранного состояния
+                                .background(isSelected ? themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.15 : 1.0) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.white))
+                                // 👇 ИСПРАВЛЕНО: Черный текст в светлой теме
+                                .foregroundColor(isSelected ? (colorScheme == .dark ? themeManager.current.primaryAccent : .white) : (colorScheme == .dark ? .white.opacity(0.8) : .black))
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule()
+                                        // 👇 ИСПРАВЛЕНО: Светло-серая обводка в светлой теме вместо черной
+                                        .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.gray.opacity(0.2)), lineWidth: 1)
+                                )
                         }
                         .buttonStyle(.plain)
                     }

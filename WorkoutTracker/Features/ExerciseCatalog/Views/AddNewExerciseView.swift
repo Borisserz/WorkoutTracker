@@ -1,13 +1,6 @@
-//
-//  AddNewExerciseView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 27.12.25.
-//
-//  Экран создания нового (пользовательского) упражнения.
-//  Позволяет задать имя, категорию, тип и отметить задействованные мышцы для Heatmap.
-//
+// ============================================================
 // FILE: WorkoutTracker/Features/ExerciseCatalog/Views/AddNewExerciseView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -19,7 +12,8 @@ struct AddNewExerciseView: View {
     @Environment(\.modelContext) private var context
     @Environment(CatalogViewModel.self) private var catalogViewModel
     @Environment(ThemeManager.self) private var themeManager
-    // ✅ 1. Добавляем стейт для категорий
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
+    
     @State private var categories: [String] = []
     
     @State private var name: String = ""
@@ -27,7 +21,6 @@ struct AddNewExerciseView: View {
     @State private var selectedType: ExerciseType = .strength
     @State private var selectedMuscles: Set<String> = []
     
-    // Словарь: Отображаемое имя -> Технический слаг (slug)
     private let availableMuscles: [(name: String, slug: String)] = [
         ("Chest", "chest"),
         ("Upper Back", "upper-back"), ("Lats", "lats"), ("Traps", "trapezius"), ("Lower Back", "lower-back"),
@@ -37,104 +30,191 @@ struct AddNewExerciseView: View {
         ("Quads", "quadriceps"), ("Hamstrings", "hamstring"), ("Glutes", "gluteal"), ("Calves", "calves")
     ]
     
-
-
     var body: some View {
         NavigationStack {
-            Form {
-                // 1. Основная информация
-                Section(header: Text(LocalizedStringKey("Basic Info"))) {
-                    TextField(LocalizedStringKey("Exercise Name"), text: $name)
-                    
-                    // ✅ 2. Пикер теперь использует локальный массив categories
-                    Picker(LocalizedStringKey("Category"), selection: $selectedCategory) {
-                        if categories.isEmpty {
-                            Text("Loading...").tag("Chest")
-                        } else {
-                            ForEach(categories, id: \.self) { cat in
-                                Text(cat).tag(cat)
-                            }
-                        }
+            ZStack(alignment: .bottom) {
+                // Адаптивный фон
+                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 32) {
+                        
+                        Text(LocalizedStringKey("Новое упражнение"))
+                            .font(.system(size: 32, weight: .heavy, design: .rounded))
+                            // 👈 АДАПТИВНЫЙ ТЕКСТ
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                            .padding(.horizontal, 20)
+                            .padding(.top, 20)
+                        
+                        basicInfoSection
+                            .padding(.horizontal, 20)
+                        
+                        muscleSelectionSection
+                            .padding(.horizontal, 20)
+                        
+                        Spacer(minLength: 120)
                     }
                 }
                 
-                // 2. Выбор мышц
-                muscleSelectionSection
+                saveButton
             }
-            .navigationTitle(LocalizedStringKey("New Exercise"))
-            // ✅ 3. Загружаем категории при открытии экрана
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(Color.gray.opacity(0.5))
+                    }
+                }
+            }
             .task {
                 let catalog = await ExerciseDatabaseService.shared.getCatalog()
                 self.categories = catalog.keys.sorted()
-                
-                // Убеждаемся, что выбранная категория существует в списке
                 if !categories.isEmpty && !categories.contains(selectedCategory) {
                     selectedCategory = categories.first ?? "Chest"
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Cancel")) { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(LocalizedStringKey("Save")) {
-                        saveExercise()
-                    }
-                    .disabled(name.isEmpty || selectedMuscles.isEmpty || categories.isEmpty)
-                }
-            }
         }
     }
     
-
-
     // MARK: - View Components
     
     private var basicInfoSection: some View {
-        Section(header: Text(LocalizedStringKey("Basic Info"))) {
-            TextField(LocalizedStringKey("Exercise Name"), text: $name)
+        VStack(alignment: .leading, spacing: 16) {
+            Text(LocalizedStringKey("Базовая информация"))
+                .font(.headline)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
             
-            Picker(LocalizedStringKey("Category"), selection: $selectedCategory) {
-                ForEach(categories, id: \.self) { cat in
-                    Text(cat).tag(cat)
+            VStack(spacing: 0) {
+                HStack(spacing: 12) {
+                    Image(systemName: "dumbbell.fill")
+                        .foregroundColor(themeManager.current.primaryAccent)
+                    
+                    TextField(LocalizedStringKey("Название упражнения"), text: $name)
+                        .font(.headline)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        .submitLabel(.done)
                 }
-            }
-            
-            // На будущее: скрыли выбор типа упражнения по запросу,
-            // но переменная $selectedType остается дефолтной (.strength)
-            /*
-            Picker(LocalizedStringKey("Exercise Type"), selection: $selectedType) {
-                ForEach(ExerciseType.allCases) { type in
-                    Text(type.rawValue).tag(type)
+                .padding()
+                
+                Divider().padding(.leading, 45)
+                
+                HStack(spacing: 12) {
+                    Image(systemName: "folder.fill")
+                        .foregroundColor(themeManager.current.primaryAccent)
+                    
+                    Text(LocalizedStringKey("Категория"))
+                        .font(.headline)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                    
+                    Spacer()
+                    
+                    Picker("", selection: $selectedCategory) {
+                        if categories.isEmpty {
+                            Text("Loading...").tag("Chest")
+                        } else {
+                            ForEach(categories, id: \.self) { cat in
+                                Text(LocalizedStringKey(cat)).tag(cat)
+                            }
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .tint(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
+                .padding()
             }
-            .pickerStyle(.segmented)
-            */
+            // 👈 АДАПТИВНЫЙ ФОН И ТЕНЬ КАРТОЧКИ
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+            .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.08), radius: 10, x: 0, y: 5)
         }
     }
     
     private var muscleSelectionSection: some View {
-        Section(header: Text(LocalizedStringKey("Affected Muscles (for Heatmap)"))) {
-            // Используем ForEach вместо List, т.к. мы уже внутри Form
-            ForEach(availableMuscles, id: \.slug) { muscle in
-                HStack {
-                    Text(LocalizedStringKey(muscle.name))
-                    Spacer()
-                    if selectedMuscles.contains(muscle.slug) {
-                        Image(systemName: "checkmark")
-                            .foregroundColor(themeManager.current.primaryAccent)
-                    }
-                }
-                .contentShape(Rectangle()) // Чтобы область нажатия была по всей ширине строки
-                .onTapGesture {
-                    if selectedMuscles.contains(muscle.slug) {
-                        selectedMuscles.remove(muscle.slug)
-                    } else {
-                        selectedMuscles.insert(muscle.slug)
-                    }
-                }
+         VStack(alignment: .leading, spacing: 16) {
+             HStack {
+                 Text(LocalizedStringKey("Задействованные мышцы"))
+                     .font(.headline)
+                     .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
+                 Spacer()
+                 Text("\(selectedMuscles.count)")
+                     .font(.caption.bold())
+                     .foregroundColor(.white)
+                     .frame(width: 24, height: 24)
+                     .background(themeManager.current.primaryAccent)
+                     .clipShape(Circle())
+                     .opacity(selectedMuscles.isEmpty ? 0 : 1)
+             }
+             
+             LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 12)], spacing: 12) {
+                 ForEach(availableMuscles, id: \.slug) { muscle in
+                     let isSelected = selectedMuscles.contains(muscle.slug)
+                     
+                     Button {
+                         let gen = UISelectionFeedbackGenerator()
+                         gen.selectionChanged()
+                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                             toggleMuscle(muscle.slug)
+                         }
+                     } label: {
+                         Text(LocalizedStringKey(muscle.name))
+                             .font(.subheadline)
+                             .fontWeight(isSelected ? .bold : .medium)
+                             .lineLimit(1)
+                             .minimumScaleFactor(0.7)
+                             .frame(maxWidth: .infinity)
+                             .padding(.vertical, 12)
+                             .padding(.horizontal, 4)
+                             // ✅ ИСПРАВЛЕНИЕ ОШИБКИ КОМПИЛЯТОРА: Разбили сложную логику на функции
+                             .background(chipBackgroundColor(isSelected: isSelected))
+                             .foregroundColor(chipForegroundColor(isSelected: isSelected))
+                             .cornerRadius(12)
+                             .overlay(
+                                 RoundedRectangle(cornerRadius: 12)
+                                     .stroke(chipBorderColor(isSelected: isSelected), lineWidth: 1)
+                             )
+                             .shadow(color: chipShadowColor(isSelected: isSelected), radius: 5, x: 0, y: 2)
+                     }
+                     .buttonStyle(.plain)
+                 }
+             }
+         }
+     }
+    
+    private var saveButton: some View {
+        let isFormValid = !name.trimmingCharacters(in: .whitespaces).isEmpty && !selectedMuscles.isEmpty && !categories.isEmpty
+        
+        return Button {
+            let gen = UINotificationFeedbackGenerator()
+            gen.notificationOccurred(.success)
+            saveExercise()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
+                Text(LocalizedStringKey("Сохранить упражнение"))
+                    .font(.headline)
+                    .fontWeight(.bold)
             }
+            .foregroundColor(isFormValid ? themeManager.current.background : .white.opacity(0.5))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 18)
+            .background(isFormValid ? AnyShapeStyle(themeManager.current.primaryGradient) : AnyShapeStyle(Color.gray.opacity(0.3)))
+            .cornerRadius(20)
+            .shadow(color: isFormValid ? themeManager.current.primaryAccent.opacity(0.4) : .clear, radius: 15, x: 0, y: 8)
         }
+        .disabled(!isFormValid)
+        .padding(.horizontal, 20)
+        .padding(.bottom, 10)
+        .background(
+            LinearGradient(colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0)], startPoint: .bottom, endPoint: .top)
+                .ignoresSafeArea()
+        )
     }
     
     // MARK: - Actions
@@ -148,7 +228,6 @@ struct AddNewExerciseView: View {
     }
     
     private func saveExercise() {
-        // ИСПРАВЛЕНИЕ: Вызываем асинхронную функцию из синхронного контекста через Task
         Task {
             await catalogViewModel.addCustomExercise(
                 name: name,
@@ -156,10 +235,36 @@ struct AddNewExerciseView: View {
                 muscles: Array(selectedMuscles),
                 type: selectedType
             )
-            
-            // Так как мы находимся внутри SwiftUI View, dismiss() безопасно вызывается тут
             dismiss()
         }
     }
+    
+    
+    private func chipBackgroundColor(isSelected: Bool) -> Color {
+            if isSelected {
+                return themeManager.current.primaryAccent.opacity(0.15)
+            } else {
+                return colorScheme == .dark ? themeManager.current.surface : Color.white
+            }
+        }
+        
+        private func chipForegroundColor(isSelected: Bool) -> Color {
+            if isSelected {
+                return themeManager.current.primaryAccent
+            } else {
+                return colorScheme == .dark ? themeManager.current.primaryText.opacity(0.8) : Color.black.opacity(0.8)
+            }
+        }
+        
+        private func chipBorderColor(isSelected: Bool) -> Color {
+            if isSelected {
+                return themeManager.current.primaryAccent
+            } else {
+                return colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)
+            }
+        }
+        
+        private func chipShadowColor(isSelected: Bool) -> Color {
+            return isSelected ? themeManager.current.primaryAccent.opacity(0.3) : .clear
+        }
 }
-

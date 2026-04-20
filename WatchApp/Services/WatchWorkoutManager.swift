@@ -74,6 +74,7 @@ final class WatchWorkoutManager: NSObject, Sendable {
 
 // MARK: - HK Delegates
 extension WatchWorkoutManager: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
+    
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
         Task { @MainActor in
             self.isRunning = (toState == .running)
@@ -90,14 +91,24 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDel
             Task { @MainActor in
                 if quantityType == HKQuantityType.quantityType(forIdentifier: .heartRate),
                    let hr = statistics.mostRecentQuantity()?.doubleValue(for: HKUnit(from: "count/min")) {
+                    
                     self.heartRate = hr
+                    
+                    let payload = LiveSyncPayload(
+                        action: .updateHeartRate,
+                        workoutID: "",
+                        heartRate: hr
+                    )
+                    WatchSyncManager.shared.sendLiveAction(payload)
+                    
                 } else if quantityType == HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned),
                           let energy = statistics.sumQuantity()?.doubleValue(for: .kilocalorie()) {
-                    self.activeEnergy = energy // Обновляется реактивно!
+                    self.activeEnergy = energy
                 }
             }
         }
     }
     
+    // Обязательный метод протокола (даже если он пустой)
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {}
 }

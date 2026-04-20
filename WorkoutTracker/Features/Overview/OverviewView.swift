@@ -1,12 +1,10 @@
 // MARK: - FILE: WorkoutTracker/Features/Overview/OverviewView.swift
-
 internal import SwiftUI
 import SwiftData
 import Charts
 import ActivityKit
-
-// MARK: - 1. Router (Чистая логика навигации)
-
+import Combine
+// MARK: - 1. Router (Логика навигации)
 @Observable
 @MainActor
 final class OverviewRouter {
@@ -14,11 +12,7 @@ final class OverviewRouter {
     var activeSheet: SheetDestination? = nil
     
     enum SheetDestination: Identifiable {
-        case settings
-        case addWorkout
-        case muscleColor
-        case profile
-        
+        case settings, addWorkout, muscleColor, profile
         var id: String {
             switch self {
             case .settings: return "settings"
@@ -30,129 +24,148 @@ final class OverviewRouter {
     }
     
     enum RouteDestination: Hashable {
-        case workoutDetail(Workout)
-        case exercises
-        case detailedRecovery
-    }
+            case workoutDetail(Workout), exercises, detailedRecovery, calendar
+            case exerciseDetail(String) // <--- ДОБАВИТЬ ЭТУ СТРОКУ
+        }
     
-    func push(_ route: RouteDestination) {
-        path.append(route)
-    }
-    
-    func present(_ sheet: SheetDestination) {
-        activeSheet = sheet
-    }
-    
-    func dismissSheet() {
-        activeSheet = nil
-    }
+    func push(_ route: RouteDestination) { path.append(route) }
+    func present(_ sheet: SheetDestination) { activeSheet = sheet }
+    func dismissSheet() { activeSheet = nil }
 }
 
-// MARK: - 2. Main View
+// MARK: - 2. Главный экран (Обзор)
 
 struct OverviewView: View {
-    // MARK: - Environment
+    @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
-    @Environment(TutorialManager.self) var tutorialManager
     @Environment(WorkoutService.self) var workoutService
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(DIContainer.self) private var di
-    @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
+    
+    @AppStorage("userGender") private var userGender = "male"
+    @AppStorage("cnsScore") private var cnsScore: Double = 85.0
     @Query(sort: \Workout.date, order: .reverse) private var recentWorkouts: [Workout]
     
-    // MARK: - State
     @State private var router = OverviewRouter()
+    @State private var isFrontView = true
     
-    // Только UI стейты остаются во View
-    @State private var selectedChartMuscle: String? = nil
-    @StateObject private var colorManager = MuscleColorManager.shared
+    // Стейты для Плана на сегодня
+    @AppStorage("dailyPlanDateString") private var dailyPlanDateString: String = ""
+    @State private var showExerciseSelector = false
+    @Query(filter: #Predicate<WorkoutPreset> { $0.name == "План на сегодня" }) private var dailyPlanPresets: [WorkoutPreset]
+    private var dailyPlan: WorkoutPreset? { dailyPlanPresets.first }
     
-    // AI Review State
-    @State private var showAIReviewSheet = false
-    @State private var isFetchingReviewData = false
-    @State private var reviewData: StatsDataResultDTO?
+    // Стейт для управления выпадающим меню настроек
+    @State private var showSettingsDropdown = false
+    @State private var isProcessing = false
     
     var body: some View {
         NavigationStack(path: $router.path) {
-            ZStack(alignment: .topTrailing) {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        chartSection
-                        recoverySection
+            ZStack(alignment: .topLeading) {
+                
+                PremiumAdaptiveBackground()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 30) {
                         
-                        if !recentWorkouts.isEmpty {
-                            aiReviewButtonSection
-                            topExercisesSection
-                        }
+                        headerSection
+                        
+                        // НОВЫЕ КОЛЬЦА АКТИВНОСТИ
+                        DailyActivityRings(recentWorkouts: recentWorkouts, viewModel: dashboardViewModel)
+                        
+                        LiveVitalsCard()
+                        
+                        MusclePieChartIsland(viewModel: dashboardViewModel)
+                        
+                        AnatomyRecoveryIsland(
+                            isFrontView: $isFrontView,
+                            cnsScore: cnsScore,
+                            recoveryDict: recoveryDict,
+                            userGender: userGender,
+                            router: router
+                        )
+                        
+                        dailyPlanSection
+                        
+                        topExercisesSection
+                        
+                        Spacer(minLength: 120)
                     }
-                    .padding()
+                    .padding(.horizontal, 20)
                 }
+                
+                // ВЫПАДАЮЩЕЕ МЕНЮ НАСТРОЕК
+                if showSettingsDropdown {
+                    Color.black.opacity(0.01)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                showSettingsDropdown = false
+                            }
+                        }
+                    
+                    SettingsDropdownMenu(isShowing: $showSettingsDropdown) {
+                        router.present(.settings)
+                    }
+                    .offset(x: 20, y: 65)
+                    .transition(.scale(scale: 0.8, anchor: .topLeading).combined(with: .opacity))
+                    .zIndex(100)
+                }
+                
             }
-            .navigationTitle(LocalizedStringKey("Overview"))
+            .navigationBarHidden(true)
             .navigationDestination(for: OverviewRouter.RouteDestination.self) { route in
                 switch route {
                 case .workoutDetail(let workout):
                     WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
-                case .exercises:
-                    ExerciseView()
-                case .detailedRecovery:
-                    DetailedRecoveryView()
+                case .exercises: ExerciseView()
+                case .detailedRecovery: DetailedRecoveryView()
+                case .calendar: WorkoutCalendarView()
+                case .exerciseDetail(let name): // <--- ДОБАВИТЬ ЭТИ ДВЕ СТРОКИ
+                    ExerciseHistoryView(exerciseName: name)
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button { router.present(.settings) } label: {
-                        Image(systemName: "gearshape.fill").foregroundColor(themeManager.current.primaryText)
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: WorkoutCalendarView()) {
-                        Image(systemName: "calendar")
+            // Шторка добавления упражнений в план
+            .sheet(isPresented: $showExerciseSelector) {
+                ExerciseSelectionView { newExercise in
+                    Task { @MainActor in
+                        var currentExercises = dailyPlan?.exercises ?? []
+                        currentExercises.append(newExercise)
+                        
+                        await di.presetService.savePreset(
+                            preset: dailyPlan,
+                            name: "План на сегодня",
+                            icon: "calendar.badge.clock",
+                            folderName: "СкрытаяПапка",
+                            exercises: currentExercises
+                        )
+                        
+                        let formatter = DateFormatter()
+                        formatter.dateFormat = "yyyy-MM-dd"
+                        dailyPlanDateString = formatter.string(from: Date())
+                        
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
                     }
                 }
             }
             .sheet(item: $router.activeSheet) { sheet in
                 switch sheet {
-                case .settings:
-                    SettingsView()
-                case .addWorkout:
-                    AddWorkoutView(onWorkoutCreated: {
-                        Task { @MainActor in
-                            var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                            descriptor.fetchLimit = 1
-                            if let newWorkout = try? context.fetch(descriptor).first {
-                                router.push(.workoutDetail(newWorkout))
-                            }
-                        }
-                    })
-                case .muscleColor:
-                    MuscleColorSettingsView()
-                case .profile:
-                    ProfileView()
-                        .environment(userStatsViewModel)
-                        .environment(userStatsViewModel.progressManager)
+                case .settings: SettingsView()
+                case .addWorkout: AddWorkoutView(onWorkoutCreated: {
+                    Task { @MainActor in
+                        var desc = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); desc.fetchLimit = 1
+                        if let newWorkout = try? context.fetch(desc).first { router.push(.workoutDetail(newWorkout)) }
+                    }
+                })
+                case .muscleColor: MuscleColorSettingsView()
+                case .profile: ProfileView().environment(userStatsViewModel.progressManager)
                 }
             }
-            .sheet(isPresented: $showAIReviewSheet) {
-                if let data = reviewData {
-                    AIWeeklyReviewSheet(
-                        currentStats: data.currentStats,
-                        previousStats: data.previousStats,
-                        weakPoints: dashboardViewModel.weakPoints,
-                        recentPRs: data.recentPRs,
-                        aiLogicService: di.aiLogicService
-                    )
-                } else {
-                    ProgressView("Loading data...")
-                        .presentationDetents([.medium])
-                }
-            }
+            .preferredColorScheme(.dark)
         }
     }
-    
-    // MARK: - Computed Properties
     
     private var recoveryDict: [String: Int] {
         var dict = [String: Int]()
@@ -160,259 +173,1145 @@ struct OverviewView: View {
         return dict
     }
     
-    private var selectedMuscleInfo: MuscleCountDTO? {
-        guard let selectedChartMuscle else { return nil }
-        return dashboardViewModel.dashboardMuscleData.first(where: { $0.muscle == selectedChartMuscle })
+    // MARK: - View Components
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Button {
+                    let impact = UIImpactFeedbackGenerator(style: .medium)
+                    impact.impactOccurred()
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        showSettingsDropdown.toggle()
+                    }
+                } label: {
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.primary) // Адаптивный цвет
+                        .padding(12)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.05), radius: 10)
+                }
+                Spacer()
+            }
+            
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Обзор")
+                        .font(.system(size: 34, weight: .heavy, design: .rounded))
+                        .foregroundStyle(.primary)
+                    Text("Готов крушить рекорды?")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                
+                Button {
+                    let impact = UIImpactFeedbackGenerator(style: .medium)
+                    impact.impactOccurred()
+                    router.push(.calendar)
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.system(size: 22))
+                        .foregroundStyle(.primary)
+                        .padding(12)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .overlay(Circle().stroke(Color.primary.opacity(0.1), lineWidth: 1))
+                        .shadow(color: .black.opacity(0.05), radius: 10)
+                }
+            }
+        }
+        .padding(.top, 10)
     }
     
-    // MARK: - View Sections
+    // MARK: - План на сегодня
+    private var dailyPlanSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("План на сегодня")
+                    .font(.title2.weight(.bold))
+                // Строгий контроль цвета: исходный белый в темной, черный в светлой
+                    .foregroundStyle(colorScheme == .dark ? .white : .black)
+                Spacer()
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showExerciseSelector = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 28))
+                        .foregroundStyle(Color.green)
+                        .shadow(color: Color.green.opacity(0.3), radius: 8)
+                }
+            }
+            
+            if let plan = dailyPlan, !plan.exercises.isEmpty {
+                VStack(spacing: 12) {
+                    ForEach(plan.exercises) { exercise in
+                        DailyPlanExerciseRow(
+                            exercise: exercise,
+                            isCompleted: isExerciseCompletedToday(exercise.name),
+                            onDelete: { removeExerciseFromPlan(exercise) }
+                        )
+                    }
+                }
+                
+                Button {
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    startDailyPlan()
+                } label: {
+                    Text("Начать тренировку")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .background(LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing))
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .shadow(color: .green.opacity(0.3), radius: 10, y: 5)
+                }
+                .padding(.top, 8)
+                
+            } else {
+                Text("Нажми +, чтобы добавить упражнения")
+                    .font(.subheadline)
+                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
+                    .padding(.top, 4)
+            }
+        }
+        .onAppear {
+            checkAndResetDailyPlan()
+        }
+    }
+    // MARK: - Вспомогательная логика для Плана на сегодня
+    private func isExerciseCompletedToday(_ exerciseName: String) -> Bool {
+        let calendar = Calendar.current
+        let todayWorkouts = recentWorkouts.filter { calendar.isDateInToday($0.date) }
+        
+        for workout in todayWorkouts {
+            if workout.exercises.contains(where: { ex in
+                ex.name == exerciseName && ex.setsList.contains(where: { $0.isCompleted })
+            }) {
+                return true
+            }
+        }
+        return false
+    }
     
-    private var recoverySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center) {
-                Text(LocalizedStringKey("Muscle Recovery"))
-                    .font(.title3)
-                    .bold()
-                    .foregroundColor(themeManager.current.primaryText)
+    private func checkAndResetDailyPlan() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let todayString = formatter.string(from: Date())
+        
+        if dailyPlanDateString != todayString {
+            if let plan = dailyPlan, !plan.exercises.isEmpty {
+                Task { @MainActor in
+                    await di.presetService.savePreset(
+                        preset: plan,
+                        name: "План на сегодня",
+                        icon: "calendar.badge.clock",
+                        folderName: "СкрытаяПапка",
+                        exercises: []
+                    )
+                }
+            }
+            dailyPlanDateString = todayString
+        }
+    }
+    
+    private func removeExerciseFromPlan(_ exercise: Exercise) {
+        guard let plan = dailyPlan else { return }
+        Task { @MainActor in
+            var updatedExercises = plan.exercises
+            updatedExercises.removeAll { $0.id == exercise.id }
+            await di.presetService.savePreset(
+                preset: plan, name: "План на сегодня", icon: "calendar.badge.clock",
+                folderName: "СкрытаяПапка", exercises: updatedExercises
+            )
+        }
+    }
+    
+    private func startDailyPlan() {
+        guard let plan = dailyPlan, !isProcessing else { return }
+        isProcessing = true
+        Task { @MainActor in
+            if await workoutService.hasActiveWorkout() {
+                router.present(.addWorkout)
+                isProcessing = false; return
+            }
+            if let _ = await workoutService.createWorkout(title: "План на сегодня", presetID: plan.persistentModelID, isAIGenerated: false) {
+                di.liveActivityManager.startWorkoutActivity(title: "План на сегодня")
+                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
+                if let newWorkout = try? context.fetch(descriptor).first {
+                    router.push(.workoutDetail(newWorkout))
+                }
+            }
+            isProcessing = false
+        }
+    }
+    
+    // MARK: - Топ Упражнений
+    private var topExercisesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Топ упражнений")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(colorScheme == .dark ? .white : .black) // Исходный белый в темной
                 
                 Spacer()
                 
                 Button {
-                    router.push(.detailedRecovery)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    router.push(.exercises)
                 } label: {
-                    HStack(spacing: 4) {
-                        Text(LocalizedStringKey("See details"))
-                            .font(.subheadline)
-                        Image(systemName: "chevron.right")
-                            .font(.caption)
-                            .fontWeight(.bold)
-                    }
-                    .foregroundColor(themeManager.current.primaryAccent)
+                    Text("Все")
+                        .font(.subheadline)
+                        .fontWeight(.bold)
+                        .foregroundStyle(themeManager.current.primaryAccent)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(themeManager.current.primaryAccent.opacity(0.15))
+                        .clipShape(Capsule())
                 }
             }
-            .padding(.horizontal, 4)
             
-            Divider()
-            
-            BodyHeatmapView(
-                muscleIntensities: recoveryDict,
-                isRecoveryMode: true,
-                isCompactMode: false,
-                userGender: userGender
-            )
+            if dashboardViewModel.dashboardTopExercises.isEmpty {
+                HStack(spacing: 12) {
+                    Image(systemName: "chart.bar.xaxis")
+                        .font(.title2)
+                        .foregroundColor(themeManager.current.primaryAccent.opacity(0.5))
+                    
+                    Text("Выполни тренировку, чтобы увидеть топ")
+                        .font(.subheadline)
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(20)
+                .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.black.opacity(0.03))
+                .cornerRadius(20)
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        Spacer().frame(width: 4)
+                        
+                        ForEach(Array(dashboardViewModel.dashboardTopExercises.prefix(5).enumerated()), id: \.offset) { index, item in
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                router.push(.exerciseDetail(item.name))
+                            } label: {
+                                TopExerciseGlassCard(index: index + 1, item: item)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Spacer().frame(width: 4)
+                    }
+                    .padding(.vertical, 20)
+                }
+                .padding(.horizontal, -20)
+                .padding(.top, -10)
+            }
         }
-        .padding(16)
-        .background(themeManager.current.surface)
-        .cornerRadius(20)
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
     }
     
-    private var chartSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text(LocalizedStringKey("Muscles Worked")).font(.headline).foregroundColor(themeManager.current.secondaryText)
-                Spacer()
-                Button { router.present(.muscleColor) } label: { Image(systemName: "gearshape.fill").font(.caption).foregroundColor(themeManager.current.secondaryText) }
-            }
-            if dashboardViewModel.dashboardMuscleData.isEmpty {
-                ZStack {
+    // MARK: - Строка упражнения в Плане на сегодня (Дизайн со скриншота + Свайп)
+    struct DailyPlanExerciseRow: View {
+        let exercise: Exercise
+        let isCompleted: Bool
+        let onDelete: () -> Void
+        
+        @StateObject private var colorManager = MuscleColorManager.shared
+        @State private var offset: CGFloat = 0
+        @Environment(\.colorScheme) var colorScheme
+        
+        var body: some View {
+            ZStack(alignment: .trailing) {
+                // Кнопка удаления сзади (Скрыта под карточкой)
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    withAnimation(.spring()) { offset = 0 }
+                    onDelete()
+                }) {
+                    Image(systemName: "trash.fill")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .frame(width: 80)
+                        .frame(maxHeight: .infinity)
+                        .background(Color.red)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                }
+                
+                // Сама карточка (Спереди)
+                HStack(spacing: 16) {
+                    // ✅ ИСПРАВЛЕНИЕ: Форматируем группу мышц, чтобы цвет всегда находился
+                    let broadCategory = MuscleCategoryMapper.getBroadCategory(for: exercise.muscleGroup)
+                    let muscleColor = colorManager.getColor(for: broadCategory)
+                    
                     Circle()
-                        .stroke(themeManager.current.secondaryAccent.opacity(0.2), lineWidth: 30)
-                        .frame(height: 180)
-                    VStack {
-                        Text(LocalizedStringKey("Total")).font(.caption).foregroundColor(themeManager.current.secondaryText)
-                        Text("0").font(.title).bold().foregroundColor(themeManager.current.primaryText)
-                    }
+                        .fill(muscleColor)
+                        .frame(width: 12, height: 12)
+                        .shadow(color: muscleColor.opacity(0.6), radius: 4)
+                    
+                    Text(LocalizationHelper.shared.translateName(exercise.name))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .lineLimit(1)
+                    
+                    Spacer()
+                    
+                    Image(systemName: isCompleted ? "checkmark.circle.fill" : "checkmark.circle")
+                        .font(.title3)
+                        .foregroundColor(isCompleted ? .green : (colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.15)))
                 }
-                .frame(maxWidth: .infinity)
-                .frame(height: 220)
-            } else {
-                Chart(dashboardViewModel.dashboardMuscleData, id: \.muscle) { item in
-                    SectorMark(angle: .value("Count", item.count), innerRadius: .ratio(0.65), angularInset: 2)
-                        .cornerRadius(5)
-                        .foregroundStyle(colorManager.getColor(for: item.muscle))
-                        .opacity(selectedChartMuscle == nil || selectedChartMuscle == item.muscle ? 1.0 : 0.3)
-                }
-                .frame(height: 220)
-                .chartBackground { proxy in
-                    GeometryReader { geometry in
-                        VStack {
-                            if let selected = selectedMuscleInfo {
-                                Text(LocalizedStringKey(selected.muscle))
-                                    .font(.headline)
-                                    .multilineTextAlignment(.center)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.6)
-                                
-                                Text(LocalizedStringKey("\(selected.count) sets"))
-                                    .font(.title2)
-                                    .bold()
-                                    .foregroundColor(themeManager.current.primaryAccent)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.25)
-                            } else {
-                                Text(LocalizedStringKey("Total"))
-                                    .font(.caption)
-                                    .foregroundColor(themeManager.current.secondaryText)
-                                Text("\(dashboardViewModel.dashboardTotalExercises)")
-                                    .font(.title)
-                                    .bold()
-                                    .foregroundColor(themeManager.current.primaryText)
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.5)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 18)
+                // ✅ ИСПРАВЛЕНИЕ: Фон ДОЛЖЕН БЫТЬ непрозрачным (Color.white в светлой теме), чтобы скрыть мусорку
+                .background(colorScheme == .dark ? Color(red: 0.15, green: 0.15, blue: 0.18) : Color.white)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1.5))
+                .shadow(color: Color.black.opacity(0.06), radius: 15, x: 0, y: 4)
+                .offset(x: offset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            if value.translation.width < 0 {
+                                offset = max(value.translation.width, -80)
+                            } else if offset < 0 {
+                                offset = min(0, -80 + value.translation.width)
                             }
                         }
-                        .frame(maxWidth: geometry.size.width * 0.40)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                    }
-                }
-                
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), alignment: .leading)], spacing: 12) {
-                    ForEach(dashboardViewModel.dashboardMuscleData, id: \.muscle) { item in
-                        HStack(spacing: 6) {
-                            Circle().fill(colorManager.getColor(for: item.muscle)).frame(width: 10, height: 10)
-                                .opacity(selectedChartMuscle == nil || selectedChartMuscle == item.muscle ? 1.0 : 0.3)
-                            Text(LocalizedStringKey(item.muscle)).font(.caption).fontWeight(selectedChartMuscle == item.muscle ? .bold : .regular)
-                                .foregroundColor(selectedChartMuscle == item.muscle ? .primary : .secondary).lineLimit(1).minimumScaleFactor(0.8)
+                        .onEnded { value in
+                            // ✅ ИСПРАВЛЕНИЕ СВАЙПА: Открываем или закрываем в зависимости от того, как далеко свайпнули
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                if offset < -40 {
+                                    offset = -80
+                                } else {
+                                    offset = 0
+                                }
+                            }
                         }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            withAnimation(.easeInOut(duration: 0.2)) { selectedChartMuscle = selectedChartMuscle == item.muscle ? nil : item.muscle }
-                        }
-                    }
-                }.padding(.top, 8).padding(.horizontal, 4)
+                )
             }
         }
-        .padding().background(themeManager.current.surface).cornerRadius(12)
+    }
+    // MARK: - Карточка Топ-упражнения (Glassmorphism)
+    struct TopExerciseGlassCard: View {
+        let index: Int
+        let item: ExerciseCountDTO
+        @Environment(ThemeManager.self) private var themeManager
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
+        
+        private var rankColor: Color {
+            switch index {
+            case 1: return .yellow
+            case 2: return .gray
+            case 3: return .orange
+            default: return themeManager.current.primaryAccent
+            }
+        }
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(alignment: .top) {
+                    ZStack {
+                        Circle()
+                            .fill(rankColor.opacity(0.2))
+                            .frame(width: 36, height: 36)
+                        
+                        Text("#\(index)")
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .foregroundColor(rankColor)
+                    }
+                    Spacer()
+                    Image(systemName: "chart.bar.fill")
+                        .font(.caption)
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.2) : .black.opacity(0.2))
+                }
+                
+                Spacer(minLength: 16)
+                
+                // 👇 ИСПРАВЛЕНО: VStack вместо Stack
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizationHelper.shared.translateName(item.name))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    
+                    Text("\(item.count) подходов")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                }
+            }
+            .padding(16)
+            .frame(width: 150, height: 150, alignment: .leading)
+            .background(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.13).opacity(0.8) : Color(UIColor.secondarySystemGroupedBackground))
+            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.clear))
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        colorScheme == .dark
+                        ? LinearGradient(colors: [rankColor.opacity(0.4), .clear, .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        : LinearGradient(colors: [Color.primary.opacity(0.05)], startPoint: .top, endPoint: .bottom),
+                        lineWidth: 1.5
+                    )
+            )
+            .shadow(color: colorScheme == .dark ? (index == 1 ? rankColor.opacity(0.2) : .black.opacity(0.05)) : .black.opacity(0.08), radius: 15, x: 0, y: 5)
+        }
+    }
+    // MARK: - Кольца Активности (Новый дизайн)
+    struct DailyActivityRings: View {
+        let recentWorkouts: [Workout]
+        let viewModel: DashboardViewModel
+        @State private var animate = false
+        
+        // Стейт для отображения модалки
+        @State private var selectedRing: ActivityRingType? = nil
+        
+        // Цели по умолчанию
+        let targetCalories = 500.0
+        let targetSteps = 10000.0
+        let targetWater = 2.5 // Литры
+        
+        private var todayStats: (cals: CGFloat, steps: CGFloat, water: CGFloat, rawCals: Int) {
+            let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+            let todayWorkouts = recentWorkouts.filter { Calendar.current.isDateInToday($0.date) }
+            
+            let totalCals = todayWorkouts.reduce(0) { sum, workout in
+                sum + CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+            }
+            
+            return (
+                cals: min(CGFloat(totalCals) / targetCalories, 1.0),
+                steps: min(CGFloat(viewModel.todaySteps) / targetSteps, 1.0),
+                water: min(CGFloat(viewModel.todayWaterLiters) / targetWater, 1.0),
+                rawCals: totalCals
+            )
+        }
+        
+        var body: some View {
+            HStack(spacing: 30) {
+                // КОЛЬЦО 1: Калории
+                ActivityRing(
+                    color: Color(red: 1.0, green: 0.15, blue: 0.3),
+                    progress: todayStats.cals,
+                    icon: "flame.fill",
+                    title: "Ккал",
+                    valueText: "\(todayStats.rawCals)"
+                ) {
+                    selectedRing = .calories
+                }
+                
+                // КОЛЬЦО 2: Шаги
+                ActivityRing(
+                    color: Color(red: 0.2, green: 0.9, blue: 0.2),
+                    progress: todayStats.steps,
+                    icon: "figure.walk",
+                    title: "Шаги",
+                    valueText: "\(viewModel.todaySteps)"
+                ) {
+                    selectedRing = .steps
+                }
+                
+                // КОЛЬЦО 3: Вода
+                ActivityRing(
+                    color: Color.cyan,
+                    progress: todayStats.water,
+                    icon: "drop.fill",
+                    title: "Вода",
+                    valueText: String(format: "%.1f Л", viewModel.todayWaterLiters)
+                ) {
+                    selectedRing = .water
+                }
+            }
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .onAppear {
+                withAnimation(.spring(response: 1.5, dampingFraction: 0.7).delay(0.2)) { animate = true }
+            }
+            .sheet(item: $selectedRing) { ringType in
+                ActivityRingDetailSheet(
+                    type: ringType,
+                    rawCals: todayStats.rawCals,
+                    rawSteps: viewModel.todaySteps,
+                    rawWater: viewModel.todayWaterLiters
+                )
+                .presentationDetents([.height(420)]) // Высота шторки
+                .presentationCornerRadius(32)
+                .presentationDragIndicator(.visible)
+            }
+        }
+    }
+    enum ActivityRingType: String, Identifiable {
+        case calories, steps, water
+        var id: String { rawValue }
+    }
+    struct ActivityRing: View {
+        var color: Color
+        var progress: CGFloat
+        var icon: String
+        var title: String
+        var valueText: String
+        var action: () -> Void // Экшен для тапа
+        
+        @State private var currentProgress: CGFloat = 0
+        @Environment(\.colorScheme) var colorScheme
+        
+        var body: some View {
+            Button(action: {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                action()
+            }) {
+                VStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .stroke(color.opacity(0.15), style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                            .frame(width: 70, height: 70)
+                        
+                        Circle()
+                            .trim(from: 0, to: currentProgress)
+                            .stroke(color, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                            .frame(width: 70, height: 70)
+                            .rotationEffect(.degrees(-90))
+                            .shadow(color: color.opacity(0.6), radius: 10)
+                        
+                        Image(systemName: icon)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(color)
+                    }
+                    
+                    VStack(spacing: 0) {
+                        Text(valueText)
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .contentTransition(.numericText())
+                        
+                        Text(title)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
+                    }
+                }
+            }
+            .buttonStyle(ScaleButtonStyle()) // Эффект нажатия
+            .onAppear {
+                withAnimation(.easeOut(duration: 1.5)) { currentProgress = progress }
+            }
+            .onChange(of: progress) { _, newValue in
+                withAnimation(.easeOut(duration: 1.5)) { currentProgress = newValue }
+            }
+        }
     }
     
-    private var topExercisesSection: some View {
-           VStack(alignment: .leading, spacing: 10) {
-               if !dashboardViewModel.dashboardTopExercises.isEmpty {
-                   HStack {
-                       Text(LocalizedStringKey("Exercises")).font(.title2).bold()
-                       Spacer()
-                       Button { router.push(.exercises) } label: {
-                           Text(LocalizedStringKey("See all")).font(.subheadline).foregroundColor(themeManager.current.primaryAccent)
-                       }
-                   }
-                .padding(.top, 10)
+    // MARK: - Модалка Деталей колец (Glassmorphism)
+    struct ActivityRingDetailSheet: View {
+        let type: ActivityRingType
+        let rawCals: Int
+        let rawSteps: Int
+        let rawWater: Double
+        
+        @Environment(\.dismiss) private var dismiss
+        @Environment(\.colorScheme) private var colorScheme
+        @Environment(ThemeManager.self) private var themeManager
+        
+        // Динамические данные в зависимости от кольца
+        var config: (title: String, value: String, unit: String, icon: String, color: Color, description: String, canOpenFoodTracker: Bool) {
+            switch type {
+            case .calories:
+                return ("Сожжено сегодня", "\(rawCals)", "ккал", "flame.fill", Color(red: 1.0, green: 0.15, blue: 0.3), "Калории, сожженные исключительно во время силовых и кардио тренировок в WorkoutTracker.", false)
+            case .steps:
+                return ("Шаги за день", "\(rawSteps)", "шагов", "figure.walk", Color(red: 0.2, green: 0.9, blue: 0.2), "Ваша дневная активность. Данные автоматически синхронизируются с Apple Health и FoodTracker.", true)
+            case .water:
+                return ("Водный баланс", String(format: "%.1f", rawWater), "литров", "drop.fill", .cyan, "Количество выпитой воды. Поддержание гидратации критически важно для мышечного роста.", true)
+            }
+        }
+        
+        var body: some View {
+            ZStack {
+                (colorScheme == .dark ? themeManager.current.surface : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
                 
-                ForEach(Array(dashboardViewModel.dashboardTopExercises.enumerated()), id: \.element.name) { index, item in
-                    NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
-                        HStack {
-                            rankIcon(rank: index + 1)
-                            
-                            Text(LocalizationHelper.shared.translateName(item.name))
+                // Фоновое свечение
+                Circle()
+                    .fill(config.color.opacity(0.15))
+                    .frame(width: 250, height: 250)
+                    .blur(radius: 60)
+                    .offset(y: -100)
+                
+                VStack(spacing: 24) {
+                    // Иконка
+                    ZStack {
+                        Circle()
+                            .fill(config.color.opacity(0.2))
+                            .frame(width: 80, height: 80)
+                        Image(systemName: config.icon)
+                            .font(.system(size: 40, weight: .bold))
+                            .foregroundColor(config.color)
+                            .shadow(color: config.color.opacity(0.5), radius: 10, y: 5)
+                    }
+                    .padding(.top, 30)
+                    
+                    // Значение
+                    VStack(spacing: 8) {
+                        Text(config.title)
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.gray)
+                            .textCase(.uppercase)
+                        
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text(config.value)
+                                .font(.system(size: 56, weight: .heavy, design: .rounded))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            Text(config.unit)
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundColor(config.color)
+                        }
+                        
+                        Text(config.description)
+                            .font(.callout)
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .black.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true) // 👈 1. ЭТО ЗАПРЕТИТ ОБРЕЗАТЬ ТЕКСТ
+                            .padding(.horizontal, 30)
+                            .padding(.top, 8)
+                    }
+                    
+                    Spacer()
+                    
+                    // Кнопка перехода (только для шагов и воды)
+                    if config.canOpenFoodTracker {
+                        Button(action: openFoodTracker) {
+                            HStack(spacing: 10) {
+                                Text("Открыть FoodTracker")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                Image(systemName: "arrow.up.forward.app")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(config.color)
+                            .cornerRadius(20)
+                            .shadow(color: config.color.opacity(0.4), radius: 10, y: 5)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
+                    } else {
+                        // Кнопка "Закрыть" для калорий
+                        Button(action: { dismiss() }) {
+                            Text("Понятно")
                                 .font(.headline)
-                                .foregroundColor(themeManager.current.primaryText)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
-                            
-                            Spacer(minLength: 8)
-                            
-                            Text("\(item.count) times")
-                                .font(.subheadline)
-                                .foregroundColor(themeManager.current.secondaryText)
-                            
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(themeManager.current.secondaryAccent)
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                                .cornerRadius(20)
                         }
-                        .padding().background(themeManager.current.surface).cornerRadius(10).shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
                     }
                 }
             }
         }
+        
+        // Метод открытия FoodTracker
+        private func openFoodTracker() {
+            let generator = UIImpactFeedbackGenerator(style: .heavy)
+            generator.impactOccurred()
+            
+            if let url = URL(string: "foodtracker://") {
+                UIApplication.shared.open(url)
+            }
+            dismiss()
+        }
     }
     
-    // MARK: - AI Weekly Review Section
-    
-    private var aiReviewButtonSection: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            fetchReviewDataAndShowSheet()
-        } label: {
+    // MARK: - Пульс Карточка
+    struct LiveVitalsCard: View {
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme
+        @State private var isPulsing = false
+        
+        // Подключаем наш монитор
+        @State private var vitals = VitalsMonitor()
+        
+        // Таймер для обновления текста "Х мин назад"
+        let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+        @State private var timeAgoTrigger = false
+        
+        var body: some View {
             HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.2))
-                        .frame(width: 48, height: 48)
+                        .fill(Color.red.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                        .scaleEffect(isPulsing ? 1.3 : 1.0)
+                        .opacity(isPulsing ? 0 : 1)
                     
-                    if isFetchingReviewData {
-                        ProgressView().tint(.white)
-                    } else {
-                        Image(systemName: "sparkles")
-                            .font(.title2)
-                            .foregroundColor(.white)
-                            .shadow(color: .white.opacity(0.8), radius: 8, x: 0, y: 0)
+                    Circle()
+                        .fill(Color.red.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                        .scaleEffect(isPulsing ? 1.1 : 1.0)
+                    
+                    Image(systemName: "heart.fill")
+                        .foregroundStyle(Color.red)
+                        .font(.system(size: 20))
+                        .scaleEffect(isPulsing ? 1.1 : 0.9)
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text("Текущий пульс").font(.caption).foregroundStyle(.secondary)
+                        // Маленький бейджик свежести
+                        Text(vitals.timeAgoText)
+                            .font(.system(size: 9, weight: .bold))
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.15))
+                            .foregroundStyle(.secondary)
+                            .clipShape(Capsule())
+                            .id(timeAgoTrigger) // Триггер для обновления текста
+                    }
+                    
+                    HStack(alignment: .bottom, spacing: 2) {
+                        Text(vitals.currentBPM > 0 ? "\(Int(vitals.currentBPM))" : "--")
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .contentTransition(.numericText())
+                        Text("BPM").font(.caption.bold()).foregroundStyle(Color.red).padding(.bottom, 4)
                     }
                 }
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey("AI Performance Review"))
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                    Text(LocalizedStringKey("Get personalized insights and tips"))
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
-                }
                 Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.white.opacity(0.5))
-                    .font(.body.bold())
+                
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 30))
+                    .foregroundStyle(Color.red.opacity(0.5))
             }
-            .padding(16)
-            .background(
-                LinearGradient(colors: [Color(hex: "4A00E0"), Color(hex: "8E2DE2")], startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
-            .cornerRadius(20)
-            .shadow(color: Color(hex: "8E2DE2").opacity(0.4), radius: 12, x: 0, y: 6)
+            .padding(20)
+            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground)), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1.5))
+            .shadow(color: colorScheme == .dark ? Color.red.opacity(0.1) : Color.black.opacity(0.08), radius: 20, x: 0, y: 5)
+            .onAppear {
+                // Запускаем пульсацию и мониторинг
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { isPulsing = true }
+                vitals.startMonitoring()
+            }
+            .onReceive(timer) { _ in
+                // Дергаем стейт каждую минуту, чтобы обновилось "1 мин назад" -> "2 мин назад"
+                timeAgoTrigger.toggle()
+            }
         }
-        .buttonStyle(.plain)
-        .disabled(isFetchingReviewData)
     }
-
-    private func fetchReviewDataAndShowSheet() {
-        guard !isFetchingReviewData else { return }
-        isFetchingReviewData = true
+    // MARK: - Интеграция Диаграммы Мышц
+    struct MusclePieChartIsland: View {
+        let viewModel: DashboardViewModel
+        @StateObject private var colorManager = MuscleColorManager.shared
+        @State private var animateChart = false
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
         
-        Task {
-            let calendar = Calendar.current
-            let now = Date()
-            let currentInterval = calendar.dateInterval(of: .weekOfYear, for: now)!
-            let lastWeek = calendar.date(byAdding: .day, value: -7, to: now)!
-            let previousInterval = calendar.dateInterval(of: .weekOfYear, for: lastWeek)!
-            
-            // Вытягиваем данные для текущей недели прямо из AnalyticsService
-            let data = await di.analyticsService.fetchStatsData(
-                period: .week,
-                metric: .volume,
-                currentInterval: currentInterval,
-                previousInterval: previousInterval,
-                prCache: dashboardViewModel.personalRecordsCache
-            )
-            
-            await MainActor.run {
-                self.reviewData = data
-                self.isFetchingReviewData = false
-                self.showAIReviewSheet = true
+        var chartData: [(color: Color, percentage: Double, name: String)] {
+            let total = max(1, viewModel.dashboardTotalExercises)
+            return viewModel.dashboardMuscleData.map { dto in
+                (colorManager.getColor(for: dto.muscle), Double(dto.count) / Double(total), dto.muscle)
+            }
+        }
+        
+        // Вспомогательные переменные для быстрого рендера
+        private var cardBackground: AnyShapeStyle {
+            colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground))
+        }
+        private var cardOverlayGradient: LinearGradient {
+            LinearGradient(colors: [colorScheme == .dark ? .white.opacity(0.3) : .black.opacity(0.2), .clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+        }
+        
+        var body: some View {
+            VStack {
+                Text("Задействованные мышцы")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
+                
+                ZStack {
+                    Circle().stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 20).frame(width: 150, height: 150)
+                    
+                    if viewModel.dashboardMuscleData.isEmpty {
+                        Text("Пусто").font(.headline).foregroundStyle(.gray)
+                    } else {
+                        ForEach(0..<chartData.count, id: \.self) { index in
+                            if chartData[index].percentage > 0 {
+                                Circle()
+                                    .trim(from: trimStart(for: index), to: trimEnd(for: index))
+                                    .stroke(chartData[index].color, style: StrokeStyle(lineWidth: 20, lineCap: .round))
+                                    .frame(width: 150, height: 150)
+                                    .rotationEffect(.degrees(-90))
+                                    .shadow(color: chartData[index].color.opacity(0.6), radius: 10)
+                                    .scaleEffect(animateChart ? 1 : 0.8)
+                                    .opacity(animateChart ? 1 : 0)
+                                    .animation(.spring(response: 0.6, dampingFraction: 0.6).delay(Double(index) * 0.1), value: animateChart)
+                            }
+                        }
+                        
+                        VStack {
+                            Text("\(viewModel.dashboardTotalExercises)")
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            Text("Подходы")
+                                .font(.caption)
+                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))
+                        }
+                    }
+                }
+                .padding(.vertical, 10)
+                
+                // 👇 Сетка вместо горизонтального скролла
+                if !viewModel.dashboardMuscleData.isEmpty {
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3),
+                        alignment: .center,
+                        spacing: 12
+                    ) {
+                        ForEach(viewModel.dashboardMuscleData, id: \.muscle) { item in
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(colorManager.getColor(for: item.muscle))
+                                    .frame(width: 10, height: 10)
+                                
+                                Text(LocalizedStringKey(item.muscle))
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 10)
+                        }
+                    }
+                    .padding(.top, 16)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(24)
+            .background(cardBackground, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 32).stroke(cardOverlayGradient, lineWidth: 1.5))
+            .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 5)
+            .onAppear { animateChart = true }
+        }
+        
+        // Эти функции теперь правильно находятся ВНУТРИ структуры MusclePieChartIsland
+        func trimStart(for index: Int) -> Double {
+            if index == 0 { return 0 }
+            return (0..<index).reduce(0) { $0 + chartData[$1].percentage }
+        }
+        
+        func trimEnd(for index: Int) -> Double {
+            return trimStart(for: index) + chartData[index].percentage
+        }
+    }
+    // MARK: - HEATMAP (Анатомия)
+    struct AnatomyRecoveryIsland: View {
+        @Binding var isFrontView: Bool
+        let cnsScore: Double
+        let recoveryDict: [String: Int]
+        let userGender: String
+        var router: OverviewRouter
+        
+        @Environment(DashboardViewModel.self) private var dashboardViewModel
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
+        
+        @State private var pulseReady = false
+        @State private var showRecoverySettings = false
+        
+        var muscleReadiness: Int {
+            guard !recoveryDict.isEmpty else { return 100 }
+            let total = recoveryDict.values.reduce(0, +)
+            return total / recoveryDict.count
+        }
+        
+        // Вспомогательные свойства для ускорения компиляции
+        private var islandBackground: Color {
+            colorScheme == .dark ? Color.clear : Color(UIColor.secondarySystemGroupedBackground)
+        }
+        private var silhouetteBackground: Color {
+            colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.black.opacity(0.06)
+        }
+        private var buttonBackground: AnyShapeStyle {
+            colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white.opacity(0.8))
+        }
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 20) {
+                
+                Text("Восстановление мышц")
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .foregroundStyle(colorScheme == .dark ? .white : .black)
+                
+                HStack(spacing: 12) {
+                    AnatomyToggleButton(title: "Спереди", isSelected: isFrontView) { isFrontView = true }
+                    AnatomyToggleButton(title: "Сзади", isSelected: !isFrontView) { isFrontView = false }
+                }
+                
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(silhouetteBackground)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                        )
+                    
+                    BodyHeatmapView(
+                        muscleIntensities: recoveryDict,
+                        isRecoveryMode: true,
+                        isCompactMode: true,
+                        defaultToBack: !isFrontView,
+                        userGender: userGender
+                    )
+                    .background(Color.clear)
+                    .frame(height: 500)
+                    .scaleEffect(1.05)
+                    .offset(y: 10)
+                    .clipped()
+                    
+                    VStack {
+                        HStack {
+                            Spacer()
+                            
+                            Button {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                showRecoverySettings = true
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 6, height: 6)
+                                        .opacity(pulseReady ? 1.0 : 0.3)
+                                    
+                                    Text("Готовность")
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
+                                    
+                                    Text("\(muscleReadiness)%")
+                                        .font(.system(size: 14, weight: .black, design: .rounded))
+                                        .foregroundStyle(Color.green)
+                                    
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundStyle(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
+                                        .padding(.leading, 2)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(buttonBackground)
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.1), lineWidth: 1))
+                                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Spacer()
+                    }
+                    .padding(16)
+                    .zIndex(10)
+                }
+                .frame(height: 580)
+                .background(islandBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1.5))
+                .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 5)
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
+                    pulseReady = true
+                }
+            }
+            .sheet(isPresented: $showRecoverySettings, onDismiss: {
+                dashboardViewModel.refreshAllCaches()
+            }) {
+                RecoverySettingsQuickSheet()
+                    .presentationDetents([.height(300)])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
-
-    @ViewBuilder
-    private func rankIcon(rank: Int) -> some View {
-           ZStack {
-               Circle()
-                   .fill(rank == 1 ? Color.yellow : rank == 2 ? Color.gray : rank == 3 ? Color.brown : themeManager.current.primaryAccent.opacity(0.1))
-                   .frame(width: 30, height: 30)
-               
-               Text("\(rank)")
-                   .font(.caption).bold()
-                   .foregroundColor(rank <= 3 ? themeManager.current.background : themeManager.current.primaryAccent)
-           }.padding(.trailing, 5)
-       }
+    
+    // Кнопки "Спереди/Сзади"
+    struct AnatomyToggleButton: View {
+        let title: String
+        let isSelected: Bool
+        let action: () -> Void
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ЯВНЫЙ ТИП
+        
+        var body: some View {
+            Button(action: {
+                UISelectionFeedbackGenerator().selectionChanged()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { action() }
+            }) {
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(isSelected ? Color.blue.opacity(0.2) : Color.clear)
+                    .foregroundStyle(isSelected ? Color.blue : (colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6)))
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule().stroke(isSelected ? Color.blue : (colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.15)), lineWidth: 1)
+                    )
+            }
+        }
+    }
+    // MARK: - UI Шторки настроек отдыха (Redesign)
+    struct RecoverySettingsQuickSheet: View {
+        @Environment(ThemeManager.self) private var themeManager
+        @Environment(\.dismiss) private var dismiss
+        @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
+        
+        @AppStorage(Constants.UserDefaultsKeys.userRecoveryHours.rawValue) private var storedRecoveryHours: Double = 48.0
+        @State private var localRecoveryHours: Double = 48.0
+        
+        var body: some View {
+            ZStack {
+                // 👈 АДАПТИВНЫЙ ФОН ШТОРКИ
+                (colorScheme == .dark ? themeManager.current.surface : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
+                
+                VStack(spacing: 24) {
+                    // Заголовок
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(themeManager.current.primaryAccent.opacity(0.2))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "battery.100.bolt")
+                                .font(.title3)
+                                .foregroundStyle(themeManager.current.primaryAccent)
+                        }
+                        
+                        Text("Настройки отдыха")
+                            .font(.title2.bold())
+                        // 👈 АДАПТИВНЫЙ ТЕКСТ
+                            .foregroundStyle(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        
+                        Spacer()
+                        
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(Color.gray.opacity(0.5))
+                        }
+                    }
+                    
+                    // Основной блок с ползунком
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Базовое время восстановления")
+                                .font(.subheadline)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
+                            Spacer()
+                            Text("\(Int(localRecoveryHours)) часов")
+                                .font(.headline)
+                                .foregroundColor(themeManager.current.primaryAccent)
+                                .contentTransition(.numericText())
+                        }
+                        
+                        Slider(
+                            value: $localRecoveryHours,
+                            in: 12...96,
+                            step: 4,
+                            onEditingChanged: { isEditing in
+                                if !isEditing {
+                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                    storedRecoveryHours = localRecoveryHours
+                                }
+                            }
+                        )
+                        .tint(themeManager.current.primaryAccent)
+                        
+                        Text("Настрой этот параметр под особенности своего организма. Изменение скорости напрямую повлияет на карту Готовности и рекомендации ИИ-тренера.")
+                            .font(.caption)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
+                            .lineSpacing(4)
+                    }
+                    .padding(20)
+                    // 👈 АДАПТИВНЫЙ ФОН КАРТОЧКИ
+                    .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+                    .cornerRadius(20)
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, x: 0, y: 5)
+                    
+                    Spacer()
+                }
+                .padding(24)
+                .padding(.top, 10)
+            }
+            .onAppear {
+                localRecoveryHours = storedRecoveryHours > 0 ? storedRecoveryHours : 48.0
+            }
+        }
+    }
+    struct PremiumAdaptiveBackground: View {
+        @Environment(\.colorScheme) var colorScheme
+        
+        var body: some View {
+            ZStack {
+                // Базовый цвет (Светло-серый для светлой темы, глубокий темный для темной)
+                (colorScheme == .dark ? Color(hex: "0A0A0A") : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
+                
+                // Статичные сферы (Неоновые блики)
+                Circle()
+                    .fill(Color.cyan.opacity(colorScheme == .dark ? 0.15 : 0.08))
+                    .frame(width: 350)
+                    .blur(radius: 120)
+                    .offset(x: -100, y: -150)
+                
+                Circle()
+                    .fill(Color.purple.opacity(colorScheme == .dark ? 0.12 : 0.05))
+                    .frame(width: 400)
+                    .blur(radius: 130)
+                    .offset(x: 100, y: 100)
+            }
+        }
+    }
+    
+    @Observable
+    @MainActor
+    final class VitalsMonitor {
+        var currentBPM: Double = 0.0
+        var lastUpdated: Date? = nil
+        
+        var timeAgoText: String {
+            guard let date = lastUpdated else { return "Нет данных" }
+            let minutes = Int(Date().timeIntervalSince(date) / 60)
+            if minutes == 0 { return "Только что" }
+            if minutes < 60 { return "" }
+            let hours = minutes / 60
+            return "\(hours) ч назад"
+        }
+        
+        func startMonitoring() {
+            Task {
+                // 1. Запрашиваем доступы (на всякий случай)
+                try? await HealthKitManager.shared.requestAuthorization()
+                
+                // 2. Сразу грузим последнее известное значение
+                if let initial = try? await HealthKitManager.shared.fetchLatestHeartRate() {
+                    self.currentBPM = initial.value
+                    self.lastUpdated = initial.date
+                }
+                
+                // 3. Подписываемся на новые замеры от системы
+                await HealthKitManager.shared.startHeartRateObservation { hrValue, date in
+                    Task { @MainActor in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            self.currentBPM = hrValue
+                            self.lastUpdated = date
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

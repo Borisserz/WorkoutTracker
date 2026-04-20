@@ -241,19 +241,7 @@ struct AppearanceSettingsView: View {
     
     var body: some View {
         Form {
-            // <--- ДОБАВЛЕНА СЕКЦИЯ ВЫБОРА ЦВЕТОВОЙ ПАЛИТРЫ --->
-            Section(header: Text(LocalizedStringKey("App Color Palette"))) {
-                SettingsCheckmarkRow(title: "Classic (Apple System)", isSelected: themeManager.activeThemeType == .classic) {
-                    withAnimation { themeManager.setTheme(.classic) }
-                }
-                SettingsCheckmarkRow(title: "Amethyst (Purple)", isSelected: themeManager.activeThemeType == .amethyst) {
-                    withAnimation { themeManager.setTheme(.amethyst) }
-                }
-                SettingsCheckmarkRow(title: "Coral Teal (Vibrant)", isSelected: themeManager.activeThemeType == .coralTeal) {
-                    withAnimation { themeManager.setTheme(.coralTeal) }
-                }
-            }
-            
+
             Section(header: Text(LocalizedStringKey("System Theme"))) {
                 SettingsCheckmarkRow(title: "System", isSelected: appearanceMode == "system") { appearanceMode = "system" }
                 SettingsCheckmarkRow(title: "Light", isSelected: appearanceMode == "light") { appearanceMode = "light" }

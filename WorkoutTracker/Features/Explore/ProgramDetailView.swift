@@ -141,6 +141,7 @@ struct ProgramDetailView: View {
 // MARK: - Morphing Save Button
 struct MorphingSaveButton: View {
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     var isSaving: Bool
     var isSaved: Bool
     var defaultTitle: String
@@ -157,13 +158,13 @@ struct MorphingSaveButton: View {
                 } else if isSaved {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.title3)
-                        .contentTransition(.symbolEffect(.replace)) // iOS 17 fluid icon morphing
+                        .contentTransition(.symbolEffect(.replace))
                     
-                    Text("Saved")
+                    Text("Сохранено")
                         .font(.headline)
                         .fontWeight(.bold)
                 } else {
-                    Image(systemName: "square.and.arrow.down.fill")
+                    Image(systemName: "bolt.fill")
                         .font(.title3)
                     
                     Text(defaultTitle)
@@ -171,28 +172,30 @@ struct MorphingSaveButton: View {
                         .fontWeight(.bold)
                 }
             }
-            .foregroundColor(themeManager.current.background)
-            // Morph the width down to a pill shape when saved
+            .foregroundColor(.white) // 👈 ИСПРАВЛЕНИЕ: Текст всегда белый
             .frame(maxWidth: isSaved ? 140 : .infinity)
             .padding(.vertical, 18)
             .background(
                 Group {
                     if isSaved {
-                        // Премиальный серый цвет для состояния "Уже сохранено"
-                        Color(UIColor.tertiaryLabel)
+                        Color.green
                     } else {
-                        LinearGradient(colors: gradientColors, startPoint: .leading, endPoint: .trailing)
+                        // 👈 ИСПРАВЛЕНИЕ: В светлой теме кнопка всегда синяя, в темной - градиент программы
+                        if colorScheme == .dark {
+                            LinearGradient(colors: gradientColors, startPoint: .leading, endPoint: .trailing)
+                        } else {
+                            LinearGradient(colors: [.blue, .cyan], startPoint: .leading, endPoint: .trailing)
+                        }
                     }
                 }
             )
             .clipShape(Capsule())
-            .shadow(color: isSaved ? .clear : gradientColors.first!.opacity(0.4), radius: 15, x: 0, y: 8)
+            .shadow(color: isSaved ? .clear : (colorScheme == .dark ? gradientColors.first!.opacity(0.4) : .blue.opacity(0.4)), radius: 15, x: 0, y: 8)
             .scaleEffect(popScale)
         }
         .disabled(isSaving || isSaved)
         .onChange(of: isSaved) { _, saved in
             if saved {
-                // Micro-animation "Pop" effect
                 withAnimation(.spring(response: 0.2, dampingFraction: 0.4)) {
                     popScale = 1.08
                 }
@@ -205,14 +208,14 @@ struct MorphingSaveButton: View {
         }
     }
 }
-
-// MARK: - Deep Routine Preview Card
 struct RoutinePreviewCard: View {
     let routine: WorkoutPresetDTO
     let hideHeader: Bool
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
     var dayIndex: Int? = nil
     @State private var selectedHistoryExercise: String? = nil
+    
     var body: some View {
         VStack(spacing: 0) {
             
@@ -227,20 +230,20 @@ struct RoutinePreviewCard: View {
                     
                     VStack(alignment: .leading, spacing: 2) {
                         if let day = dayIndex {
-                            Text("Day \(day)")
+                            Text("День \(day)")
                                 .font(.caption)
-                                .foregroundColor(themeManager.current.primaryAccent)
+                                .foregroundColor(.blue) // 👈 АДАПТИВНО
                                 .textCase(.uppercase)
                                 .fontWeight(.bold)
                         }
                         Text(LocalizedStringKey(routine.name))
                             .font(.headline)
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(colorScheme == .dark ? .white : .black) // 👈
                     }
                     Spacer()
                 }
                 .padding()
-                .background(Color.primary.opacity(0.05))
+                .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.03)) // 👈
             }
             
             // Exercises List
@@ -252,21 +255,21 @@ struct RoutinePreviewCard: View {
                         HStack {
                             Image(systemName: ex.type == .cardio ? "figure.run" : "dumbbell.fill")
                                 .font(.caption)
-                                .foregroundColor(themeManager.current.primaryAccent)
+                                .foregroundColor(.blue)
                                 .frame(width: 20)
                             
                             Text(LocalizationHelper.shared.translateName(ex.name))
                                 .font(.subheadline)
-                                .foregroundColor(themeManager.current.primaryText)
+                                .foregroundColor(colorScheme == .dark ? .white : .black) // 👈
                             
                             Spacer()
                             
                             let safeSets = ex.setsList ?? []
                             let repsCount = safeSets.first?.reps ?? 10
                             
-                            Text("\(safeSets.count) x \(repsCount) reps")
+                            Text("\(safeSets.count) x \(repsCount) повторений")
                                 .font(.subheadline)
-                                .foregroundColor(themeManager.current.secondaryText)
+                                .foregroundColor(colorScheme == .dark ? .gray : .gray) // 👈
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 12)
@@ -279,16 +282,16 @@ struct RoutinePreviewCard: View {
                         Divider().padding(.leading, 48)
                     }
                 }
-                
                 .padding(.vertical, hideHeader ? 8 : 0)
             }
-            .background(themeManager.current.surface)
+            // 👈 АДАПТАЦИЯ ФОНА
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.gray.opacity(0.15), lineWidth: 1)
+                    .stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.05), radius: 5, x: 0, y: 2)
         }
     }
 }

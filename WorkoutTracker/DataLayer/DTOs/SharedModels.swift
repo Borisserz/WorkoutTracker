@@ -14,6 +14,7 @@ enum SyncActionType: String, Codable, Sendable {
     case requestActiveState
     case syncFullState
     case saveToHistory
+    case updateHeartRate
 }
 
 struct LiveSyncPayload: Codable, Sendable {
@@ -31,7 +32,7 @@ struct LiveSyncPayload: Codable, Sendable {
     let exercises: [ExerciseDTO]?
     let activeEnergy: Double?
     let durationSeconds: Int?
-    
+    let heartRate: Double?
     init(
         action: SyncActionType,
         workoutID: String,
@@ -44,7 +45,8 @@ struct LiveSyncPayload: Codable, Sendable {
         isCompleted: Bool? = nil,
         exercises: [ExerciseDTO]? = nil,
         activeEnergy: Double? = nil,
-        durationSeconds: Int? = nil
+        durationSeconds: Int? = nil,
+        heartRate: Double? = nil
     ) {
         self.action = action
         self.workoutID = workoutID
@@ -58,5 +60,6 @@ struct LiveSyncPayload: Codable, Sendable {
         self.exercises = exercises
         self.activeEnergy = activeEnergy
         self.durationSeconds = durationSeconds
+        self.heartRate = heartRate 
     }
 }

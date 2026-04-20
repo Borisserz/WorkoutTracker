@@ -36,6 +36,14 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
         Task { @MainActor in
             if let data = message["syncPayload"] as? Data, let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
+                
+              
+                if payload.action == .updateHeartRate, let hr = payload.heartRate {
+                    NotificationCenter.default.post(name: NSNotification.Name("LiveHeartRateUpdate"), object: hr)
+                    return // Дальше идти не нужно
+                }
+         
+                
                 if payload.action == .requestActiveState {
                     self.sendFullActiveStateToWatch()
                 } else {

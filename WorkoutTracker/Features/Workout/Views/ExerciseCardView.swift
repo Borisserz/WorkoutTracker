@@ -10,6 +10,9 @@ struct ExerciseCardView: View {
     @Environment(UnitsManager.self) var unitsManager
     @Environment(WorkoutDetailViewModel.self) var detailViewModel
     @Environment(\.modelContext) private var context
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ ТЕМЫ
+    @Environment(ThemeManager.self) private var themeManager
+    
     @State private var showHistory = false
     let exercise: Exercise
     let workout: Workout
@@ -24,10 +27,30 @@ struct ExerciseCardView: View {
     private var isActiveExercise: Bool { isCurrentExercise && !exercise.isCompleted && workout.isActive }
     private var isWorkoutCompleted: Bool { !workout.isActive }
     
-    // Поддерживает ли упражнение трекинг по камере
     private var isAISupported: Bool {
         let category = ExerciseCategory.determine(from: exercise.name)
         return [.squat, .curl, .press, .deadlift, .pull].contains(category)
+    }
+    
+    // 👈 ИСПРАВЛЕНИЕ: ЦВЕТА КАРТОЧКИ СТАЛИ ПРЕМИАЛЬНЫМИ И АДАПТИВНЫМИ
+    private var cardBackgroundColor: Color {
+        if exercise.isCompleted {
+            return colorScheme == .dark ? Color.green.opacity(0.1) : Color.green.opacity(0.05)
+        } else if isActiveExercise {
+            return colorScheme == .dark ? themeManager.current.primaryAccent.opacity(0.1) : themeManager.current.primaryAccent.opacity(0.05)
+        } else {
+            return colorScheme == .dark ? Color(red: 0.12, green: 0.12, blue: 0.14) : Color.white
+        }
+    }
+    
+    private var cardBorderColor: Color {
+        if exercise.isCompleted {
+            return Color.green.opacity(0.4)
+        } else if isActiveExercise {
+            return themeManager.current.primaryAccent.opacity(0.5)
+        } else {
+            return colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05)
+        }
     }
     
     var body: some View {
@@ -46,13 +69,13 @@ struct ExerciseCardView: View {
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(exercise.isCompleted ? Color.green.opacity(0.05) : (isActiveExercise ? Color.cyan.opacity(0.05) : Color(UIColor.secondarySystemBackground)))
+                    .fill(cardBackgroundColor)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(exercise.isCompleted ? Color.green.opacity(0.3) : (isActiveExercise ? Color.cyan.opacity(0.5) : Color.clear), lineWidth: (isActiveExercise || exercise.isCompleted) ? 2 : 0)
+                    .stroke(cardBorderColor, lineWidth: (isActiveExercise || exercise.isCompleted) ? 2 : 1)
             )
-            .shadow(color: isActiveExercise ? Color.cyan.opacity(0.2) : .clear, radius: 15, x: 0, y: 5)
+            .shadow(color: isActiveExercise ? themeManager.current.primaryAccent.opacity(0.2) : .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 15, x: 0, y: 5)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: exercise.isCompleted)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isActiveExercise)
         }
@@ -115,14 +138,16 @@ struct ExerciseCardView: View {
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Image(systemName: "line.3.horizontal").foregroundColor(.gray).font(.caption).frame(width: 20, height: 20)
+                Image(systemName: "line.3.horizontal").foregroundColor(colorScheme == .dark ? .gray : .gray.opacity(0.5)).font(.caption).frame(width: 20, height: 20)
                 
                 Button {
                     showHistory = true
                 } label: {
                     HStack {
                         Image(systemName: getIcon()).foregroundColor(getColor()).font(.caption)
-                        Text(LocalizationHelper.shared.translateName(exercise.name)).font(.headline).foregroundColor(.primary)
+                        Text(LocalizationHelper.shared.translateName(exercise.name))
+                            .font(.headline)
+                            .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 Адаптация текста
                     }
                 }
                 .buttonStyle(.plain)
@@ -136,7 +161,7 @@ struct ExerciseCardView: View {
                 
                 HStack(spacing: 4) {
                     Image(systemName: completedCount == totalCount && totalCount > 0 ? "checkmark.circle.fill" : "checkmark.circle")
-                        .foregroundColor(completedCount == totalCount && totalCount > 0 ? .green : (completedCount > 0 ? .cyan : .gray)).font(.caption)
+                        .foregroundColor(completedCount == totalCount && totalCount > 0 ? .green : (completedCount > 0 ? themeManager.current.primaryAccent : .gray)).font(.caption)
                     Text("\(completedCount)/\(totalCount)").font(.subheadline).foregroundColor(.secondary)
                 }
                 
@@ -191,7 +216,10 @@ struct ExerciseCardView: View {
         VStack(spacing: 12) {
             Button(action: { withAnimation { detailViewModel.addSet(to: exercise, context: context) } }) {
                 Text(LocalizedStringKey("+ Add Set"))
-                .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14).background(Color.cyan.opacity(0.15)).foregroundColor(.cyan).cornerRadius(14)
+                .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)
+                .background(themeManager.current.primaryAccent.opacity(0.15))
+                .foregroundColor(themeManager.current.primaryAccent)
+                .cornerRadius(14)
             }
             .buttonStyle(BorderlessButtonStyle()).disabled(exercise.isCompleted || isWorkoutCompleted)
             
@@ -201,8 +229,8 @@ struct ExerciseCardView: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
-                        .background(exercise.isCompleted ? Color.blue.opacity(0.15) : Color.green.opacity(0.15))
-                        .foregroundColor(exercise.isCompleted ? .blue : .green)
+                        .background(exercise.isCompleted ? themeManager.current.primaryAccent.opacity(0.15) : Color.green.opacity(0.15))
+                        .foregroundColor(exercise.isCompleted ? themeManager.current.primaryAccent : .green)
                         .cornerRadius(14)
                 }
                 .buttonStyle(BorderlessButtonStyle()).disabled(isWorkoutCompleted)
@@ -219,5 +247,5 @@ struct ExerciseCardView: View {
     }
 
     private func getIcon() -> String { exercise.type == .strength ? "dumbbell.fill" : (exercise.type == .cardio ? "figure.run" : "stopwatch.fill") }
-    private func getColor() -> Color { exercise.type == .strength ? .cyan : (exercise.type == .cardio ? .orange : .purple) }
+    private func getColor() -> Color { exercise.type == .strength ? themeManager.current.primaryAccent : (exercise.type == .cardio ? .orange : .purple) }
 }

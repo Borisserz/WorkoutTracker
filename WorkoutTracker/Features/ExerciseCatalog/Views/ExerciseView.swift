@@ -9,6 +9,8 @@ struct ExerciseView: View {
     @Environment(\.modelContext) private var context
     @Environment(CatalogViewModel.self) var catalogViewModel
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ АДАПТАЦИИ
+    
     @State private var showAddSheet = false
     @State private var showDeleteAlert = false
     @State private var exercisesToDelete: [(name: String, category: String)] = []
@@ -30,8 +32,8 @@ struct ExerciseView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            // Премиальный фон
-            Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+            // Адаптивный премиальный фон
+            (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // 1. Строка поиска с кнопкой фильтров
@@ -45,36 +47,36 @@ struct ExerciseView: View {
                 Divider().opacity(0.5)
                 
                 // 3. Вычисляем отфильтрованные элементы
-                           let filteredItems = filterState.filter(exercises: allItems).sorted(by: { $0.name < $1.name })
-                           
-                           if filteredItems.isEmpty {
-                               emptyStateView
-                           } else {
-                               // Используем List для встроенной поддержки свайпов (onDelete)
-                               List {
-                                   ForEach(filteredItems, id: \.name) { item in
-                                       ZStack(alignment: .leading) {
-                                           // Карточка упражнения
-                                           ExerciseDBRowView(exercise: item)
-                                           
-                                           // Невидимый NavigationLink
-                                           NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
-                                               EmptyView()
-                                           }
-                                           .opacity(0)
-                                       }
-                                       .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
-                                       .listRowBackground(Color.clear)
-                                       .listRowSeparator(.hidden)
-                                   }
-                                   .onDelete { indexSet in
-                                       exercisesToDelete = indexSet.map { (name: filteredItems[$0].name, category: filteredItems[$0].category ?? "") }
-                                       showDeleteAlert = true
-                                   }
-                               }
-                               .listStyle(.plain)
-                               .scrollContentBackground(.hidden)
-                           }
+                let filteredItems = filterState.filter(exercises: allItems).sorted(by: { $0.name < $1.name })
+                
+                if filteredItems.isEmpty {
+                    emptyStateView
+                } else {
+                    // Используем List для встроенной поддержки свайпов (onDelete)
+                    List {
+                        ForEach(filteredItems, id: \.name) { item in
+                            ZStack(alignment: .leading) {
+                                // Карточка упражнения
+                                ExerciseDBRowView(exercise: item)
+                                
+                                // Невидимый NavigationLink
+                                NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
+                                    EmptyView()
+                                }
+                                .opacity(0)
+                            }
+                            .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                        }
+                        .onDelete { indexSet in
+                            exercisesToDelete = indexSet.map { (name: filteredItems[$0].name, category: filteredItems[$0].category ?? "") }
+                            showDeleteAlert = true
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                }
             }
         }
         .navigationTitle(LocalizedStringKey("Exercise Catalog"))
@@ -137,28 +139,29 @@ struct ExerciseView: View {
         }
     }
     
+    // 👈 ИСПРАВЛЕНИЕ: Адаптивные цвета для чипсов
     private func filterButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
-           Button {
-               let gen = UISelectionFeedbackGenerator()
-               gen.selectionChanged()
-               action()
-           } label: {
-               Text(LocalizedStringKey(title))
-                   .font(.subheadline)
-                   .fontWeight(isSelected ? .bold : .medium)
-                   .foregroundColor(isSelected ? .white : .primary)
-                   .padding(.horizontal, 18)
-                   .padding(.vertical, 10)
-                   .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface) // <--- ИЗМЕНЕНО
-                   .cornerRadius(20)
-                   .overlay(
-                       RoundedRectangle(cornerRadius: 20)
-                           .stroke(isSelected ? themeManager.current.primaryAccent : Color.gray.opacity(0.2), lineWidth: 1) // <--- ИЗМЕНЕНО
-                   )
-                   .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.2) : .clear, radius: 5, x: 0, y: 2) // <--- ИЗМЕНЕНО
-           }
-           .buttonStyle(.plain)
-       }
+        Button {
+            let gen = UISelectionFeedbackGenerator()
+            gen.selectionChanged()
+            action()
+        } label: {
+            Text(LocalizedStringKey(title))
+                .font(.subheadline)
+                .fontWeight(isSelected ? .bold : .medium)
+                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)))
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .background(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? themeManager.current.surface : Color.white))
+                .cornerRadius(20)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1)), lineWidth: 1)
+                )
+                .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.2) : .clear, radius: 5, x: 0, y: 2)
+        }
+        .buttonStyle(.plain)
+    }
     
     private var emptyStateView: some View {
         VStack(spacing: 16) {
@@ -168,11 +171,11 @@ struct ExerciseView: View {
             
             Text(LocalizedStringKey("No exercises found"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.primaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
             
             Text(LocalizedStringKey("Try adjusting search or clear advanced filters."))
                 .font(.subheadline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -182,33 +185,31 @@ struct ExerciseView: View {
     // MARK: - Logic Helpers
     
     private func loadExercises() async {
-            if catalogViewModel.combinedCatalog.isEmpty {
-                await catalogViewModel.loadDictionary()
-            }
-            
-            var items = await ExerciseDatabaseService.shared.getAllExerciseItems()
-            let hidden = catalogViewModel.deletedDefaultExercises
-            items.removeAll { hidden.contains($0.name) }
-            
-            // Мапим кастомные упражнения пользователя в формат элементов базы данных
-            let customItems = catalogViewModel.customExercises.map { custom in
-                // ✅ ИСПРАВЛЕНО: Добавлены force, mechanic и level
-                ExerciseDBItem(
-                    id: custom.id.uuidString,
-                    name: custom.name,
-                    equipment: "bodyweight",
-                    force: "push",         // Значение по умолчанию
-                    mechanic: "isolation",  // Значение по умолчанию
-                    primaryMuscles: custom.targetedMuscles,
-                    secondaryMuscles: nil,
-                    instructions: nil,
-                    category: custom.category,
-                    level: "beginner"       // Значение по умолчанию
-                )
-            }
-            
-            self.allItems = (items + customItems).sorted { $0.name < $1.name }
+        if catalogViewModel.combinedCatalog.isEmpty {
+            await catalogViewModel.loadDictionary()
         }
+        
+        var items = await ExerciseDatabaseService.shared.getAllExerciseItems()
+        let hidden = catalogViewModel.deletedDefaultExercises
+        items.removeAll { hidden.contains($0.name) }
+        
+        let customItems = catalogViewModel.customExercises.map { custom in
+            ExerciseDBItem(
+                id: custom.id.uuidString,
+                name: custom.name,
+                equipment: "bodyweight",
+                force: "push",
+                mechanic: "isolation",
+                primaryMuscles: custom.targetedMuscles,
+                secondaryMuscles: nil,
+                instructions: nil,
+                category: custom.category,
+                level: "beginner"
+            )
+        }
+        
+        self.allItems = (items + customItems).sorted { $0.name < $1.name }
+    }
     
     private func deleteExercises() {
         let items = exercisesToDelete
@@ -217,7 +218,7 @@ struct ExerciseView: View {
             for item in items {
                 await catalogViewModel.deleteExercise(name: item.name, category: item.category)
             }
-            await loadExercises() // Перезагружаем список после удаления
+            await loadExercises()
         }
     }
 }

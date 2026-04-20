@@ -28,44 +28,43 @@ struct WorkoutView: View {
     @State private var recentWorkoutForNavigation: Workout? = nil
     
     enum FilterPeriod: String, CaseIterable {
-            case all = "All Time"
-            case week = "Last Week"
-            case month = "Last Month"
-            case threeMonths = "Last 3 Months"
-            case year = "Last Year"
-            
-            // ✅ ДОБАВЛЯЕМ ЭТО СВОЙСТВО
-            var localizedName: LocalizedStringKey {
-                switch self {
-                case .all: return "All Time"
-                case .week: return "Last Week"
-                case .month: return "Last Month"
-                case .threeMonths: return "Last 3 Months"
-                case .year: return "Last Year"
-                }
-            }
-        }
+        case all = "All Time"
+        case week = "Last Week"
+        case month = "Last Month"
+        case threeMonths = "Last 3 Months"
+        case year = "Last Year"
         
-        enum SortOption: String, CaseIterable {
-            case dateDescending = "Newest First"
-            case dateAscending = "Oldest First"
-            case durationDescending = "Longest First"
-            case durationAscending = "Shortest First"
-            case effortDescending = "Highest Effort"
-            case effortAscending = "Lowest Effort"
-            
-            // ✅ ДОБАВЛЯЕМ ЭТО СВОЙСТВО
-            var localizedName: LocalizedStringKey {
-                switch self {
-                case .dateDescending: return "Newest First"
-                case .dateAscending: return "Oldest First"
-                case .durationDescending: return "Longest First"
-                case .durationAscending: return "Shortest First"
-                case .effortDescending: return "Highest Effort"
-                case .effortAscending: return "Lowest Effort"
-                }
+        var localizedName: LocalizedStringKey {
+            switch self {
+            case .all: return "All Time"
+            case .week: return "Last Week"
+            case .month: return "Last Month"
+            case .threeMonths: return "Last 3 Months"
+            case .year: return "Last Year"
             }
         }
+    }
+        
+    enum SortOption: String, CaseIterable {
+        case dateDescending = "Newest First"
+        case dateAscending = "Oldest First"
+        case durationDescending = "Longest First"
+        case durationAscending = "Shortest First"
+        case effortDescending = "Highest Effort"
+        case effortAscending = "Lowest Effort"
+        
+        var localizedName: LocalizedStringKey {
+            switch self {
+            case .dateDescending: return "Newest First"
+            case .dateAscending: return "Oldest First"
+            case .durationDescending: return "Longest First"
+            case .durationAscending: return "Shortest First"
+            case .effortDescending: return "Highest Effort"
+            case .effortAscending: return "Lowest Effort"
+            }
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             content
@@ -94,7 +93,6 @@ struct WorkoutView: View {
                 }
                 .sheet(isPresented: $showAddWorkout) {
                     AddWorkoutView(onWorkoutCreated: {
-                        // ✅ FIX: Безопасный поиск созданной тренировки на MainActor
                         Task { @MainActor in
                             var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
                             descriptor.fetchLimit = 1
@@ -171,31 +169,30 @@ struct WorkoutView: View {
     }
     
     private var statsSection: some View {
-            // Вычисляем тонны
-            let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
-            let formattedTons = LocalizationHelper.shared.formatTwoDecimals(tons)
-            
-            return VStack(spacing: 12) {
-                HStack(spacing: 12) {
-                    StatCard(
-                        title: LocalizedStringKey("Avg Duration"),
-                        value: "\(listViewModel.calculatedAvgDuration)",
-                        subtitle: LocalizedStringKey("min"),
-                        icon: "stopwatch"
-                    )
-                    
-                    StatCard(
-                        title: LocalizedStringKey("Avg Volume"),
-                        value: formattedTons,
-                        subtitle: LocalizedStringKey("tons"), // Жестко задаем тонны
-                        icon: "scalemass"
-                    )
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
-                .padding(.bottom, 8)
+        let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
+        let formattedTons = LocalizationHelper.shared.formatTwoDecimals(tons)
+        
+        return VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                WorkoutHistoryStatCard(
+                    title: LocalizedStringKey("Avg Duration"),
+                    value: "\(listViewModel.calculatedAvgDuration)",
+                    subtitle: LocalizedStringKey("min"),
+                    icon: "stopwatch"
+                )
+                
+                WorkoutHistoryStatCard(
+                    title: LocalizedStringKey("Avg Volume"),
+                    value: formattedTons,
+                    subtitle: LocalizedStringKey("tons"),
+                    icon: "scalemass"
+                )
             }
+            .padding(.horizontal)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
         }
+    }
     
     private var searchAndFiltersSection: some View {
         VStack(spacing: 12) {
@@ -214,14 +211,14 @@ struct WorkoutView: View {
             
             HStack(spacing: 12) {
                 Menu {
-                                    ForEach(FilterPeriod.allCases, id: \.self) { period in
-                                        Button(period.localizedName) { selectedFilter = period } // ✅ Замена
-                                    }
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "calendar")
-                                        Text(selectedFilter.localizedName) // ✅ Замена
-                                    }
+                    ForEach(FilterPeriod.allCases, id: \.self) { period in
+                        Button(period.localizedName) { selectedFilter = period }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "calendar")
+                        Text(selectedFilter.localizedName)
+                    }
                     .font(.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -230,14 +227,14 @@ struct WorkoutView: View {
                 }
                 
                 Menu {
-                                    ForEach(SortOption.allCases, id: \.self) { option in
-                                        Button(option.localizedName) { sortOption = option } // ✅ Замена
-                                    }
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "arrow.up.arrow.down")
-                                        Text(sortOption.localizedName) // ✅ Замена
-                                    }
+                    ForEach(SortOption.allCases, id: \.self) { option in
+                        Button(option.localizedName) { sortOption = option }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "arrow.up.arrow.down")
+                        Text(sortOption.localizedName)
+                    }
                     .font(.subheadline)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
@@ -261,18 +258,22 @@ struct WorkoutView: View {
 
 // MARK: - Dynamic Workout List (OOM Protection)
 
+// MARK: - СПИСОК ТРЕНИРОВОК (С УДАЛЕНИЕМ)
 struct DynamicWorkoutListView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     @Query private var workouts: [Workout]
-    @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(WorkoutService.self) var workoutService
     @Environment(DIContainer.self) private var di
+    @Environment(\.colorScheme) private var colorScheme
+    
     var listViewModel: WorkoutListViewModel
+    var isEditing: Bool // 👈 ДОБАВЛЕНО ДЛЯ УПРАВЛЕНИЯ УДАЛЕНИЕМ
     var onFirstWorkoutLoaded: ((Workout) -> Void)?
     
-    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, listViewModel: WorkoutListViewModel, onFirstWorkoutLoaded: ((Workout) -> Void)? = nil) {
+    init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, listViewModel: WorkoutListViewModel, isEditing: Bool = false, onFirstWorkoutLoaded: ((Workout) -> Void)? = nil) {
         self.listViewModel = listViewModel
+        self.isEditing = isEditing
         self.onFirstWorkoutLoaded = onFirstWorkoutLoaded
         
         let calendar = Calendar.current
@@ -323,44 +324,102 @@ struct DynamicWorkoutListView: View {
                     .foregroundColor(themeManager.current.secondaryAccent.opacity(0.3))
                 Text(LocalizedStringKey("No workouts found"))
                     .font(.headline)
-                    .foregroundColor(themeManager.current.secondaryText)
-                Text(LocalizedStringKey("Try adjusting your search or filters"))
-                    .font(.caption)
-                    .foregroundColor(themeManager.current.secondaryAccent)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             }
             .padding(.vertical, 60)
             .frame(maxWidth: .infinity)
-            .onAppear {
-                onFirstWorkoutLoaded?(Workout(title: "", date: Date()))
-            }
         } else {
             ForEach(workouts) { workout in
-                ZStack {
-                    NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) { EmptyView() }.opacity(0)
-                    WorkoutRow(workout: workout)
+                HStack(spacing: 12) {
+                    // 👈 ИСПРАВЛЕНИЕ: Кнопка удаления в режиме редактирования
+                    if isEditing {
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            withAnimation {
+                                Task { await workoutService.deleteWorkout(workout) }
+                            }
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.red)
+                        }
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                    }
+                    
+                    NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
+                        PremiumRealWorkoutCard(workout: workout)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.vertical, 6)
             }
-            .onDelete { indexSet in
-                withAnimation {
-                    for index in indexSet {
-                        let workoutToDelete = workouts[index]
-                        Task { await workoutService.deleteWorkout(workoutToDelete) }
-                    }
-                }
-            }
             .onChange(of: workouts, initial: true) { _, newWorkouts in
                 listViewModel.calculateStatsAsync(workouts: newWorkouts)
-                if let first = newWorkouts.first {
-                    onFirstWorkoutLoaded?(first)
+            }
+        }
+    }
+}
+struct PremiumRealWorkoutCard: View {
+    let workout: Workout
+    @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isBreathing = false
+    @State private var rotation: Double = 0
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // 👈 ИСПРАВЛЕНИЕ: Чтение реальной иконки тренировки
+            ZStack {
+                Circle().fill(themeManager.current.primaryAccent.opacity(0.15)).frame(width: 50, height: 50)
+                
+                if UIImage(named: workout.icon) != nil {
+                    Image(workout.icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 24, height: 24)
+                        .foregroundColor(themeManager.current.primaryAccent)
+                } else {
+                    Image(systemName: UIImage(systemName: workout.icon) != nil ? workout.icon : "dumbbell.fill")
+                        .font(.title2)
+                        .foregroundColor(themeManager.current.primaryAccent)
                 }
+            }
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text(workout.title).font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
+                HStack(spacing: 8) {
+                    Text(workout.date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundColor(.gray)
+                    Text("•").foregroundColor(.gray)
+                    Text("\(workout.exercises.count) упр.").font(.caption).foregroundColor(.gray)
+                    Text("•").foregroundColor(.gray)
+                    Text("\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume))) кг").font(.caption).bold().foregroundColor(themeManager.current.primaryAccent)
+                }
+            }
+            Spacer()
+            Image(systemName: "chevron.right").foregroundColor(Color.gray.opacity(0.5))
+        }
+        .padding()
+        // 👈 АДАПТИВНЫЙ ФОН
+        .background(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.13) : Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20).stroke(
+                AngularGradient(gradient: Gradient(colors: [.cyan, .blue, .clear, .clear, .cyan]), center: .center, startAngle: .degrees(rotation), endAngle: .degrees(rotation + 360)), lineWidth: workout.isActive ? 2 : (colorScheme == .dark ? 0 : 1)
+            )
+        )
+        .shadow(color: workout.isActive ? .cyan.opacity(0.3) : .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, x: 0, y: 3)
+        .padding(.horizontal, 20)
+        .onAppear {
+            if workout.isActive {
+                withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) { isBreathing = true }
+                withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) { rotation = 360 }
             }
         }
     }
 }
 
-// MARK: - Premium Workout Row
-
+// ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ (WorkoutRow, DebouncedSearchBar, и т.д.)
 struct WorkoutRow: View {
     @Environment(ThemeManager.self) private var themeManager
     let workout: Workout
@@ -369,18 +428,20 @@ struct WorkoutRow: View {
     
     @State private var isBlinking = false
     
-    var safeIcon: String { UIImage(systemName: workout.icon) != nil ? workout.icon : "figure.run" }
+    // 👈 ИСПРАВЛЕНИЕ: Всегда используем дефолтный SF Symbol для карточек в Истории
+    var safeIcon: String {
+        return "dumbbell.fill" // Можно заменить на "figure.strengthtraining.traditional" или другой
+    }
     
     var body: some View {
         VStack(spacing: 12) {
-            // Верхняя часть: Иконка, Название, Дата, LIVE-бейдж
             HStack(alignment: .top, spacing: 14) {
-                // Иконка
                 ZStack {
                     Circle()
                         .fill(LinearGradient(colors: [themeManager.current.primaryAccent.opacity(0.15), themeManager.current.primaryAccent.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 50, height: 50)
                     
+                    // 👈 ИСПРАВЛЕНИЕ: Системная иконка вместо кастомной картинки
                     Image(systemName: safeIcon)
                         .font(.title2)
                         .foregroundStyle(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .top, endPoint: .bottom))
@@ -391,7 +452,7 @@ struct WorkoutRow: View {
                         Text(workout.title)
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
                             .lineLimit(1)
                         
                         Spacer()
@@ -421,7 +482,6 @@ struct WorkoutRow: View {
             
             Divider().opacity(0.5)
             
-            // Нижняя часть: Мини-грид статистики
             HStack(spacing: 20) {
                 miniStat(icon: "stopwatch.fill", value: workout.isActive ? "In Progress" : "\(workout.durationSeconds / 60)m")
                 miniStat(icon: "list.bullet", value: "\(workout.exercises.count) exs")
@@ -429,7 +489,6 @@ struct WorkoutRow: View {
                 
                 Spacer()
                 
-                // Effort Capsule
                 HStack(spacing: 4) {
                     Image(systemName: "flame.fill")
                         .font(.caption2)
@@ -445,10 +504,10 @@ struct WorkoutRow: View {
             }
         }
         .padding(16)
-        .background(themeManager.current.surfaceVariant)
+        // 👈 АДАПТАЦИЯ ФОНА КАРТОЧКИ
+        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(20)
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 8, x: 0, y: 4)
-        // Пульсирующая обводка для активной тренировки
         .overlay(
             RoundedRectangle(cornerRadius: 20)
                 .stroke(workout.isActive ? themeManager.current.primaryAccent.opacity(isBlinking ? 0.8 : 0.2) : Color.clear, lineWidth: workout.isActive ? 2 : 0)
@@ -470,7 +529,7 @@ struct WorkoutRow: View {
             Text(value)
                 .font(.caption)
                 .fontWeight(.medium)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
         }
     }
     
@@ -486,7 +545,6 @@ struct WorkoutRow: View {
         return LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing)
     }
 }
-
 // MARK: - Clean Debounced Search Bar
 
 struct DebouncedSearchBar: View {
@@ -559,8 +617,7 @@ struct ActiveWorkoutIndicator: View {
     }
 }
 
-
-struct StatCard: View {
+struct WorkoutHistoryStatCard: View {
     @Environment(ThemeManager.self) private var themeManager
     let title: LocalizedStringKey
     let value: String

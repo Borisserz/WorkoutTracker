@@ -9,6 +9,7 @@ struct SetRowView: View {
     @Bindable var set: WorkoutSet
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ ТЕМЫ
     @State private var showSetTypeSheet: Bool = false
     @State private var showAITracker: Bool = false
     
@@ -36,40 +37,16 @@ struct SetRowView: View {
     @State private var hasAutoFocused: Bool = false
     
     private var repsBinding: Binding<Double?> {
-        Binding<Double?>(
-            get: { set.reps.map { Double($0) } },
-            set: {
-                set.reps = $0.map { InputValidator.validateReps(Int($0)).clampedValue }
-                onDataChange?()
-            }
-        )
+        Binding<Double?>(get: { set.reps.map { Double($0) } }, set: { set.reps = $0.map { InputValidator.validateReps(Int($0)).clampedValue }; onDataChange?() })
     }
     private var timeBinding: Binding<Double?> {
-        Binding<Double?>(
-            get: { set.time.map { Double($0) } },
-            set: {
-                set.time = $0.map { InputValidator.validateTime(Int($0)).clampedValue }
-                onDataChange?()
-            }
-        )
+        Binding<Double?>(get: { set.time.map { Double($0) } }, set: { set.time = $0.map { InputValidator.validateTime(Int($0)).clampedValue }; onDataChange?() })
     }
     private var weightBinding: Binding<Double?> {
-        Binding<Double?>(
-            get: { set.weight.map { unitsManager.convertFromKilograms($0) } },
-            set: {
-                set.weight = $0.map { InputValidator.validateWeight(unitsManager.convertToKilograms($0)).clampedValue }
-                onDataChange?()
-            }
-        )
+        Binding<Double?>(get: { set.weight.map { unitsManager.convertFromKilograms($0) } }, set: { set.weight = $0.map { InputValidator.validateWeight(unitsManager.convertToKilograms($0)).clampedValue }; onDataChange?() })
     }
     private var distanceBinding: Binding<Double?> {
-        Binding<Double?>(
-            get: { set.distance.map { unitsManager.convertFromMeters($0) } },
-            set: {
-                set.distance = $0.map { InputValidator.validateDistance(unitsManager.convertToMeters($0)).clampedValue }
-                onDataChange?()
-            }
-        )
+        Binding<Double?>(get: { set.distance.map { unitsManager.convertFromMeters($0) } }, set: { set.distance = $0.map { InputValidator.validateDistance(unitsManager.convertToMeters($0)).clampedValue }; onDataChange?() })
     }
 
     var body: some View {
@@ -83,7 +60,8 @@ struct SetRowView: View {
         .padding(.horizontal, 10)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(set.isCompleted ? Color.green.opacity(0.1) : Color.clear)
+                // 👈 ИСПРАВЛЕНИЕ: Менее яркий зеленый фон для выполненного подхода
+                .fill(set.isCompleted ? Color.green.opacity(colorScheme == .dark ? 0.15 : 0.08) : Color.clear)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -167,14 +145,15 @@ struct SetRowView: View {
             } label: {
                 Text(formatValue(binding.wrappedValue, type: type))
                     .font(.system(size: 18, weight: .semibold, design: .rounded))
-                    .foregroundColor(binding.wrappedValue != nil ? .primary : .secondary)
+                    // 👈 ИСПРАВЛЕНИЕ: Цвета текста и фона ячейки
+                    .foregroundColor(binding.wrappedValue != nil ? (colorScheme == .dark ? .white : .black) : .secondary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(Color(UIColor.systemBackground))
+                    .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color(UIColor.systemGray6))
                     .cornerRadius(10)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+                            .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
                     )
             }
             .buttonStyle(.plain)
@@ -190,12 +169,13 @@ struct SetRowView: View {
         Button(action: toggleComplete) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(set.isCompleted ? Color.green : Color.gray.opacity(0.15))
+                    // 👈 ИСПРАВЛЕНИЕ: Адаптивный цвет чекбокса
+                    .fill(set.isCompleted ? Color.green : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.gray.opacity(0.15)))
                     .frame(width: 44, height: 44)
                 
                 Image(systemName: "checkmark")
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(set.isCompleted ? .white : Color.gray.opacity(0.4))
+                    .foregroundColor(set.isCompleted ? .white : Color.gray.opacity(0.5))
                     .symbolEffect(.bounce, value: set.isCompleted)
             }
         }

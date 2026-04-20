@@ -60,18 +60,21 @@ struct ExploreRoutinesView: View {
     
     @Environment(ThemeManager.self) private var themeManager
     @Environment(DIContainer.self) private var di
+    @Environment(\.colorScheme) private var colorScheme: ColorScheme // 👈 ИСПРАВЛЕНИЕ: Явное указание типа
     
     var body: some View {
         ZStack {
-            themeManager.current.background.ignoresSafeArea()
+            // 👈 ИСПРАВЛЕНИЕ: Белый фон в светлой теме
+            (colorScheme == .dark ? themeManager.current.background : Color.white)
+                .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // MARK: - 1. Fixed Header Area
                 VStack(spacing: 12) {
                     // Type Picker
                     Picker(LocalizedStringKey("Workout Type"), selection: $viewModel.selectedTab) {
-                        Text(LocalizedStringKey("Programs")).tag(ExploreTabType.programs)
-                        Text(LocalizedStringKey("Single Routines")).tag(ExploreTabType.singles)
+                        Text(LocalizedStringKey("Программы")).tag(ExploreTabType.programs)
+                        Text(LocalizedStringKey("Одиночные программы")).tag(ExploreTabType.singles)
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
@@ -81,9 +84,10 @@ struct ExploreRoutinesView: View {
                     HStack(spacing: 12) {
                         DebouncedSearchBar(debouncer: viewModel.searchDebouncer)
                             .padding()
-                            .background(themeManager.current.surface)
+                            .background(colorScheme == .dark ? themeManager.current.surface : Color(UIColor.secondarySystemBackground))
                             .cornerRadius(16)
-                            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0), radius: 5, x: 0, y: 2)
                         
                         Button {
                             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -93,7 +97,7 @@ struct ExploreRoutinesView: View {
                             ZStack(alignment: .topTrailing) {
                                 Image(systemName: "line.3.horizontal.decrease.circle.fill")
                                     .font(.system(size: 32))
-                                    .foregroundColor(themeManager.current.primaryAccent)
+                                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue)
                                 
                                 if viewModel.activeFilterCount > 0 {
                                     Circle()
@@ -112,7 +116,7 @@ struct ExploreRoutinesView: View {
                     .padding(.horizontal)
                     .padding(.bottom, 8)
                 }
-                .background(themeManager.current.background)
+                .background(colorScheme == .dark ? themeManager.current.background : Color.white)
                 .zIndex(1)
                 
                 // MARK: - 2. Scrollable Content
@@ -141,7 +145,7 @@ struct ExploreRoutinesView: View {
                         // Section Divider
                         Text(viewModel.selectedTab == .programs ? "All Programs" : "Single Routines")
                             .font(.headline)
-                            .foregroundColor(themeManager.current.secondaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                             .padding(.horizontal)
                             .padding(.top, 10)
                                 
@@ -168,7 +172,7 @@ struct ExploreRoutinesView: View {
                 }
             }
         }
-        .navigationTitle("Explore")
+        .navigationTitle("Исследовать")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showFilters) {
             ExploreFiltersSheet(viewModel: viewModel)

@@ -1,9 +1,6 @@
-//
-//  TemplatePreviewSheetView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 7.04.26.
-//
+// ============================================================
+// FILE: WorkoutTracker/Features/Workout/Views/TemplatePreviewSheetView.swift
+// ============================================================
 
 internal import SwiftUI
 import SwiftData
@@ -53,27 +50,24 @@ enum PreviewItem: Identifiable, Hashable {
 struct TemplatePreviewSheetView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(UnitsManager.self) private var unitsManager
-    @Environment(\.colorScheme) private var colorScheme
-    
-    // Стейт для навигации
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
+    @Environment(ThemeManager.self) private var themeManager
+
     @State private var selectedHistoryExercise: String? = nil
     
     let item: PreviewItem
     let onStart: () -> Void
     
-    // Динамическое извлечение уникальных групп мышц
     private var targetMuscles: [String] {
         let allMuscles = item.exercises.map { $0.muscleGroup }
         return Array(Set(allMuscles)).sorted()
     }
     
-        @Environment(ThemeManager.self) private var themeManager
-
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-                // Премиальный фон
-                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                // 👈 АДАПТАЦИЯ ФОНА
+                (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
                 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 24) {
@@ -86,7 +80,7 @@ struct TemplatePreviewSheetView: View {
                         
                         exercisesListSection
                     }
-                    .padding(.bottom, 120) // Место под плавающую кнопку старта
+                    .padding(.bottom, 120)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -100,15 +94,13 @@ struct TemplatePreviewSheetView: View {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title3)
                             .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.secondary, Color(UIColor.tertiarySystemFill))
+                            .foregroundStyle(colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : .gray.opacity(0.5)) // 👈
                     }
                 }
             }
-            // Плавающая кнопка старта с градиентом-подложкой
             .safeAreaInset(edge: .bottom) {
                 startWorkoutButton
             }
-            // ВАЖНО: Модификатор навигации должен быть ВНУТРИ NavigationStack
             .navigationDestination(item: $selectedHistoryExercise) { exName in
                 ExerciseHistoryView(exerciseName: exName)
             }
@@ -120,7 +112,6 @@ struct TemplatePreviewSheetView: View {
     
     private var headerSection: some View {
         VStack(spacing: 16) {
-            // Иконка с неоновым сине-голубым свечением
             ZStack {
                 Circle()
                     .fill(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
@@ -130,10 +121,10 @@ struct TemplatePreviewSheetView: View {
                 
                 ZStack {
                     Circle()
-                        .fill(themeManager.current.surface)
+                        .fill(colorScheme == .dark ? themeManager.current.surface : Color.white) // 👈
                         .frame(width: 88, height: 88)
                         .overlay(Circle().stroke(Color.gray.opacity(0.15), lineWidth: 1))
-                        .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.1 : 0.05), radius: 10, x: 0, y: 5)
                     
                     if item.isSystemIcon {
                         Image(systemName: item.icon)
@@ -153,18 +144,18 @@ struct TemplatePreviewSheetView: View {
             }
             .padding(.top, 24)
             
-            // Название и детали
             VStack(spacing: 6) {
+                // 👈 АДАПТАЦИЯ ТЕКСТА
                 Text(LocalizedStringKey(item.title))
                     .font(.system(size: 28, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                 
                 Text(LocalizedStringKey("\(item.exercises.count) exercises"))
                     .font(.subheadline)
                     .fontWeight(.medium)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             }
         }
     }
@@ -181,10 +172,10 @@ struct TemplatePreviewSheetView: View {
                             .font(.caption)
                             .fontWeight(.bold)
                             .textCase(.uppercase)
-                            .foregroundColor(themeManager.current.primaryAccent) // Текст в цвет акцента
+                            .foregroundColor(themeManager.current.primaryAccent)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(themeManager.current.primaryAccent.opacity(0.15)) // Полупрозрачный фон акцента
+                            .background(themeManager.current.primaryAccent.opacity(0.15))
                             .clipShape(Capsule())
                     }
                     
@@ -198,7 +189,7 @@ struct TemplatePreviewSheetView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Workout Structure"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .padding(.horizontal)
             
             VStack(spacing: 12) {
@@ -207,7 +198,6 @@ struct TemplatePreviewSheetView: View {
                         selectedHistoryExercise = exercise.name
                     } label: {
                         HStack(spacing: 16) {
-                            // Иконка упражнения
                             ZStack {
                                 RoundedRectangle(cornerRadius: 12, style: .continuous)
                                     .fill(themeManager.current.primaryAccent.opacity(0.1))
@@ -219,9 +209,10 @@ struct TemplatePreviewSheetView: View {
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
+                                // 👈 АДАПТАЦИЯ ИМЕНИ УПРАЖНЕНИЯ
                                 Text(LocalizationHelper.shared.translateName(exercise.name))
                                     .font(.headline)
-                                    .foregroundColor(themeManager.current.primaryText)
+                                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                                     .lineLimit(1)
                                 
                                 HStack(spacing: 6) {
@@ -238,17 +229,18 @@ struct TemplatePreviewSheetView: View {
                                     }
                                 }
                                 .font(.subheadline)
-                                .foregroundColor(themeManager.current.secondaryText)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                             }
                             
                             Spacer()
                         }
                         .padding(12)
-                        .background(themeManager.current.surface)
+                        // 👈 АДАПТАЦИЯ ФОНА КАРТОЧКИ
+                        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(themeManager.current.surfaceVariant, lineWidth: 1)
+                                .stroke(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.black.opacity(0.05), lineWidth: 1)
                         )
                         .shadow(color: .black.opacity(0.04), radius: 5, x: 0, y: 2)
                         .padding(.horizontal)
@@ -265,7 +257,6 @@ struct TemplatePreviewSheetView: View {
             generator.notificationOccurred(.success)
             dismiss()
             
-            // Задержка для плавного закрытия шторки
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 onStart()
             }
@@ -277,21 +268,19 @@ struct TemplatePreviewSheetView: View {
                     .font(.title3)
                     .fontWeight(.bold)
             }
-            .foregroundColor(themeManager.current.background)
+            .foregroundColor(.white) // 👈 Всегда белый
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(
-                LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .leading, endPoint: .trailing)
-            )
+            .background(themeManager.current.primaryAccent) // 👈 Сплошной цвет (без градиента)
             .cornerRadius(20)
-            .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)
+            .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, x: 0, y: 8)
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)
         .padding(.bottom, 10)
         .background(
-            // Плавный градиент (фейд) снизу вверх
-            LinearGradient(colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0.0)], startPoint: .bottom, endPoint: .top)
+            // 👈 АДАПТАЦИЯ НИЖНЕГО ГРАДИЕНТА
+            LinearGradient(colors: [(colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)), (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).opacity(0.0)], startPoint: .bottom, endPoint: .top)
                 .ignoresSafeArea()
         )
     }
