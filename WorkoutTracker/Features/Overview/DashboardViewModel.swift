@@ -1,7 +1,7 @@
 internal import SwiftUI
 import SwiftData
 import Observation
-import Combine // ✅ FIX: Импортируем Combine для подписки на уведомления
+import Combine
 
 @Observable
 @MainActor
@@ -15,6 +15,10 @@ final class DashboardViewModel {
     var dashboardTotalExercises: Int = 0
     var dashboardTopExercises: [ExerciseCountDTO] = []
     
+    // Новые переменные для шагов и воды
+    var todaySteps: Int = 0
+    var todayWaterLiters: Double = 0.0
+    
     var streakCount: Int = 0
     var bestWeekStats = PeriodStats()
     var bestMonthStats = PeriodStats()
@@ -27,8 +31,7 @@ final class DashboardViewModel {
     
     init(analyticsService: AnalyticsService) {
         self.analyticsService = analyticsService
-        // ✅ FIX: Устанавливаем "слушателя" для события завершения тренировки.
-        // Это полностью отделяет Dashboard от WorkoutDetailView.
+        // Устанавливаем "слушателя" для события завершения тренировки.
         self.cancellable = NotificationCenter.default.publisher(for: .workoutCompletedEvent)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in
@@ -36,21 +39,31 @@ final class DashboardViewModel {
                 self?.refreshAllCaches()
             }
     }
+    
+    // 👇 ИСПРАВЛЕНИЕ: ДОБАВЛЕНО ОБЪЯВЛЕНИЕ ФУНКЦИИ
     func refreshAllCaches() {
-          Task {
-              do {
-                  let cacheDTO = try await analyticsService.fetchDashboardCache()
-                  
-                  // ✅ БЕРЕМ АКТУАЛЬНЫЙ КАТАЛОГ ИЗ НОВОЙ БАЗЫ
-                  let currentCatalog = await ExerciseDatabaseService.shared.getCatalog()
-                  
-                  let proposal = WorkoutGenerationService.generateProactiveProposal(
-                      recoveryStatus: cacheDTO.recoveryStatus,
-                      catalog: currentCatalog // ✅ ИСПОЛЬЗУЕМ JSON КАТАЛОГ
-                  )
-                  
-                  self.proactiveProposal = proposal
+        Task {
+            do {
+                // 1. Запрашиваем данные из HealthKit
+                try? await HealthKitManager.shared.requestAuthorization()
+                let fetchedSteps = (try? await HealthKitManager.shared.fetchSteps()) ?? 0
+                let fetchedWater = (try? await HealthKitManager.shared.fetchWaterLiters()) ?? 0.0
+                
+                // 2. Грузим данные аналитики тренировок
+                let cacheDTO = try await analyticsService.fetchDashboardCache()
+                let currentCatalog = await ExerciseDatabaseService.shared.getCatalog()
+              
+                let proposal = WorkoutGenerationService.generateProactiveProposal(
+                    recoveryStatus: cacheDTO.recoveryStatus,
+                    catalog: currentCatalog
+                )
+                
+                // 3. Обновляем переменные в главном потоке (MainActor)
+                await MainActor.run {
+                    self.todaySteps = fetchedSteps
+                    self.todayWaterLiters = fetchedWater
                     
+                    self.proactiveProposal = proposal
                     self.personalRecordsCache = cacheDTO.personalRecords
                     self.dashboardTotalExercises = cacheDTO.dashboardTotalExercises
                     self.dashboardTopExercises = cacheDTO.dashboardTopExercises
@@ -69,9 +82,10 @@ final class DashboardViewModel {
                     self.bestMonthStats = cacheDTO.bestMonthStats
                     self.weakPoints = cacheDTO.weakPoints
                     self.recommendations = cacheDTO.recommendations
-                } catch {
-                    print("Failed to refresh caches: \(error)")
                 }
+            } catch {
+                print("Failed to refresh caches: \(error)")
             }
         }
+    }
 }

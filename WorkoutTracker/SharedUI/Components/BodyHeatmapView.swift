@@ -14,7 +14,6 @@ struct BodyHeatmapView: View {
     let countLabel: String
     
     @State private var isFrontViewLocal = true
-    // 👈 ИСПРАВЛЕНИЕ: Теперь храним весь объект мышцы, чтобы знать ее slug для счетчика
     @State private var selectedMuscle: MuscleGroup? = nil
     
     @Environment(ThemeManager.self) private var themeManager
@@ -35,7 +34,7 @@ struct BodyHeatmapView: View {
         isCompactMode: Bool = false,
         defaultToBack: Bool = false,
         userGender: String = "male",
-        countLabel: String = "упр." // По умолчанию "упр."
+        countLabel: String = "упр."
     ) {
         self.muscleIntensities = muscleIntensities
         self.rawMuscleCounts = rawMuscleCounts
@@ -79,11 +78,9 @@ struct BodyHeatmapView: View {
                     }
                     .drawingGroup()
                     
-                    // 2. ОТРИСОВКА ПЛАШЕК В РЕЖИМЕ ОТДЫХА
-                    if isRecoveryMode {
-                        ForEach(currentMuscles.filter { tagsToShow.contains($0.slug) }) { muscle in
-                            drawMuscleTag(muscle, centeringOffset: centeringOffset, scale: scale)
-                        }
+                    // 2. ОТРИСОВКА ПЛАШЕК В РЕЖИМЕ ОТДЫХА ИЛИ ТРЕНИРОВКИ
+                    ForEach(currentMuscles.filter { tagsToShow.contains($0.slug) }) { muscle in
+                        drawMuscleTag(muscle, centeringOffset: centeringOffset, scale: scale)
                     }
                 }
                 .frame(width: canvasWidth, height: canvasHeight)
@@ -92,29 +89,34 @@ struct BodyHeatmapView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.clear)
                 
-                // 3. ВСПЛЫВАЮЩАЯ НАДПИСЬ СНИЗУ С КОЛИЧЕСТВОМ УПРАЖНЕНИЙ
-                                .overlay(alignment: .bottom) {
-                                    if let muscle = selectedMuscle {
-                                        let count = rawMuscleCounts?[muscle.slug] ?? 0
-                                        let locName = NSLocalizedString(muscle.name, comment: "")
-                                        let locLabel = NSLocalizedString(countLabel, comment: "")
-                                        
-                                        // 👇 ИСПРАВЛЕНИЕ: Синий цвет для переда, Красный для зада
-                                        let badgeColor = activeIsFront ? Color.blue : Color.red
-                                        
-                                        Text("\(locName): \(count) \(locLabel)")
-                                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                                            .foregroundColor(.white)
-                                            .padding(.horizontal, 20)
-                                            .padding(.vertical, 10)
-                                            .background(badgeColor.opacity(0.9))
-                                            .clipShape(Capsule())
-                                            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
-                                            .shadow(color: badgeColor.opacity(0.6), radius: 10, y: 5)
-                                            .padding(.bottom, 60)
-                                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                                    }
-                                }
+                // 3. ВСПЛЫВАЮЩАЯ НАДПИСЬ СНИЗУ С ПРОЦЕНТОМ ИЛИ УПРАЖНЕНИЯМИ
+                .overlay(alignment: .bottom) {
+                    if let muscle = selectedMuscle {
+                        let locName = NSLocalizedString(muscle.name, comment: "")
+                        let badgeColor = activeIsFront ? Color.blue : Color.red
+                        
+                        Group {
+                            if isRecoveryMode {
+                                let percent = muscleIntensities[muscle.slug] ?? 100
+                                Text("\(locName): \(percent)% восстановлено")
+                            } else {
+                                let count = rawMuscleCounts?[muscle.slug] ?? 0
+                                let locLabel = NSLocalizedString(countLabel, comment: "")
+                                Text("\(locName): \(count) \(locLabel)")
+                            }
+                        }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(badgeColor.opacity(0.9))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                        .shadow(color: badgeColor.opacity(0.6), radius: 10, y: 5)
+                        .padding(.bottom, 60)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
             }
             .frame(height: isCompactMode ? nil : 500)
             .background(Color.clear)
@@ -137,55 +139,44 @@ struct BodyHeatmapView: View {
         
         let intensity = muscleIntensities[muscle.slug]
         
-           // 👇 ИСПРАВЛЕНО: Вместо черного используем очень легкий серый для светлой темы
-           var fillColor: Color = colorScheme == .dark ? Color.white.opacity(0.12) : Color.gray.opacity(0.15)
-           
-           if let val = intensity {
-               if isRecoveryMode {
-                   if val >= 95 {
-                       fillColor = colorScheme == .dark ? Color.white.opacity(0.12) : Color.gray.opacity(0.15)
-                   } else {
-                       let fatigue = 100.0 - Double(val)
-                       // 👇 ИСПРАВЛЕНО: В светлой теме делаем красный цвет чуть прозрачнее, чтобы не был "грязным"
-                       let redOpacity = colorScheme == .dark ? (0.2 + (0.7 * (fatigue / 100.0))) : (0.1 + (0.5 * (fatigue / 100.0)))
-                       fillColor = Color.red.opacity(redOpacity)
-                   }
-               } else {
-                   if val > 0 {
-                       let opacity = min(1.0, max(0.3, Double(val) / 100.0))
-                       fillColor = themeColor.opacity(opacity)
-                   }
-               }
-           }
-           
+        // Цвет по умолчанию
+        var fillColor: Color = colorScheme == .dark ? Color.white.opacity(0.12) : Color.gray.opacity(0.15)
         
-        return Button {
-            let generator = UISelectionFeedbackGenerator()
-            generator.selectionChanged()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                // Если нажали на уже выбранную - скрываем, иначе показываем
-                selectedMuscle = isSelected ? nil : muscle
-            }
-            // Авто-скрытие тултипа через 3 секунды
-            if !isSelected {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                    withAnimation { if selectedMuscle?.id == muscle.id { selectedMuscle = nil } }
+        if let val = intensity {
+            if isRecoveryMode {
+                if val >= 95 {
+                    fillColor = colorScheme == .dark ? Color.white.opacity(0.12) : Color.gray.opacity(0.15)
+                } else {
+                    let fatigue = 100.0 - Double(val)
+                    let redOpacity = colorScheme == .dark ? (0.2 + (0.7 * (fatigue / 100.0))) : (0.1 + (0.5 * (fatigue / 100.0)))
+                    fillColor = Color.red.opacity(redOpacity)
+                }
+            } else {
+                if val > 0 {
+                    let opacity = min(1.0, max(0.3, Double(val) / 100.0))
+                    fillColor = themeColor.opacity(opacity)
                 }
             }
+        }
+        
+        // Подсветка при выделении
+        if isSelected {
+            fillColor = themeColor.opacity(0.6)
+        }
+           
+        return Button {
+            selectMuscle(muscle)
         } label: {
             ZStack {
                 finalPath.fill(fillColor)
-                
-                
-                         // 👇 ИСПРАВЛЕНО: Заменили черную обводку на светло-серую для светлой темы
-                         let strokeColor = colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.gray.opacity(0.3)
-                         finalPath.stroke(strokeColor, lineWidth: 1.5)
-                     }
-                 }
-                 .buttonStyle(.plain)
-             }
+                let strokeColor = colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.gray.opacity(0.3)
+                finalPath.stroke(isSelected ? .white : strokeColor, lineWidth: isSelected ? 2 : 1.5)
+            }
+        }
+        .buttonStyle(.plain)
+    }
     
-    // MARK: - Рендеринг Плашек (Без изменений)
+    // MARK: - Рендеринг Плашек
     func drawMuscleTag(_ muscle: MuscleGroup, centeringOffset: CGFloat, scale: CGFloat) -> some View {
         let rawPath = combinedPath(from: muscle.paths)
         let baseXOffset: CGFloat = activeIsFront ? 0 : -backViewOffset
@@ -212,21 +203,37 @@ struct BodyHeatmapView: View {
             if muscle.slug == "calves" { centerX -= 200; centerY += 190 }
         }
         
-        let isSelected = selectedMuscle?.name == muscle.name
+        let isSelected = selectedMuscle?.id == muscle.id
         let themeColor = activeIsFront ? Color.blue : Color.red
+        let percent = isRecoveryMode ? (muscleIntensities[muscle.slug] ?? 100) : nil
         
         return InteractiveMuscleTag(
             name: muscle.name,
+            percentage: percent, // Передаем процент
             scale: scale,
             centerX: centerX,
             centerY: centerY,
             isSelected: isSelected,
             themeColor: themeColor
         ) {
-            let generator = UISelectionFeedbackGenerator()
-            generator.selectionChanged()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                selectedMuscle = isSelected ? nil : muscle
+            selectMuscle(muscle)
+        }
+    }
+    
+    // Общая функция выделения мышцы с авто-скрытием
+    private func selectMuscle(_ muscle: MuscleGroup) {
+        let generator = UISelectionFeedbackGenerator()
+        generator.selectionChanged()
+        
+        let isSelected = selectedMuscle?.id == muscle.id
+        
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            selectedMuscle = isSelected ? nil : muscle
+        }
+        
+        if !isSelected {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                withAnimation { if selectedMuscle?.id == muscle.id { selectedMuscle = nil } }
             }
         }
     }
@@ -274,8 +281,10 @@ struct BodyHeatmapView: View {
     }
 }
 
+// Плашка над мышцей
 struct InteractiveMuscleTag: View {
     let name: String
+    let percentage: Int?
     let scale: CGFloat
     let centerX: CGFloat
     let centerY: CGFloat
@@ -290,19 +299,26 @@ struct InteractiveMuscleTag: View {
         let floatOffset = isFloating ? CGFloat(-5) : CGFloat(5)
         let delay = Double(name.count) * 0.15
         
-        Text(LocalizedStringKey(name))
-            .font(.system(size: 15 / scale, weight: .bold, design: .rounded))
-            .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black.opacity(0.8)))
-            .padding(.horizontal, 16 / scale)
-            .padding(.vertical, 8 / scale)
-            .background(isSelected ? themeColor : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.15)))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(isSelected ? Color.clear : (colorScheme == .dark ? Color.white.opacity(0.3) : Color.black.opacity(0.4)), lineWidth: 2 / scale))
-            .shadow(color: isSelected ? themeColor.opacity(0.8) : .black.opacity(0.1), radius: isSelected ? 15 / scale : 5 / scale, x: 0, y: 5 / scale)
-            .position(x: centerX, y: centerY)
-            .offset(y: floatOffset)
-            .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true).delay(delay), value: isFloating)
-            .onTapGesture { action() }
-            .onAppear { isFloating = true }
+        HStack(spacing: 4) {
+            Text(LocalizedStringKey(name))
+            // Показываем % на плашке, если она выделена
+            if let pct = percentage, isSelected {
+                Text("\(pct)%")
+                    .foregroundColor(.white.opacity(0.8))
+            }
+        }
+        .font(.system(size: 15 / scale, weight: .bold, design: .rounded))
+        .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black.opacity(0.8)))
+        .padding(.horizontal, 16 / scale)
+        .padding(.vertical, 8 / scale)
+        .background(isSelected ? themeColor : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.15)))
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(isSelected ? Color.clear : (colorScheme == .dark ? Color.white.opacity(0.3) : Color.black.opacity(0.4)), lineWidth: 2 / scale))
+        .shadow(color: isSelected ? themeColor.opacity(0.8) : .black.opacity(0.1), radius: isSelected ? 15 / scale : 5 / scale, x: 0, y: 5 / scale)
+        .position(x: centerX, y: centerY)
+        .offset(y: floatOffset)
+        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true).delay(delay), value: isFloating)
+        .onTapGesture { action() }
+        .onAppear { isFloating = true }
     }
 }

@@ -8,6 +8,7 @@ struct ProfileView: View {
     @Environment(DIContainer.self) private var di
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ АДАПТАЦИИ
     
     @Query private var userStats: [UserStats]
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
@@ -29,7 +30,7 @@ struct ProfileView: View {
     // Анимации при появлении
     @State private var isAppeared = false
     
-    // Дебаунсер для сохранения веса, чтобы не спамить БД при быстрых кликах +/-
+    // Дебаунсер для сохранения веса
     @State private var weightSaveTask: Task<Void, Never>? = nil
     
     var body: some View {
@@ -87,7 +88,7 @@ struct ProfileView: View {
                 }
             }
         }
-        .preferredColorScheme(.dark)
+        // 👈 УДАЛЕН ЖЕСТКИЙ .preferredColorScheme(.dark), ЧТОБЫ РАБОТАЛА СВЕТЛАЯ ТЕМА
         .onAppear {
             loadInitialData()
             withAnimation(.easeOut(duration: 0.6)) { isAppeared = true }
@@ -99,7 +100,7 @@ struct ProfileView: View {
     private func debounceWeightSave(newWeight: Double) {
         weightSaveTask?.cancel()
         weightSaveTask = Task {
-            try? await Task.sleep(nanoseconds: 800_000_000) // Ждем 0.8 сек после последнего нажатия
+            try? await Task.sleep(nanoseconds: 800_000_000)
             guard !Task.isCancelled else { return }
             await userStatsViewModel.addWeightEntry(weight: newWeight)
         }
@@ -132,6 +133,7 @@ struct ProfileHeader: View {
     @Binding var profileImage: UIImage?
     @Binding var selectedPhotoItem: PhotosPickerItem?
     @Binding var userName: String
+    @Environment(\.colorScheme) private var colorScheme // 👈
     
     var body: some View {
         VStack(spacing: 12) {
@@ -167,20 +169,21 @@ struct ProfileHeader: View {
             VStack(spacing: 4) {
                 TextField("Атлет", text: $userName)
                     .font(.title2).bold()
-                    .foregroundColor(.white)
+                    .foregroundColor(colorScheme == .dark ? .white : .black) // 👈
                     .multilineTextAlignment(.center)
                 
                 Text("@" + (userName.isEmpty ? "athlete" : userName.lowercased().replacingOccurrences(of: " ", with: "_")))
                     .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .gray) // 👈
             }
         }
     }
 }
 
-// MARK: - 2. Полоса прогресса (Подключена к ProgressManager)
+// MARK: - 2. Полоса прогресса
 struct LevelProgressBar: View {
     let progressManager: ProgressManager
+    @Environment(\.colorScheme) private var colorScheme // 👈
     
     var body: some View {
         let progress = CGFloat(progressManager.progressPercentage)
@@ -202,7 +205,9 @@ struct LevelProgressBar: View {
             
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.05)).frame(height: 12)
+                    Capsule()
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)) // 👈
+                        .frame(height: 12)
                     Capsule()
                         .fill(LinearGradient(colors: [.orange, .red, .purple], startPoint: .leading, endPoint: .trailing))
                         .frame(width: geo.size.width * progress, height: 12)
@@ -212,9 +217,10 @@ struct LevelProgressBar: View {
             .frame(height: 12)
         }
         .padding()
-        .background(Color.white.opacity(0.03))
+        .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white) // 👈
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)) // 👈
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) // 👈
         .padding(.horizontal, 20)
     }
 }
@@ -224,6 +230,7 @@ struct YearlyTransformationView: View {
     let startWeight: Double
     let currentWeight: Double
     let unitsManager: UnitsManager
+    @Environment(\.colorScheme) private var colorScheme // 👈
     
     var body: some View {
         HStack {
@@ -231,7 +238,8 @@ struct YearlyTransformationView: View {
                 Text("Начальный вес").font(.caption).foregroundColor(.gray)
                 let sWeight = unitsManager.convertFromKilograms(startWeight)
                 Text("\(LocalizationHelper.shared.formatDecimal(sWeight)) \(unitsManager.weightUnitString())")
-                    .font(.headline).foregroundColor(.white.opacity(0.7))
+                    .font(.headline)
+                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .black.opacity(0.7)) // 👈
             }
             Spacer()
             
@@ -249,8 +257,10 @@ struct YearlyTransformationView: View {
             }
         }
         .padding()
-        .background(.ultraThinMaterial)
+        .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white)) // 👈
         .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1)) // 👈
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) // 👈
         .padding(.horizontal, 20)
     }
 }
@@ -258,6 +268,7 @@ struct YearlyTransformationView: View {
 // MARK: - 4. 3D Карусель (Интегрирована с БД ачивок)
 struct AchievementsCarousel: View {
     let achievements: [Achievement]
+    @Environment(\.colorScheme) private var colorScheme // 👈
     
     @State private var currentIndex: CGFloat = 0
     @GestureState private var dragOffset: CGFloat = 0
@@ -267,10 +278,19 @@ struct AchievementsCarousel: View {
         let current = currentIndex - (dragOffset / 250)
         
         VStack(alignment: .leading, spacing: 16) {
-            Text("Ваши трофеи (Свайп)")
-                .font(.title3).bold()
-                .foregroundColor(.white)
-                .padding(.horizontal, 20)
+            // 👈 ИСПРАВЛЕНИЕ: Кнопка "Смотреть все"
+            HStack(alignment: .bottom) {
+                Text("Ваши трофеи (Свайп)")
+                    .font(.title3).bold()
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                Spacer()
+                NavigationLink(destination: AllAchievementsView(achievements: achievements)) {
+                    Text("Все")
+                        .font(.subheadline).bold()
+                        .foregroundColor(.blue)
+                }
+            }
+            .padding(.horizontal, 20)
             
             ZStack {
                 ForEach(0..<achievements.count, id: \.self) { i in
@@ -322,21 +342,22 @@ struct AchievementsCarousel: View {
     }
 }
 
+// MARK: - Карточка трофея
 struct AchievementDesignerCard: View {
     let achievement: Achievement
+    @Environment(\.colorScheme) private var colorScheme // 👈
     
     @State private var isBreathing = false
     @State private var showCloud = false
     
-    // ВЕРНУЛИ КРАСОЧНЫЕ НЕОНОВЫЕ ЦВЕТА ДИЗАЙНЕРА ДЛЯ УРОВНЕЙ
     private var glowColor: Color {
-        guard achievement.isUnlocked else { return Color.white.opacity(0.1) }
+        guard achievement.isUnlocked else { return colorScheme == .dark ? Color.white.opacity(0.1) : Color.gray.opacity(0.4) }
         switch achievement.tier {
         case .none: return .clear
-        case .bronze: return .orange  // Яркий оранжевый вместо скучного коричневого
-        case .silver: return .cyan    // Кибер-синий вместо серого
-        case .gold: return .yellow    // Яркий желтый
-        case .diamond: return .purple // Неоновый фиолетовый
+        case .bronze: return .orange
+        case .silver: return .cyan
+        case .gold: return .yellow
+        case .diamond: return .purple
         }
     }
     
@@ -345,13 +366,15 @@ struct AchievementDesignerCard: View {
             VStack(spacing: 12) {
                 Image(systemName: achievement.isUnlocked ? achievement.icon : "lock.fill")
                     .font(.system(size: 40))
-                    // ГРАДИЕНТ ДИЗАЙНЕРА
-                    .foregroundStyle(LinearGradient(colors: [.white, glowColor], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    // 👈 ИСПРАВЛЕНИЕ: Для заблокированных - серый, для разблокированных - градиент
+                    .foregroundStyle(achievement.isUnlocked
+                                     ? AnyShapeStyle(LinearGradient(colors: [.white, glowColor], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                     : AnyShapeStyle(colorScheme == .dark ? Color.white.opacity(0.3) : Color.gray))
                 
                 VStack(spacing: 4) {
                     Text(achievement.title)
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(colorScheme == .dark ? .white : (achievement.isUnlocked ? .black : .gray)) // 👈
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .minimumScaleFactor(0.7)
@@ -370,13 +393,12 @@ struct AchievementDesignerCard: View {
                 }
             }
             .frame(width: 130, height: 160)
-            .background(.ultraThinMaterial)
-            // ПОДСВЕТКА ФОНА ДИЗАЙНЕРА
-            .background(glowColor.opacity(achievement.isUnlocked ? 0.15 : 0.05))
+            // 👈 ИСПРАВЛЕНИЕ БЕЛОГО ФОНА В СВЕТЛОЙ ТЕМЕ (теперь карточка имеет нормальный цвет)
+            .background(colorScheme == .dark ? Color.black.opacity(0.6) : Color(UIColor.secondarySystemGroupedBackground))
+            .background(glowColor.opacity(achievement.isUnlocked ? 0.15 : 0.0))
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.white.opacity(0.15), lineWidth: 1))
-            // ТЕНИ ДИЗАЙНЕРА
-            .shadow(color: glowColor.opacity(isBreathing && achievement.isUnlocked ? 0.6 : 0.1), radius: isBreathing ? 20 : 5)
+            .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.1), lineWidth: 1))
+            .shadow(color: glowColor.opacity(isBreathing && achievement.isUnlocked ? 0.6 : (colorScheme == .dark ? 0.1 : 0.05)), radius: isBreathing ? 20 : 5)
             .onLongPressGesture(minimumDuration: 0.1, maximumDistance: 50, perform: {}, onPressingChanged: { isPressing in
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                     showCloud = isPressing
@@ -396,16 +418,16 @@ struct AchievementDesignerCard: View {
                 VStack(spacing: 0) {
                     Text(achievement.description)
                         .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.black.opacity(0.8))
+                        .foregroundColor(colorScheme == .dark ? .black.opacity(0.8) : .white) // 👈
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.95))
+                        .background(colorScheme == .dark ? Color.white.opacity(0.95) : Color.black.opacity(0.8)) // 👈
                         .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .shadow(color: .white.opacity(0.4), radius: 10, y: 5)
+                        .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
                     
                     BubbleTail()
-                        .fill(Color.white.opacity(0.95))
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.95) : Color.black.opacity(0.8)) // 👈
                         .frame(width: 14, height: 8)
                 }
                 .offset(y: -175)
@@ -426,16 +448,135 @@ struct BubbleTail: Shape {
     }
 }
 
-// MARK: - 5. Личные Рекорды (Интегрировано с БД)
+// MARK: - НОВЫЙ ЭКРАН: Все достижения (Список)
+struct AllAchievementsView: View {
+    let achievements: [Achievement]
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismiss) private var dismiss
+    
+    var unlocked: [Achievement] { achievements.filter { $0.isUnlocked } }
+    var locked: [Achievement] { achievements.filter { !$0.isUnlocked } }
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // Разблокированные
+                if !unlocked.isEmpty {
+                    Text("Разблокированные трофеи")
+                        .font(.title2).bold()
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .padding(.horizontal)
+                    
+                    LazyVStack(spacing: 12) {
+                        ForEach(unlocked) { achievement in
+                            AchievementListRow(achievement: achievement)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                
+                // Заблокированные
+                if !locked.isEmpty {
+                    Text("В процессе")
+                        .font(.title2).bold()
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .padding(.horizontal)
+                        .padding(.top, 10)
+                    
+                    LazyVStack(spacing: 12) {
+                        ForEach(locked) { achievement in
+                            AchievementListRow(achievement: achievement)
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+            }
+            .padding(.vertical, 20)
+        }
+        .background(colorScheme == .dark ? Color(red: 0.05, green: 0.05, blue: 0.07) : Color(UIColor.systemGroupedBackground))
+        .navigationTitle("Все трофеи")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct AchievementListRow: View {
+    let achievement: Achievement
+    @Environment(\.colorScheme) private var colorScheme
+    
+    private var glowColor: Color {
+        guard achievement.isUnlocked else { return .gray }
+        switch achievement.tier {
+        case .none: return .clear
+        case .bronze: return .orange
+        case .silver: return .cyan
+        case .gold: return .yellow
+        case .diamond: return .purple
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            // Иконка
+            ZStack {
+                Circle()
+                    .fill(achievement.isUnlocked ? glowColor.opacity(0.2) : Color.gray.opacity(0.1))
+                    .frame(width: 50, height: 50)
+                
+                Image(systemName: achievement.isUnlocked ? achievement.icon : "lock.fill")
+                    .font(.title2)
+                    .foregroundColor(achievement.isUnlocked ? glowColor : .gray)
+            }
+            
+            // Тексты
+            VStack(alignment: .leading, spacing: 4) {
+                Text(achievement.title)
+                    .font(.headline)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Text(achievement.description)
+                    .font(.caption)
+                    .foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                    .lineLimit(2)
+            }
+            
+            Spacer()
+            
+            // Статус
+            VStack(alignment: .trailing, spacing: 4) {
+                if achievement.isUnlocked {
+                    Text(achievement.tier.name)
+                        .font(.caption).bold()
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(glowColor.opacity(0.2))
+                        .foregroundColor(glowColor)
+                        .clipShape(Capsule())
+                } else {
+                    Text(achievement.progress)
+                        .font(.caption).bold()
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .padding(16)
+        .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
+        .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+    }
+}
+
+
+// MARK: - 5. Личные Рекорды
 struct PersonalRecordsView: View {
     let records: [BestResult]
     let unitsManager: UnitsManager
+    @Environment(\.colorScheme) private var colorScheme // 👈
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Личные рекорды")
                 .font(.title3).bold()
-                .foregroundColor(.white)
+                .foregroundColor(colorScheme == .dark ? .white : .black) // 👈
             
             VStack(spacing: 12) {
                 ForEach(records.prefix(5)) { record in
@@ -447,8 +588,10 @@ struct PersonalRecordsView: View {
                 }
             }
             .padding()
-            .background(Color.white.opacity(0.03))
+            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white) // 👈
             .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1)) // 👈
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) // 👈
         }
         .padding(.horizontal, 20)
     }
@@ -458,11 +601,12 @@ struct RecordRow: View {
     var title: String
     var value: String
     var period: String
+    @Environment(\.colorScheme) private var colorScheme // 👈
     
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text(title).font(.headline).foregroundColor(.white).lineLimit(1).minimumScaleFactor(0.8)
+                Text(title).font(.headline).foregroundColor(colorScheme == .dark ? .white : .black).lineLimit(1).minimumScaleFactor(0.8) // 👈
                 Text(period).font(.caption).foregroundColor(.gray)
             }
             Spacer()
@@ -476,21 +620,21 @@ struct RecordRow: View {
     }
 }
 
-// MARK: - 6. График прогресса (Интегрирован с БД)
+// MARK: - 6. График прогресса
 struct BodyProgressChartView: View {
     let weightHistory: [WeightEntry]
     let unitsManager: UnitsManager
     @State private var mascotBreathe = false
+    @Environment(\.colorScheme) private var colorScheme // 👈
     
     var chartData: [WeightEntry] {
-        // Берем последние 10 записей и разворачиваем для хронологического порядка слева направо
         Array(weightHistory.prefix(10)).reversed()
     }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Динамика веса").font(.title3).bold().foregroundColor(.white)
+                Text("Динамика веса").font(.title3).bold().foregroundColor(colorScheme == .dark ? .white : .black) // 👈
                 Spacer()
                 if let first = weightHistory.last?.weight, let last = weightHistory.first?.weight {
                     let diff = last - first
@@ -548,9 +692,10 @@ struct BodyProgressChartView: View {
             .chartYAxis(.hidden)
         }
         .padding()
-        .background(Color.white.opacity(0.03))
+        .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white) // 👈
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)) // 👈
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) // 👈
         .padding(.horizontal, 20)
     }
 }
@@ -574,6 +719,8 @@ struct BodyStatsView: View {
 struct StatAdjuster: View {
     var title: String; var value: String; var unit: String
     var onMinus: () -> Void; var onPlus: () -> Void
+    @Environment(\.colorScheme) private var colorScheme // 👈
+    
     var body: some View {
         VStack(spacing: 12) {
             Text(title).font(.caption).foregroundColor(.gray)
@@ -581,28 +728,37 @@ struct StatAdjuster: View {
                 Text(value).font(.system(size: 20, weight: .bold)).monospacedDigit()
                 Text(unit).font(.caption).foregroundColor(.gray).padding(.leading, 2)
             }
-            .foregroundColor(.white)
+            .foregroundColor(colorScheme == .dark ? .white : .black) // 👈
+            
             HStack(spacing: 16) {
-                Button(action: { UIImpactFeedbackGenerator(style: .light).impactOccurred(); withAnimation { onMinus() } }) { Image(systemName: "minus.circle.fill").foregroundColor(.white.opacity(0.3)) }
-                Button(action: { UIImpactFeedbackGenerator(style: .light).impactOccurred(); withAnimation { onPlus() } }) { Image(systemName: "plus.circle.fill").foregroundColor(.white.opacity(0.3)) }
+                Button(action: { UIImpactFeedbackGenerator(style: .light).impactOccurred(); withAnimation { onMinus() } }) { Image(systemName: "minus.circle.fill").foregroundColor(colorScheme == .dark ? .white.opacity(0.3) : .gray.opacity(0.5)) } // 👈
+                Button(action: { UIImpactFeedbackGenerator(style: .light).impactOccurred(); withAnimation { onPlus() } }) { Image(systemName: "plus.circle.fill").foregroundColor(colorScheme == .dark ? .white.opacity(0.3) : .gray.opacity(0.5)) } // 👈
             }
             .font(.title3)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(.ultraThinMaterial)
+        .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white)) // 👈
         .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)) // 👈
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) // 👈
     }
 }
 
 // MARK: - Фон
 struct ProfileBreathingBackground: View {
     @State private var phase = false
+    @Environment(\.colorScheme) private var colorScheme // 👈
+    
     var body: some View {
         ZStack {
-            Color(red: 0.05, green: 0.05, blue: 0.07).edgesIgnoringSafeArea(.all)
-            Circle().fill(Color.red.opacity(0.08)).frame(width: 350, height: 350).blur(radius: 120)
+            // 👈 ИСПРАВЛЕНИЕ: Темно-серый в темной теме, светло-серый (systemGroupedBackground) в светлой
+            (colorScheme == .dark ? Color(red: 0.05, green: 0.05, blue: 0.07) : Color(UIColor.systemGroupedBackground)).edgesIgnoringSafeArea(.all)
+            
+            Circle()
+                .fill(Color.red.opacity(colorScheme == .dark ? 0.08 : 0.03)) // 👈 В светлой теме блик слабее
+                .frame(width: 350, height: 350)
+                .blur(radius: 120)
                 .offset(x: phase ? 40 : -40, y: phase ? -30 : 30)
                 .scaleEffect(phase ? 1.2 : 0.8)
                 .animation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true), value: phase)

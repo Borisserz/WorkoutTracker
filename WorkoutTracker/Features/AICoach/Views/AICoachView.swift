@@ -39,7 +39,8 @@ struct AICoachView: View {
     @Environment(DIContainer.self) private var di
     @Environment(AICoachViewModel.self) private var viewModel
     @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
-    
+    @State private var actualHRV: Double? = nil
+    @State private var actualRHR: Double? = nil
     @State private var showChatView = false
     @State private var showWorkoutSheet = false
     @State private var showProgressSheet = false
@@ -139,30 +140,69 @@ struct AICoachView: View {
                                     .stroke(AngularGradient(colors: [.cyan, .purple, .cyan], center: .center), style: StrokeStyle(lineWidth: 5, lineCap: .round))
                                     .frame(width: 46, height: 46).rotationEffect(.degrees(-90))
                                     .shadow(color: .cyan.opacity(0.4), radius: 5)
-                                Text("\(Int(readinessValue * 100))").font(.system(size: 14, weight: .black).monospacedDigit())
-                                    .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
+                                Text("\(Int(cnsScore))").font(.system(size: 14, weight: .black).monospacedDigit())
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
                                     .contentTransition(.numericText())
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text("ИНДЕКС ЦНС").font(.system(size: 11, weight: .black)).foregroundColor(.gray)
-                                    Circle().fill(cnsScore > 50 ? .green : .red).frame(width: 6, height: 6).modifier(PulseEffect())
+                                    Circle().fill(CNSCalculator.getStatus(for: cnsScore).color).frame(width: 6, height: 6).modifier(PulseEffect())
                                 }
-                                Text(cnsScore > 50 ? "Оптимально для гипертрофии" : "Требуется восстановление")
+                                Text(CNSCalculator.getStatus(for: cnsScore).text)
                                     .font(.system(size: 15, weight: .bold))
-                                    .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
                             }
                             Spacer()
                         }
                         Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
                         HStack {
-                            MicroMetric(title: "HRV", value: "68", unit: "ms", color: .cyan)
+                            // Подставляем реальный HRV
+                            MicroMetric(title: "HRV", value: actualHRV != nil ? String(format: "%.0f", actualHRV!) : "--", unit: "ms", color: .cyan)
                             Spacer()
-                            MicroMetric(title: "RHR", value: "52", unit: "bpm", color: .purple)
+                            // Подставляем реальный RHR
+                            MicroMetric(title: "RHR", value: actualRHR != nil ? String(format: "%.0f", actualRHR!) : "--", unit: "bpm", color: .purple)
                             Spacer()
+                            // Реальный сон
                             MicroMetric(title: "Сон", value: String(format: "%.1f", sleepHours), unit: "ч", color: .orange)
                         }
                     }
+                    .onAppear {
+                                            // ЗАГРУЖАЕМ РЕАЛЬНЫЕ ДАННЫЕ ПРИ ОТКРЫТИИ ЭКРАНА
+                                            Task {
+                                                // Просим доступы (покажет попап Apple Health если нужно)
+                                                try? await HealthKitManager.shared.requestAuthorization()
+                                                
+                                                // Асинхронно тянем данные
+                                                let fetchedSleep = await HealthKitManager.shared.fetchSleepDuration()
+                                                let fetchedHRV = await HealthKitManager.shared.fetchLatestHRV()
+                                                let fetchedRHR = await HealthKitManager.shared.fetchLatestRHR()
+                                                
+                                                await MainActor.run {
+                                                    // Если данные есть в HealthKit, берем их, иначе оставляем дефолтные/ручные из настроек
+                                                    if let sleep = fetchedSleep { self.sleepHours = sleep }
+                                                    self.actualHRV = fetchedHRV
+                                                    self.actualRHR = fetchedRHR
+                                                    
+                                                    // Достаем воду из AppStorage (по дефолту 8, если юзер не вводил)
+                                                    let currentWater = UserDefaults.standard.integer(forKey: "waterCups")
+                                                    let water = currentWater > 0 ? currentWater : 8
+                                                    
+                                                    // Считаем новый крутой индекс ЦНС
+                                                    let newCNS = CNSCalculator.calculate(
+                                                        sleepHours: self.sleepHours,
+                                                        hrv: self.actualHRV,
+                                                        rhr: self.actualRHR,
+                                                        waterCups: water
+                                                    )
+                                                    
+                                                    withAnimation(.easeOut(duration: 1.5)) {
+                                                        self.cnsScore = newCNS
+                                                        self.readinessValue = newCNS / 100.0
+                                                    }
+                                                }
+                                            }
+                                        }
                     // 👈 АДАПТИВНАЯ КАРТОЧКА
                     .padding(16)
                     .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))

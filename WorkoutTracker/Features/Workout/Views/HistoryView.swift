@@ -199,9 +199,13 @@ struct ParticleExplosionView: View {
 }
 
 // MARK: - ВЕРХНИЕ ОСТРОВКИ
+// MARK: - ВЕРХНИЕ ОСТРОВКИ
 struct TopStatsIslandsView: View {
     var listViewModel: WorkoutListViewModel
     var unitsManager: UnitsManager
+    
+    // 👈 ДОБАВЛЕНО: Единый стейт, который знает, какая карточка сейчас открыта
+    @State private var activeTooltip: String? = nil
     
     var body: some View {
         HStack(spacing: 12) {
@@ -213,7 +217,8 @@ struct TopStatsIslandsView: View {
                 tooltipTitle: "Средняя длительность",
                 tooltipDesc: "Отличное время под нагрузкой.",
                 statusText: nil,
-                statusColor: nil
+                statusColor: nil,
+                activeTooltip: $activeTooltip // 👈 Передаем привязку
             )
             
             let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
@@ -225,7 +230,8 @@ struct TopStatsIslandsView: View {
                 tooltipTitle: "Средний вес",
                 tooltipDesc: "Ваш суммарный средний тоннаж.",
                 statusText: nil,
-                statusColor: nil
+                statusColor: nil,
+                activeTooltip: $activeTooltip // 👈 Передаем привязку
             )
             
             StatIslandWithTooltip(
@@ -236,7 +242,8 @@ struct TopStatsIslandsView: View {
                 tooltipTitle: "Средний пульс",
                 tooltipDesc: "Ваш пульс в норме.",
                 statusText: "Идеальный показатель",
-                statusColor: .green
+                statusColor: .green,
+                activeTooltip: $activeTooltip // 👈 Передаем привязку
             )
         }
         .padding(.horizontal, 20)
@@ -248,8 +255,16 @@ struct StatIslandWithTooltip: View {
     @Environment(\.colorScheme) private var colorScheme
     var icon: String; var title: String; var value: String; var color: Color
     var tooltipTitle: String; var tooltipDesc: String; var statusText: String?; var statusColor: Color?
+    
+    // 👈 ДОБАВЛЕНО: Привязка к родителю
+    @Binding var activeTooltip: String?
+    
     @State private var isBreathing = false
-    @State private var showCloud = false
+    
+    // Вычисляем, открыто ли облачко ИМЕННО ДЛЯ ЭТОЙ карточки
+    private var showCloud: Bool {
+        activeTooltip == title
+    }
     
     var body: some View {
         ZStack(alignment: .top) {
@@ -263,15 +278,26 @@ struct StatIslandWithTooltip: View {
             .frame(maxWidth: .infinity).padding(.vertical, 16).background(.ultraThinMaterial).background(color.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: 20)).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.primary.opacity(0.05), lineWidth: 1))
             .shadow(color: color.opacity(isBreathing ? 0.3 : 0.05), radius: isBreathing ? 15 : 5, y: 5)
-            // 👈 ИСПРАВЛЕНИЕ: Обычный тап + автоскрытие тултипа
             .onTapGesture {
                 HapticManager.shared.impact(.medium)
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                    showCloud.toggle()
+                    // 👈 ЛОГИКА: Если нажали на уже открытую — закрываем. Иначе — открываем эту, что автоматически закроет другие
+                    if activeTooltip == title {
+                        activeTooltip = nil
+                    } else {
+                        activeTooltip = title
+                    }
                 }
-                if showCloud {
+                
+                // Автоскрытие через 3 секунды
+                if activeTooltip == title {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        withAnimation { showCloud = false }
+                        withAnimation {
+                            // Закрываем только если за эти 3 секунды не открыли другую карточку
+                            if activeTooltip == title {
+                                activeTooltip = nil
+                            }
+                        }
                     }
                 }
             }
@@ -291,6 +317,7 @@ struct StatIslandWithTooltip: View {
         }
     }
 }
+
 
 // MARK: - ПОИСК И ВЫПАДАЮЩИЙ СПИСОК
 struct HistorySearchBar: View {

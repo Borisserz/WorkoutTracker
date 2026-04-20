@@ -3,7 +3,7 @@ internal import SwiftUI
 import SwiftData
 import Charts
 import ActivityKit
-
+import Combine
 // MARK: - 1. Router (Логика навигации)
 @Observable
 @MainActor
@@ -73,7 +73,7 @@ struct OverviewView: View {
                         headerSection
                         
                         // НОВЫЕ КОЛЬЦА АКТИВНОСТИ
-                        DailyActivityRings(recentWorkouts: recentWorkouts, unitsManager: UnitsManager.shared)
+                        DailyActivityRings(recentWorkouts: recentWorkouts, viewModel: dashboardViewModel)
                         
                         LiveVitalsCard()
                         
@@ -563,101 +563,346 @@ struct OverviewView: View {
     // MARK: - Кольца Активности (Новый дизайн)
     struct DailyActivityRings: View {
         let recentWorkouts: [Workout]
-        let unitsManager: UnitsManager
+        let viewModel: DashboardViewModel
         @State private var animate = false
         
-        private var todayStats: (cals: CGFloat, mins: CGFloat, volume: CGFloat) {
+        // Стейт для отображения модалки
+        @State private var selectedRing: ActivityRingType? = nil
+        
+        // Цели по умолчанию
+        let targetCalories = 500.0
+        let targetSteps = 10000.0
+        let targetWater = 2.5 // Литры
+        
+        private var todayStats: (cals: CGFloat, steps: CGFloat, water: CGFloat, rawCals: Int) {
+            let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
             let todayWorkouts = recentWorkouts.filter { Calendar.current.isDateInToday($0.date) }
-            let totalSecs = todayWorkouts.reduce(0) { $0 + $1.durationSeconds }
-            let totalVol = todayWorkouts.reduce(0.0) { $0 + $1.totalStrengthVolume }
-            let cals = CGFloat(totalSecs / 60) * 6.5
+            
+            let totalCals = todayWorkouts.reduce(0) { sum, workout in
+                sum + CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+            }
             
             return (
-                cals: min(cals / 500.0, 1.0),
-                mins: min(CGFloat(totalSecs / 60) / 60.0, 1.0),
-                volume: min(CGFloat(totalVol) / 5000.0, 1.0)
+                cals: min(CGFloat(totalCals) / targetCalories, 1.0),
+                steps: min(CGFloat(viewModel.todaySteps) / targetSteps, 1.0),
+                water: min(CGFloat(viewModel.todayWaterLiters) / targetWater, 1.0),
+                rawCals: totalCals
             )
         }
         
         var body: some View {
             HStack(spacing: 30) {
-                ActivityRing(color: Color(red: 1.0, green: 0.15, blue: 0.3), progress: todayStats.cals, icon: "flame.fill", title: "Ккал")
-                ActivityRing(color: Color(red: 0.2, green: 0.9, blue: 0.2), progress: todayStats.mins, icon: "figure.run", title: "Мин")
-                ActivityRing(color: Color.blue, progress: todayStats.volume, icon: "drop.fill", title: "Объем")
+                // КОЛЬЦО 1: Калории
+                ActivityRing(
+                    color: Color(red: 1.0, green: 0.15, blue: 0.3),
+                    progress: todayStats.cals,
+                    icon: "flame.fill",
+                    title: "Ккал",
+                    valueText: "\(todayStats.rawCals)"
+                ) {
+                    selectedRing = .calories
+                }
+                
+                // КОЛЬЦО 2: Шаги
+                ActivityRing(
+                    color: Color(red: 0.2, green: 0.9, blue: 0.2),
+                    progress: todayStats.steps,
+                    icon: "figure.walk",
+                    title: "Шаги",
+                    valueText: "\(viewModel.todaySteps)"
+                ) {
+                    selectedRing = .steps
+                }
+                
+                // КОЛЬЦО 3: Вода
+                ActivityRing(
+                    color: Color.cyan,
+                    progress: todayStats.water,
+                    icon: "drop.fill",
+                    title: "Вода",
+                    valueText: String(format: "%.1f Л", viewModel.todayWaterLiters)
+                ) {
+                    selectedRing = .water
+                }
             }
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity)
             .onAppear {
                 withAnimation(.spring(response: 1.5, dampingFraction: 0.7).delay(0.2)) { animate = true }
             }
+            .sheet(item: $selectedRing) { ringType in
+                ActivityRingDetailSheet(
+                    type: ringType,
+                    rawCals: todayStats.rawCals,
+                    rawSteps: viewModel.todaySteps,
+                    rawWater: viewModel.todayWaterLiters
+                )
+                .presentationDetents([.height(420)]) // Высота шторки
+                .presentationCornerRadius(32)
+                .presentationDragIndicator(.visible)
+            }
         }
     }
-    
+    enum ActivityRingType: String, Identifiable {
+        case calories, steps, water
+        var id: String { rawValue }
+    }
     struct ActivityRing: View {
         var color: Color
         var progress: CGFloat
         var icon: String
         var title: String
+        var valueText: String
+        var action: () -> Void // Экшен для тапа
+        
         @State private var currentProgress: CGFloat = 0
-        @Environment(\.colorScheme) var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ ПРОВЕРКИ ТЕМЫ
+        @Environment(\.colorScheme) var colorScheme
         
         var body: some View {
-            VStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .stroke(color.opacity(0.15), style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                        .frame(width: 70, height: 70)
+            Button(action: {
+                let generator = UIImpactFeedbackGenerator(style: .light)
+                generator.impactOccurred()
+                action()
+            }) {
+                VStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .stroke(color.opacity(0.15), style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                            .frame(width: 70, height: 70)
+                        
+                        Circle()
+                            .trim(from: 0, to: currentProgress)
+                            .stroke(color, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                            .frame(width: 70, height: 70)
+                            .rotationEffect(.degrees(-90))
+                            .shadow(color: color.opacity(0.6), radius: 10)
+                        
+                        Image(systemName: icon)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(color)
+                    }
                     
-                    Circle()
-                        .trim(from: 0, to: currentProgress)
-                        .stroke(color, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                        .frame(width: 70, height: 70)
-                        .rotationEffect(.degrees(-90))
-                        .shadow(color: color.opacity(0.6), radius: 10)
-                    
-                    Image(systemName: icon)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(color)
+                    VStack(spacing: 0) {
+                        Text(valueText)
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .contentTransition(.numericText())
+                        
+                        Text(title)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
+                    }
                 }
-                
-                Text(title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                // 👈 ИСПРАВЛЕНИЕ: Черный текст для светлой темы, белый для темной
-                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
             }
+            .buttonStyle(ScaleButtonStyle()) // Эффект нажатия
             .onAppear {
                 withAnimation(.easeOut(duration: 1.5)) { currentProgress = progress }
             }
+            .onChange(of: progress) { _, newValue in
+                withAnimation(.easeOut(duration: 1.5)) { currentProgress = newValue }
+            }
+        }
+    }
+    
+    // MARK: - Модалка Деталей колец (Glassmorphism)
+    struct ActivityRingDetailSheet: View {
+        let type: ActivityRingType
+        let rawCals: Int
+        let rawSteps: Int
+        let rawWater: Double
+        
+        @Environment(\.dismiss) private var dismiss
+        @Environment(\.colorScheme) private var colorScheme
+        @Environment(ThemeManager.self) private var themeManager
+        
+        // Динамические данные в зависимости от кольца
+        var config: (title: String, value: String, unit: String, icon: String, color: Color, description: String, canOpenFoodTracker: Bool) {
+            switch type {
+            case .calories:
+                return ("Сожжено сегодня", "\(rawCals)", "ккал", "flame.fill", Color(red: 1.0, green: 0.15, blue: 0.3), "Калории, сожженные исключительно во время силовых и кардио тренировок в WorkoutTracker.", false)
+            case .steps:
+                return ("Шаги за день", "\(rawSteps)", "шагов", "figure.walk", Color(red: 0.2, green: 0.9, blue: 0.2), "Ваша дневная активность. Данные автоматически синхронизируются с Apple Health и FoodTracker.", true)
+            case .water:
+                return ("Водный баланс", String(format: "%.1f", rawWater), "литров", "drop.fill", .cyan, "Количество выпитой воды. Поддержание гидратации критически важно для мышечного роста.", true)
+            }
+        }
+        
+        var body: some View {
+            ZStack {
+                (colorScheme == .dark ? themeManager.current.surface : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
+                
+                // Фоновое свечение
+                Circle()
+                    .fill(config.color.opacity(0.15))
+                    .frame(width: 250, height: 250)
+                    .blur(radius: 60)
+                    .offset(y: -100)
+                
+                VStack(spacing: 24) {
+                    // Иконка
+                    ZStack {
+                        Circle()
+                            .fill(config.color.opacity(0.2))
+                            .frame(width: 80, height: 80)
+                        Image(systemName: config.icon)
+                            .font(.system(size: 40, weight: .bold))
+                            .foregroundColor(config.color)
+                            .shadow(color: config.color.opacity(0.5), radius: 10, y: 5)
+                    }
+                    .padding(.top, 30)
+                    
+                    // Значение
+                    VStack(spacing: 8) {
+                        Text(config.title)
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.gray)
+                            .textCase(.uppercase)
+                        
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text(config.value)
+                                .font(.system(size: 56, weight: .heavy, design: .rounded))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            Text(config.unit)
+                                .font(.title3)
+                                .fontWeight(.bold)
+                                .foregroundColor(config.color)
+                        }
+                        
+                        Text(config.description)
+                            .font(.callout)
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .black.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .fixedSize(horizontal: false, vertical: true) // 👈 1. ЭТО ЗАПРЕТИТ ОБРЕЗАТЬ ТЕКСТ
+                            .padding(.horizontal, 30)
+                            .padding(.top, 8)
+                    }
+                    
+                    Spacer()
+                    
+                    // Кнопка перехода (только для шагов и воды)
+                    if config.canOpenFoodTracker {
+                        Button(action: openFoodTracker) {
+                            HStack(spacing: 10) {
+                                Text("Открыть FoodTracker")
+                                    .font(.headline)
+                                    .fontWeight(.bold)
+                                Image(systemName: "arrow.up.forward.app")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 16)
+                            .background(config.color)
+                            .cornerRadius(20)
+                            .shadow(color: config.color.opacity(0.4), radius: 10, y: 5)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
+                    } else {
+                        // Кнопка "Закрыть" для калорий
+                        Button(action: { dismiss() }) {
+                            Text("Понятно")
+                                .font(.headline)
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                                .cornerRadius(20)
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
+                    }
+                }
+            }
+        }
+        
+        // Метод открытия FoodTracker
+        private func openFoodTracker() {
+            let generator = UIImpactFeedbackGenerator(style: .heavy)
+            generator.impactOccurred()
+            
+            if let url = URL(string: "foodtracker://") {
+                UIApplication.shared.open(url)
+            }
+            dismiss()
         }
     }
     
     // MARK: - Пульс Карточка
     struct LiveVitalsCard: View {
-        @Environment(\.colorScheme) private var colorScheme: ColorScheme 
+        @Environment(\.colorScheme) private var colorScheme: ColorScheme
         @State private var isPulsing = false
+        
+        // Подключаем наш монитор
+        @State private var vitals = VitalsMonitor()
+        
+        // Таймер для обновления текста "Х мин назад"
+        let timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+        @State private var timeAgoTrigger = false
+        
         var body: some View {
             HStack(spacing: 16) {
                 ZStack {
-                    Circle().fill(Color.red.opacity(0.2)).frame(width: 40, height: 40).scaleEffect(isPulsing ? 1.3 : 1.0).opacity(isPulsing ? 0 : 1)
-                    Circle().fill(Color.red.opacity(0.2)).frame(width: 40, height: 40).scaleEffect(isPulsing ? 1.1 : 1.0)
-                    Image(systemName: "heart.fill").foregroundStyle(Color.red).font(.system(size: 20)).scaleEffect(isPulsing ? 1.1 : 0.9)
+                    Circle()
+                        .fill(Color.red.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                        .scaleEffect(isPulsing ? 1.3 : 1.0)
+                        .opacity(isPulsing ? 0 : 1)
+                    
+                    Circle()
+                        .fill(Color.red.opacity(0.2))
+                        .frame(width: 40, height: 40)
+                        .scaleEffect(isPulsing ? 1.1 : 1.0)
+                    
+                    Image(systemName: "heart.fill")
+                        .foregroundStyle(Color.red)
+                        .font(.system(size: 20))
+                        .scaleEffect(isPulsing ? 1.1 : 0.9)
                 }
+                
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Текущий пульс").font(.caption).foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text("Текущий пульс").font(.caption).foregroundStyle(.secondary)
+                        // Маленький бейджик свежести
+                        Text(vitals.timeAgoText)
+                            .font(.system(size: 9, weight: .bold))
+                            .padding(.horizontal, 6).padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.15))
+                            .foregroundStyle(.secondary)
+                            .clipShape(Capsule())
+                            .id(timeAgoTrigger) // Триггер для обновления текста
+                    }
+                    
                     HStack(alignment: .bottom, spacing: 2) {
-                        Text("--").font(.system(size: 28, weight: .black, design: .rounded)).foregroundStyle(.primary)
+                        Text(vitals.currentBPM > 0 ? "\(Int(vitals.currentBPM))" : "--")
+                            .font(.system(size: 28, weight: .black, design: .rounded))
+                            .foregroundStyle(.primary)
+                            .contentTransition(.numericText())
                         Text("BPM").font(.caption.bold()).foregroundStyle(Color.red).padding(.bottom, 4)
                     }
                 }
+                
                 Spacer()
-                Image(systemName: "waveform.path.ecg").font(.system(size: 30)).foregroundStyle(Color.red.opacity(0.5))
+                
+                Image(systemName: "waveform.path.ecg")
+                    .font(.system(size: 30))
+                    .foregroundStyle(Color.red.opacity(0.5))
             }
             .padding(20)
-            // 👇 УНИФИЦИРОВАННЫЙ СТИЛЬ: Фон, рамка 1.5, мягкая тень
             .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground)), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1.5))
             .shadow(color: colorScheme == .dark ? Color.red.opacity(0.1) : Color.black.opacity(0.08), radius: 20, x: 0, y: 5)
-            .onAppear { withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { isPulsing = true } }
+            .onAppear {
+                // Запускаем пульсацию и мониторинг
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { isPulsing = true }
+                vitals.startMonitoring()
+            }
+            .onReceive(timer) { _ in
+                // Дергаем стейт каждую минуту, чтобы обновилось "1 мин назад" -> "2 мин назад"
+                timeAgoTrigger.toggle()
+            }
         }
     }
     // MARK: - Интеграция Диаграммы Мышц
@@ -720,20 +965,30 @@ struct OverviewView: View {
                 }
                 .padding(.vertical, 10)
                 
+                // 👇 Сетка вместо горизонтального скролла
                 if !viewModel.dashboardMuscleData.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
-                            ForEach(viewModel.dashboardMuscleData, id: \.muscle) { item in
-                                HStack(spacing: 6) {
-                                    Circle().fill(colorManager.getColor(for: item.muscle)).frame(width: 10, height: 10)
-                                    Text(LocalizedStringKey(item.muscle))
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
-                                }
+                    LazyVGrid(
+                        columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3),
+                        alignment: .center,
+                        spacing: 12
+                    ) {
+                        ForEach(viewModel.dashboardMuscleData, id: \.muscle) { item in
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .fill(colorManager.getColor(for: item.muscle))
+                                    .frame(width: 10, height: 10)
+                                
+                                Text(LocalizedStringKey(item.muscle))
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
                             }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.leading, 10)
                         }
                     }
-                    .padding(.top, 8)
+                    .padding(.top, 16)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -744,6 +999,7 @@ struct OverviewView: View {
             .onAppear { animateChart = true }
         }
         
+        // Эти функции теперь правильно находятся ВНУТРИ структуры MusclePieChartIsland
         func trimStart(for index: Int) -> Double {
             if index == 0 { return 0 }
             return (0..<index).reduce(0) { $0 + chartData[$1].percentage }
@@ -1016,6 +1272,45 @@ struct OverviewView: View {
                     .frame(width: 400)
                     .blur(radius: 130)
                     .offset(x: 100, y: 100)
+            }
+        }
+    }
+    
+    @Observable
+    @MainActor
+    final class VitalsMonitor {
+        var currentBPM: Double = 0.0
+        var lastUpdated: Date? = nil
+        
+        var timeAgoText: String {
+            guard let date = lastUpdated else { return "Нет данных" }
+            let minutes = Int(Date().timeIntervalSince(date) / 60)
+            if minutes == 0 { return "Только что" }
+            if minutes < 60 { return "" }
+            let hours = minutes / 60
+            return "\(hours) ч назад"
+        }
+        
+        func startMonitoring() {
+            Task {
+                // 1. Запрашиваем доступы (на всякий случай)
+                try? await HealthKitManager.shared.requestAuthorization()
+                
+                // 2. Сразу грузим последнее известное значение
+                if let initial = try? await HealthKitManager.shared.fetchLatestHeartRate() {
+                    self.currentBPM = initial.value
+                    self.lastUpdated = initial.date
+                }
+                
+                // 3. Подписываемся на новые замеры от системы
+                await HealthKitManager.shared.startHeartRateObservation { hrValue, date in
+                    Task { @MainActor in
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                            self.currentBPM = hrValue
+                            self.lastUpdated = date
+                        }
+                    }
+                }
             }
         }
     }

@@ -205,6 +205,7 @@ struct WorkoutCalendarView: View {
 }
 
 // MARK: - Month Component
+// MARK: - Month Component
 
 struct MonthView: View {
     let monthDate: Date
@@ -239,19 +240,25 @@ struct MonthView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 20) {
+            // Красивый заголовок месяца
             Text(monthTitle)
-                .font(.title3)
-                .bold()
+                .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundColor(themeManager.current.primaryAccent)
+                .textCase(.uppercase)
+                .padding(.leading, 8)
             
-            weekDaysHeader
-            daysGrid
+            VStack(spacing: 16) {
+                weekDaysHeader
+                daysGrid
+            }
         }
-        .padding()
-        .background(colorScheme == .dark ? themeManager.current.surface : Color(UIColor.secondarySystemGroupedBackground))
-        .cornerRadius(12)
-        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
+        .padding(20)
+        // Матовая подложка в стиле Apple
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .cornerRadius(24)
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 15, x: 0, y: 5)
     }
     
     private var weekDaysHeader: some View {
@@ -259,8 +266,7 @@ struct MonthView: View {
             ForEach(0..<7, id: \.self) { index in
                 let daySymbolIndex = (calendar.firstWeekday - 1 + index) % 7
                 Text(calendar.shortWeekdaySymbols[daySymbolIndex].prefix(1))
-                    .font(.caption2)
-                    .bold()
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(themeManager.current.secondaryAccent)
                     .frame(maxWidth: .infinity)
             }
@@ -268,11 +274,13 @@ struct MonthView: View {
     }
     
     private var daysGrid: some View {
-        LazyVGrid(columns: columns, spacing: 6) {
+        LazyVGrid(columns: columns, spacing: 12) {
+            // Пустые ячейки для сдвига начала месяца
             ForEach(0..<firstDayOffset, id: \.self) { _ in
-                Color.clear.frame(height: 30)
+                Color.clear.frame(height: 44)
             }
             
+            // Дни месяца
             ForEach(daysInMonth, id: \.self) { date in
                 dayView(for: date)
             }
@@ -284,12 +292,14 @@ struct MonthView: View {
         if let mw = monthWorkouts.first(where: { calendar.isDate($0.date, inSameDayAs: date) }),
            let workout = context.model(for: mw.id) as? Workout {
             
+            // Если есть тренировка — делаем кнопку для перехода
             NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
                 DayCell(date: date, isWorkout: true)
             }
             .buttonStyle(PlainButtonStyle())
             
         } else {
+            // Обычный день без тренировки
             DayCell(date: date, isWorkout: false)
         }
     }
@@ -300,30 +310,49 @@ struct DayCell: View {
     let date: Date
     let isWorkout: Bool
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
+    @Environment(\.colorScheme) private var colorScheme
     
     private var dayNumber: String { "\(Calendar.current.component(.day, from: date))" }
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
     
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 6)
-                .fill(backgroundColor)
-                .aspectRatio(1, contentMode: .fit)
-                .overlay {
-                    if isToday {
-                        RoundedRectangle(cornerRadius: 6).stroke(themeManager.current.primaryAccent, lineWidth: 2)
-                    }
-                }
-            
+        VStack(spacing: 4) {
+            // Кружок с числом (Для сегодня - сплошной, для остальных - прозрачный)
             Text(dayNumber)
-                .font(.caption2)
-                .fontWeight(isToday ? .bold : .regular)
-                .foregroundColor(isWorkout ? .white : (isToday ? themeManager.current.primaryAccent : (colorScheme == .dark ? .white : .black)))
+                .font(.system(size: 16, weight: isToday || isWorkout ? .bold : .medium, design: .rounded))
+                .foregroundColor(textColor)
+                .frame(width: 36, height: 36)
+                .background(
+                    ZStack {
+                        if isToday {
+                            Circle()
+                                .fill(themeManager.current.primaryAccent)
+                                .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 5, y: 2)
+                        }
+                    }
+                )
+            
+            // 👈 ИСПРАВЛЕНИЕ: Светящаяся синяя точка под тренировочным днем
+            Circle()
+                .fill(isWorkout ? (isToday ? .white : themeManager.current.primaryAccent) : Color.clear)
+                .frame(width: 6, height: 6)
+                .shadow(color: isWorkout ? themeManager.current.primaryAccent.opacity(0.5) : .clear, radius: 3)
         }
+        .frame(height: 50) // Фиксируем высоту, чтобы сетка не прыгала
+        .contentShape(Rectangle()) // Чтобы кликалась вся зона
     }
     
-    private var backgroundColor: Color {
-        isWorkout ? Color.green : (colorScheme == .dark ? themeManager.current.surfaceVariant : Color(UIColor.tertiarySystemFill))
+    // Логика цвета текста
+    private var textColor: Color {
+        if isToday {
+            // На синем фоне сегодня текст всегда белый
+            return .white
+        }
+        if isWorkout {
+            // Дни с тренировками ярче
+            return colorScheme == .dark ? .white : .black
+        }
+        // Обычные дни слегка приглушенные
+        return colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5)
     }
 }

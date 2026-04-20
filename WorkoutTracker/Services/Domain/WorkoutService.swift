@@ -147,9 +147,9 @@ final class WorkoutService {
                         await self.deleteWorkout(workout)
                     }
                     
-                case .requestActiveState, .syncFullState:
-                    break
-                }
+                case .requestActiveState, .syncFullState, .updateHeartRate: // 👈 ДОБАВЛЕНО .updateHeartRate
+                                    break
+                                }
             }
         }
     }

@@ -123,6 +123,7 @@
 				CoreLogic/Helpers/LocalizationHelper.swift,
 				CoreLogic/Managers/UnitsManager.swift,
 				DataLayer/DTOs/AchievementModels.swift,
+				DataLayer/DTOs/SharedModels.swift,
 				DataLayer/DTOs/WorkoutModels.swift,
 				DataLayer/LocalDB/exercises_ru.json,
 				DataLayer/LocalDB/exercises.json,
@@ -823,7 +824,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTracker/Info.plist;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera to count reps using AI.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need access to your health data to read your body weight for accurate calorie tracking.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need access to save your completed workouts and active energy burned to Apple Health and close your Activity Rings.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need a microphone to communicate with the AI ​​coach.";
@@ -865,7 +865,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTracker/Info.plist;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need access to your camera to count reps using AI.";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need access to your health data to read your body weight for accurate calorie tracking.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need access to save your completed workouts and active energy burned to Apple Health and close your Activity Rings.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need a microphone to communicate with the AI ​​coach.";
