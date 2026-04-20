@@ -93,24 +93,28 @@ struct BodyHeatmapView: View {
                 .background(Color.clear)
                 
                 // 3. ВСПЛЫВАЮЩАЯ НАДПИСЬ СНИЗУ С КОЛИЧЕСТВОМ УПРАЖНЕНИЙ
-                .overlay(alignment: .bottom) {
-                    if let muscle = selectedMuscle {
-                        // 👈 ИСПРАВЛЕНИЕ: Берем количество из rawMuscleCounts по slug мышцы
-                        let count = rawMuscleCounts?[muscle.slug] ?? 0
-                        
-                        Text("\(LocalizedStringKey(muscle.name)): \(count) \(countLabel)")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(activeIsFront ? Color.blue.opacity(0.9) : Color.purple.opacity(0.9))
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
-                            .shadow(color: (activeIsFront ? Color.blue : Color.purple).opacity(0.6), radius: 10, y: 5)
-                            .padding(.bottom, 60)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    }
-                }
+                                .overlay(alignment: .bottom) {
+                                    if let muscle = selectedMuscle {
+                                        let count = rawMuscleCounts?[muscle.slug] ?? 0
+                                        let locName = NSLocalizedString(muscle.name, comment: "")
+                                        let locLabel = NSLocalizedString(countLabel, comment: "")
+                                        
+                                        // 👇 ИСПРАВЛЕНИЕ: Синий цвет для переда, Красный для зада
+                                        let badgeColor = activeIsFront ? Color.blue : Color.red
+                                        
+                                        Text("\(locName): \(count) \(locLabel)")
+                                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 20)
+                                            .padding(.vertical, 10)
+                                            .background(badgeColor.opacity(0.9))
+                                            .clipShape(Capsule())
+                                            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                                            .shadow(color: badgeColor.opacity(0.6), radius: 10, y: 5)
+                                            .padding(.bottom, 60)
+                                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                                    }
+                                }
             }
             .frame(height: isCompactMode ? nil : 500)
             .background(Color.clear)
@@ -132,24 +136,28 @@ struct BodyHeatmapView: View {
         let themeColor = activeIsFront ? Color.blue : Color.red
         
         let intensity = muscleIntensities[muscle.slug]
-        var fillColor: Color = colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.15)
         
-        if let val = intensity {
-            if isRecoveryMode {
-                if val >= 95 {
-                    fillColor = colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.15)
-                } else {
-                    let fatigue = 100.0 - Double(val)
-                    let redOpacity = 0.2 + (0.7 * (fatigue / 100.0))
-                    fillColor = Color.red.opacity(redOpacity)
-                }
-            } else {
-                if val > 0 {
-                    let opacity = min(1.0, max(0.3, Double(val) / 100.0))
-                    fillColor = themeColor.opacity(opacity)
-                }
-            }
-        }
+           // 👇 ИСПРАВЛЕНО: Вместо черного используем очень легкий серый для светлой темы
+           var fillColor: Color = colorScheme == .dark ? Color.white.opacity(0.12) : Color.gray.opacity(0.15)
+           
+           if let val = intensity {
+               if isRecoveryMode {
+                   if val >= 95 {
+                       fillColor = colorScheme == .dark ? Color.white.opacity(0.12) : Color.gray.opacity(0.15)
+                   } else {
+                       let fatigue = 100.0 - Double(val)
+                       // 👇 ИСПРАВЛЕНО: В светлой теме делаем красный цвет чуть прозрачнее, чтобы не был "грязным"
+                       let redOpacity = colorScheme == .dark ? (0.2 + (0.7 * (fatigue / 100.0))) : (0.1 + (0.5 * (fatigue / 100.0)))
+                       fillColor = Color.red.opacity(redOpacity)
+                   }
+               } else {
+                   if val > 0 {
+                       let opacity = min(1.0, max(0.3, Double(val) / 100.0))
+                       fillColor = themeColor.opacity(opacity)
+                   }
+               }
+           }
+           
         
         return Button {
             let generator = UISelectionFeedbackGenerator()
@@ -168,13 +176,14 @@ struct BodyHeatmapView: View {
             ZStack {
                 finalPath.fill(fillColor)
                 
-                // 👈 ИСПРАВЛЕНИЕ: УБРАНА ЖИРНАЯ ОБВОДКА И СВЕЧЕНИЕ ПРИ ВЫБОРЕ. Теперь только контур.
-                let strokeColor = colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.black.opacity(0.5)
-                finalPath.stroke(strokeColor, lineWidth: 1.5)
-            }
-        }
-        .buttonStyle(.plain)
-    }
+                
+                         // 👇 ИСПРАВЛЕНО: Заменили черную обводку на светло-серую для светлой темы
+                         let strokeColor = colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.gray.opacity(0.3)
+                         finalPath.stroke(strokeColor, lineWidth: 1.5)
+                     }
+                 }
+                 .buttonStyle(.plain)
+             }
     
     // MARK: - Рендеринг Плашек (Без изменений)
     func drawMuscleTag(_ muscle: MuscleGroup, centeringOffset: CGFloat, scale: CGFloat) -> some View {

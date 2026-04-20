@@ -185,7 +185,7 @@ struct GoalSelectionSheet: View {
     @Environment(\.dismiss) var dismiss
     var onGoalCreated: () -> Void
     @Environment(ThemeManager.self) private var themeManager
-    
+    @Environment(\.colorScheme) private var colorScheme
     @State private var navigateToStrength = false
     @State private var navigateToBodyweight = false
     @State private var navigateToConsistency = false
@@ -260,169 +260,172 @@ struct GoalSelectionSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title)
                         .font(.headline)
-                        .foregroundColor(themeManager.current.primaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // <--- АДАПТАЦИЯ
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // <--- АДАПТАЦИЯ
                         .multilineTextAlignment(.leading)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryAccent.opacity(0.5) : .gray.opacity(0.5)) // <--- АДАПТАЦИЯ
             }
             .padding()
-            .background(themeManager.current.surface)
+            // <--- АДАПТАЦИЯ ФОНА КАРТОЧКИ
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
             .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
         }
         .buttonStyle(.plain)
     }
-}
-
-// MARK: - Goal Setup Detail Form
-struct GoalSetupDetailView: View {
-    let type: GoalType
-    var onComplete: () -> Void
     
-    @Environment(\.modelContext) private var context
-    @Environment(UnitsManager.self) var unitsManager
-    @Environment(DashboardViewModel.self) var dashboardViewModel
-    
-    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var currentBodyWeight = 75.0
-    
-    // ✅ 1. Добавляем стейт для хранения списка упражнений
-    @State private var availableExercises: [String] = []
-    
-    @State private var targetWeightString: String = ""
-    @State private var targetDays: Int = 10
-    @State private var targetReps: Int = 1
-    @State private var targetDate: Date = Calendar.current.date(byAdding: .month, value: 1, to: Date())!
-    @State private var selectedExercise: String = "" // Оставляем пустым до загрузки
-    @Environment(ThemeManager.self) private var themeManager
-    var body: some View {
-        Form {
-            Section(header: Text(LocalizedStringKey("Goal Parameters"))) {
-                if type == .strength {
-                    // ✅ 2. Используем локальный массив availableExercises
-                    Picker(LocalizedStringKey("Exercise"), selection: $selectedExercise) {
-                        if availableExercises.isEmpty {
-                            Text("Loading...").tag("")
-                        } else {
-                            ForEach(availableExercises, id: \.self) { ex in
-                                Text(LocalizedStringKey(ex)).tag(ex)
+    // MARK: - Goal Setup Detail Form
+    struct GoalSetupDetailView: View {
+        let type: GoalType
+        var onComplete: () -> Void
+        
+        @Environment(\.modelContext) private var context
+        @Environment(UnitsManager.self) var unitsManager
+        @Environment(DashboardViewModel.self) var dashboardViewModel
+        
+        @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var currentBodyWeight = 75.0
+        
+        // ✅ 1. Добавляем стейт для хранения списка упражнений
+        @State private var availableExercises: [String] = []
+        
+        @State private var targetWeightString: String = ""
+        @State private var targetDays: Int = 10
+        @State private var targetReps: Int = 1
+        @State private var targetDate: Date = Calendar.current.date(byAdding: .month, value: 1, to: Date())!
+        @State private var selectedExercise: String = "" // Оставляем пустым до загрузки
+        @Environment(ThemeManager.self) private var themeManager
+        var body: some View {
+            Form {
+                Section(header: Text(LocalizedStringKey("Goal Parameters"))) {
+                    if type == .strength {
+                        // ✅ 2. Используем локальный массив availableExercises
+                        Picker(LocalizedStringKey("Exercise"), selection: $selectedExercise) {
+                            if availableExercises.isEmpty {
+                                Text("Loading...").tag("")
+                            } else {
+                                ForEach(availableExercises, id: \.self) { ex in
+                                    Text(LocalizedStringKey(ex)).tag(ex)
+                                }
                             }
                         }
-                    }
-                    .pickerStyle(.menu)
-                    .tint(themeManager.current.primaryAccent)
-                }
-                
-                if type == .strength || type == .bodyweight {
-                    HStack {
-                        Text(LocalizedStringKey("Target (\(unitsManager.weightUnitString()))"))
-                        Spacer()
-                        TextField("0", text: $targetWeightString)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .foregroundColor(themeManager.current.primaryAccent)
-                            .bold()
+                        .pickerStyle(.menu)
+                        .tint(themeManager.current.primaryAccent)
                     }
                     
-                    // ✅ СТЕППЕР ДЛЯ ПОВТОРЕНИЙ (Только для силы)
-                    if type == .strength {
-                        Stepper(value: $targetReps, in: 1...50) {
+                    if type == .strength || type == .bodyweight {
+                        HStack {
+                            Text(LocalizedStringKey("Target (\(unitsManager.weightUnitString()))"))
+                            Spacer()
+                            TextField("0", text: $targetWeightString)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .foregroundColor(themeManager.current.primaryAccent)
+                                .bold()
+                        }
+                        
+                        // ✅ СТЕППЕР ДЛЯ ПОВТОРЕНИЙ (Только для силы)
+                        if type == .strength {
+                            Stepper(value: $targetReps, in: 1...50) {
+                                HStack {
+                                    Text(LocalizedStringKey("Target Reps"))
+                                    Spacer()
+                                    Text("\(targetReps)")
+                                        .foregroundColor(themeManager.current.primaryAccent)
+                                        .bold()
+                                }
+                            }
+                        }
+                    } else if type == .consistency {
+                        Stepper(value: $targetDays, in: 5...365, step: 5) {
                             HStack {
-                                Text(LocalizedStringKey("Target Reps"))
+                                Text(LocalizedStringKey("Target Streak"))
                                 Spacer()
-                                Text("\(targetReps)")
+                                Text(LocalizedStringKey("\(targetDays) days"))
                                     .foregroundColor(themeManager.current.primaryAccent)
                                     .bold()
                             }
                         }
                     }
-                } else if type == .consistency {
-                    Stepper(value: $targetDays, in: 5...365, step: 5) {
-                        HStack {
-                            Text(LocalizedStringKey("Target Streak"))
-                            Spacer()
-                            Text(LocalizedStringKey("\(targetDays) days"))
-                                .foregroundColor(themeManager.current.primaryAccent)
-                                .bold()
+                }
+                
+                Section(header: Text(LocalizedStringKey("Deadline")), footer: Text(LocalizedStringKey("Set a realistic date to achieve your goal."))) {
+                    DatePicker(LocalizedStringKey("Target Date"), selection: $targetDate, in: Date()..., displayedComponents: .date)
+                }
+                
+                Section {
+                    Button(action: saveGoal) {
+                        Text(LocalizedStringKey("Set Goal"))
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .foregroundColor(themeManager.current.background)
+                    }
+                    .listRowBackground(themeManager.current.primaryAccent)
+                    .disabled(type == .strength && selectedExercise.isEmpty) // Защита
+                }
+            }
+            .navigationTitle(type.rawValue.capitalized)
+            // ✅ 3. Загружаем данные асинхронно при появлении вью
+            .task {
+                let catalog = await ExerciseDatabaseService.shared.getCatalog()
+                
+                // Фильтруем основные группы для целей (грудь, спина, ноги)
+                let pool = (catalog["Chest"] ?? []) + (catalog["Back"] ?? []) + (catalog["Legs"] ?? [])
+                let sortedPool = Array(Set(pool)).sorted()
+                
+                await MainActor.run {
+                    self.availableExercises = sortedPool
+                    
+                    // Теперь, когда данные есть, настраиваем начальные значения
+                    if type == .strength {
+                        if selectedExercise.isEmpty {
+                            selectedExercise = availableExercises.first ?? "Bench Press"
                         }
+                        let currentMax = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
+                        targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentMax + 5.0))
+                    } else if type == .bodyweight {
+                        targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentBodyWeight))
                     }
                 }
             }
-            
-            Section(header: Text(LocalizedStringKey("Deadline")), footer: Text(LocalizedStringKey("Set a realistic date to achieve your goal."))) {
-                DatePicker(LocalizedStringKey("Target Date"), selection: $targetDate, in: Date()..., displayedComponents: .date)
-            }
-            
-            Section {
-                          Button(action: saveGoal) {
-                              Text(LocalizedStringKey("Set Goal"))
-                                  .font(.headline)
-                                  .frame(maxWidth: .infinity)
-                                  .foregroundColor(themeManager.current.background)
-                          }
-                          .listRowBackground(themeManager.current.primaryAccent)
-                          .disabled(type == .strength && selectedExercise.isEmpty) // Защита
-                      }
-                  }
-                  .navigationTitle(type.rawValue.capitalized)
-                  // ✅ 3. Загружаем данные асинхронно при появлении вью
-                  .task {
-                      let catalog = await ExerciseDatabaseService.shared.getCatalog()
-                      
-                      // Фильтруем основные группы для целей (грудь, спина, ноги)
-                      let pool = (catalog["Chest"] ?? []) + (catalog["Back"] ?? []) + (catalog["Legs"] ?? [])
-                      let sortedPool = Array(Set(pool)).sorted()
-                      
-                      await MainActor.run {
-                          self.availableExercises = sortedPool
-                          
-                          // Теперь, когда данные есть, настраиваем начальные значения
-                          if type == .strength {
-                              if selectedExercise.isEmpty {
-                                  selectedExercise = availableExercises.first ?? "Bench Press"
-                              }
-                              let currentMax = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
-                              targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentMax + 5.0))
-                          } else if type == .bodyweight {
-                              targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentBodyWeight))
-                          }
-                      }
-                  }
-              }
-
-              private func saveGoal() {
-        let startingVal: Double
-        let targetVal: Double
-        
-        switch type {
-        case .strength:
-            startingVal = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
-            targetVal = unitsManager.convertToKilograms(Double(targetWeightString.replacingOccurrences(of: ",", with: ".")) ?? 0)
-        case .bodyweight:
-            startingVal = currentBodyWeight
-            targetVal = unitsManager.convertToKilograms(Double(targetWeightString.replacingOccurrences(of: ",", with: ".")) ?? 0)
-        case .consistency:
-            startingVal = Double(WidgetDataManager.load().streak)
-            targetVal = Double(targetDays)
         }
         
-        let newGoal = UserGoal(
-            type: type,
-            targetValue: targetVal,
-            startingValue: startingVal,
-            targetDate: targetDate,
-            exerciseName: type == .strength ? selectedExercise : nil,
-            targetReps: type == .strength ? targetReps : 1 // ✅ Сохраняем повторения
-        )
-        
-        context.insert(newGoal)
-        try? context.save()
-        
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
-        onComplete()
+        private func saveGoal() {
+            let startingVal: Double
+            let targetVal: Double
+            
+            switch type {
+            case .strength:
+                startingVal = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
+                targetVal = unitsManager.convertToKilograms(Double(targetWeightString.replacingOccurrences(of: ",", with: ".")) ?? 0)
+            case .bodyweight:
+                startingVal = currentBodyWeight
+                targetVal = unitsManager.convertToKilograms(Double(targetWeightString.replacingOccurrences(of: ",", with: ".")) ?? 0)
+            case .consistency:
+                startingVal = Double(WidgetDataManager.load().streak)
+                targetVal = Double(targetDays)
+            }
+            
+            let newGoal = UserGoal(
+                type: type,
+                targetValue: targetVal,
+                startingValue: startingVal,
+                targetDate: targetDate,
+                exerciseName: type == .strength ? selectedExercise : nil,
+                targetReps: type == .strength ? targetReps : 1 // ✅ Сохраняем повторения
+            )
+            
+            context.insert(newGoal)
+            try? context.save()
+            
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
+            onComplete()
+        }
     }
 }

@@ -229,7 +229,6 @@ struct StatsView: View {
         Task { await viewModel?.loadPeriodData(prCache: dashboardViewModel.personalRecordsCache) }
     }
 }
-// MARK: - 3. НОВЫЙ ДИЗАЙН ДАШБОРДА ОТ ДИЗАЙНЕРА (Интегрирован с БД)
 struct StatsContentView: View {
     @Bindable var viewModel: StatsViewModel
     let currentStats: PeriodStats
@@ -241,6 +240,7 @@ struct StatsContentView: View {
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 Адаптация темы
     @AppStorage("userGender") private var userGender = "male"
     
     @State private var showingAddGoal = false
@@ -250,12 +250,14 @@ struct StatsContentView: View {
     @State private var isFetchingReviewData = false
     @State private var reviewData: StatsDataResultDTO?
     
-    // Цвета дизайнера для жесткой фиксации
+    // Цвета дизайнера для жесткой фиксации (Темная тема)
     let bgDark = Color(red: 0.05, green: 0.05, blue: 0.07)
     
     var body: some View {
         ZStack {
-            bgDark.edgesIgnoringSafeArea(.all)
+            // 👈 ИСПРАВЛЕНИЕ: Светлый фон для светлой темы, старый для темной
+            (colorScheme == .dark ? bgDark : Color(UIColor.systemGroupedBackground))
+                .edgesIgnoringSafeArea(.all)
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
@@ -271,7 +273,7 @@ struct StatsContentView: View {
                     
                     VStack(spacing: 16) {
                         PeriodPicker(selectedPeriod: $viewModel.selectedPeriod)
-                        QuickStatsView(stats: currentStats, unitsManager: unitsManager, period: viewModel.selectedPeriod)
+                        QuickStatsView(stats: currentStats, unitsManager: unitsManager, period: viewModel.selectedPeriod, viewModel: viewModel)
                     }
                     
                     ComparisonSectionView(viewModel: viewModel, unitsManager: unitsManager)
@@ -315,7 +317,6 @@ struct StatsContentView: View {
                     .presentationDetents([.medium])
             }
         }
-        .preferredColorScheme(.dark)
     }
     
     private func fetchReviewDataAndShowSheet() {
@@ -349,12 +350,13 @@ struct StatsContentView: View {
 // MARK: - 1. Хедер
 struct HeaderView: View {
     @Binding var showProfile: Bool
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         HStack {
             Text("Прогресс")
                 .font(.system(size: 34, weight: .black, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
             Spacer()
             
             Button(action: {
@@ -366,8 +368,8 @@ struct HeaderView: View {
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 44, height: 44)
                     .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.white.opacity(0.2), lineWidth: 1))
-                    .foregroundStyle(.purple, .white.opacity(0.8))
+                    .overlay(Circle().stroke(colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 1))
+                    .foregroundStyle(colorScheme == .dark ? .purple : .blue, colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.1))
             }
         }
         .padding(.top, 10)
@@ -377,7 +379,8 @@ struct HeaderView: View {
 // MARK: - 2. Маскот и Стрик
 struct MascotStreakView: View {
     let streak: Int
-    
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
     var body: some View {
         HStack(spacing: 16) {
             ZStack {
@@ -386,7 +389,6 @@ struct MascotStreakView: View {
                     .frame(width: 60, height: 60)
                     .shadow(color: .orange.opacity(0.5), radius: 10, x: 0, y: 5)
                 
-                // Пользователь должен добавить картинку "fire_mascot" в Assets.
                 if UIImage(named: "fire_mascot") != nil {
                     Image("fire_mascot")
                         .resizable()
@@ -403,17 +405,18 @@ struct MascotStreakView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(streak > 0 ? "Ты в ударе, машина! 🔥" : "Начни свой стрик сегодня!")
                     .font(.subheadline)
-                    .foregroundColor(.gray)
+                    .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                 Text("\(streak) дней тренировок подряд")
                     .font(.headline)
-                    .foregroundColor(.white)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
             }
             Spacer()
         }
         .padding()
-        .background(Color.white.opacity(0.03))
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(20)
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, y: 4)
     }
 }
 
@@ -423,6 +426,8 @@ struct GoalsSectionView: View {
     let viewModel: StatsViewModel
     let unitsManager: UnitsManager
     @Environment(\.modelContext) private var context
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -430,10 +435,10 @@ struct GoalsSectionView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Ваши цели")
                         .font(.title2).bold()
-                        .foregroundColor(.white)
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
                     Text("Бросьте вызов себе")
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                 }
                 Spacer()
                 
@@ -448,23 +453,24 @@ struct GoalsSectionView: View {
                     .font(.system(size: 14, weight: .bold))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(Color.white)
-                    .foregroundColor(.black)
+                    .background(colorScheme == .dark ? Color.white : themeManager.current.primaryAccent)
+                    .foregroundColor(colorScheme == .dark ? .black : .white)
                     .clipShape(Capsule())
+                    .shadow(color: colorScheme == .dark ? .clear : themeManager.current.primaryAccent.opacity(0.3), radius: 5, y: 2)
                 }
             }
             
             if viewModel.activeGoals.isEmpty {
-                // Пустое состояние
                 VStack(spacing: 12) {
                     Text("У вас пока нет активных целей.")
-                        .foregroundColor(.gray)
+                        .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                         .font(.subheadline)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
-                .background(Color.white.opacity(0.03))
+                .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
                 .cornerRadius(16)
+                .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.03), radius: 5, y: 2)
             } else {
                 ForEach(viewModel.activeGoals) { goal in
                     DesignerGoalCard(goal: goal, currentValue: viewModel.activeGoalValues[goal.id] ?? 0, unitsManager: unitsManager) {
@@ -492,27 +498,29 @@ struct DesignerGoalCard: View {
     let currentValue: Double
     let unitsManager: UnitsManager
     let onDelete: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(spacing: 12) {
             HStack {
                 ZStack {
-                    Circle().fill(iconColor.opacity(0.2)).frame(width: 40, height: 40)
+                    Circle().fill(iconColor.opacity(0.15)).frame(width: 40, height: 40)
                     Image(systemName: iconName).foregroundColor(iconColor)
                 }
                 VStack(alignment: .leading) {
-                    Text(title).font(.headline).foregroundColor(.white)
-                    Text(subtitle).font(.caption).foregroundColor(.gray)
+                    Text(title).font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
+                    Text(subtitle).font(.caption).foregroundColor(colorScheme == .dark ? .gray : .secondary)
                 }
                 Spacer()
                 Menu {
                     Button(role: .destructive, action: onDelete) { Label("Удалить", systemImage: "trash") }
-                } label: { Image(systemName: "ellipsis").foregroundColor(.gray).padding(8) }
+                } label: { Image(systemName: "ellipsis").foregroundColor(colorScheme == .dark ? .gray : .secondary).padding(8) }
             }
             
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.1)).frame(height: 8)
+                    Capsule().fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)).frame(height: 8)
                     Capsule()
                         .fill(LinearGradient(colors: [iconColor.opacity(0.6), iconColor], startPoint: .leading, endPoint: .trailing))
                         .frame(width: geo.size.width * CGFloat(calculateProgress()), height: 8)
@@ -520,15 +528,16 @@ struct DesignerGoalCard: View {
             }.frame(height: 8)
             
             HStack {
-                Text(currentText).font(.caption).bold().foregroundColor(.white)
+                Text(currentText).font(.caption).bold().foregroundColor(colorScheme == .dark ? .white : .black)
                 Spacer()
-                Text(targetText).font(.caption).foregroundColor(.gray)
+                Text(targetText).font(.caption).foregroundColor(colorScheme == .dark ? .gray : .secondary)
             }
         }
         .padding()
-        .background(Color.white.opacity(0.03))
+        .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
         .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
     }
     
     private var iconName: String { goal.type == .strength ? "dumbbell.fill" : (goal.type == .bodyweight ? "scalemass.fill" : "flame.fill") }
@@ -559,7 +568,7 @@ struct DesignerGoalCard: View {
     
     private var targetText: String {
         switch goal.type {
-        case .strength: return "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(goal.targetValue))) \(unitsManager.weightUnitString())"
+        case .strength: return "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(goal.targetValue))) \(unitsManager.weightUnitString()) x \(goal.targetReps) reps"
         case .bodyweight: return "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(goal.targetValue))) \(unitsManager.weightUnitString())"
         case .consistency: return "\(Int(goal.targetValue)) дней"
         }
@@ -569,6 +578,7 @@ struct DesignerGoalCard: View {
 // MARK: - 4. Обзор с ИИ
 struct AIIslandView: View {
     let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         Button(action: {
@@ -582,31 +592,32 @@ struct AIIslandView: View {
                 
                 Text("Обзор эффективности с ИИ")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    // 👇 Текст корректно адаптируется
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(.white.opacity(0.5))
+                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .gray)
             }
             .padding()
-            .background(.ultraThinMaterial)
-            .background(
-                LinearGradient(colors: [Color.purple.opacity(0.2), Color.blue.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing)
-            )
+            // 👇 ИСПРАВЛЕНО: Убрано дублирование фонов, оставлен чистый и понятный цвет
+            .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(LinearGradient(colors: [.white.opacity(0.4), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                    .stroke(LinearGradient(colors: [colorScheme == .dark ? .white.opacity(0.4) : .purple.opacity(0.4), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
             )
-            .shadow(color: .purple.opacity(0.15), radius: 20, x: 0, y: 10)
+            .shadow(color: .purple.opacity(colorScheme == .dark ? 0.15 : 0.1), radius: 15, x: 0, y: 8)
         }
         .buttonStyle(.plain)
     }
 }
 
-// MARK: - 5. Карусель Времени и Быстрые Статы
+// MARK: - 5. Карусель Времени и Интерактивные Быстрые Статы
 struct PeriodPicker: View {
     @Binding var selectedPeriod: StatsView.Period
     @Namespace private var animation
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         HStack {
@@ -619,14 +630,14 @@ struct PeriodPicker: View {
                 }) {
                     Text(period.localizedName)
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(selectedPeriod == period ? .black : .gray)
+                        .foregroundColor(selectedPeriod == period ? (colorScheme == .dark ? .black : .white) : .gray)
                         .padding(.vertical, 8)
                         .frame(maxWidth: .infinity)
                         .background(
                             ZStack {
                                 if selectedPeriod == period {
                                     Capsule()
-                                        .fill(Color.white)
+                                        .fill(colorScheme == .dark ? Color.white : themeManager.current.primaryAccent)
                                         .matchedGeometryEffect(id: "ACTIVETAB", in: animation)
                                 }
                             }
@@ -635,7 +646,7 @@ struct PeriodPicker: View {
             }
         }
         .padding(4)
-        .background(Color.white.opacity(0.05))
+        .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05))
         .clipShape(Capsule())
     }
 }
@@ -644,160 +655,265 @@ struct QuickStatsView: View {
     let stats: PeriodStats
     let unitsManager: UnitsManager
     let period: StatsView.Period
+    @Bindable var viewModel: StatsViewModel // 👈
     
     var body: some View {
         HStack(spacing: 12) {
-            StatCard(icon: "figure.run", title: "Тренировки", value: "\(stats.workoutCount)")
+            InteractiveStatCard(
+                icon: "figure.run",
+                title: "Тренировки",
+                value: "\(stats.workoutCount)",
+                metric: .count,
+                selectedMetric: $viewModel.selectedMetric
+            )
             
             let vol = unitsManager.convertFromKilograms(stats.totalVolume)
-            // Умное форматирование: если вес больше 1000, переводим в тонны
             if vol > 1000 {
-                StatCard(icon: "dumbbell.fill", title: "Объем (Тонны)", value: LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0))
+                InteractiveStatCard(
+                    icon: "dumbbell.fill",
+                    title: "Объем (Тонны)",
+                    value: LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0),
+                    metric: .volume,
+                    selectedMetric: $viewModel.selectedMetric
+                )
             } else {
-                StatCard(icon: "dumbbell.fill", title: "Объем (\(unitsManager.weightUnitString()))", value: "\(Int(vol))")
+                InteractiveStatCard(
+                    icon: "dumbbell.fill",
+                    title: "Объем (\(unitsManager.weightUnitString()))",
+                    value: "\(Int(vol))",
+                    metric: .volume,
+                    selectedMetric: $viewModel.selectedMetric
+                )
             }
             
-            StatCard(icon: "map.fill", title: "Дистанция", value: "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters(stats.totalDistance))) км")
+            InteractiveStatCard(
+                icon: "map.fill",
+                title: "Дистанция",
+                value: "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters(stats.totalDistance))) км",
+                metric: .distance,
+                selectedMetric: $viewModel.selectedMetric
+            )
         }
     }
 }
 
-struct StatCard: View {
+struct InteractiveStatCard: View {
     var icon: String
     var title: String
     var value: String
+    var metric: StatsView.GraphMetric
+    @Binding var selectedMetric: StatsView.GraphMetric
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
+    
+    let activeColor = Color(hex: "E020FF")
+    
+    var isSelected: Bool {
+        selectedMetric == metric
+    }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: icon)
-                .foregroundColor(.purple)
-                .font(.title3)
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(value)
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(.white)
-                    .minimumScaleFactor(0.5)
-                    .lineLimit(1)
-                    .contentTransition(.numericText())
-                Text(title)
-                    .font(.system(size: 11))
-                    .foregroundColor(.gray)
-                    .lineLimit(1)
+        Button(action: {
+            UISelectionFeedbackGenerator().selectionChanged()
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                selectedMetric = metric
             }
+        }) {
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: icon)
+                    .foregroundColor(isSelected ? activeColor : .gray)
+                    .font(.title3)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(value)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                        .contentTransition(.numericText())
+                    Text(title)
+                        .font(.system(size: 11))
+                        .foregroundColor(isSelected ? (colorScheme == .dark ? .white.opacity(0.9) : .black.opacity(0.8)) : .gray)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            // 👈 АДАПТАЦИЯ ФОНА
+            .background(isSelected ? (colorScheme == .dark ? Color.white.opacity(0.1) : activeColor.opacity(0.1)) : (colorScheme == .dark ? Color.white.opacity(0.03) : Color.white))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? activeColor.opacity(0.6) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)), lineWidth: isSelected ? 1.5 : 1)
+            )
+            .shadow(color: isSelected ? activeColor.opacity(0.3) : .black.opacity(colorScheme == .dark ? 0 : 0.03), radius: 10, y: 5)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(Color.white.opacity(0.03))
-        .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .buttonStyle(.plain)
     }
 }
 
-// MARK: - 6. Сравнение дней (Интегрировано с БД)
+// MARK: - 6. Детальное сравнение (Обновленный дизайн)
 struct ComparisonSectionView: View {
     let viewModel: StatsViewModel
     let unitsManager: UnitsManager
+    @Environment(\.colorScheme) private var colorScheme
+    
+    let chartGradient = LinearGradient(
+        colors: [Color(hex: "E020FF"), Color(hex: "FA64FF")],
+        startPoint: .bottom,
+        endPoint: .top
+    )
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
+            
             Text("Детальное сравнение")
                 .font(.title3).bold()
-                .foregroundColor(.white)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
             
-            VStack(spacing: 20) {
+            VStack(spacing: 0) {
+                // График
                 if viewModel.chartData.isEmpty {
-                    Text("Нет данных для графика").foregroundColor(.gray).padding(.vertical, 40)
+                    Text("Нет данных для графика")
+                        .foregroundColor(.gray)
+                        .padding(.vertical, 60)
                 } else {
                     Chart {
                         ForEach(viewModel.chartData) { item in
-                            // График теперь показывает то, что выбрано в viewModel.selectedMetric
                             let displayVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(item.value) : item.value
                             
                             BarMark(
                                 x: .value("Период", item.label),
                                 y: .value("Значение", displayVal)
                             )
-                            .foregroundStyle(Color.purple.gradient)
-                            .cornerRadius(6)
+                            .foregroundStyle(chartGradient)
+                            .cornerRadius(8)
                         }
                     }
-                    .frame(height: 150)
+                    .frame(height: 180)
                     .chartYAxis(.hidden)
                     .chartXAxis {
-                        AxisMarks { _ in
-                            AxisValueLabel().foregroundStyle(Color.gray)
+                        AxisMarks { value in
+                            AxisValueLabel(centered: true)
+                                .foregroundStyle(Color.gray)
+                                .font(.caption2)
                         }
                     }
+                    .padding(20)
+                }
+                
+                Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                
+                // Блок "VS" внизу
+                if let first = viewModel.chartData.first, let last = viewModel.chartData.last, viewModel.chartData.count > 1 {
+                    let fVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(first.value) : first.value
+                    let lVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(last.value) : last.value
+                    let unitStr = viewModel.selectedMetric == .volume ? unitsManager.weightUnitString() : (viewModel.selectedMetric == .time ? "мин" : (viewModel.selectedMetric == .distance ? "км" : ""))
                     
-                    // Показываем сравнение первого и последнего элемента
-                    if let first = viewModel.chartData.first, let last = viewModel.chartData.last, viewModel.chartData.count > 1 {
-                        let fVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(first.value) : first.value
-                        let lVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(last.value) : last.value
+                    let diff = lVal - fVal
+                    let pct = fVal == 0 ? (lVal > 0 ? 100 : 0) : (diff / fVal) * 100.0
+                    
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Прошлый (\(first.label))").font(.caption).foregroundColor(.gray)
+                            Text("\(LocalizationHelper.shared.formatFlexible(fVal)) \(unitStr)")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                        }
                         
-                        let unitStr = viewModel.selectedMetric == .volume ? unitsManager.weightUnitString() : ""
+                        Spacer()
                         
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(first.label).font(.caption).foregroundColor(.gray)
-                                Text("\(Int(fVal)) \(unitStr)").font(.headline).foregroundColor(.white)
-                            }
-                            Spacer()
-                            Text("VS").font(.headline).foregroundColor(.white.opacity(0.2))
-                            Spacer()
-                            VStack(alignment: .trailing) {
-                                Text(last.label).font(.caption).foregroundColor(.gray)
-                                Text("\(Int(lVal)) \(unitStr)").font(.headline).foregroundColor(.purple)
-                            }
+                        VStack {
+                            Text("VS")
+                                .font(.system(size: 16, weight: .black))
+                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.2) : .black.opacity(0.15))
+                            
+                            Text("\(pct >= 0 ? "+" : "")\(Int(pct))%")
+                                .font(.caption).bold()
+                                .foregroundColor(pct >= 0 ? .green : .red)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text("Текущий (\(last.label))").font(.caption).foregroundColor(.gray)
+                            Text("\(LocalizationHelper.shared.formatFlexible(lVal)) \(unitStr)")
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(Color(hex: "E020FF"))
                         }
                     }
+                    .padding(20)
                 }
             }
-            .padding()
-            .background(Color.white.opacity(0.03))
-            .cornerRadius(20)
+            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
+            .cornerRadius(24)
+            .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, y: 5)
         }
         .padding(.top, 10)
     }
 }
 
-// MARK: - 7. Расширенная статистика (Навигация к твоим экранам)
+// MARK: - 7. Расширенная статистика (Новый дизайн)
 struct AdvancedStatsSectionView: View {
     @State private var openTab: Int? = nil
     let viewModel: StatsViewModel
     let userGender: String
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Расширенная статистика")
                 .font(.title3).bold()
-                .foregroundColor(.white)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
             
             VStack(spacing: 12) {
+                
                 // 1. Стиль и оборудование
-                CustomDisclosure(title: "Стиль и оборудование", isExpanded: Binding(get: { openTab == 0 }, set: { if $0 { openTab = 0 } else { openTab = nil } })) {
-                    VStack(alignment: .leading) {
-                        Text("Узнай свой арсенал: база, изоляция и тренажеры.").font(.subheadline).foregroundColor(.gray)
-                        NavigationLink(destination: TrainingStyleDetailView()) {
-                            Text("Открыть анализ").font(.subheadline).bold().foregroundColor(.cyan).padding(.top, 4)
+                PremiumDisclosureCard(
+                    title: "Стиль и оборудование",
+                    subtitle: "База против Изоляции и ваш арсенал.",
+                    icon: "dumbbell.fill",
+                    iconColor: .orange,
+                    isExpanded: Binding(get: { openTab == 0 }, set: { openTab = $0 ? 0 : nil })
+                ) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Узнайте, какие механики и тренажеры преобладают в ваших тренировках.")
+                            .font(.subheadline)
+                            .foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                        
+                        InnerCardNavigationButton(title: "Разбор механики", icon: "scale.3d", color: .orange) {
+                            TrainingStyleDetailView()
                         }
                     }
                 }
                 
                 // 2. Подходы на группу мышц
-                CustomDisclosure(title: "Подходы на группу мышц", isExpanded: Binding(get: { openTab == 1 }, set: { if $0 { openTab = 1 } else { openTab = nil } })) {
-                    VStack(spacing: 10) {
+                PremiumDisclosureCard(
+                    title: "Подходы на группу мышц",
+                    subtitle: "Количество подходов для каждой мышцы.",
+                    icon: "chart.line.uptrend.xyaxis",
+                    iconColor: .blue,
+                    isExpanded: Binding(get: { openTab == 1 }, set: { openTab = $0 ? 1 : nil })
+                ) {
+                    VStack(spacing: 16) {
                         if let anatomy = viewModel.anatomyStats, !anatomy.setsPerMuscle.isEmpty {
                             let topMuscles = Array(anatomy.setsPerMuscle.prefix(3))
                             let maxSets = topMuscles.max(by: { $0.count < $1.count })?.count ?? 1
                             
-                            ForEach(Array(topMuscles.enumerated()), id: \.element.muscle) { index, item in
-                                let color: Color = index == 0 ? .blue : (index == 1 ? .green : .red)
-                                MuscleRow(name: item.muscle, sets: item.count, color: color, max: max(maxSets, 1))
+                            VStack(spacing: 12) {
+                                ForEach(Array(topMuscles.enumerated()), id: \.element.muscle) { index, item in
+                                    let color: Color = index == 0 ? .blue : (index == 1 ? .green : .red)
+                                    MuscleRow(name: item.muscle, sets: item.count, color: color, max: max(maxSets, 1))
+                                }
                             }
+                            .padding()
+                            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color(UIColor.secondarySystemGroupedBackground))
+                            .cornerRadius(16)
                             
-                            NavigationLink(destination: SetsTrendDetailView()) {
-                                Text("Смотреть тренды").font(.subheadline).bold().foregroundColor(.cyan).padding(.top, 4)
+                            InnerCardNavigationButton(title: "Динамика и тренды", icon: "waveform.path.ecg", color: .blue) {
+                                SetsTrendDetailView()
                             }
                         } else {
                             Text("Нет данных за этот период").foregroundColor(.gray)
@@ -805,19 +921,40 @@ struct AdvancedStatsSectionView: View {
                     }
                 }
                 
-                // 3. Распределение мышц (График)
-                CustomDisclosure(title: "Распределение мышц (График)", isExpanded: Binding(get: { openTab == 2 }, set: { if $0 { openTab = 2 } else { openTab = nil } })) {
-                    VStack {
+                // 3. Распределение мышц (Донат-график)
+                PremiumDisclosureCard(
+                    title: "Баланс развития",
+                    subtitle: "Сравнение распределения нагрузки.",
+                    icon: "chart.pie.fill",
+                    iconColor: .purple,
+                    isExpanded: Binding(get: { openTab == 2 }, set: { openTab = $0 ? 2 : nil })
+                ) {
+                    VStack(spacing: 16) {
                         if let anatomy = viewModel.anatomyStats, !anatomy.setsPerMuscle.isEmpty {
-                            Chart(anatomy.setsPerMuscle) { item in
-                                SectorMark(angle: .value("Sets", item.count), innerRadius: .ratio(0.6), angularInset: 2)
-                                    .foregroundStyle(by: .value("Muscle", item.muscle))
+                            // Красивый донат-чарт внутри превью
+                            ZStack {
+                                Chart(anatomy.setsPerMuscle) { item in
+                                    SectorMark(angle: .value("Sets", item.count), innerRadius: .ratio(0.65), angularInset: 2)
+                                        .foregroundStyle(by: .value("Muscle", item.muscle))
+                                        .cornerRadius(4)
+                                }
+                                .frame(height: 180)
+                                .chartLegend(.hidden)
+                                
+                                VStack {
+                                    Text("Лидер")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                    Text(LocalizedStringKey(anatomy.setsPerMuscle.first?.muscle ?? ""))
+                                        .font(.headline)
+                                        .bold()
+                                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                                }
                             }
-                            .frame(height: 150)
-                            .chartLegend(.hidden)
+                            .padding(.vertical, 10)
                             
-                            NavigationLink(destination: RadarChartDetailView()) {
-                                Text("Открыть радар").font(.subheadline).bold().foregroundColor(.cyan).padding(.top, 4)
+                            InnerCardNavigationButton(title: "Открыть радар мышц", icon: "viewfinder", color: .purple) {
+                                RadarChartDetailView()
                             }
                         } else {
                             Text("Нет данных").foregroundColor(.gray)
@@ -825,31 +962,89 @@ struct AdvancedStatsSectionView: View {
                     }
                 }
                 
-                // 4. Карта тела
-                CustomDisclosure(title: "Карта тела (Анатомия)", isExpanded: Binding(get: { openTab == 3 }, set: { if $0 { openTab = 3 } else { openTab = nil } })) {
-                    VStack {
+                // 4. Карта тела (Анатомия) - ПОЛНОСТЬЮ ПЕРЕРАБОТАНА
+                PremiumDisclosureCard(
+                    title: "Карта тела (Анатомия)",
+                    subtitle: "Тепловая карта работавших мышц.",
+                    icon: "figure.arms.open", // Выглядит как анатомическая проекция Леонардо да Винчи
+                    iconColor: .red,
+                    isExpanded: Binding(get: { openTab == 3 }, set: { openTab = $0 ? 3 : nil })
+                ) {
+                    VStack(spacing: 0) {
+                        // Блок с самим человечком
                         ZStack {
-                            Image(systemName: "figure.arms.open")
-                                .resizable()
-                                .scaledToFit()
-                                .frame(height: 150)
-                                .foregroundColor(.white.opacity(0.1))
-                            Circle().fill(.blue).frame(width: 20).offset(x: 0, y: -20).blur(radius: 5)
-                            Circle().fill(.red).frame(width: 25).offset(x: 0, y: 30).blur(radius: 5)
+                            // Адаптивный фон-сцена для человечка
+                            (colorScheme == .dark ? Color(hex: "151517") : Color(UIColor.secondarySystemGroupedBackground))
+                            
+                            // Мягкое неоновое свечение позади (красное/синее)
+                            RadialGradient(
+                                colors: [Color.red.opacity(0.15), .clear],
+                                center: .center,
+                                startRadius: 10,
+                                endRadius: 120
+                            )
+                            
+                            if let anatomy = viewModel.anatomyStats, !anatomy.heatmapIntensities.isEmpty {
+                                BodyHeatmapView(
+                                    muscleIntensities: anatomy.heatmapIntensities,
+                                    isRecoveryMode: false,
+                                    isCompactMode: true,
+                                    defaultToBack: false,
+                                    userGender: userGender
+                                )
+                                .frame(height: 240)
+                                .scaleEffect(0.9)
+                                .offset(y: 10)
+                                .allowsHitTesting(false) // Отключаем клики в превью
+                            } else {
+                                // Заглушка
+                                Image(systemName: "figure.arms.open")
+                                    .font(.system(size: 100))
+                                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.1))
+                            }
                         }
+                        .frame(height: 240)
                         
+                        Divider()
+                            .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                        
+                        // Интегрированная кнопка перехода
                         NavigationLink(destination: HeatmapDetailView(gender: userGender)) {
-                            Text("Открыть карту напряжений").font(.subheadline).bold().foregroundColor(.cyan).padding(.top, 4)
+                            HStack {
+                                Image(systemName: "flame.fill")
+                                    .foregroundColor(.red)
+                                Text("Открыть карту напряжений")
+                                    .font(.subheadline)
+                                    .bold()
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.bold())
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(colorScheme == .dark ? Color.white.opacity(0.02) : Color.white)
                         }
                     }
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 10, y: 5)
                 }
                 
                 // 5. Отчет ИИ
-                CustomDisclosure(title: "Отчет за последние 30 дней", isExpanded: Binding(get: { openTab == 4 }, set: { if $0 { openTab = 4 } else { openTab = nil } })) {
+                PremiumDisclosureCard(
+                    title: "30-Дневный Отчет",
+                    subtitle: "Итоги ваших тренировок в формате Stories.",
+                    icon: "doc.text.fill",
+                    iconColor: .cyan,
+                    isExpanded: Binding(get: { openTab == 4 }, set: { openTab = $0 ? 4 : nil })
+                ) {
                     VStack(alignment: .leading) {
-                        Text("Полная история твоего мезоцикла в формате Stories.").font(.subheadline).foregroundColor(.gray)
-                        NavigationLink(destination: MonthlyReportStoryView()) {
-                            Text("Смотреть отчет").font(.subheadline).bold().foregroundColor(.purple).padding(.top, 4)
+                        InnerCardNavigationButton(title: "Смотреть Stories", icon: "play.rectangle.fill", color: .cyan) {
+                            MonthlyReportStoryView()
                         }
                     }
                 }
@@ -858,11 +1053,15 @@ struct AdvancedStatsSectionView: View {
         .padding(.top, 10)
     }
 }
-
-struct CustomDisclosure<Content: View>: View {
+struct PremiumDisclosureCard<Content: View>: View {
     let title: String
+    let subtitle: String
+    let icon: String
+    let iconColor: Color
     @Binding var isExpanded: Bool
     let content: () -> Content
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -872,49 +1071,113 @@ struct CustomDisclosure<Content: View>: View {
                     isExpanded.toggle()
                 }
             }) {
-                HStack {
-                    Text(LocalizedStringKey(title))
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
+                HStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(iconColor.opacity(0.15))
+                            .frame(width: 48, height: 48)
+                        Image(systemName: icon)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(iconColor)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(LocalizedStringKey(title))
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                        Text(LocalizedStringKey(subtitle))
+                            .font(.system(size: 12))
+                            .foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                    }
+                    
                     Spacer()
-                    Image(systemName: "chevron.down")
-                        .foregroundColor(.gray)
-                        .rotationEffect(.degrees(isExpanded ? -180 : 0))
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.gray.opacity(0.5))
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
                 }
-                .padding()
-                .background(Color.white.opacity(0.03))
+                .padding(16)
+                .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
             }
             
             if isExpanded {
                 VStack(alignment: .leading) {
+                    Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
+                        .padding(.horizontal, 16)
+                    
                     content()
+                        .padding(16)
                 }
-                .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.01))
+                .background(colorScheme == .dark ? Color.white.opacity(0.01) : Color.white)
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.05), lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
     }
 }
-
+struct InnerCardNavigationButton<Destination: View>: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let destination: () -> Destination
+    
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        NavigationLink(destination: destination) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.15))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(color)
+                }
+                
+                Text(LocalizedStringKey(title))
+                    .font(.subheadline)
+                    .bold()
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption.bold())
+                    .foregroundColor(.gray)
+            }
+            .padding(12)
+            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color(UIColor.secondarySystemGroupedBackground))
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+            )
+        }
+    }
+}
 struct MuscleRow: View {
     var name: String
     var sets: Int
     var color: Color
     var max: Int
+    @Environment(\.colorScheme) private var colorScheme
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text(LocalizedStringKey(name)).font(.caption).foregroundColor(.gray)
                 Spacer()
-                Text("\(sets) подх.").font(.caption).bold().foregroundColor(.white)
+                Text("\(sets) подх.").font(.caption).bold().foregroundColor(colorScheme == .dark ? .white : .black)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.1)).frame(height: 8)
+                    Capsule().fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)).frame(height: 8)
                     Capsule().fill(color).frame(width: geo.size.width * CGFloat(sets) / CGFloat(max), height: 8)
                 }
             }
@@ -923,22 +1186,20 @@ struct MuscleRow: View {
     }
 }
 
-// MARK: - 8. Результаты за все время (Интегрировано с БД)
+// MARK: - 8. Результаты за все время
 struct AllTimeResultsView: View {
     let bestStats: PeriodStats
     let unitsManager: UnitsManager
-    
-    // Вынесли данные наружу, чтобы компилятор не сходил с ума
+    @Environment(\.colorScheme) private var colorScheme
     private let dummyData: [Double] = [10.0, 15.0, 12.0, 20.0]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("За все время")
                 .font(.title3).bold()
-                .foregroundColor(.white)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
             
             VStack(spacing: 20) {
-                // График заглушка (для визуала дизайнера)
                 Chart {
                     ForEach(0..<4, id: \.self) { i in
                         LineMark(
@@ -972,23 +1233,23 @@ struct AllTimeResultsView: View {
                     Spacer()
                     VStack(alignment: .trailing) {
                         Text("Рекорд трен.").font(.subheadline).foregroundColor(.gray)
-                        Text("\(bestStats.workoutCount)").font(.title2).bold().foregroundColor(.white)
+                        Text("\(bestStats.workoutCount)").font(.title2).bold().foregroundColor(colorScheme == .dark ? .white : .black)
                     }
                 }
             }
             .padding()
-            .background(Color.white.opacity(0.03))
+            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
             .cornerRadius(20)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.05), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, y: 5)
         }
         .padding(.top, 10)
     }
 }
-
-
 // MARK: - Beautiful Sets Trend Detail View
 
 struct SetsTrendDetailView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
     // 1. Изолированный источник данных (SwiftData)
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
@@ -1130,49 +1391,52 @@ struct SetsTrendDetailView: View {
         .background(Color(UIColor.systemGroupedBackground))
     }
     
-    // MARK: - UI Components
     
     private var muscleSelector: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(primaryMuscles, id: \.self) { muscle in
-                    let isSelected = selectedMuscle == muscle
-                    let muscleColor = colorManager.getColor(for: muscle)
-                    
-                    Button {
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                            selectedMuscle = muscle
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    ForEach(primaryMuscles, id: \.self) { muscle in
+                        let isSelected = selectedMuscle == muscle
+                        let muscleColor = colorManager.getColor(for: muscle)
+                        
+                        Button {
+                            let generator = UISelectionFeedbackGenerator()
+                            generator.selectionChanged()
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                selectedMuscle = muscle
+                            }
+                        } label: {
+                            Text(LocalizedStringKey(muscle))
+                                .font(.subheadline)
+                                .fontWeight(isSelected ? .bold : .medium)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                // 👇 ИСПРАВЛЕНИЕ: Адаптивный цвет фона (белый в светлой теме)
+                                .background(isSelected ? muscleColor : (colorScheme == .dark ? themeManager.current.surface : Color.white))
+                                // 👇 ИСПРАВЛЕНИЕ: Адаптивный цвет текста (черный в светлой теме)
+                                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                                .cornerRadius(20)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20)
+                                        // 👇 ИСПРАВЛЕНИЕ: Адаптивная обводка (светло-серая в светлой теме)
+                                        .stroke(isSelected ? muscleColor : (colorScheme == .dark ? muscleColor.opacity(0.5) : Color.black.opacity(0.05)), lineWidth: 1.5)
+                                )
+                                // 👇 ИСПРАВЛЕНИЕ: Легкая тень в светлой теме
+                                .shadow(color: isSelected ? muscleColor.opacity(0.4) : .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, x: 0, y: 4)
                         }
-                    } label: {
-                        Text(LocalizedStringKey(muscle))
-                            .font(.subheadline)
-                            .fontWeight(isSelected ? .bold : .medium)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 10)
-                            .background(isSelected ? muscleColor : themeManager.current.surface)
-                            .foregroundColor(isSelected ? .white : .primary)
-                            .cornerRadius(20)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(isSelected ? muscleColor : muscleColor.opacity(0.5), lineWidth: 1.5)
-                            )
-                            .shadow(color: isSelected ? muscleColor.opacity(0.4) : .clear, radius: 8, x: 0, y: 4)
                     }
                 }
+                .padding(.horizontal)
+                .padding(.bottom, 5)
             }
-            .padding(.horizontal)
-            .padding(.bottom, 5)
         }
-    }
     
     private var summaryHeader: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("Total Sets"))
                     .font(.subheadline)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // <---
                 
                 Text("\(totalSets)")
                     .font(.system(size: 40, weight: .heavy, design: .rounded))
@@ -1181,25 +1445,27 @@ struct SetsTrendDetailView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(themeManager.current.surface)
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white) // <---
             .cornerRadius(16)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) // <---
             
             VStack(alignment: .leading, spacing: 4) {
                 let maxLabel: LocalizedStringKey = (selectedPeriod == .year || selectedPeriod == .allTime) ? "Monthly Max" : "Daily Max"
                 
                 Text(maxLabel)
                     .font(.subheadline)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // <---
                 
                 Text("\(maxSetsInPoint)")
                     .font(.system(size: 40, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // <---
                     .contentTransition(.numericText())
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .background(themeManager.current.surface)
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white) // <---
             .cornerRadius(16)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) // <---
         }
         .padding(.horizontal)
     }
@@ -1211,6 +1477,7 @@ struct SetsTrendDetailView: View {
         return VStack(alignment: .leading) {
             Text(LocalizedStringKey("Training Volume Over Time"))
                 .font(.headline)
+                .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 Адаптация цвета заголовка
                 .padding(.horizontal)
                 .padding(.top, 16)
             
@@ -1256,7 +1523,7 @@ struct SetsTrendDetailView: View {
                             Text("\(point.sets)")
                                 .font(.caption2)
                                 .fontWeight(.bold)
-                                .foregroundColor(themeManager.current.secondaryText)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 Адаптация цвета подписи
                         }
                     }
                 }
@@ -1282,17 +1549,20 @@ struct SetsTrendDetailView: View {
             .chartYScale(domain: .automatic(includesZero: true))
             .padding()
         }
-        .background(themeManager.current.surface)
+        // 👇 ВОТ ЗДЕСЬ ПРАВИЛЬНОЕ ПРИМЕНЕНИЕ АДАПТИВНЫХ СТИЛЕЙ К VSTACK
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
         .padding(.horizontal)
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: aggregatedData.count)
         .animation(.easeInOut(duration: 0.3), value: selectedMuscle)
     }
 }
-
 struct RadarChartDetailView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
     enum TrendPeriod: String, CaseIterable, Identifiable {
         case week = "Week", month = "Month", year = "Year", allTime = "All Time"
@@ -1315,196 +1585,229 @@ struct RadarChartDetailView: View {
         let totalCurrentSets: Int
     }
     private var aggregatedData: RadarAggregatedData {
-            let calendar = Calendar.current
-            let now = Date()
+        let calendar = Calendar.current
+        let now = Date()
+        
+        let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+        
+        var curStart: Date = .distantPast
+        var prevStart: Date = .distantPast
+        var prevEnd: Date = .distantPast
+        
+        switch selectedPeriod {
+        case .week:
+            curStart = calendar.date(byAdding: .day, value: -7, to: now)!
+            prevEnd = curStart
+            prevStart = calendar.date(byAdding: .day, value: -14, to: now)!
+        case .month:
+            curStart = calendar.date(byAdding: .month, value: -1, to: now)!
+            prevEnd = curStart
+            prevStart = calendar.date(byAdding: .month, value: -2, to: now)!
+        case .year:
+            curStart = calendar.date(byAdding: .year, value: -1, to: now)!
+            prevEnd = curStart
+            prevStart = calendar.date(byAdding: .year, value: -2, to: now)!
+        case .allTime:
+            curStart = .distantPast
+            prevStart = .distantFuture
+            prevEnd = .distantFuture
+        }
+        
+        var curSets: [String: Double] = [:]
+        var prevSets: [String: Double] = [:]
+        var totalCur = 0
+        
+        for workout in allWorkouts {
+            let isCurrent = workout.date >= curStart
+            let isPrev = workout.date >= prevStart && workout.date < prevEnd
             
-            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+            if !isCurrent && !isPrev { continue }
             
-            var curStart: Date = .distantPast
-            var prevStart: Date = .distantPast
-            var prevEnd: Date = .distantPast
-            
-            switch selectedPeriod {
-            case .week:
-                curStart = calendar.date(byAdding: .day, value: -7, to: now)!
-                prevEnd = curStart
-                prevStart = calendar.date(byAdding: .day, value: -14, to: now)!
-            case .month:
-                curStart = calendar.date(byAdding: .month, value: -1, to: now)!
-                prevEnd = curStart
-                prevStart = calendar.date(byAdding: .month, value: -2, to: now)!
-            case .year:
-                curStart = calendar.date(byAdding: .year, value: -1, to: now)!
-                prevEnd = curStart
-                prevStart = calendar.date(byAdding: .year, value: -2, to: now)!
-            case .allTime:
-                curStart = .distantPast
-                prevStart = .distantFuture
-                prevEnd = .distantFuture
-            }
-            
-            var curSets: [String: Double] = [:]
-            var prevSets: [String: Double] = [:]
-            var totalCur = 0
-            
-            for workout in allWorkouts {
-                let isCurrent = workout.date >= curStart
-                let isPrev = workout.date >= prevStart && workout.date < prevEnd
-                
-                if !isCurrent && !isPrev { continue }
-                
-                for ex in workout.exercises {
-                    let targets = ex.isSuperset ? ex.subExercises : [ex]
-                    for sub in targets where sub.type == .strength {
-                        let completed = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
-                        if completed > 0 {
-                            let broadCategory = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
-                            if broadCategory != "Other" {
-                                if isCurrent {
-                                    curSets[broadCategory, default: 0] += Double(completed)
-                                    totalCur += completed
-                                } else if isPrev {
-                                    prevSets[broadCategory, default: 0] += Double(completed)
-                                }
+            for ex in workout.exercises {
+                let targets = ex.isSuperset ? ex.subExercises : [ex]
+                for sub in targets where sub.type == .strength {
+                    let completed = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
+                    if completed > 0 {
+                        let broadCategory = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
+                        if broadCategory != "Other" {
+                            if isCurrent {
+                                curSets[broadCategory, default: 0] += Double(completed)
+                                totalCur += completed
+                            } else if isPrev {
+                                prevSets[broadCategory, default: 0] += Double(completed)
                             }
                         }
-                    } // ✅ Восстановлена скобка
+                    }
                 } // ✅ Восстановлена скобка
             } // ✅ Восстановлена скобка
-            
-            let maxCur = curSets.values.max() ?? 1.0
-            let maxPrev = prevSets.values.max() ?? 1.0
-            let globalMax = max(10.0, max(maxCur, maxPrev))
-            
-            let curData = axes.map { RadarDataPoint(axis: $0, value: curSets[$0] ?? 0, maxValue: globalMax) }
-            let prevData = axes.map { RadarDataPoint(axis: $0, value: prevSets[$0] ?? 0, maxValue: globalMax) }
-            let listStats = axes.map { MuscleCountDTO(muscle: $0, count: Int(curSets[$0] ?? 0)) }.sorted { $0.count > $1.count }
-            
-            let curValues = curData.map { $0.value }
-            let avg = curValues.reduce(0, +) / Double(axes.count)
-            let score: Int
-            if avg == 0 {
-                score = 0
-            } else {
-                let variance = curValues.reduce(0) { $0 + pow($1 - avg, 2) } / Double(axes.count)
-                let stdDev = sqrt(variance)
-                let cv = stdDev / avg
-                score = max(0, min(100, Int(100 - (cv * 45))))
-            }
-            
-            return RadarAggregatedData(current: curData, previous: prevData, listStats: listStats, balanceScore: score, totalCurrentSets: totalCur)
+        } // ✅ Восстановлена скобка
+        
+        let maxCur = curSets.values.max() ?? 1.0
+        let maxPrev = prevSets.values.max() ?? 1.0
+        let globalMax = max(10.0, max(maxCur, maxPrev))
+        
+        let curData = axes.map { RadarDataPoint(axis: $0, value: curSets[$0] ?? 0, maxValue: globalMax) }
+        let prevData = axes.map { RadarDataPoint(axis: $0, value: prevSets[$0] ?? 0, maxValue: globalMax) }
+        let listStats = axes.map { MuscleCountDTO(muscle: $0, count: Int(curSets[$0] ?? 0)) }.sorted { $0.count > $1.count }
+        
+        let curValues = curData.map { $0.value }
+        let avg = curValues.reduce(0, +) / Double(axes.count)
+        let score: Int
+        if avg == 0 {
+            score = 0
+        } else {
+            let variance = curValues.reduce(0) { $0 + pow($1 - avg, 2) } / Double(axes.count)
+            let stdDev = sqrt(variance)
+            let cv = stdDev / avg
+            score = max(0, min(100, Int(100 - (cv * 45))))
         }
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                Picker(LocalizedStringKey("Period"), selection: $selectedPeriod) {
-                    ForEach(TrendPeriod.allCases) { period in
-                        Text(period.localizedName).tag(period)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.top, 10)
-                
-                let data = aggregatedData
-                
-                // Карточка Баланса
-                balanceScoreCard(score: data.balanceScore)
-                
-                // Радар
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(LocalizedStringKey("Distribution Chart")).font(.headline)
-                        Spacer()
-                        if selectedPeriod != .allTime {
-                            HStack(spacing: 12) {
-                                HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption2).foregroundColor(themeManager.current.secondaryText) }
-                                HStack(spacing: 4) { Circle().fill(themeManager.current.primaryAccent).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption2).foregroundColor(themeManager.current.secondaryText) }
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    RadarChartView(
-                        currentData: data.current,
-                        previousData: selectedPeriod == .allTime ? nil : data.previous,
-                        highlightedAxis: highlightedMuscle,
-                        color: themeManager.current.primaryAccent
-                    )
-                    .frame(height: 320)
-                    .padding()
-                }
-                .background(themeManager.current.surface)
-                .cornerRadius(20)
-                .padding(.horizontal)
-                
-                // Список мышц с интерактивом
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack {
-                        Text(LocalizedStringKey("Muscle")).font(.caption).foregroundColor(themeManager.current.secondaryText)
-                        Spacer()
-                        Text(LocalizedStringKey("Sets (Share)")).font(.caption).foregroundColor(themeManager.current.secondaryText)
-                    }
-                    .padding(.horizontal).padding(.vertical, 12)
-                    
-                    Divider()
-                    
-                    ForEach(data.listStats, id: \.muscle) { item in
-                        let isHighlighted = highlightedMuscle == item.muscle
-                        let percentage = data.totalCurrentSets > 0 ? Double(item.count) / Double(data.totalCurrentSets) * 100 : 0
-                        
-                        HStack {
-                            Circle()
-                                .fill(colorManager.getColor(for: item.muscle))
-                                .frame(width: 10, height: 10)
-                                .opacity(isHighlighted || highlightedMuscle == nil ? 1.0 : 0.3)
-                            
-                            Text(LocalizedStringKey(item.muscle))
-                                .font(.subheadline)
-                                .fontWeight(isHighlighted ? .bold : .regular)
-                                .foregroundColor(isHighlighted || highlightedMuscle == nil ? .primary : .secondary)
-                            
-                            Spacer()
-                            
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text("\(item.count)")
-                                    .font(.subheadline)
-                                    .bold()
-                                    .foregroundColor(isHighlighted || highlightedMuscle == nil ? .primary : .secondary)
-                                Text("\(percentage, specifier: "%.1f")%")
-                                    .font(.caption2)
-                                    .foregroundColor(themeManager.current.secondaryText)
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, 12)
-                        .background(isHighlighted ? themeManager.current.primaryAccent.opacity(0.1) : Color.clear)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            let generator = UISelectionFeedbackGenerator()
-                            generator.selectionChanged()
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                highlightedMuscle = isHighlighted ? nil : item.muscle
-                            }
-                        }
-                        
-                        if item.muscle != data.listStats.last?.muscle {
-                            Divider().padding(.leading, 36)
-                        }
-                    }
-                }
-                .background(themeManager.current.surface)
-                .cornerRadius(20)
-                .padding(.horizontal)
-            }
-            .padding(.vertical)
-        }
-        .navigationTitle(LocalizedStringKey("Muscle distribution (Chart)"))
-        .navigationBarTitleDisplayMode(.inline)
-        .background(Color(UIColor.systemGroupedBackground))
+        
+        return RadarAggregatedData(current: curData, previous: prevData, listStats: listStats, balanceScore: score, totalCurrentSets: totalCur)
     }
     
+    var body: some View {
+            ScrollView {
+                VStack(spacing: 24) {
+                    Picker(LocalizedStringKey("Period"), selection: $selectedPeriod) {
+                        ForEach(TrendPeriod.allCases) { period in
+                            Text(period.localizedName).tag(period)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.top, 10)
+                    
+                    let data = aggregatedData
+                    
+                    // Карточка Баланса
+                    balanceScoreCard(score: data.balanceScore)
+                    
+                    // Радар
+                    radarChartSection(data: data)
+                    
+                    // Список мышц
+                    muscleListSection(data: data)
+                }
+                .padding(.vertical)
+            }
+            .navigationTitle(LocalizedStringKey("Muscle distribution (Chart)"))
+            .navigationBarTitleDisplayMode(.inline)
+            .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+        }
+
+        // 👈 ВЫНЕСЛИ РАДАР ОТДЕЛЬНО
+        @ViewBuilder
+        private func radarChartSection(data: RadarAggregatedData) -> some View {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(LocalizedStringKey("Distribution Chart"))
+                        .font(.headline)
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    Spacer()
+                    if selectedPeriod != .allTime {
+                        HStack(spacing: 12) {
+                            HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption2).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) }
+                            HStack(spacing: 4) { Circle().fill(themeManager.current.primaryAccent).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption2).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+                
+                RadarChartView(
+                    currentData: data.current,
+                    previousData: selectedPeriod == .allTime ? nil : data.previous,
+                    highlightedAxis: highlightedMuscle,
+                    color: themeManager.current.primaryAccent
+                )
+                .frame(height: 320)
+                .padding()
+            }
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+            .cornerRadius(20)
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+            .padding(.horizontal)
+        }
+
+    // 1. Обертка списка
+        @ViewBuilder
+        private func muscleListSection(data: RadarAggregatedData) -> some View {
+            VStack(alignment: .leading, spacing: 0) {
+                // Шапка
+                HStack {
+                    Text(LocalizedStringKey("Muscle")).font(.caption).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    Spacer()
+                    Text(LocalizedStringKey("Sets (Share)")).font(.caption).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                }
+                .padding(.horizontal).padding(.vertical, 12)
+                
+                Divider()
+                
+                // Сам список
+                ForEach(data.listStats, id: \.muscle) { item in
+                    muscleRow(item: item, totalSets: data.totalCurrentSets)
+                    
+                    if item.muscle != data.listStats.last?.muscle {
+                        Divider().padding(.leading, 36)
+                    }
+                }
+            }
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+            .cornerRadius(20)
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+            .padding(.horizontal)
+        }
+
+        // 2. Отдельная функция для одной строки (снимает нагрузку с компилятора)
+        @ViewBuilder
+        private func muscleRow(item: MuscleCountDTO, totalSets: Int) -> some View {
+            let isHighlighted = highlightedMuscle == item.muscle
+            let percentage = totalSets > 0 ? Double(item.count) / Double(totalSets) * 100 : 0
+            
+            // Заранее вычисляем цвета, чтобы не путать компилятор в теле View
+            let isActive = isHighlighted || highlightedMuscle == nil
+            let textColor: Color = isActive ? (colorScheme == .dark ? .white : .black) : .gray
+            let subTextColor: Color = colorScheme == .dark ? themeManager.current.secondaryText : .gray
+            
+            HStack {
+                Circle()
+                    .fill(colorManager.getColor(for: item.muscle))
+                    .frame(width: 10, height: 10)
+                    .opacity(isActive ? 1.0 : 0.3)
+                
+                Text(LocalizedStringKey(item.muscle))
+                    .font(.subheadline)
+                    .fontWeight(isHighlighted ? .bold : .regular)
+                    .foregroundColor(textColor)
+                
+                Spacer()
+                
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(item.count)")
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundColor(textColor)
+                    
+                    Text("\(percentage, specifier: "%.1f")%")
+                        .font(.caption2)
+                        .foregroundColor(subTextColor)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
+            .background(isHighlighted ? themeManager.current.primaryAccent.opacity(0.1) : Color.clear)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                let generator = UISelectionFeedbackGenerator()
+                generator.selectionChanged()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    highlightedMuscle = isHighlighted ? nil : item.muscle
+                }
+            }
+        }
+    
+    // АДАПТАЦИЯ КАРТОЧКИ ОЦЕНКИ СИММЕТРИИ
     private func balanceScoreCard(score: Int) -> some View {
         let color: Color = score > 80 ? .green : (score > 50 ? .orange : .red)
         let message: LocalizedStringKey = score > 80 ? "Excellent balance!" : (score > 50 ? "Slight imbalance detected." : "High imbalance. Don't skip weak points!")
@@ -1527,1470 +1830,1484 @@ struct RadarChartDetailView: View {
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey("Symmetry Score"))
                     .font(.headline)
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                 Text(message)
                     .font(.caption)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     .lineLimit(2)
             }
             Spacer()
         }
         .padding()
-        .background(themeManager.current.surface)
+        // АДАПТАЦИЯ ФОНА КАРТОЧКИ
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
         .padding(.horizontal)
     }
 }
-
-// MARK: - 4. Custom Radar Chart Component & Helpers
-
-struct RadarChartView: View {
-    let currentData: [RadarDataPoint]
-    let previousData: [RadarDataPoint]?
-    let highlightedAxis: String?
-    let color: Color
-    @Environment(ThemeManager.self) private var themeManager
-    // Удалили функцию gridDimension, так как теперь считаем точнее
+    // MARK: - 4. Custom Radar Chart Component & Helpers
     
-    private func computeAngle(for index: Int, totalCount: Int) -> CGFloat {
-        let slice = (2.0 * CGFloat.pi) / CGFloat(totalCount)
-        return (CGFloat(index) * slice) - (CGFloat.pi / 2.0)
-    }
-    
-    var body: some View {
-        GeometryReader { geometry in
-            let size = min(geometry.size.width, geometry.size.height)
-            let centerX = geometry.size.width / 2.0
-            let centerY = geometry.size.height / 2.0
-            let center = CGPoint(x: centerX, y: centerY)
-            
-            // ЕДИНЫЙ РАДИУС ДЛЯ ВСЕГО ГРАФИКА
-            // 70% от половины ширины, чтобы по краям свободно влезли названия мышц
-            let chartRadius = (size / 2.0) * 0.70
-            let chartDiameter = chartRadius * 2
-            
-            let totalCount = currentData.count
-            
-            ZStack {
-                // 1. Фоновая сетка (4 уровня)
-                ForEach(1...4, id: \.self) { level in
-                    let levelRatio = CGFloat(level) / 4.0
-                    let levelDiameter = chartDiameter * levelRatio
-                    
-                    PolygonShape(sides: totalCount)
-                        .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                        .frame(width: levelDiameter, height: levelDiameter)
-                }
+    struct RadarChartView: View {
+        let currentData: [RadarDataPoint]
+        let previousData: [RadarDataPoint]?
+        let highlightedAxis: String?
+        let color: Color
+        @Environment(ThemeManager.self) private var themeManager
+        // Удалили функцию gridDimension, так как теперь считаем точнее
+        @Environment(\.colorScheme) private var colorScheme 
+        private func computeAngle(for index: Int, totalCount: Int) -> CGFloat {
+            let slice = (2.0 * CGFloat.pi) / CGFloat(totalCount)
+            return (CGFloat(index) * slice) - (CGFloat.pi / 2.0)
+        }
+        
+        var body: some View {
+            GeometryReader { geometry in
+                let size = min(geometry.size.width, geometry.size.height)
+                let centerX = geometry.size.width / 2.0
+                let centerY = geometry.size.height / 2.0
+                let center = CGPoint(x: centerX, y: centerY)
                 
-                // 2. Оси и подписи
-                ForEach(Array(currentData.enumerated()), id: \.offset) { index, point in
-                    let currentAngle = computeAngle(for: index, totalCount: totalCount)
-                    let isAxisHighlighted = highlightedAxis == point.axis
-                    let isDimmed = highlightedAxis != nil && !isAxisHighlighted
-                    
-                    let endX = centerX + (chartRadius * cos(currentAngle))
-                    let endY = centerY + (chartRadius * sin(currentAngle))
-                    let endPoint = CGPoint(x: endX, y: endY)
-                    
-                    // Линии осей
-                    Path { path in
-                        path.move(to: center)
-                        path.addLine(to: endPoint)
+                // ЕДИНЫЙ РАДИУС ДЛЯ ВСЕГО ГРАФИКА
+                // 70% от половины ширины, чтобы по краям свободно влезли названия мышц
+                let chartRadius = (size / 2.0) * 0.70
+                let chartDiameter = chartRadius * 2
+                
+                let totalCount = currentData.count
+                
+                ZStack {
+                    // 1. Фоновая сетка (4 уровня)
+                    ForEach(1...4, id: \.self) { level in
+                        let levelRatio = CGFloat(level) / 4.0
+                        let levelDiameter = chartDiameter * levelRatio
+                        
+                        PolygonShape(sides: totalCount)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            .frame(width: levelDiameter, height: levelDiameter)
                     }
-                    .stroke(isAxisHighlighted ? color.opacity(0.8) : Color.gray.opacity(0.3), lineWidth: isAxisHighlighted ? 2 : 1)
                     
-                    // Подписи осей (отодвинуты за пределы максимального радиуса)
-                    let labelX = centerX + ((chartRadius + 30.0) * cos(currentAngle))
-                    let labelY = centerY + ((chartRadius + 20.0) * sin(currentAngle))
+                    // 2. Оси и подписи
+                    ForEach(Array(currentData.enumerated()), id: \.offset) { index, point in
+                        let currentAngle = computeAngle(for: index, totalCount: totalCount)
+                        let isAxisHighlighted = highlightedAxis == point.axis
+                        let isDimmed = highlightedAxis != nil && !isAxisHighlighted
+                        
+                        let endX = centerX + (chartRadius * cos(currentAngle))
+                        let endY = centerY + (chartRadius * sin(currentAngle))
+                        let endPoint = CGPoint(x: endX, y: endY)
+                        
+                        // Линии осей
+                        Path { path in
+                            path.move(to: center)
+                            path.addLine(to: endPoint)
+                        }
+                        .stroke(isAxisHighlighted ? color.opacity(0.8) : Color.gray.opacity(0.3), lineWidth: isAxisHighlighted ? 2 : 1)
+                        
+                        // Подписи осей (отодвинуты за пределы максимального радиуса)
+                        let labelX = centerX + ((chartRadius + 30.0) * cos(currentAngle))
+                        let labelY = centerY + ((chartRadius + 20.0) * sin(currentAngle))
+                        
+                        Text(LocalizedStringKey(point.axis))
+                            .font(.caption2)
+                            .fontWeight(isAxisHighlighted ? .bold : .regular)
+                            .foregroundColor(isAxisHighlighted ? color : (isDimmed ? .gray.opacity(0.3) : .secondary))
+                            .position(x: labelX, y: labelY)
+                    }
                     
-                    Text(LocalizedStringKey(point.axis))
-                        .font(.caption2)
-                        .fontWeight(isAxisHighlighted ? .bold : .regular)
-                        .foregroundColor(isAxisHighlighted ? color : (isDimmed ? .gray.opacity(0.3) : .secondary))
-                        .position(x: labelX, y: labelY)
-                }
-                
-                // 3. ПРЕДЫДУЩИЙ ПЕРИОД (Ghost Polygon)
-                if let prev = previousData {
-                    DataPolygonShape(data: prev)
-                        .fill(themeManager.current.surfaceVariant)
+                    // 3. ПРЕДЫДУЩИЙ ПЕРИОД (Ghost Polygon)
+                    if let prev = previousData {
+                        DataPolygonShape(data: prev)
+                            // 👇 ИСПРАВЛЕНО: В светлой теме делаем светло-серый полупрозрачный цвет
+                            .fill(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.gray.opacity(0.15))
+                            .frame(width: chartDiameter, height: chartDiameter)
+                        
+                        DataPolygonShape(data: prev)
+                            .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                            .frame(width: chartDiameter, height: chartDiameter)
+                    }
+                    
+                    // 4. ТЕКУЩИЙ ПЕРИОД (Main Polygon)
+                    DataPolygonShape(data: currentData)
+                        .fill(color.opacity(0.3))
                         .frame(width: chartDiameter, height: chartDiameter) // Жестко ограничиваем размер
                     
-                    DataPolygonShape(data: prev)
-                        .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+                    DataPolygonShape(data: currentData)
+                        .stroke(color, lineWidth: 2)
                         .frame(width: chartDiameter, height: chartDiameter)
+                    
+                    // 5. Точки на вершинах
+                    ForEach(Array(currentData.enumerated()), id: \.offset) { index, point in
+                        let currentAngle = computeAngle(for: index, totalCount: totalCount)
+                        let isAxisHighlighted = highlightedAxis == point.axis
+                        
+                        let ratio = point.maxValue == 0 ? 0 : CGFloat(point.value / point.maxValue)
+                        let ptRadius = chartRadius * ratio
+                        
+                        let ptX = centerX + (ptRadius * cos(currentAngle))
+                        let ptY = centerY + (ptRadius * sin(currentAngle))
+                        
+                        Circle()
+                            .fill(isAxisHighlighted ? Color.white : color)
+                            .frame(width: isAxisHighlighted ? 10 : 6, height: isAxisHighlighted ? 10 : 6)
+                            .overlay(
+                                Circle().stroke(color, lineWidth: isAxisHighlighted ? 3 : 0)
+                            )
+                            .position(x: ptX, y: ptY)
+                            .shadow(color: color.opacity(0.5), radius: 3)
+                    }
+                }
+            }
+            .drawingGroup() // Аппаратное ускорение Metal
+        }
+    }
+    
+    struct PolygonShape: Shape {
+        let sides: Int
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            let center = CGPoint(x: rect.width / 2, y: rect.height / 2)
+            let radius = min(rect.width, rect.height) / 2
+            for i in 0..<sides {
+                let angle = (CGFloat(i) * (2.0 * .pi / CGFloat(sides))) - .pi / 2
+                let point = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
+                if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
+            }
+            path.closeSubpath()
+            return path
+        }
+    }
+    
+    struct DataPolygonShape: Shape {
+        let data: [RadarDataPoint]
+        func path(in rect: CGRect) -> Path {
+            var path = Path()
+            let center = CGPoint(x: rect.width / 2, y: rect.height / 2)
+            let maxRadius = min(rect.width, rect.height) / 2
+            for (i, point) in data.enumerated() {
+                let angle = (CGFloat(i) * (2.0 * .pi / CGFloat(data.count))) - .pi / 2
+                let ratio = point.maxValue == 0 ? 0 : CGFloat(point.value / point.maxValue)
+                let radius = maxRadius * ratio
+                let pt = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
+                if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+            }
+            path.closeSubpath()
+            return path
+        }
+    }
+    
+    
+    
+    
+    // MARK: - Heatmap Detail View & Processor
+    
+    struct HeatmapDetailItem: Identifiable, Sendable {
+        let id = UUID()
+        let slug: String
+        let displayName: String
+        let sets: Int
+        let relativeIntensity: Double // 0.0 to 1.0
+    }
+    
+    struct HeatmapAggregatedData: Sendable {
+        let intensities: [String: Int] // Нормализованные значения 0-100 для рендеринга
+        let rawCounts: [String: Int]   // Сырые значения для тултипов
+        let detailedList: [HeatmapDetailItem]
+        let totalSets: Int
+        let topMuscle: HeatmapDetailItem?
+    }
+    
+    /// 🚀 Фоновый процессор (Sendable) для защиты Main Thread от тяжелых вычислений
+    @MainActor
+    struct HeatmapDataProcessor: Sendable {
+        static func process(workouts: [Workout], period: SetsTrendDetailView.TrendPeriod) async -> HeatmapAggregatedData {
+            let calendar = Calendar.current
+            let now = Date()
+            let cutoffDate: Date?
+            
+            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+            
+            switch period {
+            case .week: cutoffDate = calendar.date(byAdding: .day, value: -7, to: now)
+            case .month: cutoffDate = calendar.date(byAdding: .month, value: -1, to: now)
+            case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now)
+            case .allTime: cutoffDate = nil
+            }
+            
+            var slugCounts: [String: Int] = [:]
+            var totalSets = 0
+            
+            for workout in workouts {
+                if let cutoff = cutoffDate, workout.date < cutoff { continue }
+                
+                for exercise in workout.exercises {
+                    let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                    for sub in targets where sub.type == .strength {
+                        let completedSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
+                        if completedSets > 0 {
+                            let broadCategory = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
+                            let slugs = MuscleMapping.getMuscles(for: sub.name, group: broadCategory)
+                            for slug in slugs {
+                                slugCounts[slug, default: 0] += completedSets
+                            }
+                            totalSets += completedSets
+                        }
+                    } // ✅ Восстановлена скобка
+                } // ✅ Восстановлена скобка
+            } // ✅ Восстановлена скобка
+            
+            let maxSets = Double(slugCounts.values.max() ?? 1)
+            var normalizedIntensities: [String: Int] = [:]
+            var detailedList: [HeatmapDetailItem] = []
+            
+            for (slug, count) in slugCounts {
+                let relativeIntensity = Double(count) / maxSets
+                normalizedIntensities[slug] = Int(relativeIntensity * 100)
+                let displayName = MuscleDisplayHelper.getDisplayName(for: slug)
+                detailedList.append(HeatmapDetailItem(slug: slug, displayName: displayName, sets: count, relativeIntensity: relativeIntensity))
+            }
+            
+            detailedList.sort { $0.sets > $1.sets }
+            
+            return HeatmapAggregatedData(
+                intensities: normalizedIntensities,
+                rawCounts: slugCounts,
+                detailedList: detailedList,
+                totalSets: totalSets,
+                topMuscle: detailedList.first
+            )
+        }}
+    
+struct HeatmapDetailView: View {
+       @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
+       private var allWorkouts: [Workout]
+       @Environment(ThemeManager.self) private var themeManager
+       let gender: String
+       @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ ТЕМЫ
+       @State private var selectedPeriod: SetsTrendDetailView.TrendPeriod = .month
+       @State private var aggregatedData: HeatmapAggregatedData? = nil
+       @State private var isProcessing = true
+       
+       var body: some View {
+           ScrollView {
+               VStack(spacing: 24) {
+                   
+                   Picker(LocalizedStringKey("Period"), selection: $selectedPeriod) {
+                       ForEach(SetsTrendDetailView.TrendPeriod.allCases) { period in
+                           Text(period.localizedName).tag(period)
+                       }
+                   }
+                   .pickerStyle(.segmented)
+                   .padding(.horizontal)
+                   .padding(.top, 10)
+                   
+                   if isProcessing {
+                       ProgressView()
+                           .frame(height: 300)
+                   } else if let data = aggregatedData, data.totalSets > 0 {
+                       
+                       // Самая нагруженная мышца
+                       if let top = data.topMuscle {
+                           topFocusCard(topMuscle: top)
+                       }
+                       
+                       // Интерактивная карта
+                       VStack {
+                           BodyHeatmapView(
+                               muscleIntensities: data.intensities,
+                               rawMuscleCounts: data.rawCounts, // ✅ Проброс сырых данных
+                               isRecoveryMode: false,
+                               isCompactMode: false,
+                               userGender: gender
+                           )
+                           .frame(height: 480)
+                           .padding(.vertical)
+                       }
+                       // 👇 ИСПРАВЛЕНИЕ: Адаптивный белый фон для карты тела
+                       .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+                       .cornerRadius(24)
+                       .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+                       .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 10, y: 5)
+                       .padding(.horizontal)
+                       
+                       // Детализированный лист по каждой мышце
+                       detailedBreakdownList(data: data)
+                       
+                   } else {
+                       EmptyStateView(
+                           icon: "figure.arms.open",
+                           title: LocalizedStringKey("No Data"),
+                           message: LocalizedStringKey("Complete workouts in this period to see your muscle distribution.")
+                       )
+                       .frame(height: 300)
+                   }
+               }
+               .padding(.vertical)
+           }
+           .navigationTitle(LocalizedStringKey("Muscle distribution (Body)"))
+           .navigationBarTitleDisplayMode(.inline)
+           // 👈 ИСПРАВЛЕНИЕ: Адаптивный фон экрана
+           .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+           .task(id: selectedPeriod) {
+               await calculateData()
+           }
+       }
+       
+       // MARK: - UI Components
+       
+       @ViewBuilder
+       private func topFocusCard(topMuscle: HeatmapDetailItem) -> some View {
+           HStack(spacing: 16) {
+               ZStack {
+                   Circle()
+                       .fill(Color.red.opacity(0.2))
+                       .frame(width: 50, height: 50)
+                   Image(systemName: "flame.fill")
+                       .foregroundColor(.red)
+                       .font(.title2)
+               }
+               
+               VStack(alignment: .leading, spacing: 4) {
+                   Text(LocalizedStringKey("Primary Focus"))
+                       .font(.caption)
+                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈
+                       .textCase(.uppercase)
+                   
+                   Text(LocalizedStringKey(topMuscle.displayName))
+                       .font(.title3)
+                       .bold()
+                       .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈 ИСПРАВЛЕНИЕ: Черный текст в светлой теме
+               }
+               
+               Spacer()
+               
+               VStack(alignment: .trailing, spacing: 4) {
+                   Text(LocalizedStringKey("Sets"))
+                       .font(.caption)
+                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈
+                       .textCase(.uppercase)
+                   Text("\(topMuscle.sets)")
+                       .font(.title2)
+                       .bold()
+                       .foregroundColor(.red)
+               }
+           }
+           .padding()
+           // 👇 ИСПРАВЛЕНИЕ: Белый фон для карточки
+           .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+           .cornerRadius(20)
+           .overlay(
+               RoundedRectangle(cornerRadius: 20)
+                   .stroke(Color.red.opacity(colorScheme == .dark ? 0.3 : 0.15), lineWidth: 1)
+           )
+           .shadow(color: .red.opacity(colorScheme == .dark ? 0.1 : 0.05), radius: 10, x: 0, y: 4)
+           .padding(.horizontal)
+       }
+       
+       @ViewBuilder
+       private func detailedBreakdownList(data: HeatmapAggregatedData) -> some View {
+           VStack(alignment: .leading, spacing: 0) {
+               HStack {
+                   Text(LocalizedStringKey("Detailed Breakdown"))
+                       .font(.headline)
+                       .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
+                   Spacer()
+                   Text(LocalizedStringKey("Sets"))
+                       .font(.caption)
+                       .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈
+               }
+               .padding(.horizontal)
+               .padding(.vertical, 12)
+               
+               Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)) // 👈
+               
+               ForEach(data.detailedList) { item in
+                   HStack(spacing: 16) {
+                       VStack(alignment: .leading, spacing: 6) {
+                           Text(LocalizedStringKey(item.displayName))
+                               .font(.subheadline)
+                               .fontWeight(.medium)
+                               .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
+                           
+                           // Burn Index Bar
+                           GeometryReader { geo in
+                               ZStack(alignment: .leading) {
+                                   Capsule()
+                                       .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)) // 👈
+                                       .frame(height: 6)
+                                   
+                                   Capsule()
+                                       .fill(intensityColor(for: item.relativeIntensity))
+                                       .frame(width: geo.size.width * CGFloat(item.relativeIntensity), height: 6)
+                               }
+                           }
+                           .frame(height: 6)
+                       }
+                       
+                       Spacer()
+                       
+                       Text("\(item.sets)")
+                           .font(.subheadline)
+                           .bold()
+                           .monospacedDigit()
+                           .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
+                   }
+                   .padding(.horizontal)
+                   .padding(.vertical, 12)
+                   
+                   if item.id != data.detailedList.last?.id {
+                       Divider().padding(.leading, 16)
+                           .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)) // 👈
+                   }
+               }
+           }
+           .padding(.bottom, 12)
+           // 👇 ИСПРАВЛЕНИЕ: Белый фон и светлые тени/рамки
+           .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+           .cornerRadius(24)
+           .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
+           .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 10, y: 5)
+           .padding(.horizontal)
+       }
+       
+       // MARK: - Logic
+       
+       private func calculateData() async {
+           isProcessing = true
+           
+           // Обрабатываем на MainActor, так как данные из @Query не-Sendable
+           let processedData = await HeatmapDataProcessor.process(workouts: allWorkouts, period: selectedPeriod)
+           
+           withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+               self.aggregatedData = processedData
+               self.isProcessing = false
+           }
+       }
+       
+       private func intensityColor(for relativeIntensity: Double) -> Color {
+           if relativeIntensity > 0.8 { return .red }
+           if relativeIntensity > 0.5 { return .orange }
+           return .blue
+       }
+   }
+    // MARK: - 30-Day Report Detail View & Processor
+    
+    enum ReportChartMetric: String, CaseIterable, Identifiable {
+        case workouts = "Workouts"
+        case duration = "Duration"
+        case volume = "Volume"
+        case sets = "Sets"
+        var id: String { self.rawValue }
+    }
+    
+    struct ReportDailyPoint: Identifiable, Sendable {
+        let id = UUID()
+        let date: Date
+        let value: Double
+    }
+    
+    struct ReportSummary: Sendable {
+        let currentWorkouts: Int; let prevWorkouts: Int
+        let currentDuration: Int; let prevDuration: Int
+        let currentVolume: Double; let prevVolume: Double
+        let currentSets: Int; let prevSets: Int
+    }
+    
+    struct PeriodReportPayload: Sendable {
+        let title: String
+        let summary: ReportSummary
+        let chartWorkouts: [ReportDailyPoint]
+        let chartDuration: [ReportDailyPoint]
+        let chartVolume: [ReportDailyPoint]
+        let chartSets: [ReportDailyPoint]
+        let activeDays: Set<Date>
+        let streakDays: Int
+        let radarCurrent: [RadarDataPoint]
+        let radarPrevious: [RadarDataPoint]
+        
+        // ✅ НОВЫЕ ПОЛЯ ДЛЯ "STORIES"
+        let topMuscle: String
+        let favoriteDay: String
+        let totalVolumeTons: Double
+        let funFactVolume: String
+    }
+    
+    /// Строго изолированный процессор для отчета за последние 30 дней
+    @MainActor
+    struct PeriodReportProcessor: Sendable {
+        
+        // ✅ ДОБАВЛЕНО: Калькулятор МАКСИМАЛЬНОГО стрика внутри периода
+        static func calculateMaxStreak(from dates: Set<Date>, maxRestDays: Int) -> Int {
+            let sortedDates = Array(dates).sorted(by: <) // От старых к новым
+            guard !sortedDates.isEmpty else { return 0 }
+            
+            var maxStreak = 1
+            var currentStreak = 1
+            let calendar = Calendar.current
+            
+            for i in 1..<sortedDates.count {
+                let prevDate = sortedDates[i-1]
+                let currDate = sortedDates[i]
+                
+                let daysBetween = calendar.dateComponents([.day], from: prevDate, to: currDate).day ?? 0
+                
+                // Если разница в днях позволяет сохранить стрик (например, 1 день отдыха при maxRest = 2, то daysBetween = 2)
+                if daysBetween <= (maxRestDays + 1) {
+                    currentStreak += 1
+                    maxStreak = max(maxStreak, currentStreak)
+                } else {
+                    currentStreak = 1 // Стрик прервался, начинаем заново
+                }
+            }
+            
+            return maxStreak
+        }
+        
+        static func process(workouts: [Workout]) async -> PeriodReportPayload {
+            let calendar = Calendar.current
+            let now = Date()
+            let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
+            
+            let curStart = calendar.date(byAdding: .day, value: -30, to: now)!
+            let prevEnd = curStart
+            let prevStart = calendar.date(byAdding: .day, value: -60, to: now)!
+            
+            let df = DateFormatter()
+            df.dateFormat = "MMMM yyyy"
+            let title = "\(df.string(from: now)) Review"
+            
+            var sCW = 0, sPW = 0, sCD = 0, sPD = 0, sCS = 0, sPS = 0
+            var sCV = 0.0, sPV = 0.0
+            
+            var dictWorkouts: [Date: Double] = [:]
+            var dictDuration: [Date: Double] = [:]
+            var dictVolume: [Date: Double] = [:]
+            var dictSets: [Date: Double] = [:]
+            var activeDays = Set<Date>()
+            var weekdayCounts: [Int: Int] = [:]
+            
+            let axes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
+            var radarCur: [String: Double] = [:]
+            var radarPrev: [String: Double] = [:]
+            
+            for workout in workouts {
+                let isCur = workout.date >= curStart
+                let isPrev = workout.date >= prevStart && workout.date < prevEnd
+                if !isCur && !isPrev { continue }
+                
+                let dayStart = calendar.startOfDay(for: workout.date)
+                var wVolume = 0.0
+                var wSets = 0
+                
+                for ex in workout.exercises {
+                    let targets = ex.isSuperset ? ex.subExercises : [ex]
+                    for sub in targets where sub.type == .strength {
+                        let cSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }
+                        wSets += cSets.count
+                        
+                        var tempSubVol = 0.0
+                        for set in cSets {
+                            let setWeight = set.weight ?? 0.0
+                            let setReps = Double(set.reps ?? 0)
+                            tempSubVol += (setWeight * setReps)
+                        }
+                        wVolume += tempSubVol
+                        
+                        if cSets.count > 0 {
+                            let category = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
+                            if category != "Other" {
+                                if isCur { radarCur[category, default: 0] += Double(cSets.count) }
+                                else if isPrev { radarPrev[category, default: 0] += Double(cSets.count) }
+                            }
+                        }
+                    }
                 }
                 
-                // 4. ТЕКУЩИЙ ПЕРИОД (Main Polygon)
-                DataPolygonShape(data: currentData)
-                    .fill(color.opacity(0.3))
-                    .frame(width: chartDiameter, height: chartDiameter) // Жестко ограничиваем размер
-                
-                DataPolygonShape(data: currentData)
-                    .stroke(color, lineWidth: 2)
-                    .frame(width: chartDiameter, height: chartDiameter)
-                
-                // 5. Точки на вершинах
-                ForEach(Array(currentData.enumerated()), id: \.offset) { index, point in
-                    let currentAngle = computeAngle(for: index, totalCount: totalCount)
-                    let isAxisHighlighted = highlightedAxis == point.axis
+                if isCur {
+                    sCW += 1; sCD += workout.durationSeconds / 60; sCV += wVolume; sCS += wSets
+                    dictWorkouts[dayStart, default: 0] += 1
+                    dictDuration[dayStart, default: 0] += Double(workout.durationSeconds / 60)
+                    dictVolume[dayStart, default: 0] += wVolume
+                    dictSets[dayStart, default: 0] += Double(wSets)
+                    activeDays.insert(dayStart)
                     
-                    let ratio = point.maxValue == 0 ? 0 : CGFloat(point.value / point.maxValue)
-                    let ptRadius = chartRadius * ratio
+                    let weekday = calendar.component(.weekday, from: workout.date)
+                    weekdayCounts[weekday, default: 0] += 1
+                } else if isPrev {
+                    sPW += 1; sPD += workout.durationSeconds / 60; sPV += wVolume; sPS += wSets
+                }
+            }
+            
+            var cW: [ReportDailyPoint] = [], cD: [ReportDailyPoint] = [], cV: [ReportDailyPoint] = [], cS: [ReportDailyPoint] = []
+            for i in 0..<30 {
+                let date = calendar.date(byAdding: .day, value: i, to: curStart)!
+                let dayStart = calendar.startOfDay(for: date)
+                cW.append(.init(date: dayStart, value: dictWorkouts[dayStart] ?? 0))
+                cD.append(.init(date: dayStart, value: dictDuration[dayStart] ?? 0))
+                cV.append(.init(date: dayStart, value: dictVolume[dayStart] ?? 0))
+                cS.append(.init(date: dayStart, value: dictSets[dayStart] ?? 0))
+            }
+            
+            let globalMax = max(10.0, max(radarCur.values.max() ?? 1, radarPrev.values.max() ?? 1))
+            let rC = axes.map { RadarDataPoint(axis: $0, value: radarCur[$0] ?? 0, maxValue: globalMax) }
+            let rP = axes.map { RadarDataPoint(axis: $0, value: radarPrev[$0] ?? 0, maxValue: globalMax) }
+            
+            let topMuscle = radarCur.max(by: { $0.value < $1.value })?.key ?? "Chest"
+            
+            let topWeekdayIndex = weekdayCounts.max(by: { $0.value < $1.value })?.key ?? 2
+            let favoriteDayStr = calendar.weekdaySymbols[topWeekdayIndex - 1]
+            
+            let tons = sCV / 1000.0
+            let funFact: String
+            if tons > 10 { funFact = "That's like lifting 2 Elephants! 🐘🐘" }
+            else if tons > 5 { funFact = "That's a T-Rex! 🦖" }
+            else if tons > 2 { funFact = "That's a heavy SUV! 🚙" }
+            else if tons > 1 { funFact = "That's a Walrus! 🦏" }
+            else { funFact = "Every kilo counts! 🏋️" }
+            
+            // ✅ ДОБАВЛЕНО: Считаем максимальный стрик в этом месяце с учетом настроек юзера
+            let maxRestDays = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) > 0 ? UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) : 2
+            let monthMaxStreak = calculateMaxStreak(from: activeDays, maxRestDays: maxRestDays)
+            
+            return PeriodReportPayload(
+                title: title,
+                summary: ReportSummary(currentWorkouts: sCW, prevWorkouts: sPW, currentDuration: sCD, prevDuration: sPD, currentVolume: sCV, prevVolume: sPV, currentSets: sCS, prevSets: sPS),
+                chartWorkouts: cW, chartDuration: cD, chartVolume: cV, chartSets: cS,
+                activeDays: activeDays,
+                streakDays: monthMaxStreak, // ✅ ТЕПЕРЬ ПЕРЕДАЕМ ПРАВИЛЬНЫЙ СТРИК
+                radarCurrent: rC, radarPrevious: rP,
+                topMuscle: topMuscle,
+                favoriteDay: favoriteDayStr,
+                totalVolumeTons: tons,
+                funFactVolume: funFact
+            )
+        }
+    }
+    // ============================================================
+    // MARK: - 2. Story View (Основной экран в стиле Instagram)
+    // ============================================================
+    
+    enum ReportSlide: Int, CaseIterable {
+        case intro = 0
+        case volume = 1
+        case focus = 2
+        case outro = 3
+    }
+    
+    struct MonthlyReportStoryView: View {
+        @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
+        private var allWorkouts: [Workout]
+        
+        @Environment(\.dismiss) private var dismiss
+        @Environment(UnitsManager.self) var unitsManager
+        
+        @State private var payload: PeriodReportPayload?
+        @State private var currentSlide: ReportSlide = .intro
+        @State private var slideProgress: CGFloat = 0.0
+        @State private var isPaused: Bool = false
+        @State private var isProcessing: Bool = true
+        
+        // Таймер (7 секунд на слайд -> 0.05 сек = 140 тиков)
+        let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+        let ticksPerSlide: CGFloat = 140.0
+        
+        @State private var dragStartTime: Date? = nil
+        
+        var body: some View {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                if isProcessing {
+                    ProgressView().tint(.white).scaleEffect(1.5)
+                } else if let data = payload {
+                    // 1. Контент текущего слайда
+                    GeometryReader { geo in
+                        ZStack {
+                            switch currentSlide {
+                            case .intro:
+                                StorySlideIntro(data: data)
+                            case .volume:
+                                StorySlideVolume(data: data, unitsManager: unitsManager)
+                            case .focus:
+                                StorySlideFocus(data: data)
+                            case .outro:
+                                StorySlideOutro(data: data, dismissAction: { dismiss() })
+                            }
+                        }
+                        .frame(width: geo.size.width, height: geo.size.height)
+                        .contentShape(Rectangle())
+                        // Обработка Тапов и Удержаний
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { _ in
+                                    isPaused = true
+                                    if dragStartTime == nil { dragStartTime = Date() }
+                                }
+                                .onEnded { value in
+                                    isPaused = false
+                                    let duration = Date().timeIntervalSince(dragStartTime ?? Date())
+                                    dragStartTime = nil
+                                    
+                                    // Если жест был коротким (тап)
+                                    if duration < 0.3 {
+                                        let generator = UIImpactFeedbackGenerator(style: .light)
+                                        generator.impactOccurred()
+                                        if value.location.x < geo.size.width / 2 {
+                                            prevSlide()
+                                        } else {
+                                            nextSlide()
+                                        }
+                                    }
+                                }
+                        )
+                    }
                     
-                    let ptX = centerX + (ptRadius * cos(currentAngle))
-                    let ptY = centerY + (ptRadius * sin(currentAngle))
+                    // 2. Сегментированный Progress Bar наверху
+                    VStack {
+                        StoryProgressBar(
+                            slidesCount: ReportSlide.allCases.count,
+                            currentIndex: currentSlide.rawValue,
+                            progress: slideProgress
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.top, 16) // Отступ от безопасной зоны
+                        
+                        HStack {
+                            Button { dismiss() } label: {
+                                Image(systemName: "xmark")
+                                    .font(.title2.bold())
+                                    .foregroundColor(.white)
+                                    .padding(16)
+                                    .shadow(color: .black.opacity(0.5), radius: 5)
+                            }
+                            Spacer()
+                        }
+                        Spacer()
+                    }
+                    .ignoresSafeArea(edges: .bottom)
+                }
+            }
+            .navigationBarHidden(true)
+            .toolbar(.hidden, for: .tabBar) // Скрываем таб-бар, если он есть
+            .onReceive(timer) { _ in
+                guard !isPaused, !isProcessing else { return }
+                slideProgress += 1.0 / ticksPerSlide
+                if slideProgress >= 1.0 {
+                    nextSlide()
+                }
+            }
+            .task {
+                // Убираем Task.detached, обрабатываем на MainActor
+                let processed = await PeriodReportProcessor.process(workouts: allWorkouts)
+                
+                self.payload = processed
+                withAnimation { self.isProcessing = false }
+            }
+        }
+        
+        // MARK: - Navigation Logic
+        
+        private func nextSlide() {
+            slideProgress = 0.0
+            if let next = ReportSlide(rawValue: currentSlide.rawValue + 1) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    currentSlide = next
+                }
+            } else {
+                // Если слайды закончились - закрываем
+                dismiss()
+            }
+        }
+        
+        private func prevSlide() {
+            slideProgress = 0.0
+            if let prev = ReportSlide(rawValue: currentSlide.rawValue - 1) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    currentSlide = prev
+                }
+            } else {
+                slideProgress = 0.0
+            }
+        }
+    }
+    
+    
+    // ============================================================
+    // MARK: - 3. Story UI Components
+    // ============================================================
+    
+    // Индикатор сверху
+    struct StoryProgressBar: View {
+        let slidesCount: Int
+        let currentIndex: Int
+        let progress: CGFloat
+        
+        var body: some View {
+            HStack(spacing: 6) {
+                ForEach(0..<slidesCount, id: \.self) { index in
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.white.opacity(0.3))
+                            
+                            Capsule()
+                                .fill(Color.white)
+                                .frame(width: geo.size.width * widthMultiplier(for: index))
+                        }
+                    }
+                    .frame(height: 4)
+                }
+            }
+            .shadow(color: .black.opacity(0.5), radius: 2)
+        }
+        
+        private func widthMultiplier(for index: Int) -> CGFloat {
+            if index < currentIndex { return 1.0 }
+            if index == currentIndex { return progress }
+            return 0.0
+        }
+    }
+    
+    struct StorySlideIntro: View {
+        let data: PeriodReportPayload
+        @Environment(ThemeManager.self) private var themeManager
+        
+        @State private var isAnimatingBg = false
+        @State private var floatAnim1 = false
+        @State private var floatAnim2 = false
+        @State private var floatAnim3 = false
+        
+        var body: some View {
+            ZStack {
+                // Строго темный фон
+                Color.black.ignoresSafeArea()
+                
+                // Гигантские анимированные неоновые сферы
+                ZStack {
+                    Circle()
+                        .fill(Color.purple.opacity(0.6))
+                        .frame(width: 400, height: 400)
+                        .blur(radius: 120)
+                        .offset(x: isAnimatingBg ? 150 : -200, y: isAnimatingBg ? -200 : 200)
                     
                     Circle()
-                        .fill(isAxisHighlighted ? Color.white : color)
-                        .frame(width: isAxisHighlighted ? 10 : 6, height: isAxisHighlighted ? 10 : 6)
-                        .overlay(
-                            Circle().stroke(color, lineWidth: isAxisHighlighted ? 3 : 0)
+                        .fill(Color.cyan.opacity(0.6))
+                        .frame(width: 350, height: 350)
+                        .blur(radius: 120)
+                        .offset(x: isAnimatingBg ? -150 : 200, y: isAnimatingBg ? 200 : -150)
+                }
+                
+                VStack(spacing: 40) {
+                    Spacer()
+                    
+                    // Кинетическая типографика
+                    Text("Your Month\nin Review")
+                        .font(.system(size: 50, weight: .black, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .shadow(color: .purple.opacity(0.8), radius: 20, x: 0, y: 10)
+                    
+                    // Стеклянные неоновые карточки с левитацией
+                    VStack(spacing: 20) {
+                        neoGlassCard(title: "Workouts", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: .cyan)
+                            .offset(y: floatAnim1 ? -8 : 8)
+                            .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: floatAnim1)
+                        
+                        neoGlassCard(title: "Minutes", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: .purple)
+                            .offset(y: floatAnim2 ? 8 : -8)
+                            .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true).delay(0.5), value: floatAnim2)
+                        
+                        neoGlassCard(
+                            title: "Favorite Day",
+                            value: data.favoriteDay.capitalized, // Делаем с большой буквы: "Суббота"
+                            icon: "star.fill",                   // Меняем иконку на 100% рабочую
+                            color: .green
                         )
-                        .position(x: ptX, y: ptY)
-                        .shadow(color: color.opacity(0.5), radius: 3)
+                        .offset(y: floatAnim3 ? -6 : 6)
+                        .animation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true).delay(1.0), value: floatAnim3)
+                    }
+                    .padding(.horizontal, 24)
+                    
+                    Spacer()
+                }
+            }
+            .onAppear {
+                withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
+                    isAnimatingBg = true
+                }
+                floatAnim1 = true
+                floatAnim2 = true
+                floatAnim3 = true
+            }
+        }
+        
+        private func neoGlassCard(title: String, value: String, icon: String, color: Color) -> some View {
+            HStack {
+                ZStack {
+                    Circle().fill(color.opacity(0.2)).frame(width: 50, height: 50)
+                    Image(systemName: icon)
+                        .font(.title2)
+                        .foregroundColor(color)
+                        .shadow(color: color, radius: 5)
+                }
+                
+                Text(LocalizedStringKey(title))
+                    .font(.headline)
+                    .foregroundColor(.white.opacity(0.8))
+                
+                Spacer()
+                
+                Text(value)
+                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .shadow(color: color.opacity(0.8), radius: 10)
+            }
+            .padding(20)
+            .background(.ultraThinMaterial)
+            .environment(\.colorScheme, ColorScheme.dark)
+            .cornerRadius(24)
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(LinearGradient(colors: [color.opacity(0.8), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
+            )
+            .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
+        }
+    }
+    
+    // MARK: - СЛАЙД 2: График объема
+    struct StorySlideVolume: View {
+        let data: PeriodReportPayload
+        let unitsManager: UnitsManager
+        @Environment(ThemeManager.self) private var themeManager
+        
+        @State private var animateChart = false
+        
+        var body: some View {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    Spacer()
+                    
+                    VStack(spacing: 8) {
+                        Text(LocalizedStringKey("You moved\nmountains."))
+                            .font(.system(size: 40, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                        
+                        let volStr = LocalizationHelper.shared.formatTwoDecimals(data.totalVolumeTons)
+                        
+                        // 1. Стили для главной большой цифры
+                        Text("\(volStr) tons")
+                            .font(.system(size: 65, weight: .black, design: .rounded))
+                            .foregroundColor(.cyan)
+                            .shadow(color: .cyan.opacity(0.8), radius: 25, x: 0, y: 0)
+                            .contentTransition(.numericText())
+                        
+                        // 2. Стили для маленькой подписи
+                        Text("Daily lifting volume over the last 30 days")
+                            .font(.caption)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white.opacity(0.5))
+                            .textCase(.uppercase)
+                            .padding(.bottom, 10) // Отступ перед графиком
+                    }
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 40)
+                    
+                    // Плавный AreaMark график без осей
+                    Chart(data.chartVolume) { point in
+                        let val = unitsManager.convertFromKilograms(point.value)
+                        
+                        LineMark(
+                            x: .value("Day", point.date),
+                            y: .value("Vol", animateChart ? val : 0)
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(.cyan)
+                        .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
+                        .shadow(color: .cyan.opacity(0.6), radius: 10, y: 5)
+                        
+                        AreaMark(
+                            x: .value("Day", point.date),
+                            y: .value("Vol", animateChart ? val : 0)
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [.cyan.opacity(0.5), .black.opacity(0.0)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                    .frame(height: 300)
+                    .padding(.horizontal, -10) // Растягиваем за края экрана
+                    
+                    Spacer()
+                }
+            }
+            .onAppear {
+                withAnimation(.spring(response: 1.5, dampingFraction: 0.8).delay(0.2)) {
+                    animateChart = true
                 }
             }
         }
-        .drawingGroup() // Аппаратное ускорение Metal
     }
-}
-
-struct PolygonShape: Shape {
-    let sides: Int
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.width / 2, y: rect.height / 2)
-        let radius = min(rect.width, rect.height) / 2
-        for i in 0..<sides {
-            let angle = (CGFloat(i) * (2.0 * .pi / CGFloat(sides))) - .pi / 2
-            let point = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
-            if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
-        }
-        path.closeSubpath()
-        return path
-    }
-}
-
-struct DataPolygonShape: Shape {
-    let data: [RadarDataPoint]
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.width / 2, y: rect.height / 2)
-        let maxRadius = min(rect.width, rect.height) / 2
-        for (i, point) in data.enumerated() {
-            let angle = (CGFloat(i) * (2.0 * .pi / CGFloat(data.count))) - .pi / 2
-            let ratio = point.maxValue == 0 ? 0 : CGFloat(point.value / point.maxValue)
-            let radius = maxRadius * ratio
-            let pt = CGPoint(x: center.x + radius * cos(angle), y: center.y + radius * sin(angle))
-            if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
-        }
-        path.closeSubpath()
-        return path
-    }
-}
-
-
-
-
-// MARK: - Heatmap Detail View & Processor
-
-struct HeatmapDetailItem: Identifiable, Sendable {
-    let id = UUID()
-    let slug: String
-    let displayName: String
-    let sets: Int
-    let relativeIntensity: Double // 0.0 to 1.0
-}
-
-struct HeatmapAggregatedData: Sendable {
-    let intensities: [String: Int] // Нормализованные значения 0-100 для рендеринга
-    let rawCounts: [String: Int]   // Сырые значения для тултипов
-    let detailedList: [HeatmapDetailItem]
-    let totalSets: Int
-    let topMuscle: HeatmapDetailItem?
-}
-
-/// 🚀 Фоновый процессор (Sendable) для защиты Main Thread от тяжелых вычислений
-@MainActor
-struct HeatmapDataProcessor: Sendable {
-    static func process(workouts: [Workout], period: SetsTrendDetailView.TrendPeriod) async -> HeatmapAggregatedData {
-        let calendar = Calendar.current
-        let now = Date()
-        let cutoffDate: Date?
-        
-        let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
-        
-        switch period {
-        case .week: cutoffDate = calendar.date(byAdding: .day, value: -7, to: now)
-        case .month: cutoffDate = calendar.date(byAdding: .month, value: -1, to: now)
-        case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now)
-        case .allTime: cutoffDate = nil
-        }
-        
-        var slugCounts: [String: Int] = [:]
-        var totalSets = 0
-        
-        for workout in workouts {
-            if let cutoff = cutoffDate, workout.date < cutoff { continue }
-            
-            for exercise in workout.exercises {
-                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-                for sub in targets where sub.type == .strength {
-                    let completedSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }.count
-                    if completedSets > 0 {
-                        let broadCategory = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
-                        let slugs = MuscleMapping.getMuscles(for: sub.name, group: broadCategory)
-                        for slug in slugs {
-                            slugCounts[slug, default: 0] += completedSets
-                        }
-                        totalSets += completedSets
-                    }
-                } // ✅ Восстановлена скобка
-            } // ✅ Восстановлена скобка
-        } // ✅ Восстановлена скобка
-        
-        let maxSets = Double(slugCounts.values.max() ?? 1)
-        var normalizedIntensities: [String: Int] = [:]
-        var detailedList: [HeatmapDetailItem] = []
-        
-        for (slug, count) in slugCounts {
-            let relativeIntensity = Double(count) / maxSets
-            normalizedIntensities[slug] = Int(relativeIntensity * 100)
-            let displayName = MuscleDisplayHelper.getDisplayName(for: slug)
-            detailedList.append(HeatmapDetailItem(slug: slug, displayName: displayName, sets: count, relativeIntensity: relativeIntensity))
-        }
-        
-        detailedList.sort { $0.sets > $1.sets }
-        
-        return HeatmapAggregatedData(
-            intensities: normalizedIntensities,
-            rawCounts: slugCounts,
-            detailedList: detailedList,
-            totalSets: totalSets,
-            topMuscle: detailedList.first
-        )
-    }}
-
-struct HeatmapDetailView: View {
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
-    @Environment(ThemeManager.self) private var themeManager
-    let gender: String
     
-    @State private var selectedPeriod: SetsTrendDetailView.TrendPeriod = .month
-    @State private var aggregatedData: HeatmapAggregatedData? = nil
-    @State private var isProcessing = true
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
+    // MARK: - СЛАЙД 3: Радар мышц
+    struct StorySlideFocus: View {
+        let data: PeriodReportPayload
+        @Environment(ThemeManager.self) private var themeManager
+        
+        var body: some View {
+            ZStack {
+                Color.black.ignoresSafeArea()
                 
-                Picker(LocalizedStringKey("Period"), selection: $selectedPeriod) {
-                    ForEach(SetsTrendDetailView.TrendPeriod.allCases) { period in
-                        Text(period.localizedName).tag(period)
+                // Токсичное свечение на фоне
+                Circle()
+                    .fill(Color.green.opacity(0.15))
+                    .frame(width: 400, height: 400)
+                    .blur(radius: 100)
+                
+                VStack(spacing: 30) {
+                    Spacer()
+                    
+                    VStack(spacing: 10) {
+                        Text(LocalizedStringKey("You destroyed your"))
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.9))
+                        
+                        Text(LocalizedStringKey(data.topMuscle))
+                            .font(.system(size: 60, weight: .black, design: .rounded))
+                            .textCase(.uppercase)
+                        // Ядовитый градиент
+                            .foregroundStyle(LinearGradient(colors: [.green, .cyan], startPoint: .leading, endPoint: .trailing))
+                            .shadow(color: .green.opacity(0.8), radius: 25, x: 0, y: 0)
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 20)
+                    
+                    // Эпичный Радар
+                    RadarChartView(
+                        currentData: data.radarCurrent,
+                        previousData: nil,
+                        highlightedAxis: data.topMuscle,
+                        color: .cyan
+                    )
+                    .frame(height: 350)
+                    .padding(30)
+                    .background(Color(white: 0.05))
+                    .cornerRadius(40)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 40)
+                            .stroke(LinearGradient(colors: [.cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+                    )
+                    .shadow(color: .cyan.opacity(0.2), radius: 30, x: 0, y: 15)
+                    .padding(.horizontal, 24)
+                    
+                    Spacer()
+                }
+            }
+        }
+    }
+    
+    // MARK: - СЛАЙД 4: Финал (Holo Card)
+    struct StorySlideOutro: View {
+        let data: PeriodReportPayload
+        var dismissAction: () -> Void
+        @Environment(ThemeManager.self) private var themeManager
+        
+        @State private var dragOffset: CGSize = .zero
+        @State private var isPulsing = false
+        
+        // Подготовка дней для мини-сетки
+        private var last28Days: [Date] {
+            let cal = Calendar.current
+            let today = cal.startOfDay(for: Date())
+            return (0..<28).compactMap { cal.date(byAdding: .day, value: -$0, to: today) }.reversed()
+        }
+        
+        var body: some View {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    Spacer()
+                    
+                    // Голографическая карточка
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .fill(Color(white: 0.08))
+                        
+                        // Эффект стекла и перелива
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                            .environment(\.colorScheme, ColorScheme.dark)
+                        
+                        RoundedRectangle(cornerRadius: 32, style: .continuous)
+                            .stroke(LinearGradient(colors: [.purple, .cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+                        
+                        VStack(spacing: 30) {
+                            Text("DISCIPLINE")
+                                .font(.system(size: 24, weight: .black, design: .rounded))
+                                .tracking(4)
+                                .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .leading, endPoint: .trailing))
+                            
+                            // 3 Новые метрики
+                            HStack(spacing: 20) {
+                                holoStat(value: "\(data.streakDays)", title: "Max Streak", color: .orange)
+                                holoStat(value: "\(data.activeDays.count)", title: "Gym Days", color: .cyan)
+                                holoStat(value: "\(data.summary.currentSets)", title: "Sets Done", color: .green)
+                            }
+                            
+                            Divider().background(Color.white.opacity(0.2))
+                            
+                            // Неоновый GitHub-style Календарь
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("ACTIVITY HEATMAP (LAST 28 DAYS)")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white.opacity(0.5))
+                                
+                                // Сетка 7 колонок (пн-вс)
+                                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                                    ForEach(last28Days, id: \.self) { date in
+                                        let isActive = data.activeDays.contains(where: { Calendar.current.isDate($0, inSameDayAs: date) })
+                                        
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(isActive ? Color.cyan : Color.white.opacity(0.1))
+                                            .aspectRatio(1, contentMode: .fit)
+                                            .shadow(color: isActive ? Color.cyan.opacity(0.6) : .clear, radius: 4)
+                                    }
+                                }
+                            }
+                        } // <-- ИМЕННО ЭТУ СКОБКУ ТЫ ПОТЕРЯЛ В ПРЕДЫДУЩЕМ КОДЕ
+                        .padding(30)
+                    }
+                    .frame(width: 340, height: 460)
+                    .rotation3DEffect(.degrees(Double(dragOffset.width / 10)), axis: (x: 0, y: 1, z: 0))
+                    .rotation3DEffect(.degrees(Double(-dragOffset.height / 10)), axis: (x: 1, y: 0, z: 0))
+                    .shadow(color: .cyan.opacity(0.3), radius: 40, x: dragOffset.width/3, y: dragOffset.height/3)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { val in withAnimation(.interactiveSpring()) { dragOffset = val.translation } }
+                            .onEnded { _ in withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { dragOffset = .zero } }
+                    )
+                    
+                    Spacer()
+                    
+                    // Огромная кнопка Share
+                    Button {
+                        let generator = UIImpactFeedbackGenerator(style: .heavy)
+                        generator.impactOccurred()
+                        // Здесь в реальном приложении вызов ShareSheet
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title2.bold())
+                            Text(LocalizedStringKey("SHARE STATS"))
+                                .font(.title2.bold())
+                                .tracking(2)
+                        }
+                        .foregroundColor(.black)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 22)
+                        .background(LinearGradient(colors: [.cyan, .green], startPoint: .leading, endPoint: .trailing))
+                        .clipShape(Capsule())
+                        .scaleEffect(isPulsing ? 1.05 : 1.0)
+                        .shadow(color: .green.opacity(isPulsing ? 0.8 : 0.4), radius: isPulsing ? 25 : 10, y: 5)
+                    }
+                    .padding(.horizontal, 30)
+                    .padding(.bottom, 40)
+                    .onAppear {
+                        withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                            isPulsing = true
+                        }
+                    }
+                }
+            }
+        }
+        
+        private func holoStat(value: String, title: String, color: Color) -> some View {
+            VStack(spacing: 6) {
+                Text(value)
+                    .font(.system(size: 34, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                    .shadow(color: color.opacity(0.8), radius: 10)
+                
+                Text(LocalizedStringKey(title))
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(color)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+    
+    // MARK: - UI Components
+    
+    struct MonthlyReportDetailsView: View {
+        let data: PeriodReportPayload
+        @Environment(ThemeManager.self) private var themeManager
+        // Возвращаем потерянные переменные
+        @Environment(UnitsManager.self) var unitsManager
+        @State private var selectedMetric: ReportChartMetric = .workouts
+        
+        var body: some View {
+            ScrollView {
+                VStack(spacing: 20) {
+                    summaryGrid(data: data.summary)
+                    chartSection(data: data)
+                    calendarSection(data: data)
+                    radarSection(data: data)
+                }
+            }
+        }
+        
+        @ViewBuilder
+        private func chartSection(data: PeriodReportPayload) -> some View {
+            VStack(spacing: 16) {
+                Picker("Metric", selection: $selectedMetric) {
+                    ForEach(ReportChartMetric.allCases) { metric in
+                        Text(LocalizedStringKey(metric.rawValue)).tag(metric)
                     }
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
-                .padding(.top, 10)
                 
-                if isProcessing {
-                    ProgressView()
-                        .frame(height: 300)
-                } else if let data = aggregatedData, data.totalSets > 0 {
-                    
-                    // Самая нагруженная мышца
-                    if let top = data.topMuscle {
-                        topFocusCard(topMuscle: top)
+                let chartData: [ReportDailyPoint] = {
+                    switch selectedMetric {
+                    case .workouts: return data.chartWorkouts
+                    case .duration: return data.chartDuration
+                    case .volume: return data.chartVolume
+                    case .sets: return data.chartSets
                     }
-                    
-                    // Интерактивная карта
-                    VStack {
-                        BodyHeatmapView(
-                            muscleIntensities: data.intensities,
-                            rawMuscleCounts: data.rawCounts, // ✅ Проброс сырых данных
-                            isRecoveryMode: false,
-                            isCompactMode: false,
-                            userGender: gender
-                        )
-                        .frame(height: 480)
-                        .padding(.vertical)
-                    }
-                    .background(themeManager.current.surface)
-                    .cornerRadius(20)
-                    .padding(.horizontal)
-                    
-                    // Детализированный лист по каждой мышце
-                    detailedBreakdownList(data: data)
-                    
-                } else {
-                    EmptyStateView(
-                        icon: "figure.arms.open",
-                        title: LocalizedStringKey("No Data"),
-                        message: LocalizedStringKey("Complete workouts in this period to see your muscle distribution.")
+                }()
+                
+                Chart(chartData) { point in
+                    let val = selectedMetric == .volume ? unitsManager.convertFromKilograms(point.value) : point.value
+                    BarMark(
+                        x: .value("Date", point.date, unit: .day),
+                        y: .value("Value", val)
                     )
-                    .frame(height: 300)
+                    .foregroundStyle(themeManager.current.primaryGradient)
+                    .cornerRadius(4)
+                    .annotation(position: .top) {
+                        if val > 0 {
+                            Text(LocalizationHelper.shared.formatFlexible(val))
+                                .font(.caption2)
+                                .foregroundColor(themeManager.current.secondaryText)
+                        }
+                    }
                 }
+                .frame(height: 200)
+                .chartYScale(domain: .automatic(includesZero: true))
+                .chartXAxis {
+                    AxisMarks(values: .automatic) { _ in
+                        AxisGridLine().foregroundStyle(.gray.opacity(0.1))
+                        AxisTick()
+                        AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
+                    }
+                }
+                .padding(.horizontal)
             }
             .padding(.vertical)
+            .background(themeManager.current.surface)
         }
-        .navigationTitle(LocalizedStringKey("Muscle distribution (Body)"))
-        .navigationBarTitleDisplayMode(.inline)
-        .background(Color(UIColor.systemGroupedBackground))
-        .task(id: selectedPeriod) {
-            await calculateData()
-        }
-    }
-    
-    // MARK: - UI Components
-    
-    @ViewBuilder
-    private func topFocusCard(topMuscle: HeatmapDetailItem) -> some View {
-        HStack(spacing: 16) {
-            ZStack {
-                Circle()
-                    .fill(Color.red.opacity(0.2))
-                    .frame(width: 50, height: 50)
-                Image(systemName: "flame.fill")
-                    .foregroundColor(.red)
-                    .font(.title2)
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(LocalizedStringKey("Primary Focus"))
-                    .font(.caption)
-                    .foregroundColor(themeManager.current.secondaryText)
-                    .textCase(.uppercase)
-                
-                Text(LocalizedStringKey(topMuscle.displayName))
-                    .font(.title3)
-                    .bold()
-                    .foregroundColor(themeManager.current.primaryText)
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .trailing, spacing: 4) {
-                Text(LocalizedStringKey("Sets"))
-                    .font(.caption)
-                    .foregroundColor(themeManager.current.secondaryText)
-                    .textCase(.uppercase)
-                Text("\(topMuscle.sets)")
-                    .font(.title2)
-                    .bold()
-                    .foregroundColor(.red)
-            }
-        }
-        .padding()
-        .background(themeManager.current.surface)
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.red.opacity(0.3), lineWidth: 1)
-        )
-        .shadow(color: .red.opacity(0.1), radius: 10, x: 0, y: 4)
-        .padding(.horizontal)
-    }
-    
-    @ViewBuilder
-    private func detailedBreakdownList(data: HeatmapAggregatedData) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text(LocalizedStringKey("Detailed Breakdown"))
+        
+        @ViewBuilder
+        private func summaryGrid(data: ReportSummary) -> some View {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(LocalizedStringKey("Summary"))
                     .font(.headline)
-                    .foregroundColor(themeManager.current.primaryText)
-                Spacer()
-                Text(LocalizedStringKey("Sets"))
-                    .font(.caption)
                     .foregroundColor(themeManager.current.secondaryText)
-            }
-            .padding(.horizontal)
-            .padding(.vertical, 12)
-            
-            Divider()
-            
-            ForEach(data.detailedList) { item in
-                HStack(spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(LocalizedStringKey(item.displayName))
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundColor(themeManager.current.primaryText)
-                        
-                        // Burn Index Bar
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule()
-                                    .fill(Color.gray.opacity(0.2))
-                                    .frame(height: 6)
-                                
-                                Capsule()
-                                    .fill(intensityColor(for: item.relativeIntensity))
-                                    .frame(width: geo.size.width * CGFloat(item.relativeIntensity), height: 6)
-                            }
-                        }
-                        .frame(height: 6)
-                    }
-                    
-                    Spacer()
-                    
-                    Text("\(item.sets)")
-                        .font(.subheadline)
-                        .bold()
-                        .monospacedDigit()
-                        .foregroundColor(themeManager.current.primaryText)
+                    .padding(.horizontal)
+                
+                let cVol = unitsManager.convertFromKilograms(data.currentVolume)
+                let pVol = unitsManager.convertFromKilograms(data.prevVolume)
+                let wUnit = unitsManager.weightUnitString()
+                
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                    reportCard(title: "Workouts", current: "\(data.currentWorkouts)", prev: "\(data.prevWorkouts)", change: calcChange(Double(data.currentWorkouts), Double(data.prevWorkouts)))
+                    reportCard(title: "Duration", current: "\(data.currentDuration)m", prev: "\(data.prevDuration)m", change: calcChange(Double(data.currentDuration), Double(data.prevDuration)))
+                    reportCard(title: "Volume", current: "\(Int(cVol))\(wUnit)", prev: "\(Int(pVol))\(wUnit)", change: calcChange(cVol, pVol))
+                    reportCard(title: "Sets", current: "\(data.currentSets)", prev: "\(data.prevSets)", change: calcChange(Double(data.currentSets), Double(data.prevSets)))
                 }
                 .padding(.horizontal)
-                .padding(.vertical, 12)
+            }
+        }
+        
+        private func calcChange(_ cur: Double, _ prev: Double) -> Double {
+            if prev == 0 { return cur > 0 ? 100 : 0 }
+            return ((cur - prev) / prev) * 100.0
+        }
+        
+        @ViewBuilder
+        private func reportCard(title: String, current: String, prev: String, change: Double) -> some View {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(LocalizedStringKey(title))
+                    .font(.subheadline)
+                    .foregroundColor(themeManager.current.primaryText)
                 
-                if item.id != data.detailedList.last?.id {
-                    Divider().padding(.leading, 16)
-                }
-            }
-        }
-        .background(themeManager.current.surface)
-        .cornerRadius(20)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Logic
-    
-    private func calculateData() async {
-        isProcessing = true
-        
-        // Обрабатываем на MainActor, так как данные из @Query не-Sendable
-        let processedData = await HeatmapDataProcessor.process(workouts: allWorkouts, period: selectedPeriod)
-        
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            self.aggregatedData = processedData
-            self.isProcessing = false
-        }
-    }
-    
-    private func intensityColor(for relativeIntensity: Double) -> Color {
-        if relativeIntensity > 0.8 { return .red }
-        if relativeIntensity > 0.5 { return .orange }
-        return .blue
-    }
-}
-// MARK: - 30-Day Report Detail View & Processor
-
-enum ReportChartMetric: String, CaseIterable, Identifiable {
-    case workouts = "Workouts"
-    case duration = "Duration"
-    case volume = "Volume"
-    case sets = "Sets"
-    var id: String { self.rawValue }
-}
-
-struct ReportDailyPoint: Identifiable, Sendable {
-    let id = UUID()
-    let date: Date
-    let value: Double
-}
-
-struct ReportSummary: Sendable {
-    let currentWorkouts: Int; let prevWorkouts: Int
-    let currentDuration: Int; let prevDuration: Int
-    let currentVolume: Double; let prevVolume: Double
-    let currentSets: Int; let prevSets: Int
-}
-
-struct PeriodReportPayload: Sendable {
-    let title: String
-    let summary: ReportSummary
-    let chartWorkouts: [ReportDailyPoint]
-    let chartDuration: [ReportDailyPoint]
-    let chartVolume: [ReportDailyPoint]
-    let chartSets: [ReportDailyPoint]
-    let activeDays: Set<Date>
-    let streakDays: Int
-    let radarCurrent: [RadarDataPoint]
-    let radarPrevious: [RadarDataPoint]
-    
-    // ✅ НОВЫЕ ПОЛЯ ДЛЯ "STORIES"
-    let topMuscle: String
-    let favoriteDay: String
-    let totalVolumeTons: Double
-    let funFactVolume: String
-}
-
-/// Строго изолированный процессор для отчета за последние 30 дней
-@MainActor
-struct PeriodReportProcessor: Sendable {
-    
-    // ✅ ДОБАВЛЕНО: Калькулятор МАКСИМАЛЬНОГО стрика внутри периода
-    static func calculateMaxStreak(from dates: Set<Date>, maxRestDays: Int) -> Int {
-        let sortedDates = Array(dates).sorted(by: <) // От старых к новым
-        guard !sortedDates.isEmpty else { return 0 }
-        
-        var maxStreak = 1
-        var currentStreak = 1
-        let calendar = Calendar.current
-        
-        for i in 1..<sortedDates.count {
-            let prevDate = sortedDates[i-1]
-            let currDate = sortedDates[i]
-            
-            let daysBetween = calendar.dateComponents([.day], from: prevDate, to: currDate).day ?? 0
-            
-            // Если разница в днях позволяет сохранить стрик (например, 1 день отдыха при maxRest = 2, то daysBetween = 2)
-            if daysBetween <= (maxRestDays + 1) {
-                currentStreak += 1
-                maxStreak = max(maxStreak, currentStreak)
-            } else {
-                currentStreak = 1 // Стрик прервался, начинаем заново
-            }
-        }
-        
-        return maxStreak
-    }
-    
-    static func process(workouts: [Workout]) async -> PeriodReportPayload {
-        let calendar = Calendar.current
-        let now = Date()
-        let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
-        
-        let curStart = calendar.date(byAdding: .day, value: -30, to: now)!
-        let prevEnd = curStart
-        let prevStart = calendar.date(byAdding: .day, value: -60, to: now)!
-        
-        let df = DateFormatter()
-        df.dateFormat = "MMMM yyyy"
-        let title = "\(df.string(from: now)) Review"
-        
-        var sCW = 0, sPW = 0, sCD = 0, sPD = 0, sCS = 0, sPS = 0
-        var sCV = 0.0, sPV = 0.0
-        
-        var dictWorkouts: [Date: Double] = [:]
-        var dictDuration: [Date: Double] = [:]
-        var dictVolume: [Date: Double] = [:]
-        var dictSets: [Date: Double] = [:]
-        var activeDays = Set<Date>()
-        var weekdayCounts: [Int: Int] = [:]
-        
-        let axes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
-        var radarCur: [String: Double] = [:]
-        var radarPrev: [String: Double] = [:]
-        
-        for workout in workouts {
-            let isCur = workout.date >= curStart
-            let isPrev = workout.date >= prevStart && workout.date < prevEnd
-            if !isCur && !isPrev { continue }
-            
-            let dayStart = calendar.startOfDay(for: workout.date)
-            var wVolume = 0.0
-            var wSets = 0
-            
-            for ex in workout.exercises {
-                let targets = ex.isSuperset ? ex.subExercises : [ex]
-                for sub in targets where sub.type == .strength {
-                    let cSets = sub.setsList.filter { $0.isCompleted && (includeWarmups || $0.type != .warmup) }
-                    wSets += cSets.count
-                    
-                    var tempSubVol = 0.0
-                    for set in cSets {
-                        let setWeight = set.weight ?? 0.0
-                        let setReps = Double(set.reps ?? 0)
-                        tempSubVol += (setWeight * setReps)
-                    }
-                    wVolume += tempSubVol
-                    
-                    if cSets.count > 0 {
-                        let category = MuscleCategoryMapper.getBroadCategory(for: sub.muscleGroup)
-                        if category != "Other" {
-                            if isCur { radarCur[category, default: 0] += Double(cSets.count) }
-                            else if isPrev { radarPrev[category, default: 0] += Double(cSets.count) }
-                        }
-                    }
-                }
-            }
-            
-            if isCur {
-                sCW += 1; sCD += workout.durationSeconds / 60; sCV += wVolume; sCS += wSets
-                dictWorkouts[dayStart, default: 0] += 1
-                dictDuration[dayStart, default: 0] += Double(workout.durationSeconds / 60)
-                dictVolume[dayStart, default: 0] += wVolume
-                dictSets[dayStart, default: 0] += Double(wSets)
-                activeDays.insert(dayStart)
+                Text(current)
+                    .font(.title2)
+                    .bold()
                 
-                let weekday = calendar.component(.weekday, from: workout.date)
-                weekdayCounts[weekday, default: 0] += 1
-            } else if isPrev {
-                sPW += 1; sPD += workout.durationSeconds / 60; sPV += wVolume; sPS += wSets
-            }
-        }
-        
-        var cW: [ReportDailyPoint] = [], cD: [ReportDailyPoint] = [], cV: [ReportDailyPoint] = [], cS: [ReportDailyPoint] = []
-        for i in 0..<30 {
-            let date = calendar.date(byAdding: .day, value: i, to: curStart)!
-            let dayStart = calendar.startOfDay(for: date)
-            cW.append(.init(date: dayStart, value: dictWorkouts[dayStart] ?? 0))
-            cD.append(.init(date: dayStart, value: dictDuration[dayStart] ?? 0))
-            cV.append(.init(date: dayStart, value: dictVolume[dayStart] ?? 0))
-            cS.append(.init(date: dayStart, value: dictSets[dayStart] ?? 0))
-        }
-        
-        let globalMax = max(10.0, max(radarCur.values.max() ?? 1, radarPrev.values.max() ?? 1))
-        let rC = axes.map { RadarDataPoint(axis: $0, value: radarCur[$0] ?? 0, maxValue: globalMax) }
-        let rP = axes.map { RadarDataPoint(axis: $0, value: radarPrev[$0] ?? 0, maxValue: globalMax) }
-        
-        let topMuscle = radarCur.max(by: { $0.value < $1.value })?.key ?? "Chest"
-        
-        let topWeekdayIndex = weekdayCounts.max(by: { $0.value < $1.value })?.key ?? 2
-        let favoriteDayStr = calendar.weekdaySymbols[topWeekdayIndex - 1]
-        
-        let tons = sCV / 1000.0
-        let funFact: String
-        if tons > 10 { funFact = "That's like lifting 2 Elephants! 🐘🐘" }
-        else if tons > 5 { funFact = "That's a T-Rex! 🦖" }
-        else if tons > 2 { funFact = "That's a heavy SUV! 🚙" }
-        else if tons > 1 { funFact = "That's a Walrus! 🦏" }
-        else { funFact = "Every kilo counts! 🏋️" }
-        
-        // ✅ ДОБАВЛЕНО: Считаем максимальный стрик в этом месяце с учетом настроек юзера
-        let maxRestDays = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) > 0 ? UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) : 2
-        let monthMaxStreak = calculateMaxStreak(from: activeDays, maxRestDays: maxRestDays)
-        
-        return PeriodReportPayload(
-            title: title,
-            summary: ReportSummary(currentWorkouts: sCW, prevWorkouts: sPW, currentDuration: sCD, prevDuration: sPD, currentVolume: sCV, prevVolume: sPV, currentSets: sCS, prevSets: sPS),
-            chartWorkouts: cW, chartDuration: cD, chartVolume: cV, chartSets: cS,
-            activeDays: activeDays,
-            streakDays: monthMaxStreak, // ✅ ТЕПЕРЬ ПЕРЕДАЕМ ПРАВИЛЬНЫЙ СТРИК
-            radarCurrent: rC, radarPrevious: rP,
-            topMuscle: topMuscle,
-            favoriteDay: favoriteDayStr,
-            totalVolumeTons: tons,
-            funFactVolume: funFact
-        )
-    }
-}
-// ============================================================
-// MARK: - 2. Story View (Основной экран в стиле Instagram)
-// ============================================================
-
-enum ReportSlide: Int, CaseIterable {
-    case intro = 0
-    case volume = 1
-    case focus = 2
-    case outro = 3
-}
-
-struct MonthlyReportStoryView: View {
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
-    
-    @Environment(\.dismiss) private var dismiss
-    @Environment(UnitsManager.self) var unitsManager
-    
-    @State private var payload: PeriodReportPayload?
-    @State private var currentSlide: ReportSlide = .intro
-    @State private var slideProgress: CGFloat = 0.0
-    @State private var isPaused: Bool = false
-    @State private var isProcessing: Bool = true
-    
-    // Таймер (7 секунд на слайд -> 0.05 сек = 140 тиков)
-    let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
-    let ticksPerSlide: CGFloat = 140.0
-    
-    @State private var dragStartTime: Date? = nil
-    
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            if isProcessing {
-                ProgressView().tint(.white).scaleEffect(1.5)
-            } else if let data = payload {
-                // 1. Контент текущего слайда
-                GeometryReader { geo in
-                    ZStack {
-                        switch currentSlide {
-                        case .intro:
-                            StorySlideIntro(data: data)
-                        case .volume:
-                            StorySlideVolume(data: data, unitsManager: unitsManager)
-                        case .focus:
-                            StorySlideFocus(data: data)
-                        case .outro:
-                            StorySlideOutro(data: data, dismissAction: { dismiss() })
-                        }
-                    }
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .contentShape(Rectangle())
-                    // Обработка Тапов и Удержаний
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { _ in
-                                isPaused = true
-                                if dragStartTime == nil { dragStartTime = Date() }
-                            }
-                            .onEnded { value in
-                                isPaused = false
-                                let duration = Date().timeIntervalSince(dragStartTime ?? Date())
-                                dragStartTime = nil
-                                
-                                // Если жест был коротким (тап)
-                                if duration < 0.3 {
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred()
-                                    if value.location.x < geo.size.width / 2 {
-                                        prevSlide()
-                                    } else {
-                                        nextSlide()
-                                    }
-                                }
-                            }
-                    )
+                HStack(spacing: 4) {
+                    Image(systemName: change >= 0 ? "arrow.up.right" : "arrow.down.right")
+                    Text("\(abs(change), specifier: "%.0f")%")
+                    Text("vs \(prev)")
                 }
-                
-                // 2. Сегментированный Progress Bar наверху
-                VStack {
-                    StoryProgressBar(
-                        slidesCount: ReportSlide.allCases.count,
-                        currentIndex: currentSlide.rawValue,
-                        progress: slideProgress
-                    )
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16) // Отступ от безопасной зоны
-                    
-                    HStack {
-                        Button { dismiss() } label: {
-                            Image(systemName: "xmark")
-                                .font(.title2.bold())
-                                .foregroundColor(.white)
-                                .padding(16)
-                                .shadow(color: .black.opacity(0.5), radius: 5)
-                        }
-                        Spacer()
-                    }
-                    Spacer()
-                }
-                .ignoresSafeArea(edges: .bottom)
-            }
-        }
-        .navigationBarHidden(true)
-        .toolbar(.hidden, for: .tabBar) // Скрываем таб-бар, если он есть
-        .onReceive(timer) { _ in
-            guard !isPaused, !isProcessing else { return }
-            slideProgress += 1.0 / ticksPerSlide
-            if slideProgress >= 1.0 {
-                nextSlide()
-            }
-        }
-        .task {
-            // Убираем Task.detached, обрабатываем на MainActor
-            let processed = await PeriodReportProcessor.process(workouts: allWorkouts)
-            
-            self.payload = processed
-            withAnimation { self.isProcessing = false }
-        }
-    }
-    
-    // MARK: - Navigation Logic
-    
-    private func nextSlide() {
-        slideProgress = 0.0
-        if let next = ReportSlide(rawValue: currentSlide.rawValue + 1) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                currentSlide = next
-            }
-        } else {
-            // Если слайды закончились - закрываем
-            dismiss()
-        }
-    }
-    
-    private func prevSlide() {
-        slideProgress = 0.0
-        if let prev = ReportSlide(rawValue: currentSlide.rawValue - 1) {
-            withAnimation(.easeInOut(duration: 0.3)) {
-                currentSlide = prev
-            }
-        } else {
-            slideProgress = 0.0
-        }
-    }
-}
-
-
-// ============================================================
-// MARK: - 3. Story UI Components
-// ============================================================
-
-// Индикатор сверху
-struct StoryProgressBar: View {
-    let slidesCount: Int
-    let currentIndex: Int
-    let progress: CGFloat
-    
-    var body: some View {
-        HStack(spacing: 6) {
-            ForEach(0..<slidesCount, id: \.self) { index in
-                GeometryReader { geo in
-                    ZStack(alignment: .leading) {
-                        Capsule()
-                            .fill(Color.white.opacity(0.3))
-                        
-                        Capsule()
-                            .fill(Color.white)
-                            .frame(width: geo.size.width * widthMultiplier(for: index))
-                    }
-                }
-                .frame(height: 4)
-            }
-        }
-        .shadow(color: .black.opacity(0.5), radius: 2)
-    }
-    
-    private func widthMultiplier(for index: Int) -> CGFloat {
-        if index < currentIndex { return 1.0 }
-        if index == currentIndex { return progress }
-        return 0.0
-    }
-}
-
-struct StorySlideIntro: View {
-   let data: PeriodReportPayload
-   @Environment(ThemeManager.self) private var themeManager
-   
-   @State private var isAnimatingBg = false
-   @State private var floatAnim1 = false
-   @State private var floatAnim2 = false
-   @State private var floatAnim3 = false
-   
-   var body: some View {
-       ZStack {
-           // Строго темный фон
-           Color.black.ignoresSafeArea()
-           
-           // Гигантские анимированные неоновые сферы
-           ZStack {
-               Circle()
-                   .fill(Color.purple.opacity(0.6))
-                   .frame(width: 400, height: 400)
-                   .blur(radius: 120)
-                   .offset(x: isAnimatingBg ? 150 : -200, y: isAnimatingBg ? -200 : 200)
-               
-               Circle()
-                   .fill(Color.cyan.opacity(0.6))
-                   .frame(width: 350, height: 350)
-                   .blur(radius: 120)
-                   .offset(x: isAnimatingBg ? -150 : 200, y: isAnimatingBg ? 200 : -150)
-           }
-           
-           VStack(spacing: 40) {
-               Spacer()
-               
-               // Кинетическая типографика
-               Text("Your Month\nin Review")
-                   .font(.system(size: 50, weight: .black, design: .rounded))
-                   .foregroundColor(.white)
-                   .multilineTextAlignment(.center)
-                   .lineSpacing(4)
-                   .shadow(color: .purple.opacity(0.8), radius: 20, x: 0, y: 10)
-               
-               // Стеклянные неоновые карточки с левитацией
-               VStack(spacing: 20) {
-                   neoGlassCard(title: "Workouts", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: .cyan)
-                       .offset(y: floatAnim1 ? -8 : 8)
-                       .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: floatAnim1)
-                   
-                   neoGlassCard(title: "Minutes", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: .purple)
-                       .offset(y: floatAnim2 ? 8 : -8)
-                       .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true).delay(0.5), value: floatAnim2)
-                   
-                   neoGlassCard(
-                       title: "Favorite Day",
-                       value: data.favoriteDay.capitalized, // Делаем с большой буквы: "Суббота"
-                       icon: "star.fill",                   // Меняем иконку на 100% рабочую
-                       color: .green
-                   )
-                       .offset(y: floatAnim3 ? -6 : 6)
-                       .animation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true).delay(1.0), value: floatAnim3)
-               }
-               .padding(.horizontal, 24)
-               
-               Spacer()
-           }
-       }
-       .onAppear {
-           withAnimation(.easeInOut(duration: 6).repeatForever(autoreverses: true)) {
-               isAnimatingBg = true
-           }
-           floatAnim1 = true
-           floatAnim2 = true
-           floatAnim3 = true
-       }
-   }
-   
-   private func neoGlassCard(title: String, value: String, icon: String, color: Color) -> some View {
-       HStack {
-           ZStack {
-               Circle().fill(color.opacity(0.2)).frame(width: 50, height: 50)
-               Image(systemName: icon)
-                   .font(.title2)
-                   .foregroundColor(color)
-                   .shadow(color: color, radius: 5)
-           }
-           
-           Text(LocalizedStringKey(title))
-               .font(.headline)
-               .foregroundColor(.white.opacity(0.8))
-           
-           Spacer()
-           
-           Text(value)
-               .font(.system(size: 28, weight: .heavy, design: .rounded))
-               .foregroundColor(.white)
-               .shadow(color: color.opacity(0.8), radius: 10)
-       }
-       .padding(20)
-       .background(.ultraThinMaterial)
-       .environment(\.colorScheme, .dark)
-       .cornerRadius(24)
-       .overlay(
-           RoundedRectangle(cornerRadius: 24)
-               .stroke(LinearGradient(colors: [color.opacity(0.8), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
-       )
-       .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
-   }
-}
-
-// MARK: - СЛАЙД 2: График объема
-struct StorySlideVolume: View {
-   let data: PeriodReportPayload
-   let unitsManager: UnitsManager
-   @Environment(ThemeManager.self) private var themeManager
-   
-   @State private var animateChart = false
-   
-   var body: some View {
-       ZStack {
-           Color.black.ignoresSafeArea()
-           
-           VStack(spacing: 0) {
-               Spacer()
-               
-               VStack(spacing: 8) {
-                   Text(LocalizedStringKey("You moved\nmountains."))
-                       .font(.system(size: 40, weight: .black, design: .rounded))
-                       .foregroundColor(.white)
-                       .multilineTextAlignment(.center)
-                   
-                   let volStr = LocalizationHelper.shared.formatTwoDecimals(data.totalVolumeTons)
-                   
-                   // 1. Стили для главной большой цифры
-                   Text("\(volStr) tons")
-                       .font(.system(size: 65, weight: .black, design: .rounded))
-                       .foregroundColor(.cyan)
-                       .shadow(color: .cyan.opacity(0.8), radius: 25, x: 0, y: 0)
-                       .contentTransition(.numericText())
-                   
-                   // 2. Стили для маленькой подписи
-                   Text("Daily lifting volume over the last 30 days")
-                       .font(.caption)
-                       .fontWeight(.bold)
-                       .foregroundColor(.white.opacity(0.5))
-                       .textCase(.uppercase)
-                       .padding(.bottom, 10) // Отступ перед графиком
-               }
-               .padding(.horizontal, 24)
-               .padding(.bottom, 40)
-               
-               // Плавный AreaMark график без осей
-               Chart(data.chartVolume) { point in
-                   let val = unitsManager.convertFromKilograms(point.value)
-                   
-                   LineMark(
-                       x: .value("Day", point.date),
-                       y: .value("Vol", animateChart ? val : 0)
-                   )
-                   .interpolationMethod(.catmullRom)
-                   .foregroundStyle(.cyan)
-                   .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                   .shadow(color: .cyan.opacity(0.6), radius: 10, y: 5)
-                   
-                   AreaMark(
-                       x: .value("Day", point.date),
-                       y: .value("Vol", animateChart ? val : 0)
-                   )
-                   .interpolationMethod(.catmullRom)
-                   .foregroundStyle(
-                       LinearGradient(
-                           colors: [.cyan.opacity(0.5), .black.opacity(0.0)],
-                           startPoint: .top,
-                           endPoint: .bottom
-                       )
-                   )
-               }
-               .chartXAxis(.hidden)
-               .chartYAxis(.hidden)
-               .frame(height: 300)
-               .padding(.horizontal, -10) // Растягиваем за края экрана
-               
-               Spacer()
-           }
-       }
-       .onAppear {
-           withAnimation(.spring(response: 1.5, dampingFraction: 0.8).delay(0.2)) {
-               animateChart = true
-           }
-       }
-   }
-}
-
-// MARK: - СЛАЙД 3: Радар мышц
-struct StorySlideFocus: View {
-   let data: PeriodReportPayload
-   @Environment(ThemeManager.self) private var themeManager
-   
-   var body: some View {
-       ZStack {
-           Color.black.ignoresSafeArea()
-           
-           // Токсичное свечение на фоне
-           Circle()
-               .fill(Color.green.opacity(0.15))
-               .frame(width: 400, height: 400)
-               .blur(radius: 100)
-           
-           VStack(spacing: 30) {
-               Spacer()
-               
-               VStack(spacing: 10) {
-                   Text(LocalizedStringKey("You destroyed your"))
-                       .font(.system(size: 32, weight: .bold, design: .rounded))
-                       .foregroundColor(.white.opacity(0.9))
-                   
-                   Text(LocalizedStringKey(data.topMuscle))
-                       .font(.system(size: 60, weight: .black, design: .rounded))
-                       .textCase(.uppercase)
-                       // Ядовитый градиент
-                       .foregroundStyle(LinearGradient(colors: [.green, .cyan], startPoint: .leading, endPoint: .trailing))
-                       .shadow(color: .green.opacity(0.8), radius: 25, x: 0, y: 0)
-               }
-               .multilineTextAlignment(.center)
-               .padding(.horizontal, 20)
-               
-               // Эпичный Радар
-               RadarChartView(
-                   currentData: data.radarCurrent,
-                   previousData: nil,
-                   highlightedAxis: data.topMuscle,
-                   color: .cyan
-               )
-               .frame(height: 350)
-               .padding(30)
-               .background(Color(white: 0.05))
-               .cornerRadius(40)
-               .overlay(
-                   RoundedRectangle(cornerRadius: 40)
-                       .stroke(LinearGradient(colors: [.cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
-               )
-               .shadow(color: .cyan.opacity(0.2), radius: 30, x: 0, y: 15)
-               .padding(.horizontal, 24)
-               
-               Spacer()
-           }
-       }
-   }
-}
-
-// MARK: - СЛАЙД 4: Финал (Holo Card)
-struct StorySlideOutro: View {
-    let data: PeriodReportPayload
-    var dismissAction: () -> Void
-    @Environment(ThemeManager.self) private var themeManager
-    
-    @State private var dragOffset: CGSize = .zero
-    @State private var isPulsing = false
-    
-    // Подготовка дней для мини-сетки
-    private var last28Days: [Date] {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        return (0..<28).compactMap { cal.date(byAdding: .day, value: -$0, to: today) }.reversed()
-    }
-    
-    var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                Spacer()
-                
-                // Голографическая карточка
-                ZStack {
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .fill(Color(white: 0.08))
-                    
-                    // Эффект стекла и перелива
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                        .environment(\.colorScheme, .dark)
-                    
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(LinearGradient(colors: [.purple, .cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
-                    
-                    VStack(spacing: 30) {
-                        Text("DISCIPLINE")
-                            .font(.system(size: 24, weight: .black, design: .rounded))
-                            .tracking(4)
-                            .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .leading, endPoint: .trailing))
-                        
-                        // 3 Новые метрики
-                        HStack(spacing: 20) {
-                            holoStat(value: "\(data.streakDays)", title: "Max Streak", color: .orange)
-                            holoStat(value: "\(data.activeDays.count)", title: "Gym Days", color: .cyan)
-                            holoStat(value: "\(data.summary.currentSets)", title: "Sets Done", color: .green)
-                        }
-                        
-                        Divider().background(Color.white.opacity(0.2))
-                        
-                        // Неоновый GitHub-style Календарь
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("ACTIVITY HEATMAP (LAST 28 DAYS)")
-                                .font(.caption)
-                                .fontWeight(.bold)
-                                .foregroundColor(.white.opacity(0.5))
-                            
-                            // Сетка 7 колонок (пн-вс)
-                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
-                                ForEach(last28Days, id: \.self) { date in
-                                    let isActive = data.activeDays.contains(where: { Calendar.current.isDate($0, inSameDayAs: date) })
-                                    
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(isActive ? Color.cyan : Color.white.opacity(0.1))
-                                        .aspectRatio(1, contentMode: .fit)
-                                        .shadow(color: isActive ? Color.cyan.opacity(0.6) : .clear, radius: 4)
-                                }
-                            }
-                        }
-                    } // <-- ИМЕННО ЭТУ СКОБКУ ТЫ ПОТЕРЯЛ В ПРЕДЫДУЩЕМ КОДЕ
-                    .padding(30)
-                }
-                .frame(width: 340, height: 460)
-                .rotation3DEffect(.degrees(Double(dragOffset.width / 10)), axis: (x: 0, y: 1, z: 0))
-                .rotation3DEffect(.degrees(Double(-dragOffset.height / 10)), axis: (x: 1, y: 0, z: 0))
-                .shadow(color: .cyan.opacity(0.3), radius: 40, x: dragOffset.width/3, y: dragOffset.height/3)
-                .gesture(
-                    DragGesture()
-                        .onChanged { val in withAnimation(.interactiveSpring()) { dragOffset = val.translation } }
-                        .onEnded { _ in withAnimation(.spring(response: 0.5, dampingFraction: 0.6)) { dragOffset = .zero } }
-                )
-                
-                Spacer()
-                
-                // Огромная кнопка Share
-                Button {
-                    let generator = UIImpactFeedbackGenerator(style: .heavy)
-                    generator.impactOccurred()
-                    // Здесь в реальном приложении вызов ShareSheet
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: "square.and.arrow.up")
-                            .font(.title2.bold())
-                        Text(LocalizedStringKey("SHARE STATS"))
-                            .font(.title2.bold())
-                            .tracking(2)
-                    }
-                    .foregroundColor(.black)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 22)
-                    .background(LinearGradient(colors: [.cyan, .green], startPoint: .leading, endPoint: .trailing))
-                    .clipShape(Capsule())
-                    .scaleEffect(isPulsing ? 1.05 : 1.0)
-                    .shadow(color: .green.opacity(isPulsing ? 0.8 : 0.4), radius: isPulsing ? 25 : 10, y: 5)
-                }
-                .padding(.horizontal, 30)
-                .padding(.bottom, 40)
-                .onAppear {
-                    withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                        isPulsing = true
-                    }
-                }
-            }
-        }
-    }
-    
-    private func holoStat(value: String, title: String, color: Color) -> some View {
-        VStack(spacing: 6) {
-            Text(value)
-                .font(.system(size: 34, weight: .black, design: .rounded))
-                .foregroundColor(.white)
-                .shadow(color: color.opacity(0.8), radius: 10)
-            
-            Text(LocalizedStringKey(title))
                 .font(.caption)
-                .fontWeight(.bold)
-                .foregroundColor(color)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-    
-    // MARK: - UI Components
-   
-struct MonthlyReportDetailsView: View {
-    let data: PeriodReportPayload
-    @Environment(ThemeManager.self) private var themeManager
-    // Возвращаем потерянные переменные
-    @Environment(UnitsManager.self) var unitsManager
-    @State private var selectedMetric: ReportChartMetric = .workouts
-    
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                summaryGrid(data: data.summary)
-                chartSection(data: data)
-                calendarSection(data: data)
-                radarSection(data: data)
+                .foregroundColor(change >= 0 ? .green : .red)
             }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(themeManager.current.surface)
+            .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(themeManager.current.surfaceVariant, lineWidth: 1))
         }
-    }
-    
-    @ViewBuilder
-    private func chartSection(data: PeriodReportPayload) -> some View {
-        VStack(spacing: 16) {
-            Picker("Metric", selection: $selectedMetric) {
-                ForEach(ReportChartMetric.allCases) { metric in
-                    Text(LocalizedStringKey(metric.rawValue)).tag(metric)
+        
+        @ViewBuilder
+        private func calendarSection(data: PeriodReportPayload) -> some View {
+            VStack(alignment: .center, spacing: 16) {
+                HStack {
+                    Text(LocalizedStringKey("Workout Days Log"))
+                        .font(.headline)
+                        .foregroundColor(themeManager.current.secondaryText)
+                    Spacer()
                 }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            
-            let chartData: [ReportDailyPoint] = {
-                switch selectedMetric {
-                case .workouts: return data.chartWorkouts
-                case .duration: return data.chartDuration
-                case .volume: return data.chartVolume
-                case .sets: return data.chartSets
+                .padding(.horizontal)
+                
+                VStack(spacing: 8) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 40))
+                        .foregroundColor(themeManager.current.secondaryMidTone)
+                        .shadow(color: themeManager.current.secondaryMidTone.opacity(0.5), radius: 10, x: 0, y: 5)
+                    
+                    Text("\(data.streakDays) Day Streak")
+                        .font(.title2)
+                        .bold()
                 }
-            }()
-            
-            Chart(chartData) { point in
-                let val = selectedMetric == .volume ? unitsManager.convertFromKilograms(point.value) : point.value
-                BarMark(
-                    x: .value("Date", point.date, unit: .day),
-                    y: .value("Value", val)
-                )
-                .foregroundStyle(themeManager.current.primaryGradient)
-                .cornerRadius(4)
-                .annotation(position: .top) {
-                    if val > 0 {
-                        Text(LocalizationHelper.shared.formatFlexible(val))
-                            .font(.caption2)
-                            .foregroundColor(themeManager.current.secondaryText)
+                .padding(.vertical, 10)
+                
+                let cal = Calendar.current
+                let now = Date()
+                let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: now))!
+                let range = cal.range(of: .day, in: .month, for: startOfMonth)!
+                let firstWeekday = cal.component(.weekday, from: startOfMonth)
+                let offset = (firstWeekday - cal.firstWeekday + 7) % 7
+                let days = range.map { cal.date(byAdding: .day, value: $0 - 1, to: startOfMonth)! }
+                
+                VStack(spacing: 8) {
+                    HStack {
+                        ForEach(0..<7, id: \.self) { i in
+                            Text(cal.shortWeekdaySymbols[(cal.firstWeekday - 1 + i) % 7].prefix(1))
+                                .font(.caption2)
+                                .foregroundColor(themeManager.current.secondaryText)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                        ForEach(0..<offset, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fill) }
+                        
+                        ForEach(days, id: \.self) { date in
+                            let isActive = data.activeDays.contains(cal.startOfDay(for: date))
+                            ZStack {
+                                Circle()
+                                    .fill(isActive ? themeManager.current.primaryAccent : themeManager.current.surfaceVariant)
+                                Text("\(cal.component(.day, from: date))")
+                                    .font(.caption)
+                                    .fontWeight(isActive ? .bold : .regular)
+                                    .foregroundColor(isActive ? .white : .primary)
+                            }
+                            .aspectRatio(1, contentMode: .fit)
+                        }
                     }
                 }
-            }
-            .frame(height: 200)
-            .chartYScale(domain: .automatic(includesZero: true))
-            .chartXAxis {
-                AxisMarks(values: .automatic) { _ in
-                    AxisGridLine().foregroundStyle(.gray.opacity(0.1))
-                    AxisTick()
-                    AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
-                }
-            }
-            .padding(.horizontal)
-        }
-        .padding(.vertical)
-        .background(themeManager.current.surface)
-    }
-    
-    @ViewBuilder
-    private func summaryGrid(data: ReportSummary) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(LocalizedStringKey("Summary"))
-                .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .padding()
+                .background(themeManager.current.surface)
+                .cornerRadius(16)
                 .padding(.horizontal)
-            
-            let cVol = unitsManager.convertFromKilograms(data.currentVolume)
-            let pVol = unitsManager.convertFromKilograms(data.prevVolume)
-            let wUnit = unitsManager.weightUnitString()
-            
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                reportCard(title: "Workouts", current: "\(data.currentWorkouts)", prev: "\(data.prevWorkouts)", change: calcChange(Double(data.currentWorkouts), Double(data.prevWorkouts)))
-                reportCard(title: "Duration", current: "\(data.currentDuration)m", prev: "\(data.prevDuration)m", change: calcChange(Double(data.currentDuration), Double(data.prevDuration)))
-                reportCard(title: "Volume", current: "\(Int(cVol))\(wUnit)", prev: "\(Int(pVol))\(wUnit)", change: calcChange(cVol, pVol))
-                reportCard(title: "Sets", current: "\(data.currentSets)", prev: "\(data.prevSets)", change: calcChange(Double(data.currentSets), Double(data.prevSets)))
             }
-            .padding(.horizontal)
         }
-    }
-    
-    private func calcChange(_ cur: Double, _ prev: Double) -> Double {
-        if prev == 0 { return cur > 0 ? 100 : 0 }
-        return ((cur - prev) / prev) * 100.0
-    }
-    
-    @ViewBuilder
-    private func reportCard(title: String, current: String, prev: String, change: Double) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(LocalizedStringKey(title))
-                .font(.subheadline)
-                .foregroundColor(themeManager.current.primaryText)
-            
-            Text(current)
-                .font(.title2)
-                .bold()
-            
-            HStack(spacing: 4) {
-                Image(systemName: change >= 0 ? "arrow.up.right" : "arrow.down.right")
-                Text("\(abs(change), specifier: "%.0f")%")
-                Text("vs \(prev)")
-            }
-            .font(.caption)
-            .foregroundColor(change >= 0 ? .green : .red)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(themeManager.current.surface)
-        .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(themeManager.current.surfaceVariant, lineWidth: 1))
-    }
-    
-    @ViewBuilder
-    private func calendarSection(data: PeriodReportPayload) -> some View {
-        VStack(alignment: .center, spacing: 16) {
-            HStack {
-                Text(LocalizedStringKey("Workout Days Log"))
+        
+        @ViewBuilder
+        private func radarSection(data: PeriodReportPayload) -> some View {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(LocalizedStringKey("Muscle Distribution"))
                     .font(.headline)
                     .foregroundColor(themeManager.current.secondaryText)
-                Spacer()
-            }
-            .padding(.horizontal)
-            
-            VStack(spacing: 8) {
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(themeManager.current.secondaryMidTone)
-                    .shadow(color: themeManager.current.secondaryMidTone.opacity(0.5), radius: 10, x: 0, y: 5)
+                    .padding(.horizontal)
                 
-                Text("\(data.streakDays) Day Streak")
-                    .font(.title2)
-                    .bold()
-            }
-            .padding(.vertical, 10)
-            
-            let cal = Calendar.current
-            let now = Date()
-            let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: now))!
-            let range = cal.range(of: .day, in: .month, for: startOfMonth)!
-            let firstWeekday = cal.component(.weekday, from: startOfMonth)
-            let offset = (firstWeekday - cal.firstWeekday + 7) % 7
-            let days = range.map { cal.date(byAdding: .day, value: $0 - 1, to: startOfMonth)! }
-            
-            VStack(spacing: 8) {
-                HStack {
-                    ForEach(0..<7, id: \.self) { i in
-                        Text(cal.shortWeekdaySymbols[(cal.firstWeekday - 1 + i) % 7].prefix(1))
-                            .font(.caption2)
-                            .foregroundColor(themeManager.current.secondaryText)
-                            .frame(maxWidth: .infinity)
-                    }
-                }
-                
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                    ForEach(0..<offset, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fill) }
+                VStack {
+                    RadarChartView(
+                        currentData: data.radarCurrent,
+                        previousData: data.radarPrevious,
+                        highlightedAxis: nil,
+                        color: themeManager.current.primaryAccent
+                    )
+                    .frame(height: 250)
+                    .padding()
                     
-                    ForEach(days, id: \.self) { date in
-                        let isActive = data.activeDays.contains(cal.startOfDay(for: date))
-                        ZStack {
-                            Circle()
-                                .fill(isActive ? themeManager.current.primaryAccent : themeManager.current.surfaceVariant)
-                            Text("\(cal.component(.day, from: date))")
-                                .font(.caption)
-                                .fontWeight(isActive ? .bold : .regular)
-                                .foregroundColor(isActive ? .white : .primary)
-                        }
-                        .aspectRatio(1, contentMode: .fit)
+                    HStack(spacing: 16) {
+                        HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption) }
+                        HStack(spacing: 4) { Circle().fill(themeManager.current.primaryAccent).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption) }
                     }
+                    .padding(.bottom, 16)
+                }
+                .background(themeManager.current.surface)
+                .cornerRadius(16)
+                .padding(.horizontal)
+            }
+        }
+    }
+    // MARK: - Highlight Card (Кнопки метрик)
+    struct HighlightCard: View {
+        let title: LocalizedStringKey
+        let value: String
+        let icon: String
+        let isSelected: Bool
+        let change: Double
+        @Environment(ThemeManager.self) private var themeManager
+        
+        var body: some View {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(isSelected ? .white : themeManager.current.primaryAccent)
+                
+                Text(value)
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .contentTransition(.numericText())
+                    .foregroundColor(isSelected ? .white : .primary)
+                
+                VStack(alignment: .leading) {
+                    Text(title)
+                        .font(.caption)
+                        .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
+                    
+                    Text("\(change >= 0 ? "+" : "")\(change, specifier: "%.0f")%")
+                        .font(.caption.bold())
+                        .foregroundColor(isSelected ? .white : (change >= 0 ? .green : .red))
                 }
             }
             .padding()
-            .background(themeManager.current.surface)
-            .cornerRadius(16)
-            .padding(.horizontal)
+            .frame(minWidth: 140, alignment: .leading)
+            .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface)
+            .cornerRadius(20)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(isSelected ? Color.white.opacity(0.3) : Color.gray.opacity(0.2), lineWidth: 1)
+            )
+            .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.4) : .black.opacity(0.04), radius: 8, x: 0, y: 4)
+            .compositingGroup()
         }
     }
-    
-    @ViewBuilder
-    private func radarSection(data: PeriodReportPayload) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Muscle Distribution"))
-                .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
-                .padding(.horizontal)
-            
-            VStack {
-                RadarChartView(
-                    currentData: data.radarCurrent,
-                    previousData: data.radarPrevious,
-                    highlightedAxis: nil,
-                    color: themeManager.current.primaryAccent
-                )
-                .frame(height: 250)
-                .padding()
-                
-                HStack(spacing: 16) {
-                    HStack(spacing: 4) { Circle().fill(Color.gray.opacity(0.5)).frame(width: 8); Text(LocalizedStringKey("Previous")).font(.caption) }
-                    HStack(spacing: 4) { Circle().fill(themeManager.current.primaryAccent).frame(width: 8); Text(LocalizedStringKey("Current")).font(.caption) }
-                }
-                .padding(.bottom, 16)
-            }
-            .background(themeManager.current.surface)
-            .cornerRadius(16)
-            .padding(.horizontal)
-        }
-    }
-}
-// MARK: - Highlight Card (Кнопки метрик)
-struct HighlightCard: View {
-    let title: LocalizedStringKey
-    let value: String
-    let icon: String
-    let isSelected: Bool
-    let change: Double
-    @Environment(ThemeManager.self) private var themeManager
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(isSelected ? .white : themeManager.current.primaryAccent)
-            
-            Text(value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .contentTransition(.numericText())
-                .foregroundColor(isSelected ? .white : .primary)
-            
-            VStack(alignment: .leading) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundColor(isSelected ? .white.opacity(0.8) : .secondary)
-                
-                Text("\(change >= 0 ? "+" : "")\(change, specifier: "%.0f")%")
-                    .font(.caption.bold())
-                    .foregroundColor(isSelected ? .white : (change >= 0 ? .green : .red))
-            }
-        }
-        .padding()
-        .frame(minWidth: 140, alignment: .leading)
-        .background(isSelected ? themeManager.current.primaryAccent : themeManager.current.surface)
-        .cornerRadius(20)
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(isSelected ? Color.white.opacity(0.3) : Color.gray.opacity(0.2), lineWidth: 1)
-        )
-        .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.4) : .black.opacity(0.04), radius: 8, x: 0, y: 4)
-        .compositingGroup()
-    }
-}
+

@@ -118,13 +118,15 @@ struct AdvancedFilterSectionView: View {
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                // Адаптивный стеклянный дизайн чипсов
-                                .background(isSelected ? themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.15 : 1.0) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)))
-                                .foregroundColor(isSelected ? (colorScheme == .dark ? themeManager.current.primaryAccent : .white) : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)))
+                                // 👇 ИСПРАВЛЕНО: Явный белый цвет в светлой теме для невыбранного состояния
+                                .background(isSelected ? themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.15 : 1.0) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.white))
+                                // 👇 ИСПРАВЛЕНО: Черный текст в светлой теме
+                                .foregroundColor(isSelected ? (colorScheme == .dark ? themeManager.current.primaryAccent : .white) : (colorScheme == .dark ? .white.opacity(0.8) : .black))
                                 .clipShape(Capsule())
                                 .overlay(
                                     Capsule()
-                                        .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)), lineWidth: 1)
+                                        // 👇 ИСПРАВЛЕНО: Светло-серая обводка в светлой теме вместо черной
+                                        .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.gray.opacity(0.2)), lineWidth: 1)
                                 )
                         }
                         .buttonStyle(.plain)

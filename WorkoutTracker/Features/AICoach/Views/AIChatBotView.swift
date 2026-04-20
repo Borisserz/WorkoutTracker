@@ -2,8 +2,6 @@
 //  AIChatBotView.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 18.04.26.
-//
 
 internal import SwiftUI
 import SwiftData
@@ -12,10 +10,18 @@ struct AIChatBotView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(ThemeManager.self) private var themeManager
     @Environment(DIContainer.self) private var di
+    @Environment(\.colorScheme) private var colorScheme
     
     // Подключаем реальную ViewModel
     @Bindable var viewModel: AICoachViewModel
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
+    
+    // Голосовой ввод
+    @StateObject private var speechRecognizer = SpeechRecognizer()
+    @State private var isPulsingMic = false
+    
+    // История
+    @State private var showHistorySheet = false
     
     // Для автоскролла вниз
     @Namespace private var bottomID
@@ -43,7 +49,7 @@ struct AIChatBotView: View {
                                 
                                 // Индикатор загрузки ИИ
                                 if viewModel.isGenerating {
-                                    AILoadingIndicator() // Твой индикатор из AICoachComponents
+                                    AILoadingIndicator()
                                         .padding(.horizontal)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }
@@ -65,56 +71,105 @@ struct AIChatBotView: View {
                         }
                     }
                     
-                    // Зона ввода (твой дизайн)
-                    HStack {
-                        TextField("Напиши тренеру...", text: $viewModel.inputText)
+                    // Зона ввода (Текст + Микрофон + Отправка)
+                    HStack(spacing: 12) {
+                        
+                        // КНОПКА МИКРОФОНА
+                        Button {
+                            toggleDictation()
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(speechRecognizer.isRecording ? Color.green.opacity(0.2) : Color.white.opacity(0.1))
+                                    .frame(width: 44, height: 44)
+                                
+                                if speechRecognizer.isRecording {
+                                    Circle()
+                                        .stroke(Color.green, lineWidth: 2)
+                                        .frame(width: 44, height: 44)
+                                        .scaleEffect(isPulsingMic ? 1.1 : 0.9)
+                                        .opacity(isPulsingMic ? 0 : 1)
+                                }
+                                
+                                Image(systemName: speechRecognizer.isRecording ? "mic.fill" : "mic")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(speechRecognizer.isRecording ? .green : .gray)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        
+                        // ТЕКСТОВОЕ ПОЛЕ
+                        TextField("Спроси тренера...", text: $viewModel.inputText)
                             .padding(14)
                             .background(.ultraThinMaterial, in: Capsule())
-                            .overlay(Capsule().stroke(.white.opacity(0.2), lineWidth: 1))
+                            .overlay(Capsule().stroke(speechRecognizer.isRecording ? Color.green.opacity(0.5) : .white.opacity(0.2), lineWidth: 1))
                             .foregroundStyle(.white)
                             .onSubmit { sendMessage() }
                         
+                        // КНОПКА ОТПРАВКИ
                         Button {
                             sendMessage()
                         } label: {
                             Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 32))
+                                .font(.system(size: 38))
                                 .foregroundStyle(viewModel.inputText.isEmpty ? .gray : themeManager.current.primaryAccent)
                                 .shadow(color: viewModel.inputText.isEmpty ? .clear : themeManager.current.primaryAccent.opacity(0.8), radius: 8)
                         }
                         .disabled(viewModel.inputText.isEmpty || viewModel.isGenerating)
                     }
                     .padding()
-                    .background(themeManager.current.background.opacity(0.8)) // Защита от наезжания текста
+                    .background(themeManager.current.background.opacity(0.9)) // Защита от наезжания текста
                 }
             }
             .navigationTitle("ИИ Тренер")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Закрыть
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Закрыть") { dismiss() }
                         .foregroundStyle(themeManager.current.primaryAccent)
                         .fontWeight(.bold)
                 }
                 
-                // Опционально: кнопка очистки чата
+                // 👈 ИСПРАВЛЕНИЕ: Кнопка ИСТОРИИ вместо корзины
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        let gen = UIImpactFeedbackGenerator(style: .rigid)
+                        let gen = UIImpactFeedbackGenerator(style: .medium)
                         gen.impactOccurred()
-                        viewModel.clearChat()
+                        showHistorySheet = true
                     } label: {
-                        Image(systemName: "trash")
-                            .foregroundStyle(.red.opacity(0.8))
+                        Image(systemName: "clock.arrow.circlepath")
+                            .foregroundStyle(.white.opacity(0.8))
                     }
-                    .disabled(viewModel.isGenerating || viewModel.chatHistory.isEmpty)
+                    .disabled(viewModel.isGenerating)
                 }
             }
             .onAppear {
-                // Если чат открыли с уже вбитым текстом (например из поиска главного меню)
+                speechRecognizer.requestPermission()
                 if !viewModel.inputText.isEmpty {
                     sendMessage()
                 }
+            }
+            // Синхронизация речи с текстовым полем
+            .onChange(of: speechRecognizer.transcript) { _, newText in
+                if speechRecognizer.isRecording {
+                    viewModel.inputText = newText
+                }
+            }
+            // Анимация пульсации микрофона
+            .onChange(of: speechRecognizer.isRecording) { _, isRec in
+                if isRec {
+                    withAnimation(.easeOut(duration: 0.8).repeatForever(autoreverses: false)) {
+                        isPulsingMic = true
+                    }
+                } else {
+                    isPulsingMic = false
+                }
+            }
+            .sheet(isPresented: $showHistorySheet) {
+                AIChatHistorySheet(viewModel: viewModel)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
         }
     }
@@ -160,7 +215,6 @@ struct AIChatBotView: View {
                 // Карточка тренировки (если ИИ сгенерировал программу)
                 if let workout = msg.proposedWorkout {
                     ProposedWorkoutCardView(workout: workout) {
-                        // Логика принятия тренировки
                         Task {
                             await viewModel.acceptWorkout(dto: workout) { newWorkout in
                                 di.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
@@ -180,13 +234,145 @@ struct AIChatBotView: View {
     
     // MARK: - Logic
     
+    private func toggleDictation() {
+        HapticManager.shared.selection()
+        if speechRecognizer.isRecording {
+            // Выключаем микрофон
+            speechRecognizer.stopTranscribing()
+            // Если наговорили текст, сразу отправляем запрос ИИ
+            if !viewModel.inputText.trimmingCharacters(in: .whitespaces).isEmpty {
+                sendMessage()
+            }
+        } else {
+            // Включаем микрофон
+            speechRecognizer.startTranscribing()
+        }
+    }
+    
     private func sendMessage() {
+        if speechRecognizer.isRecording {
+            speechRecognizer.stopTranscribing()
+        }
+        
         guard !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         
         Task {
-            // Вызываем РЕАЛЬНУЮ функцию твоего ИИ из ViewModel
             await viewModel.sendMessage(userWeight: userBodyWeight)
         }
+    }
+}
+
+// MARK: - ЭКРАН ИСТОРИИ ЧАТОВ
+struct AIChatHistorySheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
+    
+    @Bindable var viewModel: AICoachViewModel
+    
+    // 👈 Получаем реальные чаты из базы
+    @Query(sort: \AIChatSession.date, order: .reverse) private var sessions: [AIChatSession]
+    
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
+                // Фон
+                (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
+                
+                if sessions.isEmpty {
+                    EmptyStateView(
+                        icon: "bubble.left.and.exclamationmark.bubble.right",
+                        title: "Нет истории",
+                        message: "Вы еще не общались с тренером. Начните первый диалог!"
+                    )
+                    .frame(maxHeight: .infinity)
+                } else {
+                    List {
+                        ForEach(sessions) { session in
+                            Button {
+                                let gen = UISelectionFeedbackGenerator()
+                                gen.selectionChanged()
+                                viewModel.loadSession(session)
+                                dismiss()
+                            } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(session.title)
+                                        .font(.headline)
+                                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                                        .lineLimit(1)
+                                    
+                                    HStack {
+                                        Text(session.date.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
+                                        Spacer()
+                                        Text("\(session.messages.count) сообщений")
+                                            .font(.caption2)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(themeManager.current.primaryAccent.opacity(0.2))
+                                            .foregroundColor(themeManager.current.primaryAccent)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .listRowBackground(colorScheme == .dark ? themeManager.current.surface : Color.white)
+                        }
+                        .onDelete(perform: deleteSessions)
+                    }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .padding(.bottom, 80) // Место под кнопку
+                }
+                
+                // Кнопка "Новый Чат"
+                Button {
+                    let gen = UINotificationFeedbackGenerator()
+                    gen.notificationOccurred(.success)
+                    viewModel.clearChat()
+                    dismiss()
+                } label: {
+                    HStack {
+                        Image(systemName: "plus.bubble.fill")
+                            .font(.title3)
+                        Text("Начать новый диалог")
+                            .font(.headline)
+                            .bold()
+                    }
+                    .foregroundColor(themeManager.current.background)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(themeManager.current.primaryAccent)
+                    .cornerRadius(16)
+                    .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 5)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
+            }
+            .navigationTitle("История чатов")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Отмена") { dismiss() }
+                        .foregroundStyle(.gray)
+                }
+            }
+        }
+    }
+    
+    private func deleteSessions(offsets: IndexSet) {
+        for index in offsets {
+            let sessionToDelete = sessions[index]
+            // Если удаляем текущий открытый чат — очищаем экран
+            if viewModel.currentSession?.id == sessionToDelete.id {
+                viewModel.clearChat()
+            }
+            context.delete(sessionToDelete)
+        }
+        try? context.save()
     }
 }

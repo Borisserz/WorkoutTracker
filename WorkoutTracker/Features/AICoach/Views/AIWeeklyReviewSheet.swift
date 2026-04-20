@@ -1,7 +1,6 @@
-//
-//  AIWeeklyReviewSheet.swift
-//  WorkoutTracker
-//
+// ============================================================
+// FILE: WorkoutTracker/Features/AICoach/Views/AIWeeklyReviewSheet.swift
+// ============================================================
 
 internal import SwiftUI
 
@@ -9,6 +8,7 @@ internal import SwiftUI
 struct AIWeeklyReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     
     let currentStats: PeriodStats
     let previousStats: PeriodStats
@@ -31,8 +31,9 @@ struct AIWeeklyReviewSheet: View {
     
     var body: some View {
         ZStack {
-            // Базовый фон
-            themeManager.current.background.ignoresSafeArea()
+            // 👈 АДАПТИВНЫЙ БАЗОВЫЙ ФОН
+            (colorScheme == .dark ? themeManager.current.background : Color(UIColor.secondarySystemBackground))
+                .ignoresSafeArea()
             
             // Динамический фон (Свечение зависит от настроения тренера)
             MoodBackgroundView(mood: reviewData?.coachMood ?? "neutral")
@@ -59,10 +60,10 @@ struct AIWeeklyReviewSheet: View {
     private var header: some View {
         HStack {
             Image(systemName: "sparkles")
-                .foregroundColor(themeManager.current.primaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
             Text(LocalizedStringKey("AI Weekly Brief"))
                 .font(.system(.title3, design: .rounded, weight: .heavy))
-                .foregroundColor(themeManager.current.primaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
             
             Spacer()
             
@@ -94,11 +95,11 @@ struct AIWeeklyReviewSheet: View {
             VStack(spacing: 8) {
                 Text(LocalizedStringKey("Ready for your review?"))
                     .font(.system(.title2, design: .rounded, weight: .bold))
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
                 
                 Text(LocalizedStringKey("The AI Coach will analyze your volume, PRs, and weak points to generate a personalized action plan."))
                     .font(.subheadline)
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 30)
             }
@@ -114,7 +115,8 @@ struct AIWeeklyReviewSheet: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
                 .background(themeManager.current.primaryAccent)
-                .foregroundColor(themeManager.current.background)
+                // 👈 ИСПРАВЛЕНИЕ СКРИНШОТА: Текст на кнопке теперь белый в светлой теме, чтобы не сливался
+                .foregroundColor(colorScheme == .dark ? themeManager.current.background : .white)
                 .clipShape(Capsule())
                 .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, y: 8)
             }
@@ -135,11 +137,11 @@ struct AIWeeklyReviewSheet: View {
                 
                 Image(systemName: "cpu")
                     .font(.system(size: 40))
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
             }
             Text(LocalizedStringKey("Crunching the numbers..."))
                 .font(.system(.headline, design: .rounded))
-                .foregroundColor(themeManager.current.primaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
                 .modifier(BlinkingTextModifier())
             Spacer()
         }
@@ -154,9 +156,10 @@ struct AIWeeklyReviewSheet: View {
                 .foregroundColor(.red)
             Text(LocalizedStringKey("Analysis Failed"))
                 .font(.headline)
+                .foregroundColor(colorScheme == .dark ? .white : .black) // 👈
             Text(error)
                 .font(.caption)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
             Spacer()
@@ -213,6 +216,7 @@ struct AIWeeklyReviewSheet: View {
 struct ReviewDashboardView: View {
     let data: AIWeeklyReviewDTO
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     
     // Staggered Animation States
     @State private var showGauge = false
@@ -242,7 +246,7 @@ struct ReviewDashboardView: View {
                     if showTitle {
                         Text(data.title)
                             .font(.system(size: 28, weight: .heavy, design: .rounded))
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
                             .multilineTextAlignment(.center)
                             .transition(.move(edge: .bottom).combined(with: .opacity))
                     }
@@ -290,7 +294,6 @@ struct ReviewDashboardView: View {
     }
     
     private func animateIn() {
-        // Хореография появления элементов (Staggered Animation)
         withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { showGauge = true }
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -317,6 +320,7 @@ struct ScoreGaugeView: View {
     @State private var animatedScore: Int = 0
     @State private var animatedProgress: CGFloat = 0.0
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     
     var body: some View {
         ZStack {
@@ -342,21 +346,19 @@ struct ScoreGaugeView: View {
             VStack(spacing: 4) {
                 Text(LocalizedStringKey("SCORE"))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈
                 
                 Text("\(animatedScore)")
                     .font(.system(size: 54, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
                     .contentTransition(.numericText())
             }
         }
         .onChange(of: triggerAnimation) { _, newValue in
             if newValue {
-                // Плавная анимация кольца
                 withAnimation(.spring(response: 1.5, dampingFraction: 0.8)) {
                     animatedProgress = CGFloat(score) / 100.0
                 }
-                // Анимация бегущих цифр
                 withAnimation(.easeOut(duration: 1.5)) {
                     animatedScore = score
                 }
@@ -372,6 +374,7 @@ struct BentoInsightCard: View {
     let color: Color
     let content: String
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -386,13 +389,13 @@ struct BentoInsightCard: View {
                 }
                 Text(title)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(themeManager.current.secondaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈
                     .textCase(.uppercase)
             }
             
             Text(content)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundColor(themeManager.current.primaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈
                 .lineSpacing(4)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -403,11 +406,14 @@ struct BentoInsightCard: View {
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(
-                    LinearGradient(colors: [color.opacity(0.5), Color.clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    // 👈 АДАПТИВНАЯ ГРАНИЦА: В светлой теме добавляем чуть больше контура для объема
+                    colorScheme == .dark
+                    ? LinearGradient(colors: [color.opacity(0.5), Color.clear], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    : LinearGradient(colors: [color.opacity(0.3), Color.black.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing),
                     lineWidth: 1
                 )
         )
-        .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.1), radius: 10, y: 5) // 👈 АДАПТИВНАЯ ТЕНЬ
     }
 }
 
@@ -415,6 +421,7 @@ struct BentoInsightCard: View {
 struct MoodBackgroundView: View {
     let mood: String
     @State private var animateBg = false
+    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
     
     private var moodColors: [Color] {
         switch mood {
@@ -427,14 +434,18 @@ struct MoodBackgroundView: View {
     
     var body: some View {
         ZStack {
+            // 👈 АДАПТИВНЫЙ БАЗОВЫЙ ЦВЕТ
+            (colorScheme == .dark ? Color(hex: "0A0A0A") : Color(UIColor.secondarySystemBackground))
+                .ignoresSafeArea()
+            
             Circle()
-                .fill(moodColors[0].opacity(0.25))
+                .fill(moodColors[0].opacity(colorScheme == .dark ? 0.25 : 0.15)) // В светлой теме чуть прозрачнее
                 .frame(width: 400, height: 400)
                 .blur(radius: 80)
                 .offset(x: animateBg ? 100 : -100, y: animateBg ? -150 : -250)
             
             Circle()
-                .fill(moodColors[1].opacity(0.25))
+                .fill(moodColors[1].opacity(colorScheme == .dark ? 0.25 : 0.15))
                 .frame(width: 350, height: 350)
                 .blur(radius: 80)
                 .offset(x: animateBg ? -150 : 150, y: animateBg ? 200 : 100)
