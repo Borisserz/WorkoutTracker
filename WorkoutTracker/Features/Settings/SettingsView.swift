@@ -1,5 +1,3 @@
-
-
 internal import SwiftUI
 internal import UniformTypeIdentifiers
 import SwiftData
@@ -10,13 +8,18 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(DIContainer.self) private var di
     @AppStorage(Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue) private var includeWarmupsInStats: Bool = false
+    
     @State private var isProcessing = false
     @State private var showTestDataAlert = false
     @State private var testDataAlertMessage = ""
     @State private var showClearAllAlert = false
     @State private var fileToShare: SharedFileWrapper?
-    @State private var showExportFormatPicker = false
+    @State private var showDeleteProfileAlert = false
+    @State private var showDeleteSuccessAlert = false
+    
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
+    
     var body: some View {
         NavigationStack {
             List {
@@ -39,7 +42,7 @@ struct SettingsView: View {
                     Toggle(isOn: $includeWarmupsInStats) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(LocalizedStringKey("Include Warmups in Stats"))
-                                .foregroundColor(themeManager.current.primaryText)
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary) // ИСПРАВЛЕНО
                             Text(LocalizedStringKey("If enabled, warm-up sets will be counted in total volume and personal records."))
                                 .font(.caption)
                                 .foregroundColor(themeManager.current.secondaryText)
@@ -58,12 +61,23 @@ struct SettingsView: View {
                     NavigationLink(destination: FeedbackView()) {
                         Label(LocalizedStringKey("Send Feedback"), systemImage: "envelope.fill")
                     }
-
-                    Button {
-                        showExportFormatPicker = true
+                    Menu {
+                        Button(action: { Task { await exportAllData(format: .json) } }) {
+                            Label("Export as JSON", systemImage: "curlybraces")
+                        }
+                        Button(action: { Task { await exportAllData(format: .csv) } }) {
+                            Label("Export as CSV", systemImage: "tablecells")
+                        }
                     } label: {
                         Label(LocalizedStringKey("Export All Data"), systemImage: "square.and.arrow.up")
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                    }
+            
+                    Button(role: .destructive) {
+                        showDeleteProfileAlert = true
+                    } label: {
+                        Label(LocalizedStringKey("Delete Profile & Data"), systemImage: "trash")
+                            .foregroundColor(.red)
                     }
                 }
 
@@ -88,11 +102,7 @@ struct SettingsView: View {
                     Button(LocalizedStringKey("Done")) { dismiss() }
                 }
             }
-            .confirmationDialog(LocalizedStringKey("Export Format"), isPresented: $showExportFormatPicker) {
-                Button(LocalizedStringKey("Export as JSON")) { Task { await exportAllData(format: .json) } }
-                Button(LocalizedStringKey("Export as CSV")) { Task { await exportAllData(format: .csv) } }
-                Button(LocalizedStringKey("Cancel"), role: .cancel) { }
-            }
+
             .sheet(item: $fileToShare) { wrapper in
                 ActivityViewController(activityItems: [wrapper.url])
                     .presentationDetents([.medium, .large])
@@ -102,6 +112,21 @@ struct SettingsView: View {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: {
                 Text(testDataAlertMessage)
+            }
+            .alert("Delete Profile & Data", isPresented: $showDeleteProfileAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete Everything", role: .destructive) {
+                    deleteProfileAndData()
+                }
+            } message: {
+                Text("This will permanently delete your profile, body measurements, all workouts, and settings. This action cannot be undone.")
+            }
+            .alert("Data Deleted", isPresented: $showDeleteSuccessAlert) {
+                Button("OK", role: .cancel) {
+                    // Логика перезагрузки или сброса
+                }
+            } message: {
+                Text("All your profile data and history have been successfully deleted. Please restart the app to set up a new profile.")
             }
             .alert(LocalizedStringKey("Clear All Data?"), isPresented: $showClearAllAlert) {
                 Button(LocalizedStringKey("Clear All"), role: .destructive) {
@@ -185,7 +210,52 @@ struct SettingsView: View {
             self.showTestDataAlert = true
         }
     }
+
+    private func deleteProfileAndData() {
+        isProcessing = true
+        
+        do {
+            try modelContext.delete(model: Workout.self)
+            try modelContext.delete(model: Exercise.self)
+            try modelContext.delete(model: WorkoutSet.self)
+            try modelContext.delete(model: WeightEntry.self)
+            try modelContext.delete(model: UserStats.self)
+            try modelContext.delete(model: ExerciseStat.self)
+            try modelContext.delete(model: MuscleStat.self)
+            try modelContext.delete(model: ExerciseNote.self)
+            try modelContext.delete(model: BodyMeasurement.self)
+            try modelContext.delete(model: UserGoal.self)
+            try modelContext.delete(model: AIChatSession.self)
+            
+            let customPresetsDesc = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
+            if let customPresets = try? modelContext.fetch(customPresetsDesc) {
+                for preset in customPresets { modelContext.delete(preset) }
+            }
+            
+            try modelContext.save()
+        } catch {
+            print("Failed to clear SwiftData: \(error)")
+        }
+        
+        let keysToReset = [
+            Constants.UserDefaultsKeys.userName.rawValue,
+            Constants.UserDefaultsKeys.userBodyWeight.rawValue,
+            Constants.UserDefaultsKeys.userGender.rawValue,
+            "userHeight",
+            "userAge",
+            "hasConsentedToAI",
+            Constants.UserDefaultsKeys.hasSeenTutorial_Final_v8.rawValue
+        ]
+        
+        for key in keysToReset {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+        
+        isProcessing = false
+        showDeleteSuccessAlert = true
+    }
 }
+
 
 struct UnitsSettingsView: View {
     @Environment(UnitsManager.self) var unitsManager
@@ -228,11 +298,11 @@ struct AppearanceSettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
 
-    @Environment(ThemeManager.self) private var themeManager 
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme // ДОБАВЛЕНО
 
     var body: some View {
         Form {
-
             Section(header: Text(LocalizedStringKey("System Theme"))) {
                 SettingsCheckmarkRow(title: "System", isSelected: appearanceMode == "system") { appearanceMode = "system" }
                 SettingsCheckmarkRow(title: "Light", isSelected: appearanceMode == "light") { appearanceMode = "light" }
@@ -249,7 +319,7 @@ struct AppearanceSettingsView: View {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 } label: {
                     HStack {
-                        Text(LocalizedStringKey("Language")).foregroundColor(themeManager.current.primaryText)
+                        Text(LocalizedStringKey("Language")).foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
                         Spacer()
                         Text(Locale.current.language.languageCode?.identifier == "ru" ? "Русский" : "English").foregroundColor(themeManager.current.secondaryText)
                         Image(systemName: "arrow.up.forward.app").font(.caption).foregroundColor(themeManager.current.secondaryText)
@@ -336,6 +406,8 @@ struct SettingsCheckmarkRow: View {
     let isSelected: Bool
     let action: () -> Void
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
+    
     var body: some View {
         Button(action: {
             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -344,7 +416,7 @@ struct SettingsCheckmarkRow: View {
         }) {
             HStack {
                 Text(title)
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary) 
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
