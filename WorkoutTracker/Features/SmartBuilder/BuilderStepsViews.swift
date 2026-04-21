@@ -18,7 +18,7 @@ struct MuscleSelectionView: View {
             
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("Что сегодня тренируем?")
+                    Text("What are we training today?")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                         .padding(.horizontal)
@@ -73,7 +73,7 @@ struct MuscleSelectionView: View {
                 gen.impactOccurred()
                 vm.path.append("Settings")
             } label: {
-                Text("Следующий шаг")
+                Text("Next Step")
                     .font(.headline).bold()
                     .foregroundColor(themeManager.current.background)
                     .frame(maxWidth: .infinity)
@@ -121,10 +121,10 @@ struct GeneratorSettingsView: View {
                     
                     // Заголовок
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Настройка ИИ")
+                        Text("AI Configuration")
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? .white : .black)
-                        Text("Уточните параметры для генерации идеальной тренировки.")
+                        Text("Refine parameters to generate your perfect workout.")
                             .font(.subheadline)
                             .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     }
@@ -139,7 +139,7 @@ struct GeneratorSettingsView: View {
                                 Circle().fill(Color.cyan.opacity(0.15)).frame(width: 36, height: 36)
                                 Image(systemName: "stopwatch.fill").foregroundColor(.cyan)
                             }
-                            Text("Продолжительность")
+                            Text("Duration")
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                             Spacer()
@@ -167,7 +167,7 @@ struct GeneratorSettingsView: View {
                                 Circle().fill(Color.orange.opacity(0.15)).frame(width: 36, height: 36)
                                 Image(systemName: "flame.fill").foregroundColor(.orange)
                             }
-                            Text("Уровень опыта")
+                            Text("Experience Level")
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                         }
@@ -202,7 +202,7 @@ struct GeneratorSettingsView: View {
                                 Circle().fill(Color.purple.opacity(0.15)).frame(width: 36, height: 36)
                                 Image(systemName: "dumbbell.fill").foregroundColor(.purple)
                             }
-                            Text("Оборудование")
+                            Text("Equipment")
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                         }
@@ -250,7 +250,7 @@ struct GeneratorSettingsView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
                             .font(.title3)
-                        Text("Сгенерировать ИИ-Рутину")
+                        Text("Generate AI Routine")
                             .font(.headline).bold()
                     }
                     .foregroundColor(.white)

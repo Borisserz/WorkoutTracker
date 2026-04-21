@@ -52,7 +52,7 @@ struct GeneratedWorkoutResultView: View {
             
             floatingStartButton
         }
-        .navigationTitle("Ваша программа")
+        .navigationTitle("Your Program")
         .navigationBarTitleDisplayMode(.inline)
     }
     
@@ -76,7 +76,7 @@ struct GeneratedWorkoutResultView: View {
                 .foregroundStyle(themeManager.current.primaryGradient)
                 .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 10, y: 5)
             
-            Text("Рутина готова")
+            Text("Routine Ready")
                 .font(.system(size: 32, weight: .heavy, design: .rounded))
                 .foregroundColor(colorScheme == .dark ? .white : .black)
         }
@@ -85,7 +85,7 @@ struct GeneratedWorkoutResultView: View {
     
     private var muscleFocusSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Мышечный фокус")
+            Text("Muscle Focus")
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             
@@ -139,7 +139,7 @@ struct GeneratedWorkoutResultView: View {
     
     private var exerciseListSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Упражнения")
+            Text("Exercises")
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .padding(.horizontal, 20)
@@ -200,7 +200,7 @@ struct GeneratedWorkoutResultView: View {
                             .font(.caption).bold()
                             .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     } else {
-                        Text("Свой вес")
+                        Text("Bodyweight")
                             .font(.caption)
                             .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     }
@@ -231,7 +231,7 @@ struct GeneratedWorkoutResultView: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "bolt.fill").font(.title2)
-                    Text("НАЧАТЬ ТРЕНИРОВКУ").font(.title3).bold().tracking(1.0)
+                    Text("START WORKOUT").font(.title3).bold().tracking(1.0)
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)

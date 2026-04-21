@@ -36,7 +36,7 @@ struct SmartGeneratorEntryView: View {
                                     } label: {
                                         HStack(spacing: 12) {
                                             Image(systemName: "wand.and.stars").font(.title3)
-                                            Text("Пользовательский конструктор").font(.title3).bold()
+                                            Text("Custom Builder").font(.title3).bold()
                                         }
                                         .foregroundColor(.white) // 👈 ИСПРАВЛЕНИЕ: Всегда белый текст
                                         .frame(maxWidth: .infinity)
@@ -55,7 +55,7 @@ struct SmartGeneratorEntryView: View {
                         Color.black.opacity(0.4).ignoresSafeArea()
                         VStack(spacing: 20) {
                             ProgressView().controlSize(.large).tint(themeManager.current.lightHighlight)
-                            Text("Создаю идеальную тренировку...")
+                            Text("Building your perfect workout...")
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈 АДАПТАЦИЯ
                         }
@@ -68,7 +68,7 @@ struct SmartGeneratorEntryView: View {
                     .transition(.opacity)
                 }
             }
-            .navigationTitle("Умный генератор")
+            .navigationTitle("Smart Generator")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -91,11 +91,11 @@ struct SmartGeneratorEntryView: View {
     
     private var headerSection: some View {
         VStack(spacing: 12) {
-            Text(LocalizedStringKey("Не хотите думать?"))
+            Text(LocalizedStringKey("Don't Want to Think?"))
                 .font(.system(size: 28, weight: .heavy, design: .rounded))
                 .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                 .padding(.top, 24)
-            Text(LocalizedStringKey("Выберите быстрый пресет или создайте пользовательскую программу за секунды."))
+            Text(LocalizedStringKey("Pick a quick preset or build a custom program in seconds."))
                 .font(.subheadline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 АДАПТАЦИЯ
                 .multilineTextAlignment(.center)
@@ -105,7 +105,7 @@ struct SmartGeneratorEntryView: View {
     
     private var quickPresetsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Быстрая генерация")
+            Text("Quick Generation")
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                 .padding(.horizontal, 24)

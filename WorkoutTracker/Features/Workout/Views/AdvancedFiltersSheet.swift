@@ -24,9 +24,9 @@ struct AdvancedFiltersSheet: View {
                 
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 28) {
-                        AdvancedFilterSectionView(title: "Уровень опыта", items: levelsList, selectedItems: $filterState.selectedLevel, filterState: filterState)
-                        AdvancedFilterSectionView(title: "Механика", items: mechanicsList, selectedItems: $filterState.selectedMechanic, filterState: filterState)
-                        AdvancedFilterSectionView(title: "Оборудование", items: equipmentList, selectedItems: $filterState.selectedEquipment, filterState: filterState)
+                        AdvancedFilterSectionView(title: "Experience Level", items: levelsList, selectedItems: $filterState.selectedLevel, filterState: filterState)
+                        AdvancedFilterSectionView(title: "Mechanic", items: mechanicsList, selectedItems: $filterState.selectedMechanic, filterState: filterState)
+                        AdvancedFilterSectionView(title: "Equipment", items: equipmentList, selectedItems: $filterState.selectedEquipment, filterState: filterState)
                         
                         Spacer(minLength: 100) // Отступ под плавающую кнопку
                     }
@@ -39,7 +39,7 @@ struct AdvancedFiltersSheet: View {
                     gen.notificationOccurred(.success)
                     dismiss()
                 } label: {
-                    Text(LocalizedStringKey("Показать \(resultsCount) упражнений"))
+                    Text(LocalizedStringKey("Show \(resultsCount) exercises"))
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(themeManager.current.background)
@@ -57,11 +57,11 @@ struct AdvancedFiltersSheet: View {
                         .ignoresSafeArea()
                 )
             }
-            .navigationTitle(LocalizedStringKey("Дополнительно"))
+            .navigationTitle(LocalizedStringKey("Advanced"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Очистить")) {
+                    Button(LocalizedStringKey("Clear")) {
                         let gen = UIImpactFeedbackGenerator(style: .rigid)
                         gen.impactOccurred()
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { filterState.clearAdvancedFilters() }
@@ -70,7 +70,7 @@ struct AdvancedFiltersSheet: View {
                     .foregroundColor(filterState.activeAdvancedFiltersCount == 0 ? .gray : .red)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(LocalizedStringKey("Готово")) { dismiss() }.fontWeight(.bold).foregroundColor(themeManager.current.primaryAccent)
+                    Button(LocalizedStringKey("Done")) { dismiss() }.fontWeight(.bold).foregroundColor(themeManager.current.primaryAccent)
                 }
             }
         }

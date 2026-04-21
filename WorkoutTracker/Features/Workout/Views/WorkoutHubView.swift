@@ -35,7 +35,7 @@ struct WorkoutHubView: View {
     private var favoriteWorkouts: [Workout]
     
     private var myRoutines: [WorkoutPreset] {
-        userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "План на сегодня" }
+        userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "Today's Plan" }
     }
     
     private var savedSingleRoutines: [WorkoutPreset] {
@@ -44,7 +44,7 @@ struct WorkoutHubView: View {
     
     private var programFolders: [String: [WorkoutPreset]] {
             var dict = [String: [WorkoutPreset]]()
-            for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName && p.folderName != "СкрытаяПапка" { // 👈 ИСПРАВЛЕНИЕ: Исключаем скрытую папку
+            for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName && p.folderName != "HiddenFolder" { // 👈 ИСПРАВЛЕНИЕ: Исключаем скрытую папку
                 dict[p.folderName!, default: []].append(p)
             }
             return dict
@@ -154,7 +154,7 @@ struct WorkoutHubView: View {
     
     private var headerSection: some View {
         HStack {
-            Text(LocalizedStringKey("Тренировка"))
+            Text(LocalizedStringKey("Workout"))
                 .font(.system(size: 34, weight: .heavy, design: .rounded))
                 .foregroundStyle(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
             
@@ -166,7 +166,7 @@ struct WorkoutHubView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "flame.fill").foregroundStyle(Color.orange)
-                    Text("\(dashboardViewModel.streakCount) \(String(localized: "дня"))")
+                    Text("\(dashboardViewModel.streakCount) \(String(localized: "days"))")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
                 }
@@ -183,15 +183,15 @@ struct WorkoutHubView: View {
         VStack(alignment: .leading, spacing: 32) {
             VStack(spacing: 16) {
                 PremiumHubGlassButton(
-                    title: "Начать пустую тренировку",
-                    subtitle: "Свободный режим",
+                    title: "Start Empty Workout",
+                    subtitle: "Freestyle Mode",
                     icon: "play.circle.fill",
                     colorTint: .blue
                 ) { startEmptyWorkout() }
                 
                 PremiumHubGlassButton(
-                    title: "Умный конструктор",
-                    subtitle: "Сгенерировано под вас",
+                    title: "Smart Builder",
+                    subtitle: "Tailored for You",
                     icon: "wand.and.stars",
                     colorTint: .purple
                 ) {
@@ -202,14 +202,14 @@ struct WorkoutHubView: View {
             .padding(.horizontal, 20)
             
             VStack(alignment: .leading, spacing: 16) {
-                Text(LocalizedStringKey("Программы"))
+                Text(LocalizedStringKey("Programs"))
                     .font(.title2.weight(.bold))
                     .foregroundStyle(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
                     .padding(.horizontal, 20)
                 
                 HStack(spacing: 16) {
                     PremiumHubGlassButton(
-                        title: "Новая\nпрограмма",
+                        title: "New\nProgram",
                         icon: "plus.app.fill",
                         colorTint: .green,
                         isSmall: true
@@ -219,7 +219,7 @@ struct WorkoutHubView: View {
                     }
                     
                     PremiumHubGlassButton(
-                        title: "Исследовать\nбазу",
+                        title: "Explore\nDatabase",
                         icon: "safari.fill",
                         colorTint: .orange,
                         isSmall: true
@@ -234,9 +234,9 @@ struct WorkoutHubView: View {
     
     private var carouselsSection: some View {
             VStack(alignment: .leading, spacing: 32) {
-                if let dailyPlan = userPresets.first(where: { $0.name == "План на сегодня" }), !dailyPlan.exercises.isEmpty {
+                if let dailyPlan = userPresets.first(where: { $0.name == "Today's Plan" }), !dailyPlan.exercises.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("План на сегодня")
+                        Text("Today's Plan")
                             .font(.title3).bold()
                             .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                             .padding(.horizontal, 20)
@@ -257,14 +257,14 @@ struct WorkoutHubView: View {
                 }
 
                 CarouselSectionView(
-                title: "Мои программы", folderName: nil, items: myRoutines.map { .preset($0) },
+                title: "My Programs", folderName: nil, items: myRoutines.map { .preset($0) },
                 onItemTapped: handleItemStart, onEdit: { presetToEdit = $0; showPresetEditor = true },
                 onDuplicate: duplicatePreset, onDelete: promptDelete
             )
             
             if !savedSingleRoutines.isEmpty {
                 CarouselSectionView(
-                    title: "Сохраненные тренировки", folderName: PresetService.savedRoutinesFolderName, items: savedSingleRoutines.map { .preset($0) },
+                    title: "Saved Workouts", folderName: PresetService.savedRoutinesFolderName, items: savedSingleRoutines.map { .preset($0) },
                     onItemTapped: handleItemStart, onEdit: { presetToEdit = $0; showPresetEditor = true },
                     onDuplicate: duplicatePreset, onDelete: promptDelete
                 )
@@ -282,7 +282,7 @@ struct WorkoutHubView: View {
             
             if !favoriteWorkouts.isEmpty {
                 CarouselSectionView(
-                    title: "Избранное", folderName: nil, items: favoriteWorkouts.map { .favorite($0) },
+                    title: "Favorites", folderName: nil, items: favoriteWorkouts.map { .favorite($0) },
                     onItemTapped: handleItemStart, onEdit: nil, onDuplicate: nil, onDelete: promptDelete
                 )
             }
@@ -419,7 +419,7 @@ struct CarouselSectionView: View {
                         onDuplicate: onDuplicate,
                         onDelete: onDelete
                     )) {
-                        Text(LocalizedStringKey("Смотреть все"))
+                        Text(LocalizedStringKey("View All"))
                             .font(.subheadline)
                             .foregroundColor(themeManager.current.primaryAccent)
                     }
@@ -690,7 +690,7 @@ struct StreakMascotPopup: View {
                 }
             
             VStack(spacing: 5) {
-                FierySpeechBubble(text: String(localized: "Так держать!\nТы в огне! 🔥"))
+                FierySpeechBubble(text: String(localized: "Keep crushing it!\nYou\'re on fire! 🔥"))
                     .offset(y: 15)
                     .zIndex(1)
                     .rotation3DEffect(.degrees(isGlowing ? 10 : 0), axis: (x: -dragOffset.height, y: dragOffset.width, z: 0.0), perspective: 0.3)

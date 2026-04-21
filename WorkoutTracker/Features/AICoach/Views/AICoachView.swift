@@ -11,7 +11,7 @@ struct CoachSheetItem: Identifiable {
 }
 
 enum CoachMuscleGroup: String, CaseIterable, Identifiable {
-    case chest = "Грудь", back = "Спина", legs = "Ноги", shoulders = "Плечи", arms = "Руки", abs = "Пресс"
+    case chest = "Chest", back = "Back", legs = "Legs", shoulders = "Shoulders", arms = "Arms", abs = "Abss"
     var id: String { self.rawValue }
     
     // Маппинг для движка генерации
@@ -62,11 +62,11 @@ struct AICoachView: View {
     
     @StateObject private var speechRecognizer = SpeechRecognizer()
     
-    let quickPrompts = ["Как пробить плато?", "Биомеханика жима", "Восстановление ЦНС", "Сплит на массу"]
+    let quickPrompts = ["How to break a plateau?", "Bench Press Mechanics", "CNS Recovery", "Hypertrophy Split"]
     
     var greeting: String {
         let hour = Calendar.current.component(.hour, from: .now)
-        switch hour { case 6..<12: return "Доброе утро,"; case 12..<18: return "Добрый день,"; case 18..<24: return "Фокус на вечер,"; default: return "Время восстановления," }
+        switch hour { case 6..<12: return "Good morning,"; case 12..<18: return "Good afternoon,"; case 18..<24: return "Evening focus,"; default: return "Recovery time," }
     }
     
     var body: some View {
@@ -85,7 +85,7 @@ struct AICoachView: View {
                     if showSyncToast {
                         HStack(spacing: 12) {
                             Image(systemName: "waveform.path.ecg").foregroundColor(.cyan).symbolEffect(.pulse, options: .repeating)
-                            Text("Биометрия синхронизирована").font(.system(size: 13, weight: .semibold, design: .rounded))
+                            Text("Biometrics Synced").font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                         }
                         .padding(.horizontal, 20).padding(.vertical, 12)
@@ -105,13 +105,13 @@ struct AICoachView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(greeting).font(.system(size: 14, weight: .medium, design: .rounded)).foregroundColor(.gray)
-                            Text(userName.isEmpty ? "Атлет" : userName)
+                            Text(userName.isEmpty ? "Athlete" : userName)
                                 .font(.system(size: 32, weight: .black, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                                 .overlay(
                                     LinearGradient(colors: [.clear, colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.5), .clear], startPoint: .leading, endPoint: .trailing)
                                         .offset(x: shimmerOffset * 150)
-                                        .mask(Text(userName.isEmpty ? "Атлет" : userName).font(.system(size: 32, weight: .black, design: .rounded)))
+                                        .mask(Text(userName.isEmpty ? "Athlete" : userName).font(.system(size: 32, weight: .black, design: .rounded)))
                                 )
                         }
                         Spacer()
@@ -146,7 +146,7 @@ struct AICoachView: View {
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("ИНДЕКС ЦНС").font(.system(size: 11, weight: .black)).foregroundColor(.gray)
+                                    Text("CNS INDEX").font(.system(size: 11, weight: .black)).foregroundColor(.gray)
                                     Circle().fill(CNSCalculator.getStatus(for: cnsScore).color).frame(width: 6, height: 6).modifier(PulseEffect())
                                 }
                                 Text(CNSCalculator.getStatus(for: cnsScore).text)
@@ -164,7 +164,7 @@ struct AICoachView: View {
                             MicroMetric(title: "RHR", value: actualRHR != nil ? String(format: "%.0f", actualRHR!) : "--", unit: "bpm", color: .purple)
                             Spacer()
                             // Реальный сон
-                            MicroMetric(title: "Сон", value: String(format: "%.1f", sleepHours), unit: "ч", color: .orange)
+                            MicroMetric(title: "Sleep", value: String(format: "%.1f", sleepHours), unit: "ч", color: .orange)
                         }
                     }
                     .onAppear {
@@ -264,20 +264,20 @@ struct AICoachView: View {
                         )
                         
                         VStack(spacing: 4) {
-                            Text(isListening ? "Слушаю вас..." : "Нейро-тренер активен")
+                            Text(isListening ? "Listening..." : "Neural Coach Active")
                                 .font(.system(size: 26, weight: .black, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                                 .contentTransition(.numericText())
                             
                             if isListening {
-                                Text(speechRecognizer.transcript.isEmpty ? "Говорите..." : speechRecognizer.transcript)
+                                Text(speechRecognizer.transcript.isEmpty ? "Speak..." : speechRecognizer.transcript)
                                     .font(.system(size: 15, weight: .medium))
                                     .foregroundColor(.green)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
                                     .padding(.horizontal, 30)
                             } else {
-                                Text("Нажмите на сферу, чтобы сказать")
+                                Text("Tap the sphere to speak")
                                     .font(.system(size: 15, weight: .medium))
                                     .foregroundColor(.gray)
                             }
@@ -287,7 +287,7 @@ struct AICoachView: View {
                         // 👈 АДАПТИВНЫЙ ПОИСК
                         HStack {
                             Image(systemName: "sparkle.magnifyingglass").foregroundColor(.cyan)
-                            TextField("План питания, техника...", text: $userQuery)
+                            TextField("Diet plan, form...", text: $userQuery)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                                 .submitLabel(.send)
                                 .onSubmit {
@@ -340,9 +340,9 @@ struct AICoachView: View {
                     
                     // DOCK
                     HStack(spacing: 12) {
-                        AICoachIsland(title: "План", icon: "bolt.heart.fill", color: .purple) { showWorkoutSheet = true }
-                        AICoachIsland(title: "Прогресс", icon: "chart.xyaxis.line", color: .cyan) { showProgressSheet = true }
-                        AICoachIsland(title: "ЦНС", icon: "moon.stars.fill", color: .orange) { showRestSheet = true }
+                        AICoachIsland(title: "Plan", icon: "bolt.heart.fill", color: .purple) { showWorkoutSheet = true }
+                        AICoachIsland(title: "Progress", icon: "chart.xyaxis.line", color: .cyan) { showProgressSheet = true }
+                        AICoachIsland(title: "CNS", icon: "moon.stars.fill", color: .orange) { showRestSheet = true }
                     }
                     .padding(.horizontal, 16).padding(.vertical, 14)
                     // 👈 АДАПТИВНЫЙ DOCK
@@ -390,8 +390,8 @@ struct AISettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Стиль общения тренера"), footer: Text("Влияет на ответы в чате и генерацию тренировок.")) {
-                    Picker("Тон", selection: $aiTone) {
+                Section(header: Text("Coach Communication Style"), footer: Text("Affects chat responses and workout generation.")) {
+                    Picker("Tone", selection: $aiTone) {
                         ForEach(tones, id: \.self) { tone in
                             Text(LocalizedStringKey(tone)).tag(tone)
                         }
@@ -407,17 +407,17 @@ struct AISettingsSheet: View {
                     } label: {
                         HStack {
                             Spacer()
-                            Text("Очистить текущий чат")
+                            Text("Clear Current Chat")
                             Spacer()
                         }
                     }
                 }
             }
-            .navigationTitle("Настройки ИИ")
+            .navigationTitle("AI Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") { dismiss() }
+                    Button("Done") { dismiss() }
                 }
             }
         }
@@ -427,7 +427,7 @@ struct AISettingsSheet: View {
 // MARK: - ЭКРАН WORKOUT CONFIG (План)
 struct WorkoutConfigSheet: View {
     @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
-    let levels: [(String, WorkoutDifficulty)] = [("Базовый", .beginner), ("Продвинутый", .intermediate), ("Атлет PRO", .advanced)]
+    let levels: [(String, WorkoutDifficulty)] = [("Basic", .beginner), ("Advanced", .intermediate), ("Athlete PRO", .advanced)]
     
     @State private var selectedLevel: WorkoutDifficulty = .intermediate
     @State private var selectedMuscle: CoachMuscleGroup? = nil
@@ -435,9 +435,9 @@ struct WorkoutConfigSheet: View {
     
     func synergyFor(_ muscle: CoachMuscleGroup) -> String? {
         switch muscle {
-        case .chest: return "Трицепс, Передняя дельта"
-        case .back: return "Бицепс, Трапеция"
-        case .legs: return "Ягодицы, Икры"
+        case .chest: return "Triceps, Front Delts"
+        case .back: return "Biceps, Traps"
+        case .legs: return "Glutes, Calves"
         case .shoulders: return nil
         case .arms: return nil
         case .abs: return nil
@@ -454,7 +454,7 @@ struct WorkoutConfigSheet: View {
                 ScrollView(showsIndicators: false) {
                     LazyVStack(alignment: .leading, spacing: 32) {
                         
-                        Text("Конструктор")
+                        Text("Builder")
                             .font(.system(size: 34, weight: .black, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
                             .padding(.horizontal, 24)
@@ -462,7 +462,7 @@ struct WorkoutConfigSheet: View {
                         
                         // БЛОК: ИНТЕНСИВНОСТЬ
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("ИНТЕНСИВНОСТЬ")
+                            Text("INTENSITY")
                                 .font(.system(size: 13, weight: .black))
                                 .foregroundColor(.gray)
                                 .padding(.horizontal, 24)
@@ -494,7 +494,7 @@ struct WorkoutConfigSheet: View {
                         
                         // БЛОК: ГЛАВНЫЙ ФОКУС
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("ГЛАВНЫЙ ФОКУС")
+                            Text("PRIMARY FOCUS")
                                 .font(.system(size: 13, weight: .black))
                                 .foregroundColor(.gray)
                                 .padding(.horizontal, 24)
@@ -535,7 +535,7 @@ struct WorkoutConfigSheet: View {
                                                 .foregroundColor(Color.cyan)
                                                 .lineLimit(1)
                                             } else {
-                                                Text("Изоляция")
+                                                Text("Isolation")
                                                     .font(.system(size: 12, weight: .medium))
                                                     .foregroundColor(.gray)
                                             }
@@ -584,7 +584,7 @@ struct BestExercisesSheet: View {
     @State private var aiErrorMessage: String? = nil
     
     @State private var generatedWorkout: GeneratedWorkoutDTO? = nil
-    @State private var aiCoachMessage: String = "Анализирую биометрию..."
+    @State private var aiCoachMessage: String = String(localized: "Analyzing biometrics...")
     @State private var estimatedTonnage: Double = 0.0
     
     @State private var selectedExercise: GeneratedExerciseDTO? = nil
@@ -593,7 +593,7 @@ struct BestExercisesSheet: View {
     
     private var dummyExercises: [GeneratedExerciseDTO] {
         return (0..<5).map { _ in
-            GeneratedExerciseDTO(name: "Загрузка упражнения...", muscleGroup: "Группа", type: "Strength", sets: 3, reps: 10, recommendedWeightKg: 50.0, restSeconds: 90)
+            GeneratedExerciseDTO(name: "Loading exercise...", muscleGroup: "Group", type: "Strength", sets: 3, reps: 10, recommendedWeightKg: 50.0, restSeconds: 90)
         }
     }
     
@@ -605,7 +605,7 @@ struct BestExercisesSheet: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Text(isGenerating ? "Нейросеть думает..." : "Протокол: \(muscleGroup.rawValue)")
+                    Text(isGenerating ? "AI is thinking..." : "Protocol: \(muscleGroup.rawValue)")
                         .font(.system(size: 24, weight: .black, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? .white : .black) // 👈
                     Spacer()
@@ -662,7 +662,7 @@ struct BestExercisesSheet: View {
                         if aiErrorMessage == nil {
                             HStack {
                                 VStack(alignment: .leading) {
-                                    Text("Эстимейт Объем").font(.system(size: 12, weight: .bold)).foregroundColor(.gray)
+                                    Text("Estimated Volume").font(.system(size: 12, weight: .bold)).foregroundColor(.gray)
                                     Text("\(Int(estimatedTonnage)) \(unitsManager.weightUnitString())")
                                         .font(.system(size: 20, weight: .black).monospacedDigit())
                                         .foregroundColor(.purple)
@@ -672,7 +672,7 @@ struct BestExercisesSheet: View {
                                 Divider().background(Color.gray.opacity(0.2)).frame(height: 30)
                                 Spacer()
                                 VStack(alignment: .trailing) {
-                                    Text("Сложность").font(.system(size: 12, weight: .bold)).foregroundColor(.gray)
+                                    Text("Difficulty").font(.system(size: 12, weight: .bold)).foregroundColor(.gray)
                                     Text(difficulty.rawValue).font(.system(size: 16, weight: .black)).foregroundColor(.cyan)
                                 }
                             }
@@ -1475,7 +1475,7 @@ struct RestAnalysisSheet: View {
                         VStack(alignment: .leading, spacing: 20) {
                             Text("БИОМЕТРИЯ").font(.system(size: 12, weight: .black)).foregroundColor(.gray).padding(.horizontal, 24)
                             VStack(spacing: 12) {
-                                HStack { Image(systemName: "moon.zzz.fill").foregroundColor(.purple); Text("Сон прошлой ночью").font(.system(size: 16, weight: .medium)).foregroundColor(colorScheme == .dark ? .white : .black); Spacer(); Text(String(format: "%.1f ч", sleepHours)).font(.system(size: 18, weight: .bold, design: .rounded).monospacedDigit()).foregroundColor(.purple) }
+                                HStack { Image(systemName: "moon.zzz.fill").foregroundColor(.purple); Text("Sleep прошлой ночью").font(.system(size: 16, weight: .medium)).foregroundColor(colorScheme == .dark ? .white : .black); Spacer(); Text(String(format: "%.1f ч", sleepHours)).font(.system(size: 18, weight: .bold, design: .rounded).monospacedDigit()).foregroundColor(.purple) }
                                 Slider(value: $sleepHours, in: 3...12, step: 0.5) { _ in HapticManager.shared.selection(); updateCNS() }.tint(.purple)
                             }
                             .padding(20)

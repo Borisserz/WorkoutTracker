@@ -84,11 +84,11 @@ struct ConfigureExerciseView: View {
                     }
                 }
             }
-            .navigationTitle(LocalizedStringKey("Настройка"))
+            .navigationTitle(LocalizedStringKey("Configure"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Отмена")) { dismiss() }
+                    Button(LocalizedStringKey("Cancel")) { dismiss() }
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                 }
             }
@@ -115,7 +115,7 @@ struct ConfigureExerciseView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title3)
-                    Text(LocalizedStringKey("Добавить упражнение"))
+                    Text(LocalizedStringKey("Add Exercise"))
                         .font(.headline)
                         .fontWeight(.bold)
                 }
@@ -199,19 +199,19 @@ struct ConfigureExerciseView: View {
     }
     
     @ViewBuilder private var strengthConfig: some View {
-        CustomStepperCard(title: "Подходы", value: $viewModel.form.sets, range: 1...20)
-        CustomStepperCard(title: "Повторения", value: $viewModel.form.reps, range: 1...100)
+        CustomStepperCard(title: "Sets", value: $viewModel.form.sets, range: 1...20)
+        CustomStepperCard(title: "Reps", value: $viewModel.form.reps, range: 1...100)
         CustomInputCard(title: "Вес (\(unitsManager.weightUnitString()))", placeholder: "0.0", binding: weightBinding)
     }
     
     @ViewBuilder private var cardioConfig: some View {
         CustomInputCard(title: "Дистанция (\(unitsManager.distanceUnitString()))", placeholder: "0.0", binding: distanceBinding)
-        CustomTimeCard(title: "Длительность", minBinding: minutesBinding, secBinding: secondsBinding)
+        CustomTimeCard(title: "Duration", minBinding: minutesBinding, secBinding: secondsBinding)
     }
     
     @ViewBuilder private var durationConfig: some View {
-        CustomStepperCard(title: "Подходы", value: $viewModel.form.sets, range: 1...10)
-        CustomTimeCard(title: "Время подхода", minBinding: minutesBinding, secBinding: secondsBinding)
+        CustomStepperCard(title: "Sets", value: $viewModel.form.sets, range: 1...10)
+        CustomTimeCard(title: "Set Time", minBinding: minutesBinding, secBinding: secondsBinding)
     }
     
     private func handleSave() {
@@ -327,7 +327,7 @@ struct CustomTimeCard: View {
             HStack(spacing: 8) {
                 ClearableTextField(placeholder: "0", value: minBinding)
                     .frame(width: 50)
-                Text(LocalizedStringKey("мин"))
+                Text(LocalizedStringKey("min"))
                     .font(.subheadline).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 
                 ClearableTextField(placeholder: "0", value: secBinding)
@@ -335,7 +335,7 @@ struct CustomTimeCard: View {
                     .onChange(of: secBinding.wrappedValue) { _, newValue in
                         if let s = newValue, s > 59 { secBinding.wrappedValue = 59 }
                     }
-                Text(LocalizedStringKey("сек"))
+                Text(LocalizedStringKey("sec"))
                     .font(.subheadline).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             }
         }

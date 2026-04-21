@@ -88,7 +88,7 @@ struct HistoryView: View {
                         
                         // ДОБАВЛЕННЫЕ ТРЕНИРОВКИ (ИЗ БАЗЫ SWIFTDATA)
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("История тренировок")
+                            Text("Workout History")
                                 .font(.title3).bold()
                                 .foregroundColor(colorScheme == .dark ? .white : .primary)
                                 .padding(.horizontal, 20)

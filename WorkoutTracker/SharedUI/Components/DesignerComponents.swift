@@ -355,13 +355,13 @@ struct SettingsDropdownMenu: View {
         VStack(alignment: .leading, spacing: 16) {
             
             // Темная тема (включает/выключает)
-            SettingRow(icon: "moon.fill", title: "Темная тема", color: .indigo, isOn: Binding(
+            SettingRow(icon: "moon.fill", title: "Dark Theme", color: .indigo, isOn: Binding(
                 get: { appearanceMode == "dark" },
                 set: { appearanceMode = $0 ? "dark" : "light" }
             ))
             
-            SettingRow(icon: "bell.fill", title: "Уведомления", color: .orange, isOn: $notificationsEnabled)
-            SettingRow(icon: "waveform.path", title: "Вибрация", color: .pink, isOn: $hapticsEnabled)
+            SettingRow(icon: "bell.fill", title: "Notifications", color: .orange, isOn: $notificationsEnabled)
+            SettingRow(icon: "waveform.path", title: "Vibration", color: .pink, isOn: $hapticsEnabled)
             
             Divider().background(Color.white.opacity(0.2))
             
@@ -371,7 +371,7 @@ struct SettingsDropdownMenu: View {
                 onOpenFullSettings()
             }) {
                 HStack {
-                    Text("Все настройки")
+                    Text("All Settings")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                     Spacer()
                     Image(systemName: "chevron.right")

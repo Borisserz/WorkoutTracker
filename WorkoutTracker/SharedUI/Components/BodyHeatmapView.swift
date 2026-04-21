@@ -34,7 +34,7 @@ struct BodyHeatmapView: View {
         isCompactMode: Bool = false,
         defaultToBack: Bool = false,
         userGender: String = "male",
-        countLabel: String = "упр."
+        countLabel: String = "ex."
     ) {
         self.muscleIntensities = muscleIntensities
         self.rawMuscleCounts = rawMuscleCounts

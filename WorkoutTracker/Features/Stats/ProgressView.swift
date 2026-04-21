@@ -313,7 +313,7 @@ struct StatsContentView: View {
                     aiLogicService: di.aiLogicService
                 )
             } else {
-                ProgressView("Нейросеть анализирует...")
+                ProgressView("AI is analyzing...")
                     .presentationDetents([.medium])
             }
         }
@@ -354,7 +354,7 @@ struct HeaderView: View {
     
     var body: some View {
         HStack {
-            Text("Прогресс")
+            Text("Progress")
                 .font(.system(size: 34, weight: .black, design: .rounded))
                 .foregroundColor(colorScheme == .dark ? .white : .black)
             Spacer()
@@ -403,7 +403,7 @@ struct MascotStreakView: View {
             }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(streak > 0 ? "Ты в ударе, машина! 🔥" : "Начни свой стрик сегодня!")
+                Text(streak > 0 ? "You're on fire! 🔥" : "Start your streak today!")
                     .font(.subheadline)
                     .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                 Text("\(streak) дней тренировок подряд")
@@ -433,10 +433,10 @@ struct GoalsSectionView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Ваши цели")
+                    Text("Your Goals")
                         .font(.title2).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
-                    Text("Бросьте вызов себе")
+                    Text("Challenge Yourself")
                         .font(.subheadline)
                         .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                 }
@@ -448,7 +448,7 @@ struct GoalsSectionView: View {
                 }) {
                     HStack {
                         Image(systemName: "plus")
-                        Text("Добавить")
+                        Text("Add")
                     }
                     .font(.system(size: 14, weight: .bold))
                     .padding(.horizontal, 16)
@@ -462,7 +462,7 @@ struct GoalsSectionView: View {
             
             if viewModel.activeGoals.isEmpty {
                 VStack(spacing: 12) {
-                    Text("У вас пока нет активных целей.")
+                    Text("You have no active goals yet.")
                         .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                         .font(.subheadline)
                 }
@@ -514,7 +514,7 @@ struct DesignerGoalCard: View {
                 }
                 Spacer()
                 Menu {
-                    Button(role: .destructive, action: onDelete) { Label("Удалить", systemImage: "trash") }
+                    Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis").foregroundColor(colorScheme == .dark ? .gray : .secondary).padding(8) }
             }
             
@@ -542,8 +542,8 @@ struct DesignerGoalCard: View {
     
     private var iconName: String { goal.type == .strength ? "dumbbell.fill" : (goal.type == .bodyweight ? "scalemass.fill" : "flame.fill") }
     private var iconColor: Color { goal.type == .strength ? .blue : (goal.type == .bodyweight ? .purple : .orange) }
-    private var title: String { goal.type == .strength ? (goal.exerciseName ?? "Упражнение") : (goal.type == .bodyweight ? "Вес тела" : "Стрик") }
-    private var subtitle: String { goal.type == .strength ? "Силовая цель" : (goal.type == .bodyweight ? "Трансформация" : "Дисциплина") }
+    private var title: String { goal.type == .strength ? (goal.exerciseName ?? "Exercise") : (goal.type == .bodyweight ? "Body Weight" : "Streak") }
+    private var subtitle: String { goal.type == .strength ? "Strength Goal" : (goal.type == .bodyweight ? "Transformation" : "Discipline") }
     
     private func calculateProgress() -> Double {
         if goal.type == .bodyweight {
@@ -590,7 +590,7 @@ struct AIIslandView: View {
                     .font(.title2)
                     .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .top, endPoint: .bottom))
                 
-                Text("Обзор эффективности с ИИ")
+                Text("AI Efficiency Overview")
                     .font(.system(size: 16, weight: .semibold))
                     // 👇 Текст корректно адаптируется
                     .foregroundColor(colorScheme == .dark ? .white : .black)
@@ -661,7 +661,7 @@ struct QuickStatsView: View {
         HStack(spacing: 12) {
             InteractiveStatCard(
                 icon: "figure.run",
-                title: "Тренировки",
+                title: "Workouts",
                 value: "\(stats.workoutCount)",
                 metric: .count,
                 selectedMetric: $viewModel.selectedMetric
@@ -671,7 +671,7 @@ struct QuickStatsView: View {
             if vol > 1000 {
                 InteractiveStatCard(
                     icon: "dumbbell.fill",
-                    title: "Объем (Тонны)",
+                    title: "Volume (Tons)",
                     value: LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0),
                     metric: .volume,
                     selectedMetric: $viewModel.selectedMetric
@@ -688,7 +688,7 @@ struct QuickStatsView: View {
             
             InteractiveStatCard(
                 icon: "map.fill",
-                title: "Дистанция",
+                title: "Distance",
                 value: "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters(stats.totalDistance))) км",
                 metric: .distance,
                 selectedMetric: $viewModel.selectedMetric
@@ -774,7 +774,7 @@ struct ComparisonSectionView: View {
             VStack(spacing: 0) {
                 // График
                 if viewModel.chartData.isEmpty {
-                    Text("Нет данных для графика")
+                    Text("No data for chart")
                         .foregroundColor(.gray)
                         .padding(.vertical, 60)
                 } else {
@@ -808,14 +808,14 @@ struct ComparisonSectionView: View {
                 if let first = viewModel.chartData.first, let last = viewModel.chartData.last, viewModel.chartData.count > 1 {
                     let fVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(first.value) : first.value
                     let lVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(last.value) : last.value
-                    let unitStr = viewModel.selectedMetric == .volume ? unitsManager.weightUnitString() : (viewModel.selectedMetric == .time ? "мин" : (viewModel.selectedMetric == .distance ? "км" : ""))
+                    let unitStr = viewModel.selectedMetric == .volume ? unitsManager.weightUnitString() : (viewModel.selectedMetric == .time ? "min" : (viewModel.selectedMetric == .distance ? "km" : ""))
                     
                     let diff = lVal - fVal
                     let pct = fVal == 0 ? (lVal > 0 ? 100 : 0) : (diff / fVal) * 100.0
                     
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Прошлый (\(first.label))").font(.caption).foregroundColor(.gray)
+                            Text("Previous (\(first.label))").font(.caption).foregroundColor(.gray)
                             Text("\(LocalizationHelper.shared.formatFlexible(fVal)) \(unitStr)")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
@@ -836,7 +836,7 @@ struct ComparisonSectionView: View {
                         Spacer()
                         
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text("Текущий (\(last.label))").font(.caption).foregroundColor(.gray)
+                            Text("Current (\(last.label))").font(.caption).foregroundColor(.gray)
                             Text("\(LocalizationHelper.shared.formatFlexible(lVal)) \(unitStr)")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(Color(hex: "E020FF"))
@@ -864,7 +864,7 @@ struct AdvancedStatsSectionView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Расширенная статистика")
+            Text("Extended Statistics")
                 .font(.title3).bold()
                 .foregroundColor(colorScheme == .dark ? .white : .black)
             
@@ -879,11 +879,11 @@ struct AdvancedStatsSectionView: View {
                     isExpanded: Binding(get: { openTab == 0 }, set: { openTab = $0 ? 0 : nil })
                 ) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("Узнайте, какие механики и тренажеры преобладают в ваших тренировках.")
+                        Text("Learn which mechanics and equipment dominate your workouts.")
                             .font(.subheadline)
                             .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                         
-                        InnerCardNavigationButton(title: "Разбор механики", icon: "scale.3d", color: .orange) {
+                        InnerCardNavigationButton(title: "Mechanics Breakdown", icon: "scale.3d", color: .orange) {
                             TrainingStyleDetailView()
                         }
                     }
@@ -912,11 +912,11 @@ struct AdvancedStatsSectionView: View {
                             .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color(UIColor.secondarySystemGroupedBackground))
                             .cornerRadius(16)
                             
-                            InnerCardNavigationButton(title: "Динамика и тренды", icon: "waveform.path.ecg", color: .blue) {
+                            InnerCardNavigationButton(title: "Dynamics and Trends", icon: "waveform.path.ecg", color: .blue) {
                                 SetsTrendDetailView()
                             }
                         } else {
-                            Text("Нет данных за этот период").foregroundColor(.gray)
+                            Text("No data for this period").foregroundColor(.gray)
                         }
                     }
                 }
@@ -942,7 +942,7 @@ struct AdvancedStatsSectionView: View {
                                 .chartLegend(.hidden)
                                 
                                 VStack {
-                                    Text("Лидер")
+                                    Text("Leader")
                                         .font(.caption)
                                         .foregroundColor(.gray)
                                     Text(LocalizedStringKey(anatomy.setsPerMuscle.first?.muscle ?? ""))
@@ -953,11 +953,11 @@ struct AdvancedStatsSectionView: View {
                             }
                             .padding(.vertical, 10)
                             
-                            InnerCardNavigationButton(title: "Открыть радар мышц", icon: "viewfinder", color: .purple) {
+                            InnerCardNavigationButton(title: "Open Muscle Radar", icon: "viewfinder", color: .purple) {
                                 RadarChartDetailView()
                             }
                         } else {
-                            Text("Нет данных").foregroundColor(.gray)
+                            Text("No data").foregroundColor(.gray)
                         }
                     }
                 }
@@ -1013,7 +1013,7 @@ struct AdvancedStatsSectionView: View {
                             HStack {
                                 Image(systemName: "flame.fill")
                                     .foregroundColor(.red)
-                                Text("Открыть карту напряжений")
+                                Text("Open Tension Map")
                                     .font(.subheadline)
                                     .bold()
                                     .foregroundColor(colorScheme == .dark ? .white : .black)
@@ -1043,7 +1043,7 @@ struct AdvancedStatsSectionView: View {
                     isExpanded: Binding(get: { openTab == 4 }, set: { openTab = $0 ? 4 : nil })
                 ) {
                     VStack(alignment: .leading) {
-                        InnerCardNavigationButton(title: "Смотреть Stories", icon: "play.rectangle.fill", color: .cyan) {
+                        InnerCardNavigationButton(title: "View Stories", icon: "play.rectangle.fill", color: .cyan) {
                             MonthlyReportStoryView()
                         }
                     }
@@ -1201,7 +1201,7 @@ struct AllTimeResultsView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("За все время")
+            Text("All Time")
                 .font(.title3).bold()
                 .foregroundColor(colorScheme == .dark ? .white : .black)
             
@@ -1234,7 +1234,7 @@ struct AllTimeResultsView: View {
                 // Статистика
                 HStack {
                     VStack(alignment: .leading) {
-                        Text("Лучший месяц (Объем)").font(.subheadline).foregroundColor(.gray)
+                        Text("Best Month (Volume)").font(.subheadline).foregroundColor(.gray)
                         let vol = unitsManager.convertFromKilograms(bestStats.totalVolume)
                         if vol > 1000 {
                             Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) тонн").font(.title2).bold().foregroundColor(.purple)
@@ -1244,7 +1244,7 @@ struct AllTimeResultsView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing) {
-                        Text("Рекорд трен.").font(.subheadline).foregroundColor(.gray)
+                        Text("PR Record").font(.subheadline).foregroundColor(.gray)
                         Text("\(bestStats.workoutCount)").font(.title2).bold().foregroundColor(colorScheme == .dark ? .white : .black)
                     }
                 }

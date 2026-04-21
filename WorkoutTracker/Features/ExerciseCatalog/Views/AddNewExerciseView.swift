@@ -39,7 +39,7 @@ struct AddNewExerciseView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 32) {
                         
-                        Text(LocalizedStringKey("Новое упражнение"))
+                        Text(LocalizedStringKey("New Exercise"))
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
                             // 👈 АДАПТИВНЫЙ ТЕКСТ
                             .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
@@ -85,7 +85,7 @@ struct AddNewExerciseView: View {
     
     private var basicInfoSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Базовая информация"))
+            Text(LocalizedStringKey("Basic Information"))
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
             
@@ -94,7 +94,7 @@ struct AddNewExerciseView: View {
                     Image(systemName: "dumbbell.fill")
                         .foregroundColor(themeManager.current.primaryAccent)
                     
-                    TextField(LocalizedStringKey("Название упражнения"), text: $name)
+                    TextField(LocalizedStringKey("Exercise Name"), text: $name)
                         .font(.headline)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                         .submitLabel(.done)
@@ -107,7 +107,7 @@ struct AddNewExerciseView: View {
                     Image(systemName: "folder.fill")
                         .foregroundColor(themeManager.current.primaryAccent)
                     
-                    Text(LocalizedStringKey("Категория"))
+                    Text(LocalizedStringKey("Category"))
                         .font(.headline)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                     
@@ -138,7 +138,7 @@ struct AddNewExerciseView: View {
     private var muscleSelectionSection: some View {
          VStack(alignment: .leading, spacing: 16) {
              HStack {
-                 Text(LocalizedStringKey("Задействованные мышцы"))
+                 Text(LocalizedStringKey("Targeted Muscles"))
                      .font(.headline)
                      .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
                  Spacer()
@@ -197,7 +197,7 @@ struct AddNewExerciseView: View {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.title3)
-                Text(LocalizedStringKey("Сохранить упражнение"))
+                Text(LocalizedStringKey("Save Exercise"))
                     .font(.headline)
                     .fontWeight(.bold)
             }

@@ -33,7 +33,7 @@ struct AIChatBotView: View {
                 themeManager.current.background.ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Зона сообщений
+                    // Зона messages
                     ScrollViewReader { proxy in
                         ScrollView {
                             VStack(spacing: 16) {
@@ -99,7 +99,7 @@ struct AIChatBotView: View {
                         .buttonStyle(.plain)
                         
                         // ТЕКСТОВОЕ ПОЛЕ
-                        TextField("Спроси тренера...", text: $viewModel.inputText)
+                        TextField("Ask coach...", text: $viewModel.inputText)
                             .padding(14)
                             .background(.ultraThinMaterial, in: Capsule())
                             .overlay(Capsule().stroke(speechRecognizer.isRecording ? Color.green.opacity(0.5) : .white.opacity(0.2), lineWidth: 1))
@@ -121,12 +121,12 @@ struct AIChatBotView: View {
                     .background(themeManager.current.background.opacity(0.9)) // Защита от наезжания текста
                 }
             }
-            .navigationTitle("ИИ Тренер")
+            .navigationTitle("AI Coach")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Закрыть
+                // Close
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Закрыть") { dismiss() }
+                    Button("Close") { dismiss() }
                         .foregroundStyle(themeManager.current.primaryAccent)
                         .fontWeight(.bold)
                 }
@@ -285,8 +285,8 @@ struct AIChatHistorySheet: View {
                 if sessions.isEmpty {
                     EmptyStateView(
                         icon: "bubble.left.and.exclamationmark.bubble.right",
-                        title: "Нет истории",
-                        message: "Вы еще не общались с тренером. Начните первый диалог!"
+                        title: "No History",
+                        message: "You haven't chatted with the coach yet. Start your first conversation!"
                     )
                     .frame(maxHeight: .infinity)
                 } else {
@@ -309,7 +309,7 @@ struct AIChatHistorySheet: View {
                                             .font(.caption)
                                             .foregroundColor(.gray)
                                         Spacer()
-                                        Text("\(session.messages.count) сообщений")
+                                        Text("\(session.messages.count) messages")
                                             .font(.caption2)
                                             .padding(.horizontal, 8)
                                             .padding(.vertical, 4)
@@ -339,7 +339,7 @@ struct AIChatHistorySheet: View {
                     HStack {
                         Image(systemName: "plus.bubble.fill")
                             .font(.title3)
-                        Text("Начать новый диалог")
+                        Text("Start New Chat")
                             .font(.headline)
                             .bold()
                     }
@@ -353,11 +353,11 @@ struct AIChatHistorySheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
             }
-            .navigationTitle("История чатов")
+            .navigationTitle("Chat History")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { dismiss() }
+                    Button("Cancel") { dismiss() }
                         .foregroundStyle(.gray)
                 }
             }

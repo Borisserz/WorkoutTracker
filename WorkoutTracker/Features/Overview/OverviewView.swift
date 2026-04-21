@@ -54,7 +54,7 @@ struct OverviewView: View {
     // Стейты для Плана на сегодня
     @AppStorage("dailyPlanDateString") private var dailyPlanDateString: String = ""
     @State private var showExerciseSelector = false
-    @Query(filter: #Predicate<WorkoutPreset> { $0.name == "План на сегодня" }) private var dailyPlanPresets: [WorkoutPreset]
+    @Query(filter: #Predicate<WorkoutPreset> { $0.name == "Today's Plan" }) private var dailyPlanPresets: [WorkoutPreset]
     private var dailyPlan: WorkoutPreset? { dailyPlanPresets.first }
     
     // Стейт для управления выпадающим меню настроек
@@ -136,9 +136,9 @@ struct OverviewView: View {
                         
                         await di.presetService.savePreset(
                             preset: dailyPlan,
-                            name: "План на сегодня",
+                            name: "Today's Plan",
                             icon: "calendar.badge.clock",
-                            folderName: "СкрытаяПапка",
+                            folderName: "HiddenFolder",
                             exercises: currentExercises
                         )
                         
@@ -197,10 +197,10 @@ struct OverviewView: View {
             
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Обзор")
+                    Text("Overview")
                         .font(.system(size: 34, weight: .heavy, design: .rounded))
                         .foregroundStyle(.primary)
-                    Text("Готов крушить рекорды?")
+                    Text("Ready to crush it?")
                         .font(.subheadline)
                         .fontWeight(.medium)
                         .foregroundStyle(.secondary)
@@ -229,7 +229,7 @@ struct OverviewView: View {
     private var dailyPlanSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("План на сегодня")
+                Text("Today's Plan")
                     .font(.title2.weight(.bold))
                 // Строгий контроль цвета: исходный белый в темной, черный в светлой
                     .foregroundStyle(colorScheme == .dark ? .white : .black)
@@ -260,7 +260,7 @@ struct OverviewView: View {
                     UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                     startDailyPlan()
                 } label: {
-                    Text("Начать тренировку")
+                    Text("Start Workout")
                         .font(.headline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -272,7 +272,7 @@ struct OverviewView: View {
                 .padding(.top, 8)
                 
             } else {
-                Text("Нажми +, чтобы добавить упражнения")
+                Text("Tap + to add exercises")
                     .font(.subheadline)
                     .foregroundStyle(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
                     .padding(.top, 4)
@@ -307,9 +307,9 @@ struct OverviewView: View {
                 Task { @MainActor in
                     await di.presetService.savePreset(
                         preset: plan,
-                        name: "План на сегодня",
+                        name: "Today's Plan",
                         icon: "calendar.badge.clock",
-                        folderName: "СкрытаяПапка",
+                        folderName: "HiddenFolder",
                         exercises: []
                     )
                 }
@@ -324,8 +324,8 @@ struct OverviewView: View {
             var updatedExercises = plan.exercises
             updatedExercises.removeAll { $0.id == exercise.id }
             await di.presetService.savePreset(
-                preset: plan, name: "План на сегодня", icon: "calendar.badge.clock",
-                folderName: "СкрытаяПапка", exercises: updatedExercises
+                preset: plan, name: "Today's Plan", icon: "calendar.badge.clock",
+                folderName: "HiddenFolder", exercises: updatedExercises
             )
         }
     }
@@ -338,8 +338,8 @@ struct OverviewView: View {
                 router.present(.addWorkout)
                 isProcessing = false; return
             }
-            if let _ = await workoutService.createWorkout(title: "План на сегодня", presetID: plan.persistentModelID, isAIGenerated: false) {
-                di.liveActivityManager.startWorkoutActivity(title: "План на сегодня")
+            if let _ = await workoutService.createWorkout(title: "Today's Plan", presetID: plan.persistentModelID, isAIGenerated: false) {
+                di.liveActivityManager.startWorkoutActivity(title: "Today's Plan")
                 var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
                 if let newWorkout = try? context.fetch(descriptor).first {
                     router.push(.workoutDetail(newWorkout))
@@ -353,7 +353,7 @@ struct OverviewView: View {
     private var topExercisesSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Топ упражнений")
+                Text("Top Exercises")
                     .font(.title2.weight(.bold))
                     .foregroundStyle(colorScheme == .dark ? .white : .black) // Исходный белый в темной
                 
@@ -380,7 +380,7 @@ struct OverviewView: View {
                         .font(.title2)
                         .foregroundColor(themeManager.current.primaryAccent.opacity(0.5))
                     
-                    Text("Выполни тренировку, чтобы увидеть топ")
+                    Text("Complete a workout to see top exercises")
                         .font(.subheadline)
                         .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
                 }
@@ -537,7 +537,7 @@ struct OverviewView: View {
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     
-                    Text("\(item.count) подходов")
+                    Text("\(item.count) sets")
                         .font(.caption)
                         .fontWeight(.medium)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
@@ -597,7 +597,7 @@ struct OverviewView: View {
                     color: Color(red: 1.0, green: 0.15, blue: 0.3),
                     progress: todayStats.cals,
                     icon: "flame.fill",
-                    title: "Ккал",
+                    title: "Kcal",
                     valueText: "\(todayStats.rawCals)"
                 ) {
                     selectedRing = .calories
@@ -608,7 +608,7 @@ struct OverviewView: View {
                     color: Color(red: 0.2, green: 0.9, blue: 0.2),
                     progress: todayStats.steps,
                     icon: "figure.walk",
-                    title: "Шаги",
+                    title: "Steps",
                     valueText: "\(viewModel.todaySteps)"
                 ) {
                     selectedRing = .steps
@@ -619,8 +619,8 @@ struct OverviewView: View {
                     color: Color.cyan,
                     progress: todayStats.water,
                     icon: "drop.fill",
-                    title: "Вода",
-                    valueText: String(format: "%.1f Л", viewModel.todayWaterLiters)
+                    title: "Water",
+                    valueText: String(format: "%.1f L", viewModel.todayWaterLiters)
                 ) {
                     selectedRing = .water
                 }
@@ -719,11 +719,11 @@ struct OverviewView: View {
         var config: (title: String, value: String, unit: String, icon: String, color: Color, description: String, canOpenFoodTracker: Bool) {
             switch type {
             case .calories:
-                return ("Сожжено сегодня", "\(rawCals)", "ккал", "flame.fill", Color(red: 1.0, green: 0.15, blue: 0.3), "Калории, сожженные исключительно во время силовых и кардио тренировок в WorkoutTracker.", false)
+                return ("Burned Today", "\(rawCals)", "kcal", "flame.fill", Color(red: 1.0, green: 0.15, blue: 0.3), "Calories burned exclusively during strength and cardio workouts in WorkoutTracker.", false)
             case .steps:
-                return ("Шаги за день", "\(rawSteps)", "шагов", "figure.walk", Color(red: 0.2, green: 0.9, blue: 0.2), "Ваша дневная активность. Данные автоматически синхронизируются с Apple Health и FoodTracker.", true)
+                return ("Steps Today", "\(rawSteps)", "steps", "figure.walk", Color(red: 0.2, green: 0.9, blue: 0.2), "Your daily activity. Data is automatically synced with Apple Health and FoodTracker.", true)
             case .water:
-                return ("Водный баланс", String(format: "%.1f", rawWater), "литров", "drop.fill", .cyan, "Количество выпитой воды. Поддержание гидратации критически важно для мышечного роста.", true)
+                return ("Water Balance", String(format: "%.1f", rawWater), "liters", "drop.fill", .cyan, "Water intake. Staying hydrated is critical for muscle growth.", true)
             }
         }
         
@@ -803,7 +803,7 @@ struct OverviewView: View {
                     } else {
                         // Кнопка "Закрыть" для калорий
                         Button(action: { dismiss() }) {
-                            Text("Понятно")
+                            Text("Got It")
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                                 .frame(maxWidth: .infinity)
@@ -939,7 +939,7 @@ struct OverviewView: View {
         
         var body: some View {
             VStack {
-                Text("Задействованные мышцы")
+                Text("Muscle Groups")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
                 
@@ -947,7 +947,7 @@ struct OverviewView: View {
                     Circle().stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 20).frame(width: 150, height: 150)
                     
                     if viewModel.dashboardMuscleData.isEmpty {
-                        Text("Пусто").font(.headline).foregroundStyle(.gray)
+                        Text("Empty").font(.headline).foregroundStyle(.gray)
                     } else {
                         ForEach(0..<chartData.count, id: \.self) { index in
                             if chartData[index].percentage > 0 {
@@ -967,7 +967,7 @@ struct OverviewView: View {
                             Text("\(viewModel.dashboardTotalExercises)")
                                 .font(.system(size: 28, weight: .bold, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
-                            Text("Подходы")
+                            Text("Sets")
                                 .font(.caption)
                                 .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))
                         }
@@ -1053,13 +1053,13 @@ struct OverviewView: View {
         var body: some View {
             VStack(alignment: .leading, spacing: 20) {
                 
-                Text("Восстановление мышц")
+                Text("Muscle Recovery")
                     .font(.system(size: 24, weight: .heavy, design: .rounded))
                     .foregroundStyle(colorScheme == .dark ? .white : .black)
                 
                 HStack(spacing: 12) {
-                    AnatomyToggleButton(title: "Спереди", isSelected: isFrontView) { isFrontView = true }
-                    AnatomyToggleButton(title: "Сзади", isSelected: !isFrontView) { isFrontView = false }
+                    AnatomyToggleButton(title: "Front", isSelected: isFrontView) { isFrontView = true }
+                    AnatomyToggleButton(title: "Back", isSelected: !isFrontView) { isFrontView = false }
                 }
                 
                 ZStack {
@@ -1097,7 +1097,7 @@ struct OverviewView: View {
                                         .frame(width: 6, height: 6)
                                         .opacity(pulseReady ? 1.0 : 0.3)
                                     
-                                    Text("Готовность")
+                                    Text("Readiness")
                                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                                         .foregroundStyle(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
                                     
@@ -1197,7 +1197,7 @@ struct OverviewView: View {
                                 .foregroundStyle(themeManager.current.primaryAccent)
                         }
                         
-                        Text("Настройки отдыха")
+                        Text("Rest Settings")
                             .font(.title2.bold())
                         // 👈 АДАПТИВНЫЙ ТЕКСТ
                             .foregroundStyle(colorScheme == .dark ? themeManager.current.primaryText : .black)
@@ -1216,11 +1216,11 @@ struct OverviewView: View {
                     // Основной блок с ползунком
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
-                            Text("Базовое время восстановления")
+                            Text("Base Recovery Time")
                                 .font(.subheadline)
                                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
                             Spacer()
-                            Text("\(Int(localRecoveryHours)) часов")
+                            Text("\(Int(localRecoveryHours)) hours")
                                 .font(.headline)
                                 .foregroundColor(themeManager.current.primaryAccent)
                                 .contentTransition(.numericText())
@@ -1239,7 +1239,7 @@ struct OverviewView: View {
                         )
                         .tint(themeManager.current.primaryAccent)
                         
-                        Text("Настрой этот параметр под особенности своего организма. Изменение скорости напрямую повлияет на карту Готовности и рекомендации ИИ-тренера.")
+                        Text("Adjust this to your body's needs. It directly impacts Readiness and AI coach recommendations.")
                             .font(.caption)
                             .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
                             .lineSpacing(4)
@@ -1293,7 +1293,7 @@ struct OverviewView: View {
         var lastUpdated: Date? = nil
         
         var timeAgoText: String {
-            guard let date = lastUpdated else { return "Нет данных" }
+            guard let date = lastUpdated else { return "No data" }
             let minutes = Int(Date().timeIntervalSince(date) / 60)
             if minutes == 0 { return "Только что" }
             if minutes < 60 { return "" }

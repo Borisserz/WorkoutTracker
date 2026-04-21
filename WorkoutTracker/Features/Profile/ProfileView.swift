@@ -81,7 +81,7 @@ struct ProfileView: View {
             .navigationBarHidden(true)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Закрыть") { dismiss() }
+                    Button("Close") { dismiss() }
                         .foregroundColor(.gray)
                 }
             }
@@ -96,23 +96,23 @@ struct ProfileView: View {
     // MARK: - 👈 Секция с возвращенными кнопками (Вес/Фото и Замеры)
     private var trackingNavigationSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Метрики тела")
+            Text("Body Metrics")
                 .font(.title3).bold()
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .padding(.horizontal, 20)
             
             VStack(spacing: 12) {
                 ProfileMenuCard(
-                    title: "Вес и Фото прогресса",
-                    subtitle: "История веса и сравнение фото До/После",
+                    title: "Weight & Progress Photos",
+                    subtitle: "Weight history and before/after comparison",
                     icon: "camera.macro",
                     color: .orange,
                     destination: AnyView(WeightHistoryView())
                 )
                 
                 ProfileMenuCard(
-                    title: "Замеры тела",
-                    subtitle: "Объемы мышц и процент жира",
+                    title: "Body Measurements",
+                    subtitle: "Muscle volumes and fat percentage",
                     icon: "ruler.fill",
                     color: themeManager.current.primaryAccent,
                     destination: AnyView(BodyMeasurementsView())
@@ -236,7 +236,7 @@ struct ProfileHeader: View {
             }
             
             VStack(spacing: 4) {
-                TextField("Атлет", text: $userName)
+                TextField("Athlete", text: $userName)
                     .font(.title2).bold()
                     .foregroundColor(colorScheme == .dark ? .white : .black) // 👈
                     .multilineTextAlignment(.center)
@@ -259,7 +259,7 @@ struct LevelProgressBar: View {
         
         VStack(spacing: 12) {
             HStack {
-                Text("Уровень \(progressManager.level)")
+                Text("Level \(progressManager.level)")
                     .font(.caption).bold()
                     .foregroundColor(progress > 0 ? .orange : .gray)
                 Spacer()
@@ -267,7 +267,7 @@ struct LevelProgressBar: View {
                     .font(.subheadline).bold()
                     .foregroundColor(.red)
                 Spacer()
-                Text("Уровень \(progressManager.level + 1)")
+                Text("Level \(progressManager.level + 1)")
                     .font(.caption).bold()
                     .foregroundColor(.gray)
             }
