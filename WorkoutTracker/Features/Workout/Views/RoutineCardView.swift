@@ -1,7 +1,4 @@
-//
-//  RoutineCardView.swift
-//  WorkoutTracker
-//
+
 
 internal import SwiftUI
 
@@ -11,8 +8,8 @@ struct PremiumRoutineCard: View {
     let onStart: () -> Void
     var onEdit: (() -> Void)? = nil
     var onDuplicate: (() -> Void)? = nil
-    var onDelete: (() -> Void)? = nil // ✅ ДОБАВЛЕНО
-    
+    var onDelete: (() -> Void)? = nil 
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -24,7 +21,7 @@ struct PremiumRoutineCard: View {
                         .fontWeight(.bold)
                         .foregroundColor(themeManager.current.primaryText)
                         .lineLimit(1)
-                    
+
                     Text(exercisesPreviewText)
                         .font(.subheadline)
                         .foregroundColor(themeManager.current.secondaryText)
@@ -33,26 +30,24 @@ struct PremiumRoutineCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 10)
-                
-                // ✅ ИСПРАВЛЕНИЕ: Расширенное меню действий
+
                 Menu {
                     if let onEdit = onEdit {
                         Button(action: onEdit) {
                             Label(LocalizedStringKey("Edit Template"), systemImage: "pencil")
                         }
                     }
-                    
+
                     if let onDuplicate = onDuplicate {
                         Button(action: onDuplicate) {
-                            // Умный нейминг в зависимости от того, системный это пресет или нет
+
                             Label(
                                 preset.isSystem ? LocalizedStringKey("Save to My Routines") : LocalizedStringKey("Duplicate"),
                                 systemImage: "plus.square.on.square"
                             )
                         }
                     }
-                    
-                    // Деструктивное действие всегда идет последним
+
                     if let onDelete = onDelete {
                         Button(role: .destructive, action: onDelete) {
                             Label(LocalizedStringKey("Delete"), systemImage: "trash")
@@ -67,9 +62,9 @@ struct PremiumRoutineCard: View {
                 }
                 .highPriorityGesture(TapGesture().onEnded { })
             }
-            
+
             Spacer(minLength: 8)
-            
+
             Button(action: {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
@@ -97,10 +92,10 @@ struct PremiumRoutineCard: View {
         .shadow(color: Color.black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 8, x: 0, y: 4)
         .compositingGroup()
     }
-    
+
     private var exercisesPreviewText: String {
         if preset.exercises.isEmpty { return String(localized: "No exercises") }
-        // 👈 Добавили прогон через LocalizationHelper
+
         return preset.exercises.map { LocalizationHelper.shared.translateName($0.name) }.joined(separator: ", ")
     }
 }

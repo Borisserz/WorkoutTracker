@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Profile/BodyMeasurementsView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -13,11 +11,12 @@ struct BodyMeasurementsView: View {
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
     @Environment(ThemeManager.self) private var themeManager
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     @State private var selectedMetric: MeasurementType = .bodyFat
     @State private var selectedPeriod: PeriodFilter = .sixMonths
     @State private var showingAddMeasurement = false
-    
+
     enum PeriodFilter: String, CaseIterable {
         case month = "1M", threeMonths = "3M", sixMonths = "6M", year = "1Y", all = "All"
         var days: Int {
@@ -30,7 +29,7 @@ struct BodyMeasurementsView: View {
             }
         }
     }
-    
+
     enum MeasurementType: String, CaseIterable, Identifiable {
         case bodyFat = "Body Fat"
         case neck = "Neck", shoulders = "Shoulders", chest = "Chest"
@@ -39,10 +38,22 @@ struct BodyMeasurementsView: View {
         case leftForearm = "Left Forearm", rightForearm = "Right Forearm"
         case leftThigh = "Left Thigh", rightThigh = "Right Thigh"
         case leftCalf = "Left Calf", rightCalf = "Right Calf"
-        
+
         var id: String { self.rawValue }
         var isPercentage: Bool { self == .bodyFat }
-        
+
+        var icon: String {
+            switch self {
+            case .bodyFat: return "percent"
+            case .neck: return "person.crop.circle"
+            case .shoulders: return "figure.arms.open"
+            case .chest: return "shield.fill"
+            case .waist, .abdomen, .hips: return "ruler.fill"
+            case .leftBicep, .rightBicep, .leftForearm, .rightForearm: return "hand.raised.fill"
+            case .leftThigh, .rightThigh, .leftCalf, .rightCalf: return "figure.walk"
+            }
+        }
+
         func getValue(from m: BodyMeasurement) -> Double? {
             switch self {
             case .bodyFat: return m.bodyFat
@@ -50,7 +61,7 @@ struct BodyMeasurementsView: View {
             case .shoulders: return m.shoulders
             case .chest: return m.chest
             case .waist: return m.waist
-            case .abdomen: return m.abdomen ?? m.pelvis // Legacy fallback
+            case .abdomen: return m.abdomen ?? m.pelvis 
             case .hips: return m.hips
             case .leftBicep: return m.leftBicep ?? m.biceps
             case .rightBicep: return m.rightBicep ?? m.biceps
@@ -63,67 +74,88 @@ struct BodyMeasurementsView: View {
             }
         }
     }
-    
+
     private var filteredMeasurements: [BodyMeasurement] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -selectedPeriod.days, to: Date())!
         return selectedPeriod == .all ? measurements : measurements.filter { $0.date >= cutoff }
     }
-    
+
     private var chartData: [(date: Date, value: Double)] {
         let mapped = filteredMeasurements.compactMap { m -> (date: Date, value: Double)? in
             guard let val = selectedMetric.getValue(from: m) else { return nil }
             let finalVal = selectedMetric.isPercentage ? val : unitsManager.convertFromCentimeters(val)
             return (date: m.date, value: finalVal)
         }
-        return mapped.reversed() // For chronological order
+        return mapped.reversed() 
     }
-    
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    
-                    // Metric Selector
-                    Menu {
-                        ForEach(MeasurementType.allCases) { metric in
-                            Button(LocalizedStringKey(metric.rawValue)) {
-                                withAnimation { selectedMetric = metric }
+            ZStack {
+
+                (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground))
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    VStack(spacing: 24) {
+
+                        Menu {
+                            ForEach(MeasurementType.allCases) { metric in
+                                Button {
+                                    withAnimation { selectedMetric = metric }
+                                } label: {
+                                    Label(LocalizedStringKey(metric.rawValue), systemImage: metric.icon)
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                ZStack {
+                                    Circle()
+                                        .fill(themeManager.current.deepPremiumAccent.opacity(0.15))
+                                        .frame(width: 36, height: 36)
+                                    Image(systemName: selectedMetric.icon)
+                                        .foregroundColor(themeManager.current.deepPremiumAccent)
+                                        .font(.subheadline.bold())
+                                }
+
+                                Text(LocalizedStringKey(selectedMetric.rawValue))
+                                    .font(.headline)
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+
+                                Spacer()
+                                Image(systemName: "chevron.up.chevron.down")
+                                    .foregroundColor(.gray)
+                                    .font(.subheadline)
+                            }
+                            .padding(12)
+                            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+                            .cornerRadius(16)
+                            .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+                        }
+                        .padding(.horizontal, 20)
+
+                        Picker(LocalizedStringKey("Period"), selection: $selectedPeriod) {
+                            ForEach(PeriodFilter.allCases, id: \.self) { p in
+                                Text(LocalizedStringKey(p.rawValue)).tag(p)
                             }
                         }
-                    } label: {
-                        HStack {
-                            Text(LocalizedStringKey(selectedMetric.rawValue))
-                                .font(.headline)
-                            Spacer()
-                            Image(systemName: "chevron.up.chevron.down")
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal, 20)
+
+                        if !chartData.isEmpty {
+                            statsHeaderSection
+                            chartSection
+                        } else {
+                            emptyStateSection
                         }
-                        .padding()
-                        .background(themeManager.current.surface)
-                        .cornerRadius(12)
-                    }
-                    .padding(.horizontal)
-                    
-                    // Period Filter
-                    Picker(LocalizedStringKey("Period"), selection: $selectedPeriod) {
-                        ForEach(PeriodFilter.allCases, id: \.self) { p in
-                            Text(LocalizedStringKey(p.rawValue)).tag(p)
+
+                        if !measurements.isEmpty {
+                            historyListSection
                         }
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
-                    
-                    if !chartData.isEmpty {
-                        statsHeaderSection
-                        chartSection
-                    } else {
-                        emptyStateSection
-                    }
-                    
-                    if !measurements.isEmpty {
-                        historyListSection
-                    }
+                    .padding(.vertical)
                 }
-                .padding(.vertical)
             }
             .navigationTitle(LocalizedStringKey("Body Measurements"))
             .navigationBarTitleDisplayMode(.inline)
@@ -140,54 +172,51 @@ struct BodyMeasurementsView: View {
             }
         }
     }
-    
-    // MARK: - Subviews
-    
+
     private var unitString: String {
         selectedMetric.isPercentage ? "%" : unitsManager.sizeUnitString()
     }
-    
+
     private var statsHeaderSection: some View {
         let firstVal = chartData.first?.value ?? 0
         let currentVal = chartData.last?.value ?? 0
         let change = currentVal - firstVal
-        
+
         return HStack(spacing: 16) {
-                   // "Start" карточка теперь в основном акценте, остальные семантические
-                   WeightStatCard(title: LocalizedStringKey("Start"), value: LocalizationHelper.shared.formatDecimal(firstVal), unit: unitString, color: themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
-                   WeightStatCard(title: LocalizedStringKey("Current"), value: LocalizationHelper.shared.formatDecimal(currentVal), unit: unitString, color: .green)
-                   WeightStatCard(
-                       title: LocalizedStringKey("Change"),
-                       value: (change >= 0 ? "+" : "") + LocalizationHelper.shared.formatDecimal(change),
-                       unit: unitString,
-                       color: change >= 0 ? .green : .red
-                   )
-               }
-               .padding(.horizontal)
-           }
-           
-           private var chartSection: some View {
-               VStack(alignment: .leading, spacing: 10) {
-                   Chart {
-                       ForEach(Array(chartData.enumerated()), id: \.offset) { index, data in
-                           if chartData.count > 1 {
-                               LineMark(x: .value("Date", data.date), y: .value("Value", data.value))
-                                   .foregroundStyle(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО: .purple -> тема
-                                   .interpolationMethod(.catmullRom)
-                                   .lineStyle(StrokeStyle(lineWidth: 3))
-                               
-                               AreaMark(x: .value("Date", data.date), y: .value("Value", data.value))
-                                   .foregroundStyle(LinearGradient(colors: [themeManager.current.deepPremiumAccent.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom)) // <--- ИЗМЕНЕНО
-                                   .interpolationMethod(.catmullRom)
-                           }
-                           
-                           PointMark(x: .value("Date", data.date), y: .value("Value", data.value))
-                               .foregroundStyle(themeManager.current.deepPremiumAccent) // <--- ИЗМЕНЕНО
+            WeightStatCard(title: LocalizedStringKey("Start"), value: LocalizationHelper.shared.formatDecimal(firstVal), unit: unitString, color: themeManager.current.deepPremiumAccent)
+            WeightStatCard(title: LocalizedStringKey("Current"), value: LocalizationHelper.shared.formatDecimal(currentVal), unit: unitString, color: .green)
+            WeightStatCard(
+                title: LocalizedStringKey("Change"),
+                value: (change >= 0 ? "+" : "") + LocalizationHelper.shared.formatDecimal(change),
+                unit: unitString,
+                color: change >= 0 ? .green : .red
+            )
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private var chartSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Chart {
+                ForEach(Array(chartData.enumerated()), id: \.offset) { index, data in
+                    if chartData.count > 1 {
+                        LineMark(x: .value("Date", data.date), y: .value("Value", data.value))
+                            .foregroundStyle(themeManager.current.deepPremiumAccent)
+                            .interpolationMethod(.catmullRom)
+                            .lineStyle(StrokeStyle(lineWidth: 3))
+
+                        AreaMark(x: .value("Date", data.date), y: .value("Value", data.value))
+                            .foregroundStyle(LinearGradient(colors: [themeManager.current.deepPremiumAccent.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom))
+                            .interpolationMethod(.catmullRom)
+                    }
+
+                    PointMark(x: .value("Date", data.date), y: .value("Value", data.value))
+                        .foregroundStyle(themeManager.current.deepPremiumAccent)
                         .symbolSize(chartData.count == 1 ? 50 : 30)
                         .annotation(position: .top) {
                             if chartData.count < 15 {
                                 Text(LocalizationHelper.shared.formatDecimal(data.value))
-                                    .font(.caption2).foregroundColor(themeManager.current.secondaryText)
+                                    .font(.caption2).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                             }
                         }
                 }
@@ -196,31 +225,41 @@ struct BodyMeasurementsView: View {
             .chartXAxis { AxisMarks(values: .automatic) { _ in AxisGridLine(); AxisTick(); AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true) } }
             .chartYScale(domain: .automatic(includesZero: false))
             .padding()
-            .background(themeManager.current.surface)
-            .cornerRadius(16)
-            .padding(.horizontal)
+
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+            .cornerRadius(20)
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+            .padding(.horizontal, 20)
         }
     }
-    
+
     private var emptyStateSection: some View {
         VStack(spacing: 12) {
-            Image(systemName: "ruler.fill")
-                .font(.system(size: 50))
-                .foregroundColor(themeManager.current.deepPremiumAccent.opacity(0.5))
+            ZStack {
+                Circle().fill(themeManager.current.deepPremiumAccent.opacity(0.1)).frame(width: 80, height: 80)
+                Image(systemName: selectedMetric.icon)
+                    .font(.system(size: 30))
+                    .foregroundColor(themeManager.current.deepPremiumAccent)
+            }
             Text(LocalizedStringKey("No data for this period"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+            Text(LocalizedStringKey("Tap + to add your first measurement."))
+                .font(.subheadline)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 40)
+        .padding(.vertical, 60)
     }
-    
+
     private var historyListSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(LocalizedStringKey("History"))
                 .font(.headline)
-                .padding(.horizontal)
-            
+                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .padding(.horizontal, 20)
+
             VStack(spacing: 0) {
                 ForEach(filteredMeasurements) { entry in
                     if selectedMetric.getValue(from: entry) != nil {
@@ -230,31 +269,35 @@ struct BodyMeasurementsView: View {
                                     Task { await userStatsViewModel.deleteBodyMeasurement(entry.persistentModelID) }
                                 } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
                             }
-                        
+
                         if entry.id != filteredMeasurements.last?.id {
-                            Divider().padding(.leading, 50)
+                            Divider().padding(.leading, 20)
                         }
                     }
                 }
             }
-            .background(themeManager.current.surface)
-            .cornerRadius(12)
-            .padding(.horizontal)
+
+            .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+            .cornerRadius(20)
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+            .padding(.horizontal, 20)
         }
     }
 }
 
-// MARK: - Row Component
 struct MeasurementEntryRow: View {
     let entry: BodyMeasurement
     let selectedMetric: BodyMeasurementsView.MeasurementType
     let unitsManager: UnitsManager
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text(entry.date, style: .date).font(.body)
-                Text(entry.date, style: .time).font(.caption).foregroundColor(themeManager.current.secondaryText)
+                Text(entry.date, style: .date).font(.body).bold().foregroundColor(colorScheme == .dark ? .white : .black)
+                Text(entry.date, style: .time).font(.caption).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             }
             Spacer()
             if let val = selectedMetric.getValue(from: entry) {
@@ -264,22 +307,21 @@ struct MeasurementEntryRow: View {
                     .font(.headline)
                     .foregroundColor(themeManager.current.deepPremiumAccent)
             } else {
-                Text("-").foregroundColor(themeManager.current.secondaryText)
+                Text("-").foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             }
         }
-        .padding()
+        .padding(16)
     }
 }
 
-// MARK: - Input Sheet
 struct AddMeasurementSheet: View {
     @Environment(UserStatsViewModel.self) var userStatsViewModel
     @Environment(\.dismiss) private var dismiss
     @Environment(UnitsManager.self) var unitsManager
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var date = Date()
-    
-    // Use State for all fields
+
     @State private var bodyFat: Double? = nil
     @State private var neck: Double? = nil
     @State private var shoulders: Double? = nil
@@ -295,62 +337,60 @@ struct AddMeasurementSheet: View {
     @State private var rightThigh: Double? = nil
     @State private var leftCalf: Double? = nil
     @State private var rightCalf: Double? = nil
-    
+
     let latestMeasurement: BodyMeasurement?
-    
+
     var body: some View {
-            NavigationStack {
-                Form {
-                    Section {
-                        DatePicker(LocalizedStringKey("Date"), selection: $date, displayedComponents: [.date, .hourAndMinute])
-                    }
-                    
-                    Section(header: Text(LocalizedStringKey("Body Composition"))) {
-                        measurementField("Body Fat (%)", value: $bodyFat, isPercentage: true)
-                    }
-                    
-                    // 👇 ИСПРАВЛЕННЫЕ ЗАГОЛОВКИ СЕКЦИЙ
-                    Section(header: Text("\(String(localized: "Upper Body")) (\(unitsManager.sizeUnitString()))")) {
-                        measurementField("Neck", value: $neck)
-                        measurementField("Shoulders", value: $shoulders)
-                        measurementField("Chest", value: $chest)
-                    }
-                    
-                    Section(header: Text("\(String(localized: "Arms")) (\(unitsManager.sizeUnitString()))")) {
-                        measurementField("Left Bicep", value: $leftBicep)
-                        measurementField("Right Bicep", value: $rightBicep)
-                        measurementField("Left Forearm", value: $leftForearm)
-                        measurementField("Right Forearm", value: $rightForearm)
-                    }
-                    
-                    Section(header: Text("\(String(localized: "Core")) (\(unitsManager.sizeUnitString()))")) {
-                        measurementField("Waist", value: $waist)
-                        measurementField("Abdomen", value: $abdomen)
-                        measurementField("Hips", value: $hips)
-                    }
-                    
-                    Section(header: Text("\(String(localized: "Legs")) (\(unitsManager.sizeUnitString()))")) {
-                        measurementField("Left Thigh", value: $leftThigh)
-                        measurementField("Right Thigh", value: $rightThigh)
-                        measurementField("Left Calf", value: $leftCalf)
-                        measurementField("Right Calf", value: $rightCalf)
-                    }
+        NavigationStack {
+            Form {
+                Section {
+                    DatePicker(LocalizedStringKey("Date"), selection: $date, displayedComponents: [.date, .hourAndMinute])
                 }
-                .navigationTitle(LocalizedStringKey("Log Measurements"))
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button(LocalizedStringKey("Cancel")) { dismiss() } }
-                    ToolbarItem(placement: .confirmationAction) { Button(LocalizedStringKey("Save")) { save() }.bold() }
+
+                Section(header: Text(LocalizedStringKey("Body Composition"))) {
+                    measurementField("Body Fat (%)", value: $bodyFat, isPercentage: true)
                 }
-                .onAppear(perform: prefillData)
+
+                Section(header: Text("\(String(localized: "Upper Body")) (\(unitsManager.sizeUnitString()))")) {
+                    measurementField("Neck", value: $neck)
+                    measurementField("Shoulders", value: $shoulders)
+                    measurementField("Chest", value: $chest)
+                }
+
+                Section(header: Text("\(String(localized: "Arms")) (\(unitsManager.sizeUnitString()))")) {
+                    measurementField("Left Bicep", value: $leftBicep)
+                    measurementField("Right Bicep", value: $rightBicep)
+                    measurementField("Left Forearm", value: $leftForearm)
+                    measurementField("Right Forearm", value: $rightForearm)
+                }
+
+                Section(header: Text("\(String(localized: "Core")) (\(unitsManager.sizeUnitString()))")) {
+                    measurementField("Waist", value: $waist)
+                    measurementField("Abdomen", value: $abdomen)
+                    measurementField("Hips", value: $hips)
+                }
+
+                Section(header: Text("\(String(localized: "Legs")) (\(unitsManager.sizeUnitString()))")) {
+                    measurementField("Left Thigh", value: $leftThigh)
+                    measurementField("Right Thigh", value: $rightThigh)
+                    measurementField("Left Calf", value: $leftCalf)
+                    measurementField("Right Calf", value: $rightCalf)
+                }
             }
+            .navigationTitle(LocalizedStringKey("Log Measurements"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button(LocalizedStringKey("Cancel")) { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button(LocalizedStringKey("Save")) { save() }.bold() }
+            }
+            .onAppear(perform: prefillData)
         }
-    
+    }
+
     private func measurementField(_ title: String, value: Binding<Double?>, isPercentage: Bool = false) -> some View {
         HStack {
             Text(LocalizedStringKey(title))
             Spacer()
-            // We use standard TextField with format for ease, but we need our custom conversion logic
             let proxyBinding = Binding<Double?>(
                 get: {
                     guard let v = value.wrappedValue else { return nil }
@@ -361,12 +401,12 @@ struct AddMeasurementSheet: View {
                     value.wrappedValue = isPercentage ? v : unitsManager.convertToCentimeters(v)
                 }
             )
-            
+
             ClearableTextField(placeholder: "-", value: proxyBinding)
                 .frame(width: 80)
         }
     }
-    
+
     private func prefillData() {
         guard let latest = latestMeasurement else { return }
         bodyFat = latest.bodyFat
@@ -385,7 +425,7 @@ struct AddMeasurementSheet: View {
         leftCalf = latest.leftCalf ?? latest.calves
         rightCalf = latest.rightCalf ?? latest.calves
     }
-    
+
     private func save() {
         let newMeasurement = BodyMeasurement(
             date: date, bodyFat: bodyFat,
@@ -396,7 +436,7 @@ struct AddMeasurementSheet: View {
             leftThigh: leftThigh, rightThigh: rightThigh,
             leftCalf: leftCalf, rightCalf: rightCalf
         )
-        
+
         Task {
             await userStatsViewModel.saveBodyMeasurement(newMeasurement)
             dismiss()

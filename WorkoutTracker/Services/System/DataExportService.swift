@@ -1,51 +1,44 @@
-// ============================================================
-// FILE: WorkoutTracker/Managers/DataManager.swift
-// ============================================================
+
 
 import Foundation
 
-/// Очищенный и оптимизированный DataManager.
-/// Использует встроенный Codable вместо ручного маппинга словарей.
 final class DataManager: Sendable {
     static let shared = DataManager()
-    
+
     private init() {}
-    
-    // MARK: - Export to JSON
+
     func exportAllDataAsJSON(workouts: [Workout]) -> URL? {
         let dtos = workouts.map { $0.toDTO() }
-        
+
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
         encoder.dateEncodingStrategy = .iso8601
-        
+
         do {
             let jsonData = try encoder.encode(dtos)
-            
+
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
             let fileName = "WorkoutTracker_Export_\(dateFormatter.string(from: Date())).json"
-            
+
             let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try jsonData.write(to: tempURL)
-            
+
             return tempURL
         } catch {
             print("❌ Failed to encode JSON: \(error.localizedDescription)")
             return nil
         }
     }
-    
-    // MARK: - Export to CSV
+
     func exportAllDataToCSV(workouts: [Workout]) -> URL? {
         var csvLines: [String] = []
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-        
+
         csvLines.append("# WorkoutTracker Export\n# Version: \(appVersion)\n# Export Date: \(dateFormatter.string(from: Date()))\n")
-        
-        // 1. Тренировки
+
         csvLines.append("## WORKOUTS\nWorkout ID,Title,Date,End Time,Duration (min),Icon,Is Favorite,Exercise Count")
         for workout in workouts {
             let workoutDate = dateFormatter.string(from: workout.date)
@@ -53,8 +46,7 @@ final class DataManager: Sendable {
             csvLines.append("\(workout.id.uuidString),\"\(escapeCSV(workout.title))\",\(workoutDate),\(endTimeStr),\(workout.durationSeconds / 60),\(workout.icon),\(workout.isFavorite),\(workout.exercises.count)")
         }
         csvLines.append("")
-        
-        // 2. Упражнения
+
         csvLines.append("## EXERCISES\nExercise ID,Workout ID,Workout Title,Exercise Name,Muscle Group,Type,Effort,Is Completed,Set Count")
         for workout in workouts {
             for exercise in workout.exercises {
@@ -62,8 +54,7 @@ final class DataManager: Sendable {
             }
         }
         csvLines.append("")
-        
-        // 3. Сеты
+
         csvLines.append("## SETS\nSet ID,Exercise ID,Exercise Name,Set Index,Weight,Reps,Distance (m),Time (sec),Is Completed,Set Type")
         for workout in workouts {
             for exercise in workout.exercises {
@@ -77,7 +68,7 @@ final class DataManager: Sendable {
             }
         }
         csvLines.append("")
-        
+
         do {
             let csvContent = csvLines.joined(separator: "\n")
             guard let csvData = csvContent.data(using: .utf8) else { return nil }
@@ -90,7 +81,7 @@ final class DataManager: Sendable {
             return nil
         }
     }
-    
+
     private func escapeCSV(_ string: String) -> String {
         if string.contains(",") || string.contains("\"") || string.contains("\n") {
             return "\"\(string.replacingOccurrences(of: "\"", with: "\"\""))\""

@@ -6,7 +6,7 @@ struct StatOverviewCard: View {
     let icon: String
     let color: Color
     let percentageChange: Double?
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -14,7 +14,7 @@ struct StatOverviewCard: View {
             HStack {
                 Image(systemName: icon)
                     .foregroundColor(color)
-                
+
                 if let change = percentageChange {
                     Text("\(change, specifier: "%.0f")%")
                         .font(.caption2)
@@ -26,11 +26,11 @@ struct StatOverviewCard: View {
                         .cornerRadius(6)
                 }
             }
-            
+
             Text(value)
                 .font(.system(size: 24, weight: .bold, design: .rounded))
                 .foregroundColor(themeManager.current.primaryText)
-            
+
             Text(LocalizedStringKey(title))
                 .font(.caption)
                 .foregroundColor(themeManager.current.secondaryText)

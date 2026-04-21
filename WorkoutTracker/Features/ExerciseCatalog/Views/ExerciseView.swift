@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/ExerciseCatalog/Views/ExerciseView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -9,19 +7,18 @@ struct ExerciseView: View {
     @Environment(\.modelContext) private var context
     @Environment(CatalogViewModel.self) var catalogViewModel
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ АДАПТАЦИИ
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     @State private var showAddSheet = false
     @State private var showDeleteAlert = false
     @State private var exercisesToDelete: [(name: String, category: String)] = []
-    
-    // MARK: - State
+
     @State private var filterState = ExerciseFilterState()
     @State private var showAdvancedFilters = false
     @State private var allItems: [ExerciseDBItem] = []
-    
+
     private let availableGroups = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio"]
-    
+
     init(preselectedCategory: String? = nil) {
         if let category = preselectedCategory {
             let state = ExerciseFilterState()
@@ -29,37 +26,34 @@ struct ExerciseView: View {
             _filterState = State(initialValue: state)
         }
     }
-    
+
     var body: some View {
         ZStack(alignment: .top) {
-            // Адаптивный премиальный фон
+
             (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
-                // 1. Строка поиска с кнопкой фильтров
+
                 PremiumExerciseSearchBar(filterState: filterState) {
                     showAdvancedFilters = true
                 }
-                
-                // 2. Горизонтальный фильтр мышц
+
                 muscleGroupFilter
-                
+
                 Divider().opacity(0.5)
-                
-                // 3. Вычисляем отфильтрованные элементы
+
                 let filteredItems = filterState.filter(exercises: allItems).sorted(by: { $0.name < $1.name })
-                
+
                 if filteredItems.isEmpty {
                     emptyStateView
                 } else {
-                    // Используем List для встроенной поддержки свайпов (onDelete)
+
                     List {
                         ForEach(filteredItems, id: \.name) { item in
                             ZStack(alignment: .leading) {
-                                // Карточка упражнения
+
                                 ExerciseDBRowView(exercise: item)
-                                
-                                // Невидимый NavigationLink
+
                                 NavigationLink(destination: ExerciseHistoryView(exerciseName: item.name)) {
                                     EmptyView()
                                 }
@@ -111,20 +105,18 @@ struct ExerciseView: View {
             Text(LocalizedStringKey("This action cannot be undone."))
         }
     }
-    
-    // MARK: - View Components
-    
+
     private var muscleGroupFilter: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
                 Spacer().frame(width: 8)
-                
+
                 filterButton(title: "All", isSelected: filterState.selectedMuscles.isEmpty) {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         filterState.selectedMuscles.removeAll()
                     }
                 }
-                
+
                 ForEach(availableGroups, id: \.self) { group in
                     filterButton(title: group, isSelected: filterState.selectedMuscles.contains(group.lowercased())) {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -132,14 +124,13 @@ struct ExerciseView: View {
                         }
                     }
                 }
-                
+
                 Spacer().frame(width: 8)
             }
             .padding(.vertical, 12)
         }
     }
-    
-    // 👈 ИСПРАВЛЕНИЕ: Адаптивные цвета для чипсов
+
     private func filterButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button {
             let gen = UISelectionFeedbackGenerator()
@@ -162,17 +153,17 @@ struct ExerciseView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private var emptyStateView: some View {
         VStack(spacing: 16) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 60))
                 .foregroundColor(themeManager.current.secondaryAccent.opacity(0.4))
-            
+
             Text(LocalizedStringKey("No exercises found"))
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
-            
+
             Text(LocalizedStringKey("Try adjusting search or clear advanced filters."))
                 .font(.subheadline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
@@ -181,18 +172,16 @@ struct ExerciseView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.bottom, 60)
     }
-    
-    // MARK: - Logic Helpers
-    
+
     private func loadExercises() async {
         if catalogViewModel.combinedCatalog.isEmpty {
             await catalogViewModel.loadDictionary()
         }
-        
+
         var items = await ExerciseDatabaseService.shared.getAllExerciseItems()
         let hidden = catalogViewModel.deletedDefaultExercises
         items.removeAll { hidden.contains($0.name) }
-        
+
         let customItems = catalogViewModel.customExercises.map { custom in
             ExerciseDBItem(
                 id: custom.id.uuidString,
@@ -207,10 +196,10 @@ struct ExerciseView: View {
                 level: "beginner"
             )
         }
-        
+
         self.allItems = (items + customItems).sorted { $0.name < $1.name }
     }
-    
+
     private func deleteExercises() {
         let items = exercisesToDelete
         exercisesToDelete = []

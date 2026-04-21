@@ -1,6 +1,5 @@
-// ============================================================
-// FILE: WatchApp/Views/WatchSummaryView.swift
-// ============================================================
+
+
 internal import SwiftUI
 
 struct WatchSummaryView: View {
@@ -10,10 +9,10 @@ struct WatchSummaryView: View {
     var body: some View {
         ZStack {
             WatchTheme.background.ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(spacing: 16) {
-                    // Трофей и Заголовок
+
                     Image(systemName: "trophy.fill")
                         .font(.system(size: 50))
                         .foregroundStyle(
@@ -21,25 +20,23 @@ struct WatchSummaryView: View {
                         )
                         .shadow(color: .orange.opacity(0.5), radius: 10)
                         .padding(.top, 20)
-                    
+
                     Text("Workout Complete")
                         .font(.headline)
                         .foregroundColor(.white)
-                    
-                    // Блок статистики
+
                     VStack(spacing: 8) {
-                        // 🛠️ FIX: Выводим время тренировки
+
                         summaryRow(title: "Time", value: formatTime(viewModel.totalDurationSeconds), icon: "stopwatch.fill", color: .orange)
-                        
+
                         summaryRow(title: "Volume", value: "\(Int(viewModel.totalVolume)) kg", icon: "scalemass.fill", color: .purple)
-                        
+
                         summaryRow(title: "Sets", value: "\(viewModel.totalSets)", icon: "number.circle.fill", color: WatchTheme.green)
-                        
+
                         summaryRow(title: "Calories", value: "\(Int(workoutManager.activeEnergy)) kcal", icon: "flame.fill", color: .red)
                     }
                     .padding(.horizontal)
-                    
-                    // Кнопка Done
+
                     Button(action: {
                         WKInterfaceDevice.current().play(.success)
                         onDismiss()
@@ -59,7 +56,7 @@ struct WatchSummaryView: View {
         }
         .navigationBarHidden(true)
     }
-    
+
     private func summaryRow(title: String, value: String, icon: String, color: Color) -> some View {
         HStack {
             ZStack {
@@ -69,9 +66,9 @@ struct WatchSummaryView: View {
             Text(title)
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(.gray)
-            
+
             Spacer()
-            
+
             Text(value)
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
@@ -80,8 +77,7 @@ struct WatchSummaryView: View {
         .background(WatchTheme.cardBackground)
         .cornerRadius(16)
     }
-    
-    // 🛠️ FIX: Метод для красивого форматирования секунд
+
     private func formatTime(_ seconds: Int) -> String {
         let m = seconds / 60
         let s = seconds % 60

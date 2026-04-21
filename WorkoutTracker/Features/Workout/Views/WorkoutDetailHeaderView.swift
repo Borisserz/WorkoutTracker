@@ -1,6 +1,3 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Workout/Views/WorkoutDetailHeaderView.swift
-// ============================================================
 
 
 internal import SwiftUI
@@ -8,9 +5,9 @@ internal import SwiftUI
 struct WorkoutDetailHeaderView: View {
     @Bindable var workout: Workout
     var viewModel: WorkoutDetailViewModel
-    
+
     @Environment(UnitsManager.self) var unitsManager
-    
+
     var body: some View {
         VStack(spacing: 16) {
             HStack {
@@ -42,7 +39,7 @@ struct WorkoutDetailHeaderView: View {
                     }
                 }
                 Spacer()
-                
+
                 ZStack {
                     Circle()
                         .fill(LinearGradient(colors: [.cyan.opacity(0.2), .blue.opacity(0.2)], startPoint: .top, endPoint: .bottom))
@@ -52,9 +49,9 @@ struct WorkoutDetailHeaderView: View {
                         .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
             }
-            
+
             Divider().opacity(0.5)
-                       
+
                        HStack {
                            VStack(alignment: .leading, spacing: 4) {
                                Text(LocalizedStringKey("🏋️ Total Lifted"))
@@ -62,10 +59,10 @@ struct WorkoutDetailHeaderView: View {
                                    .fontWeight(.bold)
                                    .foregroundColor(.secondary)
                                    .textCase(.uppercase)
-                               
+
                                let volume = viewModel.workoutAnalytics.volume
                                let convertedVolume = unitsManager.convertFromKilograms(volume)
-                               
+
                                HStack(alignment: .firstTextBaseline, spacing: 4) {
                                    Text("\(LocalizationHelper.shared.formatInteger(convertedVolume))")
                                        .font(.system(size: 28, weight: .heavy, design: .rounded))
@@ -77,16 +74,16 @@ struct WorkoutDetailHeaderView: View {
                                        .foregroundColor(.secondary)
                                }
                            }
-                           
+
                            Spacer()
-                           
+
                            VStack(alignment: .trailing, spacing: 4) {
                                Text(LocalizedStringKey("Completed Sets"))
                                    .font(.caption)
                                    .fontWeight(.bold)
                                    .foregroundColor(.secondary)
                                    .textCase(.uppercase)
-                               
+
                                Text("\(viewModel.workoutAnalytics.completedSetsCount)")
                                    .font(.system(size: 28, weight: .heavy, design: .rounded))
                                    .foregroundColor(.cyan)
@@ -105,11 +102,9 @@ struct WorkoutDetailHeaderView: View {
     }
 }
 
-// MARK: - WorkoutTimerView
-
 struct WorkoutTimerView: View {
     let startDate: Date
-    
+
     var body: some View {
         Text(startDate, style: .timer)
             .font(.title2)

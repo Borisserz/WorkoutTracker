@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Views/Workout/AddWorkoutView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -10,14 +8,13 @@ struct AddWorkoutView: View {
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(DIContainer.self) private var di
     @Environment(UnitsManager.self) var unitsManager
-    
+
     @Query(sort: \WorkoutPreset.name) private var presets: [WorkoutPreset]
-    
-    // ✅ Инициализируем ViewModel чисто и просто
+
     @State private var viewModel = AddWorkoutViewModel()
-    
+
     var onWorkoutCreated: (() -> Void)?
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -27,7 +24,7 @@ struct AddWorkoutView: View {
                     nameSection
                     templateSelectionSection
                 }
-                
+
                 if !viewModel.title.isEmpty {
                     Color.clear
                         .frame(width: 100, height: 45)
@@ -53,7 +50,7 @@ struct AddWorkoutView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Start Now")) {
                         Task {
-                            // Передаем сервисы из Environment прямо в метод
+
                             await viewModel.checkAndStartWorkout(
                                 workoutService: di.workoutService,
                                 liveActivityManager: di.liveActivityManager
@@ -76,13 +73,13 @@ struct AddWorkoutView: View {
             }
         }
     }
-    
+
     private var nameSection: some View {
         Section(header: Text(LocalizedStringKey("Workout Name"))) {
             TextField(LocalizedStringKey("E.g. Evening Pump"), text: $viewModel.title)
         }
     }
-    
+
     private var templateSelectionSection: some View {
         Section(
             header: Text(LocalizedStringKey("Choose Template")),
@@ -110,7 +107,7 @@ struct AddWorkoutView: View {
                 alignment: .top,
                 yOffset: -10
             )
-            
+
             ForEach(presets) { preset in
                 VStack(alignment: .leading, spacing: 0) {
                     Button {
@@ -128,7 +125,7 @@ struct AddWorkoutView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    
+
                     if viewModel.selectedPreset?.id == preset.id {
                         VStack(alignment: .leading, spacing: 8) {
                             ForEach(preset.exercises) { ex in
@@ -143,7 +140,7 @@ struct AddWorkoutView: View {
             }
         }
     }
-    
+
     private func exercisePreviewRow(exercise: Exercise) -> some View {
         HStack(alignment: .center, spacing: 8) {
             Circle().fill(Color.secondary.opacity(0.3)).frame(width: 6, height: 6)
@@ -154,7 +151,7 @@ struct AddWorkoutView: View {
                 .foregroundColor(themeManager.current.secondaryText.opacity(0.8))
         }
     }
-    
+
     private func templateRow(iconName: String, title: LocalizedStringKey, subtitle: LocalizedStringKey, isSystemIcon: Bool, isSelected: Bool) -> some View {
         HStack {
             Group {
@@ -168,7 +165,7 @@ struct AddWorkoutView: View {
                     }
                 }
             }
-            
+
             VStack(alignment: .leading) {
                 Text(title).foregroundColor(themeManager.current.primaryText)
                 Text(subtitle).font(.caption).foregroundColor(themeManager.current.secondaryText)

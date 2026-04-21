@@ -1,13 +1,9 @@
-//
-//  WorkoutModels.swift
-//  WorkoutTracker
-//
+
 
 import Foundation
 import SwiftData
 internal import SwiftUI
 
-// MARK: - Core Data Transfer Objects (DTOs)
 struct DashboardCacheDTO: Sendable {
     let personalRecords: [String: Double]
     let lastPerformances: [String: Data]
@@ -28,7 +24,6 @@ public struct ExerciseRecordsDTO: Sendable {
     let maxWorkoutVolume: Double
 }
 
-// Обновите существующую структуру ExerciseHistoryPayload
 struct ExerciseHistoryPayload: Sendable {
     let type: ExerciseType
     let category: ExerciseCategory
@@ -36,15 +31,14 @@ struct ExerciseHistoryPayload: Sendable {
     let dataPoints: [ExerciseHistoryDataPoint]
     let trend: ExerciseTrend?
     let forecast: ProgressForecast?
-    let records: ExerciseRecordsDTO? // ✅ ДОБАВЛЕНО
+    let records: ExerciseRecordsDTO? 
 }
 struct MuscleCountDTO: Sendable, Identifiable {
-    var id: String { muscle } // Используем название мышцы как уникальный ID
+    var id: String { muscle } 
     let muscle: String
     let count: Int
 }
 struct ExerciseCountDTO: Sendable { let name: String; let count: Int }
-
 
 struct ExerciseHistoryDataPoint: Identifiable, Sendable {
     let id = UUID()
@@ -72,10 +66,9 @@ struct WorkoutAnalyticsDataDTO: Sendable {
     var rawCounts: [String: Int] = [:] 
     var volume: Double = 0.0
     var chartExercises: [ExerciseChartDTO] = []
-    var completedSetsCount: Int = 0 // ✅ FIX: Added dedicated property for reactive UI updates
+    var completedSetsCount: Int = 0 
 }
 
-// MARK: - Common UI & Data Models
 struct BestResult: Identifiable, Sendable { let id = UUID(); let exerciseName: String; let value: String; let date: Date; let type: ExerciseType }
 struct ChartDataPoint: Identifiable, Sendable { let id = UUID(); let label: String; let value: Double; let rawWorkoutID: PersistentIdentifier? = nil }
 struct PersonalRecord: Identifiable, Hashable, Sendable { let id = UUID(); let exerciseName: String; let weight: Double; let date: Date }
@@ -100,7 +93,7 @@ enum RecommendationType: Sendable { case frequency, volume, balance, recovery, p
 struct AppError: Identifiable, Sendable { let id = UUID(); let title: String; let message: String }
 enum PRLevel: Int, CaseIterable, Sendable {
     case bronze = 1, silver, gold, diamond
-    
+
     var title: String {
         switch self {
         case .bronze: return String(localized: "Bronze Record!")
@@ -109,9 +102,9 @@ enum PRLevel: Int, CaseIterable, Sendable {
         case .diamond: return String(localized: "Diamond Record!")
         }
     }
-    
+
     var rank: Int { self.rawValue }
-    
+
     var angularColors: [Color] {
         switch self {
         case .bronze: return [.brown, .orange, .brown]
@@ -134,7 +127,7 @@ enum DetailDestination: Identifiable, Equatable {
     case exerciseSelection
     case supersetBuilder(Exercise?)
     case swapExercise(Exercise)
-    
+
     var id: String {
         switch self {
         case .shareSheet: return "share"
@@ -146,18 +139,18 @@ enum DetailDestination: Identifiable, Equatable {
         case .swapExercise(let ex): return "swap_\(ex.id.uuidString)"
         }
     }
-    
+
     static func == (lhs: DetailDestination, rhs: DetailDestination) -> Bool {
         return lhs.id == rhs.id
     }
-    
+
     var isSheet: Bool {
         switch self {
         case .shareSheet, .exerciseSelection, .supersetBuilder, .swapExercise: return true
         default: return false
         }
     }
-    
+
     var isFullScreen: Bool {
         switch self {
         case .prCelebration, .achievementPopup: return true
@@ -194,9 +187,9 @@ public enum EquipmentCategory: String, Sendable, CaseIterable, Identifiable {
     case machines = "Machines & Cables"
     case bodyweight = "Bodyweight"
     case other = "Other"
-    
+
     public var id: String { self.rawValue }
-    
+
     var icon: String {
         switch self {
         case .freeWeights: return "dumbbell.fill"
@@ -205,7 +198,7 @@ public enum EquipmentCategory: String, Sendable, CaseIterable, Identifiable {
         case .other: return "circle.grid.cross"
         }
     }
-    
+
     var color: Color {
         switch self {
         case .freeWeights: return .orange
@@ -220,7 +213,7 @@ public struct TrainingStyleDTO: Sendable {
     let compoundSets: Int
     let isolationSets: Int
     let equipmentDistribution: [EquipmentCategory: Int]
-    
+
     var totalMechanicSets: Int { compoundSets + isolationSets }
     var totalEquipmentSets: Int { equipmentDistribution.values.reduce(0, +) }
 }

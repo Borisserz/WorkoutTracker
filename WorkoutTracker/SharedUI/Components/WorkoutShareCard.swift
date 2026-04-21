@@ -1,34 +1,22 @@
 
-//
-//  WorkoutShareCard.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 28.12.25.
-//
-//  Вьюха, предназначенная для рендеринга в картинку (ImageRenderer).
-//  Отображает красивую сводку по тренировке (статистика, мышцы, брендинг)
-//  на темном градиентном фоне.
-//
 
 internal import SwiftUI
 internal import UniformTypeIdentifiers
 
-// Обертка для ActivityViewController (Share Sheet)
 struct SharedImageWrapper: Identifiable {
     let id = UUID()
     let image: UIImage
 }
 
-// Карточка для шаринга Ачивок и Рекордов (Social Flex)
 struct MilestoneShareCard: View {
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey
     let descriptionText: LocalizedStringKey?
     let icon: String
     let colors: [Color]
-    
+
     @Environment(ThemeManager.self) private var themeManager
-    
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -36,17 +24,17 @@ struct MilestoneShareCard: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
+
             Circle()
                 .fill(colors.first?.opacity(0.2) ?? themeManager.current.primaryAccent.opacity(0.2))
                 .frame(width: 400)
                 .offset(x: -200, y: -300)
-            
+
             Circle()
                 .fill(colors.last?.opacity(0.2) ?? Color.purple.opacity(0.2))
                 .frame(width: 300)
                 .offset(x: 200, y: 300)
-            
+
             VStack(spacing: 30) {
                 HStack {
                     Image(systemName: "star.fill")
@@ -58,9 +46,9 @@ struct MilestoneShareCard: View {
                         .foregroundColor(.white.opacity(0.7))
                 }
                 .padding(.top, 80)
-                
+
                 Spacer()
-                
+
                 ZStack {
                     Circle()
                         .strokeBorder(
@@ -69,7 +57,7 @@ struct MilestoneShareCard: View {
                         )
                         .frame(width: 350, height: 350)
                         .shadow(color: colors.first?.opacity(0.5) ?? .clear, radius: 20)
-                    
+
                     Image(systemName: icon)
                         .font(.system(size: 140))
                         .foregroundStyle(
@@ -77,14 +65,14 @@ struct MilestoneShareCard: View {
                         )
                         .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 5)
                 }
-                
+
                 Text(subtitle)
                     .font(.system(size: 60, weight: .heavy, design: .rounded))
                     .foregroundColor(themeManager.current.background)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                     .padding(.top, 20)
-                
+
                 if let desc = descriptionText {
                                    Text(desc)
                                        .font(.title2)
@@ -94,9 +82,9 @@ struct MilestoneShareCard: View {
                                        .padding(.horizontal, 50)
                                        .padding(.top, 10)
                                }
-                
+
                 Spacer()
-                
+
                 HStack {
                     Image(systemName: "applewatch")
                     Text(LocalizedStringKey("Tracked with WorkoutTracker"))
@@ -112,65 +100,53 @@ struct MilestoneShareCard: View {
 
 struct WorkoutShareCard: View {
     @Environment(ThemeManager.self) private var themeManager
-    
-    // MARK: - Properties
-    
+
     let workout: Workout
-    
-    // MARK: - Computed Logic
-    
-    /// Общий тоннаж (используем закэшированное значение из модели)
+
     private var totalVolume: Int {
         Int(workout.totalStrengthVolume)
     }
-    
-    /// Топ-3 группы мышц по количеству упражнений
+
     private var topMuscles: [String] {
         var counts: [String: Int] = [:]
-        
+
         for ex in workout.exercises {
-            // Если супер-сет, берем группу первого упражнения, иначе основную
+
             let group = ex.isSuperset ? (ex.subExercises.first?.muscleGroup ?? "Mixed") : ex.muscleGroup
             counts[group, default: 0] += 1
         }
-        
-        // Сортируем по убыванию частоты и берем первые 3
+
         return counts.sorted { $0.value > $1.value }
                      .prefix(3)
                      .map { $0.key }
     }
-    
-    // MARK: - Body
-    
+
     var body: some View {
         ZStack {
-            // 1. Фон (Градиент + Пузыри)
+
             backgroundLayer
-            
-            // 2. Контент
+
             VStack(spacing: 25) {
-                
+
                 headerSection
-                
+
                 titleSection
-                
+
                 Divider().background(Color.gray.opacity(0.3))
-                
+
                 statsGridSection
-                
+
                 tagsSection
-                
+
                 Spacer()
-                
+
                 footerSection
             }
         }
-        .frame(width: 400, height: 600) // Фиксированный размер для корректного экспорта
-        .cornerRadius(0) // Прямые углы для картинки
+        .frame(width: 400, height: 600) 
+        .cornerRadius(0) 
     }
-    
-    // MARK: - View Components
-    
+
     private var backgroundLayer: some View {
         ZStack {
             LinearGradient(
@@ -178,47 +154,46 @@ struct WorkoutShareCard: View {
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
-            // Декоративные круги
+
             Circle()
                 .fill(themeManager.current.primaryAccent.opacity(0.1))
                 .frame(width: 300)
                 .offset(x: -150, y: -200)
-            
+
             Circle()
                 .fill(Color.purple.opacity(0.1))
                 .frame(width: 200)
                 .offset(x: 150, y: 250)
         }
     }
-    
+
     private var headerSection: some View {
         HStack {
             Image(systemName: "dumbbell.fill")
                 .font(.title)
                 .foregroundColor(themeManager.current.primaryAccent)
-            
+
             Text(LocalizedStringKey("WORKOUT COMPLETE"))
                 .font(.headline)
-                .tracking(2) // Разрядка букв
+                .tracking(2) 
                 .foregroundColor(.white.opacity(0.7))
         }
         .padding(.top, 40)
     }
-    
+
     private var titleSection: some View {
         VStack(spacing: 5) {
             Text(workout.title)
                 .font(.system(size: 32, weight: .heavy, design: .rounded))
                 .foregroundColor(themeManager.current.background)
                 .multilineTextAlignment(.center)
-            
+
             Text(workout.date.formatted(date: .long, time: .omitted))
                 .font(.subheadline)
                 .foregroundColor(themeManager.current.secondaryAccent)
         }
     }
-    
+
     private var statsGridSection: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 30) {
             statCell(title: "DURATION", value: "\(workout.durationSeconds / 60) min", icon: "stopwatch", color: .yellow)
@@ -228,7 +203,7 @@ struct WorkoutShareCard: View {
         }
         .padding(.horizontal)
     }
-    
+
     @ViewBuilder
     private var tagsSection: some View {
         if !topMuscles.isEmpty {
@@ -237,7 +212,7 @@ struct WorkoutShareCard: View {
                     .font(.caption)
                     .fontWeight(.bold)
                     .foregroundColor(themeManager.current.secondaryAccent)
-                
+
                 HStack {
                     ForEach(topMuscles, id: \.self) { muscle in
                         Text(muscle.uppercased())
@@ -257,7 +232,7 @@ struct WorkoutShareCard: View {
             }
         }
     }
-    
+
     private var footerSection: some View {
         HStack {
             Image(systemName: "applewatch")
@@ -267,9 +242,7 @@ struct WorkoutShareCard: View {
         .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
         .padding(.bottom, 30)
     }
-    
-    // MARK: - Helpers
-    
+
     private func statCell(title: String, value: String, icon: String, color: Color) -> some View {
         VStack(spacing: 8) {
             Image(systemName: icon)
@@ -278,12 +251,12 @@ struct WorkoutShareCard: View {
                 .frame(width: 40, height: 40)
                 .background(color.opacity(0.1))
                 .clipShape(Circle())
-            
+
             Text(value)
                 .font(.title3)
                 .bold()
                 .foregroundColor(themeManager.current.background)
-            
+
             Text(title)
                 .font(.caption2)
                 .fontWeight(.bold)
@@ -292,12 +265,9 @@ struct WorkoutShareCard: View {
     }
 }
 
-// MARK: - Shareable Model
-
-/// Обертка для передачи картинки через ShareSheet
 struct ShareableImage: Transferable {
     let uiImage: UIImage
-    
+
     static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .jpeg) { item in
             if let data = item.uiImage.jpegData(compressionQuality: 0.9) {
@@ -308,8 +278,6 @@ struct ShareableImage: Transferable {
         }
     }
 }
-
-// MARK: - Preview
 
 #Preview {
     WorkoutShareCard(workout: Workout.examples[0])

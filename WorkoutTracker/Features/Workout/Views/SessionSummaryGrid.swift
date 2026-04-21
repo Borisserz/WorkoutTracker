@@ -1,16 +1,15 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Workout/Views/SessionSummaryGrid.swift
-// ============================================================
+
+
 internal import SwiftUI
 
 struct SessionSummaryGrid: View {
     @Bindable var workout: Workout
     var viewModel: WorkoutDetailViewModel
     @Environment(UnitsManager.self) var unitsManager
-    
+
     var body: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-            // 1. Total Volume
+
             let volume = unitsManager.convertFromKilograms(viewModel.workoutAnalytics.volume)
             SummaryGlassCard(
                 title: "Total Volume",
@@ -19,8 +18,7 @@ struct SessionSummaryGrid: View {
                 icon: "scalemass.fill",
                 colors: [.cyan, .blue]
             )
-            
-            // 2. Sets Done
+
             SummaryGlassCard(
                 title: "Sets Done",
                 value: "\(viewModel.workoutAnalytics.completedSetsCount)",
@@ -28,8 +26,7 @@ struct SessionSummaryGrid: View {
                 icon: "checkmark.circle.fill",
                 colors: [.green, .mint]
             )
-            
-            // 3. Avg Effort
+
             SummaryGlassCard(
                 title: "Avg Effort",
                 value: "\(workout.effortPercentage)",
@@ -37,8 +34,7 @@ struct SessionSummaryGrid: View {
                 icon: "flame.fill",
                 colors: [.orange, .red]
             )
-            
-            // 4. Duration (Dynamic Timer if active)
+
             if workout.isActive {
                 SummaryTimerGlassCard(
                     title: "Duration",
@@ -68,7 +64,7 @@ struct SummaryGlassCard: View {
     let unit: String
     let icon: String
     let colors: [Color]
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -83,7 +79,7 @@ struct SummaryGlassCard: View {
                 }
                 Spacer()
             }
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(value)
@@ -119,7 +115,7 @@ struct SummaryTimerGlassCard: View {
     let startDate: Date
     let icon: String
     let colors: [Color]
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -138,13 +134,13 @@ struct SummaryTimerGlassCard: View {
                     .frame(width: 8, height: 8)
                     .symbolEffect(.pulse)
             }
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(startDate, style: .timer)
                     .font(.system(size: 26, weight: .heavy, design: .rounded))
                     .foregroundColor(.primary)
                     .monospacedDigit()
-                
+
                 Text(title)
                     .font(.caption2)
                     .fontWeight(.bold)

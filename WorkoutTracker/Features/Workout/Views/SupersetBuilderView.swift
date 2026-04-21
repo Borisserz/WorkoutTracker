@@ -1,64 +1,49 @@
-// ============================================================
-// FILE: WorkoutTracker/Views/Workout/SupersetBuilderView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
 
-// MARK: - Main Builder View
-
 struct SupersetBuilderView: View {
-    
-    // MARK: - Environment & State
-    
+
     @Environment(\.dismiss) private var dismiss
     @Environment(WorkoutService.self) private var workoutService
     @Environment(UnitsManager.self) var unitsManager
-    
-    // Если редактируем — передаем сюда существующий супер-сет
+
     @State var existingSuperset: Exercise?
-    
-    // Внутреннее состояние списка упражнений
+
     @State private var addedExercises: [Exercise] = []
-    
-    // Управление модальными окнами
+
     @State private var showExerciseSelector = false
     @State private var exerciseToEdit: Exercise?
     @State private var showDeleteAlert = false
     @State private var showDeleteExerciseAlert = false
     @State private var exercisesToDelete: IndexSet?
-    
-    // MARK: - Callbacks
-    
+
     var onSave: (Exercise) -> Void
     var onDelete: (() -> Void)? = nil
-    
-    // MARK: - Body
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         NavigationStack {
             Form {
-                // 1. Список упражнений
+
                 exercisesListSection
-                
-                // 2. Кнопка сохранения
+
                 saveButton
-                
-                // 3. Кнопка удаления (только при редактировании)
+
                 if existingSuperset != nil {
                     deleteButton
                 }
             }
             .navigationTitle(existingSuperset == nil ? LocalizedStringKey("New Superset") : LocalizedStringKey("Edit Superset"))
             .onAppear {
-                // Загружаем данные при открытии
+
                 if let ex = existingSuperset {
                     self.addedExercises = ex.subExercises
                 }
             }
-            // --- Modals & Alerts ---
+
             .alert(LocalizedStringKey("Delete Superset?"), isPresented: $showDeleteAlert) {
                 Button(LocalizedStringKey("Delete"), role: .destructive) {
                     onDelete?()
@@ -106,9 +91,7 @@ struct SupersetBuilderView: View {
             }
         }
     }
-    
-    // MARK: - View Components
-    
+
     private var exercisesListSection: some View {
         Section(header: Text(LocalizedStringKey("Exercises in Superset"))) {
             if addedExercises.isEmpty {
@@ -116,12 +99,12 @@ struct SupersetBuilderView: View {
                     .foregroundColor(themeManager.current.secondaryText)
                     .italic()
             }
-            
+
             ForEach(addedExercises) { ex in
                 HStack {
                     VStack(alignment: .leading) {
                         Text(LocalizationHelper.shared.translateName(ex.name)).bold()
-                        // Превью параметров (берем из первого сета)
+
                         if let firstSet = ex.setsList.sorted(by: { $0.index < $1.index }).first, let weight = firstSet.weight {
                             let convertedWeight = unitsManager.convertFromKilograms(weight)
                             Text(LocalizedStringKey("\(ex.setsList.count) sets • \(Int(convertedWeight))\(unitsManager.weightUnitString()) x \(firstSet.reps ?? 0) reps"))
@@ -143,7 +126,7 @@ struct SupersetBuilderView: View {
                 exercisesToDelete = indexSet
                 showDeleteExerciseAlert = true
             }
-            
+
             Button {
                 showExerciseSelector = true
             } label: {
@@ -151,7 +134,7 @@ struct SupersetBuilderView: View {
             }
         }
     }
-    
+
     private var saveButton: some View {
         Button(existingSuperset == nil ? LocalizedStringKey("Create Superset") : LocalizedStringKey("Save Changes")) {
             saveSuperset()
@@ -160,7 +143,7 @@ struct SupersetBuilderView: View {
         .frame(maxWidth: .infinity)
         .buttonStyle(.borderedProminent)
     }
-    
+
     private var deleteButton: some View {
         Button(role: .destructive) {
             showDeleteAlert = true
@@ -169,35 +152,28 @@ struct SupersetBuilderView: View {
                 .frame(maxWidth: .infinity)
         }
     }
-    
-    // MARK: - Logic
-    
+
     private func saveSuperset() {
-        // Создаем "контейнер"
+
         let superset = Exercise(
             name: "Superset",
             muscleGroup: "Mixed",
             effort: 5
         )
-        
-        // Вкладываем упражнения
+
         superset.subExercises = addedExercises
-        
-        // Генерируем имя (Ex1 + Ex2)
+
         let names = addedExercises.map { $0.name }.joined(separator: " + ")
         superset.name = names
-        
-        // Сохраняем ID при редактировании
+
         if let existing = existingSuperset {
             superset.id = existing.id
         }
-        
+
         onSave(superset)
         dismiss()
     }
 }
-
-// MARK: - Inner Exercise Editor
 
 struct EditSupersetItemView: View {
     @Environment(\.modelContext) private var context
@@ -206,17 +182,14 @@ struct EditSupersetItemView: View {
     var onSave: (Exercise) -> Void
     @Environment(\.dismiss) var dismiss
     @Environment(UnitsManager.self) var unitsManager
-    
-    // Валидация
+
     @State private var showValidationAlert = false
     @State private var validationErrorMessage = ""
-    
+
     private var sortedSets: [WorkoutSet] {
         exercise.setsList.sorted(by: { $0.index < $1.index })
     }
-    
-    // MARK: - Bindings Adapters
-    
+
     private var repsBinding: Binding<Double?> {
         Binding<Double?>(
             get: {
@@ -239,7 +212,7 @@ struct EditSupersetItemView: View {
             }
         )
     }
-    
+
     private var timeBinding: Binding<Double?> {
         Binding<Double?>(
             get: {
@@ -262,7 +235,7 @@ struct EditSupersetItemView: View {
             }
         )
     }
-    
+
     private var weightBindingAdapter: Binding<Double?> {
         Binding<Double?>(
             get: {
@@ -285,7 +258,7 @@ struct EditSupersetItemView: View {
             }
         )
     }
-    
+
     private var distanceBindingAdapter: Binding<Double?> {
         Binding<Double?>(
             get: {
@@ -308,9 +281,7 @@ struct EditSupersetItemView: View {
             }
         )
     }
-    
-    // MARK: - Body
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -319,7 +290,7 @@ struct EditSupersetItemView: View {
                 Section(header: Text(LocalizationHelper.shared.translateName(exercise.name))) {
                     if !exercise.setsList.isEmpty {
                         Stepper(LocalizedStringKey("Sets: \(exercise.setsList.count)"), onIncrement: addSetLocally, onDecrement: removeSetLocally)
-                        
+
                         switch exercise.type {
                         case .strength:
                             inputRow(label: LocalizedStringKey("Weight (\(unitsManager.weightUnitString())):"), placeholder: unitsManager.weightUnitString(), binding: weightBindingAdapter)
@@ -334,7 +305,7 @@ struct EditSupersetItemView: View {
                         Button(LocalizedStringKey("Create First Set"), action: addSetLocally)
                     }
                 }
-                
+
                 Button(LocalizedStringKey("Save")) {
                     let weight = sortedSets.first?.weight ?? 0.0
                     if exercise.type == .strength && weight <= 0 {
@@ -360,7 +331,7 @@ struct EditSupersetItemView: View {
             } message: { Text(validationErrorMessage) }
         }
     }
-    
+
     private func inputRow(label: LocalizedStringKey, placeholder: String, binding: Binding<Double?>) -> some View {
         HStack {
             Text(label)
@@ -368,13 +339,11 @@ struct EditSupersetItemView: View {
             ClearableTextField(placeholder: placeholder, value: binding).frame(width: 80)
         }
     }
-    
-    // MARK: - Logic
-    
+
     private func addSetLocally() {
         let lastSet = sortedSets.last
         let newIndex = (lastSet?.index ?? 0) + 1
-        
+
         Task {
             await workoutService.addSet(
                 to: exercise,
@@ -396,7 +365,7 @@ struct EditSupersetItemView: View {
             }
         }
     }
-    
+
     private func propagateFirstSetData() {
         guard let firstSet = sortedSets.first else { return }
         for set in exercise.setsList where set.id != firstSet.id {

@@ -1,10 +1,7 @@
-// ============================================================
-// FILE: WorkoutTracker/SharedUI/Components/FunFactView.swift
-// ============================================================
+
 
 internal import SwiftUI
 
-// This view shows a fun, beautiful banner for the total weight lifted
 struct FunFactView: View {
     let totalStrengthVolume: Double
     @Environment(UnitsManager.self) var unitsManager
@@ -23,10 +20,9 @@ struct FunFactView: View {
 
     var body: some View {
         ZStack {
-            // Премиальный градиентный фон
+
             themeManager.current.premiumGradient
-            
-            // Крупный эмодзи на фоне
+
             HStack {
                 Spacer()
                 Text(funFact.emoji)
@@ -35,14 +31,13 @@ struct FunFactView: View {
                     .offset(x: 20, y: 15)
                     .rotationEffect(.degrees(15))
             }
-            
-            // Контент поверх
+
             VStack(alignment: .leading, spacing: 8) {
                 Text(funFact.title)
                     .font(.subheadline)
                     .fontWeight(.semibold)
                     .foregroundColor(.white.opacity(0.9))
-                
+
                 Text(funFact.value)
                     .font(.system(size: 34, weight: .heavy, design: .rounded))
                     .foregroundColor(themeManager.current.background)

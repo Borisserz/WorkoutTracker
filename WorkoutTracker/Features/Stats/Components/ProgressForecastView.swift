@@ -1,17 +1,11 @@
-//
-//  ProgressForecastView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Отображение прогноза Progressа
+
 
 internal import SwiftUI
 
 struct ProgressForecastView: View {
     let forecasts: [ProgressForecast]
     @Environment(ThemeManager.self) private var themeManager
-    
+
     var body: some View {
         if forecasts.isEmpty {
             Text(LocalizedStringKey("Not enough data for forecasting"))
@@ -30,16 +24,15 @@ struct ProgressForecastView: View {
 struct ProgressForecastRow: View {
     let forecast: ProgressForecast
     @Environment(ThemeManager.self) private var themeManager
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(LocalizationHelper.shared.translateName(forecast.exerciseName))
                     .font(.headline)
-                
+
                 Spacer()
-                
-                // Индикатор уверенности с цветовой кодировкой
+
                 HStack(spacing: 4) {
                     Circle()
                         .fill(forecast.confidence >= 70 ? Color.green : 
@@ -50,7 +43,7 @@ struct ProgressForecastRow: View {
                         .foregroundColor(themeManager.current.secondaryText)
                 }
             }
-            
+
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(LocalizedStringKey("Current"))
@@ -60,10 +53,10 @@ struct ProgressForecastRow: View {
                         .font(.subheadline)
                         .bold()
                 }
-                
+
                 Image(systemName: "arrow.right")
                     .foregroundColor(themeManager.current.primaryAccent)
-                
+
                 VStack(alignment: .leading, spacing: 2) {
                     Text(LocalizedStringKey("Predicted"))
                         .font(.caption2)
@@ -73,9 +66,9 @@ struct ProgressForecastRow: View {
                         .bold()
                         .foregroundColor(themeManager.current.primaryAccent)
                 }
-                
+
                 Spacer()
-                
+
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(LocalizedStringKey("+\(Int(forecast.predictedMax - forecast.currentMax)) kg"))
                         .font(.caption)
@@ -86,15 +79,14 @@ struct ProgressForecastRow: View {
                         .foregroundColor(themeManager.current.secondaryText)
                 }
             }
-            
-            // Progress бар для визуализации
+
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Rectangle()
                         .fill(Color.gray.opacity(0.2))
                         .frame(height: 6)
                         .cornerRadius(3)
-                    
+
                     Rectangle()
                         .fill(themeManager.current.primaryGradient)
                         .frame(

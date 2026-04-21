@@ -2,8 +2,6 @@ internal import SwiftUI
 import SwiftData
 import UIKit
 
-// MARK: - Main View
-
 struct WorkoutView: View {
     @Environment(DIContainer.self) private var di
     @Environment(ThemeManager.self) private var themeManager
@@ -11,29 +9,29 @@ struct WorkoutView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
-    
+
     @State private var showImbalanceInfo = false
     @State private var showAddWorkout = false
     @State private var navigateToNewWorkout = false
-    
+
     @State private var searchDebouncer = SearchDebouncer()
-    
+
     @State private var selectedFilter: FilterPeriod = .all
     @State private var sortOption: SortOption = .dateDescending
     @State private var showFavoritesOnly = false
-    
+
     @State private var listViewModel = WorkoutListViewModel()
-    
+
     @State private var imbalanceAdvice: (title: String, message: String)? = nil
     @State private var recentWorkoutForNavigation: Workout? = nil
-    
+
     enum FilterPeriod: String, CaseIterable {
         case all = "All Time"
         case week = "Last Week"
         case month = "Last Month"
         case threeMonths = "Last 3 Months"
         case year = "Last Year"
-        
+
         var localizedName: LocalizedStringKey {
             switch self {
             case .all: return "All Time"
@@ -44,7 +42,7 @@ struct WorkoutView: View {
             }
         }
     }
-        
+
     enum SortOption: String, CaseIterable {
         case dateDescending = "Newest First"
         case dateAscending = "Oldest First"
@@ -52,7 +50,7 @@ struct WorkoutView: View {
         case durationAscending = "Shortest First"
         case effortDescending = "Highest Effort"
         case effortAscending = "Lowest Effort"
-        
+
         var localizedName: LocalizedStringKey {
             switch self {
             case .dateDescending: return "Newest First"
@@ -64,7 +62,7 @@ struct WorkoutView: View {
             }
         }
     }
-    
+
     var body: some View {
         NavigationStack {
             content
@@ -78,7 +76,7 @@ struct WorkoutView: View {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         EditButton()
                     }
-                    
+
                     if imbalanceAdvice != nil {
                         ToolbarItem(placement: .navigationBarTrailing) {
                             Button {
@@ -118,7 +116,7 @@ struct WorkoutView: View {
             loadImbalanceData()
         }
     }
-    
+
     @ViewBuilder
     var content: some View {
         List {
@@ -137,19 +135,19 @@ struct WorkoutView: View {
             }
             .listRowInsets(EdgeInsets(top: 16, leading: 16, bottom: 8, trailing: 16))
             .listRowBackground(Color.clear)
-            
+
             Section {
                 statsSection
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
-            
+
             Section {
                 searchAndFiltersSection
             }
             .listRowInsets(EdgeInsets())
             .listRowBackground(Color.clear)
-            
+
             Section {
                 DynamicWorkoutListView(
                     searchText: searchDebouncer.debouncedText,
@@ -167,11 +165,11 @@ struct WorkoutView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
     }
-    
+
     private var statsSection: some View {
         let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
         let formattedTons = LocalizationHelper.shared.formatTwoDecimals(tons)
-        
+
         return VStack(spacing: 12) {
             HStack(spacing: 12) {
                 WorkoutHistoryStatCard(
@@ -180,7 +178,7 @@ struct WorkoutView: View {
                     subtitle: LocalizedStringKey("min"),
                     icon: "stopwatch"
                 )
-                
+
                 WorkoutHistoryStatCard(
                     title: LocalizedStringKey("Avg Volume"),
                     value: formattedTons,
@@ -193,7 +191,7 @@ struct WorkoutView: View {
             .padding(.bottom, 8)
         }
     }
-    
+
     private var searchAndFiltersSection: some View {
         VStack(spacing: 12) {
             Picker(LocalizedStringKey("View Mode"), selection: $showFavoritesOnly) {
@@ -202,13 +200,13 @@ struct WorkoutView: View {
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
-            
+
             DebouncedSearchBar(debouncer: searchDebouncer)
                 .padding()
                 .background(themeManager.current.surface)
                 .cornerRadius(12)
                 .padding(.horizontal)
-            
+
             HStack(spacing: 12) {
                 Menu {
                     ForEach(FilterPeriod.allCases, id: \.self) { period in
@@ -225,7 +223,7 @@ struct WorkoutView: View {
                     .background(themeManager.current.surface)
                     .cornerRadius(8)
                 }
-                
+
                 Menu {
                     ForEach(SortOption.allCases, id: \.self) { option in
                         Button(option.localizedName) { sortOption = option }
@@ -246,7 +244,7 @@ struct WorkoutView: View {
             .padding(.bottom, 8)
         }
     }
-    
+
     private func loadImbalanceData() {
         if let balanceRec = dashboardViewModel.recommendations.first(where: { $0.type == .balance }) {
             imbalanceAdvice = (title: balanceRec.title, message: balanceRec.message)
@@ -256,9 +254,6 @@ struct WorkoutView: View {
     }
 }
 
-// MARK: - Dynamic Workout List (OOM Protection)
-
-// MARK: - СПИСОК ТРЕНИРОВОК (С УДАЛЕНИЕМ)
 struct DynamicWorkoutListView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
@@ -266,20 +261,20 @@ struct DynamicWorkoutListView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(DIContainer.self) private var di
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var listViewModel: WorkoutListViewModel
-    var isEditing: Bool // 👈 ДОБАВЛЕНО ДЛЯ УПРАВЛЕНИЯ УДАЛЕНИЕМ
+    var isEditing: Bool 
     var onFirstWorkoutLoaded: ((Workout) -> Void)?
-    
+
     init(searchText: String, filter: WorkoutView.FilterPeriod, sort: WorkoutView.SortOption, favoritesOnly: Bool, listViewModel: WorkoutListViewModel, isEditing: Bool = false, onFirstWorkoutLoaded: ((Workout) -> Void)? = nil) {
         self.listViewModel = listViewModel
         self.isEditing = isEditing
         self.onFirstWorkoutLoaded = onFirstWorkoutLoaded
-        
+
         let calendar = Calendar.current
         let now = Date()
         let cutoffDate: Date
-        
+
         switch filter {
         case .all: cutoffDate = Date.distantPast
         case .week: cutoffDate = calendar.date(byAdding: .day, value: -7, to: now) ?? .distantPast
@@ -287,7 +282,7 @@ struct DynamicWorkoutListView: View {
         case .threeMonths: cutoffDate = calendar.date(byAdding: .month, value: -3, to: now) ?? .distantPast
         case .year: cutoffDate = calendar.date(byAdding: .year, value: -1, to: now) ?? .distantPast
         }
-        
+
         let predicate: Predicate<Workout>
         if favoritesOnly {
             if searchText.isEmpty {
@@ -302,7 +297,7 @@ struct DynamicWorkoutListView: View {
                 predicate = #Predicate<Workout> { $0.date >= cutoffDate && $0.title.localizedStandardContains(searchText) }
             }
         }
-        
+
         let sortDescriptors: [SortDescriptor<Workout>]
         switch sort {
         case .dateDescending: sortDescriptors = [SortDescriptor(\.date, order: .reverse)]
@@ -312,10 +307,10 @@ struct DynamicWorkoutListView: View {
         case .effortDescending: sortDescriptors = [SortDescriptor(\.effortPercentage, order: .reverse)]
         case .effortAscending: sortDescriptors = [SortDescriptor(\.effortPercentage, order: .forward)]
         }
-        
+
         _workouts = Query(filter: predicate, sort: sortDescriptors)
     }
-    
+
     var body: some View {
         if workouts.isEmpty {
             VStack(spacing: 12) {
@@ -331,7 +326,7 @@ struct DynamicWorkoutListView: View {
         } else {
             ForEach(workouts) { workout in
                 HStack(spacing: 12) {
-                    // 👈 ИСПРАВЛЕНИЕ: Кнопка удаления в режиме редактирования
+
                     if isEditing {
                         Button {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -345,7 +340,7 @@ struct DynamicWorkoutListView: View {
                         }
                         .transition(.move(edge: .leading).combined(with: .opacity))
                     }
-                    
+
                     NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
                         PremiumRealWorkoutCard(workout: workout)
                     }
@@ -366,13 +361,13 @@ struct PremiumRealWorkoutCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var isBreathing = false
     @State private var rotation: Double = 0
-    
+
     var body: some View {
         HStack(spacing: 16) {
-            // 👈 ИСПРАВЛЕНИЕ: Чтение реальной иконки тренировки
+
             ZStack {
                 Circle().fill(themeManager.current.primaryAccent.opacity(0.15)).frame(width: 50, height: 50)
-                
+
                 if UIImage(named: workout.icon) != nil {
                     Image(workout.icon)
                         .resizable()
@@ -385,7 +380,7 @@ struct PremiumRealWorkoutCard: View {
                         .foregroundColor(themeManager.current.primaryAccent)
                 }
             }
-            
+
             VStack(alignment: .leading, spacing: 6) {
                 Text(workout.title).font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
                 HStack(spacing: 8) {
@@ -400,7 +395,7 @@ struct PremiumRealWorkoutCard: View {
             Image(systemName: "chevron.right").foregroundColor(Color.gray.opacity(0.5))
         }
         .padding()
-        // 👈 АДАПТИВНЫЙ ФОН
+
         .background(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.13) : Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 20))
         .overlay(
@@ -419,20 +414,18 @@ struct PremiumRealWorkoutCard: View {
     }
 }
 
-// ОСТАЛЬНОЙ КОД БЕЗ ИЗМЕНЕНИЙ (WorkoutRow, DebouncedSearchBar, и т.д.)
 struct WorkoutRow: View {
     @Environment(ThemeManager.self) private var themeManager
     let workout: Workout
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.colorScheme) private var colorScheme
-    
+
     @State private var isBlinking = false
-    
-    // 👈 ИСПРАВЛЕНИЕ: Всегда используем дефолтный SF Symbol для карточек в Истории
+
     var safeIcon: String {
-        return "dumbbell.fill" // Можно заменить на "figure.strengthtraining.traditional" или другой
+        return "dumbbell.fill" 
     }
-    
+
     var body: some View {
         VStack(spacing: 12) {
             HStack(alignment: .top, spacing: 14) {
@@ -440,23 +433,22 @@ struct WorkoutRow: View {
                     Circle()
                         .fill(LinearGradient(colors: [themeManager.current.primaryAccent.opacity(0.15), themeManager.current.primaryAccent.opacity(0.08)], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 50, height: 50)
-                    
-                    // 👈 ИСПРАВЛЕНИЕ: Системная иконка вместо кастомной картинки
+
                     Image(systemName: safeIcon)
                         .font(.title2)
                         .foregroundStyle(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .top, endPoint: .bottom))
                 }
-                
+
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(workout.title)
                             .font(.headline)
                             .fontWeight(.bold)
-                            .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
+                            .foregroundColor(colorScheme == .dark ? .white : .black) 
                             .lineLimit(1)
-                        
+
                         Spacer()
-                        
+
                         if workout.isActive {
                             HStack(spacing: 4) {
                                 Circle()
@@ -473,22 +465,22 @@ struct WorkoutRow: View {
                             .clipShape(Capsule())
                         }
                     }
-                    
+
                     Text(workout.date.formatted(date: .abbreviated, time: .shortened))
                         .font(.caption)
                         .foregroundColor(themeManager.current.secondaryText)
                 }
             }
-            
+
             Divider().opacity(0.5)
-            
+
             HStack(spacing: 20) {
                 miniStat(icon: "stopwatch.fill", value: workout.isActive ? "In Progress" : "\(workout.durationSeconds / 60)m")
                 miniStat(icon: "list.bullet", value: "\(workout.exercises.count) exs")
                 miniStat(icon: "scalemass.fill", value: "\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume))) \(unitsManager.weightUnitString())")
-                
+
                 Spacer()
-                
+
                 HStack(spacing: 4) {
                     Image(systemName: "flame.fill")
                         .font(.caption2)
@@ -504,7 +496,7 @@ struct WorkoutRow: View {
             }
         }
         .padding(16)
-        // 👈 АДАПТАЦИЯ ФОНА КАРТОЧКИ
+
         .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(20)
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 8, x: 0, y: 4)
@@ -520,7 +512,7 @@ struct WorkoutRow: View {
             }
         }
     }
-    
+
     private func miniStat(icon: String, value: String) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
@@ -532,20 +524,19 @@ struct WorkoutRow: View {
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
         }
     }
-    
+
     private func effortColor(_ percentage: Int) -> Color {
         if percentage > 80 { return .red }
         if percentage > 50 { return .orange }
         return .green
     }
-    
+
     private func effortGradient(_ percentage: Int) -> LinearGradient {
         if percentage > 80 { return LinearGradient(colors: [.red, .pink], startPoint: .leading, endPoint: .trailing) }
         if percentage > 50 { return LinearGradient(colors: [.orange, .yellow], startPoint: .leading, endPoint: .trailing) }
         return LinearGradient(colors: [.green, .mint], startPoint: .leading, endPoint: .trailing)
     }
 }
-// MARK: - Clean Debounced Search Bar
 
 struct DebouncedSearchBar: View {
     @Bindable var debouncer: SearchDebouncer
@@ -553,10 +544,10 @@ struct DebouncedSearchBar: View {
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass").foregroundColor(themeManager.current.secondaryText)
-            
+
             TextField(LocalizedStringKey("Search workouts..."), text: $debouncer.inputText)
                 .textFieldStyle(.plain)
-            
+
             if !debouncer.inputText.isEmpty {
                 Button(action: { debouncer.inputText = "" }) {
                     Image(systemName: "xmark.circle.fill").foregroundColor(themeManager.current.secondaryAccent)
@@ -565,8 +556,6 @@ struct DebouncedSearchBar: View {
         }
     }
 }
-
-// MARK: - Helper Views
 
 struct ImbalanceDetailSheet: View {
     let advice: (title: String, message: String)
@@ -578,22 +567,22 @@ struct ImbalanceDetailSheet: View {
                 .font(.system(size: 50))
                 .foregroundStyle(.orange)
                 .padding(.top, 20)
-            
+
             VStack(spacing: 8) {
                 Text(LocalizedStringKey(advice.title))
                     .font(.title2)
                     .bold()
                     .multilineTextAlignment(.center)
-                
+
                 Text(LocalizedStringKey(advice.message))
                     .font(.body)
                     .foregroundColor(themeManager.current.secondaryText)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
             }
-            
+
             Spacer()
-            
+
             Button(LocalizedStringKey("Got it, Coach!")) {
                 dismiss()
             }
@@ -623,7 +612,7 @@ struct WorkoutHistoryStatCard: View {
     let value: String
     let subtitle: LocalizedStringKey
     let icon: String
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {

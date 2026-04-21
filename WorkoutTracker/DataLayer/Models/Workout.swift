@@ -1,23 +1,14 @@
-//
-//  Workout.swift
-//  WorkoutTracker
-//
-//  Main Data Models (SwiftData):
-//  Optimized with Computed Properties to prevent redundant DB writes.
-//
 
 
 import Foundation
 import SwiftData
 internal import SwiftUI
 
-// MARK: - Enums (Codable for SwiftData)
-
 enum SetType: String, Codable, CaseIterable {
     case normal = "N"
     case warmup = "W"
     case failure = "F"
-    
+
     var color: Color {
         switch self {
         case .normal: return .blue
@@ -31,13 +22,13 @@ enum ExerciseType: String, Codable, CaseIterable, Identifiable {
     case strength = "Strength"
     case cardio = "Cardio"
     case duration = "Duration"
-    
+
     var id: String { self.rawValue }
 }
 
 enum ExerciseCategory: String, Codable, CaseIterable {
     case squat = "Squat", press = "Press", deadlift = "Deadlift", pull = "Pull", curl = "Curl", core = "Core", cardio = "Cardio", other = "Other"
-    
+
     static func determine(from name: String) -> ExerciseCategory {
         let lower = name.lowercased()
         if lower.contains("squat") { return .squat }
@@ -51,8 +42,6 @@ enum ExerciseCategory: String, Codable, CaseIterable {
     }
 }
 
-// MARK: - SwiftData Models
-
 @Model
 class WorkoutSet: Identifiable {
     var id: UUID = UUID()
@@ -63,9 +52,9 @@ class WorkoutSet: Identifiable {
     var time: Int? = nil
     var isCompleted: Bool = false
     var type: SetType = SetType.normal
-    
+
     var exercise: Exercise? = nil
-    
+
     init(id: UUID = UUID(), index: Int = 0, weight: Double? = nil, reps: Int? = nil, distance: Double? = nil, time: Int? = nil, isCompleted: Bool = false, type: SetType = .normal) {
         self.id = id
         self.index = index
@@ -87,20 +76,20 @@ class Exercise: Identifiable {
     @Attribute var category: ExerciseCategory = ExerciseCategory.other
     var effort: Int = 5
     var isCompleted: Bool = false
-    
+
     var cachedVolume: Double = 0.0
     var cachedMaxWeight: Double = 0.0
-    
+
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise)
     var setsList: [WorkoutSet] = []
-    
+
     @Relationship(deleteRule: .cascade, inverse: \Exercise.parentExercise)
     var subExercises: [Exercise] = []
-    
+
     var parentExercise: Exercise? = nil
     var workout: Workout? = nil
     var preset: WorkoutPreset? = nil
-    
+
     init(id: UUID = UUID(), name: String = "", muscleGroup: String = "", type: ExerciseType = .strength, category: ExerciseCategory? = nil, sets: Int = 1, reps: Int = 0, weight: Double = 0.0, distance: Double? = nil, timeSeconds: Int? = nil, effort: Int = 5, subExercises: [Exercise] = [], setsList: [WorkoutSet] = [], isCompleted: Bool = false) {
         self.id = id
         self.name = name
@@ -111,14 +100,13 @@ class Exercise: Identifiable {
         self.isCompleted = isCompleted
         self.subExercises = subExercises
         self.setsList = setsList
-        
+
         if self.setsList.isEmpty && self.subExercises.isEmpty && sets > 0 {
             self.setsList = (1...sets).map { i in
                 WorkoutSet(index: i, weight: weight > 0 ? weight : nil, reps: reps > 0 ? reps : nil, distance: distance, time: timeSeconds, isCompleted: false, type: .normal)
             }
         }
-        
-        // ✅ FIX: Manually establish inverse relationships to prevent SwiftData detachment bugs
+
         for set in self.setsList {
             set.exercise = self
         }
@@ -126,9 +114,7 @@ class Exercise: Identifiable {
             sub.parentExercise = self
         }
     }
-    
-    // ✅ FIX: Removed @Transient from ALL computed properties.
-    // SwiftData breaks getters if @Transient is applied to computed properties.
+
     var sortedSets: [WorkoutSet] { setsList.sorted(by: { $0.index < $1.index }) }
     var isSuperset: Bool { !subExercises.isEmpty }
     var setsCount: Int { setsList.count }
@@ -136,23 +122,23 @@ class Exercise: Identifiable {
     var firstSetWeight: Double { sortedSets.first?.weight ?? 0.0 }
     var firstSetDistance: Double? { sortedSets.first?.distance }
     var firstSetTimeSeconds: Int? { sortedSets.first?.time }
-    
+
     var exerciseVolume: Double {
         if isCompleted && cachedVolume > 0 { return cachedVolume }
         if isSuperset { return subExercises.reduce(0.0) { $0 + $1.exerciseVolume } }
         else {
             let includeWarmups = UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue)
-            
+
             return setsList.reduce(0.0) { partialResult, set in
                 if !set.isCompleted { return partialResult }
                 if !includeWarmups && set.type == .warmup { return partialResult }
-                
+
                 guard let w = set.weight, let r = set.reps else { return partialResult }
                 return type == .strength ? partialResult + (w * Double(r)) : partialResult
             }
         }
     }
-    
+
     func addSafeSet(_ newSet: WorkoutSet) { newSet.exercise = self; self.setsList.append(newSet) }
     func removeSafeSet(_ set: WorkoutSet) { self.setsList.removeAll(where: { $0.id == set.id }); for (i, s) in sortedSets.enumerated() { s.index = i + 1 } }
     func removeSafeSets(_ setsToRemove: [WorkoutSet]) {
@@ -170,10 +156,10 @@ class WorkoutPreset: Identifiable {
     var icon: String = ""
     var isSystem: Bool = false
     var folderName: String? = nil
-    
+
     @Relationship(deleteRule: .cascade, inverse: \Exercise.preset)
     var exercises: [Exercise] = []
-    
+
     init(id: UUID = UUID(), name: String = "", icon: String = "", isSystem: Bool = false, folderName: String? = nil, exercises: [Exercise] = []) {
         self.id = id
         self.name = name
@@ -181,8 +167,7 @@ class WorkoutPreset: Identifiable {
         self.isSystem = isSystem
         self.folderName = folderName
         self.exercises = exercises
-        
-        // ✅ FIX: Establish inverse relationships
+
         for exercise in self.exercises {
             exercise.preset = self
         }
@@ -198,28 +183,27 @@ class Workout: Identifiable {
     var icon: String = "figure.run"
     var isFavorite: Bool = false
     var aiChatHistoryData: Data? = nil
-    
+
     var durationSeconds: Int = 0
     var effortPercentage: Int = 0
     var totalStrengthVolume: Double = 0.0
     var totalCardioDistance: Double = 0.0
     var totalReps: Int = 0
-    
+
     @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
     var exercises: [Exercise] = []
-    
+
     init(id: UUID = UUID(), title: String = "", date: Date = Date(), endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false, aiChatHistoryData: Data? = nil) {
         self.id = id; self.title = title; self.date = date; self.endTime = endTime; self.icon = icon; self.isFavorite = isFavorite; self.exercises = exercises; self.aiChatHistoryData = aiChatHistoryData
-        
-        // ✅ FIX: Establish inverse relationships
+
         for exercise in self.exercises {
             exercise.workout = self
         }
     }
-    
+
     var isActive: Bool { endTime == nil }
 }
-// ⚠️ CLOUDKIT FIX: Removed .unique attributes and ensured all default initializers
+
 @Model
 class ExerciseNote {
     var exerciseName: String = ""
@@ -252,8 +236,6 @@ class MuscleStat {
     init(muscleName: String = "", totalCount: Int = 0) { self.muscleName = muscleName; self.totalCount = totalCount }
 }
 
-// MARK: - DTOs & Codable Support
-
 struct WorkoutSetDTO: Codable {
     let index: Int; let weight: Double?; let reps: Int?; let distance: Double?; let time: Int?; let isCompleted: Bool; let type: SetType
 }
@@ -265,16 +247,15 @@ struct ExerciseDTO: Codable, Sendable {
     var category: ExerciseCategory
     var effort: Int
     var isCompleted: Bool
-    
+
     var setsList: [WorkoutSetDTO]?
     var subExercises: [ExerciseDTO]?
-    
+
     var sets: Int?
     var reps: Int?
     var recommendedWeightKg: Double?
 }
 
-// 2. Обновляем инициализатор, чтобы он подхватывал данные из JSON
 extension Exercise {
     func toDTO() -> ExerciseDTO {
         ExerciseDTO(
@@ -282,11 +263,11 @@ extension Exercise {
             setsList: sortedSets.map { $0.toDTO() }, subExercises: subExercises.map { $0.toDTO() }
         )
     }
-    
+
     convenience init(from dto: ExerciseDTO) {
         let safeSets = dto.setsList ?? []
         let safeSubs = dto.subExercises ?? []
-        
+
         self.init(
             name: dto.name,
             muscleGroup: dto.muscleGroup,
@@ -305,10 +286,9 @@ extension Exercise {
 struct WorkoutPresetDTO: Codable {
     let name: String
     let icon: String
-    var folderName: String? = nil // ✅ ДОБАВЛЕНО
+    var folderName: String? = nil 
     let exercises: [ExerciseDTO]
 }
-
 
 extension WorkoutSet {
     func toDTO() -> WorkoutSetDTO {
@@ -319,7 +299,6 @@ extension WorkoutSet {
     }
 }
 
-
 extension WorkoutPreset {
     func toDTO() -> WorkoutPresetDTO {
         WorkoutPresetDTO(name: name, icon: icon, folderName: folderName, exercises: exercises.map { $0.toDTO() })
@@ -329,7 +308,6 @@ extension WorkoutPreset {
     }
 }
 
-// ✅ FIX: Added comprehensive default workout templates
 extension Workout {
     static var examples: [Workout] {
         [
@@ -357,8 +335,6 @@ extension Workout {
     }
 }
 
-// MARK: - UI Display Helpers
-
 extension Exercise {
     func formattedDetails(unitsManager: UnitsManager) -> String {
         switch type {
@@ -373,7 +349,7 @@ extension Exercise {
             return "\(setsCount) sets x \(formatTime(firstSetTimeSeconds ?? 0))"
         }
     }
-    
+
     private func formatTime(_ totalSeconds: Int) -> String {
         String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
     }
@@ -412,7 +388,7 @@ extension Workout {
 }
 
 extension SetType {
-    // Letter or number representation for the UI
+
     func shortIndicator(index: Int) -> String {
         switch self {
         case .normal: return "\(index)"
@@ -420,7 +396,7 @@ extension SetType {
         case .failure: return "F"
         }
     }
-    
+
     var title: LocalizedStringKey {
         switch self {
         case .normal: return "Normal Set"
@@ -428,7 +404,7 @@ extension SetType {
         case .failure: return "Failure Set"
         }
     }
-    
+
     var description: LocalizedStringKey {
         switch self {
         case .normal: return "Standard working set used for tracking volume and progression."
@@ -436,8 +412,7 @@ extension SetType {
         case .failure: return "A set pushed to absolute muscular failure. High fatigue impact."
         }
     }
-    
-    // Updated colors to semantic native colors to decouple Data Layer from UI Theme Layer
+
     var displayColor: Color {
         switch self {
         case .normal: return .blue

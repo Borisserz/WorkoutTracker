@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/SharedUI/Components/ClearableTextField.swift
-// ============================================================
+
 
 internal import SwiftUI
 
@@ -8,16 +6,16 @@ struct ClearableTextField: View {
     let placeholder: String
     @Binding var value: Double?
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     @FocusState private var isFocused: Bool
-    
+
     var body: some View {
         TextField(placeholder, value: $value, format: .number)
             .keyboardType(.decimalPad)
             .multilineTextAlignment(.center)
             .padding(.vertical, 8)
-            // 👈 ИСПРАВЛЕНИЕ: Светло-серый фон в светлой теме, чтобы не было черного прямоугольника
+
             .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color(UIColor.systemGray6))
             .foregroundColor(colorScheme == .dark ? .white : .black)
             .cornerRadius(8)

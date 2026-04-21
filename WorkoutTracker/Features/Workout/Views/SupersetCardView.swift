@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Workout/Views/SupersetCardView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -9,18 +7,18 @@ struct SupersetCardView: View {
     @Environment(WorkoutDetailViewModel.self) var viewModel
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(UnitsManager.self) var unitsManager
-    
+
     @Bindable var superset: Exercise
     var workout: Workout
     @Binding var isExpanded: Bool
     var isCurrentExercise: Bool = false
     var onExpandNext: ((UUID) -> Void)? = nil
-    
+
     @State private var showEffortSheet = false
-    
+
     private var isActiveExercise: Bool { isCurrentExercise && !superset.isCompleted }
     private var isWorkoutCompleted: Bool { !workout.isActive }
-    
+
     var body: some View {
         ZStack {
             VStack(alignment: .leading, spacing: 0) {
@@ -42,7 +40,7 @@ struct SupersetCardView: View {
             EffortInputView(effort: $superset.effort)
         }
     }
-    
+
     var headerView: some View {
         HStack {
             Image(systemName: "line.3.horizontal").foregroundColor(.gray).font(.caption).frame(width: 20, height: 20)
@@ -65,7 +63,7 @@ struct SupersetCardView: View {
         .padding(.bottom, 10).contentShape(Rectangle())
         .onTapGesture { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { isExpanded.toggle() } }
     }
-    
+
     private var collapsedInfoSection: some View {
         HStack {
             Spacer()
@@ -73,11 +71,11 @@ struct SupersetCardView: View {
             Spacer()
         }.padding(.vertical, 8)
     }
-    
+
     var exerciseListView: some View {
         ForEach(superset.subExercises.indices, id: \.self) { index in
             let isLast = index == superset.subExercises.count - 1
-            
+
             VStack(spacing: 0) {
                 ExerciseCardView(
                     exercise: superset.subExercises[index],
@@ -90,12 +88,12 @@ struct SupersetCardView: View {
                 .shadow(color: .clear, radius: 0)
                 .padding(.horizontal, -16)
                 .padding(.vertical, -8)
-                
+
                 if !isLast { Divider().padding(.leading, 16).padding(.vertical, 8) }
             }
         }
     }
-    
+
     var finishButton: some View {
         Button(action: {
             if superset.isCompleted {
@@ -117,7 +115,7 @@ struct SupersetCardView: View {
         .buttonStyle(BorderlessButtonStyle())
         .disabled(isWorkoutCompleted)
     }
-    
+
     private func finishSupersetAction() {
         viewModel.handleExerciseFinished(
             exerciseId: superset.id,

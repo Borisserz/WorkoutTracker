@@ -1,11 +1,7 @@
-//
-//  OnboardingFlow.swift
-//  WorkoutTracker
-//
+
 
 internal import SwiftUI
 
-// MARK: - Модель для одного слайда онбординга
 struct OnboardingItem: Identifiable {
     let id = UUID()
     let image: String
@@ -14,7 +10,6 @@ struct OnboardingItem: Identifiable {
     let color: Color
 }
 
-// MARK: - Главный контейнер анбординга
 struct OnboardingFlowView: View {
     @Binding var isOnboardingCompleted: Bool
     @Environment(TutorialManager.self) var tutorialManager
@@ -22,11 +17,11 @@ struct OnboardingFlowView: View {
     @State private var currentTab = 0
     @AppStorage("userName") private var userName = ""
     @AppStorage("userBodyWeight") private var userBodyWeight = 0.0
-    
+
     var body: some View {
         ZStack {
             themeManager.current.background.ignoresSafeArea()
-            
+
             TabView(selection: $currentTab) {
                 OnboardingIntroView(onNext: { nextStep() }).tag(0)
                 UserDataInputView(name: $userName, weight: $userBodyWeight, onNext: { nextStep() }).tag(1)
@@ -38,7 +33,7 @@ struct OnboardingFlowView: View {
             .interactiveDismissDisabled()
         }
     }
-    
+
     private func nextStep() { withAnimation { currentTab += 1 } }
     private func completeOnboarding() {
         let generator = UINotificationFeedbackGenerator()
@@ -47,7 +42,6 @@ struct OnboardingFlowView: View {
     }
 }
 
-// MARK: - ШАГ 1: Интро
 struct OnboardingIntroView: View {
     var onNext: () -> Void
     @Environment(ThemeManager.self) private var themeManager
@@ -57,7 +51,7 @@ struct OnboardingIntroView: View {
         OnboardingItem(image: "chart.xyaxis.line", title: "Analyze Progress", description: "Visualize your gains with detailed charts and personal records.", color: .purple)
     ]
     @State private var slideIndex = 0
-    
+
     var body: some View {
         VStack {
             TabView(selection: $slideIndex) {
@@ -76,7 +70,7 @@ struct OnboardingIntroView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
             .indexViewStyle(.page(backgroundDisplayMode: .always))
-            
+
             Button(action: {
                 if slideIndex < items.count - 1 { withAnimation { slideIndex += 1 } } else { onNext() }
             }) {
@@ -88,13 +82,12 @@ struct OnboardingIntroView: View {
     }
 }
 
-// MARK: - ШАГ 2: Ввод данных
 struct UserDataInputView: View {
     @Binding var name: String
     @Binding var weight: Double
     var onNext: () -> Void
     @Environment(ThemeManager.self) private var themeManager
-    
+
     private enum Field { case name, weight }
     @FocusState private var focusedField: Field?
     @State private var weightString: String = ""
@@ -102,7 +95,7 @@ struct UserDataInputView: View {
     @State private var isWeightInvalid = false
     @State private var shakeTriggerName = 0
     @State private var shakeTriggerWeight = 0
-    
+
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
@@ -110,7 +103,7 @@ struct UserDataInputView: View {
                     Spacer(minLength: 20)
                     Text(LocalizedStringKey("About You")).font(.largeTitle).bold()
                     Text(LocalizedStringKey("This helps us personalize your profile and calculate stats.")).foregroundColor(themeManager.current.secondaryText).multilineTextAlignment(.center).padding(.horizontal)
-                    
+
                     VStack(spacing: 20) {
                         VStack(alignment: .leading) {
                             Text("Your Name").font(.caption).foregroundColor(isNameInvalid ? .red : .gray)
@@ -124,8 +117,8 @@ struct UserDataInputView: View {
                                 .onChange(of: name) { _, _ in isNameInvalid = false }
                                 .onSubmit { focusedField = .weight }
                         }
-                        .modifier(ShakeEffectModifier(trigger: shakeTriggerName)) // Убран isInvalid из замыкания
-                        
+                        .modifier(ShakeEffectModifier(trigger: shakeTriggerName)) 
+
                         VStack(alignment: .leading) {
                             Text("Body Weight (\(UnitsManager.shared.weightUnitString()))").font(.caption).foregroundColor(isWeightInvalid ? .red : .gray)
                             TextField("75", text: $weightString)
@@ -139,12 +132,12 @@ struct UserDataInputView: View {
                                     if let val = Double(newValue.replacingOccurrences(of: ",", with: ".")) { weight = val }
                                 }
                         }
-                        .modifier(ShakeEffectModifier(trigger: shakeTriggerWeight)) // Убран isInvalid из замыкания
+                        .modifier(ShakeEffectModifier(trigger: shakeTriggerWeight)) 
                     }
                     .padding(.horizontal, 30)
-                    
+
                     Spacer(minLength: 20)
-                    
+
                     Button(action: validateAndContinue) {
                         Text("Continue").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12)
                     }
@@ -160,15 +153,15 @@ struct UserDataInputView: View {
         .onTapGesture { focusedField = nil }
         .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { focusedField = nil }.bold() } }
     }
-    
+
     private func validateAndContinue() {
         let parsedWeight = Double(weightString.replacingOccurrences(of: ",", with: ".")) ?? 0
         let validName = !name.trimmingCharacters(in: .whitespaces).isEmpty
         let validWeight = parsedWeight > 0
-        
+
         isNameInvalid = !validName
         isWeightInvalid = !validWeight
-        
+
         if validName && validWeight { onNext() }
         else {
             if !validName { shakeTriggerName += 1 }
@@ -194,45 +187,43 @@ struct ShakeEffectModifier: ViewModifier {
     }
 }
 
-// MARK: - ШАГ 3: Разрешения
 struct PermissionsView: View {
     var onNext: () -> Void
     @Environment(ThemeManager.self) private var themeManager
     @State private var notificationsAllowed = false
-    
+
     var body: some View {
         VStack(spacing: 30) {
             Spacer()
             Image(systemName: "bell.badge.fill").font(.system(size: 80)).foregroundColor(themeManager.current.secondaryMidTone).padding().background(Circle().fill(themeManager.current.secondaryMidTone.opacity(0.1)).frame(width: 150, height: 150))
             Text("Stay on Track").font(.largeTitle).bold()
             Text("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam.").multilineTextAlignment(.center).foregroundColor(themeManager.current.secondaryText).padding(.horizontal)
-            
+
             Button { requestNotifications() } label: {
                 HStack { Text(notificationsAllowed ? "Allowed" : "Enable Notifications"); if notificationsAllowed { Image(systemName: "checkmark") } }
                 .fontWeight(.semibold).padding().frame(maxWidth: .infinity).background(notificationsAllowed ? Color.green : themeManager.current.secondaryMidTone).foregroundColor(.white).cornerRadius(12)
             }
             .padding(.horizontal, 50).disabled(notificationsAllowed)
-            
+
             Spacer()
             Button(action: onNext) { Text("Continue").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12) }
             .padding(.horizontal, 30).padding(.bottom, 50)
         }
     }
-    
+
     private func requestNotifications() {
-        // ИСПРАВЛЕНИЕ: Используем существующий метод из NotificationManager.swift без переопределения
+
         NotificationManager.shared.requestPermission { granted in
             DispatchQueue.main.async { withAnimation { self.notificationsAllowed = granted } }
         }
     }
 }
 
-// MARK: - ШАГ 4: Выбор обучения
 struct TutorialChoiceView: View {
     var onFinish: () -> Void
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(ThemeManager.self) private var themeManager
-    
+
     var body: some View {
         VStack(spacing: 30) {
             Spacer()

@@ -1,16 +1,10 @@
-//
-//  WeakPointsView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Отображение анализа слабых мест
+
 
 internal import SwiftUI
 
 struct WeakPointsView: View {
     let weakPoints: [WeakPoint]
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -33,7 +27,7 @@ struct WeakPointsView: View {
 
 struct WeakPointRow: View {
     let weakPoint: WeakPoint
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -41,18 +35,18 @@ struct WeakPointRow: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .foregroundColor(.orange)
                 .frame(width: 24)
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(weakPoint.muscleGroup)
                     .font(.headline)
-                
+
                 Text(weakPoint.recommendation)
                     .font(.caption)
                     .foregroundColor(themeManager.current.secondaryText)
             }
-            
+
             Spacer()
-            
+
             VStack(alignment: .trailing, spacing: 4) {
                 HStack(spacing: 4) {
                     Image(systemName: "calendar")
@@ -62,7 +56,7 @@ struct WeakPointRow: View {
                         .bold()
                 }
                 .foregroundColor(.orange)
-                
+
                 Text(LocalizedStringKey("\(Int(weakPoint.averageVolume)) kg avg"))
                     .font(.caption2)
                     .foregroundColor(themeManager.current.secondaryText)

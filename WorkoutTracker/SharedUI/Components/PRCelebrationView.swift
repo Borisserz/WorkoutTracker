@@ -1,13 +1,7 @@
-//
-//  PRCelebrationView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 2.04.26.
-//
+
 
 internal import SwiftUI
 
-// This view shows a celebration for a new Personal Record
 struct PRCelebrationView: View {
     let prLevel: PRLevel
     let onClose: () -> Void

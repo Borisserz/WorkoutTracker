@@ -2,6 +2,18 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>WorkoutTracker saves your completed workouts, burned calories, and body weight updates to Apple Health to keep your fitness records synced.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>WorkoutTracker reads your heart rate, sleep, and steps data from Apple Health to accurately calculate your CNS fatigue, muscle recovery, and daily activity rings.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>WorkoutTracker needs access to your photo library so you can choose a profile picture and attach before/after photos to track your physical progress over time.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>WorkoutTracker uses speech recognition to convert your voice into text, allowing you to ask the AI Coach questions hands-free during your workout.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>WorkoutTracker needs microphone access to hear your voice commands and communicate with the interactive AI Coach.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>WorkoutTracker uses the camera to track your exercise form in real-time, automatically count your reps, and take smart progress photos using hand gestures.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

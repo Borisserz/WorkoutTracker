@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Views/Overview/WorkoutCalendarView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -10,16 +8,14 @@ struct MiniWorkout: Sendable {
     let id: PersistentIdentifier
 }
 
-// MARK: - Main View
-
 struct WorkoutCalendarView: View {
-    
+
     enum TimeRange: String, CaseIterable {
         case month = "Month"
         case threeMonths = "3 Months"
         case year = "Year"
         case all = "All Time"
-        
+
         var days: Int {
             switch self {
             case .month: return 30
@@ -29,28 +25,28 @@ struct WorkoutCalendarView: View {
             }
         }
     }
-    
+
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     @State private var selectedTimeRange: TimeRange = .month
     @State private var totalWorkoutCount: Int = 0
-    
+
     @State private var workoutsByMonth: [Int: [MiniWorkout]] = [:]
     @State private var allMiniWorkouts: [MiniWorkout] = []
     @State private var oldestWorkoutDate: Date? = nil
     @State private var isLoaded: Bool = false
-    
+
     private var monthsToDisplay: [Date] {
         let calendar = Calendar.current
         let today = Date()
-        
+
         guard let startOfCurrentMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) else {
             return []
         }
-        
+
         let monthsToShow: Int
         switch selectedTimeRange {
         case .month:
@@ -67,14 +63,14 @@ struct WorkoutCalendarView: View {
                 monthsToShow = 1
             }
         }
-        
+
         var months: [Date] = []
         for i in 0..<monthsToShow {
             if let date = calendar.date(byAdding: .month, value: -i, to: startOfCurrentMonth) {
                 months.append(date)
             }
         }
-        
+
         return months
     }
 
@@ -82,7 +78,7 @@ struct WorkoutCalendarView: View {
         VStack(spacing: 0) {
             statsHeader
             Divider()
-            
+
             if isLoaded {
                 calendarList
             } else {
@@ -98,21 +94,21 @@ struct WorkoutCalendarView: View {
             loadCalendarData()
         }
     }
-    
+
     private func loadCalendarData() {
         let container = context.container
-        
+
         Task.detached(priority: .userInitiated) {
             let bgContext = ModelContext(container)
             let desc = FetchDescriptor<Workout>()
             let allWorkouts = (try? bgContext.fetch(desc)) ?? []
-            
+
             let miniWorkouts = allWorkouts.map { MiniWorkout(date: $0.date, id: $0.persistentModelID) }
             let oldest = miniWorkouts.min(by: { $0.date < $1.date })?.date
-            
+
             var dict: [Int: [MiniWorkout]] = [:]
             let calendar = Calendar.current
-            
+
             for mw in miniWorkouts {
                 let comps = calendar.dateComponents([.year, .month], from: mw.date)
                 if let y = comps.year, let m = comps.month {
@@ -120,7 +116,7 @@ struct WorkoutCalendarView: View {
                     dict[key, default: []].append(mw)
                 }
             }
-            
+
             await MainActor.run {
                 self.allMiniWorkouts = miniWorkouts
                 self.workoutsByMonth = dict
@@ -130,7 +126,7 @@ struct WorkoutCalendarView: View {
             }
         }
     }
-    
+
     private func updateWorkoutCount() {
         let calendar = Calendar.current
         let cutoff: Date
@@ -141,7 +137,7 @@ struct WorkoutCalendarView: View {
         }
         totalWorkoutCount = allMiniWorkouts.filter { $0.date >= cutoff }.count
     }
-    
+
     private var statsHeader: some View {
         VStack(spacing: 10) {
             Picker(LocalizedStringKey("Time Range"), selection: $selectedTimeRange) {
@@ -153,12 +149,12 @@ struct WorkoutCalendarView: View {
             .onChange(of: selectedTimeRange) { _, _ in
                 updateWorkoutCount()
             }
-            
+
             HStack(alignment: .lastTextBaseline) {
                 Text("\(totalWorkoutCount)")
                     .font(.system(size: 50, weight: .bold, design: .rounded))
                     .contentTransition(.numericText())
-                
+
                 Text(LocalizedStringKey("workouts done"))
                     .font(.headline)
                     .foregroundColor(themeManager.current.secondaryText)
@@ -169,7 +165,7 @@ struct WorkoutCalendarView: View {
         .padding()
         .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
     }
-    
+
     private var calendarList: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -187,7 +183,7 @@ struct WorkoutCalendarView: View {
                             let comps = Calendar.current.dateComponents([.year, .month], from: monthDate)
                             let key = (comps.year! * 100) + comps.month!
                             let monthWorkouts = workoutsByMonth[key] ?? []
-                            
+
                             MonthView(monthDate: monthDate, monthWorkouts: monthWorkouts)
                                 .id(index)
                         }
@@ -204,34 +200,31 @@ struct WorkoutCalendarView: View {
     }
 }
 
-// MARK: - Month Component
-// MARK: - Month Component
-
 struct MonthView: View {
     let monthDate: Date
     let monthWorkouts: [MiniWorkout]
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.modelContext) private var context
     @Environment(DIContainer.self) private var di
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible()), count: 7)
-    
+
     var monthTitle: String {
         monthDate.formatted(.dateTime.month(.wide).year())
     }
-    
+
     var daysInMonth: [Date] {
         guard let range = calendar.range(of: .day, in: .month, for: monthDate),
               let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthDate))
         else { return [] }
-        
+
         return range.compactMap { day -> Date? in
             calendar.date(byAdding: .day, value: day - 1, to: startOfMonth)
         }
     }
-    
+
     var firstDayOffset: Int {
         let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthDate))!
         let weekday = calendar.component(.weekday, from: startOfMonth)
@@ -241,26 +234,26 @@ struct MonthView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            // Красивый заголовок месяца
+
             Text(monthTitle)
                 .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundColor(themeManager.current.primaryAccent)
                 .textCase(.uppercase)
                 .padding(.leading, 8)
-            
+
             VStack(spacing: 16) {
                 weekDaysHeader
                 daysGrid
             }
         }
         .padding(20)
-        // Матовая подложка в стиле Apple
+
         .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(24)
         .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 15, x: 0, y: 5)
     }
-    
+
     private var weekDaysHeader: some View {
         HStack {
             ForEach(0..<7, id: \.self) { index in
@@ -272,52 +265,49 @@ struct MonthView: View {
             }
         }
     }
-    
+
     private var daysGrid: some View {
         LazyVGrid(columns: columns, spacing: 12) {
-            // Пустые ячейки для сдвига начала месяца
+
             ForEach(0..<firstDayOffset, id: \.self) { _ in
                 Color.clear.frame(height: 44)
             }
-            
-            // Дни месяца
+
             ForEach(daysInMonth, id: \.self) { date in
                 dayView(for: date)
             }
         }
     }
-    
+
     @ViewBuilder
     private func dayView(for date: Date) -> some View {
         if let mw = monthWorkouts.first(where: { calendar.isDate($0.date, inSameDayAs: date) }),
            let workout = context.model(for: mw.id) as? Workout {
-            
-            // Если есть тренировка — делаем кнопку для перехода
+
             NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
                 DayCell(date: date, isWorkout: true)
             }
             .buttonStyle(PlainButtonStyle())
-            
+
         } else {
-            // Обычный день без тренировки
+
             DayCell(date: date, isWorkout: false)
         }
     }
 }
 
-// MARK: - Day Cell Component
 struct DayCell: View {
     let date: Date
     let isWorkout: Bool
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
-    
+
     private var dayNumber: String { "\(Calendar.current.component(.day, from: date))" }
     private var isToday: Bool { Calendar.current.isDateInToday(date) }
-    
+
     var body: some View {
         VStack(spacing: 4) {
-            // Кружок с числом (Для сегодня - сплошной, для остальных - прозрачный)
+
             Text(dayNumber)
                 .font(.system(size: 16, weight: isToday || isWorkout ? .bold : .medium, design: .rounded))
                 .foregroundColor(textColor)
@@ -331,28 +321,26 @@ struct DayCell: View {
                         }
                     }
                 )
-            
-            // 👈 ИСПРАВЛЕНИЕ: Светящаяся синяя точка под тренировочным днем
+
             Circle()
                 .fill(isWorkout ? (isToday ? .white : themeManager.current.primaryAccent) : Color.clear)
                 .frame(width: 6, height: 6)
                 .shadow(color: isWorkout ? themeManager.current.primaryAccent.opacity(0.5) : .clear, radius: 3)
         }
-        .frame(height: 50) // Фиксируем высоту, чтобы сетка не прыгала
-        .contentShape(Rectangle()) // Чтобы кликалась вся зона
+        .frame(height: 50) 
+        .contentShape(Rectangle()) 
     }
-    
-    // Логика цвета текста
+
     private var textColor: Color {
         if isToday {
-            // На синем фоне сегодня текст всегда белый
+
             return .white
         }
         if isWorkout {
-            // Дни с тренировками ярче
+
             return colorScheme == .dark ? .white : .black
         }
-        // Обычные дни слегка приглушенные
+
         return colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5)
     }
 }

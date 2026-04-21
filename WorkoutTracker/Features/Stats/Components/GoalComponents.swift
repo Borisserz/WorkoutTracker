@@ -1,24 +1,18 @@
-//
-//  GoalComponents.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 6.04.26.
-//
+
 
 internal import SwiftUI
 import SwiftData
 
-// MARK: - Active Goal Card UI Redesign
 struct ActiveGoalCard: View {
     let goal: UserGoal?
     let currentValue: Double
     let onAddTapped: () -> Void
     let onDeleteTapped: () -> Void
     let onReplaceTapped: () -> Void
-    
+
     @Environment(UnitsManager.self) var unitsManager
     @Environment(ThemeManager.self) private var themeManager
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             if let goal = goal {
@@ -27,7 +21,7 @@ struct ActiveGoalCard: View {
                         Circle().fill(iconColor(for: goal.type).opacity(0.15)).frame(width: 48, height: 48)
                         Image(systemName: icon(for: goal.type)).font(.title3).foregroundColor(iconColor(for: goal.type))
                     }
-                    
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text(title(for: goal))
                             .font(.headline)
@@ -37,7 +31,7 @@ struct ActiveGoalCard: View {
                             .foregroundColor(themeManager.current.secondaryText)
                     }
                     Spacer()
-                    
+
                     Menu {
                         Button { onReplaceTapped() } label: { Label(LocalizedStringKey("Replace Goal"), systemImage: "arrow.triangle.2.circlepath") }
                         Button(role: .destructive) { onDeleteTapped() } label: { Label(LocalizedStringKey("Delete Goal"), systemImage: "trash") }
@@ -50,9 +44,9 @@ struct ActiveGoalCard: View {
                             .clipShape(Circle())
                     }
                 }
-                
+
                 let progress = calculateProgress(goal: goal, current: currentValue)
-                
+
                 VStack(spacing: 8) {
                     HStack {
                         Text(currentText(goal: goal))
@@ -65,13 +59,13 @@ struct ActiveGoalCard: View {
                             .font(.subheadline)
                             .foregroundColor(themeManager.current.secondaryText)
                     }
-                    
+
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule()
                                 .fill(Color.gray.opacity(0.15))
                                 .frame(height: 14)
-                            
+
                             Capsule()
                                 .fill(themeManager.current.primaryGradient)
                                 .frame(width: max(0, geo.size.width * CGFloat(progress)), height: 14)
@@ -80,7 +74,7 @@ struct ActiveGoalCard: View {
                     }
                     .frame(height: 14)
                 }
-                
+
                 HStack {
                     Spacer()
                     Text(daysLeft(from: goal.targetDate))
@@ -92,9 +86,9 @@ struct ActiveGoalCard: View {
                         .foregroundColor(themeManager.current.primaryAccent)
                         .clipShape(Capsule())
                 }
-                
+
             } else {
-                // Empty state
+
                 VStack(alignment: .leading, spacing: 12) {
                     Text(LocalizedStringKey("Challenge yourself"))
                         .font(.headline)
@@ -102,7 +96,7 @@ struct ActiveGoalCard: View {
                     Text(LocalizedStringKey("Define your next goal to lock in."))
                         .font(.subheadline)
                         .foregroundColor(themeManager.current.secondaryText)
-                    
+
                     Button(action: {
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
@@ -180,7 +174,6 @@ struct ActiveGoalCard: View {
     }
 }
 
-// MARK: - Goal Selection Sheet (Без изменений, оставляем для полноты файла)
 struct GoalSelectionSheet: View {
     @Environment(\.dismiss) var dismiss
     var onGoalCreated: () -> Void
@@ -189,7 +182,7 @@ struct GoalSelectionSheet: View {
     @State private var navigateToStrength = false
     @State private var navigateToBodyweight = false
     @State private var navigateToConsistency = false
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -201,7 +194,7 @@ struct GoalSelectionSheet: View {
                         color: themeManager.current.primaryAccent,
                         action: { navigateToStrength = true }
                     )
-                    
+
                     goalTypeCard(
                         title: "Bodyweight Goal",
                         subtitle: "Transform your body and reach your target weight!",
@@ -209,7 +202,7 @@ struct GoalSelectionSheet: View {
                         color: .purple,
                         action: { navigateToBodyweight = true }
                     )
-                    
+
                     goalTypeCard(
                         title: "Consistency Goal",
                         subtitle: "Build momentum with workout streaks!",
@@ -240,7 +233,7 @@ struct GoalSelectionSheet: View {
         }
         .presentationDetents([.fraction(0.85), .large])
     }
-    
+
     private func goalTypeCard(title: LocalizedStringKey, subtitle: LocalizedStringKey, icon: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: {
             let generator = UISelectionFeedbackGenerator()
@@ -256,22 +249,22 @@ struct GoalSelectionSheet: View {
                         .font(.title2)
                         .foregroundColor(color)
                 }
-                
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text(title)
                         .font(.headline)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // <--- АДАПТАЦИЯ
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // <--- АДАПТАЦИЯ
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
                         .multilineTextAlignment(.leading)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryAccent.opacity(0.5) : .gray.opacity(0.5)) // <--- АДАПТАЦИЯ
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryAccent.opacity(0.5) : .gray.opacity(0.5)) 
             }
             .padding()
-            // <--- АДАПТАЦИЯ ФОНА КАРТОЧКИ
+
             .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
             .cornerRadius(16)
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
@@ -279,32 +272,30 @@ struct GoalSelectionSheet: View {
         }
         .buttonStyle(.plain)
     }
-    
-    // MARK: - Goal Setup Detail Form
+
     struct GoalSetupDetailView: View {
         let type: GoalType
         var onComplete: () -> Void
-        
+
         @Environment(\.modelContext) private var context
         @Environment(UnitsManager.self) var unitsManager
         @Environment(DashboardViewModel.self) var dashboardViewModel
-        
+
         @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var currentBodyWeight = 75.0
-        
-        // ✅ 1. Добавляем стейт для хранения списка упражнений
+
         @State private var availableExercises: [String] = []
-        
+
         @State private var targetWeightString: String = ""
         @State private var targetDays: Int = 10
         @State private var targetReps: Int = 1
         @State private var targetDate: Date = Calendar.current.date(byAdding: .month, value: 1, to: Date())!
-        @State private var selectedExercise: String = "" // Оставляем пустым до загрузки
+        @State private var selectedExercise: String = "" 
         @Environment(ThemeManager.self) private var themeManager
         var body: some View {
             Form {
                 Section(header: Text(LocalizedStringKey("Goal Parameters"))) {
                     if type == .strength {
-                        // ✅ 2. Используем локальный массив availableExercises
+
                         Picker(LocalizedStringKey("Exercise"), selection: $selectedExercise) {
                             if availableExercises.isEmpty {
                                 Text("Loading...").tag("")
@@ -317,7 +308,7 @@ struct GoalSelectionSheet: View {
                         .pickerStyle(.menu)
                         .tint(themeManager.current.primaryAccent)
                     }
-                    
+
                     if type == .strength || type == .bodyweight {
                         HStack {
                             Text(LocalizedStringKey("Target (\(unitsManager.weightUnitString()))"))
@@ -328,8 +319,7 @@ struct GoalSelectionSheet: View {
                                 .foregroundColor(themeManager.current.primaryAccent)
                                 .bold()
                         }
-                        
-                        // ✅ СТЕППЕР ДЛЯ ПОВТОРЕНИЙ (Только для силы)
+
                         if type == .strength {
                             Stepper(value: $targetReps, in: 1...50) {
                                 HStack {
@@ -353,11 +343,11 @@ struct GoalSelectionSheet: View {
                         }
                     }
                 }
-                
+
                 Section(header: Text(LocalizedStringKey("Deadline")), footer: Text(LocalizedStringKey("Set a realistic date to achieve your goal."))) {
                     DatePicker(LocalizedStringKey("Target Date"), selection: $targetDate, in: Date()..., displayedComponents: .date)
                 }
-                
+
                 Section {
                     Button(action: saveGoal) {
                         Text(LocalizedStringKey("Set Goal"))
@@ -366,22 +356,20 @@ struct GoalSelectionSheet: View {
                             .foregroundColor(themeManager.current.background)
                     }
                     .listRowBackground(themeManager.current.primaryAccent)
-                    .disabled(type == .strength && selectedExercise.isEmpty) // Защита
+                    .disabled(type == .strength && selectedExercise.isEmpty) 
                 }
             }
             .navigationTitle(type.rawValue.capitalized)
-            // ✅ 3. Загружаем данные асинхронно при появлении вью
+
             .task {
                 let catalog = await ExerciseDatabaseService.shared.getCatalog()
-                
-                // Фильтруем основные группы для целей (грудь, спина, ноги)
+
                 let pool = (catalog["Chest"] ?? []) + (catalog["Back"] ?? []) + (catalog["Legs"] ?? [])
                 let sortedPool = Array(Set(pool)).sorted()
-                
+
                 await MainActor.run {
                     self.availableExercises = sortedPool
-                    
-                    // Теперь, когда данные есть, настраиваем начальные значения
+
                     if type == .strength {
                         if selectedExercise.isEmpty {
                             selectedExercise = availableExercises.first ?? "Bench Press"
@@ -394,11 +382,11 @@ struct GoalSelectionSheet: View {
                 }
             }
         }
-        
+
         private func saveGoal() {
             let startingVal: Double
             let targetVal: Double
-            
+
             switch type {
             case .strength:
                 startingVal = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
@@ -410,19 +398,19 @@ struct GoalSelectionSheet: View {
                 startingVal = Double(WidgetDataManager.load().streak)
                 targetVal = Double(targetDays)
             }
-            
+
             let newGoal = UserGoal(
                 type: type,
                 targetValue: targetVal,
                 startingValue: startingVal,
                 targetDate: targetDate,
                 exerciseName: type == .strength ? selectedExercise : nil,
-                targetReps: type == .strength ? targetReps : 1 // ✅ Сохраняем повторения
+                targetReps: type == .strength ? targetReps : 1 
             )
-            
+
             context.insert(newGoal)
             try? context.save()
-            
+
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
             onComplete()

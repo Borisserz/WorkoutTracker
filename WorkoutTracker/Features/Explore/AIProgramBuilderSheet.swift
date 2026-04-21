@@ -1,10 +1,7 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Explore/AIProgramBuilderSheet.swift
-// ============================================================
+
 
 internal import SwiftUI
 
-// Вспомогательные расширения для UI
 extension ProgramGoal {
     var icon: String {
         switch self {
@@ -27,21 +24,21 @@ struct AIProgramBuilderSheet: View {
     @Environment(DIContainer.self) private var di
     @Environment(PresetService.self) private var presetService
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 Адаптация
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     @State private var viewModel: AIProgramBuilderViewModel
-    
+
     init(aiLogicService: AILogicService) {
         _viewModel = State(initialValue: AIProgramBuilderViewModel(aiLogicService: aiLogicService))
     }
-    
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Адаптивный фон: темно-серый в светлой теме, глубокий фон в темной
+
                 (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
                     .ignoresSafeArea()
-                
+
                 switch viewModel.state {
                 case .idle, .error:
                     configuratorView
@@ -70,39 +67,36 @@ struct AIProgramBuilderSheet: View {
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(viewModel.state.isLoading || viewModel.isSaving)
     }
-    
-    // MARK: - 1. CONFIGURATOR VIEW (Control Panel)
+
     private var configuratorView: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 32) {
-                
-                // Заголовок
+
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Создайте свой сплит")
+                    Text("Create Your Split")
                         .font(.system(size: 32, weight: .heavy, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? .white : .black)
-                    Text("Укажите параметры, и ИИ соберет идеальную многодневную программу тренировок.")
+                    Text("Set parameters and AI will build your perfect multi-day program.")
                         .font(.subheadline)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
-                
+
                 if case .error(let msg) = viewModel.state {
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill")
-                        Text("Ошибка: \(msg)")
+                        Text("Error: \(msg)")
                     }
                     .font(.caption).foregroundColor(.red)
                     .padding().frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.red.opacity(0.1)).cornerRadius(12)
                     .padding(.horizontal, 20)
                 }
-                
-                // БЛОК 1: ЦЕЛЬ (Карточки)
+
                 VStack(alignment: .leading, spacing: 16) {
-                    sectionHeader(title: "1. Главная цель", icon: "target")
-                    
+                    sectionHeader(title: "1. Main Goal", icon: "target")
+
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 12) {
                             Spacer().frame(width: 8)
@@ -119,15 +113,14 @@ struct AIProgramBuilderSheet: View {
                         }
                     }
                 }
-                
-                // БЛОК 2: ПАРАМЕТРЫ (Тактильные кнопки)
+
                 VStack(alignment: .leading, spacing: 16) {
-                    sectionHeader(title: "2. Параметры", icon: "slider.horizontal.3")
-                    
+                    sectionHeader(title: "2. Parameters", icon: "slider.horizontal.3")
+
                     VStack(alignment: .leading, spacing: 20) {
-                        // Расписание
+
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Дней в неделю").font(.subheadline).foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
+                            Text("Days per Week").font(.subheadline).foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
                             HStack(spacing: 10) {
                                 ForEach(2...6, id: \.self) { day in
                                     let isSelected = viewModel.daysPerWeek == day
@@ -147,12 +140,11 @@ struct AIProgramBuilderSheet: View {
                                 }
                             }
                         }
-                        
+
                         Divider().opacity(0.5)
-                        
-                        // Уровень
+
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Уровень подготовки").font(.subheadline).foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
+                            Text("Experience Level").font(.subheadline).foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
                             HStack {
                                 ForEach(ProgramLevel.allCases) { lvl in
                                     let isSelected = viewModel.level == lvl
@@ -173,12 +165,11 @@ struct AIProgramBuilderSheet: View {
                                 }
                             }
                         }
-                        
+
                         Divider().opacity(0.5)
-                        
-                        // Оборудование
+
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Оборудование").font(.subheadline).foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
+                            Text("Equipment").font(.subheadline).foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
                             HStack {
                                 ForEach(ProgramEquipment.allCases) { eq in
                                     let isSelected = viewModel.equipment == eq
@@ -208,19 +199,18 @@ struct AIProgramBuilderSheet: View {
                     .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 10, y: 5)
                     .padding(.horizontal, 20)
                 }
-                
-                // БЛОК 3: МЫШЦЫ (Светофор)
+
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
-                        sectionHeader(title: "3. Фокус мышц", icon: "figure.arms.open")
+                        sectionHeader(title: "3. Muscle Focus", icon: "figure.arms.open")
                         Spacer()
                     }
-                    
-                    Text("Нажимайте на группы мышц. Один клик — фокус (рост), два клика — исключить (травма).")
+
+                    Text("Tap muscle groups. One tap: focus (growth), two taps: exclude (injury).")
                         .font(.caption)
                         .foregroundColor(colorScheme == .dark ? .gray : .secondary)
                         .padding(.horizontal, 20)
-                    
+
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                         ForEach(viewModel.availableMuscles, id: \.self) { muscle in
                             muscleTriStateButton(muscle: muscle)
@@ -228,18 +218,18 @@ struct AIProgramBuilderSheet: View {
                     }
                     .padding(.horizontal, 20)
                 }
-                
+
                 Spacer(minLength: 120)
             }
         }
-        // ПЛАВАЮЩАЯ КНОПКА ГЕНЕРАЦИИ
+
         .safeAreaInset(edge: .bottom) {
             Button {
                 Task { await viewModel.generateProgram() }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "wand.and.stars").font(.title3)
-                    Text("Сгенерировать программу").font(.headline).bold()
+                    Text("Generate Program").font(.headline).bold()
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
@@ -259,8 +249,7 @@ struct AIProgramBuilderSheet: View {
             )
         }
     }
-    
-    // Вспомогательный заголовок секции
+
     private func sectionHeader(title: String, icon: String) -> some View {
         HStack(spacing: 8) {
             Image(systemName: icon).foregroundColor(themeManager.current.primaryAccent)
@@ -268,15 +257,14 @@ struct AIProgramBuilderSheet: View {
         }
         .padding(.horizontal, 20)
     }
-    
-    // Карточка цели
+
     private struct GoalSelectionCard: View {
         let goal: ProgramGoal
         let isSelected: Bool
         let action: () -> Void
         @Environment(\.colorScheme) private var colorScheme
         @Environment(ThemeManager.self) private var themeManager
-        
+
         var body: some View {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: 12) {
@@ -298,12 +286,11 @@ struct AIProgramBuilderSheet: View {
             .buttonStyle(.plain)
         }
     }
-    
-    // Кнопка выбора мышц
+
     @ViewBuilder
     private func muscleTriStateButton(muscle: String) -> some View {
         let state = viewModel.muscleStates[muscle] ?? .neutral
-        
+
         Button {
             let gen = UISelectionFeedbackGenerator()
             gen.selectionChanged()
@@ -328,8 +315,7 @@ struct AIProgramBuilderSheet: View {
         }
         .buttonStyle(.plain)
     }
-    
-    // MARK: - 2. LOADING VIEW
+
     private var loadingView: some View {
         VStack(spacing: 30) {
             ZStack {
@@ -337,13 +323,13 @@ struct AIProgramBuilderSheet: View {
                     .fill(themeManager.current.primaryGradient)
                     .frame(width: 100, height: 100)
                     .blur(radius: 20)
-                    .modifier(PulsatingGlowEffect()) // Твой эффект из других экранов
-                
+                    .modifier(PulsatingGlowEffect()) 
+
                 Image(systemName: "cpu")
                     .font(.system(size: 40))
                     .foregroundColor(.white)
             }
-            
+
             VStack(spacing: 8) {
                 Text("Анализирую данные...")
                     .font(.title2).bold()
@@ -356,24 +342,22 @@ struct AIProgramBuilderSheet: View {
             }
         }
     }
-    
-    // MARK: - 3. RESULT VIEW
+
     private func resultView(dto: GeneratedProgramDTO) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
-                
-                // Успех
+
                 VStack(spacing: 12) {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 60))
                         .foregroundStyle(themeManager.current.primaryGradient)
                         .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.5), radius: 15, y: 5)
-                    
+
                     Text(dto.title)
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .multilineTextAlignment(.center)
-                    
+
                     Text(dto.description)
                         .font(.subheadline)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
@@ -381,14 +365,13 @@ struct AIProgramBuilderSheet: View {
                         .padding(.horizontal, 20)
                 }
                 .padding(.top, 30)
-                
-                // Дни расписания
+
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Расписание")
                         .font(.title3).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .padding(.horizontal, 24)
-                    
+
                     VStack(spacing: 12) {
                         ForEach(Array(dto.schedule.enumerated()), id: \.element.dayName) { index, day in
                             HStack(spacing: 16) {
@@ -396,13 +379,13 @@ struct AIProgramBuilderSheet: View {
                                     Circle().fill(themeManager.current.primaryAccent.opacity(0.15)).frame(width: 46, height: 46)
                                     Text("\(index + 1)").font(.system(size: 16, weight: .black, design: .rounded)).foregroundColor(themeManager.current.primaryAccent)
                                 }
-                                
+
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(day.dayName).font(.subheadline).bold().foregroundColor(themeManager.current.primaryAccent)
                                     Text(day.focus).font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
                                 }
                                 Spacer()
-                                Text("\(day.exercises.count) упр.")
+                                Text("\(day.exercises.count) exercises")
                                     .font(.caption).bold()
                                     .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color(UIColor.systemGray6))
@@ -418,7 +401,7 @@ struct AIProgramBuilderSheet: View {
                         }
                     }
                 }
-                
+
                 Spacer(minLength: 120)
             }
             .padding(.vertical)
@@ -436,7 +419,7 @@ struct AIProgramBuilderSheet: View {
                         ProgressView().tint(.white)
                     } else {
                         Image(systemName: "square.and.arrow.down.fill").font(.title3)
-                        Text("Сохранить в мои программы").font(.headline).bold()
+                        Text("Save to My Programs").font(.headline).bold()
                     }
                 }
                 .foregroundColor(.white)
@@ -458,13 +441,12 @@ struct AIProgramBuilderSheet: View {
             )
         }
     }
-    
-    // MARK: - Helpers
+
     private func triStateBackground(_ state: MuscleTargetState) -> Color {
         switch state {
         case .neutral: return colorScheme == .dark ? themeManager.current.surface : Color.white
-        case .grow: return Color.green.opacity(0.15) // Акцент на рост
-        case .exclude: return Color.red.opacity(0.15) // Исключить
+        case .grow: return Color.green.opacity(0.15) 
+        case .exclude: return Color.red.opacity(0.15) 
         }
     }
     private func triStateForeground(_ state: MuscleTargetState) -> Color {
@@ -482,7 +464,6 @@ struct AIProgramBuilderSheet: View {
         }
     }
 }
-// MARK: - Helper Extensions & Models
 
 extension AIBuilderState {
     var isLoading: Bool {

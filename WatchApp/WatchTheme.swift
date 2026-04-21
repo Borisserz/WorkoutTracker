@@ -1,17 +1,16 @@
-// ============================================================
-// FILE: WatchApp/Theme/WatchTheme.swift
-// ============================================================
+
+
 internal import SwiftUI
 
 struct WatchTheme {
     static let background = Color.black
-    static let cardBackground = Color(white: 0.15) // Темно-серый для карточек
-    static let buttonGray = Color(white: 0.25)     // Серый для кнопок (Skip, Add Exercise)
-    
-    static let cyan = Color(red: 0.2, green: 0.8, blue: 0.9) // Цвет текста и обводки
-    static let green = Color(red: 0.2, green: 0.85, blue: 0.3) // Кнопка Log Set
-    static let blue = Color(red: 0.0, green: 0.5, blue: 1.0) // Кнопка Finish / Save
-    static let red = Color(red: 0.9, green: 0.2, blue: 0.2) // Кнопка Discard
+    static let cardBackground = Color(white: 0.15) 
+    static let buttonGray = Color(white: 0.25)     
+
+    static let cyan = Color(red: 0.2, green: 0.8, blue: 0.9) 
+    static let green = Color(red: 0.2, green: 0.85, blue: 0.3) 
+    static let blue = Color(red: 0.0, green: 0.5, blue: 1.0) 
+    static let red = Color(red: 0.9, green: 0.2, blue: 0.2) 
 }
 
 struct WatchRPEHelper {

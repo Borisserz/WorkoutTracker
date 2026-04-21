@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Explore/Models/WorkoutProgramModels.swift
-// ============================================================
+
 
 import Foundation
 internal import SwiftUI
@@ -27,7 +25,7 @@ enum ProgramEquipment: String, CaseIterable, Identifiable, Sendable {
     case dumbbells = "Dumbbells Only"
     case bodyweight = "Bodyweight"
     var id: String { rawValue }
-    
+
     var icon: String {
         switch self {
         case .fullGym: return "dumbbell.fill"
@@ -49,16 +47,14 @@ struct WorkoutProgramDefinition: Identifiable, Sendable {
     let routines: [WorkoutPresetDTO]
 }
 
-// MARK: - Expanded Mock Catalog
 @MainActor
 struct MockProgramCatalog {
     static let shared = MockProgramCatalog()
     private var theme: AppTheme { ThemeManager.shared.current }
-    
+
     var programs: [WorkoutProgramDefinition] {
         [
-            // MARK: - MULTI-DAY PROGRAMS
-            
+
             WorkoutProgramDefinition(
                 title: "Beginner PPL",
                 description: "The ultimate Push/Pull/Legs split designed to build a solid foundation of muscle and strength.",
@@ -91,7 +87,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "PHUL Hypertrophy",
                 description: "Power Hypertrophy Upper Lower. A 4-day split maximizing both raw strength and muscle hypertrophy.",
@@ -130,7 +126,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Advanced Bro Split",
                 description: "The classic 5-day bodybuilding split. Destroy one muscle group per day with extreme volume.",
@@ -172,7 +168,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "StrongLifts 5x5",
                 description: "The ultimate beginner strength program. Focus on heavy compound movements 3 days a week to build a massive foundation.",
@@ -194,7 +190,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Golden Era High Volume",
                 description: "A high-volume, 6-day split favored by the Austrian Oak. Chest & Back, Shoulders & Arms, Legs. Repeat.",
@@ -227,7 +223,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Glute Builder & Core",
                 description: "Maximize lower body hypertrophy and core strength while keeping the upper body toned. Perfect for aesthetic goals.",
@@ -258,7 +254,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Dumbbell Warrior",
                 description: "No gym? No problem. A complete full-body hypertrophy program using only dumbbells. Great for home workouts.",
@@ -284,7 +280,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Classic 3-Day Mass Split",
                 description: "A time-tested 3-day split (Back/Biceps, Legs/Shoulders, Chest/Triceps) perfect for building foundational mass and strength.",
@@ -318,7 +314,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Power & Pump: Phase 1",
                 description: "Advanced periodization. Heavy strength focus on Chest, Legs, and Shoulders. Hypertrophy pump for Back and Arms.",
@@ -354,7 +350,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Power & Pump: Phase 2",
                 description: "Advanced periodization. Heavy strength focus on Back and Arms. Hypertrophy pump for Chest, Legs, and Shoulders.",
@@ -391,9 +387,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
-            // MARK: - SINGLE ROUTINES
-            
+
             WorkoutProgramDefinition(
                 title: "Classic Foundation Six",
                 description: "A legendary full-body single routine. Arnold Schwarzenegger used this to build his early mass.",
@@ -413,7 +407,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Madcow 5x5",
                 description: "A single heavy session focused entirely on the big three compound lifts for maximum nervous system output.",
@@ -430,7 +424,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "Quick Home Shred",
                 description: "High-intensity dumbbell and bodyweight circuit. Burn fat and keep muscle without stepping foot in a gym.",
@@ -449,7 +443,7 @@ struct MockProgramCatalog {
                     ])
                 ]
             ),
-            
+
             WorkoutProgramDefinition(
                 title: "1000-Ton Leg Day",
                 description: "Warning: Extremely high volume leg day. Not for the faint of heart. Expect severe DOMS.",
@@ -471,12 +465,11 @@ struct MockProgramCatalog {
             )
         ]
     }
-        
-    // MARK: - Builders
+
     private func routine(_ name: String, icon: String, exercises: [ExerciseDTO]) -> WorkoutPresetDTO {
         WorkoutPresetDTO(name: name, icon: icon, folderName: nil, exercises: exercises)
     }
-    
+
     private func ex(_ name: String, _ group: String, _ sets: Int, _ reps: Int) -> ExerciseDTO {
         let setList = (1...sets).map { i in
             if reps >= 60 {
@@ -485,7 +478,7 @@ struct MockProgramCatalog {
                 return WorkoutSetDTO(index: i, weight: 0, reps: reps, distance: nil, time: nil, isCompleted: false, type: .normal)
             }
         }
-        
+
         let type: ExerciseType = reps >= 60 ? .duration : .strength
         return ExerciseDTO(
             name: name,

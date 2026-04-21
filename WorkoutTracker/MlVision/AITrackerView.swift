@@ -1,7 +1,4 @@
-//
-//  AITrackerView.swift
-//  WorkoutTracker
-//
+
 
 internal import SwiftUI
 import AVFoundation
@@ -9,30 +6,27 @@ import Vision
 struct AITrackerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ThemeManager.self) private var themeManager
-    
+
     @StateObject private var cameraManager = CameraManager()
     @StateObject private var engine: AITrackerEngine
     @AppStorage("userGender") private var userGender = "male"
     @StateObject private var gestureCtrl = GestureController()
     @StateObject private var coach = VoiceCoach()
-    
+
     @State private var repScale: CGFloat = 1.0
-    
+
     var onFinish: ((Int) -> Void)?
-    
-    // 1. ДОБАВЛЯЕМ СВОЙСТВО ДЛЯ ХРАНЕНИЯ ИМЕНИ
+
     let exerciseName: String
-    
-    // 2. ИСПОЛЬЗУЕМ СОХРАНЕННОЕ ИМЯ (а не engine.exerciseName)
-    // 2. ИСПОЛЬЗУЕМ ДОМЕННУЮ МОДЕЛЬ
+
         private var isBackExercise: Bool {
             MuscleMapping.isBackFacing(exerciseName: exerciseName)
         }
-    
+
     init(exerciseName: String, onFinish: ((Int) -> Void)? = nil) {
-        // 3. СОХРАНЯЕМ ИМЯ ПРИ ИНИЦИАЛИЗАЦИИ
+
         self.exerciseName = exerciseName
-        
+
         _engine = StateObject(wrappedValue: AITrackerEngine(exerciseName: exerciseName))
         self.onFinish = onFinish
     }
@@ -41,10 +35,10 @@ struct AITrackerView: View {
         ZStack {
             CameraPreview(session: cameraManager.session)
                 .ignoresSafeArea()
-            
+
             PoseOverlayView(joints: cameraManager.joints)
                 .ignoresSafeArea()
-            
+
             VStack {
                 LinearGradient(colors: [.black.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom)
                     .frame(height: 150)
@@ -53,30 +47,29 @@ struct AITrackerView: View {
                     .frame(height: 250)
             }
             .ignoresSafeArea()
-            
+
             VStack {
                 topHUD
                 Spacer()
-                
+
                 HStack(alignment: .bottom) {
                     liveMusclePiP
                     Spacer()
                     gestureHUD
                 }
                 .padding(.bottom, 10)
-                
+
                 finishButton
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
         }
         .navigationBarHidden(true)
-               // ✅ ГЛАВНОЕ ИЗМЕНЕНИЕ: Использование .task вместо .onAppear
+
                .task {
-                   // 1. Асинхронно достаем профиль из 800+ упражнений
+
                    await engine.setup()
-                   
-                   // 2. Включаем камеру
+
                    cameraManager.checkPermission()
                    coach.speak("Ready. Let's go!")
                }
@@ -101,10 +94,9 @@ struct AITrackerView: View {
                     if confirmed {
                         coach.speak("Set completed! Great job.")
                         onFinish?(engine.repsCount)
-                        
-                        // ✅ Рефакторинг: Использование Task и проверки на отмену
+
                         Task { @MainActor in
-                            // Используем iOS 16+ синтаксис (поскольку таргет iOS 17+)
+
                             try? await Task.sleep(for: .seconds(1.5))
                             guard !Task.isCancelled else { return }
                             dismiss()
@@ -114,8 +106,7 @@ struct AITrackerView: View {
                 .onChange(of: gestureCtrl.didCancelSet) { canceled in
                     if canceled {
                         coach.speak("Tracker canceled.")
-                        
-                        // ✅ Рефакторинг: Использование Task
+
                         Task { @MainActor in
                             try? await Task.sleep(for: .seconds(1.0))
                             guard !Task.isCancelled else { return }
@@ -125,17 +116,14 @@ struct AITrackerView: View {
                 }
                 .onChange(of: engine.vbtWarningTriggered) { triggered in
                            if triggered {
-                               // Магия для профессионалов: AI детектит отказ по скорости штанги
+
                                coach.speak("Bar speed dropping! Last two reps, push!")
-                               
-                               // Легкий тактильный импульс для юзера
+
                                let generator = UINotificationFeedbackGenerator()
                                generator.notificationOccurred(.warning)
                            }
                        }
     }
-    
-    // MARK: - Live Muscle Activation UI
 
         @ViewBuilder
     private var liveMusclePiP: some View {
@@ -157,7 +145,7 @@ struct AITrackerView: View {
             .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
             .animation(.easeInOut(duration: 0.1), value: engine.liveMuscleTension)
         }
-    // MARK: - Gesture UI
+
     @ViewBuilder
     private var gestureHUD: some View {
         if gestureCtrl.activeGesture != .none {
@@ -165,14 +153,14 @@ struct AITrackerView: View {
                 Circle()
                     .stroke(Color.white.opacity(0.2), lineWidth: 8)
                     .frame(width: 80, height: 80)
-                
+
                 Circle()
                     .trim(from: 0.0, to: CGFloat(gestureCtrl.gestureProgress))
                     .stroke(gestureCtrl.activeGesture == .victory ? Color.green : Color.red, style: StrokeStyle(lineWidth: 8, lineCap: .round))
                     .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 0.1), value: gestureCtrl.gestureProgress)
-                
+
                 if gestureCtrl.activeGesture == .victory {
                     Text("✌️")
                         .font(.system(size: 38))
@@ -188,8 +176,7 @@ struct AITrackerView: View {
             Color.clear.frame(width: 80, height: 80)
         }
     }
-    
-    // MARK: - HUDs
+
     private var topHUD: some View {
         VStack(spacing: 8) {
             Text("\(engine.repsCount)")
@@ -198,13 +185,13 @@ struct AITrackerView: View {
                 .contentTransition(.numericText(value: Double(engine.repsCount)))
                 .scaleEffect(repScale)
                 .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 5)
-            
+
             HStack(spacing: 8) {
                 Circle()
                     .fill(engine.isTrackingAction ? themeManager.current.primaryAccent : Color.white.opacity(0.5))
                     .frame(width: 10, height: 10)
                     .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
-                
+
                 Text(LocalizedStringKey(engine.feedbackMessage))
                                     .font(.title3)
                                     .fontWeight(.bold)
@@ -228,7 +215,7 @@ struct AITrackerView: View {
         .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
         .padding(.top, 10)
     }
-    
+
     private var finishButton: some View {
         Button(action: {
             let generator = UINotificationFeedbackGenerator()
@@ -252,7 +239,7 @@ struct AITrackerView: View {
         }
         .padding(.bottom, 20)
     }
-    
+
     private func feedbackColor(for message: String) -> Color {
             let lowercased = message.lowercased()
             if lowercased.contains("occluded") || lowercased.contains("adjust") {
@@ -263,7 +250,7 @@ struct AITrackerView: View {
                 return .white
             }
         }
-    
+
     private func triggerRepAnimation() {
         let generator = UIImpactFeedbackGenerator(style: .heavy)
         generator.impactOccurred()

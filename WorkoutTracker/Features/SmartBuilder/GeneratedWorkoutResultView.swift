@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/SmartBuilder/GeneratedWorkoutResultView.swift
-// ============================================================
+
 
 internal import SwiftUI
 
@@ -10,10 +8,9 @@ struct GeneratedWorkoutResultView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
     @StateObject private var colorManager = MuscleColorManager.shared
-    
-    // Передаем правильный DTO!
+
     var onStart: ([ExerciseDTO]) -> Void
-    
+
     private var muscleDistribution: [(String, Double)] {
         var totalSets: Int = 0
         for ex in vm.generatedExercises {
@@ -21,13 +18,13 @@ struct GeneratedWorkoutResultView: View {
         }
         guard totalSets > 0 else { return [] }
         let totalSetsDouble = Double(totalSets)
-        
+
         var counts: [String: Int] = [:]
         for ex in vm.generatedExercises {
             let setsCount = (ex.setsList ?? []).count
             counts[ex.muscleGroup, default: 0] += setsCount
         }
-        
+
         var result: [(String, Double)] = []
         for (muscle, count) in counts {
             let percentage = (Double(count) / totalSetsDouble) * 100.0
@@ -36,11 +33,11 @@ struct GeneratedWorkoutResultView: View {
         result.sort { $0.1 > $1.1 }
         return result
     }
-    
+
     var body: some View {
         ZStack(alignment: .bottom) {
             backgroundLayer
-            
+
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     headerSection
@@ -49,15 +46,13 @@ struct GeneratedWorkoutResultView: View {
                 }
                 .padding(.bottom, 120)
             }
-            
+
             floatingStartButton
         }
-        .navigationTitle("Ваша программа")
+        .navigationTitle("Your Program")
         .navigationBarTitleDisplayMode(.inline)
     }
-    
-    // MARK: - View Components
-    
+
     private var backgroundLayer: some View {
         Group {
             if colorScheme == .dark {
@@ -68,27 +63,27 @@ struct GeneratedWorkoutResultView: View {
         }
         .ignoresSafeArea()
     }
-    
+
     private var headerSection: some View {
         VStack(spacing: 8) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 50))
                 .foregroundStyle(themeManager.current.primaryGradient)
                 .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 10, y: 5)
-            
-            Text("Рутина готова")
+
+            Text("Routine Ready")
                 .font(.system(size: 32, weight: .heavy, design: .rounded))
                 .foregroundColor(colorScheme == .dark ? .white : .black)
         }
         .padding(.top, 20)
     }
-    
+
     private var muscleFocusSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Мышечный фокус")
+            Text("Muscle Focus")
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
-            
+
             VStack(spacing: 16) {
                 ForEach(muscleDistribution, id: \.0) { item in
                     muscleRow(name: item.0, percentage: item.1)
@@ -105,19 +100,19 @@ struct GeneratedWorkoutResultView: View {
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.08), radius: 10, y: 5)
         .padding(.horizontal, 20)
     }
-    
+
     @ViewBuilder
     private func muscleRow(name: String, percentage: Double) -> some View {
         let muscleColor = colorManager.getColor(for: MuscleCategoryMapper.getBroadCategory(for: name))
         let widthFactor = CGFloat(percentage / 100.0)
-        
+
         HStack(spacing: 12) {
             Text(LocalizedStringKey(name))
                 .font(.subheadline)
                 .fontWeight(.bold)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .frame(width: 80, alignment: .leading)
-            
+
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
@@ -129,21 +124,21 @@ struct GeneratedWorkoutResultView: View {
                 }
             }
             .frame(height: 10)
-            
+
             Text("\(Int(percentage))%")
                 .font(.caption).bold()
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .frame(width: 40, alignment: .trailing)
         }
     }
-    
+
     private var exerciseListSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Упражнения")
+            Text("Exercises")
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .padding(.horizontal, 20)
-            
+
             VStack(spacing: 12) {
                 ForEach(Array(vm.generatedExercises.enumerated()), id: \.element.name) { index, ex in
                     exerciseCard(index: index, ex: ex)
@@ -152,17 +147,16 @@ struct GeneratedWorkoutResultView: View {
             .padding(.horizontal, 20)
         }
     }
-    
-    // ✅ ИСПРАВЛЕНИЕ ТИПА: Заменено с GeneratedExerciseDTO на ExerciseDTO
+
     @ViewBuilder
     private func exerciseCard(index: Int, ex: ExerciseDTO) -> some View {
         let muscleColor = colorManager.getColor(for: MuscleCategoryMapper.getBroadCategory(for: ex.muscleGroup))
         let safeSets = ex.setsList ?? []
         let reps = safeSets.first?.reps ?? 10
         let weight = safeSets.first?.weight ?? 0.0
-        
+
         HStack(spacing: 16) {
-            // Номер
+
             ZStack {
                 Circle()
                     .fill(muscleColor.opacity(0.15))
@@ -171,36 +165,34 @@ struct GeneratedWorkoutResultView: View {
                     .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundColor(muscleColor)
             }
-            
-            // Название и группа
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizationHelper.shared.translateName(ex.name))
                     .font(.headline)
                     .foregroundColor(colorScheme == .dark ? .white : .black)
                     .lineLimit(2)
-                
+
                 Text(LocalizedStringKey(ex.muscleGroup))
                     .font(.caption)
                     .fontWeight(.semibold)
                     .foregroundColor(muscleColor)
             }
-            
+
             Spacer()
-            
-            // Сеты и повторения
+
             VStack(alignment: .trailing, spacing: 4) {
                 if ex.type == .strength {
                     Text("\(safeSets.count) × \(reps)")
                         .font(.subheadline).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
-                    
+
                     if weight > 0 {
                         let conv = unitsManager.convertFromKilograms(weight)
                         Text("\(Int(conv)) \(unitsManager.weightUnitString())")
                             .font(.caption).bold()
                             .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     } else {
-                        Text("Свой вес")
+                        Text("Bodyweight")
                             .font(.caption)
                             .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     }
@@ -221,7 +213,7 @@ struct GeneratedWorkoutResultView: View {
         )
         .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
     }
-    
+
     private var floatingStartButton: some View {
         VStack {
             Spacer()
@@ -231,7 +223,7 @@ struct GeneratedWorkoutResultView: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "bolt.fill").font(.title2)
-                    Text("НАЧАТЬ ТРЕНИРОВКУ").font(.title3).bold().tracking(1.0)
+                    Text("START WORKOUT").font(.title3).bold().tracking(1.0)
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
