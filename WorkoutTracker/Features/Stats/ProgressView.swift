@@ -1186,12 +1186,18 @@ struct MuscleRow: View {
     }
 }
 
-// MARK: - 8. Результаты за все время
+
 struct AllTimeResultsView: View {
     let bestStats: PeriodStats
     let unitsManager: UnitsManager
     @Environment(\.colorScheme) private var colorScheme
-    private let dummyData: [Double] = [10.0, 15.0, 12.0, 20.0]
+    
+    // 1. Запрашиваем все завершенные тренировки для расчета реальной статистики
+    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
+    private var allWorkouts: [Workout]
+    
+    // 2. Стейт для данных графика (Тоннаж за последние 6 месяцев, инициализируем нулями)
+    @State private var historicalData: [Double] = Array(repeating: 0.0, count: 6)
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1200,26 +1206,32 @@ struct AllTimeResultsView: View {
                 .foregroundColor(colorScheme == .dark ? .white : .black)
             
             VStack(spacing: 20) {
+                
+                // 3. Реальный график
                 Chart {
-                    ForEach(0..<4, id: \.self) { i in
+                    ForEach(Array(historicalData.enumerated()), id: \.offset) { i, val in
                         LineMark(
-                            x: .value("X", i),
-                            y: .value("Y", dummyData[i])
+                            x: .value("Month", i),
+                            y: .value("Volume", val)
                         )
                         .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .leading, endPoint: .trailing))
+                        .interpolationMethod(.catmullRom) // Плавные изгибы линии
                         .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
                         
                         AreaMark(
-                            x: .value("X", i),
-                            y: .value("Y", dummyData[i])
+                            x: .value("Month", i),
+                            y: .value("Volume", val)
                         )
                         .foregroundStyle(LinearGradient(colors: [.purple.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom))
+                        .interpolationMethod(.catmullRom)
                     }
                 }
                 .frame(height: 120)
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
+                .chartYScale(domain: .automatic(includesZero: true))
                 
+                // Статистика
                 HStack {
                     VStack(alignment: .leading) {
                         Text("Лучший месяц (Объем)").font(.subheadline).foregroundColor(.gray)
@@ -1244,6 +1256,41 @@ struct AllTimeResultsView: View {
             .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, y: 5)
         }
         .padding(.top, 10)
+        .onAppear {
+            calculateHistoricalData()
+        }
+    }
+    
+    // MARK: - Логика расчета реальных данных
+    private func calculateHistoricalData() {
+        let cal = Calendar.current
+        let now = Date()
+        
+        // Создаем временный массив из 6 месяцев (0.0)
+        var monthlyVolumes: [Double] = Array(repeating: 0.0, count: 6)
+        
+        for workout in allWorkouts {
+            // Вычисляем, сколько месяцев назад была тренировка
+            let monthsAgo = cal.dateComponents([.month], from: workout.date, to: now).month ?? 0
+            
+            // Берем только последние 6 месяцев (от 0 до 5)
+            if monthsAgo >= 0 && monthsAgo < 6 {
+                
+                // Инвертируем индекс:
+                // Самый старый месяц (5 месяцев назад) будет слева [индекс 0]
+                // Текущий месяц (0 месяцев назад) будет справа [индекс 5]
+                let index = 5 - monthsAgo
+                
+                // Конвертируем и суммируем кэшированный вес тренировки
+                let convertedVolume = unitsManager.convertFromKilograms(workout.totalStrengthVolume)
+                monthlyVolumes[index] += convertedVolume
+            }
+        }
+        
+        // Анимируем появление данных на графике
+        withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) {
+            self.historicalData = monthlyVolumes
+        }
     }
 }
 // MARK: - Beautiful Sets Trend Detail View

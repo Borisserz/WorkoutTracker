@@ -63,12 +63,19 @@ class WidgetDataManager {
     }
     
     static func load() -> WidgetData {
-        if let defaults = UserDefaults(suiteName: suiteName),
-           let data = defaults.data(forKey: key),
-           let decoded = try? JSONDecoder().decode(WidgetData.self, from: data) {
-            return decoded
+            if let defaults = UserDefaults(suiteName: suiteName),
+               let data = defaults.data(forKey: key),
+               let decoded = try? JSONDecoder().decode(WidgetData.self, from: data) {
+                return decoded
+            }
+            // Возвращаем пустые данные с призывом открыть приложение
+            return WidgetData(
+                streak: 0,
+                weeklyTarget: 3,
+                weeklyStats: [],
+                recoveredMuscles: [],
+                aiTip: String(localized: "Open the app and log your first workout!"),
+                totalVolumeTons: 0.0
+            )
         }
-        // Возвращаем мок-данные по умолчанию, если пусто
-        return WidgetData(streak: 0, weeklyTarget: 3, weeklyStats: [], recoveredMuscles: ["Chest", "Back"], aiTip: "Time to build some muscle!", totalVolumeTons: 0.0)
-    }
 }

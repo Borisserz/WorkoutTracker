@@ -11,10 +11,9 @@ struct AddWeightSheet: View {
     @Environment(UserStatsViewModel.self) private var userStatsViewModel
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
     
-    // ✅ ДОБАВЛЕНО: Прямой запрос к базе для получения истории и поиска последнего фото
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
-    
     let latestWeight: Double?
     
     @State private var date = Date()
@@ -24,12 +23,12 @@ struct AddWeightSheet: View {
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var isProcessingImage = false
-    @Environment(ThemeManager.self) private var themeManager
+    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topTrailing) {
-                // Premium Background
-                Color(UIColor.systemGroupedBackground)
+                // 👈 АДАПТИВНЫЙ ФОН
+                (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground))
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -38,7 +37,7 @@ struct AddWeightSheet: View {
                         datePickerSection
                         photoGallerySection
                     }
-                    .padding(.bottom, 120) // Space for the floating button
+                    .padding(.bottom, 120)
                 }
             }
             .navigationTitle(LocalizedStringKey("Add Weight"))
@@ -74,13 +73,13 @@ struct AddWeightSheet: View {
         }
     }
     
-    // MARK: - View Components (Разбито для скорости компиляции)
+    // MARK: - View Components
     
     private var weightInputSection: some View {
         VStack(spacing: 8) {
             Text(LocalizedStringKey("Current Weight"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .textCase(.uppercase)
                 .tracking(1.5)
             
@@ -88,7 +87,7 @@ struct AddWeightSheet: View {
                 Spacer()
                 TextField("0.0", text: $weightString)
                     .font(.system(size: 80, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.primaryText)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: true, vertical: false)
@@ -105,24 +104,27 @@ struct AddWeightSheet: View {
     private var datePickerSection: some View {
         HStack {
             ZStack {
-                            Circle()
-                                .fill(themeManager.current.primaryAccent.opacity(0.15)) // <--- ИЗМЕНЕНО
-                            Image(systemName: "calendar")
-                                .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
-                                .font(.headline)
-                        }
-            
-            DatePicker("Date", selection: $date, displayedComponents: [.date, .hourAndMinute])
-                .labelsHidden()
-                .colorInvert()
-                .colorMultiply(colorScheme == .dark ? .white : .black)
+                Circle()
+                    .fill(themeManager.current.primaryAccent.opacity(0.15))
+                Image(systemName: "calendar")
+                    .foregroundColor(themeManager.current.primaryAccent)
+                    .font(.headline)
+            }
+            .frame(width: 40, height: 40)
             
             Spacer()
+            
+            // 👈 ИСПРАВЛЕНИЕ: Убрали .colorInvert() и .colorMultiply(), из-за которых ломалась светлая тема
+            DatePicker("", selection: $date, displayedComponents: [.date, .hourAndMinute])
+                .labelsHidden()
+                .environment(\.colorScheme, colorScheme) // Явно передаем текущую схему
         }
         .padding(16)
-        .background(themeManager.current.surface)
+        // 👈 АДАПТИВНЫЙ ФОН КАРТОЧКИ
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(20)
-        .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
         .padding(.horizontal, 24)
     }
     
@@ -130,14 +132,13 @@ struct AddWeightSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Progress Photos"))
                 .font(.headline)
-                .foregroundColor(themeManager.current.primaryText)
+                .foregroundColor(colorScheme == .dark ? .white : .black)
                 .padding(.horizontal, 24)
             
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     Spacer().frame(width: 8)
                     
-                    // ADD PHOTO BUTTON
                     if selectedImages.count < 4 {
                         Menu {
                             Button {
@@ -158,16 +159,15 @@ struct AddWeightSheet: View {
                                     Text(LocalizedStringKey("Add")).font(.subheadline).fontWeight(.bold)
                                 }
                             }
-                            .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО
-                                                      .frame(width: 130, height: 170)
-                                                      .background(themeManager.current.primaryAccent.opacity(0.1)) // <--- ИЗМЕНЕНО
-                                                      .cornerRadius(20)
-                                                      .overlay(RoundedRectangle(cornerRadius: 20).stroke(themeManager.current.primaryAccent.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6])))
+                            .foregroundColor(themeManager.current.primaryAccent)
+                            .frame(width: 130, height: 170)
+                            .background(themeManager.current.primaryAccent.opacity(0.1))
+                            .cornerRadius(20)
+                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(themeManager.current.primaryAccent.opacity(0.3), style: StrokeStyle(lineWidth: 2, dash: [6])))
                         }
                         .disabled(isProcessingImage)
                     }
                     
-                    // SELECTED IMAGES
                     ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, image in
                         ZStack(alignment: .topTrailing) {
                             Image(uiImage: image)
@@ -189,7 +189,7 @@ struct AddWeightSheet: View {
                             } label: {
                                 Image(systemName: "xmark")
                                     .font(.system(size: 14, weight: .bold))
-                                    .foregroundColor(themeManager.current.background)
+                                    .foregroundColor(.white)
                                     .padding(8)
                                     .background(Color.black.opacity(0.6))
                                     .clipShape(Circle())
@@ -206,7 +206,7 @@ struct AddWeightSheet: View {
             
             Text(LocalizedStringKey("Attach up to 4 photos to compare your progress later."))
                 .font(.caption)
-                .foregroundColor(themeManager.current.secondaryText)
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .padding(.horizontal, 24)
         }
     }
@@ -214,40 +214,37 @@ struct AddWeightSheet: View {
     private var floatingSaveButton: some View {
         Button(action: saveWeight) {
             HStack(spacing: 10) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title3)
-                Text(LocalizedStringKey("Save"))
-                    .font(.title3)
-                    .fontWeight(.bold)
+                Image(systemName: "checkmark.circle.fill").font(.title3)
+                Text(LocalizedStringKey("Save")).font(.title3).fontWeight(.bold)
             }
-            .foregroundColor(themeManager.current.background)
+            .foregroundColor(.white) // Кнопка всегда белая
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(weightString.isEmpty || isProcessingImage ? Color.gray : themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО: .blue -> тема
-                        .cornerRadius(20)
-                        .shadow(color: (weightString.isEmpty || isProcessingImage ? Color.clear : themeManager.current.primaryAccent.opacity(0.4)), radius: 15, x: 0, y: 8) // <--- ИЗМЕНЕНО
+            .background(weightString.isEmpty || isProcessingImage ? Color.gray : themeManager.current.primaryAccent)
+            .cornerRadius(20)
+            .shadow(color: (weightString.isEmpty || isProcessingImage ? Color.clear : themeManager.current.primaryAccent.opacity(0.4)), radius: 15, x: 0, y: 8)
         }
         .padding(.horizontal, 24)
         .padding(.bottom, 10)
         .disabled(weightString.isEmpty || isProcessingImage)
         .animation(.spring(), value: weightString.isEmpty)
+        .background(
+            LinearGradient(colors: [colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground), .clear], startPoint: .bottom, endPoint: .top)
+                .ignoresSafeArea()
+        )
     }
     
     // MARK: - Logic
     
     private func loadReferenceAndOpenSmartCamera() {
         Task {
-            // ✅ ИСПРАВЛЕНО: Обращаемся к массиву weightHistory из @Query, а не к ViewModel
             if let lastEntry = weightHistory.first(where: { !$0.imageFileNames.isEmpty }),
                let fileName = lastEntry.imageFileNames.first {
                 self.previousPhotoRef = await LocalImageStore.shared.loadImage(named: fileName)
             } else {
                 self.previousPhotoRef = nil
             }
-            
-            await MainActor.run {
-                showSmartCamera = true
-            }
+            await MainActor.run { showSmartCamera = true }
         }
     }
     
@@ -257,14 +254,12 @@ struct AddWeightSheet: View {
         
         Task.detached(priority: .userInitiated) {
             var loadedImages: [UIImage] = []
-            
             for item in items {
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let uiImage = UIImage(data: data) {
                     loadedImages.append(uiImage)
                 }
             }
-            
             await MainActor.run {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     self.selectedImages.append(contentsOf: loadedImages)
@@ -280,11 +275,8 @@ struct AddWeightSheet: View {
         
         if let weightVal = Double(weightString.replacingOccurrences(of: ",", with: ".")) {
             let weightInKg = unitsManager.convertToKilograms(weightVal)
-            let imagesToSave = selectedImages
-            let entryDate = date
-            
             Task {
-                await userStatsViewModel.addWeightEntry(weight: weightInKg, date: entryDate, images: imagesToSave)
+                await userStatsViewModel.addWeightEntry(weight: weightInKg, date: date, images: selectedImages)
                 dismiss()
             }
         }

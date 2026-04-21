@@ -820,14 +820,24 @@ struct OverviewView: View {
         
         // Метод открытия FoodTracker
         private func openFoodTracker() {
-            let generator = UIImpactFeedbackGenerator(style: .heavy)
-            generator.impactOccurred()
-            
-            if let url = URL(string: "foodtracker://") {
-                UIApplication.shared.open(url)
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                generator.impactOccurred()
+                
+                // 1. URL схема твоего приложения FoodTracker
+                let appScheme = "foodtracker://"
+                // 2. Ссылка на твое приложение в App Store (Замени YOUR_APP_ID на реальные цифры)
+                let appStoreLink = "https://apps.apple.com/app/idYOUR_APP_ID_HERE"
+                
+                if let appURL = URL(string: appScheme), UIApplication.shared.canOpenURL(appURL) {
+                    // Приложение установлено -> Открываем его
+                    UIApplication.shared.open(appURL)
+                } else if let storeURL = URL(string: appStoreLink) {
+                    // Приложение НЕ установлено -> Открываем страницу в App Store
+                    UIApplication.shared.open(storeURL)
+                }
+                
+                dismiss()
             }
-            dismiss()
-        }
     }
     
     // MARK: - Пульс Карточка

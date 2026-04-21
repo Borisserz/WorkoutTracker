@@ -73,14 +73,15 @@ final class CatalogViewModel {
     }
     
     func deleteCustomExercise(name: String, category: String) async {
-        do {
-            try await exerciseCatalogService.deleteCustomExercise(name: name, category: category)
-            MuscleMapping.updateCustomMapping(name: name, muscles: nil)
-            await loadDictionary()
-        } catch {
-            print("Failed to delete custom exercise: \(error.localizedDescription)")
+            do {
+                try await exerciseCatalogService.deleteCustomExercise(name: name, category: category)
+            
+                
+                await loadDictionary()
+            } catch {
+                print("Failed to delete custom exercise: \(error.localizedDescription)")
+            }
         }
-    }
     
     func deleteExercise(name: String, category: String) async {
         if isCustomExercise(name: name) {
