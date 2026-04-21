@@ -1,24 +1,20 @@
-// ============================================================
-// FILE: StatsWidget/StatsWidget.swift
-// ============================================================
+
 
 import WidgetKit
 internal import SwiftUI
-import AppIntents // ✅ ИСПРАВЛЕНИЕ: Добавлен обязательный импорт для Button(intent:)
+import AppIntents 
 
-// MARK: - 1. THEME DEFINITION
 struct WidgetTheme {
     static let background = Color(red: 0.05, green: 0.05, blue: 0.07)
     static let surface = Color(red: 0.1, green: 0.1, blue: 0.12)
-    
+
     static let primaryCyan = Color(red: 0.0, green: 0.8, blue: 1.0)
     static let primaryPurple = Color(red: 0.6, green: 0.2, blue: 1.0)
-    
+
     static let neonGradient = LinearGradient(colors: [primaryPurple, primaryCyan], startPoint: .topLeading, endPoint: .bottomTrailing)
     static let fireGradient = LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
-// MARK: - 2. PROVIDER & ENTRY
 struct StatsEntry: TimelineEntry {
     let date: Date
     let data: WidgetData
@@ -51,15 +47,14 @@ struct StatsWidgetProvider: TimelineProvider {
     }
 }
 
-// MARK: - 3. WIDGET 1: PRO STREAK & ACTIVITY
 struct ProStreakWidgetView: View {
     var entry: StatsEntry
     @Environment(\.widgetFamily) var family
-    
+
     var currentWeeklyCount: Int {
         entry.data.weeklyStats.reduce(0) { $0 + $1.count }
     }
-    
+
     var progress: Double {
         min(1.0, Double(currentWeeklyCount) / Double(max(entry.data.weeklyTarget, 1)))
     }
@@ -81,7 +76,7 @@ struct ProStreakWidgetView: View {
             if family == .accessoryCircular { Color.clear } else { WidgetTheme.background }
         }
     }
-    
+
     private var smallView: some View {
         VStack(spacing: 8) {
             ZStack {
@@ -102,13 +97,13 @@ struct ProStreakWidgetView: View {
                 }
             }
             .frame(width: 80, height: 80)
-            
+
             Text("\(currentWeeklyCount)/\(entry.data.weeklyTarget) This Week")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
         }
     }
-    
+
     private var mediumView: some View {
         HStack(spacing: 20) {
             smallView
@@ -141,7 +136,7 @@ struct ProStreakWidgetView: View {
         }
         .padding(.horizontal, 4)
     }
-    
+
     private var lockScreenCircularView: some View {
         Gauge(value: progress) {
             Image(systemName: "flame.fill")
@@ -165,7 +160,6 @@ struct ProStreakWidget: Widget {
     }
 }
 
-// MARK: - 4. WIDGET 2: AI COACH STATUS
 struct AICoachWidgetView: View {
     var entry: StatsEntry
     @Environment(\.widgetFamily) var family
@@ -182,7 +176,7 @@ struct AICoachWidgetView: View {
             if family == .accessoryRectangular { Color.clear } else { WidgetTheme.background }
         }
     }
-    
+
     private var mediumView: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 10) {
@@ -197,7 +191,7 @@ struct AICoachWidgetView: View {
                 Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 Text("Ready to Train:").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(.white.opacity(0.5)).textCase(.uppercase)
                 VStack(alignment: .leading, spacing: 6) {
@@ -218,7 +212,7 @@ struct AICoachWidgetView: View {
         }
         .padding(.vertical, 8)
     }
-    
+
     private var lockScreenRectangularView: some View {
         HStack(alignment: .center) {
             Image(systemName: "brain.head.profile").font(.title3)
@@ -242,7 +236,6 @@ struct AICoachWidget: Widget {
     }
 }
 
-// MARK: - 5. WIDGET 3: QUICK ACTIONS
 struct QuickActionsWidgetView: View {
     var entry: StatsEntry
 
@@ -257,7 +250,7 @@ struct QuickActionsWidgetView: View {
         }
         .containerBackground(for: .widget) { WidgetTheme.background }
     }
-    
+
     private func actionButton(title: String, icon: String, color: Color, action: String) -> some View {
         Button(intent: OpenWorkoutAppIntent(actionType: action)) {
             VStack(spacing: 8) {
@@ -289,7 +282,6 @@ struct QuickActionsWidget: Widget {
     }
 }
 
-// MARK: - 6. BUNDLE REGISTRATION
 @main
 struct WorkoutTrackerWidgets: WidgetBundle {
     var body: some Widget {

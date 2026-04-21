@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Workout/Views/WorkoutDetailView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -19,7 +17,7 @@ struct WorkoutDetailView: View {
 
     var body: some View {
         WorkoutDetailContentView(workout: workout, viewModel: viewModel)
-            // ✅ ГЛАВНЫЙ ФИКС: Передаем viewModel в окружение для всех дочерних вью
+
             .environment(viewModel)
     }
 }
@@ -31,7 +29,7 @@ struct WorkoutDetailContentView: View {
         case aiCoach = "AI Coach"
         var localizedName: LocalizedStringKey { LocalizedStringKey(self.rawValue) }
     }
-    
+
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dismiss) private var dismiss
     @State private var isDeletingEmptyWorkout = false
@@ -41,45 +39,44 @@ struct WorkoutDetailContentView: View {
     @Environment(RestTimerManager.self) var timerManager
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DIContainer.self) private var di
-    
+
     @Bindable var workout: Workout
     @Bindable var viewModel: WorkoutDetailViewModel
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
-    // MARK: - Presentation State
+
     @State private var activeSheet: DetailDestination?
     @State private var activeFullScreen: DetailDestination?
     @State private var showEmptyAlert = false
     @State private var showTimerSetup = false
     @State private var shareItems: [Any] = []
-    
-    // MARK: - Local UI State
+
     @State private var selectedTab: Tab = .workout
     @State private var draggedExercise: Exercise?
     @State private var expandedExercises: [UUID: Bool] = [:]
     @State private var scrollToExerciseId: UUID?
     @State private var selectedChartExerciseName: String?
-    
+
     var isNewWorkout: Bool {
         guard !workout.exercises.isEmpty else { return true }
         return !workout.exercises.contains { ex in
             (ex.isSuperset ? ex.subExercises : [ex]).contains { $0.setsList.contains { $0.isCompleted } }
         }
     }
-    
+
     private var tabPicker: some View {
         Picker(LocalizedStringKey("View Mode"), selection: $selectedTab) {
             ForEach(Tab.allCases, id: \.self) { Text($0.localizedName).tag($0) }
         }
         .pickerStyle(.segmented)
     }
-    
+
     var body: some View {
         ZStack {
             ScrollViewReader { proxy in
                 mainLayout(proxy: proxy)
                     .onChange(of: scrollToExerciseId) { _, newId in handleScrollTo(newId: newId, proxy: proxy) }
             }
-            
+
             if let fullScreen = activeFullScreen {
                 renderFullScreenContent(for: fullScreen)
                     .ignoresSafeArea()
@@ -117,7 +114,7 @@ struct WorkoutDetailContentView: View {
                    isDeletingEmptyWorkout = true
                    let safeID = workout.persistentModelID
                    dismiss()
-                   
+
                    Task {
                        try? await Task.sleep(for: .seconds(0.5))
                        await viewModel.deleteEmptyWorkout(workoutID: safeID)
@@ -128,7 +125,7 @@ struct WorkoutDetailContentView: View {
                Text(LocalizedStringKey("This workout has no completed sets. Do you want to delete it or continue?"))
            }
     }
-    
+
     @ViewBuilder
     private func mainLayout(proxy: ScrollViewProxy) -> some View {
         ZStack(alignment: .bottom) {
@@ -145,7 +142,7 @@ struct WorkoutDetailContentView: View {
                             actionButtonSection
                             if !workout.isActive { Divider().padding(.vertical, 5) }
                             tabPicker.padding(.bottom, 8)
-                            
+
                             if selectedTab == .workout {
                                 exercisesToolbarSection
                                 ExerciseListView(
@@ -158,32 +155,31 @@ struct WorkoutDetailContentView: View {
                                 .environment(viewModel)
                             } else if selectedTab == .analytics {
                                 SessionSummaryGrid(workout: workout, viewModel: viewModel)
-                                
+
                                 chartSection
-                                
+
                                 muscleHeatmapSection
-                                
+
                                 if !workout.exercises.isEmpty {
                                     FunFactView(totalStrengthVolume: viewModel.workoutAnalytics.volume)
                                 }
                             }
-                            
+
                             Spacer(minLength: timerManager.isRestTimerActive ? 280 : 120)
                         }
                         .padding()
                     }
                 }
             }
-            
+
             if workout.isActive && selectedTab != .aiCoach {
                 finishWorkoutButton
             }
-            
+
             if viewModel.isShowingSnackbar { snackbarOverlay }
         }
     }
-    
-    // MARK: - Event Handling
+
     private func handleViewModelEvent(_ event: WorkoutDetailEvent?) {
         guard let event = event else { return }
         switch event {
@@ -208,8 +204,7 @@ struct WorkoutDetailContentView: View {
         }
         viewModel.activeEvent = nil
     }
-    
-    // MARK: - Buttons
+
     private var finishWorkoutButton: some View {
         VStack {
             Spacer()
@@ -244,7 +239,7 @@ struct WorkoutDetailContentView: View {
             .allowsHitTesting(false)
         )
     }
-    
+
     private var snackbarOverlay: some View {
         HStack {
             Text(LocalizedStringKey("Workout finished")).font(.subheadline).foregroundColor(.white)
@@ -266,8 +261,7 @@ struct WorkoutDetailContentView: View {
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .zIndex(100)
     }
-    
-    // MARK: - Lifecycle
+
     private func handleOnAppear() {
         viewModel.loadCaches(from: dashboardViewModel)
         viewModel.updateWorkoutAnalytics(for: workout)
@@ -278,14 +272,14 @@ struct WorkoutDetailContentView: View {
     private func handleOnDisappear() {
         timerManager.isHidden = false
     }
-    
+
     private func handleExercisesChanged() {
         viewModel.updateWorkoutAnalytics(for: workout)
         for (index, exercise) in workout.exercises.enumerated() {
             if expandedExercises[exercise.id] == nil { expandedExercises[exercise.id] = index == 0 }
         }
     }
-    
+
     private func handleScrollTo(newId: UUID?, proxy: ScrollViewProxy) {
         if let exerciseId = newId {
             Task {
@@ -296,12 +290,12 @@ struct WorkoutDetailContentView: View {
             }
         }
     }
-    
+
     private func handleTutorialStep(_ newStep: TutorialStep) {
         if newStep == .highlightChart || newStep == .highlightBody { selectedTab = .analytics }
         else if newStep == .addExercise { selectedTab = .workout }
     }
-    
+
     private var actionButtonSection: some View {
         Group {
             if !workout.isActive {
@@ -326,7 +320,7 @@ struct WorkoutDetailContentView: View {
         }
         .zIndex(9)
     }
-    
+
     private var exercisesToolbarSection: some View {
             HStack {
                 Text(LocalizedStringKey("Exercises"))
@@ -334,9 +328,9 @@ struct WorkoutDetailContentView: View {
                     .bold()
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-                
+
                 Spacer(minLength: 5)
-                
+
                 if workout.isActive {
                     Button { showTimerSetup = true } label: {
                         Image(systemName: "timer")
@@ -347,7 +341,7 @@ struct WorkoutDetailContentView: View {
                             .cornerRadius(8)
                     }
                 }
-                
+
                 Button { activeSheet = .supersetBuilder(nil) } label: {
                     Label(LocalizedStringKey("Superset"), systemImage: "plus")
                         .font(.caption)
@@ -359,7 +353,7 @@ struct WorkoutDetailContentView: View {
                         .foregroundColor(.accentColor)
                         .cornerRadius(8)
                 }.disabled(!workout.isActive)
-                
+
                 Button { activeSheet = .exerciseSelection } label: {
                     Label(LocalizedStringKey("Exercise"), systemImage: "plus")
                         .font(.caption)
@@ -376,14 +370,14 @@ struct WorkoutDetailContentView: View {
             }
             .zIndex(15)
         }
-    
+
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Analysis (Max Weight)"))
                 .font(.title2)
                 .bold()
                 .padding(.horizontal, 4)
-            
+
             VStack(alignment: .leading, spacing: 16) {
                 if viewModel.workoutAnalytics.chartExercises.isEmpty {
                     EmptyStateView(
@@ -406,19 +400,19 @@ struct WorkoutDetailContentView: View {
                             .padding(.bottom, 4)
                             .frame(minHeight: 24)
                     }
-                    
+
                     Chart {
                         ForEach(Array(viewModel.workoutAnalytics.chartExercises.enumerated()), id: \.element.id) { index, exercise in
                             let maxWeight = exercise.maxWeight
                             let convertedWeight = unitsManager.convertFromKilograms(maxWeight)
                             let uniqueName = exercise.name + String(repeating: " ", count: index)
                             let isSelected = selectedChartExerciseName == uniqueName
-                            
+
                             BarMark(
                                 x: .value("Exercise", uniqueName),
                                 y: .value("Weight", convertedWeight)
                             )
-                            // Подсветка золотым градиентом при выборе
+
                             .foregroundStyle(
                                 isSelected
                                 ? LinearGradient(colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom)
@@ -481,16 +475,15 @@ Text(String(translatedName.prefix(3)).capitalized)
         .padding(.top, 10)
     }
 
-    // MARK: - 2. Muscle Heatmap Section (WorkoutDetailContentView)
     private var muscleHeatmapSection: some View {
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Text(LocalizedStringKey("Body Status"))
                         .font(.title2)
                         .bold()
-                    
+
                     Spacer()
-                    
+
                     if workout.isActive {
                         HStack(spacing: 6) {
                             Circle()
@@ -510,7 +503,7 @@ Text(String(translatedName.prefix(3)).capitalized)
                     }
                 }
                 .padding(.horizontal, 4)
-                
+
                 VStack {
                     BodyHeatmapView(
                         muscleIntensities: viewModel.workoutAnalytics.intensity,
@@ -532,7 +525,7 @@ Text(String(translatedName.prefix(3)).capitalized)
                 .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
             }
         }
-    
+
     @ViewBuilder
     private func renderSheetContent(for destination: DetailDestination) -> some View {
         switch destination {
@@ -543,7 +536,7 @@ Text(String(translatedName.prefix(3)).capitalized)
         default: EmptyView()
         }
     }
-    
+
     @ViewBuilder
     private func renderFullScreenContent(for destination: DetailDestination) -> some View {
         switch destination {

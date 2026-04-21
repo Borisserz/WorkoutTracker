@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/AICoach/Views/InWorkoutAICoachView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -8,15 +6,14 @@ import SwiftData
 struct InWorkoutAICoachView: View {
     @Bindable var workout: Workout
     @Bindable var viewModel: InWorkoutAICoachViewModel
-    
+
     @Environment(WorkoutDetailViewModel.self) private var detailViewModel
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
-                
-                // --- 1. TOP: LIVE MUSCLE STATUS (Glass Card) ---
+
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "bolt.shield.fill")
@@ -34,7 +31,7 @@ struct InWorkoutAICoachView: View {
                             .foregroundColor(.cyan)
                             .cornerRadius(6)
                     }
-                    
+
                     HStack(spacing: 20) {
                         BodyHeatmapView(
                             muscleIntensities: detailViewModel.workoutAnalytics.intensity,
@@ -46,7 +43,7 @@ struct InWorkoutAICoachView: View {
                         .background(Color.white.opacity(0.05))
                         .cornerRadius(16)
                         .shadow(color: .cyan.opacity(0.15), radius: 10)
-                        
+
                         VStack(alignment: .leading, spacing: 10) {
                             Text(LocalizedStringKey("Coach is monitoring your output. High tension detected in target muscle groups."))
                                 .font(.subheadline)
@@ -65,13 +62,12 @@ struct InWorkoutAICoachView: View {
                 .cornerRadius(28)
                 .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color.white.opacity(0.1), lineWidth: 1))
 
-                // --- 2. CENTER: SMART COMMANDS GRID ---
                 VStack(alignment: .leading, spacing: 16) {
                     Text(LocalizedStringKey("Intelligent Adjustments"))
                         .font(.title3)
                         .bold()
                         .padding(.horizontal, 4)
-                    
+
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
                         smartActionTile(id: "busy", title: "Equipment Busy", icon: "lock.fill", command: "Equipment is taken, swap exercise", color: .cyan)
                         smartActionTile(id: "heavy", title: "Too Heavy", icon: "arrow.down.circle.fill", command: "Weight is too heavy, reduce load", color: .orange)
@@ -80,7 +76,6 @@ struct InWorkoutAICoachView: View {
                     }
                 }
 
-                // --- 3. BOTTOM: PROPOSAL CARD (Floating Look) ---
                 if let proposal = viewModel.activeProposal {
                     AIProposalPremiumCard(proposal: proposal) {
                         viewModel.applyActiveProposal(to: workout)
@@ -92,7 +87,7 @@ struct InWorkoutAICoachView: View {
                         removal: .scale.combined(with: .opacity)
                     ))
                 }
-                
+
                 Spacer(minLength: 100)
             }
             .padding(.horizontal, 20)
@@ -104,7 +99,7 @@ struct InWorkoutAICoachView: View {
     @ViewBuilder
     private func smartActionTile(id: String, title: String, icon: String, command: String, color: Color) -> some View {
         let isProcessing = viewModel.isProcessing && viewModel.activeCommandId == command
-        
+
         Button {
             viewModel.sendSmartCommand(command, currentWorkout: workout)
         } label: {
@@ -121,7 +116,7 @@ struct InWorkoutAICoachView: View {
                             .font(.title3)
                     }
                 }
-                
+
                 Text(LocalizedStringKey(title))
                     .font(.subheadline)
                     .fontWeight(.bold)
@@ -145,7 +140,6 @@ struct InWorkoutAICoachView: View {
     }
 }
 
-// MARK: - AI Proposal Premium Card
 struct AIProposalPremiumCard: View {
     let proposal: SmartActionDTO
     let onApply: () -> Void
@@ -161,22 +155,22 @@ struct AIProposalPremiumCard: View {
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(Color.cyan.opacity(0.1))
                     .cornerRadius(8)
-                
+
                 Spacer()
-                
+
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
                         .foregroundStyle(.secondary, Color.gray.opacity(0.2))
                 }
             }
-            
+
             Text(proposal.reasoning)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundColor(.primary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .lineSpacing(4)
-            
+
             HStack(spacing: 15) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("EXERCISE")).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
@@ -199,7 +193,7 @@ struct AIProposalPremiumCard: View {
             .padding()
             .background(Color.black.opacity(0.15))
             .cornerRadius(16)
-            
+
             Button(action: {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()

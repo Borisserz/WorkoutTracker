@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Profile/ProgressComparisonView.swift
-// ============================================================
+
 
 internal import SwiftUI
 
@@ -8,18 +6,18 @@ struct ProgressComparisonView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
-    
+
     let entriesWithPhotos: [WeightEntry]
-    
+
     @State private var leftEntry: WeightEntry?
     @State private var rightEntry: WeightEntry?
-    
+
     @State private var leftImage: UIImage?
     @State private var rightImage: UIImage?
-    
+
     @State private var showLeftPicker = false
     @State private var showRightPicker = false
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -27,18 +25,17 @@ struct ProgressComparisonView: View {
             ZStack(alignment: .bottom) {
                 Color(UIColor.systemGroupedBackground)
                     .ignoresSafeArea()
-                
+
                 VStack(spacing: 0) {
-                    // Интерактивный слайдер До/После
+
                     BeforeAfterSliderView(beforeImage: leftImage, afterImage: rightImage)
                         .padding(.horizontal, 16)
                         .padding(.top, 20)
                         .padding(.bottom, 20)
                         .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
-                    
+
                     Spacer()
-                    
-                    // Плашка статистики (Glassmorphism)
+
                     infoPanel
                         .padding(.horizontal, 16)
                         .padding(.bottom, 20)
@@ -57,7 +54,7 @@ struct ProgressComparisonView: View {
                 }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        // TODO: Добавить логику Share Sheet
+
                         let generator = UIImpactFeedbackGenerator(style: .medium)
                         generator.impactOccurred()
                     } label: {
@@ -73,18 +70,16 @@ struct ProgressComparisonView: View {
             .sheet(isPresented: $showRightPicker) { photoPickerSheet(isLeft: false) }
         }
     }
-    
-    // MARK: - Subviews
-    
+
     private var infoPanel: some View {
         ZStack {
-            // Glass background
+
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
-            
+
             HStack(alignment: .center) {
-                // LEFT SIDE (Before)
+
                 Button {
                     let generator = UIImpactFeedbackGenerator(style: .light)
                     generator.impactOccurred()
@@ -96,7 +91,7 @@ struct ProgressComparisonView: View {
                             .fontWeight(.bold)
                             .textCase(.uppercase)
                             .foregroundColor(themeManager.current.secondaryText)
-                        
+
                         if let entry = leftEntry {
                             Text(entry.date.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption)
@@ -114,10 +109,9 @@ struct ProgressComparisonView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                
+
                 Spacer()
-                
-                // RIGHT SIDE (After)
+
                 Button {
                     let generator = UIImpactFeedbackGenerator(style: .light)
                     generator.impactOccurred()
@@ -129,7 +123,7 @@ struct ProgressComparisonView: View {
                             .fontWeight(.bold)
                             .textCase(.uppercase)
                             .foregroundColor(themeManager.current.secondaryText)
-                        
+
                         if let entry = rightEntry {
                             Text(entry.date.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption)
@@ -149,8 +143,7 @@ struct ProgressComparisonView: View {
                 .buttonStyle(.plain)
             }
             .padding(20)
-            
-            // CENTER BADGE
+
             if let l = leftEntry, let r = rightEntry {
                 differenceBadge(left: l, right: r)
             }
@@ -160,16 +153,16 @@ struct ProgressComparisonView: View {
                 .stroke(Color.white.opacity(colorScheme == .dark ? 0.1 : 0.4), lineWidth: 1)
         )
     }
-    
+
     private func differenceBadge(left: WeightEntry, right: WeightEntry) -> some View {
         let diffKg = right.weight - left.weight
         let convertedDiff = unitsManager.convertFromKilograms(diffKg)
         let isLoss = diffKg < 0
         let color: Color = diffKg == 0 ? .gray : (isLoss ? .green : .red)
-        
+
         let prefix = diffKg > 0 ? "+" : ""
         let diffStr = prefix + LocalizationHelper.shared.formatDecimal(convertedDiff) + " " + unitsManager.weightUnitString()
-        
+
         return VStack {
             Text(diffStr)
                 .font(.system(size: 16, weight: .heavy, design: .rounded))
@@ -182,7 +175,7 @@ struct ProgressComparisonView: View {
                 .shadow(color: color.opacity(0.2), radius: 5, x: 0, y: 2)
         }
     }
-    
+
     private func photoPickerSheet(isLeft: Bool) -> some View {
         NavigationStack {
             List {
@@ -190,7 +183,7 @@ struct ProgressComparisonView: View {
                     Button {
                         let generator = UISelectionFeedbackGenerator()
                         generator.selectionChanged()
-                        
+
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                             if isLeft { leftEntry = entry } else { rightEntry = entry }
                         }
@@ -229,9 +222,7 @@ struct ProgressComparisonView: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
     }
-    
-    // MARK: - Logic
-    
+
     private func setupInitialEntries() {
         let sorted = entriesWithPhotos.sorted { $0.date < $1.date }
         if sorted.count >= 2 {
@@ -241,33 +232,31 @@ struct ProgressComparisonView: View {
             leftEntry = sorted.first
         }
     }
-    
+
     private func loadLeftImage(for entry: WeightEntry?) {
         guard let fileName = entry?.imageFileNames.first else { leftImage = nil; return }
         Task { leftImage = await LocalImageStore.shared.loadImage(named: fileName) }
     }
-    
+
     private func loadRightImage(for entry: WeightEntry?) {
         guard let fileName = entry?.imageFileNames.first else { rightImage = nil; return }
         Task { rightImage = await LocalImageStore.shared.loadImage(named: fileName) }
     }
 }
 
-// MARK: - Interactive Before/After Slider
-// MARK: - Interactive Before/After Slider
 struct BeforeAfterSliderView: View {
     let beforeImage: UIImage?
     let afterImage: UIImage?
-    
+
     @State private var sliderPercentage: CGFloat = 0.5
     @State private var isDragging: Bool = false
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-                // Background Image (After)
+
                 if let after = afterImage {
                     Image(uiImage: after)
                         .resizable()
@@ -278,15 +267,14 @@ struct BeforeAfterSliderView: View {
                     placeholderView(title: "After")
                         .frame(width: geo.size.width, height: geo.size.height)
                 }
-                
-                // Overlay Image (Before)
+
                 if let before = beforeImage {
                     Image(uiImage: before)
                         .resizable()
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
-                        // ✅ ИСПРАВЛЕНИЕ: Новый синтаксис .mask
+
                         .mask(alignment: .leading) {
                             Rectangle()
                                 .frame(width: geo.size.width * sliderPercentage, height: geo.size.height)
@@ -294,20 +282,19 @@ struct BeforeAfterSliderView: View {
                 } else {
                     placeholderView(title: "Before")
                         .frame(width: geo.size.width, height: geo.size.height)
-                        // ✅ ИСПРАВЛЕНИЕ: Новый синтаксис .mask
+
                         .mask(alignment: .leading) {
                             Rectangle()
                                 .frame(width: geo.size.width * sliderPercentage, height: geo.size.height)
                         }
                 }
-                
-                // Slider Line & Thumb
+
                 ZStack {
                     Rectangle()
                         .fill(Color.white)
                         .frame(width: 4, height: geo.size.height)
                         .shadow(color: .black.opacity(0.4), radius: 5, x: 0, y: 0)
-                    
+
                     Circle()
                         .fill(.ultraThinMaterial)
                         .frame(width: 44, height: 44)
@@ -326,7 +313,7 @@ struct BeforeAfterSliderView: View {
                         .onChanged { value in
                             withAnimation(.interactiveSpring()) {
                                 isDragging = true
-                                // Limit slider bounds
+
                                 sliderPercentage = min(max(0.02, value.location.x / geo.size.width), 0.98)
                             }
                         }
@@ -346,7 +333,7 @@ struct BeforeAfterSliderView: View {
             )
         }
     }
-    
+
     private func placeholderView(title: String) -> some View {
         ZStack {
             Color.gray.opacity(0.2)

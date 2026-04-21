@@ -1,7 +1,5 @@
-// ============================================================
-// FILE: WorkoutTracker/DataLayer/DTOs/SharedModels.swift
-// (Используется и в iOS, и в WatchOS таргетах)
-// ============================================================
+
+
 import Foundation
 
 enum SyncActionType: String, Codable, Sendable {
@@ -21,14 +19,14 @@ struct LiveSyncPayload: Codable, Sendable {
     let action: SyncActionType
     let workoutID: String
     let workoutTitle: String?
-    
+
     let exerciseName: String?
     let setIndex: Int?
     let weight: Double?
     let reps: Int?
     let effort: Int?
     let isCompleted: Bool?
-    
+
     let exercises: [ExerciseDTO]?
     let activeEnergy: Double?
     let durationSeconds: Int?

@@ -1,24 +1,14 @@
-//
-//  SliderInputView.swift
-//  WorkoutTracker
-//
-//  Компонент для ввода числовых значений с помощью слайдера и кнопок +/-.
-//  Используется для удобного изменения веса и повторений во время тренировки.
-//
+
 
 internal import SwiftUI
 
-// MARK: - Types
-
-/// Тип поля ввода для точной привязки логики без использования хардкод-строк (плейсхолдеров)
 enum InputFieldType: Equatable {
     case weight
     case reps
     case distance
     case timeMin
     case timeSec
-    
-    /// Локализованный плейсхолдер для отображения в UI
+
     func title(unitsManager: UnitsManager) -> String {
         switch self {
         case .weight: return unitsManager.weightUnitString()
@@ -30,24 +20,19 @@ enum InputFieldType: Equatable {
     }
 }
 
-// MARK: - Slider Sheet View (Модальное окно со слайдером)
-
-
 struct SliderSheetView: View {
     let fieldType: InputFieldType
     @Binding var value: Double?
     @Binding var isPresented: Bool
     @Environment(ThemeManager.self) private var themeManager
     @Environment(UnitsManager.self) var unitsManager
-    
-    // Локальное состояние
+
     @State private var localValue: Double = 0
     @State private var textValue: String = ""
     @FocusState private var isBigTextFocused: Bool
-    
-    // Ошибки валидации
+
     @State private var errorMessage: String? = nil
-    
+
     private var navigationTitleText: LocalizedStringKey {
         switch fieldType {
         case .weight: return "Adjust Weight"
@@ -56,8 +41,7 @@ struct SliderSheetView: View {
         case .timeMin, .timeSec: return "Adjust Time"
         }
     }
-    
-    // Умные шаги в зависимости от контекста
+
     private var quickSteps: [Double] {
         switch fieldType {
         case .weight:
@@ -72,8 +56,7 @@ struct SliderSheetView: View {
             return [5.0, 10.0, 15.0, 30.0]
         }
     }
-    
-    // Базовый шаг для больших круглых кнопок +/-
+
     private var mainStep: Double {
         switch fieldType {
         case .weight: return unitsManager.weightUnit == .pounds ? 2.5 : 1.0
@@ -82,21 +65,21 @@ struct SliderSheetView: View {
         case .distance: return unitsManager.distanceUnit == .miles ? 0.1 : 100.0
         }
     }
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 30) {
-                // Текущее значение
+
                 VStack(spacing: 8) {
                     Text(fieldType.title(unitsManager: unitsManager).uppercased())
                         .font(.caption)
                         .foregroundColor(themeManager.current.secondaryText)
                         .tracking(1.5)
-                    
+
                     TextField("0", text: $textValue)
                         .font(.system(size: 64, weight: .heavy, design: .rounded))
                         .foregroundColor(errorMessage != nil ? .red : .primary)
-                        .keyboardType(fieldType == .reps ? .numberPad : .decimalPad) // Reps только целые
+                        .keyboardType(fieldType == .reps ? .numberPad : .decimalPad) 
                         .multilineTextAlignment(.center)
                         .lineLimit(1)
                         .minimumScaleFactor(0.5)
@@ -126,7 +109,7 @@ struct SliderSheetView: View {
                                 textValue = formatValue(newVal)
                             }
                         }
-                    
+
                     if let error = errorMessage {
                         Text(error)
                             .font(.caption)
@@ -135,10 +118,9 @@ struct SliderSheetView: View {
                     }
                 }
                 .padding(.top, 40)
-                
-                // Элементы управления
+
                 VStack(spacing: 24) {
-                    // Главные кнопки +/- (Точная подстройка)
+
                     HStack(spacing: 40) {
                         Button { adjustValue(by: -mainStep) } label: {
                             Image(systemName: "minus.circle.fill")
@@ -146,7 +128,7 @@ struct SliderSheetView: View {
                                 .foregroundColor(themeManager.current.primaryAccent)
                         }
                         .buttonStyle(BorderlessButtonStyle())
-                        
+
                         Button { adjustValue(by: mainStep) } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 60))
@@ -154,19 +136,17 @@ struct SliderSheetView: View {
                         }
                         .buttonStyle(BorderlessButtonStyle())
                     }
-                    
+
                     Divider().padding(.horizontal, 40).opacity(0.5)
-                    
-                    // Кнопки быстрого добавления (Quick Adjust)
+
                     VStack(spacing: 12) {
-                        // Плюс строка
+
                         HStack(spacing: 10) {
                             ForEach(quickSteps, id: \.self) { step in
                                 quickAdjustButton(amount: step, isPositive: true)
                             }
                         }
-                        
-                        // Минус строка
+
                         HStack(spacing: 10) {
                             ForEach(quickSteps, id: \.self) { step in
                                 quickAdjustButton(amount: step, isPositive: false)
@@ -175,7 +155,7 @@ struct SliderSheetView: View {
                     }
                     .padding(.horizontal, 20)
                 }
-                
+
                 Spacer()
             }
             .navigationTitle(navigationTitleText)
@@ -192,7 +172,7 @@ struct SliderSheetView: View {
                 }
             }
         }
-        .presentationDetents([.fraction(0.6)]) // Делаем шторку чуть выше половины для комфорта
+        .presentationDetents([.fraction(0.6)]) 
         .presentationDragIndicator(.visible)
         .onAppear {
             localValue = value ?? 0
@@ -202,14 +182,12 @@ struct SliderSheetView: View {
             updateBindingValue(localValue)
         }
     }
-    
-    // MARK: - Quick Adjust Button
-    
+
     private func quickAdjustButton(amount: Double, isPositive: Bool) -> some View {
         let sign = isPositive ? "+" : "-"
         let valueStr = fieldType == .reps ? "\(Int(amount))" : LocalizationHelper.shared.formatFlexible(amount)
         let actualAmount = isPositive ? amount : -amount
-        
+
         return Button {
             adjustValue(by: actualAmount)
         } label: {
@@ -224,28 +202,26 @@ struct SliderSheetView: View {
         }
         .buttonStyle(.plain)
     }
-    
-    // MARK: - Validation & Logic
-    
+
     private func adjustValue(by amount: Double) {
         isBigTextFocused = false
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        
+
         var newValue = localValue + amount
-        if newValue < 0 { newValue = 0 } // Запрещаем отрицательные значения
-        
+        if newValue < 0 { newValue = 0 } 
+
         if fieldType == .reps {
-            newValue = Double(Int(newValue)) // Защита от дробей в повторениях
+            newValue = Double(Int(newValue)) 
         }
-        
+
         localValue = newValue
         validateValue(newValue)
     }
-    
+
     private func validateValue(_ val: Double) {
         let isValid: Bool
         let errMsg: String?
-        
+
         switch fieldType {
         case .weight:
             let kg = unitsManager.convertToKilograms(val)
@@ -265,58 +241,51 @@ struct SliderSheetView: View {
             let v = InputValidator.validateTime(Int(val))
             isValid = v.isValid; errMsg = v.errorMessage
         }
-        
+
         self.errorMessage = errMsg
     }
-    
+
     private func updateBindingValue(_ newValue: Double) {
         guard errorMessage == nil else { return }
         value = newValue > 0 ? newValue : nil
     }
-    
+
     private func formatValue(_ val: Double) -> String {
         if val < 0 { return "—" }
-        
-        // ЖЕСТКАЯ ПРОВЕРКА: Если это повторения, минуты или секунды — ТОЛЬКО целые числа
+
         if fieldType == .reps || fieldType == .timeMin || fieldType == .timeSec {
             return LocalizationHelper.shared.formatInteger(val)
         }
-        
-        // Для веса и дистанции используем гибкое форматирование (убираем .0)
+
         return LocalizationHelper.shared.formatFlexible(val)
     }
 }
-
-// MARK: - Slider Input View (Компактный компонент для встроенного использования)
 
 struct SliderInputView: View {
     @Environment(ThemeManager.self) private var themeManager
     let fieldType: InputFieldType
     @Binding var value: Double?
-    
+
 @Environment(UnitsManager.self) var unitsManager
-    
-    // Параметры слайдера
+
     let minValue: Double
     let maxValue: Double
     let step: Double
-    
+
     @State private var dynamicMaxValue: Double
     @State private var errorMessage: String? = nil
-    
-    // Состояние для отслеживания фокуса текстового поля (для ручного ввода)
+
     @FocusState private var isFocused: Bool
     @State private var textValue: String = ""
-    
-    // Локальное, быстрое состояние для UI
+
     @State private var sliderDoubleValue: Double = 0
     @State private var updateTask: Task<Void, Never>? = nil
-    
+
     init(
         fieldType: InputFieldType,
         value: Binding<Double?>,
         minValue: Double = 0,
-        maxValue: Double = 500, // ИЗМЕНЕНО: По умолчанию до 500
+        maxValue: Double = 500, 
         step: Double = 1
     ) {
         self.fieldType = fieldType
@@ -326,7 +295,7 @@ struct SliderInputView: View {
         self.step = step
         self._dynamicMaxValue = State(initialValue: maxValue)
     }
-    
+
     var body: some View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
@@ -336,21 +305,21 @@ struct SliderInputView: View {
                         .foregroundColor(themeManager.current.primaryAccent)
                 }
                 .buttonStyle(BorderlessButtonStyle())
-                
+
                 TextField(fieldType.title(unitsManager: unitsManager), text: $textValue)
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.center)
                     .font(.headline)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-                    .frame(width: 60) // Сделали чуть шире (было 50) для надежности
+                    .frame(width: 60) 
                     .foregroundColor(errorMessage != nil ? .red : .primary)
                     .focused($isFocused)
                     .onChange(of: isFocused) { _, focused in
                         if focused && sliderDoubleValue == 0 {
-                            textValue = "" // Очищаем 0 при фокусе
+                            textValue = "" 
                         } else if !focused {
-                            updateTextValue() // Возвращаем форматированное значение при потере фокуса
+                            updateTextValue() 
                         }
                     }
                     .onChange(of: textValue) { oldValue, newValue in
@@ -368,7 +337,7 @@ struct SliderInputView: View {
                         }
                     }
                     .onChange(of: value) { oldValue, newValue in
-                        // Внешнее изменение (например, загрузка из модели)
+
                         if let newValue = newValue {
                             if !isFocused {
                                 textValue = formatValue(newValue)
@@ -395,7 +364,7 @@ struct SliderInputView: View {
                             sliderDoubleValue = 0
                         }
                     }
-                
+
                 Button(action: increment) {
                     Image(systemName: "plus.circle.fill")
                         .font(.title2)
@@ -403,18 +372,18 @@ struct SliderInputView: View {
                     }
                 .buttonStyle(BorderlessButtonStyle())
             }
-            
+
             Slider(
                 value: $sliderDoubleValue,
                 in: minValue...dynamicMaxValue,
                 step: step
             ) { editing in
-                // Когда пользователь ОТПУСКАЕТ палец, передаем данные наверх
+
                 if !editing {
                     validateAndCommit(sliderDoubleValue, immediate: true)
                     updateTextValue()
                 } else {
-                    // Пока тянет, просто обновляем текст без сохранения
+
                     textValue = formatValue(sliderDoubleValue)
                 }
             }
@@ -431,12 +400,12 @@ struct SliderInputView: View {
             }
         }
     }
-    
+
     private func validateAndCommit(_ num: Double, immediate: Bool = false) {
         let isValid: Bool
         let errMsg: String?
         let clampedValue: Double
-        
+
         switch fieldType {
         case .weight:
             let kg = unitsManager.convertToKilograms(num)
@@ -456,30 +425,27 @@ struct SliderInputView: View {
             let v = InputValidator.validateTime(Int(num))
             isValid = v.isValid; errMsg = v.errorMessage; clampedValue = Double(v.clampedValue)
         }
-        
+
         self.errorMessage = errMsg
-        
-        // Auto-correct the UI state to the clamped value if invalid
+
         if !isValid {
             self.sliderDoubleValue = clampedValue
             self.textValue = formatValue(clampedValue)
         }
-        
-        // ALWAYS commit the clamped/valid value
+
         commitValueWithDebounce(clampedValue, immediate: immediate)
     }
-    
-    // Сохранение с задержкой, чтобы не лагало при быстром кликаньи "плюсов"
+
     private func commitValueWithDebounce(_ newValue: Double, immediate: Bool = false) {
         updateTask?.cancel()
-        
+
         if immediate {
             value = newValue > 0 ? newValue : nil
             return
         }
-        
+
         updateTask = Task {
-            try? await Task.sleep(nanoseconds: 300_000_000) // Ждем 0.3 секунды
+            try? await Task.sleep(nanoseconds: 300_000_000) 
             if !Task.isCancelled {
                 await MainActor.run {
                     value = newValue > 0 ? newValue : nil
@@ -487,7 +453,7 @@ struct SliderInputView: View {
             }
         }
     }
-    
+
     private func increment() {
         let current = sliderDoubleValue
         let newValue = current + step
@@ -498,7 +464,7 @@ struct SliderInputView: View {
         updateTextValue()
         validateAndCommit(newValue)
     }
-    
+
     private func decrement() {
         let current = sliderDoubleValue
         let newValue = max(current - step, minValue)
@@ -506,7 +472,7 @@ struct SliderInputView: View {
         updateTextValue()
         validateAndCommit(newValue)
     }
-    
+
     private func updateTextValue() {
         if sliderDoubleValue > 0 {
             textValue = formatValue(sliderDoubleValue)
@@ -514,7 +480,7 @@ struct SliderInputView: View {
             textValue = ""
         }
     }
-    
+
     private func formatValue(_ val: Double) -> String {
         if step < 1 {
             return LocalizationHelper.shared.formatDecimal(val)

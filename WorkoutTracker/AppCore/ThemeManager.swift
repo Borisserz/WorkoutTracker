@@ -1,12 +1,10 @@
 internal import SwiftUI
 import Observation
 
-// MARK: - ЦВЕТА ОТ ДИЗАЙНЕРА
 extension Color {
-    // Основной фон (Очень глубокий сине-черный)
+
     static let premiumBackground = Color(red: 0.05, green: 0.05, blue: 0.08)
-    
-    // Неоновые светящиеся акценты (Dribbble Style)
+
     static let neonBlue = Color(red: 0.20, green: 0.60, blue: 1.0)
     static let neonPurple = Color(red: 0.60, green: 0.20, blue: 1.0)
     static let neonOrange = Color(red: 1.0, green: 0.40, blue: 0.10)
@@ -15,7 +13,6 @@ extension Color {
     static let neonYellow = Color(red: 1.0, green: 0.85, blue: 0.10)
 }
 
-// MARK: - ПРОТОКОЛ (Оставляем, чтобы не сломать твои View)
 protocol AppTheme: Sendable {
     var background: Color { get }
     var surface: Color { get }
@@ -37,57 +34,52 @@ protocol AppTheme: Sendable {
     var overlayGradient: LinearGradient { get }
 }
 
-// MARK: - ЕДИНСТВЕННАЯ ТЕМА ПРИЛОЖЕНИЯ
 struct CyberNeonTheme: AppTheme {
     var background: Color { .premiumBackground }
     var surface: Color { Color(red: 0.10, green: 0.10, blue: 0.14) }
     var surfaceVariant: Color { Color(red: 0.15, green: 0.15, blue: 0.20) }
-    
+
     var primaryText: Color { .white }
     var secondaryText: Color { Color(white: 0.6) }
     var tertiaryText: Color { Color(white: 0.4) }
     var onAccentText: Color { .white }
-    
+
     var primaryAccent: Color { .neonBlue }
     var secondaryAccent: Color { .neonPurple }
     var secondaryMidTone: Color { .neonOrange }
     var deepPremiumAccent: Color { .neonPurple }
     var lightHighlight: Color { .neonBlue.opacity(0.15) }
-    
+
     var successColor: Color { .neonGreen }
     var warningColor: Color { .neonYellow }
     var errorColor: Color { .neonRed }
-    
+
     var premiumGradient: LinearGradient {
         LinearGradient(colors: [.neonBlue, .neonPurple], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
-    
+
     var primaryGradient: LinearGradient {
         LinearGradient(colors: [.neonPurple, .neonOrange], startPoint: .topLeading, endPoint: .bottomTrailing)
     }
-    
+
     var overlayGradient: LinearGradient {
         LinearGradient(colors: [.premiumBackground.opacity(0), .premiumBackground.opacity(0.8)], startPoint: .top, endPoint: .bottom)
     }
 }
 
-// MARK: - THEME MANAGER (Теперь просто отдает статичную тему)
 @Observable
 final class ThemeManager: Sendable {
     static let shared = ThemeManager()
-    
-    // Намертво прибиваем неоновую тему
+
     let current: AppTheme = CyberNeonTheme()
-    
+
     private init() {}
 }
 
-// Модификатор-заглушка, чтобы не ругался компилятор в старом коде
 extension View {
     func withThemeTransition() -> some View { self }
 }
 
-// MARK: - Восстановленное расширение для HEX цветов (Нужно для MuscleColorManager)
 extension Color {
     init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))

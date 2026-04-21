@@ -1,24 +1,23 @@
-// ============================================================
-// FILE: WatchApp/Views/WatchActiveWorkoutView.swift
-// ============================================================
+
+
 internal import SwiftUI
 
 struct WatchActiveWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(WatchWorkoutManager.self) private var workoutManager
     @Bindable var viewModel: WatchActiveWorkoutViewModel
-    
+
     @State private var showExerciseList = false
     @State private var showCancelAlert = false
-    
+
     var body: some View {
         ZStack {
             WatchTheme.background.ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(spacing: 12) {
                     headerSection
-                    
+
                     if viewModel.exercises.isEmpty {
                         Text("No exercises.\nTap Add below.")
                             .font(.footnote)
@@ -35,7 +34,7 @@ struct WatchActiveWorkoutView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    
+
                     actionsMenuSection
                 }
                 .padding(.bottom, 24)
@@ -43,11 +42,11 @@ struct WatchActiveWorkoutView: View {
         }
         .navigationBarHidden(true)
         .task {
-                    // 🛠️ FIX: Безопасный запуск сессии. Не сбрасывает таймер.
+
                     if !viewModel.isInitialized {
-                        // ✅ ИСПРАВЛЕНИЕ: Запрашиваем доступ к HealthKit, иначе калории и пульс будут 0
+
                         try? await workoutManager.requestAuthorization()
-                        
+
                         await workoutManager.startWorkout()
                         await viewModel.initializeWorkout()
                     }
@@ -59,7 +58,7 @@ struct WatchActiveWorkoutView: View {
                 showExerciseList = false
             }
         }
-        // 🛠️ FIX: Используем sheet вместо fullScreenCover для защиты от схлопывания стека
+
         .sheet(isPresented: $viewModel.showRestTimer) {
             WatchRestTimerView(viewModel: viewModel)
         }
@@ -91,7 +90,7 @@ struct WatchActiveWorkoutView: View {
             if shouldGoBack {
                 viewModel.activeExercise = nil
                 viewModel.goBackToWorkoutView = false
-                
+
                 if let nextIndex = viewModel.pendingNextExerciseIndex {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         viewModel.activeExercise = ActiveExerciseWrapper(index: nextIndex)
@@ -101,14 +100,14 @@ struct WatchActiveWorkoutView: View {
             }
         }
     }
-    
+
     private var headerSection: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(viewModel.workoutTitle)
                     .font(.headline)
                     .foregroundColor(.white)
-                
+
                 TimelineView(.periodic(from: viewModel.startDate, by: 1.0)) { context in
                     let elapsed = context.date.timeIntervalSince(viewModel.startDate)
                     Text(Duration.seconds(elapsed), format: .time(pattern: .minuteSecond))
@@ -121,23 +120,21 @@ struct WatchActiveWorkoutView: View {
         .padding(.horizontal, 4)
         .padding(.bottom, 4)
     }
-    
+
     private func exerciseCard(for exercise: ExerciseDTO) -> some View {
         let completedSets = (exercise.setsList ?? []).filter { $0.isCompleted }.count
-        // ✅ ИСПРАВЛЕНИЕ: "Всего сетов" - это просто текущее количество сетов в массиве.
-        // Это автоматически учитывает добавленные и удаленные сеты.
+
         let totalSets = (exercise.setsList ?? []).count
         let isDone = completedSets >= totalSets && totalSets > 0
-        
+
         return HStack(spacing: 12) {
-            // ... (остальной UI без изменений) ...
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name)
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(isDone ? .gray : .white)
                     .lineLimit(2)
-                
-                // ✅ ИСПОЛЬЗУЕМ ИСПРАВЛЕННУЮ ПЕРЕМЕННУЮ
+
                 Text("\(completedSets)/\(totalSets) Sets")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(isDone ? WatchTheme.green : WatchTheme.cyan)
@@ -156,7 +153,7 @@ struct WatchActiveWorkoutView: View {
                 .foregroundColor(.white)
                 .padding(.top, 16)
                 .padding(.horizontal, 4)
-            
+
             Button {
                 showExerciseList = true
             } label: {
@@ -168,7 +165,7 @@ struct WatchActiveWorkoutView: View {
                     .foregroundColor(.white)
                     .cornerRadius(12)
             }.buttonStyle(.plain)
-            
+
             HStack(spacing: 10) {
                 Button(role: .destructive) {
                     showCancelAlert = true
@@ -181,11 +178,11 @@ struct WatchActiveWorkoutView: View {
                         .foregroundColor(WatchTheme.red)
                         .cornerRadius(16)
                 }.buttonStyle(.plain)
-                
+
                 Button {
                     Task {
                         await workoutManager.endWorkout()
-                        // ✅ ИСПРАВЛЕНИЕ: Передаем калории из workoutManager в viewModel
+
                         await viewModel.finishWorkout(activeEnergy: workoutManager.activeEnergy)
                     }
                 } label: {

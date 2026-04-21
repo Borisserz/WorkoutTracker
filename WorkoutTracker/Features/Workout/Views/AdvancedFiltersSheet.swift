@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Workout/Views/AdvancedFiltersSheet.swift
-// ============================================================
+
 
 internal import SwiftUI
 
@@ -9,31 +7,30 @@ struct AdvancedFiltersSheet: View {
     let resultsCount: Int
     @Environment(\.dismiss) private var dismiss
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     private let equipmentList = ["barbell", "dumbbell1", "machine", "cable", "bodyweight", "kettlebell", "bands"]
     private let mechanicsList = ["compound", "isolation"]
     private let levelsList = ["beginner", "intermediate", "expert"]
-    
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // Адаптивный фон темы
+
                 (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
                     .ignoresSafeArea()
-                
+
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 28) {
                         AdvancedFilterSectionView(title: "Experience Level", items: levelsList, selectedItems: $filterState.selectedLevel, filterState: filterState)
                         AdvancedFilterSectionView(title: "Mechanic", items: mechanicsList, selectedItems: $filterState.selectedMechanic, filterState: filterState)
                         AdvancedFilterSectionView(title: "Equipment", items: equipmentList, selectedItems: $filterState.selectedEquipment, filterState: filterState)
-                        
-                        Spacer(minLength: 100) // Отступ под плавающую кнопку
+
+                        Spacer(minLength: 100) 
                     }
                     .padding(.vertical, 24)
                 }
-                
-                // Элегантная парящая кнопка (Floating Action Button)
+
                 Button {
                     let gen = UINotificationFeedbackGenerator()
                     gen.notificationOccurred(.success)
@@ -45,14 +42,14 @@ struct AdvancedFiltersSheet: View {
                         .foregroundColor(themeManager.current.background)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(themeManager.current.primaryAccent) // Ровный неоновый цвет вместо агрессивного градиента
-                        .clipShape(Capsule()) // Делаем ее круглой (капсулой)
+                        .background(themeManager.current.primaryAccent) 
+                        .clipShape(Capsule()) 
                         .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, x: 0, y: 8)
                 }
-                .padding(.horizontal, 32) // Отступы по краям, чтобы кнопка не давила
+                .padding(.horizontal, 32) 
                 .padding(.bottom, 20)
                 .background(
-                    // Адаптивный градиент для затемнения под кнопкой
+
                     LinearGradient(colors: [colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground), (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground)).opacity(0)], startPoint: .bottom, endPoint: .top)
                         .ignoresSafeArea()
                 )
@@ -85,27 +82,27 @@ struct AdvancedFilterSectionView: View {
     @Binding var selectedItems: Set<String>
     var filterState: ExerciseFilterState
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     private func displayString(for item: String) -> String {
         if item == "dumbbell1" { return "Dumbbell" }
         return item.capitalized
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(LocalizedStringKey(title))
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .secondary)
                 .padding(.horizontal, 20)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 10) {
                     Spacer().frame(width: 10)
                     ForEach(items, id: \.self) { item in
                         let isSelected = selectedItems.contains(item)
                         let buttonTitle = displayString(for: item)
-                        
+
                         Button {
                             let gen = UIImpactFeedbackGenerator(style: .light)
                             gen.impactOccurred()
@@ -118,14 +115,14 @@ struct AdvancedFilterSectionView: View {
                                 .fontWeight(isSelected ? .bold : .medium)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                // 👇 ИСПРАВЛЕНО: Явный белый цвет в светлой теме для невыбранного состояния
+
                                 .background(isSelected ? themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.15 : 1.0) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.white))
-                                // 👇 ИСПРАВЛЕНО: Черный текст в светлой теме
+
                                 .foregroundColor(isSelected ? (colorScheme == .dark ? themeManager.current.primaryAccent : .white) : (colorScheme == .dark ? .white.opacity(0.8) : .black))
                                 .clipShape(Capsule())
                                 .overlay(
                                     Capsule()
-                                        // 👇 ИСПРАВЛЕНО: Светло-серая обводка в светлой теме вместо черной
+
                                         .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.gray.opacity(0.2)), lineWidth: 1)
                                 )
                         }

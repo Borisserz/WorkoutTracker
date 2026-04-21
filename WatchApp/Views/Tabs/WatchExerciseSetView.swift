@@ -1,6 +1,5 @@
-// ============================================================
-// FILE: WatchApp/Views/Tabs/WatchExerciseSetView.swift
-// ============================================================
+
+
 internal import SwiftUI
 
 enum CrownFocus {
@@ -12,13 +11,13 @@ struct WatchExerciseSetView: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var viewModel: WatchActiveWorkoutViewModel
     let exerciseIndex: Int
-    
+
     @State private var currentSetIndex: Int = 1
     @State private var weight: Double = 0.0
     @State private var reps: Double = 0.0
     @State private var focus: CrownFocus = .repsMode
     @State private var isCurrentSetCompleted = false
-    
+
     private var crownBinding: Binding<Double> {
         Binding(
             get: { focus == .weightMode ? weight : reps },
@@ -27,16 +26,15 @@ struct WatchExerciseSetView: View {
             }
         )
     }
-    
+
     var body: some View {
            let exercise = viewModel.exercises[exerciseIndex]
-           // ✅ ИСПРАВЛЕНИЕ: "Всего сетов" - это просто реальное количество сетов в массиве.
-           // Это автоматически учтет добавленные и удаленные сеты.
+
            let displayTotalSets = (exercise.setsList ?? []).count
-           
+
            ZStack {
             WatchTheme.background.ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(spacing: 8) {
                     HStack {
@@ -55,25 +53,25 @@ struct WatchExerciseSetView: View {
                     }
                     .padding(.horizontal, 4)
                     .padding(.bottom, 2)
-                    
+
                     VStack(spacing: 2) {
                         Text(exercise.name)
                             .font(.system(size: 15, weight: .bold))
                             .foregroundColor(.white)
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
-                        
+
                         Text("Set \(currentSetIndex) of \(displayTotalSets)")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundColor(WatchTheme.cyan)
                     }
-                    
+
                     HStack(spacing: 8) {
                         inputButton(title: "KG", value: String(format: "%.1f", weight), type: .weightMode)
                         inputButton(title: "REPS", value: "\(Int(reps))", type: .repsMode)
                     }
                     .padding(.vertical, 4)
-                    
+
                     HStack(spacing: 12) {
                         Button { changeSet(by: -1) } label: {
                             Image(systemName: "chevron.left")
@@ -86,11 +84,11 @@ struct WatchExerciseSetView: View {
                         .buttonStyle(.plain)
                         .disabled(currentSetIndex <= 1)
                         .opacity(currentSetIndex <= 1 ? 0.3 : 1.0)
-                        
+
                         Button {
                             Task {
                                 await viewModel.logSpecificSet(exerciseIndex: exerciseIndex, setIndex: currentSetIndex, weight: weight, reps: Int(reps))
-                                
+
                                 if currentSetIndex < displayTotalSets {
                                     changeSet(by: 1)
                                 } else {
@@ -107,7 +105,7 @@ struct WatchExerciseSetView: View {
                                 .cornerRadius(22)
                         }
                         .buttonStyle(.plain)
-                        
+
                         Button { changeSet(by: 1) } label: {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 20, weight: .bold))
@@ -120,7 +118,7 @@ struct WatchExerciseSetView: View {
                         .disabled(currentSetIndex >= displayTotalSets)
                         .opacity(currentSetIndex >= displayTotalSets ? 0.3 : 1.0)
                     }
-                    
+
                     if currentSetIndex > 1 {
                         if let prevSet = exercise.setsList?.first(where: { $0.index == currentSetIndex - 1 }) {
                             Text("Previous: \(String(format: "%.1f", prevSet.weight ?? 0))kg x \(prevSet.reps ?? 0)")
@@ -129,7 +127,7 @@ struct WatchExerciseSetView: View {
                                 .padding(.top, 2)
                         }
                     }
-                    
+
                     optionsMenu
                         .padding(.top, 16)
                 }
@@ -140,14 +138,14 @@ struct WatchExerciseSetView: View {
         .focusable()
         .digitalCrownRotation(crownBinding, from: 0, through: 500, by: focus == .weightMode ? 2.5 : 1.0, sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
         .onAppear { setupInitialSet() }
-        // 🛠️ FIX: Никаких вызовов модалок отсюда! Все перехвачено родителем.
+
         .onChange(of: viewModel.goBackToWorkoutView) { _, shouldGoBack in
             if shouldGoBack {
                 dismiss()
             }
         }
     }
-    
+
     private func inputButton(title: String, value: String, type: CrownFocus) -> some View {
         let isFocused = focus == type
         return Button {
@@ -170,14 +168,14 @@ struct WatchExerciseSetView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(isFocused ? WatchTheme.cyan : Color.clear, lineWidth: 2))
         }.buttonStyle(.plain)
     }
-    
+
     private var optionsMenu: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Set options")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundColor(.gray)
                 .padding(.horizontal, 4)
-            
+
             Button {
                 viewModel.addSetToExercise(at: exerciseIndex)
                 changeSet(by: 1)
@@ -190,7 +188,7 @@ struct WatchExerciseSetView: View {
                     .foregroundColor(.white)
                     .cornerRadius(12)
             }.buttonStyle(.plain)
-            
+
             Button(role: .destructive) {
                 Task {
                     await viewModel.removeSet(exerciseIndex: exerciseIndex, setIndex: currentSetIndex)
@@ -205,13 +203,13 @@ struct WatchExerciseSetView: View {
                     .foregroundColor(.white)
                     .cornerRadius(12)
             }.buttonStyle(.plain)
-            
+
             Text("Exercise options")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundColor(.gray)
                 .padding(.horizontal, 4)
                 .padding(.top, 8)
-            
+
             Button(role: .destructive) {
                 Task {
                     await viewModel.removeExercise(at: exerciseIndex)
@@ -228,7 +226,7 @@ struct WatchExerciseSetView: View {
             }.buttonStyle(.plain)
         }
     }
-    
+
     private func setupInitialSet() {
         let sets = viewModel.exercises[exerciseIndex].setsList ?? []
         if let firstUncompleted = sets.first(where: { !$0.isCompleted }) {
@@ -238,24 +236,24 @@ struct WatchExerciseSetView: View {
         }
         loadDataForCurrentSet()
     }
-    
+
     private func changeSet(by amount: Int) {
         let exercise = viewModel.exercises[exerciseIndex]
         let targetSets = exercise.sets ?? 3
         let actualSets = exercise.setsList?.count ?? 0
         let maxAllowedSets = max(1, max(targetSets, actualSets))
-        
+
         let newIndex = currentSetIndex + amount
-        
+
         if newIndex < 1 || newIndex > maxAllowedSets { return }
-        
+
         WKInterfaceDevice.current().play(.click)
         withAnimation(.easeInOut(duration: 0.2)) {
             currentSetIndex = newIndex
             loadDataForCurrentSet()
         }
     }
-    
+
     private func loadDataForCurrentSet() {
         let sets = viewModel.exercises[exerciseIndex].setsList ?? []
         if let existingSet = sets.first(where: { $0.index == currentSetIndex }) {

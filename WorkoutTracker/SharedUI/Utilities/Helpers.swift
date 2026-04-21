@@ -1,28 +1,20 @@
 internal import SwiftUI
 
-// MARK: - Input Validation Helper
-
 struct InputValidator {
-    
-    /// 500 kg is chosen as the absolute upper limit encompassing elite powerlifting deadlifts and squats, ensuring safe tracking without overflow.
-    static let maxWeight: Double = 1500.0  // kg
-    
-    /// 100 reps is a physiological cap for standard hypertrophy or endurance single-set tracking. Values above this are extremely rare and likely input errors.
+
+    static let maxWeight: Double = 1500.0  
+
     static let maxReps: Int = 100
-    
-    /// 100,000 meters (100 km) covers extreme ultra-marathon running and long-distance cycling sessions.
-    static let maxDistance: Double = 100_000.0  // m
-    
-    /// 86400 seconds is exactly 24 hours, representing the logical absolute maximum for a single continuous daily workout session.
-    static let maxTime: Int = 86400  // 24 hours in seconds
-    
-    // Minimum values
-    static let minWeight: Double = 0.0  // Minimum weight: 0 kg
-    static let minReps: Int = 0  // Minimum reps: 0
+
+    static let maxDistance: Double = 100_000.0  
+
+    static let maxTime: Int = 86400  
+
+    static let minWeight: Double = 0.0  
+    static let minReps: Int = 0  
     static let minDistance: Double = 0.0
     static let minTime: Int = 0
-    
-    /// Validates and clamps weight value (can be 0)
+
     static func validateWeight(_ value: Double) -> (isValid: Bool, clampedValue: Double, errorMessage: String?) {
         if value < 0 {
             return (false, minWeight, String(localized: "Weight cannot be negative"))
@@ -32,8 +24,7 @@ struct InputValidator {
         }
         return (true, value, nil)
     }
-    
-    /// Validates and clamps reps value (can be 0)
+
     static func validateReps(_ value: Int) -> (isValid: Bool, clampedValue: Int, errorMessage: String?) {
         if value < 0 {
             return (false, minReps, String(localized: "Reps cannot be negative"))
@@ -43,8 +34,7 @@ struct InputValidator {
         }
         return (true, value, nil)
     }
-    
-    /// Validates and clamps distance value
+
     static func validateDistance(_ value: Double) -> (isValid: Bool, clampedValue: Double, errorMessage: String?) {
         if value < minDistance {
             return (false, minDistance, String(localized: "Distance cannot be negative"))
@@ -54,8 +44,7 @@ struct InputValidator {
         }
         return (true, value, nil)
     }
-    
-    /// Validates and clamps time value (in seconds)
+
     static func validateTime(_ value: Int) -> (isValid: Bool, clampedValue: Int, errorMessage: String?) {
         if value < minTime {
             return (false, minTime, String(localized: "Time cannot be negative"))
@@ -67,53 +56,47 @@ struct InputValidator {
     }
 }
 
-import os // Необходим для OSAllocatedUnfairLock
+import os 
 
-// Помечаем структуру как Sendable, чтобы Swift 6 понимал её потокобезопасность
 struct SVGParser: Sendable {
-    
-    // 1. Современный, сверхбыстрый лок (замена NSLock), который хранит состояние внутри себя
+
     private static let cache = OSAllocatedUnfairLock(initialState: [String: Path]())
-    
+
     static func path(from string: String) -> Path {
-        // 2. Быстрое чтение из кэша с блокировкой
+
         if let cachedPath = cache.withLock({ $0[string] }) {
             return cachedPath
         }
-        
-        // 3. Если в кэше нет — выполняем тяжелый парсинг ВНЕ блокировки,
-        // чтобы не стопить другие потоки, если они обращаются к кэшу
+
         let newPath = parseString(string)
-        
-        // 4. Безопасно сохраняем результат в кэш
+
         cache.withLock { state in
             state[string] = newPath
         }
-        
+
         return newPath
     }
-    
-    // Вся логика вынесена в приватный статический метод
+
     private static func parseString(_ string: String) -> Path {
         var path = Path()
         let formatted = string
             .replacingOccurrences(of: "([a-zA-Z])", with: " $1 ", options: .regularExpression)
             .replacingOccurrences(of: "-", with: " -")
             .replacingOccurrences(of: ",", with: " ")
-        
+
         let scanner = Scanner(string: formatted)
         scanner.charactersToBeSkipped = .whitespacesAndNewlines
-        
+
         var currentPoint = CGPoint.zero
         var startPoint = CGPoint.zero
         var lastCommand = " "
-        
+
         while !scanner.isAtEnd {
             var command: NSString?
             if scanner.scanCharacters(from: .letters, into: &command) {
                 lastCommand = (command as String?) ?? " "
             }
-            
+
             switch lastCommand {
             case "M":
                 guard let x = scanner.scanDouble(), let y = scanner.scanDouble() else { break }
@@ -203,12 +186,11 @@ struct SVGParser: Sendable {
                 _ = scanner.scanDouble()
             }
         }
-        
+
         return path
     }
 }
 
-// MARK: - Muscle Display Helper
 struct MuscleDisplayHelper {
     private static let slugToDisplayName: [String: String] = [
         "chest": "Chest", "upper-back": "Upper Back", "lats": "Lats", "lower-back": "Lower Back",
@@ -218,7 +200,7 @@ struct MuscleDisplayHelper {
         "abductors": "Abductors", "legs": "Legs", "calves": "Calves", "neck": "Neck",
         "tibialis": "Tibialis", "hands": "Hands", "ankles": "Ankles", "feet": "Feet"
     ]
-    
+
     static func getDisplayName(for slug: String) -> String {
         return slugToDisplayName[slug] ?? slug.capitalized
     }
@@ -226,7 +208,7 @@ struct MuscleDisplayHelper {
         let muscleSlugs = MuscleMapping.getMuscles(for: exerciseName, group: muscleGroup)
         return muscleSlugs.compactMap { slugToDisplayName[$0] ?? $0.capitalized }
     }
-    
+
     static func getTargetMusclesString(for exerciseName: String, muscleGroup: String) -> String {
         let names = getTargetMuscleNames(for: exerciseName, muscleGroup: muscleGroup)
         return names.isEmpty ? muscleGroup : names.joined(separator: ", ")
@@ -240,11 +222,11 @@ struct EmptyStateView: View {
     let message: LocalizedStringKey
     let iconSize: CGFloat
     let iconColor: Color
-    
+
     init(icon: String, title: LocalizedStringKey, message: LocalizedStringKey, iconSize: CGFloat = 60, iconColor: Color = .gray.opacity(0.5)) {
         self.icon = icon; self.title = title; self.message = message; self.iconSize = iconSize; self.iconColor = iconColor
     }
-    
+
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: icon).font(.system(size: iconSize)).foregroundColor(iconColor)

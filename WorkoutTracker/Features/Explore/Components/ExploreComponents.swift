@@ -1,24 +1,20 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Explore/Components/ExploreComponents.swift
-// ============================================================
+
 
 internal import SwiftUI
 
-// MARK: - Premium Program Card
 struct PremiumProgramCardView: View {
     let program: WorkoutProgramDefinition
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            // Vibrant Gradient Background
+
             LinearGradient(
                 colors: program.gradientColors,
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
-            
-            // Top Right Badges
+
             VStack(alignment: .trailing, spacing: 8) {
                 HStack {
                     Spacer()
@@ -27,7 +23,7 @@ struct PremiumProgramCardView: View {
                 }
                 HStack {
                     Spacer()
-                    // Adaptive Tag (Singles vs Programs)
+
                     if program.isSingleRoutine {
                         let exerciseCount = program.routines.first?.exercises.count ?? 0
                         ProgramTag(text: "\(exerciseCount) Exercises", icon: "list.bullet", color: .white)
@@ -40,15 +36,14 @@ struct PremiumProgramCardView: View {
             }
             .padding(16)
             .frame(maxHeight: .infinity, alignment: .topTrailing)
-            
-            // Content Overlay (No Creator Text)
+
             VStack(alignment: .leading, spacing: 6) {
                 Text(LocalizedStringKey(program.title))
                     .font(.title2)
                     .fontWeight(.heavy)
                     .foregroundColor(.white)
                     .lineLimit(1)
-                
+
                 Text(LocalizedStringKey(program.description))
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.8))
@@ -70,7 +65,6 @@ struct PremiumProgramCardView: View {
     }
 }
 
-// MARK: - Explore Filters Sheet
 struct ExploreFiltersSheet: View {
     @Bindable var viewModel: ExploreViewModel
     @Environment(\.dismiss) private var dismiss
@@ -79,7 +73,7 @@ struct ExploreFiltersSheet: View {
         NavigationStack {
             ZStack {
                 Color(UIColor.systemGroupedBackground).ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(alignment: .leading, spacing: 28) {
                         FilterSection(title: "Level", items: ProgramLevel.allCases, selection: $viewModel.selectedLevel)
@@ -139,7 +133,7 @@ struct FilterSection<T: RawRepresentable & Identifiable & Equatable>: View where
             Text(LocalizedStringKey(title))
                 .font(.headline)
                 .foregroundColor(themeManager.current.primaryText)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
                     FilterChip(title: "Any", isSelected: selection == nil) {
@@ -160,7 +154,7 @@ struct FilterChip: View {
     let isSelected: Bool
     let action: () -> Void
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
+    @Environment(\.colorScheme) private var colorScheme 
 
     var body: some View {
         Button(action: {
@@ -173,7 +167,7 @@ struct FilterChip: View {
                 .fontWeight(isSelected ? .bold : .medium)
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                // 👈 АДАПТАЦИЯ: В светлой теме фон серый, в темной — темно-серый. При выборе — синий.
+
                 .background(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? themeManager.current.surface : Color(UIColor.systemGray6)))
                 .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
                 .cornerRadius(20)
@@ -185,12 +179,12 @@ struct FilterChip: View {
         .buttonStyle(.plain)
     }
 }
-// MARK: - Reusable Tag Component
+
 struct ProgramTag: View {
     let text: String
     let icon: String
     let color: Color
-    
+
     var body: some View {
         HStack(spacing: 4) {
             Image(systemName: icon)

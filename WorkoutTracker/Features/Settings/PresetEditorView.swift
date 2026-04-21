@@ -1,22 +1,18 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Settings/PresetEditorView.swift
-// ============================================================
+
 
 internal import SwiftUI
 internal import UniformTypeIdentifiers
 import SwiftData
 
-// MARK: - PresetFormViewModel (DTO Form State)
 @Observable
 final class PresetFormViewModel {
     var name: String = ""
     var selectedIcon: String = "img_default"
-    var exercises: [Exercise] = [] // This will hold copies of exercises
-    
-    // For validation
+    var exercises: [Exercise] = [] 
+
     var nameIsValid: Bool = false
     var exercisesAreValid: Bool = false
-    
+
     func load(from preset: WorkoutPreset?) {
         if let p = preset {
             self.name = p.name
@@ -29,66 +25,59 @@ final class PresetFormViewModel {
         }
         validate()
     }
-    
+
     func validate() {
         nameIsValid = !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         exercisesAreValid = !exercises.isEmpty
     }
 }
 
-// MARK: - Main Editor View
-
 struct PresetEditorView: View {
-    
-    // MARK: - Environment & State
-    
+
     @Environment(\.dismiss) private var dismiss
     @Environment(PresetService.self) private var presetService
     @Environment(UnitsManager.self) var unitsManager
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
-    
-    var preset: WorkoutPreset? // Existing preset (if editing)
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
+    var preset: WorkoutPreset? 
+
     @State private var vm = PresetFormViewModel()
-    @State private var draggedExercise: Exercise? // Drag & Drop State
-    
+    @State private var draggedExercise: Exercise? 
+
     @State private var showExerciseSelector = false
     @State private var exerciseToEdit: Exercise?
     @State private var showDeleteAlert = false
     @State private var showDeleteExerciseAlert = false
     @State private var exercisesToDelete: IndexSet?
-    
+
     private let availableIcons = [
         "img_default", "img_chest", "img_chest2", "img_back", "img_back2",
         "img_legs", "img_legs2", "img_arms", "battle-rope", "dumbbell1",
         "exercise-2", "gym-4"
     ]
-    
-    // MARK: - Body
-    
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
-                // 👈 АДАПТИВНЫЙ ФОН
+
                 (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white)
                     .ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(spacing: 24) {
                         headerSection
                         iconsSection
                         exerciseListSection
-                        
+
                         if preset != nil {
                             deleteButtonSection
                         }
-                        
-                        Spacer(minLength: 100) // Space for floating save button
+
+                        Spacer(minLength: 100) 
                     }
                 }
-                
-                // Floating Save Button
+
                 Button {
                     let generator = UIImpactFeedbackGenerator(style: .medium)
                     generator.impactOccurred()
@@ -112,7 +101,7 @@ struct PresetEditorView: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
                 .background(
-                    // 👈 АДАПТИВНЫЙ ГРАДИЕНТ
+
                     LinearGradient(colors: [(colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white), (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white).opacity(0)], startPoint: .bottom, endPoint: .top)
                         .ignoresSafeArea()
                 )
@@ -122,7 +111,7 @@ struct PresetEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Отмена")) { dismiss() }
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 АДАПТАЦИЯ
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
                 }
             }
             .alert(LocalizedStringKey("Delete Template?"), isPresented: $showDeleteAlert) {
@@ -182,36 +171,33 @@ struct PresetEditorView: View {
             }
         }
     }
-    
-    // MARK: - View Components
-    
+
     private var headerSection: some View {
         TextField(LocalizedStringKey("Название тренировки..."), text: $vm.name)
             .font(.system(size: 32, weight: .heavy, design: .rounded))
-            .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ ТЕКСТА
+            .foregroundColor(colorScheme == .dark ? .white : .black) 
             .padding(.horizontal, 24)
             .padding(.top, 24)
             .onChange(of: vm.name) { _, _ in vm.validate() }
     }
-    
+
     private var iconsSection: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 16) {
                 Spacer().frame(width: 8)
-                
+
                 ForEach(availableIcons, id: \.self) { iconName in
                     let isSelected = vm.selectedIcon == iconName
-                    
+
                     ZStack {
-                        // 👈 АДАПТАЦИЯ ФОНА ИКОНОК
+
                         Circle()
                             .fill(isSelected
                                   ? themeManager.current.primaryGradient
                                   : (colorScheme == .dark ? LinearGradient(colors: [themeManager.current.surface, themeManager.current.surface], startPoint: .top, endPoint: .bottom) : LinearGradient(colors: [Color(UIColor.secondarySystemGroupedBackground), Color(UIColor.secondarySystemGroupedBackground)], startPoint: .top, endPoint: .bottom)))
                             .frame(width: 60, height: 60)
                             .shadow(color: isSelected ? themeManager.current.lightHighlight.opacity(0.4) : .black.opacity(colorScheme == .dark ? 0.05 : 0.1), radius: 8, x: 0, y: 4)
-                        
-                        // 👈 ИСПРАВЛЕНИЕ: Иконка в светлой теме не сливается
+
                         Image(iconName)
                             .renderingMode(.template)
                             .resizable()
@@ -234,14 +220,14 @@ struct PresetEditorView: View {
             }
         }
     }
-    
+
     private var exerciseListSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Упражнения"))
                 .font(.headline)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 АДАПТАЦИЯ
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
                 .padding(.horizontal, 24)
-            
+
             if vm.exercises.isEmpty {
                 Button {
                     let gen = UIImpactFeedbackGenerator(style: .medium)
@@ -254,11 +240,11 @@ struct PresetEditorView: View {
                             .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue)
                         Text(LocalizedStringKey("Добавить первое упражнение"))
                             .font(.headline)
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .blue) // 👈 АДАПТАЦИЯ ТЕКСТА КНОПКИ
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .blue) 
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 40)
-                    // 👈 АДАПТАЦИЯ КНОПКИ В СВЕТЛОЙ ТЕМЕ
+
                     .background(colorScheme == .dark ? themeManager.current.primaryAccent.opacity(0.08) : Color.blue.opacity(0.1))
                     .foregroundColor(colorScheme == .dark ? .white : .blue)
                     .cornerRadius(20)
@@ -281,7 +267,7 @@ struct PresetEditorView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                
+
                 Button {
                     let gen = UIImpactFeedbackGenerator(style: .light)
                     gen.impactOccurred()
@@ -292,7 +278,7 @@ struct PresetEditorView: View {
                         Text(LocalizedStringKey("Добавить еще"))
                     }
                     .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue) // 👈 АДАПТАЦИЯ
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue) 
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
                     .background(colorScheme == .dark ? themeManager.current.primaryAccent.opacity(0.1) : Color.blue.opacity(0.1))
@@ -303,22 +289,22 @@ struct PresetEditorView: View {
             }
         }
     }
-    
+
     @ViewBuilder
     private func exerciseCard(for exercise: Exercise) -> some View {
         HStack(spacing: 16) {
             Image(systemName: "line.3.horizontal")
                 .font(.title3)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryAccent.opacity(0.4) : .gray.opacity(0.5)) // 👈 АДАПТАЦИЯ
-            
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryAccent.opacity(0.4) : .gray.opacity(0.5)) 
+
             VStack(alignment: .leading, spacing: 4) {
                 NavigationLink(destination: ExerciseHistoryView(exerciseName: exercise.name)) {
                     Text(LocalizationHelper.shared.translateName(exercise.name))
                         .font(.headline)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) // 👈 АДАПТАЦИЯ
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
                 }
                 .buttonStyle(.plain)
-                
+
                 Group {
                     switch exercise.type {
                     case .strength:
@@ -335,11 +321,11 @@ struct PresetEditorView: View {
                     }
                 }
                 .font(.subheadline)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) // 👈 АДАПТАЦИЯ
+                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
             }
-            
+
             Spacer()
-            
+
             Button {
                 let gen = UIImpactFeedbackGenerator(style: .light)
                 gen.impactOccurred()
@@ -353,7 +339,7 @@ struct PresetEditorView: View {
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
-            
+
             Button {
                 let gen = UIImpactFeedbackGenerator(style: .medium)
                 gen.impactOccurred()
@@ -372,13 +358,13 @@ struct PresetEditorView: View {
             .buttonStyle(.plain)
         }
         .padding(16)
-        // 👈 АДАПТИВНЫЙ ФОН КАРТОЧЕК
+
         .background(colorScheme == .dark ? themeManager.current.surface : Color(UIColor.secondarySystemGroupedBackground))
         .cornerRadius(16)
         .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 5, x: 0, y: 2)
     }
-    
+
     private var deleteButtonSection: some View {
         Button(role: .destructive) {
             showDeleteAlert = true
@@ -398,14 +384,12 @@ struct PresetEditorView: View {
         .padding(.horizontal, 20)
         .padding(.top, 24)
     }
-    
-    // MARK: - Logic Helpers
-    
+
     private func savePreset() async {
         await presetService.savePreset(preset: preset, name: vm.name, icon: vm.selectedIcon, folderName: preset?.folderName, exercises: vm.exercises)
         dismiss()
     }
-    
+
     private func formatTime(_ totalSeconds: Int) -> String {
         let m = totalSeconds / 60
         let s = totalSeconds % 60
@@ -413,9 +397,6 @@ struct PresetEditorView: View {
     }
 }
 
-// 👈 ДОБАВЛЕННЫЕ СТРУКТУРЫ ДЛЯ ОШИБКИ ПРЕСЕТА
-
-// MARK: - Inner Exercise Editor ViewModel
 @Observable
 final class PresetExerciseFormViewModel {
     var setsCount: Int = 1
@@ -424,23 +405,23 @@ final class PresetExerciseFormViewModel {
     var distanceValue: Double? = nil
     var minutes: Int = 0
     var seconds: Int = 0
-    
+
     var validationErrorMessage: String? = nil
-    
+
     func load(from exercise: Exercise) {
         setsCount = exercise.setsList.count > 0 ? exercise.setsList.count : 1
         repsCount = exercise.firstSetReps
         weightValue = exercise.firstSetWeight
         distanceValue = exercise.firstSetDistance
-        
+
         let total = exercise.firstSetTimeSeconds ?? 0
         minutes = total / 60
         seconds = total % 60
     }
-    
+
     func validate(for type: ExerciseType, unitsManager: UnitsManager) -> Bool {
         var errorMessages: [String] = []
-        
+
         if type == .strength {
             let actualWeight = weightValue
             let weightValidation = InputValidator.validateWeight(actualWeight)
@@ -448,14 +429,14 @@ final class PresetExerciseFormViewModel {
                 errorMessages.append(weightValidation.errorMessage ?? "Invalid weight")
                 weightValue = weightValidation.clampedValue
             }
-            
+
             let repsValidation = InputValidator.validateReps(repsCount)
             if !repsValidation.isValid {
                 errorMessages.append(repsValidation.errorMessage ?? "Invalid reps")
                 repsCount = repsValidation.clampedValue
             }
         }
-        
+
         if type == .cardio {
             let actualDistance = distanceValue ?? 0.0
             let distValidation = InputValidator.validateDistance(actualDistance)
@@ -464,7 +445,7 @@ final class PresetExerciseFormViewModel {
                 distanceValue = distValidation.clampedValue
             }
         }
-        
+
         let totalSeconds = (minutes * 60) + seconds
         if totalSeconds > 0 {
             let timeValidation = InputValidator.validateTime(totalSeconds)
@@ -474,7 +455,7 @@ final class PresetExerciseFormViewModel {
                 seconds = timeValidation.clampedValue % 60
             }
         }
-        
+
         if errorMessages.isEmpty {
             validationErrorMessage = nil
             return true
@@ -485,7 +466,6 @@ final class PresetExerciseFormViewModel {
     }
 }
 
-// MARK: - Inner Exercise Editor View
 struct PresetExerciseEditor: View {
     var exercise: Exercise
     var onSave: (Exercise) -> Void
@@ -494,7 +474,7 @@ struct PresetExerciseEditor: View {
     @Environment(UnitsManager.self) var unitsManager
     @State private var vm = PresetExerciseFormViewModel()
     @State private var showValidationAlert = false
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -504,7 +484,7 @@ struct PresetExerciseEditor: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)
                         .padding(.top, 24)
-                    
+
                     VStack(spacing: 16) {
                         switch exercise.type {
                         case .strength: strengthConfig
@@ -561,9 +541,7 @@ struct PresetExerciseEditor: View {
             }
         }
     }
-    
-    // MARK: - Config Subviews
-    
+
     @ViewBuilder
     private var strengthConfig: some View {
         customStepper(title: "Sets", value: $vm.setsCount, range: 1...20)
@@ -573,7 +551,7 @@ struct PresetExerciseEditor: View {
             set: { vm.weightValue = unitsManager.convertToKilograms($0 ?? 0) }
         ))
     }
-    
+
     @ViewBuilder
     private var cardioConfig: some View {
         customTextFieldRow(
@@ -587,23 +565,21 @@ struct PresetExerciseEditor: View {
         )
         customTimeRow(title: "Duration")
     }
-    
+
     @ViewBuilder
     private var durationConfig: some View {
         customStepper(title: "Sets", value: $vm.setsCount, range: 1...10)
         customTimeRow(title: "Time per set")
     }
-    
-    // MARK: - Custom Controls
-    
+
     private func customStepper(title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {
         HStack {
             Text(LocalizedStringKey(title))
                 .font(.headline)
                 .foregroundColor(themeManager.current.primaryText)
-            
+
             Spacer()
-            
+
             HStack(spacing: 16) {
                 Button {
                     let gen = UIImpactFeedbackGenerator(style: .light)
@@ -614,12 +590,12 @@ struct PresetExerciseEditor: View {
                         .font(.title2)
                         .foregroundColor(value.wrappedValue > range.lowerBound ? themeManager.current.primaryAccent : .gray.opacity(0.3))
                 }
-                
+
                 Text("\(value.wrappedValue)")
                     .font(.title3)
                     .bold()
                     .frame(minWidth: 35, alignment: .center)
-                
+
                 Button {
                     let gen = UIImpactFeedbackGenerator(style: .light)
                     gen.impactOccurred()
@@ -640,15 +616,15 @@ struct PresetExerciseEditor: View {
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
-    
+
     private func customTextFieldRow(title: String, value: Binding<Double?>) -> some View {
         HStack {
             Text(LocalizedStringKey(title))
                 .font(.headline)
                 .foregroundColor(themeManager.current.primaryText)
-            
+
             Spacer()
-            
+
             ClearableTextField(placeholder: "0", value: value)
                 .frame(width: 90)
                 .font(.headline)
@@ -659,15 +635,15 @@ struct PresetExerciseEditor: View {
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
-    
+
     private func customTimeRow(title: String) -> some View {
         HStack {
             Text(LocalizedStringKey(title))
                 .font(.headline)
                 .foregroundColor(themeManager.current.primaryText)
-            
+
             Spacer()
-            
+
             HStack(spacing: 8) {
                 TextField("0", value: $vm.minutes, format: .number)
                     .keyboardType(.numberPad)
@@ -677,11 +653,11 @@ struct PresetExerciseEditor: View {
                     .padding(.vertical, 8)
                     .background(themeManager.current.surfaceVariant)
                     .cornerRadius(8)
-                
+
                 Text(LocalizedStringKey("min"))
                     .font(.subheadline)
                     .foregroundColor(themeManager.current.secondaryText)
-                
+
                 TextField("0", value: $vm.seconds, format: .number)
                     .keyboardType(.numberPad)
                     .multilineTextAlignment(.center)
@@ -696,7 +672,7 @@ struct PresetExerciseEditor: View {
                             vm.seconds = clampedSeconds
                         }
                     }
-                
+
                 Text(LocalizedStringKey("sec"))
                     .font(.subheadline)
                     .foregroundColor(themeManager.current.secondaryText)
@@ -707,21 +683,19 @@ struct PresetExerciseEditor: View {
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
-    
-    // MARK: - Logic
-    
+
     private func save() {
         guard vm.validate(for: exercise.type, unitsManager: unitsManager) else {
             showValidationAlert = true
             return
         }
-        
+
         let gen = UIImpactFeedbackGenerator(style: .medium)
         gen.impactOccurred()
-        
+
         let finalSetsCount = exercise.type == .cardio ? 1 : max(1, vm.setsCount)
         let totalSeconds = (vm.minutes * 60) + vm.seconds
-        
+
         var newSets: [WorkoutSet] = []
         for i in 1...finalSetsCount {
             newSets.append(WorkoutSet(
@@ -734,9 +708,9 @@ struct PresetExerciseEditor: View {
                 type: .normal
             ))
         }
-        
+
         exercise.replaceAllSets(with: newSets)
-        
+
         onSave(exercise)
         dismiss()
     }

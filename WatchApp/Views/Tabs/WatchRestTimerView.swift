@@ -1,23 +1,22 @@
-// ============================================================
-// FILE: WatchApp/Views/Tabs/WatchRestTimerView.swift
-// ============================================================
+
+
 internal import SwiftUI
 
 struct WatchRestTimerView: View {
     @Bindable var viewModel: WatchActiveWorkoutViewModel
-    @Environment(WatchWorkoutManager.self) private var workoutManager // Нужен для пульса
-    
+    @Environment(WatchWorkoutManager.self) private var workoutManager 
+
     var progress: Double {
         guard viewModel.initialRestTime > 0 else { return 0 }
         return Double(viewModel.restTimeRemaining) / Double(viewModel.initialRestTime)
     }
-    
+
     var body: some View {
         ZStack {
             WatchTheme.background.ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
-                // ТАПБАР: Кнопка Skip слева, Время и Пульс справа
+
                 HStack(alignment: .top) {
                     Button {
                         WKInterfaceDevice.current().play(.click)
@@ -32,22 +31,21 @@ struct WatchRestTimerView: View {
                             .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    
+
                     Spacer()
-                    
+
                     VStack(alignment: .trailing, spacing: 2) {
-                        // Время (Например: 15:01)
+
                         Text(Date(), format: .dateTime.hour().minute())
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.white)
-                        
-                        // Пульс (Например: ❤️ 92)
+
                         HStack(spacing: 2) {
                             Image(systemName: "heart.fill")
                                 .foregroundColor(WatchTheme.red)
                                 .font(.system(size: 10))
                                 .symbolEffect(.pulse, options: .repeating, isActive: workoutManager.isRunning)
-                            
+
                             Text("\(Int(workoutManager.heartRate))")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
@@ -56,20 +54,18 @@ struct WatchRestTimerView: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.top, 8)
-                
+
                 Spacer()
-                
-                // ОГРОМНЫЙ ТАЙМЕР В ЦЕНТРЕ
+
                 Text(timeString(viewModel.restTimeRemaining))
                     .font(.system(size: 48, weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
-                
-                // СИНЯЯ ПОЛОСА PROGRESS BAR
+
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(WatchTheme.blue.opacity(0.3)) // Полупрозрачный фон полосы
+                        Capsule().fill(WatchTheme.blue.opacity(0.3)) 
                         Capsule()
                             .fill(WatchTheme.blue)
                             .frame(width: max(0, geo.size.width * CGFloat(progress)))
@@ -79,8 +75,7 @@ struct WatchRestTimerView: View {
                 .frame(height: 8)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 8)
-                
-                // ИНФОРМАЦИЯ О СЛЕДУЮЩЕМ СЕТЕ (Выровнено по левому краю)
+
                 HStack {
                     Text(viewModel.nextSetInfo)
                         .font(.system(size: 12, weight: .bold))
@@ -92,10 +87,9 @@ struct WatchRestTimerView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
-                
+
                 Spacer()
-                
-                // КНОПКИ -15s и +15s
+
                 HStack(spacing: 12) {
                     timerButton(title: "-15s", action: { viewModel.adjustTimer(by: -15) })
                     timerButton(title: "+15s", action: { viewModel.adjustTimer(by: 15) })
@@ -105,7 +99,7 @@ struct WatchRestTimerView: View {
             }
         }
     }
-    
+
     private func timerButton(title: String, action: @escaping () -> Void) -> some View {
         Button(action: {
             WKInterfaceDevice.current().play(.click)
@@ -121,7 +115,7 @@ struct WatchRestTimerView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private func timeString(_ time: Int) -> String {
         let m = time / 60
         let s = time % 60

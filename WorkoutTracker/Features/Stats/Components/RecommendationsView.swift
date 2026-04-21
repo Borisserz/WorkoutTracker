@@ -1,18 +1,11 @@
-//
-//  RecommendationsView.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 24.12.25.
-//
-//  Отображение рекомендаций на основе данных
+
 
 internal import SwiftUI
 
 struct RecommendationsView: View {
     let recommendations: [Recommendation]
        var onTap: ((Recommendation) -> Void)?
-       
-       // ДОБАВЛЕН ЯВНЫЙ ИНИЦИАЛИЗАТОР
+
        init(
            recommendations: [Recommendation],
            onTap: ((Recommendation) -> Void)? = nil
@@ -20,7 +13,7 @@ struct RecommendationsView: View {
            self.recommendations = recommendations
            self.onTap = onTap
        }
-       
+
         @Environment(ThemeManager.self) private var themeManager
 
        var body: some View {
@@ -43,7 +36,7 @@ struct RecommendationsView: View {
 
 struct RecommendationRow: View {
     let recommendation: Recommendation
-    
+
         @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -52,15 +45,14 @@ struct RecommendationRow: View {
                 .foregroundColor(recommendation.type.color)
                 .font(.title3)
                 .frame(width: 32)
-            
+
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(recommendation.title)
                         .font(.headline)
-                    
+
                     Spacer()
-                    
-                    // Индикатор приоритета
+
                     HStack(spacing: 2) {
                         ForEach(1...5, id: \.self) { index in
                             Circle()
@@ -69,7 +61,7 @@ struct RecommendationRow: View {
                         }
                     }
                 }
-                
+
                 Text(recommendation.message)
                     .font(.subheadline)
                     .foregroundColor(themeManager.current.secondaryText)

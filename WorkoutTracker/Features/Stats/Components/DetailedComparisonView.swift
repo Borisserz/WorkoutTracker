@@ -1,13 +1,11 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Stats/Components/DetailedComparisonView.swift
-// ============================================================
+
 
 internal import SwiftUI
 
 struct DetailedComparisonView: View {
     let comparisons: [DetailedComparison]
     let period: String
-    
+
     @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
@@ -30,10 +28,10 @@ struct DetailedComparisonView: View {
 
 struct DetailedComparisonRow: View {
     let comparison: DetailedComparison
-    
+
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
-    
+
     private func iconAndColor(for metric: String) -> (icon: String, color: Color) {
         let m = metric.lowercased()
         if m.contains("workout") || m.contains("тренировки") { return ("figure.run", themeManager.current.primaryAccent) }
@@ -42,21 +40,21 @@ struct DetailedComparisonRow: View {
         if m.contains("time") || m.contains("время") { return ("stopwatch.fill", .cyan) }
         return ("chart.bar.fill", .gray)
     }
-    
+
     var body: some View {
         HStack(spacing: 16) {
             let style = iconAndColor(for: comparison.metric)
-            
+
             ZStack {
                 Circle().fill(style.color.opacity(0.15)).frame(width: 48, height: 48)
                 Image(systemName: style.icon).font(.title3).foregroundColor(style.color)
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(LocalizedStringKey(comparison.metric))
                     .font(.headline)
                     .foregroundColor(colorScheme == .dark ? .white : .black)
-                
+
                 HStack(spacing: 6) {
                     Text(LocalizationHelper.shared.formatSmart(comparison.previousValue))
                         .font(.subheadline)
@@ -70,9 +68,9 @@ struct DetailedComparisonRow: View {
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                 }
             }
-            
+
             Spacer()
-            
+
             let isPositive = comparison.changePercentage >= 0
             Text("\(isPositive ? "+" : "")\(comparison.changePercentage, specifier: "%.1f")%")
                 .font(.subheadline)

@@ -4,9 +4,8 @@ struct MuscleGroup: Identifiable {
     let id = UUID()
     let slug: String
     let name: String
-    let paths: [String] // Сюда кладем ВСЕ пути (и left, и right)
-    
-    // Вспомогательный инициализатор
+    let paths: [String] 
+
     init(slug: String, name: String, paths: [String]) {
         self.slug = slug
         self.name = name

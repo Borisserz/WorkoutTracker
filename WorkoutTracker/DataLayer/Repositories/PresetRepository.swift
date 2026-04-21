@@ -10,17 +10,17 @@ protocol PresetRepositoryProtocol: Sendable {
 }
 @ModelActor
 actor PresetRepository: PresetRepositoryProtocol {
-    
+
     func createPreset(name: String, icon: String, folderName: String?, exercises: [ExerciseDTO]) async throws {
         let newPreset = WorkoutPreset(id: UUID(), name: name, icon: icon, folderName: folderName, exercises: [])
         modelContext.insert(newPreset)
-        
+
         for dto in exercises {
             let newEx = Exercise(from: dto)
             modelContext.insert(newEx)
             newEx.preset = newPreset
             newPreset.exercises.append(newEx)
-            
+
             for set in newEx.setsList { modelContext.insert(set) }
             for subEx in newEx.subExercises {
                 modelContext.insert(subEx)
@@ -33,24 +33,22 @@ actor PresetRepository: PresetRepositoryProtocol {
 
     func updatePreset(presetID: PersistentIdentifier, name: String, icon: String, folderName: String?, exercises: [ExerciseDTO]) async throws {
         guard let existingPreset = modelContext.model(for: presetID) as? WorkoutPreset else { throw WorkoutRepositoryError.modelNotFound }
-        
+
         existingPreset.name = name
         existingPreset.icon = icon
         if let newFolder = folderName {
             existingPreset.folderName = newFolder
         }
-        
-        // Очищаем Older упражнения
+
         for oldEx in existingPreset.exercises { modelContext.delete(oldEx) }
         existingPreset.exercises.removeAll()
-        
-        // Добавляем новые из DTO
+
         for dto in exercises {
             let newEx = Exercise(from: dto)
             modelContext.insert(newEx)
             newEx.preset = existingPreset
             existingPreset.exercises.append(newEx)
-            
+
             for set in newEx.setsList { modelContext.insert(set) }
             for subEx in newEx.subExercises {
                 modelContext.insert(subEx)

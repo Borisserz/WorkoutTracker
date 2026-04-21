@@ -1,11 +1,8 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Workout/Views/HistoryView.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
 
-// Модель для быстрого поиска дизайнера (Mock Data)
 struct SearchedWorkout: Identifiable, Equatable {
     let id = UUID()
     let name: String
@@ -19,24 +16,22 @@ struct HistoryView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
-    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var showSparks = false
-    
+
     @State private var showDetailSheet = false
     @State private var detailWorkoutId: UUID? = nil
-    
+
     @State private var selectedFilter: WorkoutView.FilterPeriod = .all
     @State private var sortOption: WorkoutView.SortOption = .dateDescending
     @State private var showFavoritesOnly = false
     @State private var listViewModel = WorkoutListViewModel()
-    
-    // 👈 ДОБАВЛЕНО: Стейт для режима редактирования (удаления)
+
     @State private var isEditingList = false
-    
-    // БАЗА ДИЗАЙНЕРА ДЛЯ БЫСТРОГО ДОБАВЛЕНИЯ
+
     @State private var searchDatabase: [SearchedWorkout] = [
         SearchedWorkout(name: "Тренировка Арнольда", description: "Классическая программа Золотой Эры: суперсеты на грудь и спину для максимального пампа и расширения грудной клетки."),
         SearchedWorkout(name: "Фуллбоди База", description: "Мощный фундамент. Приседания, жим лёжа и становая тяга в одну сессию. Идеально для выброса тестостерона."),
@@ -45,27 +40,26 @@ struct HistoryView: View {
         SearchedWorkout(name: "Дельты-Пушки", description: "Фокус на плечи. Армейский жим, махи в стороны и тяга к подбородку сделают твои плечи круглыми как шары."),
         SearchedWorkout(name: "Кардио-Интенсив", description: "Интервальная (HIIT) тренировка. Пульс 160+, пот ручьем, сжигание жира на максималках.")
     ]
-    
+
     var body: some View {
         NavigationStack {
             ZStack {
-                // 👈 ИСПРАВЛЕНИЕ: Статичный фон в светлой теме, живой фон в темной
+
                 if colorScheme == .dark {
                     HistoryBreathingBackground(cnsScore: 100)
                 } else {
                     Color(UIColor.systemGroupedBackground).ignoresSafeArea()
                 }
-                
+
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 28) {
-                        HistoryHeader(isEditing: $isEditingList) // 👈 Передаем стейт редактирования
-                        
+                        HistoryHeader(isEditing: $isEditingList) 
+
                         TopStatsIslandsView(listViewModel: listViewModel, unitsManager: unitsManager)
-                        
-                        // ПОИСКОВИК
+
                         VStack(spacing: 12) {
                             HistorySearchBar(text: $searchText, isSearching: $isSearching)
-                            
+
                             if isSearching && !searchText.isEmpty {
                                 SearchResultsDropdown(
                                     results: $searchDatabase,
@@ -79,30 +73,29 @@ struct HistoryView: View {
                             }
                         }
                         .zIndex(20)
-                        
+
                         PremiumCategoriesIslands(
                             selectedFilter: $selectedFilter,
                             showFavoritesOnly: $showFavoritesOnly
                         )
                         .zIndex(10)
-                        
-                        // ДОБАВЛЕННЫЕ ТРЕНИРОВКИ (ИЗ БАЗЫ SWIFTDATA)
+
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Workout History")
                                 .font(.title3).bold()
                                 .foregroundColor(colorScheme == .dark ? .white : .primary)
                                 .padding(.horizontal, 20)
-                            
+
                             DynamicWorkoutListView(
                                 searchText: "",
                                 filter: selectedFilter,
                                 sort: sortOption,
                                 favoritesOnly: showFavoritesOnly,
                                 listViewModel: listViewModel,
-                                isEditing: isEditingList // 👈 Передаем флаг редактирования
+                                isEditing: isEditingList 
                             )
                         }
-                        
+
                         Spacer().frame(height: 120)
                     }
                     .padding(.top, 20)
@@ -111,14 +104,13 @@ struct HistoryView: View {
                     hideKeyboard()
                     withAnimation { isSearching = false }
                 }
-                
-                // 👈 ИСПРАВЛЕНИЕ: Искры только в темной теме, чтобы не портить светлую
+
                 if showSparks && colorScheme == .dark {
                     ParticleExplosionView().allowsHitTesting(false)
                 }
             }
             .navigationBarHidden(true)
-            // МОДАЛЬНОЕ ОКНО БЫСТРОГО ДОБАВЛЕНИЯ
+
             .sheet(isPresented: $showDetailSheet) {
                 if let id = detailWorkoutId, let index = searchDatabase.firstIndex(where: { $0.id == id }) {
                     QuickWorkoutDetailSheet(
@@ -137,7 +129,7 @@ struct HistoryView: View {
             }
         }
     }
-    
+
     private func triggerSparks() {
         showSparks = true
         HapticManager.shared.impact(.heavy)
@@ -147,20 +139,18 @@ struct HistoryView: View {
     }
 }
 
-// MARK: - ХЕДЕР С КНОПКОЙ РЕДАКТИРОВАНИЯ
 struct HistoryHeader: View {
     @Binding var isEditing: Bool
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         HStack {
             Text("История")
                 .font(.system(size: 34, weight: .black, design: .rounded))
                 .foregroundColor(colorScheme == .dark ? .white : .primary)
-            
+
             Spacer()
-            
-            // 👈 ИСПРАВЛЕНИЕ: Кнопка Правки
+
             Button(action: {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -198,15 +188,12 @@ struct ParticleExplosionView: View {
     }
 }
 
-// MARK: - ВЕРХНИЕ ОСТРОВКИ
-// MARK: - ВЕРХНИЕ ОСТРОВКИ
 struct TopStatsIslandsView: View {
     var listViewModel: WorkoutListViewModel
     var unitsManager: UnitsManager
-    
-    // 👈 ДОБАВЛЕНО: Единый стейт, который знает, какая карточка сейчас открыта
+
     @State private var activeTooltip: String? = nil
-    
+
     var body: some View {
         HStack(spacing: 12) {
             StatIslandWithTooltip(
@@ -218,9 +205,9 @@ struct TopStatsIslandsView: View {
                 tooltipDesc: "Отличное время под нагрузкой.",
                 statusText: nil,
                 statusColor: nil,
-                activeTooltip: $activeTooltip // 👈 Передаем привязку
+                activeTooltip: $activeTooltip 
             )
-            
+
             let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
             StatIslandWithTooltip(
                 icon: "scalemass.fill",
@@ -231,9 +218,9 @@ struct TopStatsIslandsView: View {
                 tooltipDesc: "Ваш суммарный средний тоннаж.",
                 statusText: nil,
                 statusColor: nil,
-                activeTooltip: $activeTooltip // 👈 Передаем привязку
+                activeTooltip: $activeTooltip 
             )
-            
+
             StatIslandWithTooltip(
                 icon: "heart.fill",
                 title: "Пульс",
@@ -243,7 +230,7 @@ struct TopStatsIslandsView: View {
                 tooltipDesc: "Ваш пульс в норме.",
                 statusText: "Идеальный показатель",
                 statusColor: .green,
-                activeTooltip: $activeTooltip // 👈 Передаем привязку
+                activeTooltip: $activeTooltip 
             )
         }
         .padding(.horizontal, 20)
@@ -255,17 +242,15 @@ struct StatIslandWithTooltip: View {
     @Environment(\.colorScheme) private var colorScheme
     var icon: String; var title: String; var value: String; var color: Color
     var tooltipTitle: String; var tooltipDesc: String; var statusText: String?; var statusColor: Color?
-    
-    // 👈 ДОБАВЛЕНО: Привязка к родителю
+
     @Binding var activeTooltip: String?
-    
+
     @State private var isBreathing = false
-    
-    // Вычисляем, открыто ли облачко ИМЕННО ДЛЯ ЭТОЙ карточки
+
     private var showCloud: Bool {
         activeTooltip == title
     }
-    
+
     var body: some View {
         ZStack(alignment: .top) {
             VStack(spacing: 8) {
@@ -281,19 +266,18 @@ struct StatIslandWithTooltip: View {
             .onTapGesture {
                 HapticManager.shared.impact(.medium)
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                    // 👈 ЛОГИКА: Если нажали на уже открытую — закрываем. Иначе — открываем эту, что автоматически закроет другие
+
                     if activeTooltip == title {
                         activeTooltip = nil
                     } else {
                         activeTooltip = title
                     }
                 }
-                
-                // Автоскрытие через 3 секунды
+
                 if activeTooltip == title {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                         withAnimation {
-                            // Закрываем только если за эти 3 секунды не открыли другую карточку
+
                             if activeTooltip == title {
                                 activeTooltip = nil
                             }
@@ -302,7 +286,7 @@ struct StatIslandWithTooltip: View {
                 }
             }
             .onAppear { withAnimation(.easeInOut(duration: .random(in: 1.5...2.5)).repeatForever(autoreverses: true)) { isBreathing = true } }
-            
+
             if showCloud {
                 VStack(spacing: 0) {
                     VStack(spacing: 6) {
@@ -318,13 +302,11 @@ struct StatIslandWithTooltip: View {
     }
 }
 
-
-// MARK: - ПОИСК И ВЫПАДАЮЩИЙ СПИСОК
 struct HistorySearchBar: View {
     @Binding var text: String
     @Binding var isSearching: Bool
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         HStack {
             Button(action: { withAnimation { isSearching = true } }) {
@@ -332,12 +314,12 @@ struct HistorySearchBar: View {
                     .foregroundColor(isSearching ? .cyan : .gray)
                     .font(.system(size: 18, weight: .bold))
             }
-            
+
             TextField("Найти или добавить (напр. Тренировка Арнольда)", text: $text)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .onTapGesture { withAnimation { isSearching = true } }
                 .onChange(of: text) { _ in withAnimation { isSearching = true } }
-            
+
             if !text.isEmpty {
                 Button(action: { text = "" }) {
                     Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
@@ -355,14 +337,14 @@ struct SearchResultsDropdown: View {
     var searchText: String
     var onSelect: (SearchedWorkout) -> Void
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var filtered: [SearchedWorkout] {
         if searchText.isEmpty { return results }
         let query = searchText.lowercased()
         let f = results.filter { $0.name.lowercased().contains(query) || $0.description.lowercased().contains(query) }
         return f.isEmpty ? [SearchedWorkout(name: searchText, description: "Сгенерировать новую тренировку")] : f
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
             ForEach(filtered.indices, id: \.self) { index in
@@ -374,7 +356,7 @@ struct SearchResultsDropdown: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
                     .onTapGesture { onSelect(filtered[index]) }
-                    
+
                     Button(action: {
                         withAnimation { results[index].isFavorite.toggle() }
                         HapticManager.shared.impact(.light)
@@ -388,7 +370,7 @@ struct SearchResultsDropdown: View {
                     }
                 }
                 .padding(.vertical, 12).padding(.horizontal, 16).background(Color.primary.opacity(0.01))
-                
+
                 if index < filtered.count - 1 {
                     Divider().background(Color.primary.opacity(0.1)).padding(.horizontal, 16)
                 }
@@ -400,11 +382,10 @@ struct SearchResultsDropdown: View {
     }
 }
 
-// MARK: - ПРЕМИУМ-ОСТРОВКИ КАТЕГОРИЙ (ФИЛЬТРЫ)
 struct PremiumCategoriesIslands: View {
     @Binding var selectedFilter: WorkoutView.FilterPeriod
     @Binding var showFavoritesOnly: Bool
-    
+
     var body: some View {
         HStack(spacing: 12) {
             PremiumCategoryCard(
@@ -416,7 +397,7 @@ struct PremiumCategoriesIslands: View {
                 selectedFilter = .all
                 showFavoritesOnly = false
             }
-            
+
             PremiumCategoryCard(
                 title: "Избранные\nтренировки",
                 icon: "star.fill",
@@ -425,7 +406,7 @@ struct PremiumCategoriesIslands: View {
             ) {
                 showFavoritesOnly = true
             }
-            
+
             PremiumCategoryCard(
                 title: "Лучшие\nза месяц",
                 icon: "flame.fill",
@@ -445,7 +426,7 @@ struct PremiumCategoryCard: View {
     let action: () -> Void
     @State private var isBreathing = false
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         Button(action: {
             HapticManager.shared.selection()
@@ -456,17 +437,17 @@ struct PremiumCategoryCard: View {
                     .font(.title2)
                     .foregroundStyle(LinearGradient(colors: [colorScheme == .dark ? .white : color, color], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .shadow(color: color.opacity(0.5), radius: isBreathing && isActive ? 8 : 2)
-                
+
                 Text(title)
                     .font(.system(size: 12, weight: .bold))
-                    // 👈 ИСПРАВЛЕНИЕ: Черный текст в активном состоянии в светлой теме для контраста
+
                     .foregroundColor(isActive ? (colorScheme == .dark ? .white : color) : .gray)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            // 👈 ИСПРАВЛЕНИЕ: Белый матовый фон в светлой теме
+
             .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
             .background(color.opacity(isActive ? 0.15 : 0.05))
             .clipShape(RoundedRectangle(cornerRadius: 20))
@@ -480,32 +461,28 @@ struct PremiumCategoryCard: View {
     }
 }
 
-// MARK: - ПРЕМИАЛЬНАЯ КАРТОЧКА С ИКОНКАМИ ИЗ ШАБЛОНОВ
-
-
-// MARK: - МОДАЛЬНОЕ ОКНО БЫСТРОГО ДОБАВЛЕНИЯ
 struct QuickWorkoutDetailSheet: View {
     @Binding var workout: SearchedWorkout
     var onAddWorkout: () -> Void
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         ZStack {
             (colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.12) : Color.white).edgesIgnoringSafeArea(.all)
-            
+
             VStack(spacing: 24) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(workout.name)
                             .font(.system(size: 26, weight: .heavy, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? .white : .black)
-                        
+
                         Text("Информация о тренировке")
                             .font(.subheadline)
                             .foregroundColor(.gray)
                     }
                     Spacer()
-                    
+
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { workout.isFavorite.toggle() }
                         HapticManager.shared.impact(.medium)
@@ -519,7 +496,7 @@ struct QuickWorkoutDetailSheet: View {
                             .scaleEffect(workout.isFavorite ? 1.1 : 1.0)
                     }
                 }
-                
+
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "doc.text.fill").foregroundColor(.cyan)
@@ -531,9 +508,9 @@ struct QuickWorkoutDetailSheet: View {
                         .lineSpacing(6)
                 }
                 .padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Color.primary.opacity(0.03)).cornerRadius(20).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.primary.opacity(0.05), lineWidth: 1))
-                
+
                 Spacer()
-                
+
                 Button(action: onAddWorkout) {
                     HStack {
                         Image(systemName: "plus.circle.fill").font(.title3)
@@ -550,7 +527,7 @@ struct QuickWorkoutDetailSheet: View {
         }
     }
 }
-// MARK: - Утилиты (Управление клавиатурой)
+
 #if canImport(UIKit)
 import UIKit
 

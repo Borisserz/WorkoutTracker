@@ -1,12 +1,9 @@
-//
-//  Constants.swift
-//  WorkoutTracker
-//
+
+
 import Foundation
 
 public enum Constants {
-    
-    /// Keys used for standard UserDefaults storage
+
     public enum UserDefaultsKeys: String, CaseIterable {
         case streakRestDays
         case defaultRestTime
@@ -30,13 +27,11 @@ public enum Constants {
         case includeWarmupsInStats
         case preferred1RMFormula
     }
-    
-    /// Default values and keys for AI integrations
+
     public enum AIConstants {
         public static let defaultTone = "Motivational"
     }
-    
-    /// Identifiers for local notifications and notification center events
+
     public enum NotificationIdentifiers: String, CaseIterable {
         case restTimerDone = "rest_timer_done"
         case restTimerCategory = "REST_TIMER_CATEGORY"
@@ -45,8 +40,7 @@ public enum Constants {
         case doneAction = "DONE_ACTION"
         case restTimerFinishedNotification = "RestTimerFinished"
     }
-    
-    /// Standardized Muscle Group names
+
     public enum MuscleName: String, CaseIterable {
         case chest = "Chest"
         case back = "Back"
@@ -77,8 +71,7 @@ public enum Constants {
         case mixed = "Mixed"
         case cardio = "Cardio"
     }
-    
-    /// Standardized Exercise Categories
+
     public enum ExerciseCategoryName: String, CaseIterable {
         case squat = "Squat"
         case press = "Press"

@@ -1,12 +1,7 @@
-//
-//  DesignerComponents.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 18.04.26.
-//
+
+
 internal import SwiftUI
 
-// MARK: - Haptic Manager
 class HapticManager {
     static let shared = HapticManager()
     private init() {}
@@ -18,11 +13,10 @@ class HapticManager {
     }
 }
 
-// MARK: - Glass Card Modifier
 struct GlassCardModifier: ViewModifier {
     var cornerRadius: CGFloat = 24
     var strokeColors: [Color] = [.white.opacity(0.4), .clear, .cyan.opacity(0.3)]
-    
+
     func body(content: Content) -> some View {
         content
             .padding(20)
@@ -42,7 +36,6 @@ extension View {
     }
 }
 
-// MARK: - Button Styles & Effects
 struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
@@ -74,20 +67,17 @@ struct PulseEffect: ViewModifier {
     }
 }
 
-// MARK: - Backgrounds
-
-// 👈 ИСПРАВЛЕНИЕ: Добавлен colorScheme, черный фон заменен на адаптивный
 struct HistoryBreathingBackground: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var phase = false
     var cnsScore: Double
     var color3: Color { cnsScore > 50 ? .blue : .red }
     var color4: Color { cnsScore > 50 ? .indigo : .orange }
-    
+
     var body: some View {
         ZStack {
             (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground)).ignoresSafeArea()
-            
+
             Circle().fill(Color.purple.opacity(colorScheme == .dark ? 0.15 : 0.08)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? -100 : 100, y: phase ? -150 : 50)
             Circle().fill(Color.cyan.opacity(colorScheme == .dark ? 0.12 : 0.05)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? 100 : -100, y: phase ? 150 : -50)
             Circle().fill(color3.opacity(colorScheme == .dark ? 0.1 : 0.05)).frame(width: 300, height: 300).blur(radius: 80).offset(x: phase ? 0 : 50, y: phase ? 50 : -100)
@@ -107,7 +97,7 @@ struct DotGridBackground: View {
                         path.addEllipse(in: CGRect(x: x, y: y, width: 1.5, height: 1.5))
                     }
                 }
-            }.fill(Color.gray.opacity(0.05)) // 👈 Слегка поправил для видимости в обеих темах
+            }.fill(Color.gray.opacity(0.05)) 
         }.ignoresSafeArea().allowsHitTesting(false)
     }
 }
@@ -118,7 +108,7 @@ struct FloatingParticles: View {
         ZStack {
             ForEach(0..<8, id: \.self) { i in
                 Circle()
-                    .fill(Color.gray.opacity(Double.random(in: 0.1...0.3))) // 👈 Заменил белый на серый
+                    .fill(Color.gray.opacity(Double.random(in: 0.1...0.3))) 
                     .frame(width: CGFloat.random(in: 2...4), height: CGFloat.random(in: 2...4))
                     .position(x: CGFloat.random(in: 0...400), y: animate ? -50 : CGFloat.random(in: 400...800))
                     .animation(.linear(duration: Double.random(in: 8...20)).repeatForever(autoreverses: false).delay(Double.random(in: 0...5)), value: animate)
@@ -131,7 +121,7 @@ struct CustomDonutChart: View {
     var data: [(value: Double, color: Color, id: UUID)]
     var thickness: CGFloat
     @Binding var activeId: UUID?
-    
+
     var body: some View {
         GeometryReader { geometry in
             let total = data.map { $0.value }.reduce(0, +)
@@ -142,7 +132,7 @@ struct CustomDonutChart: View {
                     let startAngle = (startValue / total) * 360
                     let sweepAngle = (item.value / total) * 360
                     let isSelected = activeId == item.id
-                    
+
                     Circle()
                         .trim(from: startAngle / 360, to: (startAngle + sweepAngle) / 360)
                         .stroke(item.color, style: StrokeStyle(lineWidth: isSelected ? thickness + 4 : thickness, lineCap: .round))
@@ -160,12 +150,12 @@ struct AchievementPopupView: View {
     let achievement: Achievement
     let onClose: () -> Void
     @State private var isAnimating = false
-    
+
     var body: some View {
         ZStack {
-            // Темный фон с размытием
+
             Color.black.opacity(0.85).ignoresSafeArea()
-            
+
             VStack(spacing: 24) {
                 ZStack {
                     if achievement.isUnlocked {
@@ -176,14 +166,14 @@ struct AchievementPopupView: View {
                             .opacity(isAnimating ? 0 : 1)
                             .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false), value: isAnimating)
                     }
-                    
+
                     Image(systemName: achievement.isUnlocked ? achievement.icon : "lock.fill")
                         .font(.system(size: 80))
                         .foregroundColor(achievement.isUnlocked ? tierColor(achievement.tier) : .gray)
                         .shadow(color: achievement.isUnlocked ? tierColor(achievement.tier).opacity(0.8) : .clear, radius: 20, x: 0, y: 0)
                 }
                 .padding(.bottom, 10)
-                
+
                 if achievement.isUnlocked {
                     Text("🏆").font(.largeTitle)
                     Text(LocalizedStringKey("Achievement Unlocked!"))
@@ -198,18 +188,18 @@ struct AchievementPopupView: View {
                         .textCase(.uppercase)
                         .tracking(2)
                 }
-                
+
                 Text(achievement.title)
                     .font(.system(size: 32, weight: .heavy, design: .rounded))
                     .foregroundColor(.white)
                     .multilineTextAlignment(.center)
-                
+
                 Text(achievement.description)
                     .font(.title3)
                     .foregroundColor(.white.opacity(0.8))
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 30)
-                
+
                 if achievement.isUnlocked {
                     HStack(spacing: 6) {
                         Text(LocalizedStringKey("Level:"))
@@ -226,7 +216,7 @@ struct AchievementPopupView: View {
                         .foregroundColor(.cyan)
                         .padding(.top, 10)
                 }
-                
+
                 Button(action: onClose) {
                     Text(LocalizedStringKey("Close"))
                         .font(.headline)
@@ -240,7 +230,7 @@ struct AchievementPopupView: View {
             }
             .padding(30)
             .background(.ultraThinMaterial)
-            .environment(\.colorScheme, .dark) // Фиксируем темную тему для поп-апа
+            .environment(\.colorScheme, .dark) 
             .cornerRadius(32)
             .overlay(
                 RoundedRectangle(cornerRadius: 32)
@@ -252,11 +242,11 @@ struct AchievementPopupView: View {
         .onAppear {
             if achievement.isUnlocked {
                 isAnimating = true
-                HapticManager.shared.impact(.heavy) // Вызываем тактильный отклик
+                HapticManager.shared.impact(.heavy) 
             }
         }
     }
-    
+
     private func tierColor(_ tier: AchievementTier) -> Color {
         switch tier {
         case .none: return .clear
@@ -267,19 +257,18 @@ struct AchievementPopupView: View {
         }
     }
 }
-// MARK: - ДОРОГОЙ ТЕМНЫЙ ФОН
+
 struct PremiumDarkBackground: View {
     var body: some View {
         ZStack {
             Color.premiumBackground.ignoresSafeArea()
-            
-            // Статичные сферы
+
             Circle()
                 .fill(Color.neonBlue.opacity(0.15))
                 .frame(width: 350)
                 .blur(radius: 120)
                 .offset(x: -100, y: -150)
-            
+
             Circle()
                 .fill(Color.neonPurple.opacity(0.12))
                 .frame(width: 400)
@@ -289,7 +278,6 @@ struct PremiumDarkBackground: View {
     }
 }
 
-// MARK: - ДОРОГИЕ ЗЕРКАЛЬНЫЕ UI КОМПОНЕНТЫ
 struct PremiumGlassButton: View {
     let title: String
     var subtitle: String? = nil
@@ -297,9 +285,9 @@ struct PremiumGlassButton: View {
     let colorTint: Color
     var isSmall: Bool = false
     let action: () -> Void
-    
+
     @State private var isPressed: Bool = false
-    
+
     var body: some View {
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -325,13 +313,12 @@ struct PremiumGlassButton: View {
     }
 }
 
-// MARK: - СТРОКА НАСТРОЕК
 struct SettingRow: View {
     let icon: String
     let title: String
     let color: Color
-    @Binding var isOn: Bool // Сделали Binding, чтобы управлять реальными данными
-    
+    @Binding var isOn: Bool 
+
     var body: some View {
         HStack {
             Image(systemName: icon).foregroundStyle(color).frame(width: 20)
@@ -341,31 +328,28 @@ struct SettingRow: View {
         }
     }
 }
-// MARK: - ВЫПАДАЮЩЕЕ МЕНЮ НАСТРОЕК
+
 struct SettingsDropdownMenu: View {
     @Binding var isShowing: Bool
-    var onOpenFullSettings: () -> Void // Коллбэк для полного экрана
-    
-    // Подключаемся к реальным настройкам приложения
+    var onOpenFullSettings: () -> Void 
+
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "dark"
     @AppStorage("hapticsEnabled") private var hapticsEnabled: Bool = true
     @State private var notificationsEnabled: Bool = true
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            
-            // Темная тема (включает/выключает)
+
             SettingRow(icon: "moon.fill", title: "Dark Theme", color: .indigo, isOn: Binding(
                 get: { appearanceMode == "dark" },
                 set: { appearanceMode = $0 ? "dark" : "light" }
             ))
-            
+
             SettingRow(icon: "bell.fill", title: "Notifications", color: .orange, isOn: $notificationsEnabled)
             SettingRow(icon: "waveform.path", title: "Vibration", color: .pink, isOn: $hapticsEnabled)
-            
+
             Divider().background(Color.white.opacity(0.2))
-            
-            // Кнопка для перехода к полным настройкам (как было раньше)
+
             Button(action: {
                 withAnimation { isShowing = false }
                 onOpenFullSettings()

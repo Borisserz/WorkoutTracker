@@ -1,11 +1,8 @@
-// ============================================================
-// FILE: WorkoutTracker/Views/Workout/WorkoutStoreProtocol.swift
-// ============================================================
+
 
 import Foundation
 import SwiftData
 
-/// Абстракция слоя доступа к данным SwiftData для Тренировок.
 protocol WorkoutStoreProtocol: Sendable {
     func swapExercise(oldID: PersistentIdentifier, newExerciseDTO: ExerciseDTO, inWorkoutID: PersistentIdentifier) async throws
     func createWorkout(title: String, fromPresetID presetID: PersistentIdentifier?, isAIGenerated: Bool) async throws -> PersistentIdentifier
@@ -25,6 +22,5 @@ protocol WorkoutStoreProtocol: Sendable {
     func fetchLatestWorkout() async throws -> Workout?
     func checkAndGenerateDefaultPresets() async throws
 
-    // ✅ ДОБАВЛЕН НЕДОСТАЮЩИЙ МЕТОД
     func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier) async throws
 }

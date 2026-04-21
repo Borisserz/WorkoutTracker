@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Services/Domain/WorkoutService.swift
-// ============================================================
+
 
 import Foundation
 import SwiftData
@@ -12,16 +10,16 @@ internal import SwiftUI
 @Observable
 @MainActor
 final class WorkoutService {
-    
+
     public private(set) var aiLogicService: AILogicService
-    
+
     private let workoutStore: WorkoutStoreProtocol
     private let analyticsService: AnalyticsService
     private let exerciseCatalogService: ExerciseCatalogService
     private let widgetSyncService: WidgetSyncService
     private let notificationManager: NotificationManager
     private let progressManager: ProgressManager
-    
+
     private let appState: AppStateManager
     private let liveActivityManager: LiveActivityManager
 
@@ -34,7 +32,7 @@ final class WorkoutService {
          progressManager: ProgressManager,
          appState: AppStateManager,
          liveActivityManager: LiveActivityManager) {
-        
+
         self.workoutStore = workoutStore
         self.analyticsService = analyticsService
         self.exerciseCatalogService = exerciseCatalogService
@@ -44,16 +42,16 @@ final class WorkoutService {
         self.progressManager = progressManager
         self.appState = appState
         self.liveActivityManager = liveActivityManager
-        
+
         NotificationCenter.default.addObserver(forName: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, queue: .main) { [weak self] notification in
             guard let self = self,
                   let payloadDict = notification.userInfo?["payload"],
                   let payload = payloadDict as? LiveSyncPayload else { return }
-            
+
             Task { @MainActor in
                 let bgContext = ModelContext(self.analyticsService.modelContainer)
                 let workoutUUID = UUID(uuidString: payload.workoutID)
-                
+
                 switch payload.action {
                 case .startWorkout:
                     guard let uuid = workoutUUID else { return }
@@ -72,10 +70,10 @@ final class WorkoutService {
                         }
                     }
                     try? bgContext.save()
-                    
+
                     self.liveActivityManager.startWorkoutActivity(title: newWorkout.title)
                     self.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
-                    
+
                 case .addExercise:
                     guard let uuid = workoutUUID, let exName = payload.exerciseName else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
@@ -86,31 +84,30 @@ final class WorkoutService {
                         workout.exercises.append(newEx)
                         try? bgContext.save()
                     }
-                    
+
                 case .logSet:
                     guard let uuid = workoutUUID, let exName = payload.exerciseName, let setIndex = payload.setIndex else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
                     if let workout = try? bgContext.fetch(desc).first,
                        let exercise = workout.exercises.first(where: { $0.name == exName }),
                        let setToUpdate = exercise.setsList.first(where: { $0.index == setIndex }) {
-                        
-                        // ✅ ИСПРАВЛЕНИЕ: Обновляем существующий сет, а не создаем новый
+
                         setToUpdate.weight = payload.weight
                         setToUpdate.reps = payload.reps
                         setToUpdate.isCompleted = payload.isCompleted ?? true
                         try? bgContext.save()
                     }
-                    
+
                 case .updateEffort:
                     guard let uuid = workoutUUID, let exName = payload.exerciseName, let effort = payload.effort else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
                     if let workout = try? bgContext.fetch(desc).first,
                        let exercise = workout.exercises.first(where: { $0.name == exName }) {
                         exercise.effort = effort
-                        exercise.isCompleted = true // ✅ ИСПРАВЛЕНИЕ: Завершаем упражнение
+                        exercise.isCompleted = true 
                         try? bgContext.save()
                     }
-                    
+
                 case .finishWorkout:
                     guard let uuid = workoutUUID else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
@@ -118,13 +115,13 @@ final class WorkoutService {
                         await self.processCompletedWorkout(workout)
                         self.appState.returnToActiveWorkoutId = nil
                     }
-                    
+
                 case .saveToHistory:
                     guard let uuid = workoutUUID else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
                     if let workout = try? bgContext.fetch(desc).first {
                         if let dDuration = payload.durationSeconds { workout.durationSeconds = dDuration }
-                        
+
                         if let exercisesDTO = payload.exercises {
                             for old in workout.exercises { bgContext.delete(old) }
                             workout.exercises.removeAll()
@@ -146,21 +143,21 @@ final class WorkoutService {
                     if let workout = try? bgContext.fetch(desc).first {
                         await self.deleteWorkout(workout)
                     }
-                    
-                case .requestActiveState, .syncFullState, .updateHeartRate: // 👈 ДОБАВЛЕНО .updateHeartRate
+
+                case .requestActiveState, .syncFullState, .updateHeartRate: 
                                     break
                                 }
             }
         }
     }
-    
+
     func syncPresetsWithWatch(presets: [WorkoutPreset]) {
         let dtos = presets.map { $0.toDTO() }
         if let data = try? JSONEncoder().encode(dtos) {
             WCSession.default.sendMessage(["presetsBatch": data], replyHandler: nil)
         }
     }
-    
+
     func fetchLatestWorkout() async -> Workout? {
         do {
             return try await workoutStore.fetchLatestWorkout()
@@ -169,8 +166,7 @@ final class WorkoutService {
             return nil
         }
     }
-    
-    // MARK: - Workout Management
+
     func createWorkout(title: String, presetID: PersistentIdentifier?, isAIGenerated: Bool) async -> PersistentIdentifier? {
         do {
             try? await HealthKitManager.shared.requestAuthorization()
@@ -181,7 +177,7 @@ final class WorkoutService {
             return nil
         }
     }
-        
+
     func startGeneratedWorkout(_ generated: GeneratedWorkoutDTO) async {
         do {
             try? await HealthKitManager.shared.requestAuthorization()
@@ -194,7 +190,7 @@ final class WorkoutService {
             )
         }
     }
-    
+
     func hasActiveWorkout() async -> Bool {
         do {
             let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
@@ -204,8 +200,7 @@ final class WorkoutService {
             return false
         }
     }
-    
-    // MARK: - Entity Manipulation
+
     func addSet(to exercise: Exercise, index: Int, weight: Double?, reps: Int?, distance: Double?, time: Int?, type: SetType, isCompleted: Bool) async {
         do {
             try await workoutStore.addSet(toExerciseID: exercise.persistentModelID, index: index, weight: weight, reps: reps, distance: distance, time: time, type: type, isCompleted: isCompleted)
@@ -213,7 +208,7 @@ final class WorkoutService {
             appState.showError(title: "Error", message: "Could not add set: \(error.localizedDescription)")
         }
     }
-    
+
     func deleteSet(_ set: WorkoutSet, from exercise: Exercise) async {
         do {
             try await workoutStore.deleteSet(setID: set.persistentModelID, fromExerciseID: exercise.persistentModelID)
@@ -221,7 +216,7 @@ final class WorkoutService {
             appState.showError(title: "Error", message: "Could not delete set: \(error.localizedDescription)")
         }
     }
-    
+
     func deleteSets(_ sets: [WorkoutSet], from exercise: Exercise) async {
         let ids = sets.map { $0.persistentModelID }
         do {
@@ -230,7 +225,7 @@ final class WorkoutService {
             appState.showError(title: "Error", message: "Could not batch delete sets: \(error.localizedDescription)")
         }
     }
-    
+
     func removeSubExercise(_ subExercise: Exercise, from superset: Exercise) async {
         do {
             try await workoutStore.removeSubExercise(subID: subExercise.persistentModelID, fromSupersetID: superset.persistentModelID)
@@ -238,7 +233,7 @@ final class WorkoutService {
             appState.showError(title: "Error", message: "Could not remove sub-exercise: \(error.localizedDescription)")
         }
     }
-    
+
     func removeExercise(_ exercise: Exercise, from workout: Workout) async {
         do {
             try await workoutStore.removeExercise(exerciseID: exercise.persistentModelID, fromWorkoutID: workout.persistentModelID)
@@ -246,7 +241,7 @@ final class WorkoutService {
             appState.showError(title: "Error", message: "Could not remove exercise: \(error.localizedDescription)")
         }
     }
-    
+
     func updateWorkoutFavoriteStatus(workout: Workout, isFavorite: Bool) async {
         do {
             try await workoutStore.updateWorkoutFavoriteStatus(workoutID: workout.persistentModelID, isFavorite: isFavorite)
@@ -275,16 +270,15 @@ final class WorkoutService {
             do {
                 try await workoutStore.processCompletedWorkout(workoutID: workout.persistentModelID)
                 liveActivityManager.stopAllActivities()
-                
+
                 let wTitle = workout.title
                 let wStart = workout.date
                 let wEnd = workout.endTime ?? Date()
                 let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
-                
-                // ✅ Считаем калории
+
                 let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
                 let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
-                
+
                 Task.detached {
                     do {
                         try await HealthKitManager.shared.requestAuthorization()
@@ -293,7 +287,7 @@ final class WorkoutService {
                             startDate: wStart,
                             endDate: wEnd,
                             durationSeconds: wDuration,
-                            calories: burnedCalories // <--- Передаем готовые калории
+                            calories: burnedCalories 
                         )
                     } catch {
                         print("⚠️ Failed to sync workout to HealthKit: \(error)")
@@ -306,7 +300,7 @@ final class WorkoutService {
     func stopLiveActivity() {
         liveActivityManager.stopAllActivities()
     }
-    
+
     func deleteWorkout(_ workout: Workout) async {
         do {
             try await workoutStore.deleteWorkout(workoutID: workout.persistentModelID)
@@ -333,7 +327,7 @@ final class WorkoutService {
             print("Cleanup failed: \(error.localizedDescription)")
         }
     }
-    
+
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, to workout: Workout) async {
         do {
             try await workoutStore.applyAIAdjustment(adjustment, workoutID: workout.persistentModelID)
@@ -341,7 +335,7 @@ final class WorkoutService {
             appState.showError(title: "AI Update Failed", message: "Could not apply AI recommendations: \(error.localizedDescription)")
         }
     }
-    
+
     func checkAndGenerateDefaultPresets() async {
         do {
             try await exerciseCatalogService.checkAndGenerateDefaultPresets()
@@ -349,11 +343,11 @@ final class WorkoutService {
             print("Failed to generate default presets: \(error.localizedDescription)")
         }
     }
-    
+
     func updateWidgetData() async {
         await widgetSyncService.updateWidgetData()
     }
-    
+
     func swapExercise(old: Exercise, new: Exercise, workout: Workout) async {
         do {
             let newDTO = new.toDTO()
@@ -362,7 +356,7 @@ final class WorkoutService {
             appState.showError(title: "Swap Failed", message: "Could not swap exercise: \(error.localizedDescription)")
         }
     }
-    
+
     func applySmartAction(_ proposal: SmartActionDTO, to workout: Workout) async {
         do {
             try await workoutStore.applySmartAction(proposal: proposal, inWorkoutID: workout.persistentModelID)

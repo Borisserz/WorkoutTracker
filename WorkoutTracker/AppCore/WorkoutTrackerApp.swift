@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/AppCore/WorkoutTrackerApp.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -10,22 +8,22 @@ import AppIntents
 @main
 struct WorkoutTrackerApp: App {
     @Environment(\.scenePhase) private var scenePhase
-    
+
     @State private var diContainer: DIContainer?
     @State private var databaseLoadError: Error?
-    
+
     @State private var dashboardViewModel: DashboardViewModel?
     @State private var userStatsViewModel: UserStatsViewModel?
     @State private var aiCoachViewModel: AICoachViewModel?
     @State private var catalogViewModel: CatalogViewModel?
     @State private var profileViewModel: ProfileViewModel?
-    
+
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     @State private var showImportAlert = false
-    
+
     @State private var restTimerManager = RestTimerManager()
     @State private var tutorialManager = TutorialManager()
-    
+
     private var colorScheme: ColorScheme? {
         switch appearanceMode {
         case "light": return .light
@@ -33,7 +31,7 @@ struct WorkoutTrackerApp: App {
         default: return nil
         }
     }
-    
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -46,7 +44,7 @@ struct WorkoutTrackerApp: App {
                           let aicvm = aiCoachViewModel,
                           let cvm = catalogViewModel,
                           let pvm = profileViewModel {
-                    // Сразу запускаем главный контент
+
                     mainContent(di: di, dvm: dvm, usvm: usvm, aicvm: aicvm, cvm: cvm, pvm: pvm)
                 } else {
                     ProgressView("Initializing...")
@@ -65,7 +63,7 @@ struct WorkoutTrackerApp: App {
             }
         }
     }
-    
+
     @ViewBuilder
     private func mainContent(
         di: DIContainer,
@@ -99,7 +97,7 @@ struct WorkoutTrackerApp: App {
                     }
                 }
             }
-            // ✅ ЛОВИМ НАЖАТИЯ ИЗ ВИДЖЕТА
+
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("widgetActionTriggered"))) { notification in
                 if let action = notification.object as? String {
                     handleWidgetAction(action, appState: di.appState)
@@ -109,60 +107,56 @@ struct WorkoutTrackerApp: App {
                 Button("OK", role: .cancel) { }
             }
     }
-    
-    // ✅ ЛОГИКА МАРШРУТИЗАЦИИ ВИДЖЕТОВ
+
     private func handleWidgetAction(_ action: String, appState: AppStateManager) {
         appState.requestedWidgetAction = action
-        
+
         if action == "empty_workout" || action == "smart_builder" {
-            appState.selectedTab = 2 // Переходим на WorkoutHub
+            appState.selectedTab = 2 
         } else if action == "log_weight" {
-            appState.selectedTab = 0 // Переходим на Overview (где профиль с весом)
+            appState.selectedTab = 0 
         }
     }
-    
+
     @MainActor
         private func setupDependencies() async {
             do {
                 await ExerciseDatabaseService.shared.loadDatabase()
-                
+
                 let schema = Schema([
                     Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
                     ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
                     AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
                 ])
-                
+
                 let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker")!
-                            let dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite") // СВОЕ ИМЯ ФАЙЛА
-                            
+                            let dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite") 
+
                             let modelConfiguration = ModelConfiguration(
                                 schema: schema,
-                                url: dbURL, // УКАЗЫВАЕМ ПУТЬ
+                                url: dbURL, 
                                 cloudKitDatabase: .automatic
                             )
-                            
-                
+
                 let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
                 let di = DIContainer(modelContainer: container)
-                
-                // 👇 ДОБАВИТЬ ЭТУ СТРОКУ 👇
+
                 PhoneWatchManager.shared.start(with: container)
-                // 👆 ======================= 👆
-                
+
                 let migrator = LegacyDataMigrator(modelContainer: container)
                 await migrator.migrateAllIfNeeded()
                 try? await di.exerciseCatalogService.checkAndGenerateDefaultPresets()
                 MuscleColorManager.shared.initialize(modelContainer: container)
-                
+
                 self.dashboardViewModel = di.makeDashboardViewModel()
                 self.userStatsViewModel = di.makeUserStatsViewModel()
                 self.aiCoachViewModel = di.makeAICoachViewModel()
                 self.catalogViewModel = di.makeCatalogViewModel()
                 self.profileViewModel = di.makeProfileViewModel()
-                
+
                 self.diContainer = di
                 await self.catalogViewModel?.loadDictionary()
-                
+
             } catch {
                 self.databaseLoadError = error
                 print("❌ SwiftData Initialization Failed: \(error)")

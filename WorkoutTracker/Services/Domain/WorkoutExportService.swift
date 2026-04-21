@@ -1,28 +1,20 @@
-//
-//  WorkoutExportService.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 1.04.26.
-//
 
 
 import Foundation
 
-/// ОПТИМИЗАЦИЯ: Независимый сервис для импорта/экспорта тренировок (Separation of Concerns).
-/// Работает с DTO, чтобы не тащить SwiftData модели в фоновые потоки.
 struct WorkoutExportService: Sendable {
-    
+
     enum ExportError: LocalizedError {
         case noInternet, invalidData, encodingFailed
         var errorDescription: String? {
             self == .noInternet ? String(localized: "Internet connection required.") : String(localized: "Data processing failed.")
         }
     }
-    
+
     private static func escapeCSV(_ string: String) -> String {
         return string.contains(",") || string.contains("\"") || string.contains("\n") ? string.replacingOccurrences(of: "\"", with: "\"\"") : string
     }
-    
+
     static func generateShareLink(for preset: WorkoutPresetDTO) throws -> URL {
         let jsonData = try JSONEncoder().encode(preset)
         let compressedData = try (jsonData as NSData).compressed(using: .zlib) as Data
@@ -30,7 +22,7 @@ struct WorkoutExportService: Sendable {
         comp.queryItems = [URLQueryItem(name: "data", value: compressedData.base64EncodedString())]
         return comp.url!
     }
-    
+
     static func exportPresetToFile(_ preset: WorkoutPresetDTO) throws -> URL {
         let jsonData = try JSONEncoder().encode(preset)
         let name = preset.name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "-")
@@ -38,7 +30,7 @@ struct WorkoutExportService: Sendable {
         try jsonData.write(to: tempURL)
         return tempURL
     }
-    
+
     static func exportPresetToCSV(_ preset: WorkoutPresetDTO) throws -> URL {
         var csvLines: [String] = []
         csvLines.append("# Workout Template Export")
@@ -53,7 +45,7 @@ struct WorkoutExportService: Sendable {
         csvLines.append("## EXERCISES")
         csvLines.append("Name,Muscle Group,Type,Effort,Is Completed,Set Count")
         for exercise in preset.exercises {
-                    // ✅ Безопасно считаем количество подходов
+
                     let setsCount = (exercise.setsList ?? []).count
                     csvLines.append("\"\(escapeCSV(exercise.name))\",\(exercise.muscleGroup),\(exercise.type.rawValue),\(exercise.effort),\(exercise.isCompleted),\(setsCount)")
                 }
@@ -61,7 +53,7 @@ struct WorkoutExportService: Sendable {
                 csvLines.append("## SETS")
                 csvLines.append("Exercise Name,Set Index,Weight,Reps,Distance (m),Time (sec),Is Completed,Set Type")
                 for exercise in preset.exercises {
-                    // ✅ Безопасно проходим по массиву
+
                     for set in exercise.setsList ?? [] {
                 let weightStr = set.weight != nil ? String(set.weight!) : ""
                 let repsStr = set.reps != nil ? String(set.reps!) : ""
@@ -70,24 +62,24 @@ struct WorkoutExportService: Sendable {
                 csvLines.append("\"\(escapeCSV(exercise.name))\",\(set.index),\(weightStr),\(repsStr),\(distanceStr),\(timeStr),\(set.isCompleted),\(set.type.rawValue)")
             }
         }
-        
+
         let csvContent = csvLines.joined(separator: "\n")
         guard let csvData = csvContent.data(using: .utf8) else {
             throw ExportError.encodingFailed
         }
-        
+
         let sanitizedName = preset.name.replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: "\\", with: "-").replacingOccurrences(of: ":", with: "-")
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(sanitizedName).csv")
         try csvData.write(to: tempURL)
         return tempURL
     }
-    
+
     static func processImportedData(_ jsonData: Data) throws -> WorkoutPresetDTO {
         let dto = try JSONDecoder().decode(WorkoutPresetDTO.self, from: jsonData)
-        // В реальной модели мы добавим "(Imported)", но тут просто возвращаем DTO
+
         return dto
     }
-    
+
     static func importPreset(from url: URL) throws -> WorkoutPresetDTO {
         if url.isFileURL {
             return try processImportedData(try Data(contentsOf: url))

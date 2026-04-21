@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Workout/Views/PremiumExerciseSearchBar.swift
-// ============================================================
+
 
 internal import SwiftUI
 
@@ -8,23 +6,23 @@ struct PremiumExerciseSearchBar: View {
     @Bindable var filterState: ExerciseFilterState
     var onFilterTap: () -> Void
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     var body: some View {
         HStack(spacing: 12) {
-            // Стеклянная поисковая строка
+
             HStack {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
                     .font(.body)
-                
+
                 TextField(LocalizedStringKey("Поиск упражнений..."), text: $filterState.searchText)
                     .textFieldStyle(.plain)
                     .font(.subheadline)
                     .foregroundStyle(colorScheme == .dark ? .white : .primary)
                     .tint(themeManager.current.primaryAccent)
                     .autocorrectionDisabled()
-                
+
                 if !filterState.searchText.isEmpty {
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -43,8 +41,7 @@ struct PremiumExerciseSearchBar: View {
             .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground)), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 1))
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
-            
-            // Кнопка расширенных фильтров
+
             Button {
                 let generator = UIImpactFeedbackGenerator(style: .medium)
                 generator.impactOccurred()
@@ -58,7 +55,7 @@ struct PremiumExerciseSearchBar: View {
                             ? themeManager.current.primaryAccent
                             : (colorScheme == .dark ? Color.white.opacity(0.8) : Color.black.opacity(0.6))
                         )
-                    
+
                     if filterState.activeAdvancedFiltersCount > 0 {
                         Text("\(filterState.activeAdvancedFiltersCount)")
                             .font(.system(size: 10, weight: .black, design: .rounded))

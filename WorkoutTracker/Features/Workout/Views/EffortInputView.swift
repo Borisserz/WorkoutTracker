@@ -1,16 +1,13 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Workout/Views/EffortInputView.swift
-// ============================================================
+
 
 internal import SwiftUI
 
-// MARK: - RPE Data Model
 fileprivate struct RPEData {
     let value: Int
     let title: LocalizedStringKey
     let description: LocalizedStringKey
     let color: Color
-    
+
     static func get(for value: Int) -> RPEData {
         switch value {
         case 1...4:
@@ -31,53 +28,50 @@ fileprivate struct RPEData {
     }
 }
 
-// MARK: - Main View
 struct EffortInputView: View {
     @Binding var effort: Int
     @Environment(\.dismiss) var dismiss
     @Environment(TutorialManager.self) var tutorialManager
-    
-    // Локальное состояние для анимаций до сохранения
+
     @State private var localEffort: Int = 5
-    
+
     private var currentRPE: RPEData {
         RPEData.get(for: localEffort)
     }
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+
             VStack(spacing: 6) {
                 Capsule()
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: 40, height: 5)
                     .padding(.top, 10)
-                
+
                 Text(LocalizedStringKey("Log Exercise Effort"))
                     .font(.headline)
                     .padding(.top, 8)
-                
+
                 Text(LocalizedStringKey("How hard was this exercise overall?"))
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
             .padding(.bottom, 24)
-            
-            // Giant Number & Description
+
             VStack(spacing: 12) {
                 Text("\(localEffort)")
                     .font(.system(size: 80, weight: .heavy, design: .rounded))
                     .foregroundColor(currentRPE.color)
                     .contentTransition(.numericText())
                     .animation(.spring(response: 0.3, dampingFraction: 0.6), value: localEffort)
-                
+
                 VStack(spacing: 4) {
                     Text(currentRPE.title)
                         .font(.title3)
                         .fontWeight(.bold)
                         .foregroundColor(.primary)
-                        .animation(.none, value: localEffort) // Отключаем кроссфейд для четкости
-                    
+                        .animation(.none, value: localEffort) 
+
                     Text(currentRPE.description)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
@@ -86,15 +80,13 @@ struct EffortInputView: View {
                 }
             }
             .frame(height: 180)
-            
+
             Spacer(minLength: 20)
-            
-            // Horizontal Picker
+
             horizontalPicker
-            
+
             Spacer(minLength: 30)
-            
-            // Done Button
+
             Button {
                 saveAndDismiss()
             } label: {
@@ -123,22 +115,20 @@ struct EffortInputView: View {
         .onAppear {
             localEffort = effort > 0 ? effort : 5
         }
-        .presentationDetents([.height(500)]) // Идеальная высота для этого контента
-        .presentationDragIndicator(.hidden) // Мы отрисовали свой кастомный индикатор выше
+        .presentationDetents([.height(500)]) 
+        .presentationDragIndicator(.hidden) 
     }
-    
-    // MARK: - Components
-    
+
     private var horizontalPicker: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 12) {
-                    // Пустые отступы по краям, чтобы крайние элементы могли быть по центру
+
                     Spacer().frame(width: 20)
-                    
+
                     ForEach(1...10, id: \.self) { value in
                         let isSelected = value == localEffort
-                        
+
                         Button {
                             selectEffort(value, proxy: proxy)
                         } label: {
@@ -155,13 +145,13 @@ struct EffortInputView: View {
                         .buttonStyle(PlainButtonStyle())
                         .id(value)
                     }
-                    
+
                     Spacer().frame(width: 20)
                 }
                 .padding(.vertical, 10)
             }
             .onAppear {
-                // При открытии центрируем на текущем значении
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     withAnimation {
                         proxy.scrollTo(localEffort, anchor: .center)
@@ -170,28 +160,26 @@ struct EffortInputView: View {
             }
         }
     }
-    
-    // MARK: - Logic
-    
+
     private func selectEffort(_ value: Int, proxy: ScrollViewProxy) {
         if localEffort != value {
             let generator = UISelectionFeedbackGenerator()
             generator.selectionChanged()
-            
+
             localEffort = value
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 proxy.scrollTo(value, anchor: .center)
             }
         }
     }
-    
+
     private func saveAndDismiss() {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
-        
+
         effort = localEffort
         dismiss()
-        
+
         if tutorialManager.currentStep == .explainEffort {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                 tutorialManager.setStep(.highlightChart)

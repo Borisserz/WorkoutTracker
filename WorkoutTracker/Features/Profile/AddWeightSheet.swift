@@ -1,6 +1,4 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/Profile/AddWeightSheet.swift
-// ============================================================
+
 
 internal import SwiftUI
 import SwiftData
@@ -12,10 +10,10 @@ struct AddWeightSheet: View {
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
-    
+
     @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
     let latestWeight: Double?
-    
+
     @State private var date = Date()
     @State private var weightString = ""
     @State private var showSmartCamera = false
@@ -23,14 +21,14 @@ struct AddWeightSheet: View {
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var isProcessingImage = false
-    
+
     var body: some View {
         NavigationStack {
             ZStack(alignment: .topTrailing) {
-                // 👈 АДАПТИВНЫЙ ФОН
+
                 (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground))
                     .ignoresSafeArea()
-                
+
                 ScrollView {
                     VStack(spacing: 32) {
                         weightInputSection
@@ -72,9 +70,7 @@ struct AddWeightSheet: View {
             }
         }
     }
-    
-    // MARK: - View Components
-    
+
     private var weightInputSection: some View {
         VStack(spacing: 8) {
             Text(LocalizedStringKey("Current Weight"))
@@ -82,7 +78,7 @@ struct AddWeightSheet: View {
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .textCase(.uppercase)
                 .tracking(1.5)
-            
+
             HStack(alignment: .lastTextBaseline, spacing: 8) {
                 Spacer()
                 TextField("0.0", text: $weightString)
@@ -91,7 +87,7 @@ struct AddWeightSheet: View {
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: true, vertical: false)
-                
+
                 Text(unitsManager.weightUnitString())
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundColor(themeManager.current.primaryAccent)
@@ -100,7 +96,7 @@ struct AddWeightSheet: View {
         }
         .padding(.top, 40)
     }
-    
+
     private var datePickerSection: some View {
         HStack {
             ZStack {
@@ -111,34 +107,33 @@ struct AddWeightSheet: View {
                     .font(.headline)
             }
             .frame(width: 40, height: 40)
-            
+
             Spacer()
-            
-            // 👈 ИСПРАВЛЕНИЕ: Убрали .colorInvert() и .colorMultiply(), из-за которых ломалась светлая тема
+
             DatePicker("", selection: $date, displayedComponents: [.date, .hourAndMinute])
                 .labelsHidden()
-                .environment(\.colorScheme, colorScheme) // Явно передаем текущую схему
+                .environment(\.colorScheme, colorScheme) 
         }
         .padding(16)
-        // 👈 АДАПТИВНЫЙ ФОН КАРТОЧКИ
+
         .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
         .cornerRadius(20)
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1))
         .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
         .padding(.horizontal, 24)
     }
-    
+
     private var photoGallerySection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("Progress Photos"))
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .padding(.horizontal, 24)
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 16) {
                     Spacer().frame(width: 8)
-                    
+
                     if selectedImages.count < 4 {
                         Menu {
                             Button {
@@ -146,7 +141,7 @@ struct AddWeightSheet: View {
                             } label: {
                                 Label(LocalizedStringKey("Smart Camera (Ghost)"), systemImage: "camera.viewfinder")
                             }
-                            
+
                             PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 4 - selectedImages.count, matching: .images, photoLibrary: .shared()) {
                                 Label(LocalizedStringKey("Choose from Library"), systemImage: "photo.on.rectangle")
                             }
@@ -167,7 +162,7 @@ struct AddWeightSheet: View {
                         }
                         .disabled(isProcessingImage)
                     }
-                    
+
                     ForEach(Array(selectedImages.enumerated()), id: \.offset) { index, image in
                         ZStack(alignment: .topTrailing) {
                             Image(uiImage: image)
@@ -176,7 +171,7 @@ struct AddWeightSheet: View {
                                 .frame(width: 130, height: 170)
                                 .clipShape(RoundedRectangle(cornerRadius: 20))
                                 .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
-                            
+
                             Button {
                                 let generator = UIImpactFeedbackGenerator(style: .light)
                                 generator.impactOccurred()
@@ -199,25 +194,25 @@ struct AddWeightSheet: View {
                         }
                         .transition(.scale.combined(with: .opacity))
                     }
-                    
+
                     Spacer().frame(width: 8)
                 }
             }
-            
+
             Text(LocalizedStringKey("Attach up to 4 photos to compare your progress later."))
                 .font(.caption)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 .padding(.horizontal, 24)
         }
     }
-    
+
     private var floatingSaveButton: some View {
         Button(action: saveWeight) {
             HStack(spacing: 10) {
                 Image(systemName: "checkmark.circle.fill").font(.title3)
                 Text(LocalizedStringKey("Save")).font(.title3).fontWeight(.bold)
             }
-            .foregroundColor(.white) // Кнопка всегда белая
+            .foregroundColor(.white) 
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
             .background(weightString.isEmpty || isProcessingImage ? Color.gray : themeManager.current.primaryAccent)
@@ -233,9 +228,7 @@ struct AddWeightSheet: View {
                 .ignoresSafeArea()
         )
     }
-    
-    // MARK: - Logic
-    
+
     private func loadReferenceAndOpenSmartCamera() {
         Task {
             if let lastEntry = weightHistory.first(where: { !$0.imageFileNames.isEmpty }),
@@ -247,11 +240,11 @@ struct AddWeightSheet: View {
             await MainActor.run { showSmartCamera = true }
         }
     }
-    
+
     private func processSelectedPhotos(_ items: [PhotosPickerItem]) {
         guard !items.isEmpty else { return }
         isProcessingImage = true
-        
+
         Task.detached(priority: .userInitiated) {
             var loadedImages: [UIImage] = []
             for item in items {
@@ -268,11 +261,11 @@ struct AddWeightSheet: View {
             }
         }
     }
-    
+
     private func saveWeight() {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)
-        
+
         if let weightVal = Double(weightString.replacingOccurrences(of: ",", with: ".")) {
             let weightInKg = unitsManager.convertToKilograms(weightVal)
             Task {

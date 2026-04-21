@@ -1,14 +1,9 @@
-//
-//  SettingsView.swift
-//  WorkoutTracker
-//
+
 
 internal import SwiftUI
 internal import UniformTypeIdentifiers
 import SwiftData
 import UIKit
-
-// MARK: - Main Settings View
 
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
@@ -33,7 +28,7 @@ struct SettingsView: View {
                         Label(LocalizedStringKey("Units of Measure"), systemImage: "ruler")
                     }
                 }
-                
+
                 Section(header: Text(LocalizedStringKey("Workout Options"))) {
                     NavigationLink(destination: TimerSettingsView()) {
                         Label(LocalizedStringKey("Rest Timer"), systemImage: "timer")
@@ -52,18 +47,18 @@ struct SettingsView: View {
                     }
                     .tint(.accentColor)
                 }
-                
+
                 Section(header: Text(LocalizedStringKey("Gamification"))) {
                     NavigationLink(destination: StreakSettingsView()) {
                         Label(LocalizedStringKey("Streak Settings"), systemImage: "flame.fill")
                     }
                 }
-                
+
                 Section(header: Text(LocalizedStringKey("Support & Data"))) {
                     NavigationLink(destination: FeedbackView()) {
                         Label(LocalizedStringKey("Send Feedback"), systemImage: "envelope.fill")
                     }
-                    
+
                     Button {
                         showExportFormatPicker = true
                     } label: {
@@ -71,11 +66,11 @@ struct SettingsView: View {
                             .foregroundColor(themeManager.current.primaryText)
                     }
                 }
-                
+
 #if DEBUG
                 debugSection
 #endif
-                
+
                 Section {
                     HStack {
                         Spacer()
@@ -102,7 +97,7 @@ struct SettingsView: View {
                 ActivityViewController(activityItems: [wrapper.url])
                     .presentationDetents([.medium, .large])
             }
-            // Alerts for debug
+
             .alert(LocalizedStringKey("Test Data"), isPresented: $showTestDataAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: {
@@ -118,9 +113,7 @@ struct SettingsView: View {
             }
         }
     }
-    
-    // MARK: - Debug Section & Export Logic
-    
+
 #if DEBUG
     @ViewBuilder
     private var debugSection: some View {
@@ -132,7 +125,7 @@ struct SettingsView: View {
                     if isProcessing { ProgressView() }
                 }
             }.disabled(isProcessing)
-            
+
             Button(role: .destructive) { showClearAllAlert = true } label: {
                 HStack {
                     Label(LocalizedStringKey("Clear All Data"), systemImage: "trash.fill")
@@ -142,7 +135,7 @@ struct SettingsView: View {
             }.disabled(isProcessing)
         }
     }
-    
+
     private func generateTestData() async {
         isProcessing = true
         let generator = TestDataGenerator(modelContainer: di.modelContainer)
@@ -165,22 +158,22 @@ struct SettingsView: View {
         self.showTestDataAlert = true
     }
 #endif
-    
+
     private enum ExportFormat { case json, csv }
-    
+
     private func exportAllData(format: ExportFormat) async {
         isProcessing = true
         let bgContext = ModelContext(di.modelContainer)
         let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
         let workouts = (try? bgContext.fetch(descriptor)) ?? []
         let fileURL: URL?
-        
+
         do {
             switch format {
             case .json: fileURL = DataManager.shared.exportAllDataAsJSON(workouts: workouts)
             case .csv: fileURL = DataManager.shared.exportAllDataToCSV(workouts: workouts)
             }
-            
+
             self.isProcessing = false
             if let fileURL = fileURL { self.fileToShare = SharedFileWrapper(url: fileURL) } else {
                 self.testDataAlertMessage = "Failed to export data. Please try again."
@@ -194,11 +187,9 @@ struct SettingsView: View {
     }
 }
 
-// MARK: - Sub-Settings Views
-
 struct UnitsSettingsView: View {
     @Environment(UnitsManager.self) var unitsManager
-    
+
     var body: some View {
         Form {
             Section(header: Text(LocalizedStringKey("Weight Units"))) {
@@ -209,7 +200,7 @@ struct UnitsSettingsView: View {
                     unitsManager.setWeightUnit(.pounds)
                 }
             }
-            
+
             Section(header: Text(LocalizedStringKey("Distance Units"))) {
                 SettingsCheckmarkRow(title: "Meters / Kilometers", isSelected: unitsManager.distanceUnit == .meters) {
                     unitsManager.setDistanceUnit(.meters)
@@ -218,7 +209,7 @@ struct UnitsSettingsView: View {
                     unitsManager.setDistanceUnit(.miles)
                 }
             }
-            
+
             Section(header: Text(LocalizedStringKey("Body Measurement Units"))) {
                 SettingsCheckmarkRow(title: "Centimeters", isSelected: unitsManager.sizeUnit == .centimeters) {
                     unitsManager.setSizeUnit(.centimeters)
@@ -236,9 +227,9 @@ struct UnitsSettingsView: View {
 struct AppearanceSettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
-    
-    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО
-    
+
+    @Environment(ThemeManager.self) private var themeManager 
+
     var body: some View {
         Form {
 
@@ -247,12 +238,12 @@ struct AppearanceSettingsView: View {
                 SettingsCheckmarkRow(title: "Light", isSelected: appearanceMode == "light") { appearanceMode = "light" }
                 SettingsCheckmarkRow(title: "Dark", isSelected: appearanceMode == "dark") { appearanceMode = "dark" }
             }
-            
+
             Section(header: Text(LocalizedStringKey("Anatomy Model")), footer: Text("This model is used for your personal muscle recovery heatmap.")) {
                 SettingsCheckmarkRow(title: "Male", isSelected: userGender == "male") { userGender = "male" }
                 SettingsCheckmarkRow(title: "Female", isSelected: userGender == "female") { userGender = "female" }
             }
-            
+
             Section(header: Text(LocalizedStringKey("Localization"))) {
                 Button {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
@@ -284,7 +275,7 @@ struct TimerSettingsView: View {
                     Text(LocalizedStringKey("Auto-start Timer"))
                 }
                 .tint(.accentColor)
-                
+
                 Picker(LocalizedStringKey("Default Duration"), selection: $defaultRestTime) {
                     ForEach(restOptions, id: \.self) { seconds in
                         if seconds % 60 == 0 {
@@ -325,7 +316,7 @@ struct StreakSettingsView: View {
 
 struct AudioSettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.voiceCoachDucking.rawValue) private var voiceCoachDucking: Bool = false
-    
+
     var body: some View {
         Form {
             Section(footer: Text(LocalizedStringKey("If enabled, background music will lower its volume when the AI coach speaks."))) {
@@ -339,8 +330,6 @@ struct AudioSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
     }
 }
-
-// MARK: - Reusable Components
 
 struct SettingsCheckmarkRow: View {
     let title: LocalizedStringKey

@@ -1,25 +1,19 @@
-//
-//  TimerSetupSheet.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 6.04.26.
-//
+
 
 internal import SwiftUI
-
 
 struct TimerSetupSheet: View {
     @Environment(RestTimerManager.self) var timerManager
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var minutes: Int = 1
     @State private var seconds: Int = 30
-    
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                // Header
+
                 ZStack {
                     Circle()
                         .fill(themeManager.current.primaryAccent.opacity(0.1))
@@ -29,12 +23,11 @@ struct TimerSetupSheet: View {
                         .foregroundColor(themeManager.current.primaryAccent)
                 }
                 .padding(.top, 24)
-                
+
                 Text(LocalizedStringKey("Rest Timer Duration"))
                     .font(.title2)
                     .bold()
-                
-                // Native Wheel Pickers (Увеличенный размер)
+
                 HStack(spacing: 0) {
                     Picker("Minutes", selection: $minutes) {
                         ForEach(0..<60, id: \.self) { min in
@@ -42,25 +35,24 @@ struct TimerSetupSheet: View {
                         }
                     }
                     .pickerStyle(.wheel)
-                    .frame(height: 180) // ✅ FIX: Показывает больше цифр
+                    .frame(height: 180) 
                     .clipped()
-                    
+
                     Picker("Seconds", selection: $seconds) {
                         ForEach(Array(stride(from: 0, to: 60, by: 5)), id: \.self) { sec in
                             Text("\(sec) s").tag(sec)
                         }
                     }
                     .pickerStyle(.wheel)
-                    .frame(height: 180) // ✅ FIX: Показывает больше цифр
+                    .frame(height: 180) 
                     .clipped()
                 }
                 .padding(.horizontal)
                 .background(themeManager.current.surface.cornerRadius(20))
                 .padding(.horizontal, 30)
-                
+
                 Spacer()
-                
-                // Action Buttons
+
                 HStack(spacing: 16) {
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -75,7 +67,7 @@ struct TimerSetupSheet: View {
                             .foregroundColor(themeManager.current.primaryText)
                             .cornerRadius(16)
                     }
-                    
+
                     Button {
                         let generator = UINotificationFeedbackGenerator()
                         generator.notificationOccurred(.success)
@@ -104,7 +96,7 @@ struct TimerSetupSheet: View {
                 seconds = (initial % 60) / 5 * 5
             }
         }
-        .presentationDetents([.height(460)]) // Чуть увеличили шторку для барабанов
+        .presentationDetents([.height(460)]) 
         .presentationDragIndicator(.visible)
     }
 }

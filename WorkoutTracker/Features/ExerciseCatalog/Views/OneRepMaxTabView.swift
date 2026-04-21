@@ -1,21 +1,17 @@
-//
-//  OneRepMaxTabView.swift
-//  WorkoutTracker
-//
+
 
 internal import SwiftUI
 
 struct OneRepMaxTabView: View {
     @Bindable var vm: ExerciseHistoryViewModel
     @Environment(UnitsManager.self) var unitsManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 ДОБАВЛЕНО ДЛЯ АДАПТАЦИИ
+    @Environment(\.colorScheme) private var colorScheme 
     @Environment(ThemeManager.self) private var themeManager
     @State private var showSettingsSheet = false
-    
+
     var body: some View {
         VStack(spacing: 20) {
-            
-            // Header Banner
+
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("1RM Tables"))
@@ -41,21 +37,20 @@ struct OneRepMaxTabView: View {
                 }
             }
             .padding(.bottom, 8)
-            
-            // Main Table
+
             VStack(spacing: 0) {
-                // Table Header
+
                 HStack {
                     Text(LocalizedStringKey("Reps"))
                         .font(.caption)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .frame(width: 60, alignment: .leading)
-                    
+
                     Text(LocalizedStringKey("Max Estimate"))
                         .font(.caption)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                         .frame(maxWidth: .infinity, alignment: .center)
-                    
+
                     Text(LocalizedStringKey("% of 1RM"))
                         .font(.caption)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
@@ -63,30 +58,29 @@ struct OneRepMaxTabView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                
+
                 Divider()
-                
-                // Table Rows (1 to 12 reps)
+
                 let current1RM = vm.effective1RM
-                
+
                 if current1RM > 0 {
                     ForEach(1...12, id: \.self) { reps in
                         let weightKg = OneRepMaxCalculator.calculateWeightForReps(oneRepMax: current1RM, targetReps: reps, formula: vm.selectedFormula)
                         let percentage = (weightKg / current1RM) * 100.0
-                        
+
                         let displayWeight = unitsManager.convertFromKilograms(weightKg)
-                        
+
                         HStack {
                             Text("\(reps)")
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                                 .frame(width: 60, alignment: .leading)
-                            
+
                             Text("\(LocalizationHelper.shared.formatFlexible(displayWeight)) \(unitsManager.weightUnitString())")
                                 .font(.headline)
                                 .foregroundColor(vm.chartColor)
                                 .frame(maxWidth: .infinity, alignment: .center)
-                            
+
                             Text("\(Int(percentage))%")
                                 .font(.subheadline)
                                 .fontWeight(.medium)
@@ -120,18 +114,17 @@ struct OneRepMaxTabView: View {
     }
 }
 
-// MARK: - Settings & Calculator Sheet
 struct OneRepMaxSettingsSheet: View {
     @Bindable var vm: ExerciseHistoryViewModel
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.dismiss) var dismiss
     @Environment(ThemeManager.self) private var themeManager
-    // Local State for TextFields to handle smooth typing
+
     @State private var weightString: String = ""
     @State private var repsString: String = ""
     @State private var manual1RMString: String = ""
     @State private var isManualEnabled: Bool = false
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -144,7 +137,7 @@ struct OneRepMaxSettingsSheet: View {
                     .pickerStyle(.menu)
                     .tint(vm.chartColor)
                 }
-                
+
                 Section(
                     header: Text(LocalizedStringKey("Estimate 1RM from Set")),
                     footer: Text(LocalizedStringKey("Plug in a maximum effort set to get an estimated 1RM. Sets with low reps (1-5) and high weight yield the most accurate estimates."))
@@ -166,7 +159,7 @@ struct OneRepMaxSettingsSheet: View {
                                 }
                             }
                     }
-                    
+
                     HStack {
                         Text(LocalizedStringKey("Repetitions"))
                         Spacer()
@@ -185,7 +178,7 @@ struct OneRepMaxSettingsSheet: View {
                             }
                     }
                 }
-                
+
                 Section(header: Text(LocalizedStringKey("Manual Override"))) {
                     Toggle(isOn: $isManualEnabled) {
                         Text(LocalizedStringKey("Set Manual 1RM"))
@@ -196,14 +189,14 @@ struct OneRepMaxSettingsSheet: View {
                             vm.manual1RMOverride = nil
                             manual1RMString = ""
                         } else {
-                            // Очищаем авто-инпут
+
                             vm.calcInputWeight = nil
                             vm.calcInputReps = nil
                             weightString = ""
                             repsString = ""
                         }
                     }
-                    
+
                     if isManualEnabled {
                         HStack {
                             Text(LocalizedStringKey("Absolute 1RM (\(unitsManager.weightUnitString()))"))
@@ -230,7 +223,7 @@ struct OneRepMaxSettingsSheet: View {
                 }
             }
             .onAppear {
-                // Populate initial state
+
                 if let w = vm.calcInputWeight {
                     weightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(w))
                 }

@@ -6,31 +6,31 @@ struct ImbalanceCard: View {
     let message: String
     let icon: String
     let color: Color
-    
+
     var body: some View {
         HStack(alignment: .top, spacing: 15) {
-            // Иконка
+
             ZStack {
                 Circle()
                     .fill(color.opacity(0.2))
                     .frame(width: 40, height: 40)
-                
+
                 Image(systemName: icon)
                     .foregroundColor(color)
                     .font(.system(size: 20))
             }
-            
+
             VStack(alignment: .leading, spacing: 5) {
                 Text(LocalizedStringKey(title))
                     .font(.headline)
                     .foregroundColor(themeManager.current.primaryText)
-                
+
                 Text(message)
                     .font(.caption)
                     .foregroundColor(themeManager.current.secondaryText)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            
+
             Spacer()
         }
         .padding()

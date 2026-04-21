@@ -1,13 +1,10 @@
-//
-//  TechniqueHelper.swift
-//  WorkoutTracker
-//
+
 
 import Foundation
 internal import SwiftUI
 
 struct TechniqueHelper {
-    
+
     static func getDescription(for category: ExerciseCategory) -> String {
         switch category {
         case .squat:
@@ -24,7 +21,7 @@ struct TechniqueHelper {
             return NSLocalizedString("Perform this exercise with proper form, focusing on controlled movements and full range of motion. Engage your core throughout the exercise and avoid using momentum. Consult with a fitness professional for specific technique guidance.", comment: "")
         }
     }
-    
+
     static func getTips(for category: ExerciseCategory) -> [String] {
         switch category {
         case .squat:
@@ -63,43 +60,38 @@ struct TechniqueHelper {
     }
 }
 
-
 struct TechniqueSheetView: View {
     let exerciseName: String
     let category: ExerciseCategory
-    
+
     @Environment(\.dismiss) var dismiss
-    @Environment(ThemeManager.self) private var themeManager // <--- ДОБАВЛЕНО: Инъекция менеджера тем
-    
-    // Стейт для полного объекта из базы
+    @Environment(ThemeManager.self) private var themeManager 
+
     @State private var dbItem: ExerciseDBItem? = nil
     @State private var isLoading = true
-    
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    
+
                     if isLoading {
                         ProgressView("Loading details...")
                             .frame(maxWidth: .infinity)
                             .padding(.top, 50)
                     } else {
                         if let item = dbItem {
-                            
-                            // 1. ЦЕЛЕВЫЕ МЫШЦЫ
+
                             if let primary = item.primaryMuscles, !primary.isEmpty {
-                                // ИЗМЕНЕНО: .blue -> themeManager.current.primaryAccent
+
                                 musclesSection(title: "Target Muscles", muscles: primary, color: themeManager.current.primaryAccent, icon: "figure.strengthtraining.traditional")
                             }
-                            
-                            // 2. ВТОРОСТЕПЕННЫЕ МЫШЦЫ
+
                             if let secondary = item.secondaryMuscles, !secondary.isEmpty {
-                                // ИЗМЕНЕНО: .orange -> themeManager.current.secondaryMidTone
+
                                 musclesSection(title: "Synergist Muscles", muscles: secondary, color: themeManager.current.secondaryMidTone, icon: "figure.mixed.cardio")
                             }
-                            
-                            // 3. ИНСТРУКЦИИ
+
                             let stepsToDisplay = LocalizationHelper.shared.translateInstructions(for: exerciseName) ?? item.instructions ?? []
 
                             if !stepsToDisplay.isEmpty {
@@ -107,7 +99,7 @@ struct TechniqueSheetView: View {
                                     Text(LocalizedStringKey("How to Perform"))
                                         .font(.headline)
                                         .foregroundColor(themeManager.current.secondaryText)
-                                    
+
                                     ForEach(Array(stepsToDisplay.enumerated()), id: \.offset) { index, step in
                                         HStack(alignment: .top, spacing: 12) {
                                             Text("\(index + 1)")
@@ -115,9 +107,9 @@ struct TechniqueSheetView: View {
                                                 .fontWeight(.bold)
                                                 .foregroundColor(.white)
                                                 .frame(width: 24, height: 24)
-                                                .background(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО: .blue -> primaryAccent
+                                                .background(themeManager.current.primaryAccent) 
                                                 .clipShape(Circle())
-                                            
+
                                             Text(step)
                                                 .font(.body)
                                                 .lineSpacing(4)
@@ -131,7 +123,7 @@ struct TechniqueSheetView: View {
                             } else {
                                 fallbackView
                             }
-                            
+
                         } else {
                             fallbackView
                         }
@@ -155,15 +147,14 @@ struct TechniqueSheetView: View {
             }
         }
     }
-    
-    // Блок для отрисовки тегов мышц (Остается без изменений, так как цвет передается как параметр)
+
     private func musclesSection(title: String, muscles: [String], color: Color, icon: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: icon).foregroundColor(color)
                 Text(LocalizedStringKey(title)).font(.headline)
             }
-            
+
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
                     ForEach(muscles, id: \.self) { muscle in
@@ -184,8 +175,7 @@ struct TechniqueSheetView: View {
         .background(themeManager.current.surface)
         .cornerRadius(12)
     }
-    
-    // Старый интерфейс как запасной вариант (для кастомных упражнений)
+
     private var fallbackView: some View {
         Group {
             VStack(alignment: .leading, spacing: 12) {
@@ -200,16 +190,16 @@ struct TechniqueSheetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(themeManager.current.surface)
             .cornerRadius(12)
-            
+
             VStack(alignment: .leading, spacing: 12) {
                 Text(LocalizedStringKey("Key Tips"))
                     .font(.headline)
                     .foregroundColor(themeManager.current.secondaryText)
-                
+
                 ForEach(TechniqueHelper.getTips(for: category), id: \.self) { tip in
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(themeManager.current.primaryAccent) // <--- ИЗМЕНЕНО: .blue -> primaryAccent
+                            .foregroundColor(themeManager.current.primaryAccent) 
                             .font(.caption)
                             .padding(.top, 4)
                         Text(tip).font(.body).lineSpacing(4)

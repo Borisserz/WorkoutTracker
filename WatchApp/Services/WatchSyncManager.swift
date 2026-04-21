@@ -1,6 +1,5 @@
-// ============================================================
-// FILE: WatchApp/Services/WatchSyncManager.swift
-// ============================================================
+
+
 import Foundation
 import WatchConnectivity
 import Observation
@@ -11,7 +10,7 @@ import SwiftData
 final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
     static let shared = WatchSyncManager()
     var isReachable: Bool = false
-    
+
     var modelContext: ModelContext?
 
     private override init() {
@@ -29,13 +28,13 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
             WCSession.default.sendMessage(["syncPayload": data], replyHandler: nil)
         }
     }
-    
+
     func requestPresetsFromPhone() {
         if WCSession.default.isReachable {
             WCSession.default.sendMessage(["request": "presets"], replyHandler: nil)
         }
     }
-    
+
     func requestActiveStateFromPhone() {
         guard WCSession.default.isReachable else { return }
         let payload = LiveSyncPayload(action: .requestActiveState, workoutID: "")
@@ -53,7 +52,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
     nonisolated func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
         Task { @MainActor in self.isReachable = session.isReachable }
     }
-    
+
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         Task { @MainActor in self.isReachable = session.isReachable }
     }
@@ -62,14 +61,14 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
         Task { @MainActor in
             if let data = message["syncPayload"] as? Data,
                let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
-                
+
                 if payload.action == .syncFullState {
                     NotificationCenter.default.post(name: NSNotification.Name("WatchStateRecoveryEvent"), object: nil, userInfo: ["payload": payload])
                 } else {
                     NotificationCenter.default.post(name: NSNotification.Name("WatchLiveSyncEvent"), object: nil, userInfo: ["payload": payload])
                 }
             }
-            
+
             if let presetsData = message["presetsBatch"] as? Data,
                let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
                 await self.savePresetsLocally(dtos)
@@ -79,19 +78,19 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
 
     private func savePresetsLocally(_ dtos: [WorkoutPresetDTO]) async {
         guard let context = modelContext else { return }
-        
+
         let fetchDescriptor = FetchDescriptor<WorkoutPreset>()
         if let existing = try? context.fetch(fetchDescriptor) {
             for p in existing { context.delete(p) }
         }
-        
+
         for dto in dtos {
             let preset = WorkoutPreset(from: dto)
             context.insert(preset)
         }
         try? context.save()
     }
-    
+
     #if os(iOS)
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
     nonisolated func sessionDidDeactivate(_ session: WCSession) { session.activate() }

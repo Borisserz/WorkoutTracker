@@ -1,6 +1,5 @@
-// ============================================================
-// FILE: WatchApp/Views/WatchExerciseSelectionView.swift
-// ============================================================
+
+
 internal import SwiftUI
 import SwiftData
 
@@ -8,15 +7,15 @@ struct WatchExerciseSelectionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     var onSelect: (String) -> Void
-    
+
     @State private var allExercises: [String] = []
-    @State private var isLoading: Bool = true // 🛠️ FIX: Явный стейт загрузки
-    
+    @State private var isLoading: Bool = true 
+
     var body: some View {
         NavigationStack {
             ZStack {
                 WatchTheme.background.ignoresSafeArea()
-                
+
                 if isLoading {
                     VStack {
                         ProgressView()
@@ -27,7 +26,7 @@ struct WatchExerciseSelectionView: View {
                             .padding(.top, 8)
                     }
                 } else if allExercises.isEmpty {
-                    // 🛠️ FIX: Обработка случая, когда база действительно пуста
+
                     VStack {
                         Image(systemName: "exclamationmark.triangle")
                             .font(.largeTitle)
@@ -60,15 +59,14 @@ struct WatchExerciseSelectionView: View {
             }
         }
     }
-    
+
     private func loadFullCatalog() async {
         isLoading = true
-        
-        // 🛠️ FIX: Защита от бесконечного зависания с помощью Race/Timeout
+
         let catalogTask = Task { () -> [String] in
             let catalog = await ExerciseDatabaseService.shared.getCatalog()
             var uniqueNames = Set(catalog.values.flatMap { $0 })
-            
+
             let descriptor = FetchDescriptor<ExerciseDictionaryItem>()
             if let dbItems = try? context.fetch(descriptor) {
                 for item in dbItems {
@@ -81,9 +79,9 @@ struct WatchExerciseSelectionView: View {
             }
             return Array(uniqueNames).sorted()
         }
-        
+
         do {
-            // Ждем максимум 5 секунд, иначе отдаем пустой массив
+
             let result = try await withThrowingTaskGroup(of: [String].self) { group in
                 group.addTask { return await catalogTask.value }
                 group.addTask {
@@ -94,7 +92,7 @@ struct WatchExerciseSelectionView: View {
                 group.cancelAll()
                 return firstResult
             }
-            
+
             await MainActor.run {
                 self.allExercises = result
                 self.isLoading = false

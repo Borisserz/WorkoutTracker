@@ -1,29 +1,26 @@
-// ============================================================
-// FILE: WorkoutTracker/Features/SmartBuilder/BuilderStepsViews.swift
-// ============================================================
+
 
 internal import SwiftUI
 
-// MARK: - Step 1: Muscle Selection
 struct MuscleSelectionView: View {
     @Bindable var vm: SmartGeneratorViewModel
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // 👈 АДАПТАЦИЯ
-    
+    @Environment(\.colorScheme) private var colorScheme 
+
     var body: some View {
         ZStack(alignment: .bottom) {
-            // 👈 АДАПТАЦИЯ ФОНА СТРАНИЦЫ
+
             (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
                 .ignoresSafeArea()
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("What are we training today?")
                         .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black) // 👈 АДАПТАЦИЯ
+                        .foregroundColor(colorScheme == .dark ? .white : .black) 
                         .padding(.horizontal)
                         .padding(.top, 10)
-                    
+
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
                         ForEach(vm.availableMuscles, id: \.self) { muscle in
                             let isSelected = vm.targetMuscles.contains(muscle)
@@ -33,9 +30,9 @@ struct MuscleSelectionView: View {
                                                             VStack {
                                                                 Image(systemName: icon(for: muscle))
                                                                     .font(.title)
-                                                                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .secondary : themeManager.current.primaryAccent)) // 👈 ИСПРАВЛЕНИЕ ИКОНКИ
+                                                                    .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .secondary : themeManager.current.primaryAccent)) 
                                                                     .padding(.bottom, 4)
-                                                                
+
                                                                 Text(LocalizedStringKey(muscle))
                                                                     .font(.headline)
                                                                     .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .primary : .black))
@@ -46,7 +43,7 @@ struct MuscleSelectionView: View {
                                                                 ZStack {
                                                                     (colorScheme == .dark ? themeManager.current.surface : Color.white)
                                                                     if isSelected {
-                                                                        themeManager.current.primaryAccent // 👈 ИСПРАВЛЕНИЕ: Сплошной синий цвет при выборе
+                                                                        themeManager.current.primaryAccent 
                                                                     }
                                                                 }
                                                             )
@@ -66,8 +63,7 @@ struct MuscleSelectionView: View {
                     .padding(.bottom, 120)
                 }
             }
-            
-            // Continue Button
+
             Button {
                 let gen = UIImpactFeedbackGenerator(style: .medium)
                 gen.impactOccurred()
@@ -89,7 +85,7 @@ struct MuscleSelectionView: View {
         }
         .navigationBarTitleDisplayMode(.inline)
     }
-    
+
     private func icon(for muscle: String) -> String {
         switch muscle {
         case "Chest": return "shield.fill"
@@ -103,23 +99,22 @@ struct MuscleSelectionView: View {
         }
     }
 }
-// MARK: - Step 2: Settings
+
 struct GeneratorSettingsView: View {
     @Bindable var vm: SmartGeneratorViewModel
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
     @Environment(DashboardViewModel.self) private var dashboard
-    
+
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Адаптивный фон страницы
+
             (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
                 .ignoresSafeArea()
-            
+
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 24) {
-                    
-                    // Заголовок
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("AI Configuration")
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
@@ -131,8 +126,7 @@ struct GeneratorSettingsView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .padding(.top, 10)
-                    
-                    // КАРТОЧКА 1: ПРОДОЛЖИТЕЛЬНОСТЬ
+
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             ZStack {
@@ -148,10 +142,10 @@ struct GeneratorSettingsView: View {
                                 .foregroundColor(.cyan)
                                 .contentTransition(.numericText())
                         }
-                        
+
                         Slider(value: $vm.durationMinutes, in: 15...120, step: 5)
                             .tint(.cyan)
-                        
+
                         HStack {
                             Text("15 мин").font(.caption2).bold().foregroundColor(.gray)
                             Spacer()
@@ -159,8 +153,7 @@ struct GeneratorSettingsView: View {
                         }
                     }
                     .modifier(PremiumCardModifier(colorScheme: colorScheme, themeManager: themeManager))
-                    
-                    // КАРТОЧКА 2: УРОВЕНЬ ОПЫТА
+
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             ZStack {
@@ -171,8 +164,7 @@ struct GeneratorSettingsView: View {
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                         }
-                        
-                        // Кастомный Segmented Control
+
                         HStack(spacing: 8) {
                             ForEach(WorkoutDifficulty.allCases, id: \.self) { diff in
                                 let isSelected = vm.difficulty == diff
@@ -194,8 +186,7 @@ struct GeneratorSettingsView: View {
                         }
                     }
                     .modifier(PremiumCardModifier(colorScheme: colorScheme, themeManager: themeManager))
-                    
-                    // КАРТОЧКА 3: ОБОРУДОВАНИЕ
+
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             ZStack {
@@ -206,7 +197,7 @@ struct GeneratorSettingsView: View {
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                         }
-                        
+
                         VStack(spacing: 12) {
                             ForEach(WorkoutEquipment.allCases, id: \.self) { eq in
                                 let isSelected = vm.equipment == eq
@@ -236,12 +227,11 @@ struct GeneratorSettingsView: View {
                         }
                     }
                     .modifier(PremiumCardModifier(colorScheme: colorScheme, themeManager: themeManager))
-                    
+
                 }
-                .padding(.bottom, 120) // Место под кнопку
+                .padding(.bottom, 120) 
             }
-            
-            // ПЛАВАЮЩАЯ КНОПКА (Как в остальном приложении)
+
             VStack {
                 Spacer()
                 Button {
@@ -263,7 +253,7 @@ struct GeneratorSettingsView: View {
                 }
             }
             .padding(.bottom, 16)
-            // Пленка градиента для читаемости кнопки
+
             .background(
                 LinearGradient(colors: [(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground)), .clear], startPoint: .bottom, endPoint: .top)
                     .frame(height: 100)
@@ -276,11 +266,10 @@ struct GeneratorSettingsView: View {
     }
 }
 
-// Вспомогательный модификатор для красивых карточек
 struct PremiumCardModifier: ViewModifier {
     let colorScheme: ColorScheme
     let themeManager: ThemeManager
-    
+
     func body(content: Content) -> some View {
         content
             .padding(20)
