@@ -5995,6 +5995,7 @@
       }
     },
     "Export Format" : {
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

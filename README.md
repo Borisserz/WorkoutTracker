@@ -1,115 +1,160 @@
-# WorkoutTracker 🏋
+# WorkoutTracker: AI-Powered Fitness Ecosystem 🏋️‍♂️🧠
 
-![iOS](https://img.shields.io/badge/iOS-17.0+-blue.svg)
-![Swift](https://img.shields.io/badge/Swift-5.10-orange.svg)
-![SwiftUI](https://img.shields.io/badge/SwiftUI-Framework-red.svg)
-![SwiftData](https://img.shields.io/badge/SwiftData-Database-blue.svg)
-![CoreML](https://img.shields.io/badge/CoreML_%26_Vision-AI-purple.svg)
-![Architecture](https://img.shields.io/badge/Architecture-MVVM-green.svg)
+![iOS](https://img.shields.io/badge/iOS-17.0+-blue.svg?style=for-the-badge&logo=apple)
+![watchOS](https://img.shields.io/badge/watchOS-10.0+-lightgrey.svg?style=for-the-badge&logo=apple)
+![Swift](https://img.shields.io/badge/Swift-5.10%20%7C%206.0-orange.svg?style=for-the-badge&logo=swift)
+![SwiftUI](https://img.shields.io/badge/UI-SwiftUI-red.svg?style=for-the-badge)
+![SwiftData](https://img.shields.io/badge/Database-SwiftData-blue.svg?style=for-the-badge)
+![CoreML](https://img.shields.io/badge/ML-Vision_%26_CoreML-purple.svg?style=for-the-badge)
 
-**WorkoutTracker** is a professional, AI-powered iOS application designed for physical activity monitoring, in-depth progress analytics, and muscle group recovery visualization. 
+**WorkoutTracker** is a state-of-the-art, fully native iOS & watchOS fitness application. It transcends traditional rep-counting by integrating **Generative AI**, **Custom CoreML Computer Vision**, and **Biometric HealthKit Analysis** to act as a truly intelligent personal trainer.
 
-Going beyond standard tracking, the app features a **Generative AI Coach** (powered by Gemini) and **Real-Time Computer Vision** to automatically count reps, analyze form, and control the app using hand gestures.
+🔗 **Part of a unified ecosystem:** WorkoutTracker works in seamless synergy with its sister application, [FoodTracker](https://github.com/Borisserz/FoodTracker), providing a complete 360-degree view of your health, nutrition, and physical performance.
 
 ---
 
-## App Screenshots
+## 📸 Application Gallery
 
-<table>
+<table align="center">
   <tr>
-    <td align="center"><b>Dashboard & Heatmap</b></td>
-  <td align="center"><b>Live Activity</b></td>
-    <td align="center"><b>Generative AI Coach</b></td>
+    <td align="center"><b>Dashboard & Biometrics</b></td>
+    <td align="center"><b>Neural AI Coach</b></td>
+    <td align="center"><b>Smart Anatomy Heatmap</b></td>
   </tr>
   <tr>
-    <td><img src="Screenshots/heatmap.png" width="250"></td>
-    <td><img src="Screenshots/live_activity.png" width="250"></td>
-    <td><img src="Screenshots/ai_coach.png" width="250" alt="Needs AI Screenshot"></td>
+    <td><img src="Screenshots/1_overview.png" width="250" style="border-radius: 15px;"></td>
+    <td><img src="Screenshots/2_neural_coach.png" width="250" style="border-radius: 15px;"></td>
+    <td><img src="Screenshots/3_recovery.png" width="250" style="border-radius: 15px;"></td>
   </tr>
   <tr>
-    <td align="center"><b>Active Workout & Live Activity</b></td>
-    <td align="center"><b>Progress Analytics</b></td>
+    <td align="center"><b>Workout Hub</b></td>
+    <td align="center"><b>AI Program Architect</b></td>
+    <td align="center"><b>Legendary Routines</b></td>
+  </tr>
+  <tr>
+    <td><img src="Screenshots/4_hub.png" width="250" style="border-radius: 15px;"></td>
+    <td><img src="Screenshots/5_ai_builder.png" width="250" style="border-radius: 15px;"></td>
+    <td><img src="Screenshots/6_hall_of_fame.png" width="250" style="border-radius: 15px;"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Advanced Stats & Radar</b></td>
+    <td align="center"><b>Progress & Predictions</b></td>
+    <td align="center"><b>Live Workout Analytics</b></td>
+  </tr>
+  <tr>
+    <td><img src="Screenshots/7_radar.png" width="250" style="border-radius: 15px;"></td>
+    <td><img src="Screenshots/8_progress.png" width="250" style="border-radius: 15px;"></td>
+    <td><img src="Screenshots/9_analytics.png" width="250" style="border-radius: 15px;"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Mechanics Breakdown</b></td>
+    <td align="center"><b>Extended Comparisons</b></td>
     <td align="center"><b>Social Share Cards</b></td>
   </tr>
   <tr>
-    <td><img src="Screenshots/workout_active2.png" width="250"></td>
-    <td><img src="Screenshots/stats.png" width="250"></td>
-    <td><img src="Screenshots/share_card.png" width="250" alt="Needs Share Card Screenshot"></td>
+    <td><img src="Screenshots/10_mechanics.png" width="250" style="border-radius: 15px;"></td>
+    <td><img src="Screenshots/11_extended_stats.png" width="250" style="border-radius: 15px;"></td>
+    <td><img src="Screenshots/12_share_card.png" width="250" style="border-radius: 15px;"></td>
   </tr>
 </table>
 
 ---
 
-## Core Features
+## 🌟 Core Features
 
-### 1. AI-Powered Rep Tracking (CoreML & Vision)
-* **Real-time Pose Estimation:** Utilizes `VNHumanBodyPoseObservation` to track body mechanics, automatically counting reps for exercises like Squats, Bicep Curls, and Bench Presses.
-* **Gesture Controls:** Hands-free workout management. Show a "Victory" (✌️) gesture to complete a set or an "Open Palm" (✋) to cancel, powered by custom hand-pose heuristics.
-* **Voice Coach:** Integrated `AVSpeechSynthesizer` smoothly ducks background music (Spotify/Apple Music) to speak your reps and provide audio feedback ("Ready. Let's go!").
-* **Live Muscle Tension:** The anatomical heatmap updates in real-time, highlighting the specific muscles engaged during the current camera-tracked movement.
+### 👁️ Custom CoreML & Computer Vision Tracking
 
-### 2. Generative AI Coach (Gemini API)
-* **Smart Workout Builder:** Ask the AI to build a routine (e.g., "I have 45 mins and dumbbells, hit my chest") and instantly convert it into a trackable workout.
-* **In-Workout Adjustments:** Chat with the AI during your workout to swap exercises, drop weight, or add sets. The AI directly modifies your live workout state.
-* **Weekly Performance Reviews:** The AI analyzes your volume, PRs, and weak points over the last 7 days to generate personalized markdown reports.
-* **Proactive Feedback:** Hits a new PR? The AI automatically congratulates you and provides form tips based on the exact exercise.
+- **Action Classification Model:** Uses a custom-trained `.mlmodel` integrated with an `MLMultiArray` prediction window (60 frames buffered). The AI natively understands if you are performing a rep or just resting.
+- **Live Pose Estimation:** Utilizes `VNHumanBodyPoseObservation` to track skeletal mechanics and biomechanical angles (e.g., knee-to-hip depth) in real-time.
+- **Velocity Based Training (VBT):** Detects if your bar speed drops significantly during a set and triggers auditory warnings before failure.
+- **Gesture Controls:** Complete a set by showing a "Victory" (✌️) sign, or cancel tracking with an "Open Palm" (✋) using `VNHumanHandPoseObservation`.
 
-### 3. Smart Body Heatmap
-* **Custom Rendering:** Utilizes a proprietary SVG path parser to render interactive male and female anatomical models.
-* **Fatigue & Recovery:** Muscles are dynamically shaded based on cumulative training volume, RPE (Effort), and time decay (48h-96h recovery windows).
+### 🧠 Generative AI Neural Coach (Gemini API)
 
-### 4. Advanced Tracking & Analytics
-* **Rich Data Input:** Streamlined input for weights, reps, distance, time, and RPE. Full support for supersets and circuits.
-* **Body Measurements:** Track weight, biceps, chest, waist, and more with interactive `Swift Charts`.
-* **Progress Forecasting:** Linear regression algorithms predict future 1RM metrics over 30/90 day periods.
-* **Weak Point Analysis:** Identifies under-trained muscle groups and suggests frequency or volume adjustments.
+- **Smart Program Architect:** The AI analyzes your available equipment, days per week, and target muscles to instantly generate structured multi-day splits.
+- **In-Workout Proactive Adjustments:** Chat with the coach mid-workout. Machine taken? Too heavy? The AI instantly swaps exercises or drops the load, natively altering the app's database state.
+- **Savage AI Roasts:** Ask the AI to roast your form or effort after a heavy set for a dose of gamified, PG-13 motivation.
 
-### 5. Gamification & Ecosystem
-* **Live Activities & Dynamic Island:** Real-time rest timers and workout status right on the Lock Screen.
-* **Achievements System:** Unlockable badges (Bronze to Diamond) with custom confetti animations and shareable Image-Rendered social cards.
-* **Widgets:** Home screen widgets displaying weekly consistency and current streaks.
+### 🍎 FoodTracker Synergy & Ecosystem
+
+- **Two-App Ecosystem:** Deeply integrated with [FoodTracker](https://github.com/Borisserz/FoodTracker). Calories burned during heavy lifting in WorkoutTracker are instantly reflected in FoodTracker's daily allowance via Apple Health.
+- **Hydration Impact:** WorkoutTracker reads water intake logged in FoodTracker to calculate your true CNS recovery score.
+- **Seamless Deep Linking:** Jump instantly between tracking your macros in FoodTracker and hitting the iron in WorkoutTracker using custom URL schemes (`foodtracker://`).
+
+### ⚡ CNS Fatigue & Biometric Analysis
+
+- **HealthKit Integration:** Reads Sleep Analysis, Resting Heart Rate (RHR), and Heart Rate Variability (HRV) from Apple Health to calculate a real-time **Central Nervous System (CNS) Index**.
+- **Anatomical Heatmap:** A custom SVG parser renders a highly detailed male/female muscular system. Muscles dynamically glow red/orange/green based on 48h-96h volume decay and RPE exhaustion.
+
+### 📊 Advanced Data Analytics
+
+- **1RM Prediction Engine:** Uses Epley, Brzycki, and Lander formulas combined with linear regression to forecast your 1RM gains over 30/90 days.
+- **Symmetry & Radar Charts:** Detects muscular imbalances (e.g., "Too much push, not enough pull") and renders beautiful Swift Charts to visualize mechanic breakdowns.
+
+### ⌚ watchOS Companion App
+
+- **Real-time Sync:** Uses `WatchConnectivity` to stream live Heart Rate to the iPhone dashboard and sync active workout states instantly.
+- **Standalone Tracking:** Log sets, adjust weights via the Digital Crown, and finish workouts directly from your wrist while the iPhone stays in your locker.
+
+### 🎮 RPG-Style Gamification & Achievements
+
+- **Leveling System:** Earn XP based on workout volume and effort to level up your fitness rank (e.g., Novice, Iron Apprentice, Gym Titan).
+- **Dynamic Achievements:** Unlock Bronze to Diamond tier badges for hitting milestones (e.g., 1000 tons lifted, 365-day streaks, early bird workouts).
+- **Streak Protection:** Interactive mascot and push notifications warn you before neurological detraining begins.
+
+### 🏝️ Live Activities, Dynamic Island & Widgets
+
+- **ActivityKit Integration:** Live tracking of workout duration and active exercise directly on the Lock Screen and Dynamic Island.
+- **Interactive Widgets:** Home Screen and Lock Screen widgets for quick access to your current streak, daily activity rings, and instant AI Coach status.
+
+### 🌍 Production-Ready Localization
+
+- Fully localized in **English** and **Russian** using Apple's modern `.xcstrings` catalog, dynamically adapting not just UI text, but AI Coach prompts and SVG anatomy labels.
 
 ---
 
-## Technical Stack
+## 🛠 Technical Architecture
 
-Built with a strict adherence to modern Apple development paradigms:
+This project strictly adheres to modern Apple development paradigms, prioritizing performance, safety, and scalable code design.
 
-* **UI Framework:** 100% `SwiftUI` with custom view modifiers and advanced animations.
-* **Data Persistence:** `SwiftData` with background `@ModelActor` operations to prevent main-thread blocking and OOM crashes during heavy analytical calculations.
-* **Machine Learning:** `Vision` framework for pose estimation and `CoreML` for custom action classification windowing.
-* **Concurrency:** Swift 6 Concurrency (`async/await`, `Task`, `Actor`, `Sendable` structs) replacing GCD.
-* **State Management:** Clean `MVVM` Architecture, utilizing `Combine` for debounced search and sensor updates.
-* **System Integrations:** `ActivityKit` (Live Activities), `WidgetKit`, `AVFoundation` (Audio session management for Voice Coach), and `PhotosUI`.
-* **Localization:** Fully localized in English and Russian via `Localizable.xcstrings`.
+- **UI/UX:** 100% `SwiftUI`. Built with reusable components, custom ViewModifiers for Glassmorphism, 3D Parallax button effects, and rich `Swift Charts`.
+- **Architecture:** Clean **MVVM** architecture combined with Apple's pure `Observation` framework (`@Observable`) for reactive state management.
+- **Data Persistence:** `SwiftData` utilized with background `@ModelActor` operations. Heavy analytical calculations, JSON parsing, and DB migrations never block the Main Thread.
+- **Concurrency:** Fully migrated to **Swift 6 Strict Concurrency** (`async/await`, `TaskGroups`, `Actors`, `Sendable` compliance), completely eliminating legacy GCD closures.
+- **Machine Learning Pipeline:** Pure `Vision` framework for skeletal tracking + `CoreML` sequential windowing buffers to process time-series movement data smoothly.
+- **Media & Export:** `AVFoundation` for camera buffer extraction, audio ducking, and Voice TTS. Custom `VideoExportService` to render dynamic heatmaps into MP4 shareable videos using `AVAssetWriter`.
 
 ---
 
-##  Installation & Setup
+## 🚀 Installation & Setup
 
-To run this project, you will need **macOS** and **Xcode 15.0+** (iOS 17.0+ Simulator/Device required for SwiftData and Vision features).
+To compile and run this project, you will need **macOS Sonoma/Sequoia** and **Xcode 15.0+** (iOS 17.0+ Simulator or Physical Device required for SwiftData and Vision features).
 
 1. **Clone the repository:**
+
    ```bash
    git clone https://github.com/Borisserz/WorkoutTracker.git
+   ```
 
-2. **Setup API Keys:**
-   Locate `Secrets.swift` in the project and add your Google Gemini API Key:
+2. **Configure the AI API Key:**
+   Locate `Secrets.swift` in the `AppCore` directory and insert your Google Gemini API Key:
+
    ```swift
    enum Secrets {
-       static let geminiApiKey = "YOUR_API_KEY_HERE"
+       static let geminiApiKey = "YOUR_GEMINI_API_KEY_HERE"
    }
-3. **Configure Signing:**
-   Open `WorkoutTracker.xcodeproj`, select your Apple ID in the target settings, and ensure the App Group (`group.com.borisdev.WorkoutTracker`) matches your developer account for WidgetKit support.
+   ```
 
-4. **Run:**
-   Select a physical device (recommended for Camera/Vision features) or simulator and press `Cmd + R`.
+3. **Configure App Groups (Important for Widgets & WatchOS):**
+   Open `WorkoutTracker.xcodeproj`. In the _Signing & Capabilities_ tab for all targets (App, Widget, WatchApp), ensure the App Group (`group.com.yourname.WorkoutTracker`) matches your Apple Developer account.
 
+4. **Build and Run:**
+   Select a physical iPhone (Highly recommended to test CoreML Computer Vision and HealthKit integration) and press `Cmd + R`.
 
-## License & Copyright
+---
+
+## 📜 License & Copyright
 
 Copyright (c) 2026 [Boris Serzhanovich]. All rights reserved.
 
-This project is for portfolio demonstration purposes only. The source code is not licensed for public or commercial use, redistribution, or modification without explicit permission from the author.
-
-
+This project is showcased for **portfolio and demonstration purposes only**. The source code, UI designs, and custom SVG anatomical models are proprietary. They are not licensed for public, commercial use, redistribution, or modification without explicit written permission from the author.
