@@ -1,6 +1,7 @@
-
-
 import Foundation
+#if os(iOS)
+import FirebaseStorage
+#endif
 
 public enum MovementPattern: String, Codable, Sendable {
     case squat, hinge, lunge
@@ -77,19 +78,58 @@ public actor ExerciseDatabaseService {
 
     private init() {}
 
-    public func loadDatabase() {
+    public func loadDatabase() async {
         guard !isLoaded else { return }
-        guard let url = Bundle.main.url(forResource: "exercises", withExtension: "json") else { return }
+        
+        var enData: Data?
+        var ruData: Data?
+        
+        #if os(iOS)
+        // 1. Пытаемся загрузить из Firebase (только для iPhone)
+        let storage = Storage.storage()
+        let enRef = storage.reference(withPath: "exercises.json")
+        let ruRef = storage.reference(withPath: "exercises_ru.json")
+        
+        do {
+            enData = try await enRef.data(maxSize: 5 * 1024 * 1024)
+            ruData = try await ruRef.data(maxSize: 5 * 1024 * 1024)
+            print("☁️✅ Каталог упражнений успешно загружен из Firebase Storage!")
+        } catch {
+            print("☁️⚠️ Ошибка загрузки из Firebase: \(error.localizedDescription). Переходим на локальные файлы.")
+        }
+        #endif
+        
+        // 2. Fallback для iPhone (и основной путь для Apple Watch)
+        if enData == nil {
+            if let localEnUrl = Bundle.main.url(forResource: "exercises", withExtension: "json") {
+                enData = try? Data(contentsOf: localEnUrl)
+                #if os(iOS)
+                print("📱 Загружен ЛОКАЛЬНЫЙ английский каталог.")
+                #endif
+            }
+        }
+        
+        if ruData == nil {
+            if let localRuUrl = Bundle.main.url(forResource: "exercises_ru", withExtension: "json") {
+                ruData = try? Data(contentsOf: localRuUrl)
+                #if os(iOS)
+                print("📱 Загружен ЛОКАЛЬНЫЙ русский каталог.")
+                #endif
+            }
+        }
+        
+        guard let finalEnData = enData else {
+            print("❌ Ошибка: не удалось найти базовый каталог упражнений ни в облаке, ни локально.")
+            return
+        }
 
         do {
-            let data = try Data(contentsOf: url)
-            let items = try JSONDecoder().decode([ExerciseDBItem].self, from: data)
+            let items = try JSONDecoder().decode([ExerciseDBItem].self, from: finalEnData)
 
             var ruDict: [String: ExerciseDBItem] = [:]
             if Locale.current.language.languageCode?.identifier == "ru",
-               let ruUrl = Bundle.main.url(forResource: "exercises_ru", withExtension: "json"),
-               let ruData = try? Data(contentsOf: ruUrl),
-               let ruItems = try? JSONDecoder().decode([ExerciseDBItem].self, from: ruData) {
+               let finalRuData = ruData,
+               let ruItems = try? JSONDecoder().decode([ExerciseDBItem].self, from: finalRuData) {
                 for item in ruItems {
                     if let id = item.id { ruDict[id] = item }
                 }
@@ -121,7 +161,10 @@ public actor ExerciseDatabaseService {
             self.exercisesDict = dict
             self.groupedCatalog = catalog.mapValues { Array($0).sorted() }
             self.isLoaded = true
-        } catch { print("❌ Failed to parse: \(error)") }
+            
+        } catch {
+            print("❌ Ошибка парсинга JSON упражнений: \(error)")
+        }
     }
 
     public func getRelevantExercisesContext(for prompt: String, equipmentPref: String = "any", limit: Int = 20) -> [String] {

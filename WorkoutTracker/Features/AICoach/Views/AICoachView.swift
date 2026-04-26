@@ -370,20 +370,25 @@ struct AISettingsSheet: View {
     @Environment(AICoachViewModel.self) private var viewModel
     @Environment(\.colorScheme) private var colorScheme
 
-    @AppStorage(Constants.UserDefaultsKeys.aiCoachTone.rawValue) private var aiTone = Constants.AIConstants.defaultTone
-    let tones = ["Motivational", "Strict", "Friendly", "Scientific"]
+    @AppStorage(Constants.UserDefaultsKeys.aiCoachTone.rawValue) private var aiTone = "motivational" // id по умолчанию
+    
+    @State private var availablePersonas: [AIPersona] = []
 
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Coach Communication Style"), footer: Text("Affects chat responses and workout generation.")) {
-                    Picker("Tone", selection: $aiTone) {
-                        ForEach(tones, id: \.self) { tone in
-                            Text(LocalizedStringKey(tone)).tag(tone)
+                Section(header: Text("Coach Persona"), footer: Text("Affects chat style, workouts, and push notifications. Powered by Cloud.")) {
+                    if availablePersonas.isEmpty {
+                        ProgressView("Loading personas...")
+                    } else {
+                        Picker("Tone", selection: $aiTone) {
+                            ForEach(availablePersonas) { persona in
+                                Text(persona.displayName).tag(persona.id)
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .tint(themeManager.current.primaryAccent)
                     }
-                    .pickerStyle(.menu)
-                    .tint(themeManager.current.primaryAccent)
                 }
 
                 Section {
@@ -405,6 +410,10 @@ struct AISettingsSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .task {
+                // Подгружаем персоны из синглтона RemoteConfig
+                self.availablePersonas = await RemoteConfigManager.shared.getAllPersonas()
             }
         }
     }

@@ -10,8 +10,8 @@ enum ExploreTabType: Int {
 @Observable
 @MainActor
 final class ExploreViewModel {
-    var allPrograms: [WorkoutProgramDefinition] = MockProgramCatalog.shared.programs
-    var searchDebouncer = SearchDebouncer()
+    var allPrograms: [WorkoutProgramDefinition] = []
+        var searchDebouncer = SearchDebouncer()
 
     var selectedTab: ExploreTabType = .programs
     var selectedLevel: ProgramLevel? = nil
@@ -170,6 +170,12 @@ struct ExploreRoutinesView: View {
         .sheet(isPresented: $showAIBuilder) {
             AIProgramBuilderSheet(aiLogicService: di.aiLogicService)
         }
+        .task {
+                   if FirestoreProgramService.shared.explorePrograms.isEmpty {
+                       await FirestoreProgramService.shared.fetchAllPrograms()
+                   }
+                   viewModel.allPrograms = FirestoreProgramService.shared.explorePrograms
+               }
     }
 }
 

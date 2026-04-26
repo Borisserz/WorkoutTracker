@@ -8,7 +8,7 @@ struct LegendaryRoutinesView: View {
     @Environment(WorkoutService.self) private var workoutService
     @Environment(\.dismiss) private var dismiss
 
-    @State private var routines = LegendaryCatalog.shared.routines
+    @State private var routines: [LegendaryRoutine] = []
     @State private var activeRoutineID: UUID?
 
     @State private var currentBackgroundColors: [Color] = [.black, .gray]
@@ -69,12 +69,17 @@ struct LegendaryRoutinesView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)
-        .onAppear {
-            if activeRoutineID == nil, let first = routines.first {
-                activeRoutineID = first.id
-                currentBackgroundColors = first.gradientColors
-            }
-        }
+        .task {
+                    if FirestoreProgramService.shared.legendaryRoutines.isEmpty {
+                        await FirestoreProgramService.shared.fetchAllPrograms()
+                    }
+                    self.routines = FirestoreProgramService.shared.legendaryRoutines
+
+                    if activeRoutineID == nil, let first = routines.first {
+                        activeRoutineID = first.id
+                        currentBackgroundColors = first.gradientColors
+                    }
+                }
         .onChange(of: activeRoutineID) { _, newID in
             if let id = newID, let routine = routines.first(where: { $0.id == id }) {
                 withAnimation(.easeInOut(duration: 0.8)) {

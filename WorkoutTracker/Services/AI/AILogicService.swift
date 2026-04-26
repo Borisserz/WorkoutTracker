@@ -235,7 +235,7 @@ public actor AILogicService {
     }
 
     public func generateWorkoutPlan(userRequest: String, userProfile: UserProfileContext) async throws -> AICoachResponseDTO {
-        let requestBody = GeminiRequest(
+        let requestBody = await GeminiRequest(
             systemInstruction: .init(parts: [.init(text: createSystemPrompt(profile: userProfile))]),
             contents: [.init(role: "user", parts: [.init(text: "ПРОФИЛЬ: Вес: \(userProfile.weightKg)\nЗАПРОС: \"\(userRequest)\"")])],
             generationConfig: .init(
@@ -360,26 +360,29 @@ public actor AILogicService {
         return min(max(response.recommendedHours, 12.0), 120.0)
     }
 
-    private func createSystemPrompt(profile: UserProfileContext) -> String {
-        var prompt = """
-        You are an elite AI Strength Coach. Your tone is \(profile.aiCoachTone).
-        You can chat, answer fitness questions, OR generate workout plans.
+    private func createSystemPrompt(profile: UserProfileContext) async -> String {
+            let persona = await RemoteConfigManager.shared.getPersona(id: profile.aiCoachTone)
+            let customInstruction = persona?.systemInstruction ?? "You are an elite AI Strength Coach."
+            
+            var prompt = """
+            \(customInstruction)
+            You can chat, answer fitness questions, OR generate workout plans.
 
-        RULES FOR JSON RESPONSE:
-        1. "aiMessage": ALWAYS provide your conversational response here.
-        2. "hasWorkout": Set to true ONLY if the user explicitly asks for a workout plan or routine. If they just say "Hello" or ask a general question, set it to false.
-        3. "workoutTitle" and "exercises": ONLY fill these if hasWorkout is true.
+            RULES FOR JSON RESPONSE:
+            1. "aiMessage": ALWAYS provide your conversational response here.
+            2. "hasWorkout": Set to true ONLY if the user explicitly asks for a workout plan or routine. If they just say "Hello" or ask a general question, set it to false.
+            3. "workoutTitle" and "exercises": ONLY fill these if hasWorkout is true.
 
-        Weights must be in \(profile.weightUnit).
-        CRITICAL RULE: Do NOT mention the user's body weight in your conversational response. Focus entirely on the workout or the question.
-        """
+            Weights must be in \(profile.weightUnit).
+            CRITICAL RULE: Do NOT mention the user's body weight in your conversational response. Focus entirely on the workout or the question.
+            """
 
-        if profile.language == "Russian" {
-            prompt += "\nОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (кроме названий упражнений)."
+            if profile.language == "Russian" {
+                prompt += "\nОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (кроме названий упражнений)."
+            }
+            if !profile.availableExercises.isEmpty {
+                prompt += "\nAVAILABLE EXERCISES FOR WORKOUTS:\n\(profile.availableExercises.joined(separator: ", "))"
+            }
+            return prompt
         }
-        if !profile.availableExercises.isEmpty {
-            prompt += "\nAVAILABLE EXERCISES FOR WORKOUTS:\n\(profile.availableExercises.joined(separator: ", "))"
-        }
-        return prompt
-    }
 }

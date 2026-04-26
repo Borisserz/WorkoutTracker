@@ -1,5 +1,3 @@
-
-
 import Foundation
 import UserNotifications
 import SwiftData
@@ -41,7 +39,6 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
     }
 
     private func setupNotificationCategories() {
-
         let doneAction = UNNotificationAction(identifier: actionDone, title: String(localized: "Finish Set"), options: [.foreground])
         let add15sAction = UNNotificationAction(identifier: actionAdd15s, title: String(localized: "+15 Seconds"), options: [])
         let restCategory = UNNotificationCategory(identifier: restTimerCategoryId, actions: [doneAction, add15sAction], intentIdentifiers: [], options: [.customDismissAction])
@@ -57,7 +54,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
         completionHandler(options)
     }
 
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    nonisolated func userNotificationcenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let action = response.actionIdentifier
         let identifier = response.notification.request.identifier
 
@@ -69,25 +66,26 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
                     NotificationCenter.default.post(name: NSNotification.Name(Constants.NotificationIdentifiers.restTimerFinishedNotification.rawValue), object: nil)
                 }
             } else if action == actionStartWorkout || action == UNNotificationDefaultActionIdentifier {
-
                 NotificationCenter.default.post(name: Notification.Name("widgetActionTriggered"), object: "empty_workout")
             }
             completionHandler()
         }
     }
 
-    func scheduleRestTimerNotification(seconds: Double) {
+    // ИЗМЕНЕНИЕ 1: Добавляем async
+    func scheduleRestTimerNotification(seconds: Double) async {
         cancelRestTimerNotification()
 
-        let tone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
-        let copy = AICopywriter.restTimerText(for: tone)
+        let tone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? "motivational"
+        // ИЗМЕНЕНИЕ 2: Добавляем await
+        let copy = await AICopywriter.restTimerText(for: tone)
 
         let content = UNMutableNotificationContent()
         content.title = copy.title
         content.body = copy.body
         content.sound = .default
         content.categoryIdentifier = restTimerCategoryId
-        content.interruptionLevel = .timeSensitive 
+        content.interruptionLevel = .timeSensitive
 
         let trigger = UNTimeIntervalNotificationTrigger(timeInterval: seconds, repeats: false)
         let request = UNNotificationRequest(identifier: restTimerId, content: content, trigger: trigger)
@@ -98,26 +96,28 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
     func cancelRestTimerNotification() {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [restTimerId])
     }
-
-    func scheduleSmartRetentions(workout: Workout, currentStreak: Int, forecast: ProgressForecast?, unitsManager: UnitsManager) {
+    
+    // ИЗМЕНЕНИЕ 3: Добавляем async
+    func scheduleSmartRetentions(workout: Workout, currentStreak: Int, forecast: ProgressForecast?, unitsManager: UnitsManager) async {
         let center = UNUserNotificationCenter.current()
 
         center.removePendingNotificationRequests(withIdentifiers: [recoveryId, streakRescueId])
         for i in [3, 7, 14] { center.removePendingNotificationRequests(withIdentifiers: ["\(dropOffBaseId)\(i)"]) }
 
-        let tone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
+        let tone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? "motivational"
         let now = Date()
 
         let savedHours = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue)
         let recoveryHours = savedHours > 0 ? savedHours : 48.0
         let dominantMuscle = getDominantGroup(for: workout)
 
-        let recoveryCopy = AICopywriter.recoveryText(for: tone, muscle: dominantMuscle)
+        // ИЗМЕНЕНИЕ 4: Добавляем await повсюду
+        let recoveryCopy = await AICopywriter.recoveryText(for: tone, muscle: dominantMuscle)
         scheduleNotification(id: recoveryId, title: recoveryCopy.title, body: recoveryCopy.body, date: now.addingTimeInterval(recoveryHours * 3600), category: retentionCategoryId)
 
         if let forecast = forecast, forecast.confidence >= 70 {
             let weightStr = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(forecast.predictedMax))
-            let prCopy = AICopywriter.prPredictionText(for: tone, exercise: forecast.exerciseName, weight: weightStr, unit: unitsManager.weightUnitString())
+            let prCopy = await AICopywriter.prPredictionText(for: tone, exercise: forecast.exerciseName, weight: weightStr, unit: unitsManager.weightUnitString())
 
             let prDate = calendarDate(daysAhead: 2, hour: 17)
             scheduleNotification(id: "pr_prediction", title: prCopy.title, body: prCopy.body, date: prDate, category: retentionCategoryId)
@@ -125,7 +125,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
 
         let maxRestDays = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) > 0 ? UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) : 2
         if currentStreak > 2 {
-            let rescueCopy = AICopywriter.streakRescueText(for: tone, streak: currentStreak)
+            let rescueCopy = await AICopywriter.streakRescueText(for: tone, streak: currentStreak)
 
             let rescueHours = Double(maxRestDays * 24) - 12.0
             scheduleNotification(id: streakRescueId, title: rescueCopy.title, body: rescueCopy.body, date: now.addingTimeInterval(rescueHours * 3600), category: retentionCategoryId)
@@ -133,7 +133,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
 
         let dropOffDays = [3, 7, 14]
         for days in dropOffDays {
-            let copy = AICopywriter.inactivityText(for: tone, daysOff: days)
+            let copy = await AICopywriter.inactivityText(for: tone, daysOff: days)
             let date = now.addingTimeInterval(Double(days * 24 * 3600))
             scheduleNotification(id: "\(dropOffBaseId)\(days)", title: copy.title, body: copy.body, date: date, category: retentionCategoryId)
         }
@@ -170,71 +170,35 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
 }
 
 struct AICopywriter {
-
-    static func restTimerText(for tone: String) -> (title: String, body: String) {
-        switch tone {
-        case "Strict":
-            return (String(localized: "Rest is over."), String(localized: "Pick up the weight. No excuses."))
-        case "Friendly":
-            return (String(localized: "Timer's up! ✌️"), String(localized: "Ready for the next set? You got this!"))
-        case "Scientific":
-            return (String(localized: "Timer Finished"), String(localized: "Optimal ATP resynthesis achieved. Commence next set."))
-        default: 
-            return (String(localized: "Time's up! 💥"), String(localized: "Let's crush this next set, champion!"))
-        }
+    static func restTimerText(for toneId: String) async -> (title: String, body: String) {
+        let persona = await RemoteConfigManager.shared.getPersona(id: toneId)
+        return (persona?.notifications.restTimer.title ?? "Time's up!",
+                persona?.notifications.restTimer.body ?? "Let's crush the next set!")
     }
 
-    static func recoveryText(for tone: String, muscle: String) -> (title: String, body: String) {
-        let locMuscle = String(localized: String.LocalizationValue(muscle))
-        switch tone {
-        case "Strict":
-            return (String(localized: "\(locMuscle) at 100%."), String(localized: "Your \(locMuscle) is fully recovered. Get to the gym."))
-        case "Friendly":
-            return (String(localized: "Fresh Muscles! 🌟"), String(localized: "Looks like your \(locMuscle) is feeling fresh and ready to train!"))
-        case "Scientific":
-            return (String(localized: "Recovery Complete"), String(localized: "Myofibrillar repair complete in \(locMuscle). Ready for hypertrophy load."))
-        default: 
-            return (String(localized: "\(locMuscle) is Ready! 🔥"), String(localized: "Time to build! Let's hit \(locMuscle) today and grow."))
-        }
+    static func recoveryText(for toneId: String, muscle: String) async -> (title: String, body: String) {
+        let persona = await RemoteConfigManager.shared.getPersona(id: toneId)
+        let title = persona?.notifications.recovery.title ?? "Muscle Recovered!"
+        let body = persona?.notifications.recovery.body ?? "Time to train."
+        return (title.replacingOccurrences(of: "{muscle}", with: muscle),
+                body.replacingOccurrences(of: "{muscle}", with: muscle))
     }
 
-    static func streakRescueText(for tone: String, streak: Int) -> (title: String, body: String) {
-        switch tone {
-        case "Strict":
-            return (String(localized: "Streak at risk."), String(localized: "You're about to lose your \(streak)-day streak. Train now."))
-        case "Friendly":
-            return (String(localized: "Hey there! 🏃"), String(localized: "Let's keep that \(streak)-day streak alive together! Just a quick session?"))
-        case "Scientific":
-            return (String(localized: "Consistency Alert"), String(localized: "Maintain your \(streak)-day streak to prevent neurological detraining."))
-        default: 
-            return (String(localized: "Save Your Streak! 🛡️"), String(localized: "Don't let your \(streak)-day streak die! 15 minutes is all it takes!"))
-        }
+    static func streakRescueText(for toneId: String, streak: Int) async -> (title: String, body: String) {
+        let persona = await RemoteConfigManager.shared.getPersona(id: toneId)
+        return (persona?.notifications.streak.title ?? "Save Your Streak!",
+                (persona?.notifications.streak.body ?? "Don't let your {streak}-day streak die!").replacingOccurrences(of: "{streak}", with: "\(streak)"))
     }
 
-    static func prPredictionText(for tone: String, exercise: String, weight: String, unit: String) -> (title: String, body: String) {
-        let locEx = String(localized: String.LocalizationValue(exercise))
-        switch tone {
-        case "Strict":
-            return (String(localized: "PR Predicted."), String(localized: "Data shows you can lift \(weight)\(unit) on \(locEx). Prove it."))
-        case "Friendly":
-            return (String(localized: "New PR incoming? 🏆"), String(localized: "I believe you can hit a new \(locEx) PR of \(weight)\(unit) today!"))
-        case "Scientific":
-            return (String(localized: "Capacity Update"), String(localized: "Neuromuscular efficiency indicates a \(weight)\(unit) 1RM capacity for \(locEx)."))
-        default: 
-            return (String(localized: "Prime Condition! 🚀"), String(localized: "You're ready for a \(weight)\(unit) \(locEx) PR! Let's crush it!"))
-        }
+    static func prPredictionText(for toneId: String, exercise: String, weight: String, unit: String) async -> (title: String, body: String) {
+        let persona = await RemoteConfigManager.shared.getPersona(id: toneId)
+        return (persona?.notifications.pr.title ?? "PR Predicted!",
+                (persona?.notifications.pr.body ?? "Data shows you can lift {weight}{unit} on {exercise}.").replacingOccurrences(of: "{exercise}", with: exercise).replacingOccurrences(of: "{weight}", with: weight).replacingOccurrences(of: "{unit}", with: unit))
     }
 
-    static func inactivityText(for tone: String, daysOff: Int) -> (title: String, body: String) {
-        switch tone {
-        case "Strict":
-            return (String(localized: "Unacceptable."), String(localized: "\(daysOff) days of atrophy. Fix it before you lose your gains."))
-        case "Friendly":
-            return (String(localized: "We miss you! 🥺"), String(localized: "It's been \(daysOff) days! A quick 20-min session is better than nothing."))
-        case "Scientific":
-            return (String(localized: "System Recalibrating"), String(localized: "72+ hours post-workout: glycogen stores are full. Optimal time to train."))
-        default: 
-            return (String(localized: "Back on track! ⚡️"), String(localized: "Missed \(daysOff) days? It's never too late to restart your journey."))
-        }
+    static func inactivityText(for toneId: String, daysOff: Int) async -> (title: String, body: String) {
+        let persona = await RemoteConfigManager.shared.getPersona(id: toneId)
+        return (persona?.notifications.inactivity.title ?? "Back on track!",
+                (persona?.notifications.inactivity.body ?? "Missed {daysOff} days? Time to restart.").replacingOccurrences(of: "{daysOff}", with: "\(daysOff)"))
     }
 }

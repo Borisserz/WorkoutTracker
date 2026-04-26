@@ -8,11 +8,13 @@ struct VertexCredentials: Codable, Sendable {
     let private_key: String
     let client_email: String
 
-    static func load() throws -> VertexCredentials {
-        guard let url = Bundle.main.url(forResource: "vertex_credentials", withExtension: "json") else {
-            throw URLError(.fileDoesNotExist)
+    static func load() async throws -> VertexCredentials {
+        let jsonString = await RemoteConfigManager.shared.getString(forKey: "vertex_credentials_json")
+        
+        guard let data = jsonString.data(using: .utf8), !jsonString.isEmpty else {
+            throw URLError(.cannotDecodeRawData)
         }
-        let data = try Data(contentsOf: url)
+        
         return try JSONDecoder().decode(VertexCredentials.self, from: data)
     }
 }
@@ -47,14 +49,14 @@ actor VertexAuthenticator {
         return try await fetchNewToken()
     }
 
-    func getProjectId() throws -> String {
-        return try VertexCredentials.load().project_id
-    }
+    func getProjectId() async throws -> String {
+           return try await VertexCredentials.load().project_id
+       }
 
-    private func fetchNewToken() async throws -> String {
-            let credentials = try VertexCredentials.load()
-
-            let now = Date().timeIntervalSince1970
+       private func fetchNewToken() async throws -> String {
+           let credentials = try await VertexCredentials.load()
+           
+           let now = Date().timeIntervalSince1970
             let claims = GoogleClaims(
                 iss: credentials.client_email,
                 scope: "https://www.googleapis.com/auth/cloud-platform",

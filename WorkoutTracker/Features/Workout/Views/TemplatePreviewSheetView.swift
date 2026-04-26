@@ -48,7 +48,8 @@ struct TemplatePreviewSheetView: View {
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme 
     @Environment(ThemeManager.self) private var themeManager
-
+    @State private var isSharing = false
+        @State private var shareItem: SharedFileWrapper?
     @State private var selectedHistoryExercise: String? = nil
 
     let item: PreviewItem
@@ -81,6 +82,20 @@ struct TemplatePreviewSheetView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                              ToolbarItem(placement: .topBarLeading) {
+                                  Button {
+                                      shareWorkout()
+                                  } label: {
+                                      if isSharing {
+                                          ProgressView().tint(themeManager.current.primaryAccent)
+                                      } else {
+                                          Image(systemName: "square.and.arrow.up")
+                                              .font(.title3)
+                                              .foregroundColor(themeManager.current.primaryAccent)
+                                      }
+                                  }
+                                  .disabled(isSharing)
+                              }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -94,6 +109,10 @@ struct TemplatePreviewSheetView: View {
                     }
                 }
             }
+            .sheet(item: $shareItem) { wrapper in
+                           ActivityViewController(activityItems: [wrapper.url])
+                               .presentationDetents([.medium])
+                       }
             .safeAreaInset(edge: .bottom) {
                 startWorkoutButton
             }
@@ -278,4 +297,40 @@ struct TemplatePreviewSheetView: View {
                 .ignoresSafeArea()
         )
     }
+    private func shareWorkout() {
+            isSharing = true
+            let generator = UIImpactFeedbackGenerator(style: .medium)
+            generator.impactOccurred()
+            
+            Task {
+                do {
+                 
+                    let dto: WorkoutPresetDTO
+                    switch item {
+                    case .preset(let p): dto = p.toDTO()
+                    case .favorite(let w):
+                        let cleanExercises = w.exercises.map { ex -> ExerciseDTO in
+                            var exDto = ex.toDTO()
+                            exDto.isCompleted = false
+                            exDto.setsList = exDto.setsList?.map { set in
+                                WorkoutSetDTO(index: set.index, weight: set.weight, reps: set.reps, distance: set.distance, time: set.time, isCompleted: false, type: set.type)
+                            }
+                            return exDto
+                        }
+                        dto = WorkoutPresetDTO(name: w.title, icon: w.icon, folderName: nil, exercises: cleanExercises)
+                    }
+                                let documentId = try await FirestoreProgramService.shared.uploadSharedPreset(dto)
+
+                    if let shareURL = URL(string: "workouttracker://shared?id=\(documentId)") {
+                        await MainActor.run {
+                            self.shareItem = SharedFileWrapper(url: shareURL)
+                            self.isSharing = false
+                        }
+                    }
+                } catch {
+                    print("❌ Ошибка шеринга: \(error)")
+                    await MainActor.run { self.isSharing = false }
+                }
+            }
+        }
 }

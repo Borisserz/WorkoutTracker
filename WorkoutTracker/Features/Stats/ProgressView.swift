@@ -2845,14 +2845,15 @@ struct HeatmapDetailView: View {
         }
     }
 
-    struct StorySlideOutro: View {
+struct StorySlideOutro: View {
         let data: PeriodReportPayload
         var dismissAction: () -> Void
         @Environment(ThemeManager.self) private var themeManager
 
         @State private var dragOffset: CGSize = .zero
         @State private var isPulsing = false
-
+        @State private var shareItem: SharedImageWrapper? // Добавили стейт
+        
         private var last28Days: [Date] {
             let cal = Calendar.current
             let today = cal.startOfDay(for: Date())
@@ -2908,7 +2909,7 @@ struct HeatmapDetailView: View {
                                     }
                                 }
                             }
-                        } 
+                        }
                         .padding(30)
                     }
                     .frame(width: 340, height: 460)
@@ -2923,10 +2924,20 @@ struct HeatmapDetailView: View {
 
                     Spacer()
 
+                    // ОБНОВЛЕННАЯ КНОПКА С ПРАВИЛЬНЫМИ СКОБКАМИ
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .heavy)
                         generator.impactOccurred()
-
+                        
+                        let shareView = StorySlideOutroShareCard(data: data)
+                            .environment(ThemeManager.shared)
+                        
+                        let renderer = ImageRenderer(content: shareView)
+                        renderer.scale = 3.0
+                        
+                        if let uiImage = renderer.uiImage {
+                            shareItem = SharedImageWrapper(image: uiImage)
+                        }
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "square.and.arrow.up")
@@ -2949,6 +2960,10 @@ struct HeatmapDetailView: View {
                         withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
                             isPulsing = true
                         }
+                    }
+                    .sheet(item: $shareItem) { wrapper in
+                        ActivityViewController(activityItems: [wrapper.image])
+                            .presentationDetents([.medium])
                     }
                 }
             }
@@ -3231,3 +3246,83 @@ struct HeatmapDetailView: View {
         }
     }
 
+    // Статичная карточка для экспорта в картинку
+    struct StorySlideOutroShareCard: View {
+        let data: PeriodReportPayload
+        @Environment(ThemeManager.self) private var themeManager
+        
+        var body: some View {
+            ZStack {
+                Color.black.ignoresSafeArea()
+                
+                ZStack {
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .fill(Color(white: 0.08))
+                    
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .stroke(LinearGradient(colors: [.purple, .cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+                    
+                    VStack(spacing: 30) {
+                        Text("DISCIPLINE")
+                            .font(.system(size: 24, weight: .black, design: .rounded))
+                            .tracking(4)
+                            .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .leading, endPoint: .trailing))
+                        
+                        HStack(spacing: 20) {
+                            holoStat(value: "\(data.streakDays)", title: "Max Streak", color: .orange)
+                            holoStat(value: "\(data.activeDays.count)", title: "Gym Days", color: .cyan)
+                            holoStat(value: "\(data.summary.currentSets)", title: "Sets Done", color: .green)
+                        }
+                        
+                        Divider().background(Color.white.opacity(0.2))
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("ACTIVITY HEATMAP (LAST 28 DAYS)")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white.opacity(0.5))
+                            
+                            let cal = Calendar.current
+                            let today = cal.startOfDay(for: Date())
+                            let last28Days = (0..<28).compactMap { cal.date(byAdding: .day, value: -$0, to: today) }.reversed()
+                            
+                            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                                ForEach(Array(last28Days), id: \.self) { date in
+                                    let isActive = data.activeDays.contains(where: { Calendar.current.isDate($0, inSameDayAs: date) })
+                                    
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(isActive ? Color.cyan : Color.white.opacity(0.1))
+                                        .aspectRatio(1, contentMode: .fit)
+                                }
+                            }
+                        }
+                        
+                        HStack {
+                            Image(systemName: "applewatch")
+                            Text("Tracked with WorkoutTracker")
+                        }
+                        .font(.caption)
+                        .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
+                        .padding(.top, 10)
+                    }
+                    .padding(30)
+                }
+                .frame(width: 340, height: 500) // Фиксированный размер для красивого скриншота
+            }
+            .frame(width: 400, height: 600)
+        }
+        
+        private func holoStat(value: String, title: String, color: Color) -> some View {
+            VStack(spacing: 6) {
+                Text(value)
+                    .font(.system(size: 34, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                
+                Text(LocalizedStringKey(title))
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(color)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }

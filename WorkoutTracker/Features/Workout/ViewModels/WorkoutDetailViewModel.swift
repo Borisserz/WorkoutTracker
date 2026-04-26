@@ -289,12 +289,17 @@ final class WorkoutDetailViewModel {
     }
 
     func generateAndShare(workout: Workout) {
-        let renderer = ImageRenderer(content: WorkoutShareCard(workout: workout))
-        renderer.scale = 3.0
-        if let uiImage = renderer.uiImage {
-            self.activeEvent = .showShareSheet(uiImage)
+            let shareView = WorkoutShareCard(workout: workout)
+                .environment(ThemeManager.shared)
+                .environment(UnitsManager.shared)
+            
+            let renderer = ImageRenderer(content: shareView)
+            renderer.scale = 3.0
+            
+            if let uiImage = renderer.uiImage {
+                self.activeEvent = .showShareSheet(uiImage)
+            }
         }
-    }
 
     func requestFinishWorkout(workout: Workout, progressManager: ProgressManager) {
         let hasAnyCompletedSet = workout.exercises.contains { exercise in
@@ -415,12 +420,12 @@ final class WorkoutDetailViewModel {
                 let currentStreak = await analyticsService.calculateWorkoutStreak(workouts: allWorkouts)
                 let forecast = await analyticsService.getProgressForecast(workouts: allWorkouts).first
 
-                NotificationManager.shared.scheduleSmartRetentions(
-                    workout: workout,
-                    currentStreak: currentStreak,
-                    forecast: forecast,
-                    unitsManager: UnitsManager.shared
-                )
+                await NotificationManager.shared.scheduleSmartRetentions(
+                          workout: workout,
+                          currentStreak: currentStreak,
+                          forecast: forecast,
+                          unitsManager: UnitsManager.shared
+                      )
 
                 NotificationCenter.default.post(name: .workoutCompletedEvent, object: workout.persistentModelID, userInfo: ["modelContainer": analyticsService.modelContainer])
                 self.updateWorkoutAnalytics(for: workout)
@@ -478,14 +483,18 @@ extension WorkoutDetailViewModel {
                 let roast = try await workoutService.aiLogicService.generateFormRoast(exercise: exName, reps: reps, language: lang)
 
                 await MainActor.run {
-                    self.isShowingSnackbar = false
+                         self.isShowingSnackbar = false
 
-                    let renderer = ImageRenderer(content: AIRoastShareCard(roastText: roast, exerciseName: exName))
-                    renderer.scale = 3.0
-                    if let uiImage = renderer.uiImage {
-                        self.activeEvent = .showShareSheet(uiImage)
-                    }
-                }
+                         let roastView = AIRoastShareCard(roastText: roast, exerciseName: exName)
+                             .environment(ThemeManager.shared)
+                             .environment(UnitsManager.shared) 
+                         
+                         let renderer = ImageRenderer(content: roastView)
+                         renderer.scale = 3.0
+                         if let uiImage = renderer.uiImage {
+                             self.activeEvent = .showShareSheet(uiImage)
+                         }
+                     }
             } catch {
                 await MainActor.run {
                     self.isShowingSnackbar = false

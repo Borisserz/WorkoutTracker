@@ -4,9 +4,22 @@ internal import SwiftUI
 import SwiftData
 import UserNotifications
 import AppIntents
+import FirebaseCore
+
+class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication,
+                     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        
+        FirebaseApp.configure()
+        
+        return true
+    }
+}
 
 @main
 struct WorkoutTrackerApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+
     @Environment(\.scenePhase) private var scenePhase
 
     @State private var diContainer: DIContainer?
@@ -31,7 +44,7 @@ struct WorkoutTrackerApp: App {
         default: return nil
         }
     }
-
+    
     var body: some Scene {
         WindowGroup {
             Group {
@@ -91,13 +104,35 @@ struct WorkoutTrackerApp: App {
             .environment(pvm)
             .preferredColorScheme(colorScheme)
             .onOpenURL { url in
-                Task {
-                    if await di.presetService.importPreset(from: url) {
-                        await MainActor.run { showImportAlert = true }
-                    }
-                }
-            }
-
+                            if url.scheme == "workouttracker" && url.host == "shared" {
+                                guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+                                      let id = components.queryItems?.first(where: { $0.name == "id" })?.value else { return }
+                                
+                                Task {
+                                    do {
+                                        let presetDTO = try await FirestoreProgramService.shared.downloadSharedPreset(id: id)
+                                        let newExercises = presetDTO.exercises.map { Exercise(from: $0) }
+   
+                                        await di.presetService.savePreset(
+                                            preset: nil,
+                                            name: presetDTO.name + " (Shared)",
+                                            icon: presetDTO.icon,
+                                            folderName: PresetService.savedRoutinesFolderName,
+                                            exercises: newExercises
+                                        )
+                                        await MainActor.run { showImportAlert = true }
+                                    } catch {
+                                        print("❌ Ошибка импорта: \(error)")
+                                    }
+                                }
+                            } else {
+                                Task {
+                                    if await di.presetService.importPreset(from: url) {
+                                        await MainActor.run { showImportAlert = true }
+                                    }
+                                }
+                            }
+                        }
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("widgetActionTriggered"))) { notification in
                 if let action = notification.object as? String {
                     handleWidgetAction(action, appState: di.appState)
@@ -119,9 +154,11 @@ struct WorkoutTrackerApp: App {
     }
 
     @MainActor
-        private func setupDependencies() async {
-            do {
-                await ExerciseDatabaseService.shared.loadDatabase()
+    private func setupDependencies() async {
+           do {
+               await RemoteConfigManager.shared.fetchCloudValues()
+               
+               await ExerciseDatabaseService.shared.loadDatabase()
 
                 let schema = Schema([
                     Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,

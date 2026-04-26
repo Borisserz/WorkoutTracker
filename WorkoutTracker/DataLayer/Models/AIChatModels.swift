@@ -2,6 +2,31 @@
 
 import Foundation
 import SwiftData
+import Foundation
+
+struct AIPersonasConfig: Codable, Sendable {
+    let personas: [AIPersona]
+}
+
+struct AIPersona: Codable, Identifiable, Sendable {
+    var id: String
+    let displayName: String
+    let systemInstruction: String
+    let notifications: AINotifications
+}
+
+struct AINotifications: Codable, Sendable {
+    let restTimer: NotificationCopy
+    let recovery: NotificationCopy
+    let streak: NotificationCopy
+    let pr: NotificationCopy
+    let inactivity: NotificationCopy
+}
+
+struct NotificationCopy: Codable, Sendable {
+    let title: String
+    let body: String
+}
 public struct AIWeeklyReviewDTO: Codable, Sendable {
     let weeklyScore: Int
     let title: String

@@ -90,7 +90,9 @@ final class RestTimerManager {
         self.restTimerFinished = false
 
         saveTimerState()
-        NotificationManager.shared.scheduleRestTimerNotification(seconds: Double(seconds))
+        Task {
+            await NotificationManager.shared.scheduleRestTimerNotification(seconds: Double(seconds))
+        }
         startTicker()
     }
 
@@ -101,7 +103,9 @@ final class RestTimerManager {
             self.initialRestTime += seconds 
             self.restTimeRemaining += seconds
             saveTimerState()
-            NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
+            Task {
+                await NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
+            }
         }
     }
 
@@ -116,7 +120,9 @@ final class RestTimerManager {
 
                 self.restTimeRemaining = max(0, restTimeRemaining - seconds)
                 saveTimerState()
-                NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
+                Task {
+                    await NotificationManager.shared.scheduleRestTimerNotification(seconds: newEnd.timeIntervalSinceNow)
+                }
             }
         }
     }
