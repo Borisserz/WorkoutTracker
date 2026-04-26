@@ -41,3 +41,5 @@ names.json
 
 # Google Cloud Vertex AI Credentials
 vertex_credentials.json
+
+*.sh
