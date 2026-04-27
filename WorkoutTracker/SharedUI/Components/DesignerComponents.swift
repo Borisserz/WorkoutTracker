@@ -372,3 +372,12 @@ struct SettingsDropdownMenu: View {
         .frame(width: 230)
     }
 }
+extension HapticManager {
+    static func playLightImpact() { shared.impact(.light) }
+    static func playMediumImpact() { shared.impact(.medium) }
+    static func playHeavyImpact() { shared.impact(.heavy) }
+    static func playSelection() { shared.selection() }
+    static func playSuccess() {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+}
