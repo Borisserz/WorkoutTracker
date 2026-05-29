@@ -1,17 +1,33 @@
-
-
 internal import SwiftUI
 import SwiftData
 import UserNotifications
 import AppIntents
 import FirebaseCore
+import FirebaseAppCheck
+
+// MARK: - App Check provider
+final class AppCheckFactory: NSObject, AppCheckProviderFactory {
+    func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
+        #if DEBUG
+        // В симуляторе/дебаге App Attest не работает — используем debug-провайдер.
+        // При первом запуске в консоль выведется debug-токен, его надо
+        // зарегистрировать: Firebase → App Check → ⋮ у приложения → Manage debug tokens.
+        return AppCheckDebugProvider(app: app)
+        #else
+        // На реальном устройстве в релизе — настоящий App Attest.
+        return AppAttestProvider(app: app)
+        #endif
+    }
+}
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        
+
+        // ВАЖНО: фабрику App Check ставим ДО FirebaseApp.configure()
+        AppCheck.setAppCheckProviderFactory(AppCheckFactory())
         FirebaseApp.configure()
-        
+
         return true
     }
 }
@@ -33,9 +49,14 @@ struct WorkoutTrackerApp: App {
 
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     @State private var showImportAlert = false
+    @State private var showImportError = false
+    @State private var importErrorMessage: String = ""
 
     @State private var restTimerManager = RestTimerManager()
     @State private var tutorialManager = TutorialManager()
+
+    // 🔥 Флаг для запуска новых экранов каждый раз (по вашему запросу)
+    @State private var showGodModeOnboarding = true
 
     private var colorScheme: ColorScheme? {
         switch appearanceMode {
@@ -44,7 +65,7 @@ struct WorkoutTrackerApp: App {
         default: return nil
         }
     }
-    
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -58,7 +79,17 @@ struct WorkoutTrackerApp: App {
                           let cvm = catalogViewModel,
                           let pvm = profileViewModel {
 
-                    mainContent(di: di, dvm: dvm, usvm: usvm, aicvm: aicvm, cvm: cvm, pvm: pvm)
+                    if showGodModeOnboarding {
+                        RootGodModeOnboarding(onFinish: {
+                            withAnimation(.easeInOut(duration: 0.8)) {
+                                showGodModeOnboarding = false
+                            }
+                        })
+                        .preferredColorScheme(.dark)
+                    } else {
+                        mainContent(di: di, dvm: dvm, usvm: usvm, aicvm: aicvm, cvm: cvm, pvm: pvm)
+                    }
+
                 } else {
                     ProgressView("Initializing...")
                         .controlSize(.large)
@@ -104,35 +135,46 @@ struct WorkoutTrackerApp: App {
             .environment(pvm)
             .preferredColorScheme(colorScheme)
             .onOpenURL { url in
-                            if url.scheme == "workouttracker" && url.host == "shared" {
-                                guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
-                                      let id = components.queryItems?.first(where: { $0.name == "id" })?.value else { return }
-                                
-                                Task {
-                                    do {
-                                        let presetDTO = try await FirestoreProgramService.shared.downloadSharedPreset(id: id)
-                                        let newExercises = presetDTO.exercises.map { Exercise(from: $0) }
-   
-                                        await di.presetService.savePreset(
-                                            preset: nil,
-                                            name: presetDTO.name + " (Shared)",
-                                            icon: presetDTO.icon,
-                                            folderName: PresetService.savedRoutinesFolderName,
-                                            exercises: newExercises
-                                        )
-                                        await MainActor.run { showImportAlert = true }
-                                    } catch {
-                                        print("❌ Ошибка импорта: \(error)")
-                                    }
-                                }
-                            } else {
-                                Task {
-                                    if await di.presetService.importPreset(from: url) {
-                                        await MainActor.run { showImportAlert = true }
-                                    }
-                                }
+                // Ваша стандартная логика ссылок...
+                if url.scheme == "workouttracker" && url.host == "shared" {
+                    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+                          let id = components.queryItems?.first(where: { $0.name == "id" })?.value else { return }
+
+                    Task {
+                        do {
+                            let (presetDTO, _) = try await FirestoreProgramService.shared.downloadSharedPresetWithCreator(id: id)
+                            let newExercises = presetDTO.exercises.map { Exercise(from: $0) }
+
+                            await di.presetService.savePreset(
+                                preset: nil,
+                                name: presetDTO.name + " (Shared)",
+                                icon: presetDTO.icon,
+                                folderName: PresetService.savedRoutinesFolderName,
+                                exercises: newExercises
+                            )
+                            await MainActor.run { showImportAlert = true }
+                        } catch let error as SharedWorkoutError {
+                            await MainActor.run {
+                                importErrorMessage = error.localizedDescription
+                                showImportError = true
                             }
+                            print("❌ Импорт shared workout отклонён: \(error.localizedDescription)")
+                        } catch {
+                            await MainActor.run {
+                                importErrorMessage = "Не удалось загрузить тренировку. Проверь интернет."
+                                showImportError = true
+                            }
+                            print("❌ Импорт: \(error)")
                         }
+                    }
+                } else {
+                    Task {
+                        if await di.presetService.importPreset(from: url) {
+                            await MainActor.run { showImportAlert = true }
+                        }
+                    }
+                }
+            }
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("widgetActionTriggered"))) { notification in
                 if let action = notification.object as? String {
                     handleWidgetAction(action, appState: di.appState)
@@ -141,66 +183,89 @@ struct WorkoutTrackerApp: App {
             .alert("Template Imported!", isPresented: $showImportAlert) {
                 Button("OK", role: .cancel) { }
             }
+            .alert("Не удалось импортировать", isPresented: $showImportError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(importErrorMessage)
+            }
     }
 
     private func handleWidgetAction(_ action: String, appState: AppStateManager) {
         appState.requestedWidgetAction = action
 
         if action == "empty_workout" || action == "smart_builder" {
-            appState.selectedTab = 2 
+            appState.selectedTab = 2
         } else if action == "log_weight" {
-            appState.selectedTab = 0 
+            appState.selectedTab = 0
         }
     }
 
     @MainActor
     private func setupDependencies() async {
-           do {
-               await RemoteConfigManager.shared.fetchCloudValues()
-               
-               await ExerciseDatabaseService.shared.loadDatabase()
-
-                let schema = Schema([
-                    Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
-                    ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
-                    AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
-                ])
-
-                let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker")!
-                            let dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite") 
-
-                            let modelConfiguration = ModelConfiguration(
-                                schema: schema,
-                                url: dbURL, 
-                                cloudKitDatabase: .automatic
-                            )
-
-                let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-                let di = DIContainer(modelContainer: container)
-
-                PhoneWatchManager.shared.start(with: container)
-
-                let migrator = LegacyDataMigrator(modelContainer: container)
-                await migrator.migrateAllIfNeeded()
-                try? await di.exerciseCatalogService.checkAndGenerateDefaultPresets()
-                MuscleColorManager.shared.initialize(modelContainer: container)
-
-                self.dashboardViewModel = di.makeDashboardViewModel()
-                self.userStatsViewModel = di.makeUserStatsViewModel()
-                self.aiCoachViewModel = di.makeAICoachViewModel()
-                self.catalogViewModel = di.makeCatalogViewModel()
-                self.profileViewModel = di.makeProfileViewModel()
-
-                self.diContainer = di
-                await self.catalogViewModel?.loadDictionary()
-
+        do {
+            // 🔐 Bootstrap anonymous Firebase Auth before any Firestore writes
+            // (UGC features and reports require request.auth).
+            do {
+                _ = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
+                await BlockedUsersStore.shared.startListening()
             } catch {
-                self.databaseLoadError = error
-                print("❌ SwiftData Initialization Failed: \(error)")
+                print("⚠️ Anonymous auth bootstrap failed: \(error.localizedDescription)")
+                // Non-fatal — catalog reads still work; UGC writes will fail with a clear error.
             }
+
+            await RemoteConfigManager.shared.fetchCloudValues()
+            await ExerciseDatabaseService.shared.loadDatabase()
+
+            let schema = Schema([
+                Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
+                ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
+                AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
+            ])
+
+            let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker")!
+            let dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite")
+
+            let cloudConfig = ModelConfiguration(
+                schema: schema,
+                url: dbURL,
+                cloudKitDatabase: .private("iCloud.com.borisdev.WorkoutTracker")
+            )
+
+            let container: ModelContainer
+            do {
+                container = try ModelContainer(for: schema, configurations: [cloudConfig])
+            } catch {
+                print("⚠️ CloudKit не открылся, локальный откат: \(error)")
+                let localConfig = ModelConfiguration(schema: schema, url: dbURL, cloudKitDatabase: .none)
+                container = try ModelContainer(for: schema, configurations: [localConfig])
+            }
+
+            let di = DIContainer(modelContainer: container)
+
+            PhoneWatchManager.shared.start(with: container)
+
+            let migrator = LegacyDataMigrator(modelContainer: container)
+            await migrator.migrateAllIfNeeded()
+            try? await di.exerciseCatalogService.checkAndGenerateDefaultPresets()
+            MuscleColorManager.shared.initialize(modelContainer: container)
+
+            self.dashboardViewModel = di.makeDashboardViewModel()
+            self.userStatsViewModel = di.makeUserStatsViewModel()
+            self.aiCoachViewModel = di.makeAICoachViewModel()
+            self.catalogViewModel = di.makeCatalogViewModel()
+            self.profileViewModel = di.makeProfileViewModel()
+
+            self.diContainer = di
+            await self.catalogViewModel?.loadDictionary()
+
+        } catch {
+            self.databaseLoadError = error
+            print("❌ SwiftData Initialization Failed: \(error)")
         }
+    }
+
     struct DatabaseErrorView: View {
-        @Environment(ThemeManager.self) private var themeManager
+        private let themeManager = ThemeManager.shared
         let error: Error?
         var body: some View {
             VStack(spacing: 24) {

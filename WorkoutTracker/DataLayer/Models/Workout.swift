@@ -81,10 +81,18 @@ class Exercise: Identifiable {
     var cachedMaxWeight: Double = 0.0
 
     @Relationship(deleteRule: .cascade, inverse: \WorkoutSet.exercise)
-    var setsList: [WorkoutSet] = []
+    private var setsListStore: [WorkoutSet]? = []
+    var setsList: [WorkoutSet] {
+        get { setsListStore ?? [] }
+        set { setsListStore = newValue }
+    }
 
     @Relationship(deleteRule: .cascade, inverse: \Exercise.parentExercise)
-    var subExercises: [Exercise] = []
+    private var subExercisesStore: [Exercise]? = []
+    var subExercises: [Exercise] {
+        get { subExercisesStore ?? [] }
+        set { subExercisesStore = newValue }
+    }
 
     var parentExercise: Exercise? = nil
     var workout: Workout? = nil
@@ -158,7 +166,11 @@ class WorkoutPreset: Identifiable {
     var folderName: String? = nil
 
     @Relationship(deleteRule: .cascade, inverse: \Exercise.preset)
-    var exercises: [Exercise] = []
+    private var exercisesStore: [Exercise]? = []
+    var exercises: [Exercise] {
+        get { exercisesStore ?? [] }
+        set { exercisesStore = newValue }
+    }
 
     init(id: UUID = UUID(), name: String = "", icon: String = "", isSystem: Bool = false, folderName: String? = nil, exercises: [Exercise] = []) {
         self.id = id
@@ -191,7 +203,11 @@ class Workout: Identifiable {
     var totalReps: Int = 0
 
     @Relationship(deleteRule: .cascade, inverse: \Exercise.workout)
-    var exercises: [Exercise] = []
+    private var exercisesStore: [Exercise]? = []
+    var exercises: [Exercise] {
+        get { exercisesStore ?? [] }
+        set { exercisesStore = newValue }
+    }
 
     init(id: UUID = UUID(), title: String = "", date: Date = Date(), endTime: Date? = nil, icon: String = "figure.run", exercises: [Exercise] = [], isFavorite: Bool = false, aiChatHistoryData: Data? = nil) {
         self.id = id; self.title = title; self.date = date; self.endTime = endTime; self.icon = icon; self.isFavorite = isFavorite; self.exercises = exercises; self.aiChatHistoryData = aiChatHistoryData

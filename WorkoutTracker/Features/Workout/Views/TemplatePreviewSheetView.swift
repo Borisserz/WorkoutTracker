@@ -319,9 +319,19 @@ struct TemplatePreviewSheetView: View {
                         }
                         dto = WorkoutPresetDTO(name: w.title, icon: w.icon, folderName: nil, exercises: cleanExercises)
                     }
-                                let documentId = try await FirestoreProgramService.shared.uploadSharedPreset(dto)
+                    let uploadResult = try await FirestoreProgramService.shared.uploadSharedPreset(dto)
 
-                    if let shareURL = URL(string: "workouttracker://shared?id=\(documentId)") {
+                    let workoutId: String
+                    switch uploadResult {
+                    case .approved(let id):
+                        workoutId = id
+                    case .pending(let id):
+                        // Модерация ещё идёт. Можно показать алерт «отправлено на проверку»,
+                        // но ссылку дать сразу — она оживёт когда модерация завершится.
+                        workoutId = id
+                    }
+
+                    if let shareURL = URL(string: "workouttracker://shared?id=\(workoutId)") {
                         await MainActor.run {
                             self.shareItem = SharedFileWrapper(url: shareURL)
                             self.isSharing = false

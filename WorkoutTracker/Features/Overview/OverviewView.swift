@@ -760,61 +760,10 @@ struct OverviewView: View {
                     }
 
                     Spacer()
-
-                    if config.canOpenFoodTracker {
-                        Button(action: openFoodTracker) {
-                            HStack(spacing: 10) {
-                                Text("Открыть FoodTracker")
-                                    .font(.headline)
-                                    .fontWeight(.bold)
-                                Image(systemName: "arrow.up.forward.app")
-                                    .font(.headline)
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(config.color)
-                            .cornerRadius(20)
-                            .shadow(color: config.color.opacity(0.4), radius: 10, y: 5)
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 20)
-                    } else {
-
-                        Button(action: { dismiss() }) {
-                            Text("Got It")
-                                .font(.headline)
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
-                                .cornerRadius(20)
-                        }
-                        .padding(.horizontal, 24)
-                        .padding(.bottom, 20)
-                    }
                 }
             }
         }
 
-        private func openFoodTracker() {
-                let generator = UIImpactFeedbackGenerator(style: .heavy)
-                generator.impactOccurred()
-
-                let appScheme = "foodtracker://"
-
-                let appStoreLink = "https://apps.apple.com/app/idYOUR_APP_ID_HERE"
-
-                if let appURL = URL(string: appScheme), UIApplication.shared.canOpenURL(appURL) {
-
-                    UIApplication.shared.open(appURL)
-                } else if let storeURL = URL(string: appStoreLink) {
-
-                    UIApplication.shared.open(storeURL)
-                }
-
-                dismiss()
-            }
     }
 
     struct LiveVitalsCard: View {
