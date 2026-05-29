@@ -3,13 +3,31 @@ import SwiftData
 import UserNotifications
 import AppIntents
 import FirebaseCore
+import FirebaseAppCheck
+
+// MARK: - App Check provider
+final class AppCheckFactory: NSObject, AppCheckProviderFactory {
+    func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
+        #if DEBUG
+        // В симуляторе/дебаге App Attest не работает — используем debug-провайдер.
+        // При первом запуске в консоль выведется debug-токен, его надо
+        // зарегистрировать: Firebase → App Check → ⋮ у приложения → Manage debug tokens.
+        return AppCheckDebugProvider(app: app)
+        #else
+        // На реальном устройстве в релизе — настоящий App Attest.
+        return AppAttestProvider(app: app)
+        #endif
+    }
+}
 
 class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-        
+
+        // ВАЖНО: фабрику App Check ставим ДО FirebaseApp.configure()
+        AppCheck.setAppCheckProviderFactory(AppCheckFactory())
         FirebaseApp.configure()
-        
+
         return true
     }
 }
@@ -34,7 +52,7 @@ struct WorkoutTrackerApp: App {
 
     @State private var restTimerManager = RestTimerManager()
     @State private var tutorialManager = TutorialManager()
-    
+
     // 🔥 Флаг для запуска новых экранов каждый раз (по вашему запросу)
     @State private var showGodModeOnboarding = true
 
@@ -45,7 +63,7 @@ struct WorkoutTrackerApp: App {
         default: return nil
         }
     }
-    
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -69,7 +87,7 @@ struct WorkoutTrackerApp: App {
                     } else {
                         mainContent(di: di, dvm: dvm, usvm: usvm, aicvm: aicvm, cvm: cvm, pvm: pvm)
                     }
-                    
+
                 } else {
                     ProgressView("Initializing...")
                         .controlSize(.large)
@@ -119,7 +137,7 @@ struct WorkoutTrackerApp: App {
                 if url.scheme == "workouttracker" && url.host == "shared" {
                     guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
                           let id = components.queryItems?.first(where: { $0.name == "id" })?.value else { return }
-                    
+
                     Task {
                         do {
                             let presetDTO = try await FirestoreProgramService.shared.downloadSharedPreset(id: id)
@@ -180,13 +198,21 @@ struct WorkoutTrackerApp: App {
             let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker")!
             let dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite")
 
-            let modelConfiguration = ModelConfiguration(
+            let cloudConfig = ModelConfiguration(
                 schema: schema,
                 url: dbURL,
-                cloudKitDatabase: .automatic
+                cloudKitDatabase: .private("iCloud.com.borisdev.WorkoutTracker")
             )
 
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container: ModelContainer
+            do {
+                container = try ModelContainer(for: schema, configurations: [cloudConfig])
+            } catch {
+                print("⚠️ CloudKit не открылся, локальный откат: \(error)")
+                let localConfig = ModelConfiguration(schema: schema, url: dbURL, cloudKitDatabase: .none)
+                container = try ModelContainer(for: schema, configurations: [localConfig])
+            }
+
             let di = DIContainer(modelContainer: container)
 
             PhoneWatchManager.shared.start(with: container)
@@ -212,7 +238,7 @@ struct WorkoutTrackerApp: App {
     }
 
     struct DatabaseErrorView: View {
-        @Environment(ThemeManager.self) private var themeManager
+        private let themeManager = ThemeManager.shared
         let error: Error?
         var body: some View {
             VStack(spacing: 24) {

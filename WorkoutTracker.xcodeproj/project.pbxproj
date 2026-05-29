@@ -7,9 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AC0DA9862F8BA39900249DEA /* SwiftJWT in Frameworks */ = {isa = PBXBuildFile; productRef = AC0DA9852F8BA39900249DEA /* SwiftJWT */; };
 		AC3CB9932F8176AB008A6777 /* WorkoutTrackerWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = AC3CB9892F8176AA008A6777 /* WorkoutTrackerWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AC4009B12F9E51A700E8D7AF /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AC4009B02F9E51A700E8D7AF /* GoogleService-Info.plist */; };
+		AC55B4DF2FCA034F0081A8D1 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4DE2FCA034F0081A8D1 /* FirebaseAppCheck */; };
+		AC55B4E92FCA2A790081A8D1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */; };
 		ACA421B42F9E576B000F61A8 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = ACA421B32F9E576B000F61A8 /* FirebaseStorage */; };
 		ACDA5B9F2F06CF77007FF65F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
 		ACDA5BA02F06CF77007FF65F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
@@ -17,7 +18,6 @@
 		ACE68D0E2EFC421700FD186D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
 		ACE68D102EFC421700FD186D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
 		ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		ACF45A1F2F9E43F800206681 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A1E2F9E43F800206681 /* FirebaseAnalytics */; };
 		ACF45A212F9E43F800206681 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A202F9E43F800206681 /* FirebaseFirestore */; };
 		ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A222F9E43F800206681 /* FirebaseRemoteConfig */; };
 /* End PBXBuildFile section */
@@ -112,6 +112,7 @@
 		AC3CB9AB2F81B127008A6777 /* WorkoutTrackerWatch-Watch-App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WorkoutTrackerWatch-Watch-App-Info.plist"; sourceTree = "<group>"; };
 		AC3CB9AC2F81B13A008A6777 /* WorkoutTrackerWatch Watch App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WorkoutTrackerWatch Watch App.entitlements"; sourceTree = "<group>"; };
 		AC4009B02F9E51A700E8D7AF /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StatsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		ACDA5BB42F06CF92007FF65F /* StatsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StatsWidgetExtension.entitlements; sourceTree = "<group>"; };
 		ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkoutTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -248,10 +249,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ACF45A1F2F9E43F800206681 /* FirebaseAnalytics in Frameworks */,
-				AC0DA9862F8BA39900249DEA /* SwiftJWT in Frameworks */,
 				ACF45A212F9E43F800206681 /* FirebaseFirestore in Frameworks */,
 				ACA421B42F9E576B000F61A8 /* FirebaseStorage in Frameworks */,
+				AC55B4DF2FCA034F0081A8D1 /* FirebaseAppCheck in Frameworks */,
 				ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -271,6 +271,7 @@
 		ACE68CD02EFBFD1900FD186D = {
 			isa = PBXGroup;
 			children = (
+				AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */,
 				AC3CB9AC2F81B13A008A6777 /* WorkoutTrackerWatch Watch App.entitlements */,
 				AC3CB9AB2F81B127008A6777 /* WorkoutTrackerWatch-Watch-App-Info.plist */,
 				ACDA5BB42F06CF92007FF65F /* StatsWidgetExtension.entitlements */,
@@ -378,11 +379,10 @@
 			);
 			name = WorkoutTracker;
 			packageProductDependencies = (
-				AC0DA9852F8BA39900249DEA /* SwiftJWT */,
-				ACF45A1E2F9E43F800206681 /* FirebaseAnalytics */,
 				ACF45A202F9E43F800206681 /* FirebaseFirestore */,
 				ACF45A222F9E43F800206681 /* FirebaseRemoteConfig */,
 				ACA421B32F9E576B000F61A8 /* FirebaseStorage */,
+				AC55B4DE2FCA034F0081A8D1 /* FirebaseAppCheck */,
 			);
 			productName = WorkoutTracker;
 			productReference = ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */;
@@ -445,7 +445,6 @@
 			mainGroup = ACE68CD02EFBFD1900FD186D;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AC0DA9842F8BA39900249DEA /* XCRemoteSwiftPackageReference "Swift-JWT" */,
 				ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -480,6 +479,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AC55B4E92FCA2A790081A8D1 /* PrivacyInfo.xcprivacy in Resources */,
 				AC4009B12F9E51A700E8D7AF /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -576,8 +576,8 @@
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need to save your workouts and active calories";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need to read your heart rate during workouts";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "WorkoutTracker reads your heart rate, active energy, and workout sessions from Apple Health during workouts so it can display live metrics, calculate recovery, and adjust AI coaching.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WorkoutTracker saves your completed workouts and active energy (calories burned) to Apple Health so your activity is reflected across the Health app and your iPhone.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.borisdev.WorkoutTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -613,8 +613,8 @@
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch;
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need to save your workouts and active calories";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need to read your heart rate during workouts";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "WorkoutTracker reads your heart rate, active energy, and workout sessions from Apple Health during workouts so it can display live metrics, calculate recovery, and adjust AI coaching.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WorkoutTracker saves your completed workouts and active energy (calories burned) to Apple Health so your activity is reflected across the Health app and your iPhone.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.borisdev.WorkoutTracker;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -840,11 +840,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTracker/Info.plist;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need access to your health data to read your body weight for accurate calorie tracking.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need access to save your completed workouts and active energy burned to Apple Health and close your Activity Rings.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need a microphone to communicate with the AI ​​coach.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "We need access to your photo library to save your awesome workout videos!";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "We use speech recognition so you can ask your coach questions using your voice.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "WorkoutTracker uses the camera to capture before/after progress photos with the Smart Capture pose-alignment overlay, and to analyze exercise form when AI exercise recognition is enabled.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "WorkoutTracker reads your heart rate, sleep, and steps data from Apple Health to accurately calculate your CNS fatigue, muscle recovery, and daily activity rings.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WorkoutTracker saves your completed workouts, burned calories, and body weight updates to Apple Health to keep your fitness records synced.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "WorkoutTracker uses the microphone to recognize voice commands during workouts, so you can log sets and control the rest timer hands-free.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "WorkoutTracker accesses your photo library so you can import existing photos as before/after progress shots.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "WorkoutTracker needs access to your photo library so you can choose a profile picture and attach before/after photos to track your physical progress over time.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "WorkoutTracker uses on-device speech recognition to convert your voice commands into actions during workouts (start/stop timer, log set).";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -881,11 +883,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTracker/Info.plist;
 				INFOPLIST_KEY_LSSupportsOpeningDocumentsInPlace = YES;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "We need access to your health data to read your body weight for accurate calorie tracking.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "We need access to save your completed workouts and active energy burned to Apple Health and close your Activity Rings.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "We need a microphone to communicate with the AI ​​coach.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "We need access to your photo library to save your awesome workout videos!";
-				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "We use speech recognition so you can ask your coach questions using your voice.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "WorkoutTracker uses the camera to capture before/after progress photos with the Smart Capture pose-alignment overlay, and to analyze exercise form when AI exercise recognition is enabled.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "WorkoutTracker reads your heart rate, sleep, and steps data from Apple Health to accurately calculate your CNS fatigue, muscle recovery, and daily activity rings.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WorkoutTracker saves your completed workouts, burned calories, and body weight updates to Apple Health to keep your fitness records synced.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "WorkoutTracker uses the microphone to recognize voice commands during workouts, so you can log sets and control the rest timer hands-free.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "WorkoutTracker accesses your photo library so you can import existing photos as before/after progress shots.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "WorkoutTracker needs access to your photo library so you can choose a profile picture and attach before/after photos to track your physical progress over time.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "WorkoutTracker uses on-device speech recognition to convert your voice commands into actions during workouts (start/stop timer, log set).";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -1026,14 +1030,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		AC0DA9842F8BA39900249DEA /* XCRemoteSwiftPackageReference "Swift-JWT" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/Kitura/Swift-JWT.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 4.0.2;
-			};
-		};
 		ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -1045,20 +1041,15 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AC0DA9852F8BA39900249DEA /* SwiftJWT */ = {
+		AC55B4DE2FCA034F0081A8D1 /* FirebaseAppCheck */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = AC0DA9842F8BA39900249DEA /* XCRemoteSwiftPackageReference "Swift-JWT" */;
-			productName = SwiftJWT;
+			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAppCheck;
 		};
 		ACA421B32F9E576B000F61A8 /* FirebaseStorage */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
-		};
-		ACF45A1E2F9E43F800206681 /* FirebaseAnalytics */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
-			productName = FirebaseAnalytics;
 		};
 		ACF45A202F9E43F800206681 /* FirebaseFirestore */ = {
 			isa = XCSwiftPackageProductDependency;

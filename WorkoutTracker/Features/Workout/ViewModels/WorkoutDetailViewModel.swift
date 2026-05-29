@@ -463,47 +463,6 @@ final class WorkoutDetailViewModel {
 
 extension WorkoutDetailViewModel {
 
-    func generateRoast(for workout: Workout) {
-        guard let topExercise = workout.exercises.max(by: { $0.exerciseVolume < $1.exerciseVolume }) else {
-            appState.showError(
-                title: String(localized: "Error"),
-                message: String(localized: "Complete an exercise first to get roasted.")
-            )
-            return
-        }
-
-        let reps = topExercise.setsList.filter { $0.isCompleted }.compactMap { $0.reps }.reduce(0, +)
-        let exName = topExercise.name
-
-        self.isShowingSnackbar = true
-
-        Task {
-            do {
-                let lang = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
-                let roast = try await workoutService.aiLogicService.generateFormRoast(exercise: exName, reps: reps, language: lang)
-
-                await MainActor.run {
-                         self.isShowingSnackbar = false
-
-                         let roastView = AIRoastShareCard(roastText: roast, exerciseName: exName)
-                             .environment(ThemeManager.shared)
-                             .environment(UnitsManager.shared) 
-                         
-                         let renderer = ImageRenderer(content: roastView)
-                         renderer.scale = 3.0
-                         if let uiImage = renderer.uiImage {
-                             self.activeEvent = .showShareSheet(uiImage)
-                         }
-                     }
-            } catch {
-                await MainActor.run {
-                    self.isShowingSnackbar = false
-                    appState.showError(title: "Roast Failed", message: error.localizedDescription)
-                }
-            }
-        }
-    }
-
     func generateHeatmapVideo(workout: Workout, gender: String) {
         self.isShowingSnackbar = true
         self.updateWorkoutAnalytics(for: workout)

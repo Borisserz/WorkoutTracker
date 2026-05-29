@@ -73,7 +73,6 @@
 
 - **Smart Program Architect:** The AI analyzes your available equipment, days per week, and target muscles to instantly generate structured multi-day splits.
 - **In-Workout Proactive Adjustments:** Chat with the coach mid-workout. Machine taken? Too heavy? The AI instantly swaps exercises or drops the load, natively altering the app's database state.
-- **Savage AI Roasts:** Ask the AI to roast your form or effort after a heavy set for a dose of gamified, PG-13 motivation.
 
 ### 🍎 FoodTracker Synergy & Ecosystem
 
