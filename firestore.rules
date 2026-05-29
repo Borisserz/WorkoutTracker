@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// =====================================================
+// Firestore security rules for WorkoutTracker
+// =====================================================
+//   - legendary_routines / explore_programs: public read, no client writes
+//   - shared_workouts: UGC; create requires auth; reads only if approved
+//     OR own doc; updates server-only; deletes by owner.
+//   - reports: create-only by authed user
+//   - users/{uid}/blocked/{blockedUid}: only you can manage your block list
+//   - everything else: deny
+// =====================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // === Curated content (read-only) ===
+    match /legendary_routines/{routineId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /explore_programs/{programId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // === User-generated shared workouts ===
+    match /shared_workouts/{workoutId} {
+      // Read: only approved workouts, OR your own doc (any status)
+      allow read: if (resource.data.status == "approved")
+                  || (request.auth != null
+                      && resource.data.creatorUid == request.auth.uid);
+
+      // Create: must be authed; creatorUid must equal own UID;
+      // must start as pending with zero reports; size limits on text.
+      allow create: if request.auth != null
+                    && request.resource.data.creatorUid == request.auth.uid
+                    && request.resource.data.status == "pending"
+                    && request.resource.data.reportCount == 0
+                    && request.resource.data.title is string
+                    && request.resource.data.title.size() > 0
+                    && request.resource.data.title.size() <= 200
+                    && (!("description" in request.resource.data)
+                        || (request.resource.data.description is string
+                            && request.resource.data.description.size() <= 2000));
+
+      // Update: server-only (no client updates — moderation function uses admin)
+      allow update: if false;
+
+      // Delete: only owner can delete their own document
+      allow delete: if request.auth != null
+                    && resource.data.creatorUid == request.auth.uid;
+    }
+
+    // === Reports ===
+    match /reports/{reportId} {
+      allow create: if request.auth != null
+                    && request.resource.data.reporterUid == request.auth.uid
+                    && request.resource.data.workoutId is string
+                    && request.resource.data.reason in
+                        ["spam", "hate", "harassment", "sexual", "violence", "other"]
+                    && (!("details" in request.resource.data)
+                        || (request.resource.data.details is string
+                            && request.resource.data.details.size() <= 500));
+      allow read, update, delete: if false;
+    }
+
+    // === Per-user blocked list ===
+    match /users/{userId}/blocked/{blockedUid} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // === Default deny ===
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

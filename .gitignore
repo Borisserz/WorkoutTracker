@@ -43,3 +43,13 @@ names.json
 vertex_credentials.json
 
 *.sh
+
+# === Firebase ===
+functions/node_modules/
+functions/firebase-debug.log
+functions/firebase-debug.*.log
+functions/.runtimeconfig.json
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+ui-debug.log

@@ -1,0 +1,12 @@
+{
+  "name": "vertex-proxy",
+  "description": "Vertex AI proxy with App Check, plus Firestore moderation and report handling",
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "firebase-functions": "^5.1.0",
+    "google-auth-library": "^9.14.0"
+  },
+  "private": true
+}
