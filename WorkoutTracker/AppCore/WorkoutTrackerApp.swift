@@ -49,6 +49,8 @@ struct WorkoutTrackerApp: App {
 
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     @State private var showImportAlert = false
+    @State private var showImportError = false
+    @State private var importErrorMessage: String = ""
 
     @State private var restTimerManager = RestTimerManager()
     @State private var tutorialManager = TutorialManager()
@@ -140,7 +142,7 @@ struct WorkoutTrackerApp: App {
 
                     Task {
                         do {
-                            let presetDTO = try await FirestoreProgramService.shared.downloadSharedPreset(id: id)
+                            let (presetDTO, _) = try await FirestoreProgramService.shared.downloadSharedPresetWithCreator(id: id)
                             let newExercises = presetDTO.exercises.map { Exercise(from: $0) }
 
                             await di.presetService.savePreset(
@@ -151,8 +153,18 @@ struct WorkoutTrackerApp: App {
                                 exercises: newExercises
                             )
                             await MainActor.run { showImportAlert = true }
+                        } catch let error as SharedWorkoutError {
+                            await MainActor.run {
+                                importErrorMessage = error.localizedDescription
+                                showImportError = true
+                            }
+                            print("❌ Импорт shared workout отклонён: \(error.localizedDescription)")
                         } catch {
-                            print("❌ Ошибка импорта: \(error)")
+                            await MainActor.run {
+                                importErrorMessage = "Не удалось загрузить тренировку. Проверь интернет."
+                                showImportError = true
+                            }
+                            print("❌ Импорт: \(error)")
                         }
                     }
                 } else {
@@ -171,6 +183,11 @@ struct WorkoutTrackerApp: App {
             .alert("Template Imported!", isPresented: $showImportAlert) {
                 Button("OK", role: .cancel) { }
             }
+            .alert("Не удалось импортировать", isPresented: $showImportError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(importErrorMessage)
+            }
     }
 
     private func handleWidgetAction(_ action: String, appState: AppStateManager) {
@@ -186,6 +203,16 @@ struct WorkoutTrackerApp: App {
     @MainActor
     private func setupDependencies() async {
         do {
+            // 🔐 Bootstrap anonymous Firebase Auth before any Firestore writes
+            // (UGC features and reports require request.auth).
+            do {
+                _ = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
+                await BlockedUsersStore.shared.startListening()
+            } catch {
+                print("⚠️ Anonymous auth bootstrap failed: \(error.localizedDescription)")
+                // Non-fatal — catalog reads still work; UGC writes will fail with a clear error.
+            }
+
             await RemoteConfigManager.shared.fetchCloudValues()
             await ExerciseDatabaseService.shared.loadDatabase()
 
