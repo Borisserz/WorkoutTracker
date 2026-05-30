@@ -85,7 +85,6 @@ public actor ExerciseDatabaseService {
         var ruData: Data?
         
         #if os(iOS)
-        // 1. Пытаемся загрузить из Firebase (только для iPhone)
         let storage = Storage.storage()
         let enRef = storage.reference(withPath: "exercises.json")
         let ruRef = storage.reference(withPath: "exercises_ru.json")
@@ -93,9 +92,9 @@ public actor ExerciseDatabaseService {
         do {
             enData = try await enRef.data(maxSize: 5 * 1024 * 1024)
             ruData = try await ruRef.data(maxSize: 5 * 1024 * 1024)
-            print("☁️✅ Каталог упражнений успешно загружен из Firebase Storage!")
+            print("☁️✅ The exercise catalog has been successfully uploaded from Firebase Storage!")
         } catch {
-            print("☁️⚠️ Ошибка загрузки из Firebase: \(error.localizedDescription). Переходим на локальные файлы.")
+            print("☁️⚠️ Error downloading from Firebase: \(error.localizedDescription). We switch to local files.")
         }
         #endif
         
@@ -104,7 +103,7 @@ public actor ExerciseDatabaseService {
             if let localEnUrl = Bundle.main.url(forResource: "exercises", withExtension: "json") {
                 enData = try? Data(contentsOf: localEnUrl)
                 #if os(iOS)
-                print("📱 Загружен ЛОКАЛЬНЫЙ английский каталог.")
+                print("📱 The LOCAL English directory has been loaded.")
                 #endif
             }
         }
@@ -113,13 +112,13 @@ public actor ExerciseDatabaseService {
             if let localRuUrl = Bundle.main.url(forResource: "exercises_ru", withExtension: "json") {
                 ruData = try? Data(contentsOf: localRuUrl)
                 #if os(iOS)
-                print("📱 Загружен ЛОКАЛЬНЫЙ русский каталог.")
+                print("📱 The LOCAL Russian directory has been loaded.")
                 #endif
             }
         }
         
         guard let finalEnData = enData else {
-            print("❌ Ошибка: не удалось найти базовый каталог упражнений ни в облаке, ни локально.")
+            print("❌ Error: Could not find the base exercise directory either in the cloud or locally.")
             return
         }
 
@@ -163,7 +162,7 @@ public actor ExerciseDatabaseService {
             self.isLoaded = true
             
         } catch {
-            print("❌ Ошибка парсинга JSON упражнений: \(error)")
+            print("❌ JSON parsing error for exercises: \(error)")
         }
     }
 

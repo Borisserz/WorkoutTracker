@@ -75,13 +75,7 @@ enum AuthBootstrapError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .noUserAfterSignIn:
-            return "Не удалось войти анонимно. Проверь интернет и попробуй снова."
+            return "Unable to log in anonymously. Check your internet connection and try again."
         }
     }
 }//
-//  AnonymousAuthBootstrap.swift
-//  WorkoutTracker
-//
-//  Created by Boris Serzhanovich on 30.05.2026.
-//
-

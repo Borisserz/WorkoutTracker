@@ -4,17 +4,13 @@ import UserNotifications
 import AppIntents
 import FirebaseCore
 import FirebaseAppCheck
-
+import GoogleSignIn
 // MARK: - App Check provider
 final class AppCheckFactory: NSObject, AppCheckProviderFactory {
     func createProvider(with app: FirebaseApp) -> AppCheckProvider? {
         #if DEBUG
-        // В симуляторе/дебаге App Attest не работает — используем debug-провайдер.
-        // При первом запуске в консоль выведется debug-токен, его надо
-        // зарегистрировать: Firebase → App Check → ⋮ у приложения → Manage debug tokens.
         return AppCheckDebugProvider(app: app)
         #else
-        // На реальном устройстве в релизе — настоящий App Attest.
         return AppAttestProvider(app: app)
         #endif
     }
@@ -24,14 +20,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
 
-        // ВАЖНО: фабрику App Check ставим ДО FirebaseApp.configure()
         AppCheck.setAppCheckProviderFactory(AppCheckFactory())
         FirebaseApp.configure()
 
         return true
     }
-}
 
+func application(_ app: UIApplication,
+                    open url: URL,
+                    options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+       return GIDSignIn.sharedInstance.handle(url)
+   }
+}
 @main
 struct WorkoutTrackerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
@@ -58,7 +58,6 @@ struct WorkoutTrackerApp: App {
     @State private var restTimerManager = RestTimerManager()
     @State private var tutorialManager = TutorialManager()
 
-    // Сохраняется между запусками. false = онбординг ещё не пройден.
     @AppStorage("hasCompletedGodModeOnboarding_v1") private var hasCompletedGodModeOnboarding = false
 
     private var colorScheme: ColorScheme? {
@@ -138,7 +137,6 @@ struct WorkoutTrackerApp: App {
             .environment(pvm)
             .preferredColorScheme(colorScheme)
             .onOpenURL { url in
-                // Ваша стандартная логика ссылок...
                 if url.scheme == "workouttracker" && url.host == "shared" {
                     guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
                           let id = components.queryItems?.first(where: { $0.name == "id" })?.value else { return }
@@ -161,13 +159,13 @@ struct WorkoutTrackerApp: App {
                                 importErrorMessage = error.localizedDescription
                                 showImportError = true
                             }
-                            print("❌ Импорт shared workout отклонён: \(error.localizedDescription)")
+                            print("❌ Shared workout import rejected: \(error.localizedDescription)")
                         } catch {
                             await MainActor.run {
-                                importErrorMessage = "Не удалось загрузить тренировку. Проверь интернет."
+                                importErrorMessage = "Failed to load workout. Check your internet connection."
                                 showImportError = true
                             }
-                            print("❌ Импорт: \(error)")
+                            print("❌ Import: \(error)")
                         }
                     }
                 } else {
@@ -197,7 +195,7 @@ struct WorkoutTrackerApp: App {
                     ReportSheet(workoutId: workoutId, creatorUid: creatorUid)
                 }
             }
-            .alert("Не удалось импортировать", isPresented: $showImportError) {
+            .alert("Failed to import", isPresented: $showImportError) {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(importErrorMessage)
@@ -236,8 +234,14 @@ struct WorkoutTrackerApp: App {
                 AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
             ])
 
-            let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker")!
-            let dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite")
+            let dbURL: URL
+            if let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker") {
+                dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite")
+            } else {
+                print("⚠️ CRITICAL: App Group container not found. Falling back to local Documents directory. Widgets and Apple Watch may not be able to access the database.")
+                let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+                dbURL = paths[0].appendingPathComponent("WorkoutDatabase.sqlite")
+            }
 
             let cloudConfig = ModelConfiguration(
                 schema: schema,
@@ -249,7 +253,7 @@ struct WorkoutTrackerApp: App {
             do {
                 container = try ModelContainer(for: schema, configurations: [cloudConfig])
             } catch {
-                print("⚠️ CloudKit не открылся, локальный откат: \(error)")
+                print("⚠️ CloudKit didn't open, local rollback: \(error)")
                 let localConfig = ModelConfiguration(schema: schema, url: dbURL, cloudKitDatabase: .none)
                 container = try ModelContainer(for: schema, configurations: [localConfig])
             }

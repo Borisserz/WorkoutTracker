@@ -354,7 +354,7 @@ struct OverviewView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     router.push(.exercises)
                 } label: {
-                    Text("Все")
+                    Text("ALL")
                         .font(.subheadline)
                         .fontWeight(.bold)
                         .foregroundStyle(themeManager.current.primaryAccent)
@@ -797,7 +797,7 @@ struct OverviewView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 4) {
-                        Text("Текущий пульс").font(.caption).foregroundStyle(.secondary)
+                        Text("Current heart rate").font(.caption).foregroundStyle(.secondary)
 
                         Text(vitals.timeAgoText)
                             .font(.system(size: 9, weight: .bold))
@@ -1211,10 +1211,10 @@ struct OverviewView: View {
         var timeAgoText: String {
             guard let date = lastUpdated else { return "No data" }
             let minutes = Int(Date().timeIntervalSince(date) / 60)
-            if minutes == 0 { return "Только что" }
+            if minutes == 0 { return "Just now" }
             if minutes < 60 { return "" }
             let hours = minutes / 60
-            return "\(hours) ч назад"
+            return "\(hours) h back"
         }
 
         func startMonitoring() {

@@ -94,7 +94,7 @@ struct BodyHeatmapView: View {
                         Group {
                             if isRecoveryMode {
                                 let percent = muscleIntensities[muscle.slug] ?? 100
-                                Text("\(locName): \(percent)% восстановлено")
+                                Text("\(locName): \(percent)% restored")
                             } else {
                                 let count = rawMuscleCounts?[muscle.slug] ?? 0
                                 let locLabel = NSLocalizedString(countLabel, comment: "")

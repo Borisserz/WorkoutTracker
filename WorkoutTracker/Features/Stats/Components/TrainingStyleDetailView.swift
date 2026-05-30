@@ -165,7 +165,7 @@ struct TrainingStyleDetailView: View {
                 Image(systemName: insight.icon).font(.title2).foregroundColor(insight.color)
             }
             VStack(alignment: .leading, spacing: 4) {
-                Text(LocalizedStringKey("ИИ инсайт: \(insight.title)"))
+                Text(LocalizedStringKey("AI insight: \(insight.title)"))
                     .font(.headline)
                     .foregroundColor(colorScheme == .dark ? .white : .black)
                 Text(LocalizedStringKey(insight.message))

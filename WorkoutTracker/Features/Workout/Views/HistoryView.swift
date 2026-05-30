@@ -33,12 +33,12 @@ struct HistoryView: View {
     @State private var isEditingList = false
 
     @State private var searchDatabase: [SearchedWorkout] = [
-        SearchedWorkout(name: "Тренировка Арнольда", description: "Классическая программа Золотой Эры: суперсеты на грудь и спину для максимального пампа и расширения грудной клетки."),
-        SearchedWorkout(name: "Фуллбоди База", description: "Мощный фундамент. Приседания, жим лёжа и становая тяга в одну сессию. Идеально для выброса тестостерона."),
-        SearchedWorkout(name: "Сплит Грудь/Трицепс", description: "Убойная сессия на жимовые мышцы. Включает тяжелый жим штанги, разводки и французский жим."),
-        SearchedWorkout(name: "Убийца Ног 3000", description: "Только для смелых. Тяжелый присед, жим ногами и выпады. На следующий день ходить будет тяжело!"),
-        SearchedWorkout(name: "Дельты-Пушки", description: "Фокус на плечи. Армейский жим, махи в стороны и тяга к подбородку сделают твои плечи круглыми как шары."),
-        SearchedWorkout(name: "Кардио-Интенсив", description: "Интервальная (HIIT) тренировка. Пульс 160+, пот ручьем, сжигание жира на максималках.")
+        SearchedWorkout(name: "Arnold Workout", description: "Classic Golden Era program: chest and back supersets for maximum pumping and chest expansion."),
+                SearchedWorkout(name: "Fullbody Base", description: "Powerful foundation. Squats, bench press and deadlift in one session. Perfect for releasing testosterone."),
+                SearchedWorkout(name: "Split Breast/Triceps", description: "Killer bench press session. Includes heavy barbell bench press, spread bars, and French bench press."),
+                SearchedWorkout(name: "Foot Killer 3000", description: "Only for the brave. Heavy squats, leg presses, and lunges. It's going to be hard to walk the next day!"),
+                SearchedWorkout(name: "Delta Guns", description: "Focus on shoulders. The army bench press, side swings and chin pull will make your shoulders round like balls."),
+                SearchedWorkout(name: "Cardio Intensive", description: "Interval (HIIT) training. Pulse 160+, sweat in a stream, fat burning at maximum.")
     ]
 
     var body: some View {
@@ -145,7 +145,7 @@ struct HistoryHeader: View {
 
     var body: some View {
         HStack {
-            Text("История")
+            Text("History")
                 .font(.system(size: 34, weight: .black, design: .rounded))
                 .foregroundColor(colorScheme == .dark ? .white : .primary)
 
@@ -157,7 +157,7 @@ struct HistoryHeader: View {
                     isEditing.toggle()
                 }
             }) {
-                Text(isEditing ? "Готово" : "Править")
+                Text(isEditing ? "Done" : "Fix")
                     .font(.subheadline)
                     .fontWeight(.bold)
                     .padding(.horizontal, 16)
@@ -198,11 +198,11 @@ struct TopStatsIslandsView: View {
         HStack(spacing: 12) {
             StatIslandWithTooltip(
                 icon: "stopwatch.fill",
-                title: "Время",
-                value: "\(listViewModel.calculatedAvgDuration)м",
+                title: "Time",
+                value: "\(listViewModel.calculatedAvgDuration)m",
                 color: .blue,
-                tooltipTitle: "Средняя длительность",
-                tooltipDesc: "Отличное время под нагрузкой.",
+                tooltipTitle: "Average duration",
+                tooltipDesc: "Great time under load.",
                 statusText: nil,
                 statusColor: nil,
                 activeTooltip: $activeTooltip 
@@ -211,11 +211,11 @@ struct TopStatsIslandsView: View {
             let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
             StatIslandWithTooltip(
                 icon: "scalemass.fill",
-                title: "Вес",
-                value: "\(LocalizationHelper.shared.formatTwoDecimals(tons))т",
+                title: "Weight",
+                value: "\(LocalizationHelper.shared.formatTwoDecimals(tons))t",
                 color: .purple,
-                tooltipTitle: "Средний вес",
-                tooltipDesc: "Ваш суммарный средний тоннаж.",
+                tooltipTitle: "Average weight",
+                tooltipDesc: "Your total average tonnage.",
                 statusText: nil,
                 statusColor: nil,
                 activeTooltip: $activeTooltip 
@@ -223,12 +223,12 @@ struct TopStatsIslandsView: View {
 
             StatIslandWithTooltip(
                 icon: "heart.fill",
-                title: "Пульс",
+                title: "Pulse",
                 value: "142",
                 color: .red,
-                tooltipTitle: "Средний пульс",
-                tooltipDesc: "Ваш пульс в норме.",
-                statusText: "Идеальный показатель",
+                tooltipTitle: "Average heart rate",
+                tooltipDesc: "Your pulse is normal..",
+                statusText: "The ideal indicator",
                 statusColor: .green,
                 activeTooltip: $activeTooltip 
             )
@@ -315,7 +315,7 @@ struct HistorySearchBar: View {
                     .font(.system(size: 18, weight: .bold))
             }
 
-            TextField("Найти или добавить (напр. Тренировка Арнольда)", text: $text)
+            TextField("Find or add (e.g. Arnold's Workout)", text: $text)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .onTapGesture { withAnimation { isSearching = true } }
                 .onChange(of: text) { _ in withAnimation { isSearching = true } }
@@ -342,7 +342,7 @@ struct SearchResultsDropdown: View {
         if searchText.isEmpty { return results }
         let query = searchText.lowercased()
         let f = results.filter { $0.name.lowercased().contains(query) || $0.description.lowercased().contains(query) }
-        return f.isEmpty ? [SearchedWorkout(name: searchText, description: "Сгенерировать новую тренировку")] : f
+        return f.isEmpty ? [SearchedWorkout(name: searchText, description: "Generate a new workout")] : f
     }
 
     var body: some View {
@@ -389,7 +389,7 @@ struct PremiumCategoriesIslands: View {
     var body: some View {
         HStack(spacing: 12) {
             PremiumCategoryCard(
-                title: "Все\nтренировки",
+                title: "All\ntraining sessions",
                 icon: "list.bullet",
                 color: selectedFilter == .all && !showFavoritesOnly ? .cyan : .gray,
                 isActive: selectedFilter == .all && !showFavoritesOnly
@@ -399,7 +399,7 @@ struct PremiumCategoriesIslands: View {
             }
 
             PremiumCategoryCard(
-                title: "Избранные\nтренировки",
+                title: "Favorites\ntraining sessions",
                 icon: "star.fill",
                 color: showFavoritesOnly ? .yellow : .gray,
                 isActive: showFavoritesOnly
@@ -408,7 +408,7 @@ struct PremiumCategoriesIslands: View {
             }
 
             PremiumCategoryCard(
-                title: "Лучшие\nза месяц",
+                title: "The best\nper month",
                 icon: "flame.fill",
                 color: selectedFilter == .month ? .red : .gray,
                 isActive: selectedFilter == .month && !showFavoritesOnly
@@ -477,7 +477,7 @@ struct QuickWorkoutDetailSheet: View {
                             .font(.system(size: 26, weight: .heavy, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? .white : .black)
 
-                        Text("Информация о тренировке")
+                        Text("Training Information")
                             .font(.subheadline)
                             .foregroundColor(.gray)
                     }
@@ -500,7 +500,7 @@ struct QuickWorkoutDetailSheet: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Image(systemName: "doc.text.fill").foregroundColor(.cyan)
-                        Text("Описание").font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
+                        Text("description").font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
                     }
                     Text(workout.description)
                         .font(.system(size: 15, weight: .regular))
@@ -514,7 +514,7 @@ struct QuickWorkoutDetailSheet: View {
                 Button(action: onAddWorkout) {
                     HStack {
                         Image(systemName: "plus.circle.fill").font(.title3)
-                        Text("Создать в моей базе").font(.system(size: 18, weight: .bold))
+                        Text("Create in my database").font(.system(size: 18, weight: .bold))
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 18)
                     .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))

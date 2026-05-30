@@ -198,7 +198,7 @@ struct GeneratedWorkoutResultView: View {
                     }
                 } else {
                     let timeSec = safeSets.first?.time ?? 0
-                    Text("\(timeSec / 60) мин")
+                    Text("\(timeSec / 60) min")
                         .font(.subheadline).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                 }

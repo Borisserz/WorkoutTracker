@@ -161,7 +161,7 @@ struct AIChatBotView: View {
 
     private var initialGreetingBubble: some View {
         HStack {
-            Text("Привет! Я твой ИИ-тренер. Помогу составить программу, проанализировать усталость или улучшить технику. Чем займемся сегодня?")
+            Text("Hi! I'm your AI coach. I can help you create a program, analyze fatigue, or improve your technique. What should we do today?")
                 .padding()
                 .background(Color.white.opacity(0.1))
                 .foregroundStyle(.white)

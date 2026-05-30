@@ -75,7 +75,7 @@ final class SpeechRecognizer: ObservableObject {
                 }
             }
         } catch {
-            print("Ошибка запуска микрофона: \(error)")
+            print("Error starting microphone: \(error)")
             stopTranscribing()
         }
     }

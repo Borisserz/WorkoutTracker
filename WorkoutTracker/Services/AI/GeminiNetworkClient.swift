@@ -60,7 +60,7 @@ private struct GeminiResponse: Codable, Sendable {
     let candidates: [Candidate]
 }
 
-// MARK: - Network client (через Cloud Function + App Check)
+// MARK: - Network client 
 
 actor GeminiNetworkClient {
     private let urlSession: URLSession

@@ -68,8 +68,8 @@ struct ExploreRoutinesView: View {
                 VStack(spacing: 12) {
 
                     Picker(LocalizedStringKey("Workout Type"), selection: $viewModel.selectedTab) {
-                        Text(LocalizedStringKey("Программы")).tag(ExploreTabType.programs)
-                        Text(LocalizedStringKey("Одиночные программы")).tag(ExploreTabType.singles)
+                        Text(LocalizedStringKey("Programs")).tag(ExploreTabType.programs)
+                        Text(LocalizedStringKey("Single programs")).tag(ExploreTabType.singles)
                     }
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
@@ -162,7 +162,7 @@ struct ExploreRoutinesView: View {
                 }
             }
         }
-        .navigationTitle("Исследовать")
+        .navigationTitle("Explore")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $showFilters) {
             ExploreFiltersSheet(viewModel: viewModel)

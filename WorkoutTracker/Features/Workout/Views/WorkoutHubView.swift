@@ -565,8 +565,8 @@ struct PremiumCarouselCardView: View {
 
     private var subtitle: LocalizedStringKey {
         switch item {
-        case .preset(let p): return LocalizedStringKey("\(p.exercises.count) упражнений")
-        case .favorite(let w): return LocalizedStringKey("\(w.exercises.count) упражнений")
+        case .preset(let p): return LocalizedStringKey("\(p.exercises.count) exercises")
+        case .favorite(let w): return LocalizedStringKey("\(w.exercises.count) exercises")
         }
     }
 
@@ -709,7 +709,7 @@ struct StreakMascotPopup: View {
                             .rotationEffect(.degrees(-3))
                             .shadow(color: .black.opacity(0.5), radius: 10)
 
-                        Text("\(streakDays) ДНЯ")
+                        Text("\(streakDays) Days")
                             .font(.system(size: 26, weight: .black, design: .rounded))
                             .foregroundStyle(.white)
                             .rotationEffect(.degrees(-3))

@@ -388,7 +388,7 @@ struct MascotStreakView: View {
                 Text(streak > 0 ? "You're on fire! 🔥" : "Start your streak today!")
                     .font(.subheadline)
                     .foregroundColor(colorScheme == .dark ? .gray : .secondary)
-                Text("\(streak) дней тренировок подряд")
+                Text("\(streak) days of training in a row")
                     .font(.headline)
                     .foregroundColor(colorScheme == .dark ? .white : .black)
             }
@@ -542,7 +542,7 @@ struct DesignerGoalCard: View {
     private var currentText: String {
         switch goal.type {
         case .strength, .bodyweight: return "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentValue))) \(unitsManager.weightUnitString())"
-        case .consistency: return "\(Int(currentValue)) дней"
+        case .consistency: return "\(Int(currentValue)) days"
         }
     }
 
@@ -550,7 +550,7 @@ struct DesignerGoalCard: View {
         switch goal.type {
         case .strength: return "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(goal.targetValue))) \(unitsManager.weightUnitString()) x \(goal.targetReps) reps"
         case .bodyweight: return "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(goal.targetValue))) \(unitsManager.weightUnitString())"
-        case .consistency: return "\(Int(goal.targetValue)) дней"
+        case .consistency: return "\(Int(goal.targetValue)) days"
         }
     }
 }
@@ -657,7 +657,7 @@ struct QuickStatsView: View {
             } else {
                 InteractiveStatCard(
                     icon: "dumbbell.fill",
-                    title: "Объем (\(unitsManager.weightUnitString()))",
+                    title: "Volume (\(unitsManager.weightUnitString()))",
                     value: "\(Int(vol))",
                     metric: .volume,
                     selectedMetric: $viewModel.selectedMetric
@@ -667,7 +667,7 @@ struct QuickStatsView: View {
             InteractiveStatCard(
                 icon: "map.fill",
                 title: "Distance",
-                value: "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters(stats.totalDistance))) км",
+                value: "\(LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters(stats.totalDistance))) km",
                 metric: .distance,
                 selectedMetric: $viewModel.selectedMetric
             )
@@ -744,7 +744,7 @@ struct ComparisonSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
-            Text("Детальное сравнение")
+            Text("Detailed comparison")
                 .font(.title3).bold()
                 .foregroundColor(colorScheme == .dark ? .white : .black)
 
@@ -760,8 +760,8 @@ struct ComparisonSectionView: View {
                             let displayVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(item.value) : item.value
 
                             BarMark(
-                                x: .value("Период", item.label),
-                                y: .value("Значение", displayVal)
+                                x: .value("Period", item.label),
+                                y: .value("Meaning", displayVal)
                             )
                             .foregroundStyle(chartGradient)
                             .cornerRadius(8)
@@ -846,8 +846,8 @@ struct AdvancedStatsSectionView: View {
             VStack(spacing: 12) {
 
                 PremiumDisclosureCard(
-                    title: "Стиль и оборудование",
-                    subtitle: "База против Изоляции и ваш арсенал.",
+                    title: "Style and equipment",
+                    subtitle: "Base against Isolation and your arsenal.",
                     icon: "dumbbell.fill",
                     iconColor: .orange,
                     isExpanded: Binding(get: { openTab == 0 }, set: { openTab = $0 ? 0 : nil })
@@ -864,8 +864,8 @@ struct AdvancedStatsSectionView: View {
                 }
 
                 PremiumDisclosureCard(
-                    title: "Подходы на группу мышц",
-                    subtitle: "Количество подходов для каждой мышцы.",
+                    title: "Muscle group approaches",
+                    subtitle: "Number of sets for each muscle.",
                     icon: "chart.line.uptrend.xyaxis",
                     iconColor: .blue,
                     isExpanded: Binding(get: { openTab == 1 }, set: { openTab = $0 ? 1 : nil })
@@ -895,8 +895,8 @@ struct AdvancedStatsSectionView: View {
                 }
 
                 PremiumDisclosureCard(
-                    title: "Баланс развития",
-                    subtitle: "Сравнение распределения нагрузки.",
+                    title: "Development balance",
+                    subtitle: "Load distribution comparison.",
                     icon: "chart.pie.fill",
                     iconColor: .purple,
                     isExpanded: Binding(get: { openTab == 2 }, set: { openTab = $0 ? 2 : nil })
@@ -935,9 +935,9 @@ struct AdvancedStatsSectionView: View {
                 }
 
                 PremiumDisclosureCard(
-                    title: "Карта тела (Анатомия)",
-                    subtitle: "Тепловая карта работавших мышц.",
-                    icon: "figure.arms.open", 
+                    title: "Body Map (Anatomy)",
+                    subtitle: "A heat map of the working muscles.",
+                    icon: "figure.arms.open",
                     iconColor: .red,
                     isExpanded: Binding(get: { openTab == 3 }, set: { openTab = $0 ? 3 : nil })
                 ) {
@@ -1004,8 +1004,8 @@ struct AdvancedStatsSectionView: View {
                 }
 
                 PremiumDisclosureCard(
-                    title: "30-Дневный Отчет",
-                    subtitle: "Итоги ваших тренировок в формате Stories.",
+                    title: "30-Day Report",
+                    subtitle: "The results of your training sessions in the Stories format.",
                     icon: "doc.text.fill",
                     iconColor: .cyan,
                     isExpanded: Binding(get: { openTab == 4 }, set: { openTab = $0 ? 4 : nil })
@@ -1141,7 +1141,7 @@ struct MuscleRow: View {
             HStack {
                 Text(LocalizedStringKey(name)).font(.caption).foregroundColor(.gray)
                 Spacer()
-                Text("\(sets) подх.").font(.caption).bold().foregroundColor(colorScheme == .dark ? .white : .black)
+                Text("\(sets) sets.").font(.caption).bold().foregroundColor(colorScheme == .dark ? .white : .black)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
@@ -1200,7 +1200,7 @@ struct AllTimeResultsView: View {
                         Text("Best Month (Volume)").font(.subheadline).foregroundColor(.gray)
                         let vol = unitsManager.convertFromKilograms(bestStats.totalVolume)
                         if vol > 1000 {
-                            Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) тонн").font(.title2).bold().foregroundColor(.purple)
+                            Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) tons").font(.title2).bold().foregroundColor(.purple)
                         } else {
                             Text("\(Int(vol)) \(unitsManager.weightUnitString())").font(.title2).bold().foregroundColor(.purple)
                         }
@@ -2852,7 +2852,7 @@ struct StorySlideOutro: View {
 
         @State private var dragOffset: CGSize = .zero
         @State private var isPulsing = false
-        @State private var shareItem: SharedImageWrapper? // Добавили стейт
+        @State private var shareItem: SharedImageWrapper?
         
         private var last28Days: [Date] {
             let cal = Calendar.current
@@ -2924,7 +2924,7 @@ struct StorySlideOutro: View {
 
                     Spacer()
 
-                    // ОБНОВЛЕННАЯ КНОПКА С ПРАВИЛЬНЫМИ СКОБКАМИ
+              
                     Button {
                         let generator = UIImpactFeedbackGenerator(style: .heavy)
                         generator.impactOccurred()
@@ -3246,7 +3246,7 @@ struct StorySlideOutro: View {
         }
     }
 
-    // Статичная карточка для экспорта в картинку
+
     struct StorySlideOutroShareCard: View {
         let data: PeriodReportPayload
         @Environment(ThemeManager.self) private var themeManager
@@ -3307,7 +3307,7 @@ struct StorySlideOutro: View {
                     }
                     .padding(30)
                 }
-                .frame(width: 340, height: 500) // Фиксированный размер для красивого скриншота
+                .frame(width: 340, height: 500) 
             }
             .frame(width: 400, height: 600)
         }

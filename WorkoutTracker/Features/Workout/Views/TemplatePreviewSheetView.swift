@@ -307,7 +307,7 @@ struct TemplatePreviewSheetView: View {
         if hasAcceptedUGCTerms {
             shareWorkout()
         } else {
-            showTermsGate = true    // покажем правила; шеринг запустится после «Agree & Continue»
+            showTermsGate = true
         }
     }
     private func shareWorkout() {
@@ -339,8 +339,7 @@ struct TemplatePreviewSheetView: View {
                     case .approved(let id):
                         workoutId = id
                     case .pending(let id):
-                        // Модерация ещё идёт. Можно показать алерт «отправлено на проверку»,
-                        // но ссылку дать сразу — она оживёт когда модерация завершится.
+ 
                         workoutId = id
                     }
 
@@ -351,7 +350,7 @@ struct TemplatePreviewSheetView: View {
                         }
                     }
                 } catch {
-                    print("❌ Ошибка шеринга: \(error)")
+                    print("❌ The sharing error: \(error)")
                     await MainActor.run { self.isSharing = false }
                 }
             }

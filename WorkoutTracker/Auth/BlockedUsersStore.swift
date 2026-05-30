@@ -119,7 +119,7 @@ enum BlockError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .notAuthenticated:
-            return "Необходимо войти в аккаунт."
+            return "You need to sign in to your account."
         }
     }
 }

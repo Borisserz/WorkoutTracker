@@ -7,19 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AC3CB9932F8176AB008A6777 /* WorkoutTrackerWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = AC3CB9892F8176AA008A6777 /* WorkoutTrackerWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		AC4009B12F9E51A700E8D7AF /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AC4009B02F9E51A700E8D7AF /* GoogleService-Info.plist */; };
 		AC55B4DF2FCA034F0081A8D1 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4DE2FCA034F0081A8D1 /* FirebaseAppCheck */; };
 		AC55B4E92FCA2A790081A8D1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */; };
 		AC55B4EB2FCA3A130081A8D1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4EA2FCA3A130081A8D1 /* FirebaseAuth */; };
 		AC55B4F42FCAC45E0081A8D1 /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4F32FCAC45E0081A8D1 /* FirebaseFunctions */; };
+		AC90B40B2FCB7133004B8377 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = AC90B40A2FCB7133004B8377 /* GoogleSignIn */; };
+		AC90B4122FCB730C004B8377 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = AC90B4112FCB730C004B8377 /* GoogleService-Info.plist */; };
 		ACA421B42F9E576B000F61A8 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = ACA421B32F9E576B000F61A8 /* FirebaseStorage */; };
 		ACDA5B9F2F06CF77007FF65F /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
 		ACDA5BA02F06CF77007FF65F /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
-		ACDA5BAF2F06CF78007FF65F /* StatsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACE68D0E2EFC421700FD186D /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0D2EFC421700FD186D /* WidgetKit.framework */; };
 		ACE68D102EFC421700FD186D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
-		ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACF45A212F9E43F800206681 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A202F9E43F800206681 /* FirebaseFirestore */; };
 		ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A222F9E43F800206681 /* FirebaseRemoteConfig */; };
 /* End PBXBuildFile section */
@@ -90,8 +88,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				ACDA5BAF2F06CF78007FF65F /* StatsWidgetExtension.appex in Embed Foundation Extensions */,
-				ACE68D212EFC421800FD186D /* WorkoutTimerWidgetExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -102,7 +98,6 @@
 			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
 			dstSubfolderSpec = 16;
 			files = (
-				AC3CB9932F8176AB008A6777 /* WorkoutTrackerWatch Watch App.app in Embed Watch Content */,
 			);
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -110,15 +105,15 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		AC3CB9892F8176AA008A6777 /* WorkoutTrackerWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WorkoutTrackerWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC3CB9892F8176AA008A6777 /* WorkoutTrackerWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = "WorkoutTrackerWatch Watch App.app"; path = "/Users/borisserzhanovich/projects/Workout/WorkoutTracker copy/build/Debug-watchos/WorkoutTrackerWatch Watch App.app"; sourceTree = "<absolute>"; };
 		AC3CB9AB2F81B127008A6777 /* WorkoutTrackerWatch-Watch-App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WorkoutTrackerWatch-Watch-App-Info.plist"; sourceTree = "<group>"; };
 		AC3CB9AC2F81B13A008A6777 /* WorkoutTrackerWatch Watch App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WorkoutTrackerWatch Watch App.entitlements"; sourceTree = "<group>"; };
-		AC4009B02F9E51A700E8D7AF /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StatsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC90B4112FCB730C004B8377 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = StatsWidgetExtension.appex; path = "/Users/borisserzhanovich/projects/Workout/WorkoutTracker copy/build/Debug-iphoneos/StatsWidgetExtension.appex"; sourceTree = "<absolute>"; };
 		ACDA5BB42F06CF92007FF65F /* StatsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StatsWidgetExtension.entitlements; sourceTree = "<group>"; };
-		ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkoutTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WorkoutTimerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = WorkoutTracker.app; path = "/Users/borisserzhanovich/projects/Workout/WorkoutTracker copy/build/Debug-iphoneos/WorkoutTracker.app"; sourceTree = "<absolute>"; };
+		ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = WorkoutTimerWidgetExtension.appex; path = "/Users/borisserzhanovich/projects/Workout/WorkoutTracker copy/build/Debug-iphoneos/WorkoutTimerWidgetExtension.appex"; sourceTree = "<absolute>"; };
 		ACE68D0D2EFC421700FD186D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		ACE68D0F2EFC421700FD186D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -156,6 +151,7 @@
 		ACDA5B942F06BF1F007FF65F /* Exceptions for "WorkoutTracker" folder in "WorkoutTracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Auth/Untitled.swift,
 				Info.plist,
 			);
 			target = ACE68CD82EFBFD1900FD186D /* WorkoutTracker */;
@@ -256,6 +252,7 @@
 				AC55B4F42FCAC45E0081A8D1 /* FirebaseFunctions in Frameworks */,
 				AC55B4DF2FCA034F0081A8D1 /* FirebaseAppCheck in Frameworks */,
 				ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */,
+				AC90B40B2FCB7133004B8377 /* GoogleSignIn in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -284,17 +281,13 @@
 				AC3CB98A2F8176AA008A6777 /* WatchApp */,
 				ACE68D0C2EFC421700FD186D /* Frameworks */,
 				ACE68CDA2EFBFD1A00FD186D /* Products */,
-				AC4009B02F9E51A700E8D7AF /* GoogleService-Info.plist */,
+				AC90B4112FCB730C004B8377 /* GoogleService-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
 		ACE68CDA2EFBFD1A00FD186D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */,
-				ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */,
-				ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */,
-				AC3CB9892F8176AA008A6777 /* WorkoutTrackerWatch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -388,6 +381,7 @@
 				AC55B4DE2FCA034F0081A8D1 /* FirebaseAppCheck */,
 				AC55B4EA2FCA3A130081A8D1 /* FirebaseAuth */,
 				AC55B4F32FCAC45E0081A8D1 /* FirebaseFunctions */,
+				AC90B40A2FCB7133004B8377 /* GoogleSignIn */,
 			);
 			productName = WorkoutTracker;
 			productReference = ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */;
@@ -451,6 +445,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				AC90B4092FCB7133004B8377 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = ACE68CDA2EFBFD1A00FD186D /* Products */;
@@ -485,7 +480,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				AC55B4E92FCA2A790081A8D1 /* PrivacyInfo.xcprivacy in Resources */,
-				AC4009B12F9E51A700E8D7AF /* GoogleService-Info.plist in Resources */,
+				AC90B4122FCB730C004B8377 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1037,6 +1032,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		AC90B4092FCB7133004B8377 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
 		ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
@@ -1062,6 +1065,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFunctions;
+		};
+		AC90B40A2FCB7133004B8377 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AC90B4092FCB7133004B8377 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
 		};
 		ACA421B32F9E576B000F61A8 /* FirebaseStorage */ = {
 			isa = XCSwiftPackageProductDependency;

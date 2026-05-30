@@ -29,7 +29,7 @@ actor RemoteConfigManager: Sendable {
         do {
             let status = try await remoteConfig.fetchAndActivate()
             if status == .successFetchedFromRemote {
-                print("☁️✅ Remote Config: Свежие данные загружены из облака!")
+                print("☁️✅ Remote Config: Fresh data downloaded from the cloud!")
             }
         
             let jsonString = remoteConfig.configValue(forKey: "ai_personas_config").stringValue ?? ""
@@ -39,15 +39,14 @@ actor RemoteConfigManager: Sendable {
             }
             
         } catch {
-            print("☁️❌ Ошибка Remote Config: \(error.localizedDescription)")
+            print("☁️❌ Error Remote Config: \(error.localizedDescription)")
         }
     }
 
     func getString(forKey key: String) -> String {
         return remoteConfig.configValue(forKey: key).stringValue ?? ""
     }
-    
-    // Новые методы для получения персон
+
     func getAllPersonas() -> [AIPersona] {
         return cachedPersonas
     }

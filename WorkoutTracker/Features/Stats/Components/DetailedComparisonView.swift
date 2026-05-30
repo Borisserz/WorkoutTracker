@@ -34,10 +34,10 @@ struct DetailedComparisonRow: View {
 
     private func iconAndColor(for metric: String) -> (icon: String, color: Color) {
         let m = metric.lowercased()
-        if m.contains("workout") || m.contains("тренировки") { return ("figure.run", themeManager.current.primaryAccent) }
-        if m.contains("volume") || m.contains("объем") { return ("scalemass.fill", .purple) }
-        if m.contains("distance") || m.contains("дистанция") { return ("map.fill", .orange) }
-        if m.contains("time") || m.contains("время") { return ("stopwatch.fill", .cyan) }
+        if m.contains("workout") || m.contains("training") { return ("figure.run", themeManager.current.primaryAccent) }
+        if m.contains("volume") || m.contains("volume") { return ("scalemass.fill", .purple) }
+        if m.contains("distance") || m.contains("distance") { return ("map.fill", .orange) }
+        if m.contains("time") || m.contains("time") { return ("stopwatch.fill", .cyan) }
         return ("chart.bar.fill", .gray)
     }
 

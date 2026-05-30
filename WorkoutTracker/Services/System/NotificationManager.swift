@@ -72,12 +72,11 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
         }
     }
 
-    // ИЗМЕНЕНИЕ 1: Добавляем async
     func scheduleRestTimerNotification(seconds: Double) async {
         cancelRestTimerNotification()
 
         let tone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? "motivational"
-        // ИЗМЕНЕНИЕ 2: Добавляем await
+
         let copy = await AICopywriter.restTimerText(for: tone)
 
         let content = UNMutableNotificationContent()
@@ -111,7 +110,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
         let recoveryHours = savedHours > 0 ? savedHours : 48.0
         let dominantMuscle = getDominantGroup(for: workout)
 
-        // ИЗМЕНЕНИЕ 4: Добавляем await повсюду
+   
         let recoveryCopy = await AICopywriter.recoveryText(for: tone, muscle: dominantMuscle)
         scheduleNotification(id: recoveryId, title: recoveryCopy.title, body: recoveryCopy.body, date: now.addingTimeInterval(recoveryHours * 3600), category: retentionCategoryId)
 

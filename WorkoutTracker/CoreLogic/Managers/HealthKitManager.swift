@@ -228,7 +228,7 @@ actor HealthKitManager: Sendable {
         guard let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else { return }
 
         healthStore.enableBackgroundDelivery(for: heartRateType, frequency: .immediate) { success, error in
-            if success { print("✅ Фоновая доставка пульса включена") }
+            if success { print("✅ Background heartbeat delivery is enabled") }
         }
 
         let query = HKObserverQuery(sampleType: heartRateType, predicate: nil) { [weak self] _, completionHandler, error in
@@ -316,9 +316,9 @@ struct CNSCalculator {
     }
 
     static func getStatus(for score: Double) -> (text: String, color: Color) {
-        if score >= 80 { return ("Оптимально для гипертрофии", .green) }
-        if score >= 60 { return ("Легкая усталость (База)", .orange) }
-        if score >= 40 { return ("Требуется восстановление", .orange) }
-        return ("Истощение (Только отдых)", .red)
+        if score >= 80 { return ("Optimal for hypertrophy", .green) }
+        if score >= 60 { return ("Mild Fatigue (Base)", .orange) }
+        if score >= 40 { return ("Recovery required", .orange) }
+        return ("Exhaustion (Rest Only)", .red)
     }
 }

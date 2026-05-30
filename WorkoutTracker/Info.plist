@@ -2,12 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSMicrophoneUsageDescription</key>
-    <string>WorkoutTracker uses the microphone to capture your voice for hands-free logging and voice control during workouts.</string>
-    <key>NSSpeechRecognitionUsageDescription</key>
-    <string>WorkoutTracker uses speech recognition to let you log sets and control your workout hands-free using your voice. Audio is processed for transcription only.</string>
-    <key>NSCameraUsageDescription</key>
-    <string>WorkoutTracker uses the camera to analyze your exercise form and count reps using on-device pose detection. Video is processed locally and never leaves your device.</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>WorkoutTracker reads your health metrics (weight, heart rate, heart rate variability, resting heart rate, sleep, steps, and active energy) to assess recovery, monitor strain on your nervous system, and tailor your training plan more accurately.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>WorkoutTracker writes your workouts, weight changes, and active energy burned to Apple Health so your full activity history stays in one place.</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSApplicationCategoryType</key>
@@ -28,6 +26,16 @@
                 <string>com.borisdev.workouttracker.template</string>
             </array>
         </dict>
+           <dict>
+               <key>CFBundleTypeRole</key>
+               <string>Editor</string>
+               <key>CFBundleURLName</key>
+               <string>GoogleSignIn</string>
+               <key>CFBundleURLSchemes</key>
+               <array>
+                   <string>com.googleusercontent.apps.667537183554-kjp5o8tsbjj7grotcb7mka6qe9ppogna</string>
+               </array>
+           </dict>
     </array>
     <key>CFBundleURLTypes</key>
     <array>

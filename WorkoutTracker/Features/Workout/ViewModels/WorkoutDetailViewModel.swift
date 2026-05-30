@@ -365,7 +365,7 @@ final class WorkoutDetailViewModel {
                                 calories: burnedCalories 
                             )
                         } catch {
-                            print("❌ ViewModel: Ошибка вызова HealthKit - \(error)")
+                            print("❌ ViewModel: HealthKit call error- \(error)")
                         }
                     }
 

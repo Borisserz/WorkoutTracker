@@ -386,9 +386,9 @@ struct PremiumRealWorkoutCard: View {
                 HStack(spacing: 8) {
                     Text(workout.date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundColor(.gray)
                     Text("•").foregroundColor(.gray)
-                    Text("\(workout.exercises.count) упр.").font(.caption).foregroundColor(.gray)
+                    Text("\(workout.exercises.count) ex.").font(.caption).foregroundColor(.gray)
                     Text("•").foregroundColor(.gray)
-                    Text("\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume))) кг").font(.caption).bold().foregroundColor(themeManager.current.primaryAccent)
+                    Text("\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume))) kg").font(.caption).bold().foregroundColor(themeManager.current.primaryAccent)
                 }
             }
             Spacer()

@@ -198,11 +198,11 @@ struct ConfigureExerciseView: View {
     @ViewBuilder private var strengthConfig: some View {
         CustomStepperCard(title: "Sets", value: $viewModel.form.sets, range: 1...20)
         CustomStepperCard(title: "Reps", value: $viewModel.form.reps, range: 1...100)
-        CustomInputCard(title: "Вес (\(unitsManager.weightUnitString()))", placeholder: "0.0", binding: weightBinding)
+        CustomInputCard(title: "Weight (\(unitsManager.weightUnitString()))", placeholder: "0.0", binding: weightBinding)
     }
 
     @ViewBuilder private var cardioConfig: some View {
-        CustomInputCard(title: "Дистанция (\(unitsManager.distanceUnitString()))", placeholder: "0.0", binding: distanceBinding)
+        CustomInputCard(title: "Distance (\(unitsManager.distanceUnitString()))", placeholder: "0.0", binding: distanceBinding)
         CustomTimeCard(title: "Duration", minBinding: minutesBinding, secBinding: secondsBinding)
     }
 

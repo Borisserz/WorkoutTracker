@@ -128,8 +128,7 @@ struct ReportSheet: View {
         error = nil
 
         do {
-            // FirestoreProgramService будет переписан в следующем шаге, метод
-            // reportWorkout(id:reason:details:) появится там.
+
             try await FirestoreProgramService.shared.reportWorkout(
                 id: workoutId,
                 reason: selectedReason.rawValue,

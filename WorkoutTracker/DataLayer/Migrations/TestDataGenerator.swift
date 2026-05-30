@@ -93,7 +93,7 @@ actor TestDataGenerator {
         }
 
         try? modelContext.save()
-        print("✅ Сгенерировано \(workoutNumber) тренировок из нового JSON.")
+        print("✅ Generated \(workoutNumber) workouts from the new JSON.")
     }
 
     private func generateWeights(from startDate: Date, to endDate: Date) async {
@@ -125,7 +125,7 @@ actor TestDataGenerator {
         }
 
         try? modelContext.save()
-        print("✅ Сгенерировано \(count) записей о весе тела.")
+        print("✅ \(count) body weight records generated.")
     }
 
     private enum WorkoutType: String, CaseIterable {

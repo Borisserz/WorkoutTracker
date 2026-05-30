@@ -137,7 +137,7 @@ struct GeneratorSettingsView: View {
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                             Spacer()
-                            Text("\(Int(vm.durationMinutes)) мин")
+                            Text("\(Int(vm.durationMinutes)) min")
                                 .font(.title2).bold()
                                 .foregroundColor(.cyan)
                                 .contentTransition(.numericText())
@@ -147,9 +147,9 @@ struct GeneratorSettingsView: View {
                             .tint(.cyan)
 
                         HStack {
-                            Text("15 мин").font(.caption2).bold().foregroundColor(.gray)
+                            Text("15 min").font(.caption2).bold().foregroundColor(.gray)
                             Spacer()
-                            Text("120 мин").font(.caption2).bold().foregroundColor(.gray)
+                            Text("120 min").font(.caption2).bold().foregroundColor(.gray)
                         }
                     }
                     .modifier(PremiumCardModifier(colorScheme: colorScheme, themeManager: themeManager))

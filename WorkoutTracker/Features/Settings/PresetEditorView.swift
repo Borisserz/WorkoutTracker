@@ -83,7 +83,7 @@ struct PresetEditorView: View {
                     generator.impactOccurred()
                     Task { await savePreset() }
                 } label: {
-                    Text(preset == nil ? LocalizedStringKey("Сохранить шаблон") : LocalizedStringKey("Save Changes"))
+                    Text(preset == nil ? LocalizedStringKey("Save the template") : LocalizedStringKey("Save Changes"))
                         .font(.headline)
                         .bold()
                         .foregroundColor(themeManager.current.background)
@@ -106,12 +106,12 @@ struct PresetEditorView: View {
                         .ignoresSafeArea()
                 )
             }
-            .navigationTitle(preset == nil ? LocalizedStringKey("Новый шаблон") : LocalizedStringKey("Edit Template"))
+            .navigationTitle(preset == nil ? LocalizedStringKey("New template") : LocalizedStringKey("Edit Template"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Отмена")) { dismiss() }
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
+                    Button(LocalizedStringKey("Cancel")) { dismiss() }
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                 }
             }
             .alert(LocalizedStringKey("Delete Template?"), isPresented: $showDeleteAlert) {
@@ -173,7 +173,7 @@ struct PresetEditorView: View {
     }
 
     private var headerSection: some View {
-        TextField(LocalizedStringKey("Название тренировки..."), text: $vm.name)
+        TextField(LocalizedStringKey("Name of the training session..."), text: $vm.name)
             .font(.system(size: 32, weight: .heavy, design: .rounded))
             .foregroundColor(colorScheme == .dark ? .white : .black) 
             .padding(.horizontal, 24)
@@ -223,7 +223,7 @@ struct PresetEditorView: View {
 
     private var exerciseListSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Упражнения"))
+            Text(LocalizedStringKey("Exercises"))
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
                 .padding(.horizontal, 24)
@@ -238,7 +238,7 @@ struct PresetEditorView: View {
                         Image(systemName: "plus.circle.fill")
                             .font(.system(size: 40))
                             .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue)
-                        Text(LocalizedStringKey("Добавить первое упражнение"))
+                        Text(LocalizedStringKey("Add the first exercise"))
                             .font(.headline)
                             .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .blue) 
                     }
@@ -275,7 +275,7 @@ struct PresetEditorView: View {
                 } label: {
                     HStack {
                         Image(systemName: "plus")
-                        Text(LocalizedStringKey("Добавить еще"))
+                        Text(LocalizedStringKey("Add more"))
                     }
                     .font(.headline)
                     .foregroundColor(colorScheme == .dark ? themeManager.current.primaryAccent : .blue) 

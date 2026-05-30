@@ -149,7 +149,7 @@ struct MorphingSaveButton: View {
                         .font(.title3)
                         .contentTransition(.symbolEffect(.replace))
 
-                    Text("Сохранено")
+                    Text("Saved")
                         .font(.headline)
                         .fontWeight(.bold)
                 } else {
@@ -218,7 +218,7 @@ struct RoutinePreviewCard: View {
 
                     VStack(alignment: .leading, spacing: 2) {
                         if let day = dayIndex {
-                            Text("День \(day)")
+                            Text("Day \(day)")
                                 .font(.caption)
                                 .foregroundColor(.blue) 
                                 .textCase(.uppercase)
@@ -254,7 +254,7 @@ struct RoutinePreviewCard: View {
                             let safeSets = ex.setsList ?? []
                             let repsCount = safeSets.first?.reps ?? 10
 
-                            Text("\(safeSets.count) x \(repsCount) повторений")
+                            Text("\(safeSets.count) x \(repsCount) reps")
                                 .font(.subheadline)
                                 .foregroundColor(colorScheme == .dark ? .gray : .gray) 
                         }

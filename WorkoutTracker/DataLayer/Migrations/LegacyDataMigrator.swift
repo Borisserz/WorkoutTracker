@@ -17,7 +17,7 @@ actor LegacyDataMigrator {
         try? modelContext.save()
 
         defaults.set(true, forKey: Constants.UserDefaultsKeys.hasMigratedToSwiftData_v2.rawValue)
-        print("✅ Успешная фоновая миграция данных в SwiftData")
+        print("✅ Successful background data migration in SwiftData")
     }
 
     private func migrateWeightHistory() async { 

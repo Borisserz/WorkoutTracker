@@ -16,7 +16,7 @@ struct PremiumExerciseSearchBar: View {
                     .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
                     .font(.body)
 
-                TextField(LocalizedStringKey("Поиск упражнений..."), text: $filterState.searchText)
+                TextField(LocalizedStringKey("Search for exercises..."), text: $filterState.searchText)
                     .textFieldStyle(.plain)
                     .font(.subheadline)
                     .foregroundStyle(colorScheme == .dark ? .white : .primary)

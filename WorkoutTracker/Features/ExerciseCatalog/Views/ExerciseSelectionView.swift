@@ -70,15 +70,15 @@ struct ExerciseSelectionView: View {
                     }
                 }
             }
-            .navigationTitle(LocalizedStringKey("Упражнения"))
+            .navigationTitle(LocalizedStringKey("Exercises"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Закрыть")) { dismiss() }
+                    Button(LocalizedStringKey("Close")) { dismiss() }
                         .foregroundStyle(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(LocalizedStringKey("Готово")) { dismiss() }
+                    Button(LocalizedStringKey("Ready")) { dismiss() }
                         .foregroundStyle(themeManager.current.primaryAccent)
                         .fontWeight(.bold)
                 }
@@ -101,7 +101,7 @@ struct ExerciseSelectionView: View {
                 Spacer().frame(width: 8)
 
                 filterButton(
-                    title: LocalizedStringKey("Все"),
+                    title: LocalizedStringKey("All"),
                     isSelected: filterState.selectedMuscles.isEmpty,
                     action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -159,11 +159,11 @@ struct ExerciseSelectionView: View {
                 .font(.system(size: 60))
                 .foregroundColor(themeManager.current.secondaryAccent.opacity(0.4))
 
-            Text(LocalizedStringKey("Упражнения не найдены"))
+            Text(LocalizedStringKey("No exercises found"))
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
 
-            Text(LocalizedStringKey("Попробуйте изменить запрос или очистить фильтры."))
+            Text(LocalizedStringKey("Try changing your query or clearing your filters."))
                 .font(.subheadline)
                 .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))
                 .multilineTextAlignment(.center)

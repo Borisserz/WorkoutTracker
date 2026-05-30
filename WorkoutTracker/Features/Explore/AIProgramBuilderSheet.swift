@@ -48,7 +48,7 @@ struct AIProgramBuilderSheet: View {
                     resultView(dto: dto)
                 }
             }
-            .navigationTitle("ИИ Архитектор")
+            .navigationTitle("AI Architect")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -331,10 +331,10 @@ struct AIProgramBuilderSheet: View {
             }
 
             VStack(spacing: 8) {
-                Text("Анализирую данные...")
+                Text("Analyzing data...")
                     .font(.title2).bold()
                     .foregroundColor(colorScheme == .dark ? .white : .black)
-                Text("Подбираю оптимальные упражнения и балансирую объем под ваши цели.")
+                Text("I select the optimal exercises and balance the volume to suit your goals.")
                     .font(.subheadline)
                     .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     .multilineTextAlignment(.center)
@@ -367,7 +367,7 @@ struct AIProgramBuilderSheet: View {
                 .padding(.top, 30)
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Расписание")
+                    Text("Schedule")
                         .font(.title3).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .padding(.horizontal, 24)

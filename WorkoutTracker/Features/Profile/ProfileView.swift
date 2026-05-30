@@ -293,7 +293,7 @@ struct YearlyTransformationView: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading) {
-                Text("Начальный вес").font(.caption).foregroundColor(.gray)
+                Text("Start weight").font(.caption).foregroundColor(.gray)
                 let sWeight = unitsManager.convertFromKilograms(startWeight)
                 Text("\(LocalizationHelper.shared.formatDecimal(sWeight)) \(unitsManager.weightUnitString())")
                     .font(.headline)
@@ -308,7 +308,7 @@ struct YearlyTransformationView: View {
             Image(systemName: icon).foregroundColor(color).font(.system(size: 20, weight: .bold))
             Spacer()
             VStack(alignment: .trailing) {
-                Text("Сейчас").font(.caption).foregroundColor(.gray)
+                Text("Now").font(.caption).foregroundColor(.gray)
                 let cWeight = unitsManager.convertFromKilograms(currentWeight)
                 Text("\(LocalizationHelper.shared.formatDecimal(cWeight)) \(unitsManager.weightUnitString())")
                     .font(.headline).foregroundColor(color)
@@ -336,12 +336,12 @@ struct AchievementsCarousel: View {
 
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .bottom) {
-                Text("Ваши трофеи (Свайп)")
+                Text("Your trophies (Swipe)")
                     .font(.title3).bold()
                     .foregroundColor(colorScheme == .dark ? .white : .black)
                 Spacer()
                 NavigationLink(destination: AllAchievementsView(achievements: achievements)) {
-                    Text("Все")
+                    Text("All")
                         .font(.subheadline).bold()
                         .foregroundColor(.blue)
                 }
@@ -497,7 +497,7 @@ struct PersonalRecordsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Личные рекорды")
+            Text("Personal bests")
                 .font(.title3).bold()
                 .foregroundColor(colorScheme == .dark ? .white : .black) 
 
@@ -556,7 +556,7 @@ struct BodyProgressChartView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Динамика веса").font(.title3).bold().foregroundColor(colorScheme == .dark ? .white : .black) 
+                Text("Weight dynamics").font(.title3).bold().foregroundColor(colorScheme == .dark ? .white : .black)
                 Spacer()
                 if let first = weightHistory.last?.weight, let last = weightHistory.first?.weight {
                     let diff = last - first
@@ -629,8 +629,8 @@ struct BodyStatsView: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            StatAdjuster(title: "Рост", value: "\(height)", unit: "см", onMinus: { height -= 1 }, onPlus: { height += 1 })
-            StatAdjuster(title: "Возраст", value: "\(age)", unit: "лет", onMinus: { age -= 1 }, onPlus: { age += 1 })
+            StatAdjuster(title: "Height", value: "\(height)", unit: "sm", onMinus: { height -= 1 }, onPlus: { height += 1 })
+            StatAdjuster(title: "Age", value: "\(age)", unit: "years", onMinus: { age -= 1 }, onPlus: { age += 1 })
         }
         .padding(.horizontal, 20)
     }
@@ -709,7 +709,7 @@ struct AllAchievementsView: View {
             VStack(alignment: .leading, spacing: 24) {
 
                 if !unlocked.isEmpty {
-                    Text("Разблокированные трофеи")
+                    Text("Unlocked trophies")
                         .font(.title2).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .padding(.horizontal)
@@ -723,7 +723,7 @@ struct AllAchievementsView: View {
                 }
 
                 if !locked.isEmpty {
-                    Text("В процессе")
+                    Text("In process")
                         .font(.title2).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .padding(.horizontal)
@@ -740,7 +740,7 @@ struct AllAchievementsView: View {
             .padding(.vertical, 20)
         }
         .background(colorScheme == .dark ? Color(red: 0.05, green: 0.05, blue: 0.07) : Color(UIColor.systemGroupedBackground))
-        .navigationTitle("Все трофеи")
+        .navigationTitle("All the trophies")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

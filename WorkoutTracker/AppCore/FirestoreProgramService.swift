@@ -136,7 +136,7 @@ final class FirestoreProgramService {
         case "rejected", "blocked":
             // Soft delete on client — server may also auto-delete later.
             try? await document.delete()
-            throw SharedWorkoutError.moderationRejected(reason: outcome.reason ?? "Контент нарушает правила сообщества.")
+            throw SharedWorkoutError.moderationRejected(reason: outcome.reason ?? "The content violates community guidelines.")
         default:
             return .pending(id: document.documentID)
         }
@@ -305,27 +305,27 @@ enum SharedWorkoutError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .encodingFailed:
-            return "Не удалось подготовить тренировку к загрузке."
+            return "Failed to prepare workout for download."
         case .decodingFailed:
-            return "Не удалось разобрать данные тренировки."
+            return "Unable to parse training data."
         case .emptyTitle:
-            return "У тренировки должно быть название."
+            return "The workout must have a name."
         case .emptyExercises:
-            return "Тренировка должна содержать хотя бы одно упражнение."
+            return "The workout must contain at least one exercise."
         case .tooManyExercises:
-            return "Слишком много упражнений (максимум 200)."
+            return "Too many exercises (max 200)."
         case .moderationRejected(let reason):
             return reason.isEmpty
-                ? "Тренировка отклонена модерацией."
-                : "Тренировка отклонена модерацией: \(reason)"
+                ? "The training was rejected by moderation."
+                : "The training was rejected by moderation: \(reason)"
         case .stillModerating:
-            return "Эта тренировка ещё на модерации. Попробуй открыть ссылку через минуту."
+            return "This workout is still being moderated. Try opening the link in a minute."
         case .blocked:
-            return "Автор этой тренировки заблокирован."
+            return "The author of this workout has been blocked."
         case .notFound:
-            return "Тренировка не найдена или больше недоступна."
+            return "The workout was not found or is no longer available."
         case .invalidReason:
-            return "Неверная причина жалобы."
+            return "Incorrect reason for complaint."
         }
     }
 }
