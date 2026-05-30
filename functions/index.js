@@ -4,6 +4,8 @@ const { initializeApp } = require("firebase-admin/app");
 const { getAppCheck } = require("firebase-admin/app-check");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { GoogleAuth } = require("google-auth-library");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { getAuth } = require("firebase-admin/auth");
 
 initializeApp();
 
@@ -266,5 +268,65 @@ exports.onReportCreated = onDocumentCreated(
     } catch (e) {
       console.error("Report processing error:", e);
     }
+  }
+);
+// ==========================================
+// 4) Full account + data deletion (Guideline 5.1.1(v))
+//    Deletes ALL server-side data tied to the caller's uid,
+//    then the Auth account is removed by the client.
+// ==========================================
+exports.deleteAccount = onCall(
+  {
+    region: "us-central1",
+    serviceAccount: SERVICE_ACCOUNT,
+    enforceAppCheck: true,
+    memory: "512MiB",
+    timeoutSeconds: 300,
+  },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) {
+      throw new HttpsError(
+        "unauthenticated",
+        "You must be signed in to delete your account."
+      );
+    }
+
+    const db = getFirestore();
+
+    // 1) shared_workouts created by this user (creatorUid == uid)
+    const sharedSnap = await db
+      .collection("shared_workouts")
+      .where("creatorUid", "==", uid)
+      .get();
+
+    // 2) reports filed by this user (reporterUid == uid)
+    const reportsSnap = await db
+      .collection("reports")
+      .where("reporterUid", "==", uid)
+      .get();
+
+    // Batched delete (chunks of 500 — Firestore batch limit)
+    const refs = [
+      ...sharedSnap.docs.map((d) => d.ref),
+      ...reportsSnap.docs.map((d) => d.ref),
+    ];
+    for (let i = 0; i < refs.length; i += 450) {
+      const batch = db.batch();
+      refs.slice(i, i + 450).forEach((ref) => batch.delete(ref));
+      await batch.commit();
+    }
+
+    // 3) users/{uid} doc + all subcollections (incl. blocked/*)
+    await db.recursiveDelete(db.collection("users").doc(uid));
+
+    // NOTE: we intentionally do NOT call getAuth().deleteUser(uid) here.
+    // The client calls Auth.auth().currentUser?.delete() right after this
+    // resolves, per the required flow. (If you prefer server-side auth
+    // deletion instead, uncomment the next line and have the client just
+    // sign out.)
+    // await getAuth().deleteUser(uid);
+
+    return { ok: true };
   }
 );

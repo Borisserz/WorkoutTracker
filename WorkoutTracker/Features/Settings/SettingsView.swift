@@ -2,13 +2,14 @@ internal import SwiftUI
 internal import UniformTypeIdentifiers
 import SwiftData
 import UIKit
+import FirebaseAuth
+import FirebaseFunctions
 
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(DIContainer.self) private var di
     @AppStorage(Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue) private var includeWarmupsInStats: Bool = false
-    
     @State private var isProcessing = false
     @State private var showTestDataAlert = false
     @State private var testDataAlertMessage = ""
@@ -16,10 +17,12 @@ struct SettingsView: View {
     @State private var fileToShare: SharedFileWrapper?
     @State private var showDeleteProfileAlert = false
     @State private var showDeleteSuccessAlert = false
-    
+    @State private var showDeleteAccountAlert = false
+    @State private var deleteAccountError: String?
+    @State private var showDeleteAccountError = false
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         NavigationStack {
             List {
@@ -42,7 +45,7 @@ struct SettingsView: View {
                     Toggle(isOn: $includeWarmupsInStats) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(LocalizedStringKey("Include Warmups in Stats"))
-                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary) // ИСПРАВЛЕНО
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
                             Text(LocalizedStringKey("If enabled, warm-up sets will be counted in total volume and personal records."))
                                 .font(.caption)
                                 .foregroundColor(themeManager.current.secondaryText)
@@ -61,6 +64,29 @@ struct SettingsView: View {
                     NavigationLink(destination: FeedbackView()) {
                         Label(LocalizedStringKey("Send Feedback"), systemImage: "envelope.fill")
                     }
+
+                    Link(destination: Constants.Legal.privacyPolicyURL) {
+                        HStack {
+                            Label(LocalizedStringKey("Privacy Policy"), systemImage: "hand.raised.fill")
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                            Spacer()
+                            Image(systemName: "arrow.up.forward.app")
+                                .font(.caption)
+                                .foregroundColor(themeManager.current.secondaryText)
+                        }
+                    }
+
+                    Link(destination: Constants.Legal.eulaURL) {
+                        HStack {
+                            Label(LocalizedStringKey("Terms of Use (EULA)"), systemImage: "doc.text.fill")
+                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                            Spacer()
+                            Image(systemName: "arrow.up.forward.app")
+                                .font(.caption)
+                                .foregroundColor(themeManager.current.secondaryText)
+                        }
+                    }
+
                     Menu {
                         Button(action: { Task { await exportAllData(format: .json) } }) {
                             Label("Export as JSON", systemImage: "curlybraces")
@@ -72,7 +98,7 @@ struct SettingsView: View {
                         Label(LocalizedStringKey("Export All Data"), systemImage: "square.and.arrow.up")
                             .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
                     }
-            
+
                     Button(role: .destructive) {
                         showDeleteProfileAlert = true
                     } label: {
@@ -81,14 +107,31 @@ struct SettingsView: View {
                     }
                 }
 
-#if DEBUG
+                Section(
+                    header: Text(LocalizedStringKey("Account")),
+                    footer: Text(LocalizedStringKey("Permanently deletes your account and all associated data from our servers, including shared workouts, your blocked list, and submitted reports. This cannot be undone."))
+                ) {
+                    Button(role: .destructive) {
+                        showDeleteAccountAlert = true
+                    } label: {
+                        HStack {
+                            Label(LocalizedStringKey("Delete Account"), systemImage: "person.crop.circle.badge.xmark")
+                                .foregroundColor(.red)
+                            Spacer()
+                            if isProcessing { ProgressView() }
+                        }
+                    }
+                    .disabled(isProcessing)
+                }
+
+                #if DEBUG
                 debugSection
-#endif
+                #endif
 
                 Section {
                     HStack {
                         Spacer()
-                        Text(LocalizedStringKey("Version 1.0.0"))
+                        Text(appVersionString)
                             .font(.caption)
                             .foregroundColor(themeManager.current.secondaryText)
                         Spacer()
@@ -102,12 +145,10 @@ struct SettingsView: View {
                     Button(LocalizedStringKey("Done")) { dismiss() }
                 }
             }
-
             .sheet(item: $fileToShare) { wrapper in
                 ActivityViewController(activityItems: [wrapper.url])
                     .presentationDetents([.medium, .large])
             }
-
             .alert(LocalizedStringKey("Test Data"), isPresented: $showTestDataAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: {
@@ -121,10 +162,21 @@ struct SettingsView: View {
             } message: {
                 Text("This will permanently delete your profile, body measurements, all workouts, and settings. This action cannot be undone.")
             }
-            .alert("Data Deleted", isPresented: $showDeleteSuccessAlert) {
-                Button("OK", role: .cancel) {
-                    // Логика перезагрузки или сброса
+            .alert("Delete Account", isPresented: $showDeleteAccountAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete Account", role: .destructive) {
+                    Task { await deleteAccount() }
                 }
+            } message: {
+                Text("This permanently deletes your account and all server-side data (shared workouts, blocked list, reports) as well as everything on this device. This action cannot be undone.")
+            }
+            .alert("Couldn't Delete Account", isPresented: $showDeleteAccountError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(deleteAccountError ?? "Unknown error")
+            }
+            .alert("Data Deleted", isPresented: $showDeleteSuccessAlert) {
+                Button("OK", role: .cancel) { }
             } message: {
                 Text("All your profile data and history have been successfully deleted. Please restart the app to set up a new profile.")
             }
@@ -139,7 +191,7 @@ struct SettingsView: View {
         }
     }
 
-#if DEBUG
+    #if DEBUG
     @ViewBuilder
     private var debugSection: some View {
         Section(footer: Text(LocalizedStringKey("These buttons are for testing only. Remove TestDataGenerator.swift and this section after testing."))) {
@@ -149,7 +201,8 @@ struct SettingsView: View {
                     Spacer()
                     if isProcessing { ProgressView() }
                 }
-            }.disabled(isProcessing)
+            }
+            .disabled(isProcessing)
 
             Button(role: .destructive) { showClearAllAlert = true } label: {
                 HStack {
@@ -157,7 +210,8 @@ struct SettingsView: View {
                     Spacer()
                     if isProcessing { ProgressView() }
                 }
-            }.disabled(isProcessing)
+            }
+            .disabled(isProcessing)
         }
     }
 
@@ -182,8 +236,12 @@ struct SettingsView: View {
         self.testDataAlertMessage = "All workouts and weight history cleared."
         self.showTestDataAlert = true
     }
-#endif
-
+    #endif
+    private var appVersionString: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        return "Version \(version) (\(build))"
+    }
     private enum ExportFormat { case json, csv }
 
     private func exportAllData(format: ExportFormat) async {
@@ -191,29 +249,61 @@ struct SettingsView: View {
         let bgContext = ModelContext(di.modelContainer)
         let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
         let workouts = (try? bgContext.fetch(descriptor)) ?? []
+
         let fileURL: URL?
+        switch format {
+        case .json: fileURL = DataManager.shared.exportAllDataAsJSON(workouts: workouts)
+        case .csv:  fileURL = DataManager.shared.exportAllDataToCSV(workouts: workouts)
+        }
 
-        do {
-            switch format {
-            case .json: fileURL = DataManager.shared.exportAllDataAsJSON(workouts: workouts)
-            case .csv: fileURL = DataManager.shared.exportAllDataToCSV(workouts: workouts)
-            }
-
-            self.isProcessing = false
-            if let fileURL = fileURL { self.fileToShare = SharedFileWrapper(url: fileURL) } else {
-                self.testDataAlertMessage = "Failed to export data. Please try again."
-                self.showTestDataAlert = true
-            }
-        } catch {
-            self.isProcessing = false
-            self.testDataAlertMessage = "Failed to export data: \(error.localizedDescription)"
+        self.isProcessing = false
+        if let fileURL = fileURL {
+            self.fileToShare = SharedFileWrapper(url: fileURL)
+        } else {
+            self.testDataAlertMessage = "Failed to export data. Please try again."
             self.showTestDataAlert = true
         }
     }
 
+    // MARK: - Account / Data deletion
+
+    /// Guideline 5.1.1(v): full in-app account deletion.
+    /// 1) Deletes ALL server-side data via the Admin-SDK Cloud Function.
+    /// 2) Deletes the Firebase Auth account itself.
+    /// 3) Wipes all local data on this device.
+    private func deleteAccount() async {
+        isProcessing = true
+        defer { isProcessing = false }
+        do {
+            // 1) Delete all server-side Firestore data (shared_workouts, reports,
+            //    users/{uid} + blocked subcollection) using the Admin SDK.
+            let functions = Functions.functions(region: "us-central1")
+            _ = try await functions.httpsCallable("deleteAccount").call()
+
+            // 2) Delete the Firebase Auth account.
+            //    Anonymous users don't require recent re-auth, so this succeeds.
+            try await Auth.auth().currentUser?.delete()
+
+            // 3) Stop the blocked-list listener and wipe local storage.
+            await BlockedUsersStore.shared.stopListening()
+            deleteLocalData()
+            showDeleteSuccessAlert = true
+        } catch {
+            deleteAccountError = error.localizedDescription
+            showDeleteAccountError = true
+        }
+    }
+
+    /// Local-only deletion: clears SwiftData models and UserDefaults keys.
     private func deleteProfileAndData() {
         isProcessing = true
-        
+        deleteLocalData()
+        isProcessing = false
+        showDeleteSuccessAlert = true
+    }
+
+    /// Shared helper that removes all on-device data.
+    private func deleteLocalData() {
         do {
             try modelContext.delete(model: Workout.self)
             try modelContext.delete(model: Exercise.self)
@@ -226,17 +316,16 @@ struct SettingsView: View {
             try modelContext.delete(model: BodyMeasurement.self)
             try modelContext.delete(model: UserGoal.self)
             try modelContext.delete(model: AIChatSession.self)
-            
+
             let customPresetsDesc = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
             if let customPresets = try? modelContext.fetch(customPresetsDesc) {
                 for preset in customPresets { modelContext.delete(preset) }
             }
-            
             try modelContext.save()
         } catch {
             print("Failed to clear SwiftData: \(error)")
         }
-        
+
         let keysToReset = [
             Constants.UserDefaultsKeys.userName.rawValue,
             Constants.UserDefaultsKeys.userBodyWeight.rawValue,
@@ -246,16 +335,11 @@ struct SettingsView: View {
             "hasConsentedToAI",
             Constants.UserDefaultsKeys.hasSeenTutorial_Final_v8.rawValue
         ]
-        
         for key in keysToReset {
             UserDefaults.standard.removeObject(forKey: key)
         }
-        
-        isProcessing = false
-        showDeleteSuccessAlert = true
     }
 }
-
 
 struct UnitsSettingsView: View {
     @Environment(UnitsManager.self) var unitsManager
@@ -270,7 +354,6 @@ struct UnitsSettingsView: View {
                     unitsManager.setWeightUnit(.pounds)
                 }
             }
-
             Section(header: Text(LocalizedStringKey("Distance Units"))) {
                 SettingsCheckmarkRow(title: "Meters / Kilometers", isSelected: unitsManager.distanceUnit == .meters) {
                     unitsManager.setDistanceUnit(.meters)
@@ -279,7 +362,6 @@ struct UnitsSettingsView: View {
                     unitsManager.setDistanceUnit(.miles)
                 }
             }
-
             Section(header: Text(LocalizedStringKey("Body Measurement Units"))) {
                 SettingsCheckmarkRow(title: "Centimeters", isSelected: unitsManager.sizeUnit == .centimeters) {
                     unitsManager.setSizeUnit(.centimeters)
@@ -297,9 +379,8 @@ struct UnitsSettingsView: View {
 struct AppearanceSettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
-
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme // ДОБАВЛЕНО
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Form {
@@ -308,12 +389,10 @@ struct AppearanceSettingsView: View {
                 SettingsCheckmarkRow(title: "Light", isSelected: appearanceMode == "light") { appearanceMode = "light" }
                 SettingsCheckmarkRow(title: "Dark", isSelected: appearanceMode == "dark") { appearanceMode = "dark" }
             }
-
             Section(header: Text(LocalizedStringKey("Anatomy Model")), footer: Text("This model is used for your personal muscle recovery heatmap.")) {
                 SettingsCheckmarkRow(title: "Male", isSelected: userGender == "male") { userGender = "male" }
                 SettingsCheckmarkRow(title: "Female", isSelected: userGender == "female") { userGender = "female" }
             }
-
             Section(header: Text(LocalizedStringKey("Localization"))) {
                 Button {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
@@ -349,9 +428,9 @@ struct TimerSettingsView: View {
                 Picker(LocalizedStringKey("Default Duration"), selection: $defaultRestTime) {
                     ForEach(restOptions, id: \.self) { seconds in
                         if seconds % 60 == 0 {
-                            Text(LocalizedStringKey("\(seconds / 60) min")).tag(seconds)
+                            Text("\(seconds / 60) min").tag(seconds)
                         } else {
-                            Text(LocalizedStringKey("\(seconds) sec")).tag(seconds)
+                            Text("\(seconds) sec").tag(seconds)
                         }
                     }
                 }
@@ -365,6 +444,7 @@ struct TimerSettingsView: View {
 struct StreakSettingsView: View {
     @AppStorage(Constants.UserDefaultsKeys.streakRestDays.rawValue) private var streakRestDays: Int = 2
     @Environment(ThemeManager.self) private var themeManager
+
     var body: some View {
         Form {
             Section(footer: Text(LocalizedStringKey("Your streak will reset if you don't train within this number of rest days."))) {
@@ -372,7 +452,7 @@ struct StreakSettingsView: View {
                     HStack {
                         Text(LocalizedStringKey("Max Rest Days"))
                         Spacer()
-                        Text(LocalizedStringKey("\(streakRestDays) day\(streakRestDays > 1 ? "s" : "")"))
+                        Text("\(streakRestDays) " + (streakRestDays > 1 ? "days" : "day"))
                             .foregroundColor(themeManager.current.secondaryText)
                             .bold()
                     }
@@ -407,7 +487,7 @@ struct SettingsCheckmarkRow: View {
     let action: () -> Void
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         Button(action: {
             let generator = UIImpactFeedbackGenerator(style: .light)
@@ -416,7 +496,7 @@ struct SettingsCheckmarkRow: View {
         }) {
             HStack {
                 Text(title)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary) 
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")

@@ -51,12 +51,15 @@ struct WorkoutTrackerApp: App {
     @State private var showImportAlert = false
     @State private var showImportError = false
     @State private var importErrorMessage: String = ""
-
+    @State private var showReportSheet = false
+    @State private var lastImportedWorkoutId: String?
+    @State private var lastImportedCreatorUid: String?
+    @State private var lastImportedWorkoutName: String = ""
     @State private var restTimerManager = RestTimerManager()
     @State private var tutorialManager = TutorialManager()
 
-    // 🔥 Флаг для запуска новых экранов каждый раз (по вашему запросу)
-    @State private var showGodModeOnboarding = true
+    // Сохраняется между запусками. false = онбординг ещё не пройден.
+    @AppStorage("hasCompletedGodModeOnboarding_v1") private var hasCompletedGodModeOnboarding = false
 
     private var colorScheme: ColorScheme? {
         switch appearanceMode {
@@ -79,10 +82,10 @@ struct WorkoutTrackerApp: App {
                           let cvm = catalogViewModel,
                           let pvm = profileViewModel {
 
-                    if showGodModeOnboarding {
+                    if !hasCompletedGodModeOnboarding {
                         RootGodModeOnboarding(onFinish: {
                             withAnimation(.easeInOut(duration: 0.8)) {
-                                showGodModeOnboarding = false
+                                hasCompletedGodModeOnboarding = true
                             }
                         })
                         .preferredColorScheme(.dark)
@@ -142,7 +145,7 @@ struct WorkoutTrackerApp: App {
 
                     Task {
                         do {
-                            let (presetDTO, _) = try await FirestoreProgramService.shared.downloadSharedPresetWithCreator(id: id)
+                            let (presetDTO, creatorUid) = try await FirestoreProgramService.shared.downloadSharedPresetWithCreator(id: id)
                             let newExercises = presetDTO.exercises.map { Exercise(from: $0) }
 
                             await di.presetService.savePreset(
@@ -180,8 +183,19 @@ struct WorkoutTrackerApp: App {
                     handleWidgetAction(action, appState: di.appState)
                 }
             }
-            .alert("Template Imported!", isPresented: $showImportAlert) {
+            .confirmationDialog("Template Imported!", isPresented: $showImportAlert, titleVisibility: .visible) {
                 Button("OK", role: .cancel) { }
+                Button("Report this workout", role: .destructive) {
+                    showReportSheet = true
+                }
+            } message: {
+                Text("\"\(lastImportedWorkoutName)\" added to Saved Routines.")
+            }
+            .sheet(isPresented: $showReportSheet) {
+                if let workoutId = lastImportedWorkoutId,
+                   let creatorUid = lastImportedCreatorUid {
+                    ReportSheet(workoutId: workoutId, creatorUid: creatorUid)
+                }
             }
             .alert("Не удалось импортировать", isPresented: $showImportError) {
                 Button("OK", role: .cancel) { }

@@ -51,7 +51,8 @@ struct TemplatePreviewSheetView: View {
     @State private var isSharing = false
         @State private var shareItem: SharedFileWrapper?
     @State private var selectedHistoryExercise: String? = nil
-
+    @AppStorage(UGCConsent.storageKey) private var hasAcceptedUGCTerms = false
+    @State private var showTermsGate = false
     let item: PreviewItem
     let onStart: () -> Void
 
@@ -84,7 +85,7 @@ struct TemplatePreviewSheetView: View {
             .toolbar {
                               ToolbarItem(placement: .topBarLeading) {
                                   Button {
-                                      shareWorkout()
+                                      attemptShare()
                                   } label: {
                                       if isSharing {
                                           ProgressView().tint(themeManager.current.primaryAccent)
@@ -113,6 +114,11 @@ struct TemplatePreviewSheetView: View {
                            ActivityViewController(activityItems: [wrapper.url])
                                .presentationDetents([.medium])
                        }
+            .sheet(isPresented: $showTermsGate) {
+                CommunityGuidelinesSheet {
+                    shareWorkout()
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 startWorkoutButton
             }
@@ -296,6 +302,13 @@ struct TemplatePreviewSheetView: View {
             LinearGradient(colors: [(colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)), (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).opacity(0.0)], startPoint: .bottom, endPoint: .top)
                 .ignoresSafeArea()
         )
+    }
+    private func attemptShare() {
+        if hasAcceptedUGCTerms {
+            shareWorkout()
+        } else {
+            showTermsGate = true    // покажем правила; шеринг запустится после «Agree & Continue»
+        }
     }
     private func shareWorkout() {
             isSharing = true

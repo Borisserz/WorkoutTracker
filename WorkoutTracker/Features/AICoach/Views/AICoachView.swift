@@ -57,7 +57,7 @@ struct AICoachView: View {
 
     @StateObject private var speechRecognizer = SpeechRecognizer()
 
-    let quickPrompts = ["How to break a plateau?", "Bench Press Mechanics", "CNS Recovery", "Hypertrophy Split"]
+    let quickPrompts = ["How to break a plateau?", "Bench Press Mechanics", "Recovery Tips", "Hypertrophy Split"]
 
     var greeting: String {
         let hour = Calendar.current.component(.hour, from: .now)
@@ -140,7 +140,7 @@ struct AICoachView: View {
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
-                                    Text("CNS INDEX").font(.system(size: 11, weight: .black)).foregroundColor(.gray)
+                                    Text("READINESS (EST.)").font(.system(size: 11, weight: .black)).foregroundColor(.gray)
                                     Circle().fill(CNSCalculator.getStatus(for: cnsScore).color).frame(width: 6, height: 6).modifier(PulseEffect())
                                 }
                                 Text(CNSCalculator.getStatus(for: cnsScore).text)
@@ -254,7 +254,7 @@ struct AICoachView: View {
                         )
 
                         VStack(spacing: 4) {
-                            Text(isListening ? "Listening..." : "Neural Coach Active")
+                            Text(isListening ? "Listening..." : "AI Coach Active")
                                 .font(.system(size: 26, weight: .black, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? .white : .black) 
                                 .contentTransition(.numericText())
@@ -329,7 +329,7 @@ struct AICoachView: View {
                     HStack(spacing: 12) {
                         AICoachIsland(title: "Plan", icon: "bolt.heart.fill", color: .purple) { showWorkoutSheet = true }
                         AICoachIsland(title: "Progress", icon: "chart.xyaxis.line", color: .cyan) { showProgressSheet = true }
-                        AICoachIsland(title: "CNS", icon: "moon.stars.fill", color: .orange) { showRestSheet = true }
+                        AICoachIsland(title: "Recovery", icon: "moon.stars.fill", color: .orange) { showRestSheet = true }
                     }
                     .padding(.horizontal, 16).padding(.vertical, 14)
 
@@ -1134,7 +1134,7 @@ struct ProgressAnalysisSheet: View {
                         .offset(x: appearAnimate ? 5 : -5, y: appearAnimate ? -5 : 5)
                 }.modifier(PulseEffect())
             }
-            Text("При текущем объеме, ожидается прорыв в силовых на **\(impulseMuscle)** в ближайшее время.")
+            Text("По текущим данным возможен рост силовых в группе **\(impulseMuscle)**. Это оценочный прогноз, а не гарантия.")
                 .font(.system(size: 14)).foregroundColor(.gray)
         }
         .padding(20)
@@ -1438,11 +1438,11 @@ struct RestAnalysisSheet: View {
                         Spacer().frame(height: 70)
 
                         VStack(spacing: 16) {
-                            Text("ИСТОЩЕНИЕ ЦНС").font(.system(size: 12, weight: .black)).foregroundColor(.gray)
+                            Text("УРОВЕНЬ УСТАЛОСТИ (ОЦЕНКА)").font(.system(size: 12, weight: .black)).foregroundColor(.gray)
                             ZStack {
                                 Circle().stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05), lineWidth: 15).frame(width: 150, height: 150)
                                 Circle().trim(from: 0, to: cnsLoad / 100).stroke(cnsColor, style: StrokeStyle(lineWidth: 15, lineCap: .round)).frame(width: 150, height: 150).rotationEffect(.degrees(-90)).animation(.spring(response: 0.6, dampingFraction: 0.7), value: cnsLoad)
-                                VStack { Text("\(Int(cnsLoad))%").font(.system(size: 36, weight: .black, design: .rounded).monospacedDigit()).foregroundColor(colorScheme == .dark ? .white : .black).contentTransition(.numericText()); Text(cnsLoad < 40 ? "Свежий" : (cnsLoad < 75 ? "Усталость" : "Перетрен")).font(.system(size: 14, weight: .bold)).foregroundColor(cnsColor) }
+                                VStack { Text("\(Int(cnsLoad))%").font(.system(size: 36, weight: .black, design: .rounded).monospacedDigit()).foregroundColor(colorScheme == .dark ? .white : .black).contentTransition(.numericText()); Text(cnsLoad < 40 ? "Низкая" : (cnsLoad < 75 ? "Средняя" : "Высокая")).font(.system(size: 14, weight: .bold)).foregroundColor(cnsColor) }
                             }
                         }.frame(maxWidth: .infinity).padding(.bottom, 10)
 
@@ -1484,7 +1484,12 @@ struct RestAnalysisSheet: View {
                                 }
                             }.padding(.horizontal, 24)
                         }
-
+                        Text("Показатели усталости и восстановления носят оценочный характер и основаны на введённых вами данных. Это не медицинская рекомендация.")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.leading)
+                            .padding(.horizontal, 24)
+                            .padding(.top, 4)
                     }.padding(.bottom, 40)
                 }
 

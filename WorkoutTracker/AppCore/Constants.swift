@@ -27,6 +27,11 @@ public enum Constants {
         case includeWarmupsInStats
         case preferred1RMFormula
     }
+    enum Legal {
+        static let privacyPolicyURL = URL(string: "https://borisserz.github.io/workouttracker-privacy/")!
+        static let eulaURL = URL(string: "https://borisserz.github.io/workouttracker-privacy/eula.html")!
+    }
+    
 
     public enum AIConstants {
         public static let defaultTone = "Motivational"
