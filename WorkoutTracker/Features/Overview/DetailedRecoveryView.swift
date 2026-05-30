@@ -48,10 +48,11 @@ struct DetailedRecoveryView: View {
             VStack(alignment: .leading, spacing: 20) {
                 settingsSection
                 muscleListSection
+                disclaimerSection
             }
             .padding(.bottom)
         }
-        .navigationTitle(LocalizedStringKey("Muscle Status"))
+        .navigationTitle(LocalizedStringKey("Recovery Estimate"))
         .background(Color(UIColor.systemGroupedBackground))
         .onAppear {
             localRecoveryHours = storedRecoveryHours
@@ -62,7 +63,14 @@ struct DetailedRecoveryView: View {
             recalculateRecoveryLocal(hours: newValue)
         }
     }
-
+    private var disclaimerSection: some View {
+        Text(LocalizedStringKey("These readiness values are estimates based on your logged workouts and are not medical advice. Consult a professional before changing your training load."))
+            .font(.caption2)
+            .foregroundColor(themeManager.current.secondaryText)
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal)
+            .padding(.top, 4)
+    }
     private func loadWorkoutsIntoMemory() {
         let cutoffDate = Date.now.addingTimeInterval(-((96.0 + 24.0) * 3600))
         let descriptor = FetchDescriptor<Workout>(
@@ -171,9 +179,9 @@ struct MuscleStatusRow: View {
             return .green
         }
     private var statusText: String {
-        if percentage >= 100 { return NSLocalizedString("Fully Recovered", comment: "") }
-        if percentage >= 80 { return NSLocalizedString("Ready to Train", comment: "") }
-        if percentage >= 50 { return NSLocalizedString("Recovering...", comment: "") }
-        return NSLocalizedString("Exhausted", comment: "")
+        if percentage >= 100 { return NSLocalizedString("Fully Rested", comment: "Estimated muscle readiness") }
+        if percentage >= 80 { return NSLocalizedString("Ready to Train", comment: "Estimated muscle readiness") }
+        if percentage >= 50 { return NSLocalizedString("Recovering (est.)", comment: "Estimated muscle readiness") }
+        return NSLocalizedString("Needs Rest", comment: "Estimated muscle readiness")
     }
 }
