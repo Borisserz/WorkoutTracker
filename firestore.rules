@@ -57,7 +57,7 @@ service cloud.firestore {
                     && request.resource.data.reporterUid == request.auth.uid
                     && request.resource.data.workoutId is string
                     && request.resource.data.reason in
-                        ["spam", "hate", "harassment", "sexual", "violence", "other"]
+["spam", "hate", "harassment", "sexual", "violence", "dangerous", "other"]
                     && (!("details" in request.resource.data)
                         || (request.resource.data.details is string
                             && request.resource.data.details.size() <= 500));
