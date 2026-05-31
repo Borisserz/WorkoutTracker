@@ -151,6 +151,7 @@
 		ACDA5B942F06BF1F007FF65F /* Exceptions for "WorkoutTracker" folder in "WorkoutTracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Auth/AIConsentSheet.swift,
 				Info.plist,
 			);
 			target = ACE68CD82EFBFD1900FD186D /* WorkoutTracker */;
@@ -578,7 +579,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WorkoutTracker reads your heart rate, active energy, and workout sessions from Apple Health during workouts so it can display live metrics, calculate recovery, and adjust AI coaching.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WorkoutTracker saves your completed workouts and active energy (calories burned) to Apple Health so your activity is reflected across the Health app and your iPhone.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
@@ -615,7 +616,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "WorkoutTrackerWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = WorkoutTrackerWatch;
-				INFOPLIST_KEY_LSApplicationCategoryType = "";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "WorkoutTracker reads your heart rate, active energy, and workout sessions from Apple Health during workouts so it can display live metrics, calculate recovery, and adjust AI coaching.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "WorkoutTracker saves your completed workouts and active energy (calories burned) to Apple Health so your activity is reflected across the Health app and your iPhone.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";

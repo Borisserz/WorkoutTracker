@@ -331,7 +331,6 @@ struct OverviewView: View {
                 isProcessing = false; return
             }
             if let _ = await workoutService.createWorkout(title: "Today's Plan", presetID: plan.persistentModelID, isAIGenerated: false) {
-                di.liveActivityManager.startWorkoutActivity(title: "Today's Plan")
                 var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
                 if let newWorkout = try? context.fetch(descriptor).first {
                     router.push(.workoutDetail(newWorkout))

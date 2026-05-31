@@ -10,7 +10,8 @@ final class InWorkoutAICoachViewModel {
     var activeProposal: SmartActionDTO? = nil
     var isProcessing: Bool = false
     var activeCommandId: String? = nil
-
+    var showConsentSheet: Bool = false
+    @ObservationIgnored private var pendingCommand: (command: String, workout: Workout)? = nil
     @ObservationIgnored private var currentTask: Task<Void, Never>? = nil
 
     private let workoutService: WorkoutService
@@ -62,6 +63,11 @@ final class InWorkoutAICoachViewModel {
                 let successGen = UINotificationFeedbackGenerator()
                 successGen.notificationOccurred(.success)
 
+            } catch AILogicError.aiConsentRequired {
+                self.isProcessing = false
+                self.activeCommandId = nil
+                self.pendingCommand = (command, currentWorkout)
+                self.showConsentSheet = true
             } catch {
                 self.isProcessing = false
                 self.activeCommandId = nil
@@ -81,7 +87,11 @@ final class InWorkoutAICoachViewModel {
     func discardProposal() {
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { activeProposal = nil }
     }
-
+    func retryPendingCommand() {
+        guard let pending = pendingCommand else { return }
+        pendingCommand = nil
+        sendSmartCommand(pending.command, currentWorkout: pending.workout)
+    }
     private func buildWorkoutContext(_ workout: Workout, userCommand: String) async -> (workout: String, catalog: String) {
         guard let activeEx = workout.exercises.first(where: { !$0.isCompleted }) else {
             return ("Workout is already completed.", "")

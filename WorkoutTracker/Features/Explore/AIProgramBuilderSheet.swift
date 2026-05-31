@@ -66,6 +66,13 @@ struct AIProgramBuilderSheet: View {
         }
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(viewModel.state.isLoading || viewModel.isSaving)
+        .sheet(isPresented: $viewModel.showConsentSheet) {
+            AIConsentSheet(onConsent: {
+                Task { await viewModel.generateProgram() }
+            })
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     private var configuratorView: some View {

@@ -25,6 +25,7 @@ public enum Constants {
         case voiceCoachDucking
         case hasGeneratedDefaultPresets_v3
         case includeWarmupsInStats
+        case hasConsentedToAI  
         case preferred1RMFormula
     }
     enum Legal {

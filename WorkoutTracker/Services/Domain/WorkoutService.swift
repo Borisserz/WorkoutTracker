@@ -171,6 +171,7 @@ final class WorkoutService {
         do {
             try? await HealthKitManager.shared.requestAuthorization()
             let id = try await workoutStore.createWorkout(title: title, fromPresetID: presetID, isAIGenerated: isAIGenerated)
+            liveActivityManager.startWorkoutActivity(title: title)   // ← единая точка старта
             return id
         } catch {
             appState.showError(title: String(localized: "Error"), message: error.localizedDescription)
@@ -267,9 +268,9 @@ final class WorkoutService {
     }
 
     func processCompletedWorkout(_ workout: Workout) async {
+            defer { liveActivityManager.stopAllActivities() }
             do {
                 try await workoutStore.processCompletedWorkout(workoutID: workout.persistentModelID)
-                liveActivityManager.stopAllActivities()
 
                 let wTitle = workout.title
                 let wStart = workout.date
@@ -302,18 +303,18 @@ final class WorkoutService {
     }
 
     func deleteWorkout(_ workout: Workout) async {
+        defer { stopLiveActivity() }
         do {
             try await workoutStore.deleteWorkout(workoutID: workout.persistentModelID)
-            stopLiveActivity()
         } catch {
             appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
         }
     }
 
     func deleteWorkout(byID id: PersistentIdentifier) async {
+        defer { stopLiveActivity() }
         do {
             try await workoutStore.deleteWorkout(workoutID: id)
-            stopLiveActivity()
         } catch {
             appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
         }

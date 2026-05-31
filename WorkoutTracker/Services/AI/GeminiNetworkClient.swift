@@ -76,6 +76,13 @@ actor GeminiNetworkClient {
     }
 
     private func makeRequest(stream: Bool, body: GeminiRequest) async throws -> URLRequest {
+        guard UserDefaults.standard.bool(
+            forKey: Constants.UserDefaultsKeys.hasConsentedToAI.rawValue
+        ) else {
+            throw AILogicError.aiConsentRequired
+        }
+
+       
         guard var comps = URLComponents(string: functionURL) else { throw AILogicError.invalidURL }
         if stream { comps.queryItems = [URLQueryItem(name: "stream", value: "true")] }
         guard let url = comps.url else { throw AILogicError.invalidURL }

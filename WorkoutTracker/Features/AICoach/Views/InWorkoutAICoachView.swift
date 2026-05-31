@@ -94,6 +94,12 @@ struct InWorkoutAICoachView: View {
             .padding(.top, 10)
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.activeProposal)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.activeProposal)
+        .sheet(isPresented: $viewModel.showConsentSheet) {
+            AIConsentSheet(onConsent: { viewModel.retryPendingCommand() })
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
     }
 
     @ViewBuilder

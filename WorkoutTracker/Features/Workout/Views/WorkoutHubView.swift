@@ -292,7 +292,6 @@ struct WorkoutHubView: View {
             }
             let title = LocalizationHelper.shared.formatWorkoutDateName()
             if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
-                di.liveActivityManager.startWorkoutActivity(title: title)
                 var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
                 if let newWorkout = try? context.fetch(descriptor).first { self.navigateToActiveWorkout = newWorkout }
             }
@@ -322,12 +321,10 @@ struct WorkoutHubView: View {
             switch item {
             case .preset(let preset):
                 if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
-                    di.liveActivityManager.startWorkoutActivity(title: preset.name)
                     routeToLatestWorkout()
                 }
             case .favorite(let workout):
                 if let _ = await workoutService.createWorkout(title: workout.title, presetID: nil, isAIGenerated: false) {
-                    di.liveActivityManager.startWorkoutActivity(title: workout.title)
                     var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
                     if let newWorkout = try? context.fetch(descriptor).first {
                         for ex in workout.exercises {

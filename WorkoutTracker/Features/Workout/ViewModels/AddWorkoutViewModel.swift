@@ -43,8 +43,6 @@ final class AddWorkoutViewModel {
         let presetID = selectedPreset?.persistentModelID
 
         if let _ = await workoutService.createWorkout(title: finalTitle, presetID: presetID, isAIGenerated: false) {
-
-            liveActivityManager.startWorkoutActivity(title: finalTitle)
             onSuccess()
         }
     }

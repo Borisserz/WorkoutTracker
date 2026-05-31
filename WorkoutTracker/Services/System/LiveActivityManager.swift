@@ -4,13 +4,13 @@ import Foundation
 import ActivityKit
 
 final class LiveActivityManager: Sendable {
-
+    
     func startWorkoutActivity(title: String) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard Activity<WorkoutActivityAttributes>.activities.isEmpty else { return }   // ← не плодить вторую активити
 
         let attributes = WorkoutActivityAttributes(workoutTitle: title)
         let state = WorkoutActivityAttributes.ContentState(startTime: Date())
-
         do {
             _ = try Activity<WorkoutActivityAttributes>.request(
                 attributes: attributes,

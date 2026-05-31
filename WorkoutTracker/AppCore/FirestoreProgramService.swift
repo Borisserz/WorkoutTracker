@@ -92,6 +92,14 @@ final class FirestoreProgramService {
     /// to finish and returns a result. If moderation does not finish in time,
     /// it returns `.pending` — the UI should tell the user it will be reviewed.
     func uploadSharedPreset(_ presetDTO: WorkoutPresetDTO) async throws -> SharedWorkoutUploadResult {
+        // Guideline 1.2 (UGC) — single, mandatory enforcement point:
+        // nothing may be written to `shared_workouts` without explicit
+        // Community Guidelines / EULA acceptance. The UI gate is a convenience;
+        // THIS is the guarantee that no code path can bypass consent.
+        guard UGCConsent.hasAccepted else {
+            throw SharedWorkoutError.consentRequired
+        }
+
         // Ensure we have an anonymous user before writing.
         let user = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
 
@@ -301,6 +309,7 @@ enum SharedWorkoutError: LocalizedError {
     case blocked
     case notFound
     case invalidReason
+    case consentRequired
 
     var errorDescription: String? {
         switch self {
@@ -312,6 +321,13 @@ enum SharedWorkoutError: LocalizedError {
             return "The workout must have a name."
         case .emptyExercises:
             return "The workout must contain at least one exercise."
+        case .invalidReason:
+            return "Incorrect reason for complaint."
+        case .consentRequired:
+            return NSLocalizedString(
+                "You must accept the Community Guidelines before sharing content.",
+                comment: "Shown if a share is attempted without UGC consent"
+            )
         case .tooManyExercises:
             return "Too many exercises (max 200)."
         case .moderationRejected(let reason):
@@ -324,8 +340,6 @@ enum SharedWorkoutError: LocalizedError {
             return "The author of this workout has been blocked."
         case .notFound:
             return "The workout was not found or is no longer available."
-        case .invalidReason:
-            return "Incorrect reason for complaint."
         }
     }
 }

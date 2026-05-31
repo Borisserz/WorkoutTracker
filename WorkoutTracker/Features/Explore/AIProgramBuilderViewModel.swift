@@ -28,7 +28,7 @@ enum MuscleTargetState: Int, Sendable {
 final class AIProgramBuilderViewModel {
 
     private let aiLogicService: AILogicService
-
+    var showConsentSheet: Bool = false
     var goal: ProgramGoal = .buildMuscle
     var level: ProgramLevel = .intermediate
     var equipment: ProgramEquipment = .fullGym
@@ -76,6 +76,10 @@ final class AIProgramBuilderViewModel {
                 try await Task.sleep(for: .seconds(1.5))
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 self.state = .success(dto)
+            } catch AILogicError.aiConsentRequired {
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                self.state = .idle
+                self.showConsentSheet = true
             } catch {
                 UINotificationFeedbackGenerator().notificationOccurred(.error)
                 self.state = .error(error.localizedDescription)
@@ -85,7 +89,7 @@ final class AIProgramBuilderViewModel {
     func saveProgram(presetService: PresetService, dto: GeneratedProgramDTO) async {
         guard !isSaving else { return }
         isSaving = true
-
+        var showConsentSheet: Bool = false
         let folderName = dto.title
 
         for routine in dto.schedule {

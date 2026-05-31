@@ -7,9 +7,16 @@
 
 internal import SwiftUI
 
+
 /// Persisted flag: has the user accepted the UGC terms at least once.
 enum UGCConsent {
     static let storageKey = "hasAcceptedUGCTerms_v1"
+
+    /// Single source of truth for consent. `@AppStorage(UGCConsent.storageKey)`
+    /// writes to `UserDefaults.standard` under the same key, so this stays in sync.
+    static var hasAccepted: Bool {
+        UserDefaults.standard.bool(forKey: storageKey)
+    }
 }
 
 /// Mandatory acceptance sheet shown before the user can publish UGC.

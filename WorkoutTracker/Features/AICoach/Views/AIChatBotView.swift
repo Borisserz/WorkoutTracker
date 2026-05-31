@@ -61,6 +61,14 @@ struct AIChatBotView: View {
                         }
                     }
 
+                    Text(LocalizedStringKey("AI Coach provides general fitness and educational information only, not medical advice. Consult a qualified professional before making decisions about training, nutrition, or your health."))
+                        .font(.caption2)
+                        .foregroundColor(themeManager.current.secondaryText)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+
                     HStack(spacing: 12) {
 
                         Button {

@@ -41,6 +41,10 @@ struct AICoachView: View {
     @State private var showProgressSheet = false
     @State private var showRestSheet = false
     @State private var showAISettings = false
+    @AppStorage(Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
+    private var hasConsentedToAI = false
+    @State private var showConsentSheet = false
+    @State private var pendingAIAction: (() -> Void)? = nil
 
     @State private var isBreathing = false
     @State private var isLevitating = false
@@ -63,7 +67,14 @@ struct AICoachView: View {
         let hour = Calendar.current.component(.hour, from: .now)
         switch hour { case 6..<12: return "Good morning,"; case 12..<18: return "Good afternoon,"; case 18..<24: return "Evening focus,"; default: return "Recovery time," }
     }
-
+    private func requireAIConsent(_ action: @escaping () -> Void) {
+        if hasConsentedToAI {
+            action()
+        } else {
+            pendingAIAction = action
+            showConsentSheet = true
+        }
+    }
     var body: some View {
         NavigationStack {
             ZStack {
@@ -214,9 +225,12 @@ struct AICoachView: View {
                             if isListening {
                                 speechRecognizer.stopTranscribing()
                                 if !speechRecognizer.transcript.isEmpty {
-                                    viewModel.inputText = speechRecognizer.transcript
-                                    showChatView = true
+                                    let text = speechRecognizer.transcript
                                     speechRecognizer.transcript = ""
+                                    requireAIConsent {
+                                        viewModel.inputText = text
+                                        showChatView = true
+                                    }
                                 }
                             } else {
                                 speechRecognizer.startTranscribing()
@@ -281,9 +295,12 @@ struct AICoachView: View {
                                 .submitLabel(.send)
                                 .onSubmit {
                                     if !userQuery.isEmpty {
-                                        viewModel.inputText = userQuery
+                                        let text = userQuery
                                         userQuery = ""
-                                        showChatView = true
+                                        requireAIConsent {
+                                            viewModel.inputText = text
+                                            showChatView = true
+                                        }
                                     }
                                 }
                             if !userQuery.isEmpty {
@@ -305,8 +322,10 @@ struct AICoachView: View {
                                 ForEach(quickPrompts, id: \.self) { prompt in
                                     Button(action: {
                                         HapticManager.shared.selection()
-                                        viewModel.inputText = prompt
-                                        showChatView = true
+                                        requireAIConsent {
+                                            viewModel.inputText = prompt
+                                            showChatView = true
+                                        }
                                     }) {
                                         Text(prompt)
                                             .font(.system(size: 13, weight: .bold))
@@ -327,8 +346,8 @@ struct AICoachView: View {
                     Spacer()
 
                     HStack(spacing: 12) {
-                        AICoachIsland(title: "Plan", icon: "bolt.heart.fill", color: .purple) { showWorkoutSheet = true }
-                        AICoachIsland(title: "Progress", icon: "chart.xyaxis.line", color: .cyan) { showProgressSheet = true }
+                        AICoachIsland(title: "Plan", icon: "bolt.heart.fill", color: .purple) { requireAIConsent { showWorkoutSheet = true } }
+                        AICoachIsland(title: "Progress", icon: "chart.xyaxis.line", color: .cyan) { requireAIConsent { showProgressSheet = true } }
                         AICoachIsland(title: "Recovery", icon: "moon.stars.fill", color: .orange) { showRestSheet = true }
                     }
                     .padding(.horizontal, 16).padding(.vertical, 14)
@@ -359,6 +378,15 @@ struct AICoachView: View {
             .sheet(isPresented: $showProgressSheet) { ProgressAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: $showWorkoutSheet) { WorkoutConfigSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: $showAISettings) { AISettingsSheet().presentationDetents([.medium]).presentationDragIndicator(.visible) }
+            .sheet(isPresented: $showConsentSheet) {
+                AIConsentSheet(onConsent: {
+                    let action = pendingAIAction
+                    pendingAIAction = nil
+                    action?()
+                })
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            }
             .fullScreenCover(isPresented: $showChatView) { AIChatBotView(viewModel: viewModel) }
         }
     }

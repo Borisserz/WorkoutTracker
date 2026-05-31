@@ -12,6 +12,7 @@ public enum AILogicError: Error, LocalizedError, Sendable {
     case invalidURL
     case invalidResponse
     case noDataReturned
+    case aiConsentRequired
     case invalidData
     case friendlyError
     case apiError(statusCode: Int, message: String)
@@ -21,6 +22,11 @@ public enum AILogicError: Error, LocalizedError, Sendable {
         switch self {
         case .invalidURL:        return "The URL provided is invalid."
         case .invalidResponse:   return "Received an invalid response from the server."
+        case .aiConsentRequired:
+                   return NSLocalizedString(
+                       "AI features require your consent before your messages can be sent for processing.",
+                       comment: "Shown when the user hasn't consented to AI processing yet"
+                   )
         case .noDataReturned:    return "No data was returned from the server."
         case .invalidData:       return "The AI response was malformed."
         case .rateLimited(let retryAfter):

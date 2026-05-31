@@ -332,7 +332,7 @@ struct SettingsView: View {
             Constants.UserDefaultsKeys.userGender.rawValue,
             "userHeight",
             "userAge",
-            "hasConsentedToAI",
+            Constants.UserDefaultsKeys.hasConsentedToAI.rawValue,
             Constants.UserDefaultsKeys.hasSeenTutorial_Final_v8.rawValue
         ]
         for key in keysToReset {
