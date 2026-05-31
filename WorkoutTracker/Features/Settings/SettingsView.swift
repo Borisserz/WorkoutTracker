@@ -266,22 +266,27 @@ struct SettingsView: View {
     }
 
     // MARK: - Account / Data deletion
-
     /// Guideline 5.1.1(v): full in-app account deletion.
-    /// 1) Deletes ALL server-side data via the Admin-SDK Cloud Function.
-    /// 2) Deletes the Firebase Auth account itself.
-    /// 3) Wipes all local data on this device.
+    /// Order matters: re-auth + Apple token revocation MUST happen BEFORE any
+    /// destructive server-side deletion, otherwise we risk an orphaned Auth
+    /// account and an un-revoked Apple refresh token.
     private func deleteAccount() async {
         isProcessing = true
         defer { isProcessing = false }
         do {
+            // 0) Re-authenticate the user and, for Sign in with Apple, revoke the
+            //    Apple refresh token. Nothing destructive runs until this succeeds.
+            //    If the user cancels the auth sheet, this throws and we abort with
+            //    all data still intact.
+            try await SocialAuthService.shared.reauthenticateForDeletion()
+
             // 1) Delete all server-side Firestore data (shared_workouts, reports,
             //    users/{uid} + blocked subcollection) using the Admin SDK.
             let functions = Functions.functions(region: "us-central1")
             _ = try await functions.httpsCallable("deleteAccount").call()
 
-            // 2) Delete the Firebase Auth account.
-            //    Anonymous users don't require recent re-auth, so this succeeds.
+            // 2) Delete the Firebase Auth account. The recent re-auth in step 0
+            //    satisfies requiresRecentLogin for Apple/Google users.
             try await Auth.auth().currentUser?.delete()
 
             // 3) Stop the blocked-list listener and wipe local storage.

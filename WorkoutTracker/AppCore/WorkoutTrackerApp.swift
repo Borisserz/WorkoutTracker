@@ -153,7 +153,16 @@ struct WorkoutTrackerApp: App {
                                 folderName: PresetService.savedRoutinesFolderName,
                                 exercises: newExercises
                             )
-                            await MainActor.run { showImportAlert = true }
+
+                            // ✅ Guideline 1.2: populate the state the "Report this workout"
+                            //    sheet and the dialog message depend on. Without this, the report
+                            //    sheet's `if let` binding is always nil and the button does nothing.
+                            await MainActor.run {
+                                self.lastImportedWorkoutId = id            // shared-workout doc id used for the report
+                                self.lastImportedCreatorUid = creatorUid   // author being reported
+                                self.lastImportedWorkoutName = presetDTO.name
+                                showImportAlert = true
+                            }
                         } catch let error as SharedWorkoutError {
                             await MainActor.run {
                                 importErrorMessage = error.localizedDescription

@@ -14771,6 +14771,9 @@
         }
       }
     },
+    "You must accept the Community Guidelines before sharing content." : {
+      "comment" : "Shown if a share is attempted without UGC consent"
+    },
     "You're about to lose your %lld-day streak. Train now." : {
       "comment" : "Text for a notification that warns a user about losing their streak. The argument is the length of the streak.",
       "extractionState" : "stale",

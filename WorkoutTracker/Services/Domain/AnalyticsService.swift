@@ -78,7 +78,6 @@ actor AnalyticsService {
             predicate: #Predicate<Workout> { $0.date >= minDate && $0.date <= maxDate },
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
-        descriptor.relationshipKeyPathsForPrefetching = [\.exercises]
 
         let bgWorkouts = (try? bgContext.fetch(descriptor)) ?? []
 

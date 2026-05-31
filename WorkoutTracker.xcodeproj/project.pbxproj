@@ -151,7 +151,6 @@
 		ACDA5B942F06BF1F007FF65F /* Exceptions for "WorkoutTracker" folder in "WorkoutTracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Auth/AIConsentSheet.swift,
 				Info.plist,
 			);
 			target = ACE68CD82EFBFD1900FD186D /* WorkoutTracker */;
