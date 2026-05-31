@@ -18,9 +18,10 @@ import OSLog
 
 enum ReportReason: String, CaseIterable, Identifiable {
     case spam
+    case hate
+    case harassment
     case sexual
     case violence
-    case hate
     case dangerous
     case other
 
@@ -28,12 +29,13 @@ enum ReportReason: String, CaseIterable, Identifiable {
 
     var localizedTitle: String {
         switch self {
-        case .spam:      return String(localized: "report.reason.spam")
-        case .sexual:    return String(localized: "report.reason.sexual")
-        case .violence:  return String(localized: "report.reason.violence")
-        case .hate:      return String(localized: "report.reason.hate")
-        case .dangerous: return String(localized: "report.reason.dangerous")
-        case .other:     return String(localized: "report.reason.other")
+        case .spam:       return String(localized: "report.reason.spam")
+        case .hate:       return String(localized: "report.reason.hate")
+        case .harassment: return String(localized: "report.reason.harassment")
+        case .sexual:     return String(localized: "report.reason.sexual")
+        case .violence:   return String(localized: "report.reason.violence")
+        case .dangerous:  return String(localized: "report.reason.dangerous")
+        case .other:      return String(localized: "report.reason.other")
         }
     }
 }

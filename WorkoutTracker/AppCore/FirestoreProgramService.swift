@@ -112,7 +112,7 @@ final class FirestoreProgramService {
         // Derive moderator-visible title from the preset name.
         let rawTitle = (dict["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !rawTitle.isEmpty else { throw SharedWorkoutError.emptyTitle }
-        let title = String(rawTitle.prefix(300))
+        let title = String(rawTitle.prefix(200)) 
 
         // Validate exercises shape (rules also validate this server-side).
         let exercises = dict["exercises"] as? [Any] ?? []
@@ -272,12 +272,12 @@ final class FirestoreProgramService {
     func reportWorkout(id: String, reason: String, details: String) async throws {
         let user = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
 
-        let validReasons: Set<String> = ["spam", "sexual", "violence", "hate", "dangerous", "other"]
+        let validReasons: Set<String> = ["spam", "hate", "harassment", "sexual", "violence", "dangerous", "other"]
         guard validReasons.contains(reason) else {
             throw SharedWorkoutError.invalidReason
         }
 
-        let trimmedDetails = String(details.prefix(1000))
+        let trimmedDetails = String(details.prefix(500))
         log.info("Filing report workoutId=\(id, privacy: .public) reason=\(reason, privacy: .public)")
 
         try await db.collection("reports").addDocument(data: [

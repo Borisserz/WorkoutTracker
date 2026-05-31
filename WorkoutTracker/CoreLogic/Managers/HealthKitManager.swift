@@ -227,12 +227,12 @@ actor HealthKitManager: Sendable {
     func startHeartRateObservation(onUpdate: @escaping @Sendable (Double, Date) -> Void) {
         guard let heartRateType = HKObjectType.quantityType(forIdentifier: .heartRate) else { return }
 
-        healthStore.enableBackgroundDelivery(for: heartRateType, frequency: .immediate) { success, error in
-            if success { print("✅ Background heartbeat delivery is enabled") }
-        }
 
         let query = HKObserverQuery(sampleType: heartRateType, predicate: nil) { [weak self] _, completionHandler, error in
-            guard error == nil else { return }
+            guard error == nil else {
+                completionHandler()
+                return
+            }
 
             Task {
                 if let latestHR = try? await self?.fetchLatestHeartRate() {
@@ -244,7 +244,6 @@ actor HealthKitManager: Sendable {
 
         healthStore.execute(query)
     }
-
     func fetchSteps(for date: Date = Date()) async throws -> Int {
         guard isAvailable, let stepsType = HKObjectType.quantityType(forIdentifier: .stepCount) else { return 0 }
 
