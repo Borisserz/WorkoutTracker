@@ -15,17 +15,17 @@ final class SmartCaptureViewModel: NSObject {
     var showFlash: Bool = false
     var capturedImage: UIImage? = nil
     var isProcessing: Bool = false
-
+    var captureFailed: Bool = false
     var isBodyAligned: Bool = false
 
-    let session = AVCaptureSession()
+    nonisolated(unsafe) let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
     private let videoOutput = AVCaptureVideoDataOutput()
 
     let gestureController = GestureController()
     @ObservationIgnored private let visionProcessor = VisionProcessor()
     @ObservationIgnored private var frameCounter = 0
-    @ObservationIgnored private var countdownTask: Task<Void, Never>?
+    @ObservationIgnored nonisolated(unsafe) private var countdownTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -120,6 +120,15 @@ final class SmartCaptureViewModel: NSObject {
         AudioServicesPlaySystemSound(1108) 
     }
 
+    /// Called when photo capture fails. Resets capture state so the user can retry,
+    /// instead of leaving the flow silently stuck.
+    private func handleCaptureFailure() {
+        captureFailed = true
+        countdown = nil
+        countdownTask?.cancel()
+        countdownTask = nil
+    }
+    
     func retake() {
         capturedImage = nil
         countdownTask?.cancel()
@@ -190,12 +199,42 @@ extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, A
     }
 
     nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        guard let data = photo.fileDataRepresentation(), let image = UIImage(data: data) else { return }
+        if let error {
+            print("Photo capture error: \(error)")
+            Task { @MainActor in self.handleCaptureFailure() }
+            return
+        }
 
-        let flippedImage = UIImage(cgImage: image.cgImage!, scale: image.scale, orientation: .leftMirrored)
+        guard let data = photo.fileDataRepresentation(),
+              let image = UIImage(data: data) else {
+            Task { @MainActor in self.handleCaptureFailure() }
+            return
+        }
+
+        // Front-camera selfie: keep the existing .leftMirrored transform, but never
+        // force-unwrap cgImage (nil for some formats, e.g. HEIC/CIImage-backed) → crash.
+        guard let cgImage = image.normalizedCGImage() else {
+            Task { @MainActor in self.handleCaptureFailure() }
+            return
+        }
+
+        let flippedImage = UIImage(cgImage: cgImage, scale: image.scale, orientation: .leftMirrored)
 
         Task { @MainActor in
             self.capturedImage = flippedImage
         }
+    }
+}
+
+private extension UIImage {
+    /// Returns a CGImage, rendering a concrete bitmap if the backing cgImage is nil.
+    /// Guarantees a non-nil result for formats where `.cgImage` is unavailable.
+    func normalizedCGImage() -> CGImage? {
+        if let cgImage { return cgImage }
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let bitmap = renderer.image { _ in
+            draw(in: CGRect(origin: .zero, size: size))
+        }
+        return bitmap.cgImage
     }
 }

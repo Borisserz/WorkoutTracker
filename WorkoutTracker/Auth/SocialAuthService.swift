@@ -121,6 +121,99 @@ final class SocialAuthService {
         while let presented = top?.presentedViewController { top = presented }
         return top
     }
+    // MARK: - Account deletion support (Guideline 5.1.1(v))
+
+    /// Re-authenticates the current user immediately before deletion and,
+    /// for Sign in with Apple, revokes the Apple refresh token.
+    /// MUST be called BEFORE any destructive server-side deletion.
+    func reauthenticateForDeletion() async throws {
+        guard let user = Auth.auth().currentUser else {
+            throw AuthError.notSignedIn
+        }
+
+        // Anonymous users never linked a provider: no recent-login requirement,
+        // and nothing to revoke.
+        if user.isAnonymous { return }
+
+        let providerIDs = user.providerData.map { $0.providerID }
+
+        if providerIDs.contains("apple.com") {
+            try await reauthenticateWithApple(user: user)
+        } else if providerIDs.contains("google.com") {
+            try await reauthenticateWithGoogle(user: user)
+        }
+        // If you add email/password later, handle it here.
+    }
+
+    private func reauthenticateWithApple(user: User) async throws {
+        let nonce = Self.randomNonce()
+        currentNonce = nonce
+        defer { currentNonce = nil }
+
+        let appleIDCredential = try await performAppleAuthorization(nonce: nonce)
+
+        guard
+            let tokenData = appleIDCredential.identityToken,
+            let idToken = String(data: tokenData, encoding: .utf8)
+        else {
+            throw AuthError.invalidAppleCredential
+        }
+
+        let firebaseCredential = OAuthProvider.appleCredential(
+            withIDToken: idToken,
+            rawNonce: nonce,
+            fullName: appleIDCredential.fullName
+        )
+
+        // 1) Satisfy requiresRecentLogin.
+        try await user.reauthenticate(with: firebaseCredential)
+
+        // 2) Revoke the Apple refresh token — this is the part Apple requires.
+        if let codeData = appleIDCredential.authorizationCode,
+           let authCode = String(data: codeData, encoding: .utf8) {
+            try await Auth.auth().revokeToken(withAuthorizationCode: authCode)
+        }
+    }
+
+    private func reauthenticateWithGoogle(user: User) async throws {
+        guard let clientID = FirebaseApp.app()?.options.clientID else {
+            throw AuthError.missingGoogleClientID
+        }
+        GIDSignIn.sharedInstance.configuration = GIDConfiguration(clientID: clientID)
+
+        guard let presenter = Self.topViewController() else {
+            throw AuthError.noPresentingController
+        }
+
+        let result = try await GIDSignIn.sharedInstance.signIn(withPresenting: presenter)
+        guard let idToken = result.user.idToken?.tokenString else {
+            throw AuthError.invalidGoogleCredential
+        }
+        let credential = GoogleAuthProvider.credential(
+            withIDToken: idToken,
+            accessToken: result.user.accessToken.tokenString
+        )
+        try await user.reauthenticate(with: credential)
+        // Google does not require token revocation for App Store account deletion.
+    }
+
+    /// Programmatic Sign in with Apple (no SwiftUI button), bridged to async.
+    private func performAppleAuthorization(
+        nonce: String
+    ) async throws -> ASAuthorizationAppleIDCredential {
+        let request = ASAuthorizationAppleIDProvider().createRequest()
+        request.requestedScopes = [.fullName, .email]
+        request.nonce = Self.sha256(nonce)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let delegate = AppleAuthorizationDelegate(continuation: continuation)
+            let controller = ASAuthorizationController(authorizationRequests: [request])
+            controller.delegate = delegate
+            controller.presentationContextProvider = delegate
+            delegate.retainSelf()          // keep alive until the callback fires
+            controller.performRequests()
+        }
+    }
 }
 
 enum AuthError: LocalizedError {
@@ -128,6 +221,7 @@ enum AuthError: LocalizedError {
     case invalidGoogleCredential
     case missingGoogleClientID
     case noPresentingController
+    case notSignedIn
 
     var errorDescription: String? {
         switch self {
@@ -135,6 +229,51 @@ enum AuthError: LocalizedError {
         case .invalidGoogleCredential: return "Failed to obtain Google token."
         case .missingGoogleClientID:   return "Google sign-in is not configured (no clientID)."
         case .noPresentingController:  return "Failed to open login window."
+        case .notSignedIn:             return "You are not signed in."
         }
+    }
+}
+@MainActor
+private final class AppleAuthorizationDelegate: NSObject,
+    ASAuthorizationControllerDelegate,
+    ASAuthorizationControllerPresentationContextProviding {
+
+    private let continuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>
+    private var selfRef: AppleAuthorizationDelegate?
+
+    init(continuation: CheckedContinuation<ASAuthorizationAppleIDCredential, Error>) {
+        self.continuation = continuation
+    }
+
+    func retainSelf() { selfRef = self }
+    private func releaseSelf() { selfRef = nil }
+
+    func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithAuthorization authorization: ASAuthorization
+    ) {
+        defer { releaseSelf() }
+        guard let credential = authorization.credential
+                as? ASAuthorizationAppleIDCredential else {
+            continuation.resume(throwing: AuthError.invalidAppleCredential)
+            return
+        }
+        continuation.resume(returning: credential)
+    }
+
+    func authorizationController(
+        controller: ASAuthorizationController,
+        didCompleteWithError error: Error
+    ) {
+        defer { releaseSelf() }
+        continuation.resume(throwing: error)
+    }
+
+    func presentationAnchor(
+        for controller: ASAuthorizationController
+    ) -> ASPresentationAnchor {
+        let scene = UIApplication.shared.connectedScenes
+            .first { $0.activationState == .foregroundActive } as? UIWindowScene
+        return scene?.keyWindow ?? ASPresentationAnchor()
     }
 }

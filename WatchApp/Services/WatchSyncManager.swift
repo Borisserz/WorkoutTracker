@@ -1,5 +1,3 @@
-
-
 import Foundation
 import WatchConnectivity
 import Observation
@@ -7,7 +5,7 @@ import SwiftData
 
 @Observable
 @MainActor
-final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
+final class WatchSyncManager: NSObject, WCSessionDelegate {
     static let shared = WatchSyncManager()
     var isReachable: Bool = false
 
@@ -50,16 +48,23 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
     }
 
     nonisolated func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
-        Task { @MainActor in self.isReachable = session.isReachable }
+        // Read Bool (Sendable) here; never capture the WCSession into the Task.
+        let reachable = session.isReachable
+        Task { @MainActor in self.isReachable = reachable }
     }
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
-        Task { @MainActor in self.isReachable = session.isReachable }
+        let reachable = session.isReachable
+        Task { @MainActor in self.isReachable = reachable }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
+        // Extract Data (Sendable) before the Task; never capture [String: Any].
+        let syncData = message["syncPayload"] as? Data
+        let presetsData = message["presetsBatch"] as? Data
+
         Task { @MainActor in
-            if let data = message["syncPayload"] as? Data,
+            if let data = syncData,
                let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
 
                 if payload.action == .syncFullState {
@@ -69,7 +74,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate, Sendable {
                 }
             }
 
-            if let presetsData = message["presetsBatch"] as? Data,
+            if let presetsData,
                let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
                 await self.savePresetsLocally(dtos)
             }

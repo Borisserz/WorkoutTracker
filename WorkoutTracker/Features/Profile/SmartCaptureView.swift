@@ -36,6 +36,14 @@ struct SmartCaptureView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .alert(
+            LocalizedStringKey("Couldn't Capture Photo"),
+            isPresented: $viewModel.captureFailed
+        ) {
+            Button(LocalizedStringKey("OK"), role: .cancel) { }
+        } message: {
+            Text(LocalizedStringKey("We couldn't process that photo. Please try again."))
+        }
     }
 
     private var cameraLayer: some View {

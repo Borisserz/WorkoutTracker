@@ -105,15 +105,15 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		AC3CB9892F8176AA008A6777 /* WorkoutTrackerWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = "WorkoutTrackerWatch Watch App.app"; path = "/Users/borisserzhanovich/projects/Workout/WorkoutTracker copy/build/Debug-watchos/WorkoutTrackerWatch Watch App.app"; sourceTree = "<absolute>"; };
 		AC3CB9AB2F81B127008A6777 /* WorkoutTrackerWatch-Watch-App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WorkoutTrackerWatch-Watch-App-Info.plist"; sourceTree = "<group>"; };
 		AC3CB9AC2F81B13A008A6777 /* WorkoutTrackerWatch Watch App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WorkoutTrackerWatch Watch App.entitlements"; sourceTree = "<group>"; };
 		AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		AC62B5642FCC5A640053AD14 /* WorkoutTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WorkoutTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC62B5652FCC5A640053AD14 /* WorkoutTimerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WorkoutTimerWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC62B5662FCC5A640053AD14 /* StatsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = StatsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		AC62B5672FCC5A640053AD14 /* WorkoutTrackerWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "WorkoutTrackerWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AC90B4112FCB730C004B8377 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = StatsWidgetExtension.appex; path = "/Users/borisserzhanovich/projects/Workout/WorkoutTracker copy/build/Debug-iphoneos/StatsWidgetExtension.appex"; sourceTree = "<absolute>"; };
 		ACDA5BB42F06CF92007FF65F /* StatsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = StatsWidgetExtension.entitlements; sourceTree = "<group>"; };
-		ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = WorkoutTracker.app; path = "/Users/borisserzhanovich/projects/Workout/WorkoutTracker copy/build/Debug-iphoneos/WorkoutTracker.app"; sourceTree = "<absolute>"; };
-		ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; name = WorkoutTimerWidgetExtension.appex; path = "/Users/borisserzhanovich/projects/Workout/WorkoutTracker copy/build/Debug-iphoneos/WorkoutTimerWidgetExtension.appex"; sourceTree = "<absolute>"; };
 		ACE68D0D2EFC421700FD186D /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		ACE68D0F2EFC421700FD186D /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -151,7 +151,6 @@
 		ACDA5B942F06BF1F007FF65F /* Exceptions for "WorkoutTracker" folder in "WorkoutTracker" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Auth/Untitled.swift,
 				Info.plist,
 			);
 			target = ACE68CD82EFBFD1900FD186D /* WorkoutTracker */;
@@ -288,6 +287,10 @@
 		ACE68CDA2EFBFD1A00FD186D /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				AC62B5642FCC5A640053AD14 /* WorkoutTracker.app */,
+				AC62B5652FCC5A640053AD14 /* WorkoutTimerWidgetExtension.appex */,
+				AC62B5662FCC5A640053AD14 /* StatsWidgetExtension.appex */,
+				AC62B5672FCC5A640053AD14 /* WorkoutTrackerWatch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -323,7 +326,7 @@
 			packageProductDependencies = (
 			);
 			productName = "WorkoutTrackerWatch Watch App";
-			productReference = AC3CB9892F8176AA008A6777 /* WorkoutTrackerWatch Watch App.app */;
+			productReference = AC62B5672FCC5A640053AD14 /* WorkoutTrackerWatch Watch App.app */;
 			productType = "com.apple.product-type.application";
 		};
 		ACDA5B9D2F06CF77007FF65F /* StatsWidgetExtension */ = {
@@ -345,7 +348,7 @@
 			packageProductDependencies = (
 			);
 			productName = StatsWidgetExtension;
-			productReference = ACDA5B9E2F06CF77007FF65F /* StatsWidgetExtension.appex */;
+			productReference = AC62B5662FCC5A640053AD14 /* StatsWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		ACE68CD82EFBFD1900FD186D /* WorkoutTracker */ = {
@@ -384,7 +387,7 @@
 				AC90B40A2FCB7133004B8377 /* GoogleSignIn */,
 			);
 			productName = WorkoutTracker;
-			productReference = ACE68CD92EFBFD1A00FD186D /* WorkoutTracker.app */;
+			productReference = AC62B5642FCC5A640053AD14 /* WorkoutTracker.app */;
 			productType = "com.apple.product-type.application";
 		};
 		ACE68D0A2EFC421700FD186D /* WorkoutTimerWidgetExtension */ = {
@@ -406,7 +409,7 @@
 			packageProductDependencies = (
 			);
 			productName = WorkoutTimerWidgetExtension;
-			productReference = ACE68D0B2EFC421700FD186D /* WorkoutTimerWidgetExtension.appex */;
+			productReference = AC62B5652FCC5A640053AD14 /* WorkoutTimerWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */

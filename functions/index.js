@@ -6,7 +6,9 @@ const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { GoogleAuth } = require("google-auth-library");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
-
+// Per-user AI rate limit (abuse / cost control for the paid Vertex proxy).
+const AI_WEEKLY_LIMIT = 10;                       // requests per rolling 7-day window
+const AI_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;     // 7 days in ms
 initializeApp();
 
 // ==========================================
@@ -60,7 +62,47 @@ async function vertexFetch(body) {
   }
   return JSON.parse(text);
 }
+class RateLimitError extends Error {
+  constructor(retryAfterSeconds) {
+    super("rate_limited");
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
 
+// Atomically enforces a rolling 7-day per-user limit on AI proxy calls.
+// Counts on entry (so aborted/failed calls still count — abuse-resistant).
+async function enforceRateLimit(uid) {
+  const db = getFirestore();
+  const ref = db.collection("ai_usage").doc(uid);
+
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const now = Date.now();
+    let windowStart = now;
+    let count = 0;
+
+    if (snap.exists) {
+      const data = snap.data() || {};
+      const ws = typeof data.windowStart === "number" ? data.windowStart : 0;
+      if (now - ws < AI_WINDOW_MS) {
+        windowStart = ws;          // still inside the current 7-day window
+        count = data.count || 0;
+      }
+      // else: window expired → reset (windowStart = now, count = 0)
+    }
+
+    if (count >= AI_WEEKLY_LIMIT) {
+      const retryAfterSeconds = Math.ceil((windowStart + AI_WINDOW_MS - now) / 1000);
+      throw new RateLimitError(retryAfterSeconds);
+    }
+
+    tx.set(ref, {
+      windowStart,
+      count: count + 1,
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+}
 // ==========================================
 // 1) HTTP proxy for the iOS client
 // ==========================================
@@ -84,7 +126,39 @@ exports.vertexProxy = onRequest(
       res.status(401).json({ error: "Invalid App Check token" });
       return;
     }
+// --- Per-user auth (needed for rate limiting) ---
+const authHeader = req.header("Authorization") || "";
+const m = authHeader.match(/^Bearer (.+)$/i);
+if (!m) {
+  res.status(401).json({ error: "Missing Firebase ID token" });
+  return;
+}
+let uid;
+try {
+  const decoded = await getAuth().verifyIdToken(m[1]);
+  uid = decoded.uid;
+} catch (e) {
+  res.status(401).json({ error: "Invalid Firebase ID token" });
+  return;
+}
 
+// --- Per-user weekly rate limit ---
+try {
+  await enforceRateLimit(uid);
+} catch (e) {
+  if (e instanceof RateLimitError) {
+    res.set("Retry-After", String(e.retryAfterSeconds));
+    res.status(429).json({
+      error: "weekly_limit_reached",
+      message: `You've reached your weekly limit of ${AI_WEEKLY_LIMIT} AI requests.`,
+      retryAfter: e.retryAfterSeconds,
+    });
+    return;
+  }
+  console.error("Rate limit check failed:", e);
+  res.status(500).json({ error: "Rate limit check failed" });
+  return;
+}
     // Force server-side safety settings (the client cannot override them).
     const body = req.body || {};
     body.safetySettings = SAFETY_SETTINGS_USER;

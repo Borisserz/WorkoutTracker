@@ -414,37 +414,106 @@ struct GodModeActivityScreen: View {
 
 struct GodModeFinishScreen: View {
     let onWarpComplete: () -> Void
-    @State private var animateUI = false; @State private var isWarping = false; @State private var flashWhite = false
+    @State private var animateUI = false
+    @State private var isWarping = false
+    @State private var flashWhite = false
+    @State private var isJumping = false
+    @State private var hasCompleted = false
+    @State private var warpTask: Task<Void, Never>?
     @State private var engine = WarpEngine()
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            TimelineView(.animation) { timeline in Canvas { context, size in engine.update(time: timeline.date.timeIntervalSinceReferenceDate); engine.draw(context: &context, size: size) } }.ignoresSafeArea()
+            TimelineView(.animation) { timeline in
+                Canvas { context, size in
+                    engine.update(time: timeline.date.timeIntervalSinceReferenceDate)
+                    engine.draw(context: &context, size: size)
+                }
+            }
+            .ignoresSafeArea()
+
             VStack(spacing: 24) {
                 Spacer()
-                ZStack { Circle().fill(Color.cyan.opacity(0.2)).frame(width: 100, height: 100).blur(radius: 20); Image(systemName: "bolt.shield.fill").font(.system(size: 50)).foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom)) }
+                ZStack {
+                    Circle().fill(Color.cyan.opacity(0.2)).frame(width: 100, height: 100).blur(radius: 20)
+                    Image(systemName: "bolt.shield.fill").font(.system(size: 50)).foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
+                }
                 VStack(spacing: 8) {
                     Text("The profile is ready").font(.system(size: 32, weight: .black, design: .rounded)).foregroundStyle(.white)
-                    Text("Your data is securely stored.Have a good workout, bro.").font(.system(size: 15, weight: .medium)).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center).padding(.horizontal, 30)
+                    Text("Your data is securely stored. Have a good workout, bro.").font(.system(size: 15, weight: .medium)).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center).padding(.horizontal, 30)
                 }
                 Spacer()
-                GodModeButton(title: "Log in to the system") { startExtendedHyperspaceJump() }.padding(.horizontal, 30).padding(.bottom, 30)
-            }.scaleEffect(isWarping ? 0.3 : (animateUI ? 1 : 0.9)).opacity(isWarping ? 0 : (animateUI ? 1 : 0))
+                GodModeButton(title: "Log in to the system") { startExtendedHyperspaceJump() }
+                    .padding(.horizontal, 30)
+                    .padding(.bottom, 30)
+                    .disabled(isJumping)
+            }
+            .scaleEffect(isWarping ? 0.3 : (animateUI ? 1 : 0.9))
+            .opacity(isWarping ? 0 : (animateUI ? 1 : 0))
+
             Color.white.ignoresSafeArea().opacity(flashWhite ? 1 : 0)
-        }.onAppear { HapticManager.playSuccess(); withAnimation(.spring()) { animateUI = true } }
+
+            // Skip control — the warp sequence must never be forced (Guideline 4.0 / 2.1).
+            if isJumping && !hasCompleted {
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button {
+                            finishWarp()
+                        } label: {
+                            Text("Skip")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 18)
+                                .padding(.vertical, 10)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.top, 8)
+                    }
+                    Spacer()
+                }
+                .transition(.opacity)
+            }
+        }
+        .onAppear { HapticManager.playSuccess(); withAnimation(.spring()) { animateUI = true } }
+        .onDisappear { warpTask?.cancel() }   // никакие колбэки не выстрелят на исчезнувшем экране
     }
+
     private func startExtendedHyperspaceJump() {
+        guard !isJumping else { return }
+        isJumping = true
         HapticManager.playLightImpact()
         withAnimation(.easeIn(duration: 3.5)) { isWarping = true }
         engine.startWarp()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { HapticManager.playLightImpact() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { HapticManager.playMediumImpact() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 6.5) { HapticManager.playHeavyImpact() }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 7.8) {
-            HapticManager.playHeavyImpact()
-            withAnimation(.easeIn(duration: 0.2)) { flashWhite = true }
+
+        // Single cancellable timeline instead of 6 detached asyncAfter callbacks.
+        warpTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .seconds(2.5))
+                HapticManager.playLightImpact()
+                try await Task.sleep(for: .seconds(2.0))   // +4.5
+                HapticManager.playMediumImpact()
+                try await Task.sleep(for: .seconds(2.0))   // +6.5
+                HapticManager.playHeavyImpact()
+                try await Task.sleep(for: .seconds(1.3))   // +7.8
+                HapticManager.playHeavyImpact()
+                withAnimation(.easeIn(duration: 0.2)) { flashWhite = true }
+                try await Task.sleep(for: .seconds(0.4))   // +8.2
+                finishWarp()
+            } catch {
+                // Cancelled (Skip tapped or screen dismissed) — nothing else to do.
+            }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 8.2) { onWarpComplete() }
+    }
+
+    private func finishWarp() {
+        guard !hasCompleted else { return }   // ровно один раз
+        hasCompleted = true
+        warpTask?.cancel()
+        warpTask = nil
+        onWarpComplete()
     }
 }
 

@@ -50,7 +50,7 @@ actor BlockedUsersStore {
                 Task { await self.replaceCache(with: Set(ids)) }
             }
         self.listener = registration
-        log.info("Listening to blocked list for uid=\(myUid, privacy: .public)")
+        log.info("Listening to blocked list for uid=\(myUid, privacy: .private)")
     }
 
     /// Stop listening. Call on sign-out.
@@ -74,7 +74,7 @@ actor BlockedUsersStore {
                 "blockedAt": FieldValue.serverTimestamp()
             ])
         cache.insert(blockedUid)
-        log.info("Blocked uid=\(blockedUid, privacy: .public)")
+        log.info("Blocked uid=\(blockedUid, privacy: .private)")
     }
 
     /// Unblock a creator.
@@ -87,7 +87,7 @@ actor BlockedUsersStore {
             .collection("blocked").document(blockedUid)
             .delete()
         cache.remove(blockedUid)
-        log.info("Unblocked uid=\(blockedUid, privacy: .public)")
+        log.info("Unblocked uid=\(blockedUid, privacy: .private)")
     }
 
     /// Check if a creator is blocked (uses cache if hydrated).

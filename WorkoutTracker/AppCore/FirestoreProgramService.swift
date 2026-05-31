@@ -122,7 +122,7 @@ final class FirestoreProgramService {
         dict["language"] = Locale.current.language.languageCode?.identifier ?? "en"
 
         let document = db.collection("shared_workouts").document()
-        log.info("Uploading shared workout id=\(document.documentID, privacy: .public) by uid=\(user.uid, privacy: .public)")
+        log.info("Uploading shared workout id=\(document.documentID, privacy: .public) by uid=\(user.uid, privacy: .private)")
 
         try await document.setData(dict)
 

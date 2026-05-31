@@ -16,13 +16,19 @@ public enum AILogicError: Error, LocalizedError, Sendable {
     case friendlyError
     case apiError(statusCode: Int, message: String)
     case decodingFailed(Error)
-
+    case rateLimited(retryAfter: TimeInterval?)
     public var errorDescription: String? {
         switch self {
         case .invalidURL:        return "The URL provided is invalid."
         case .invalidResponse:   return "Received an invalid response from the server."
         case .noDataReturned:    return "No data was returned from the server."
         case .invalidData:       return "The AI response was malformed."
+        case .rateLimited(let retryAfter):
+            if let retryAfter {
+                let days = Int(ceil(retryAfter / 86_400))
+                return "You've reached your weekly AI limit. Please try again in about \(days) day(s)."
+            }
+            return "You've reached your weekly AI limit. Please try again later."
         case .friendlyError:     return "Sorry, I got a little confused. Could you rephrase that?"
         case .apiError(let code, let msg):
             return "API Error (\(code)): \(msg)"

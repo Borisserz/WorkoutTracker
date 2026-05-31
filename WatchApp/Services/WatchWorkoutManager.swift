@@ -1,5 +1,3 @@
-
-
 import Foundation
 import HealthKit
 internal import SwiftUI
@@ -7,7 +5,7 @@ import Observation
 
 @Observable
 @MainActor
-final class WatchWorkoutManager: NSObject, Sendable {
+final class WatchWorkoutManager: NSObject {
     let healthStore = HKHealthStore()
     private var session: HKWorkoutSession?
     private var builder: HKLiveWorkoutBuilder?
@@ -29,31 +27,30 @@ final class WatchWorkoutManager: NSObject, Sendable {
     }
 
     func startWorkout() async {
+        self.activeEnergy = 0.0
+        self.heartRate = 0.0
 
-            self.activeEnergy = 0.0
-            self.heartRate = 0.0
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .traditionalStrengthTraining
+        configuration.locationType = .indoor
 
-            let configuration = HKWorkoutConfiguration()
-            configuration.activityType = .traditionalStrengthTraining
-            configuration.locationType = .indoor
+        do {
+            session = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
+            builder = session?.associatedWorkoutBuilder()
+            builder?.dataSource = HKLiveWorkoutDataSource(healthStore: healthStore, workoutConfiguration: configuration)
 
-            do {
-                session = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
-                builder = session?.associatedWorkoutBuilder()
-                builder?.dataSource = HKLiveWorkoutDataSource(healthStore: healthStore, workoutConfiguration: configuration)
+            session?.delegate = self
+            builder?.delegate = self
 
-                session?.delegate = self
-                builder?.delegate = self
+            let startDate = Date()
+            session?.startActivity(with: startDate)
+            try await builder?.beginCollection(at: startDate)
 
-                let startDate = Date()
-                session?.startActivity(with: startDate)
-                try await builder?.beginCollection(at: startDate)
-
-                self.isRunning = true
-            } catch {
-                print("WatchWorkoutManager: Failed to start session - \(error)")
-            }
+            self.isRunning = true
+        } catch {
+            print("WatchWorkoutManager: Failed to start session - \(error)")
         }
+    }
 
     func endWorkout() async {
         guard let session = session, let builder = builder else { return }
@@ -73,6 +70,7 @@ final class WatchWorkoutManager: NSObject, Sendable {
 extension WatchWorkoutManager: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+        // HKWorkoutSessionState is a Sendable enum → safe to capture.
         Task { @MainActor in
             self.isRunning = (toState == .running)
         }
@@ -81,27 +79,42 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDel
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {}
 
     nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder, didCollectDataOf collectedTypes: Set<HKSampleType>) {
+        // Do all HealthKit reads here (nonisolated). Extract only Sendable Doubles
+        // before hopping to the main actor — never capture HKStatistics/HKQuantityType.
+        let hrType = HKQuantityType.quantityType(forIdentifier: .heartRate)
+        let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)
+
+        var newHeartRate: Double?
+        var newEnergy: Double?
+
         for type in collectedTypes {
             guard let quantityType = type as? HKQuantityType else { continue }
             guard let statistics = workoutBuilder.statistics(for: quantityType) else { continue }
 
-            Task { @MainActor in
-                if quantityType == HKQuantityType.quantityType(forIdentifier: .heartRate),
-                   let hr = statistics.mostRecentQuantity()?.doubleValue(for: HKUnit(from: "count/min")) {
+            if quantityType == hrType,
+               let hr = statistics.mostRecentQuantity()?.doubleValue(for: HKUnit(from: "count/min")) {
+                newHeartRate = hr
+            } else if quantityType == energyType,
+                      let energy = statistics.sumQuantity()?.doubleValue(for: .kilocalorie()) {
+                newEnergy = energy
+            }
+        }
 
-                    self.heartRate = hr
+        let hrToSend = newHeartRate
+        let energyToSet = newEnergy
 
-                    let payload = LiveSyncPayload(
-                        action: .updateHeartRate,
-                        workoutID: "",
-                        heartRate: hr
-                    )
-                    WatchSyncManager.shared.sendLiveAction(payload)
-
-                } else if quantityType == HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned),
-                          let energy = statistics.sumQuantity()?.doubleValue(for: .kilocalorie()) {
-                    self.activeEnergy = energy
-                }
+        Task { @MainActor in
+            if let hr = hrToSend {
+                self.heartRate = hr
+                let payload = LiveSyncPayload(
+                    action: .updateHeartRate,
+                    workoutID: "",
+                    heartRate: hr
+                )
+                WatchSyncManager.shared.sendLiveAction(payload)
+            }
+            if let energy = energyToSet {
+                self.activeEnergy = energy
             }
         }
     }

@@ -30,7 +30,7 @@ final class AnonymousAuthBootstrap {
     @discardableResult
     func ensureSignedIn() async throws -> User {
         if let user = Auth.auth().currentUser {
-            log.debug("Already signed in as \(user.uid, privacy: .public) (anonymous: \(user.isAnonymous))")
+            log.debug("Already signed in as \(user.uid, privacy: .private) (anonymous: \(user.isAnonymous))")
             return user
         }
 
@@ -45,7 +45,7 @@ final class AnonymousAuthBootstrap {
         let task = Task<Void, Error> { [log] in
             log.info("Signing in anonymously…")
             let result = try await Auth.auth().signInAnonymously()
-            log.info("Anonymous sign-in OK uid=\(result.user.uid, privacy: .public)")
+            log.info("Anonymous sign-in OK uid=\(result.user.uid, privacy: .private)")
         }
         bootstrapTask = task
 

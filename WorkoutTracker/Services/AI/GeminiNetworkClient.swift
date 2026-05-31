@@ -1,9 +1,10 @@
 import Foundation
 import FirebaseAppCheck
+import FirebaseAuth
 
 // MARK: - Gemini Schema
 
-public enum GeminiSchemaType: String, Codable, Sendable {
+nonisolated public enum GeminiSchemaType: String, Codable, Sendable {
     case object = "OBJECT"
     case array = "ARRAY"
     case string = "STRING"
@@ -12,7 +13,7 @@ public enum GeminiSchemaType: String, Codable, Sendable {
     case boolean = "BOOLEAN"
 }
 
-public final class GeminiSchema: Codable, Sendable {
+nonisolated public final class GeminiSchema: Codable, Sendable {
     let type: GeminiSchemaType
     let properties: [String: GeminiSchema]?
     let items: GeminiSchema?
@@ -34,7 +35,7 @@ public final class GeminiSchema: Codable, Sendable {
 
 // MARK: - Gemini Request / Response
 
-struct GeminiRequest: Codable, Sendable {
+nonisolated struct GeminiRequest: Codable, Sendable {
     struct Part: Codable, Sendable { let text: String }
     struct Content: Codable, Sendable { let role: String; let parts: [Part] }
     struct SystemInstruction: Codable, Sendable { let parts: [Part] }
@@ -49,7 +50,7 @@ struct GeminiRequest: Codable, Sendable {
     let generationConfig: GenerationConfig
 }
 
-private struct GeminiResponse: Codable, Sendable {
+nonisolated private struct GeminiResponse: Codable, Sendable {
     struct Candidate: Codable, Sendable {
         struct Content: Codable, Sendable {
             struct Part: Codable, Sendable { let text: String }
@@ -60,7 +61,7 @@ private struct GeminiResponse: Codable, Sendable {
     let candidates: [Candidate]
 }
 
-// MARK: - Network client 
+// MARK: - Network client
 
 actor GeminiNetworkClient {
     private let urlSession: URLSession
@@ -83,8 +84,14 @@ actor GeminiNetworkClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // App Check (verifies the app/install).
         let token = try await AppCheck.appCheck().token(forcingRefresh: false)
         request.setValue(token.token, forHTTPHeaderField: "X-Firebase-AppCheck")
+
+        // Firebase ID token (identifies the user → server enforces per-user rate limit).
+        let firebaseUser = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
+        let idToken = try await firebaseUser.getIDToken()
+        request.setValue("Bearer \(idToken)", forHTTPHeaderField: "Authorization")
 
         request.httpBody = try JSONEncoder().encode(body)
         return request
@@ -93,9 +100,16 @@ actor GeminiNetworkClient {
     func generateText(from requestBody: GeminiRequest) async throws -> String {
         let request = try await makeRequest(stream: false, body: requestBody)
         let (data, response) = try await urlSession.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+        guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
+
+        if http.statusCode == 429 {
+            let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap { TimeInterval($0) }
+            throw AILogicError.rateLimited(retryAfter: retryAfter)
+        }
+
+        guard (200...299).contains(http.statusCode) else {
             let msg = String(data: data, encoding: .utf8) ?? "Unknown Error"
-            throw AILogicError.apiError(statusCode: (response as? HTTPURLResponse)?.statusCode ?? 500, message: msg)
+            throw AILogicError.apiError(statusCode: http.statusCode, message: msg)
         }
         let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
         guard let text = decoded.candidates.first?.content.parts.first?.text else { throw AILogicError.noDataReturned }
@@ -105,7 +119,14 @@ actor GeminiNetworkClient {
     func streamText(from requestBody: GeminiRequest) async throws -> AsyncThrowingStream<String, Error> {
         let request = try await makeRequest(stream: true, body: requestBody)
         let (bytes, response) = try await urlSession.bytes(for: request)
-        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+        guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
+
+        if http.statusCode == 429 {
+            let retryAfter = http.value(forHTTPHeaderField: "Retry-After").flatMap { TimeInterval($0) }
+            throw AILogicError.rateLimited(retryAfter: retryAfter)
+        }
+
+        guard (200...299).contains(http.statusCode) else {
             throw AILogicError.invalidResponse
         }
         return AsyncThrowingStream { continuation in

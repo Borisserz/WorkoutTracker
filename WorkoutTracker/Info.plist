@@ -2,12 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>NSHealthShareUsageDescription</key>
-    <string>WorkoutTracker reads your health metrics (weight, heart rate, heart rate variability, resting heart rate, sleep, steps, and active energy) to assess recovery, monitor strain on your nervous system, and tailor your training plan more accurately.</string>
-    <key>NSHealthUpdateUsageDescription</key>
-    <string>WorkoutTracker writes your workouts, weight changes, and active energy burned to Apple Health so your full activity history stays in one place.</string>
-    <key>ITSAppUsesNonExemptEncryption</key>
-    <false/>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.healthcare-fitness</string>
     <key>CFBundleDocumentTypes</key>

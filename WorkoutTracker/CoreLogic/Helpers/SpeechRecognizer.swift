@@ -1,5 +1,3 @@
-
-
 import Foundation
 import Speech
 import AVFoundation
@@ -10,6 +8,7 @@ final class SpeechRecognizer: ObservableObject {
     @Published var transcript: String = ""
     @Published var isRecording: Bool = false
     @Published var hasPermission: Bool = false
+    @Published var errorMessage: String?
 
     private var audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
@@ -17,32 +16,50 @@ final class SpeechRecognizer: ObservableObject {
     private let recognizer: SFSpeechRecognizer?
 
     init() {
+        // Follow the device locale instead of forcing ru-RU, so Voice Coach
+        // works for every user. Fall back to the system default, then en-US.
+        self.recognizer = SpeechRecognizer.makeRecognizer()
+    }
 
-        self.recognizer = SFSpeechRecognizer(locale: Locale(identifier: "ru-RU"))
+    private static func makeRecognizer() -> SFSpeechRecognizer? {
+        // SFSpeechRecognizer(locale:) returns nil if the locale is unsupported.
+        if let r = SFSpeechRecognizer(locale: Locale.current) { return r }   // 1) device locale
+        if let r = SFSpeechRecognizer() { return r }                         // 2) system default
+        return SFSpeechRecognizer(locale: Locale(identifier: "en-US"))       // 3) last resort
     }
 
     func requestPermission() {
         SFSpeechRecognizer.requestAuthorization { authStatus in
             Task { @MainActor in
-                if authStatus == .authorized {
-                    self.hasPermission = true
+                self.hasPermission = (authStatus == .authorized)
+                if authStatus != .authorized {
+                    self.errorMessage = "Speech recognition isn't authorized. Enable it in Settings."
                 }
             }
         }
 
         AVAudioSession.sharedInstance().requestRecordPermission { granted in
             Task { @MainActor in
-                if !granted { self.hasPermission = false }
+                if !granted {
+                    self.hasPermission = false
+                    self.errorMessage = "Microphone access is required for Voice Coach."
+                }
             }
         }
     }
 
     func startTranscribing() {
-        guard hasPermission, let recognizer = recognizer, recognizer.isAvailable else {
+        // No recognizer for any supported locale → tell the user, don't fail silently.
+        guard let recognizer, recognizer.isAvailable else {
+            errorMessage = "Speech recognition isn't available on this device for your language."
+            return
+        }
+        guard hasPermission else {
             requestPermission()
             return
         }
 
+        errorMessage = nil
         transcript = ""
         isRecording = true
 
@@ -53,7 +70,7 @@ final class SpeechRecognizer: ObservableObject {
 
             request = SFSpeechAudioBufferRecognitionRequest()
             guard let request = request else { return }
-            request.shouldReportPartialResults = true 
+            request.shouldReportPartialResults = true
 
             let inputNode = audioEngine.inputNode
             let recordingFormat = inputNode.outputFormat(forBus: 0)
@@ -76,6 +93,7 @@ final class SpeechRecognizer: ObservableObject {
             }
         } catch {
             print("Error starting microphone: \(error)")
+            errorMessage = "Couldn't start the microphone. Please try again."
             stopTranscribing()
         }
     }

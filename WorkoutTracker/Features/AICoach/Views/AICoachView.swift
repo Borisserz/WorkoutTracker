@@ -1037,7 +1037,7 @@ struct ProgressAnalysisSheet: View {
     private var allWorkouts: [Workout]
 
     let periods = ["Last 7 days", "Mesocycle (4 weeks)", "Macrocycle (12 weeks))"]
-    let focuses = ["Muscle Imbalances, Growth Leaders]
+    let focuses = ["Muscle Imbalances, Growth Leaders"]
 
     @State private var selectedPeriod = "Mesocycle (4 weeks)"
     @State private var selectedFocus = "Muscle imbalance"
