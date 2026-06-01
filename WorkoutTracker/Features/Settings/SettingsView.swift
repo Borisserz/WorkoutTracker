@@ -182,7 +182,6 @@ struct SettingsView: View {
             }
             .alert(LocalizedStringKey("Clear All Data?"), isPresented: $showClearAllAlert) {
                 Button(LocalizedStringKey("Clear All"), role: .destructive) {
-                    Task { await clearAllWorkouts() }
                 }
                 Button(LocalizedStringKey("Cancel"), role: .cancel) { }
             } message: {

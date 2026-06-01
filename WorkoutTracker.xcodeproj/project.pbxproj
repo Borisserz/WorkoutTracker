@@ -839,6 +839,7 @@
 				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = WorkoutTracker/Info.plist;
@@ -883,6 +884,7 @@
 				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				"EXCLUDED_SOURCE_FILE_NAMES[arch=*]" = TestDataGenerator.swift;
 				GENERATE_INFOPLIST_FILE = YES;
