@@ -10,6 +10,7 @@ struct BodyHeatmapView: View {
     let defaultToBack: Bool
     let userGender: String
     let countLabel: String
+    let showLabels: Bool
 
     @State private var isFrontViewLocal = true
     @State private var selectedMuscle: MuscleGroup? = nil
@@ -32,7 +33,8 @@ struct BodyHeatmapView: View {
         isCompactMode: Bool = false,
         defaultToBack: Bool = false,
         userGender: String = "male",
-        countLabel: String = "ex."
+        countLabel: String = "ex.",
+        showLabels: Bool = true
     ) {
         self.muscleIntensities = muscleIntensities
         self.rawMuscleCounts = rawMuscleCounts
@@ -41,12 +43,12 @@ struct BodyHeatmapView: View {
         self.defaultToBack = defaultToBack
         self.userGender = userGender
         self.countLabel = countLabel
+        self.showLabels = showLabels
     }
 
     private var activeIsFront: Bool {
         isCompactMode ? !defaultToBack : isFrontViewLocal
     }
-
     var body: some View {
         VStack(spacing: 0) {
             if !isCompactMode {
@@ -76,8 +78,10 @@ struct BodyHeatmapView: View {
                     }
                     .drawingGroup()
 
-                    ForEach(currentMuscles.filter { tagsToShow.contains($0.slug) }) { muscle in
-                        drawMuscleTag(muscle, centeringOffset: centeringOffset, scale: scale)
+                    if showLabels {
+                        ForEach(currentMuscles.filter { tagsToShow.contains($0.slug) }) { muscle in
+                            drawMuscleTag(muscle, centeringOffset: centeringOffset, scale: scale)
+                        }
                     }
                 }
                 .frame(width: canvasWidth, height: canvasHeight)
@@ -85,9 +89,8 @@ struct BodyHeatmapView: View {
                 .frame(width: canvasWidth * scale, height: canvasHeight * scale)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.clear)
-
                 .overlay(alignment: .bottom) {
-                    if let muscle = selectedMuscle {
+                    if let muscle = selectedMuscle, !isCompactMode {
                         let locName = NSLocalizedString(muscle.name, comment: "")
                         let badgeColor = activeIsFront ? Color.blue : Color.red
 

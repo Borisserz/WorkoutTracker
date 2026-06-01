@@ -35,7 +35,7 @@ struct RestTimerView: View {
                         } else {
                             Text(timeString(time: timerManager.restTimeRemaining))
                                 .font(.system(size: 56, weight: .bold, design: .monospaced))
-                                .foregroundColor(themeManager.current.primaryText)
+                                .foregroundColor(.primary)
                                 .contentTransition(.numericText())
                                 .animation(.default, value: timerManager.restTimeRemaining)
                         }
@@ -53,7 +53,7 @@ struct RestTimerView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 50)
                                     .background(Color(UIColor.secondarySystemFill))
-                                    .foregroundColor(themeManager.current.primaryText)
+                                    .foregroundColor(.primary)
                                     .cornerRadius(12)
                             }
 
@@ -66,7 +66,7 @@ struct RestTimerView: View {
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 50)
                                     .background(Color(UIColor.secondarySystemFill))
-                                    .foregroundColor(themeManager.current.primaryText)
+                                    .foregroundColor(.primary)
                                     .cornerRadius(12)
                             }
                         }

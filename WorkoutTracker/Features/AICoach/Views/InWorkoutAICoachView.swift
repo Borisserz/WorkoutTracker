@@ -37,7 +37,8 @@ struct InWorkoutAICoachView: View {
                             muscleIntensities: detailViewModel.workoutAnalytics.intensity,
                             isRecoveryMode: false,
                             isCompactMode: true,
-                            userGender: userGender
+                            userGender: userGender,
+                            showLabels: false   
                         )
                         .frame(width: 80, height: 160)
                         .background(Color.white.opacity(0.05))

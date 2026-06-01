@@ -45,7 +45,7 @@ final class AnonymousAuthBootstrap {
         let task = Task<Void, Error> { [log] in
             log.info("Signing in anonymously…")
             let result = try await Auth.auth().signInAnonymously()
-            log.info("Anonymous sign-in OK uid=\(result.user.uid, privacy: .private)")
+            log.info("Anonymous sign-in OK uid=\(result.user.uid, privacy: .public)")
         }
         bootstrapTask = task
 

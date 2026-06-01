@@ -157,7 +157,7 @@ struct HistoryHeader: View {
                     isEditing.toggle()
                 }
             }) {
-                Text(isEditing ? "Done" : "Fix")
+                Text(isEditing ? "Done" : "Edit")
                     .font(.subheadline)
                     .fontWeight(.bold)
                     .padding(.horizontal, 16)

@@ -48,7 +48,7 @@ struct TimerSetupSheet: View {
                     .clipped()
                 }
                 .padding(.horizontal)
-                .background(themeManager.current.surface.cornerRadius(20))
+                .background(Color(UIColor.secondarySystemBackground).cornerRadius(20))
                 .padding(.horizontal, 30)
 
                 Spacer()

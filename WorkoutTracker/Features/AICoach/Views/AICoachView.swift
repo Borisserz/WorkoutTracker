@@ -57,6 +57,7 @@ struct AICoachView: View {
 
     @AppStorage("cnsScore") private var cnsScore: Double = 85.0
     @AppStorage("sleepHours") private var sleepHours: Double = 7.5
+    @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
 
     @StateObject private var speechRecognizer = SpeechRecognizer()
@@ -169,7 +170,7 @@ struct AICoachView: View {
                             MicroMetric(title: "RHR", value: actualRHR != nil ? String(format: "%.0f", actualRHR!) : "--", unit: "bpm", color: .purple)
                             Spacer()
 
-                            MicroMetric(title: "Sleep", value: String(format: "%.1f", sleepHours), unit: "h", color: .orange)
+                            MicroMetric(title: "Sleep", value: hasSleepData ? String(format: "%.1f", sleepHours) : "--", unit: "h", color: .orange)
                         }
                     }
                     .onAppear {
@@ -184,7 +185,10 @@ struct AICoachView: View {
 
                                                 await MainActor.run {
 
-                                                    if let sleep = fetchedSleep { self.sleepHours = sleep }
+                                                    if let sleep = fetchedSleep {
+                                                        self.sleepHours = sleep
+                                                        self.hasSleepData = true
+                                                    }
                                                     self.actualHRV = fetchedHRV
                                                     self.actualRHR = fetchedRHR
 
@@ -774,6 +778,7 @@ struct BestExercisesSheet: View {
         let prCache = dashboard.personalRecordsCache
         let tone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
         let bodyWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+        let appLanguage = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
 
         let relevantExercises = await ExerciseDatabaseService.shared.getRelevantExercisesContext(
             for: muscleGroup.engineName,
@@ -786,7 +791,7 @@ struct BestExercisesSheet: View {
             experienceLevel: difficulty.rawValue,
             favoriteMuscles: [muscleGroup.engineName],
             recentPRs: prCache,
-            language: "Russian",
+            language: appLanguage,
             workoutsThisWeek: 0,
             currentStreak: dashboard.streakCount,
             fatiguedMuscles: [],
@@ -802,7 +807,7 @@ struct BestExercisesSheet: View {
         1. Set "hasWorkout" strictly to true.
         2. Set "workoutTitle" to "Protocol: \(muscleGroup.rawValue)".
         3. Generate exactly 4 or 5 exercises in the "exercises" array. Choose only from the available list.
-        4. "aiMessage": Write an energetic, motivating greeting in Russian.
+        4. "aiMessage": Write an energetic, motivating greeting in \(appLanguage).
         """
         do {
             let response = try await di.aiLogicService.generateWorkoutPlan(userRequest: prompt, userProfile: userContext)
@@ -1441,6 +1446,7 @@ struct ProgressAnalysisSheet: View {
 }
 
 struct RestAnalysisSheet: View {
+    @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage("sleepHours") private var sleepHours: Double = 7.5
     @AppStorage("waterCups") private var waterCups: Int = 4
     @AppStorage("cnsScore") private var cnsScore: Double = 85.0
@@ -1475,8 +1481,14 @@ struct RestAnalysisSheet: View {
                         VStack(alignment: .leading, spacing: 20) {
                             Text("BIOMETRICS").font(.system(size: 12, weight: .black)).foregroundColor(.gray).padding(.horizontal, 24)
                             VStack(spacing: 12) {
-                                HStack { Image(systemName: "moon.zzz.fill").foregroundColor(.purple); Text("Sleep last night").font(.system(size: 16, weight: .medium)).foregroundColor(colorScheme == .dark ? .white : .black); Spacer(); Text(String(format: "%.1f h", sleepHours)).font(.system(size: 18, weight: .bold, design: .rounded).monospacedDigit()).foregroundColor(.purple) }
-                                Slider(value: $sleepHours, in: 3...12, step: 0.5) { _ in HapticManager.shared.selection(); updateCNS() }.tint(.purple)
+                                HStack { Image(systemName: "moon.zzz.fill").foregroundColor(.purple); Text("Sleep last night").font(.system(size: 16, weight: .medium)).foregroundColor(colorScheme == .dark ? .white : .black); Spacer(); Text(hasSleepData ? String(format: "%.1f h", sleepHours) : "— h")
+                                        .font(.system(size: 18, weight: .bold, design: .rounded).monospacedDigit())
+                                        .foregroundColor(.purple).font(.system(size: 18, weight: .bold, design: .rounded).monospacedDigit()).foregroundColor(.purple) }
+                                Slider(value: $sleepHours, in: 3...12, step: 0.5) { _ in
+                                    HapticManager.shared.selection()
+                                    hasSleepData = true
+                                    updateCNS()
+                                }.tint(.purple)
                             }
                             .padding(20)
                             .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
@@ -1521,6 +1533,12 @@ struct RestAnalysisSheet: View {
 
                 VStack { HStack { Text("Recovery").font(.system(size: 32, weight: .black, design: .rounded)).foregroundColor(colorScheme == .dark ? .white : .black); Spacer() }.padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 10) }.background(.regularMaterial)
             }.navigationBarHidden(true)
+                .task {
+                    if let sleep = await HealthKitManager.shared.fetchSleepDuration() {
+                        sleepHours = sleep
+                        hasSleepData = true
+                    }
+                }
         }
     }
     private func updateCNS() { cnsScore = 100 - cnsLoad }
@@ -1623,8 +1641,7 @@ struct BadgeView: View {
     let text: String; let color: Color
     var body: some View { Text(text).font(.system(size: 12, weight: .bold)).foregroundColor(color).padding(.horizontal, 10).padding(.vertical, 6).background(color.opacity(0.15)).cornerRadius(8) }
 }
-
 struct IdentifiableGeneratedEx: Identifiable {
-    let id = UUID()
     let dto: GeneratedExerciseDTO
+    var id: String { dto.name }
 }
