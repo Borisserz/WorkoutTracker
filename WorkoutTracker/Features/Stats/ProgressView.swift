@@ -960,7 +960,8 @@ struct AdvancedStatsSectionView: View {
                                     isRecoveryMode: false,
                                     isCompactMode: true,
                                     defaultToBack: false,
-                                    userGender: userGender
+                                    userGender: userGender,
+                                    showLabels: false
                                 )
                                 .frame(height: 240)
                                 .scaleEffect(0.9)

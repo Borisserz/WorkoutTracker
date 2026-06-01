@@ -127,13 +127,14 @@ struct AITrackerView: View {
 
         @ViewBuilder
     private var liveMusclePiP: some View {
-          BodyHeatmapView(
-              muscleIntensities: engine.liveMuscleTension,
-              isRecoveryMode: false,
-              isCompactMode: true,
-              defaultToBack: isBackExercise,
-              userGender: userGender
-          )
+        BodyHeatmapView(
+            muscleIntensities: engine.liveMuscleTension,
+            isRecoveryMode: false,
+            isCompactMode: true,
+            defaultToBack: isBackExercise,
+            userGender: userGender,
+            showLabels: false
+        )
             .frame(width: 100, height: 220)
             .cornerRadius(16)
             .overlay(

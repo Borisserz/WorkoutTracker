@@ -69,8 +69,10 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
                              activationDidCompleteWith activationState: WCSessionActivationState,
                              error: (any Error)?) {
         let reachable = session.isReachable
-        print("⌚️ activation: \(activationState.rawValue) reachable:\(reachable) error:\(String(describing: error))")
+        let ctx = session.receivedApplicationContext        
+        print("⌚️ activation: \(activationState.rawValue) reachable:\(reachable) ctxKeys:\(ctx.keys)")
         Task { @MainActor in self.isReachable = reachable }
+        if !ctx.isEmpty { handleIncoming(ctx) }
     }
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {

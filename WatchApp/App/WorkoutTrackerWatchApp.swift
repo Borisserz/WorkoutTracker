@@ -10,7 +10,7 @@ struct WorkoutTrackerWatch_Watch_AppApp: App {
             Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
             ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
             AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self,
-            UserGoal.self 
+            UserGoal.self
         ])
 
         let modelConfiguration = ModelConfiguration(
@@ -27,7 +27,9 @@ struct WorkoutTrackerWatch_Watch_AppApp: App {
                 .environment(workoutManager)
                 .modelContainer(sharedModelContainer)
                 .task {
-
+                    #if DEBUG
+                    ScreenshotSeeder.seedIfNeeded(sharedModelContainer.mainContext)
+                    #endif
                     await ExerciseDatabaseService.shared.loadDatabase()
                 }
         }
