@@ -28,8 +28,23 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     }
 
     func requestPresetsFromPhone() {
-        if WCSession.default.isReachable {
-            WCSession.default.sendMessage(["request": "presets"], replyHandler: nil)
+        let session = WCSession.default
+        print("⌚️ requestPresets — state:\(session.activationState.rawValue) reachable:\(session.isReachable)")
+
+        guard session.activationState == .activated else {
+            print("⌚️ ❌ session not activated yet — aborting request")
+            return
+        }
+
+        let message = ["request": "presets"]
+        if session.isReachable {
+            session.sendMessage(message, replyHandler: nil) { error in
+                print("⌚️ sendMessage failed → transferUserInfo fallback: \(error.localizedDescription)")
+                session.transferUserInfo(message)   // guaranteed, queued
+            }
+        } else {
+            print("⌚️ not reachable → transferUserInfo (guaranteed)")
+            session.transferUserInfo(message)        // works on Simulator
         }
     }
 
@@ -47,9 +62,14 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
         }
     }
 
-    nonisolated func session(_ session: WCSession, activationDidCompleteWith state: WCSessionActivationState, error: Error?) {
-        // Read Bool (Sendable) here; never capture the WCSession into the Task.
+    // MARK: - WCSessionDelegate (Watch)
+
+    // REQUIRED on watchOS — this is what satisfies the protocol.
+    nonisolated func session(_ session: WCSession,
+                             activationDidCompleteWith activationState: WCSessionActivationState,
+                             error: (any Error)?) {
         let reachable = session.isReachable
+        print("⌚️ activation: \(activationState.rawValue) reachable:\(reachable) error:\(String(describing: error))")
         Task { @MainActor in self.isReachable = reachable }
     }
 
@@ -59,24 +79,36 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
-        // Extract Data (Sendable) before the Task; never capture [String: Any].
-        let syncData = message["syncPayload"] as? Data
-        let presetsData = message["presetsBatch"] as? Data
+        handleIncoming(message)
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String : Any] = [:]) {
+        handleIncoming(userInfo)
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String : Any]) {
+        handleIncoming(applicationContext)
+    }
+
+    nonisolated private func handleIncoming(_ dict: [String : Any]) {
+        let syncData = dict["syncPayload"] as? Data
+        let presetsData = dict["presetsBatch"] as? Data
 
         Task { @MainActor in
             if let data = syncData,
                let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
-
-                if payload.action == .syncFullState {
-                    NotificationCenter.default.post(name: NSNotification.Name("WatchStateRecoveryEvent"), object: nil, userInfo: ["payload": payload])
-                } else {
-                    NotificationCenter.default.post(name: NSNotification.Name("WatchLiveSyncEvent"), object: nil, userInfo: ["payload": payload])
-                }
+                let name = payload.action == .syncFullState ? "WatchStateRecoveryEvent" : "WatchLiveSyncEvent"
+                NotificationCenter.default.post(name: .init(name), object: nil, userInfo: ["payload": payload])
             }
 
-            if let presetsData,
-               let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
-                await self.savePresetsLocally(dtos)
+            if let presetsData {
+                print("⌚️ got presetsBatch \(presetsData.count) bytes")
+                if let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
+                    print("⌚️ decoded \(dtos.count) presets → saving")
+                    await self.savePresetsLocally(dtos)
+                } else {
+                    print("⌚️ ❌ failed to decode [WorkoutPresetDTO]")
+                }
             }
         }
     }
@@ -84,7 +116,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     private func savePresetsLocally(_ dtos: [WorkoutPresetDTO]) async {
         guard let context = modelContext else { return }
 
-        let fetchDescriptor = FetchDescriptor<WorkoutPreset>()
+        let fetchDescriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
         if let existing = try? context.fetch(fetchDescriptor) {
             for p in existing { context.delete(p) }
         }

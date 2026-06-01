@@ -29,7 +29,19 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     nonisolated func sessionDidDeactivate(_ session: WCSession) {
         session.activate()
     }
-
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String : Any] = [:]) {
+        Task { @MainActor in
+            if let request = userInfo["request"] as? String, request == "presets" {
+                print("📱 got queued presets request (transferUserInfo)")
+                self.sendPresetsToWatch()
+            }
+            if let data = userInfo["guaranteedSyncPayload"] as? Data,
+               let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data),
+               payload.action == .saveToHistory {
+                NotificationCenter.default.post(name: .init("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": payload])
+            }
+        }
+    }
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
         Task { @MainActor in
             if let data = message["syncPayload"] as? Data, let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
@@ -51,15 +63,6 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
         }
     }
 
-    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String : Any] = [:]) {
-        Task { @MainActor in
-            if let data = userInfo["guaranteedSyncPayload"] as? Data,
-               let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data),
-               payload.action == .saveToHistory {
-                NotificationCenter.default.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": payload])
-            }
-        }
-    }
 
     func sendFullActiveStateToWatch() {
            guard let container = modelContainer else { return }
@@ -88,20 +91,24 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
        }
 
     private func sendPresetsToWatch() {
-        guard let container = modelContainer else { return }
+        guard let container = modelContainer else { print("📱 ❌ no modelContainer"); return }
         let context = ModelContext(container)
-
         do {
             let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
             let presets = try context.fetch(descriptor)
             let dtos = presets.map { $0.toDTO() }
             let data = try JSONEncoder().encode(dtos)
+            print("📱 sending \(presets.count) presets (\(data.count) bytes) reachable:\(WCSession.default.isReachable)")
 
+            // Guaranteed, queued — delivers even when isReachable == false (Simulator)
+            WCSession.default.transferUserInfo(["presetsBatch": data])
+
+            // Opportunistic instant path when actually reachable
             if WCSession.default.isReachable {
                 WCSession.default.sendMessage(["presetsBatch": data], replyHandler: nil)
             }
         } catch {
-            print("📱 PhoneWatchManager: Failed to fetch or encode presets: \(error)")
+            print("📱 ❌ fetch/encode presets failed: \(error)")
         }
     }
 }
