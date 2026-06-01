@@ -1,6 +1,6 @@
-
-
 internal import SwiftUI
+
+// MARK: - Model
 
 struct OnboardingItem: Identifiable {
     let id = UUID()
@@ -10,77 +10,118 @@ struct OnboardingItem: Identifiable {
     let color: Color
 }
 
+// MARK: - Root Flow
+
 struct OnboardingFlowView: View {
     @Binding var isOnboardingCompleted: Bool
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(ThemeManager.self) private var themeManager
     @State private var currentTab = 0
+    @State private var didFinish = false
     @AppStorage("userName") private var userName = ""
     @AppStorage("userBodyWeight") private var userBodyWeight = 0.0
 
+    private let stepCount = 4
+
     var body: some View {
         ZStack {
-            themeManager.current.background.ignoresSafeArea()
+            OnboardingBackground()
 
-            TabView(selection: $currentTab) {
-                OnboardingIntroView(onNext: { nextStep() }).tag(0)
-                UserDataInputView(name: $userName, weight: $userBodyWeight, onNext: { nextStep() }).tag(1)
-                PermissionsView(onNext: { nextStep() }).tag(2)
-                TutorialChoiceView(onFinish: { completeOnboarding() }).tag(3)
+            VStack(spacing: 0) {
+                StepProgressBar(current: currentTab, total: stepCount)
+                    .padding(.horizontal, 30)
+                    .padding(.top, 12)
+
+                TabView(selection: $currentTab) {
+                    OnboardingIntroView(onNext: nextStep).tag(0)
+                    UserDataInputView(name: $userName, weight: $userBodyWeight, onNext: nextStep).tag(1)
+                    PermissionsView(onNext: nextStep).tag(2)
+                    TutorialChoiceView(onFinish: completeOnboarding).tag(3)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .animation(.spring(response: 0.45, dampingFraction: 0.85), value: currentTab)
+                .interactiveDismissDisabled()
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .animation(.easeInOut, value: currentTab)
-            .interactiveDismissDisabled()
         }
+        .sensoryFeedback(.success, trigger: didFinish)
     }
 
-    private func nextStep() { withAnimation { currentTab += 1 } }
+    private func nextStep() {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { currentTab += 1 }
+    }
+
     private func completeOnboarding() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        didFinish.toggle()
         withAnimation { isOnboardingCompleted = true }
     }
 }
 
+// MARK: - Step 1: Intro
+
 struct OnboardingIntroView: View {
     var onNext: () -> Void
     @Environment(ThemeManager.self) private var themeManager
-    let items: [OnboardingItem] = [
-        OnboardingItem(image: "dumbbell.fill", title: "Track Workouts", description: "Log your sets, reps, and weights with ease. Support for supersets included.", color: .blue),
-        OnboardingItem(image: "figure.mind.and.body", title: "Muscle Recovery", description: "Smart heatmap tracks your muscle fatigue and suggests recovery times.", color: .red),
-        OnboardingItem(image: "chart.xyaxis.line", title: "Analyze Progress", description: "Visualize your gains with detailed charts and personal records.", color: .purple)
-    ]
     @State private var slideIndex = 0
 
+    private let items: [OnboardingItem] = [
+        OnboardingItem(image: "dumbbell.fill",
+                       title: "Track Workouts",
+                       description: "Log your sets, reps, and weights with ease. Support for supersets included.",
+                       color: .blue),
+        OnboardingItem(image: "figure.mind.and.body",
+                       title: "Muscle Recovery",
+                       description: "Smart heatmap tracks your muscle fatigue and suggests recovery times.",
+                       color: .red),
+        OnboardingItem(image: "chart.xyaxis.line",
+                       title: "Analyze Progress",
+                       description: "Visualize your gains with detailed charts and personal records.",
+                       color: .purple)
+    ]
+
+    private var isLastSlide: Bool { slideIndex == items.count - 1 }
+
     var body: some View {
-        VStack {
+        VStack(spacing: 0) {
             TabView(selection: $slideIndex) {
-                ForEach(0..<items.count, id: \.self) { index in
-                    VStack(spacing: 20) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    VStack(spacing: 24) {
                         Spacer()
-                        Image(systemName: items[index].image)
-                            .resizable().scaledToFit().frame(height: 120).foregroundColor(items[index].color)
-                            .padding().background(Circle().fill(items[index].color.opacity(0.1)).frame(width: 220, height: 220))
-                        Text(items[index].title).font(.system(size: 28, weight: .bold, design: .rounded)).padding(.top, 20)
-                        Text(items[index].description).multilineTextAlignment(.center).foregroundColor(themeManager.current.secondaryText).padding(.horizontal, 30)
+                        OnboardingIconBadge(systemName: item.image, tint: item.color)
+                        VStack(spacing: 12) {
+                            Text(item.title)
+                                .font(.system(size: 30, weight: .bold, design: .rounded))
+                                .foregroundStyle(themeManager.current.primaryText)
+                            Text(item.description)
+                                .font(.system(size: 16, design: .rounded))
+                                .foregroundStyle(themeManager.current.secondaryText)
+                                .multilineTextAlignment(.center)
+                                .lineSpacing(3)
+                                .padding(.horizontal, 32)
+                        }
                         Spacer()
                     }
                     .tag(index)
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            .indexViewStyle(.page(backgroundDisplayMode: .always))
+            .tabViewStyle(.page(indexDisplayMode: .never))
 
-            Button(action: {
-                if slideIndex < items.count - 1 { withAnimation { slideIndex += 1 } } else { onNext() }
-            }) {
-                let buttonTitle: LocalizedStringKey = slideIndex == items.count - 1 ? "Let's Set Up Profile" : "Next"
-                Text(buttonTitle).font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12)
+            PageDots(current: slideIndex, total: items.count, tint: themeManager.current.primaryAccent)
+                .padding(.bottom, 24)
+
+            Button {
+                if isLastSlide { onNext() }
+                else { withAnimation(.spring) { slideIndex += 1 } }
+            } label: {
+                Text(isLastSlide ? "Let's Set Up Profile" : "Next")
             }
-            .padding(.horizontal, 30).padding(.bottom, 50)
+            .buttonStyle(OnboardingPrimaryButtonStyle())
+            .padding(.horizontal, 30)
+            .padding(.bottom, 40)
         }
     }
 }
+
+// MARK: - Step 2: User Data
 
 struct UserDataInputView: View {
     @Binding var name: String
@@ -90,7 +131,7 @@ struct UserDataInputView: View {
 
     private enum Field { case name, weight }
     @FocusState private var focusedField: Field?
-    @State private var weightString: String = ""
+    @State private var weightString = ""
     @State private var isNameInvalid = false
     @State private var isWeightInvalid = false
     @State private var shakeTriggerName = 0
@@ -99,49 +140,51 @@ struct UserDataInputView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                VStack(spacing: 25) {
+                VStack(spacing: 28) {
                     Spacer(minLength: 20)
-                    Text(LocalizedStringKey("About You")).font(.largeTitle).bold()
-                    Text(LocalizedStringKey("This helps us personalize your profile and calculate stats.")).foregroundColor(themeManager.current.secondaryText).multilineTextAlignment(.center).padding(.horizontal)
 
-                    VStack(spacing: 20) {
-                        VStack(alignment: .leading) {
-                            Text("Your Name").font(.caption).foregroundColor(isNameInvalid ? .red : .gray)
+                    VStack(spacing: 10) {
+                        Text("About You")
+                            .font(.system(size: 32, weight: .bold, design: .rounded))
+                            .foregroundStyle(themeManager.current.primaryText)
+                        Text("This helps us personalize your profile and calculate stats.")
+                            .font(.system(size: 16, design: .rounded))
+                            .foregroundStyle(themeManager.current.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+
+                    VStack(spacing: 18) {
+                        field(title: "Your Name",
+                              isInvalid: isNameInvalid,
+                              shake: shakeTriggerName) {
                             TextField(LocalizedStringKey("Champion"), text: $name)
-                                .font(.title3).padding()
-                                .background(isNameInvalid ? Color.red.opacity(0.1) : themeManager.current.surface)
-                                .cornerRadius(12)
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(isNameInvalid ? Color.red : Color.clear, lineWidth: 1))
                                 .focused($focusedField, equals: .name)
                                 .submitLabel(.next)
                                 .onChange(of: name) { _, _ in isNameInvalid = false }
                                 .onSubmit { focusedField = .weight }
                         }
-                        .modifier(ShakeEffectModifier(trigger: shakeTriggerName)) 
 
-                        VStack(alignment: .leading) {
-                            Text("Body Weight (\(UnitsManager.shared.weightUnitString()))").font(.caption).foregroundColor(isWeightInvalid ? .red : .gray)
+                        field(title: LocalizedStringKey("Body Weight (\(UnitsManager.shared.weightUnitString()))"),
+                              isInvalid: isWeightInvalid,
+                              shake: shakeTriggerWeight) {
                             TextField("75", text: $weightString)
-                                .font(.title3).keyboardType(.decimalPad).padding()
-                                .background(isWeightInvalid ? Color.red.opacity(0.1) : themeManager.current.surface)
-                                .cornerRadius(12)
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(isWeightInvalid ? Color.red : Color.clear, lineWidth: 1))
+                                .keyboardType(.decimalPad)
                                 .focused($focusedField, equals: .weight)
                                 .onChange(of: weightString) { _, newValue in
                                     isWeightInvalid = false
                                     if let val = Double(newValue.replacingOccurrences(of: ",", with: ".")) { weight = val }
                                 }
                         }
-                        .modifier(ShakeEffectModifier(trigger: shakeTriggerWeight)) 
                     }
                     .padding(.horizontal, 30)
 
                     Spacer(minLength: 20)
 
-                    Button(action: validateAndContinue) {
-                        Text("Continue").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12)
-                    }
-                    .padding(.horizontal, 30).padding(.bottom, 50)
+                    Button("Continue", action: validateAndContinue)
+                        .buttonStyle(OnboardingPrimaryButtonStyle())
+                        .padding(.horizontal, 30)
+                        .padding(.bottom, 40)
                 }
                 .frame(minHeight: geometry.size.height)
             }
@@ -150,8 +193,36 @@ struct UserDataInputView: View {
         .sensoryFeedback(.error, trigger: shakeTriggerName)
         .sensoryFeedback(.error, trigger: shakeTriggerWeight)
         .onAppear { weightString = LocalizationHelper.shared.formatInteger(weight) }
+        .scrollDismissesKeyboard(.interactively)
         .onTapGesture { focusedField = nil }
-        .toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("Done") { focusedField = nil }.bold() } }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { focusedField = nil }.bold()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func field<Content: View>(title: LocalizedStringKey,
+                                      isInvalid: Bool,
+                                      shake: Int,
+                                      @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(isInvalid ? Color.red : themeManager.current.secondaryText)
+            content()
+                .font(.title3)
+                .padding()
+                .background(isInvalid ? Color.red.opacity(0.1) : themeManager.current.surface,
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(isInvalid ? Color.red : Color.clear, lineWidth: 1)
+                )
+        }
+        .modifier(ShakeEffectModifier(trigger: shake))
     }
 
     private func validateAndContinue() {
@@ -162,11 +233,224 @@ struct UserDataInputView: View {
         isNameInvalid = !validName
         isWeightInvalid = !validWeight
 
-        if validName && validWeight { onNext() }
-        else {
+        if validName && validWeight {
+            onNext()
+        } else {
             if !validName { shakeTriggerName += 1 }
             if !validWeight { shakeTriggerWeight += 1 }
         }
+    }
+}
+
+// MARK: - Step 3: Permissions
+
+struct PermissionsView: View {
+    var onNext: () -> Void
+    @Environment(ThemeManager.self) private var themeManager
+    @State private var notificationsAllowed = false
+
+    var body: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            OnboardingIconBadge(systemName: "bell.badge.fill",
+                                tint: themeManager.current.secondaryMidTone)
+            VStack(spacing: 12) {
+                Text("Stay on Track")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(themeManager.current.primaryText)
+                Text("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam.")
+                    .font(.system(size: 16, design: .rounded))
+                    .foregroundStyle(themeManager.current.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+
+            Button { requestNotifications() } label: {
+                HStack(spacing: 8) {
+                    Text(notificationsAllowed ? "Allowed" : "Enable Notifications")
+                    if notificationsAllowed { Image(systemName: "checkmark") }
+                }
+            }
+            .buttonStyle(OnboardingPrimaryButtonStyle(fill: notificationsAllowed ? .green : nil))
+            .disabled(notificationsAllowed)
+            .padding(.horizontal, 50)
+            .padding(.top, 8)
+
+            Spacer()
+
+            Button("Continue", action: onNext)
+                .buttonStyle(OnboardingPrimaryButtonStyle())
+                .padding(.horizontal, 30)
+                .padding(.bottom, 40)
+        }
+    }
+
+    private func requestNotifications() {
+        NotificationManager.shared.requestPermission { granted in
+            DispatchQueue.main.async {
+                withAnimation { self.notificationsAllowed = granted }
+            }
+        }
+    }
+}
+
+// MARK: - Step 4: Tutorial Choice
+
+struct TutorialChoiceView: View {
+    var onFinish: () -> Void
+    @Environment(TutorialManager.self) var tutorialManager
+    @Environment(ThemeManager.self) private var themeManager
+
+    var body: some View {
+        VStack(spacing: 28) {
+            Spacer()
+            OnboardingIconBadge(systemName: "graduationcap.fill", tint: .purple)
+            VStack(spacing: 12) {
+                Text("Quick Tutorial")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(themeManager.current.primaryText)
+                Text("Would you like a quick interactive tour to learn how to create workouts and track progress?")
+                    .font(.system(size: 16, design: .rounded))
+                    .foregroundStyle(themeManager.current.secondaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+            }
+            Spacer()
+            VStack(spacing: 14) {
+                Button("Start Tutorial") { tutorialManager.reset(); onFinish() }
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
+                Button("No, I'll figure it out") { tutorialManager.complete(); onFinish() }
+                    .buttonStyle(OnboardingSecondaryButtonStyle())
+            }
+            .padding(.horizontal, 30)
+            .padding(.bottom, 36)
+        }
+    }
+}
+
+// MARK: - Reusable Components
+
+struct OnboardingIconBadge: View {
+    let systemName: String
+    var tint: Color
+    var size: CGFloat = 190
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(tint.opacity(0.14))
+                .frame(width: size, height: size)
+            Circle()
+                .strokeBorder(tint.opacity(0.25), lineWidth: 1)
+                .frame(width: size, height: size)
+            Image(systemName: systemName)
+                .font(.system(size: size * 0.4, weight: .semibold))
+                .foregroundStyle(
+                    LinearGradient(colors: [tint, tint.opacity(0.7)],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+                .shadow(color: tint.opacity(0.4), radius: 16, y: 6)
+        }
+    }
+}
+
+struct OnboardingBackground: View {
+    @Environment(ThemeManager.self) private var themeManager
+    @State private var animate = false
+
+    var body: some View {
+        ZStack {
+            themeManager.current.background
+            Circle()
+                .fill(themeManager.current.primaryAccent.opacity(0.30))
+                .frame(width: 320).blur(radius: 90)
+                .offset(x: animate ? -120 : -70, y: -260)
+            Circle()
+                .fill(themeManager.current.secondaryAccent.opacity(0.22))
+                .frame(width: 300).blur(radius: 100)
+                .offset(x: animate ? 120 : 70, y: 280)
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            withAnimation(.easeInOut(duration: 7).repeatForever(autoreverses: true)) { animate = true }
+        }
+    }
+}
+
+struct PageDots: View {
+    let current: Int
+    let total: Int
+    var tint: Color
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ForEach(0..<total, id: \.self) { i in
+                Capsule()
+                    .fill(i == current ? tint : Color.gray.opacity(0.3))
+                    .frame(width: i == current ? 22 : 8, height: 8)
+                    .animation(.spring(response: 0.35, dampingFraction: 0.7), value: current)
+            }
+        }
+    }
+}
+
+struct StepProgressBar: View {
+    let current: Int
+    let total: Int
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.gray.opacity(0.2))
+                Capsule()
+                    .fill(LinearGradient(colors: [.purple, .blue],
+                                         startPoint: .leading, endPoint: .trailing))
+                    .frame(width: geo.size.width * progress)
+                    .animation(.spring(response: 0.45, dampingFraction: 0.85), value: current)
+            }
+        }
+        .frame(height: 6)
+    }
+
+    private var progress: CGFloat {
+        guard total > 1 else { return 1 }
+        return CGFloat(current + 1) / CGFloat(total)
+    }
+}
+
+// MARK: - Button Styles
+
+struct OnboardingPrimaryButtonStyle: ButtonStyle {
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.isEnabled) private var isEnabled
+    var fill: Color? = nil
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 17, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(fill ?? themeManager.current.primaryAccent,
+                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.6)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+            .sensoryFeedback(.impact(weight: .medium), trigger: configuration.isPressed) { _, pressed in pressed }
+    }
+}
+
+struct OnboardingSecondaryButtonStyle: ButtonStyle {
+    @Environment(ThemeManager.self) private var themeManager
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 16, weight: .medium, design: .rounded))
+            .foregroundStyle(themeManager.current.secondaryAccent)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .opacity(configuration.isPressed ? 0.6 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 
@@ -183,59 +467,6 @@ struct ShakeEffectModifier: ViewModifier {
                 CubicKeyframe(-10, duration: 0.05)
                 CubicKeyframe(0, duration: 0.05)
             }
-        }
-    }
-}
-
-struct PermissionsView: View {
-    var onNext: () -> Void
-    @Environment(ThemeManager.self) private var themeManager
-    @State private var notificationsAllowed = false
-
-    var body: some View {
-        VStack(spacing: 30) {
-            Spacer()
-            Image(systemName: "bell.badge.fill").font(.system(size: 80)).foregroundColor(themeManager.current.secondaryMidTone).padding().background(Circle().fill(themeManager.current.secondaryMidTone.opacity(0.1)).frame(width: 150, height: 150))
-            Text("Stay on Track").font(.largeTitle).bold()
-            Text("Enable notifications to use the Rest Timer and get streak reminders. We promise not to spam.").multilineTextAlignment(.center).foregroundColor(themeManager.current.secondaryText).padding(.horizontal)
-
-            Button { requestNotifications() } label: {
-                HStack { Text(notificationsAllowed ? "Allowed" : "Enable Notifications"); if notificationsAllowed { Image(systemName: "checkmark") } }
-                .fontWeight(.semibold).padding().frame(maxWidth: .infinity).background(notificationsAllowed ? Color.green : themeManager.current.secondaryMidTone).foregroundColor(.white).cornerRadius(12)
-            }
-            .padding(.horizontal, 50).disabled(notificationsAllowed)
-
-            Spacer()
-            Button(action: onNext) { Text("Continue").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12) }
-            .padding(.horizontal, 30).padding(.bottom, 50)
-        }
-    }
-
-    private func requestNotifications() {
-
-        NotificationManager.shared.requestPermission { granted in
-            DispatchQueue.main.async { withAnimation { self.notificationsAllowed = granted } }
-        }
-    }
-}
-
-struct TutorialChoiceView: View {
-    var onFinish: () -> Void
-    @Environment(TutorialManager.self) var tutorialManager
-    @Environment(ThemeManager.self) private var themeManager
-
-    var body: some View {
-        VStack(spacing: 30) {
-            Spacer()
-            Image(systemName: "graduationcap.fill").font(.system(size: 80)).foregroundColor(.purple).padding().background(Circle().fill(Color.purple.opacity(0.1)).frame(width: 150, height: 150))
-            Text("Quick Tutorial").font(.largeTitle).bold()
-            Text("Would you like a quick interactive tour to learn how to create workouts and track progress?").multilineTextAlignment(.center).foregroundColor(themeManager.current.secondaryText).padding(.horizontal)
-            Spacer()
-            VStack(spacing: 15) {
-                Button { tutorialManager.reset(); onFinish() } label: { Text("Start Tutorial").font(.headline).foregroundColor(.white).frame(maxWidth: .infinity).padding().background(themeManager.current.primaryAccent).cornerRadius(12).shadow(radius: 5) }
-                Button { tutorialManager.complete(); onFinish() } label: { Text("No, I'll figure it out").font(.headline).foregroundColor(themeManager.current.secondaryAccent).padding() }
-            }
-            .padding(.horizontal, 30).padding(.bottom, 40)
         }
     }
 }

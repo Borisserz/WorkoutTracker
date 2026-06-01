@@ -39,7 +39,7 @@ struct AIChatBotView: View {
                                     chatBubble(for: msg)
                                 }
 
-                                if viewModel.isGenerating {
+                                if isWaitingForFirstToken {
                                     AILoadingIndicator()
                                         .padding(.horizontal)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -182,44 +182,46 @@ struct AIChatBotView: View {
 
     @ViewBuilder
     private func chatBubble(for msg: AIChatMessage) -> some View {
-        HStack(alignment: .bottom) {
-            if msg.isUser { Spacer(minLength: 40) }
+        if !msg.isUser && msg.text.isEmpty && msg.proposedWorkout == nil {
+            EmptyView()
+        } else {
+            HStack(alignment: .bottom) {
+                if msg.isUser { Spacer(minLength: 40) }
 
-            VStack(alignment: msg.isUser ? .trailing : .leading, spacing: 8) {
+                VStack(alignment: msg.isUser ? .trailing : .leading, spacing: 8) {
 
-                Group {
-                    if msg.isUser {
-                        Text(msg.text)
-                    } else {
-
-                        TypewriterTextView(fullText: msg.text, isAnimating: msg.isAnimating)
-                    }
-                }
-                .padding()
-
-                .background(msg.isUser ? themeManager.current.primaryAccent.opacity(0.8) : Color.white.opacity(0.1))
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-                .shadow(color: msg.isUser ? themeManager.current.primaryAccent.opacity(0.5) : .black.opacity(0.2), radius: 5)
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.2), lineWidth: msg.isUser ? 0 : 1))
-
-                if let workout = msg.proposedWorkout {
-                    ProposedWorkoutCardView(workout: workout) {
-                        Task {
-                            await viewModel.acceptWorkout(dto: workout) { newWorkout in
-                                di.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
-                                di.appState.selectedTab = 2 
-                                dismiss()
-                            }
+                    Group {
+                        if msg.isUser {
+                            Text(msg.text)
+                        } else {
+                            TypewriterTextView(fullText: msg.text, isAnimating: msg.isAnimating)
                         }
                     }
-                    .padding(.top, 4)
-                }
-            }
+                    .padding()
+                    .background(msg.isUser ? themeManager.current.primaryAccent.opacity(0.8) : Color.white.opacity(0.1))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 20))
+                    .shadow(color: msg.isUser ? themeManager.current.primaryAccent.opacity(0.5) : .black.opacity(0.2), radius: 5)
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.2), lineWidth: msg.isUser ? 0 : 1))
 
-            if !msg.isUser { Spacer(minLength: 40) }
+                    if let workout = msg.proposedWorkout {
+                        ProposedWorkoutCardView(workout: workout) {
+                            Task {
+                                await viewModel.acceptWorkout(dto: workout) { newWorkout in
+                                    di.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
+                                    di.appState.selectedTab = 2
+                                    dismiss()
+                                }
+                            }
+                        }
+                        .padding(.top, 4)
+                    }
+                }
+
+                if !msg.isUser { Spacer(minLength: 40) }
+            }
+            .padding(.horizontal)
         }
-        .padding(.horizontal)
     }
 
     private func toggleDictation() {
@@ -237,6 +239,13 @@ struct AIChatBotView: View {
         }
     }
 
+    private var isWaitingForFirstToken: Bool {
+        guard viewModel.isGenerating else { return false }
+        if let last = viewModel.chatHistory.last, !last.isUser, !last.text.isEmpty {
+            return false   
+        }
+        return true
+    }
     private func sendMessage() {
         if speechRecognizer.isRecording {
             speechRecognizer.stopTranscribing()

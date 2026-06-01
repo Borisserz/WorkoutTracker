@@ -194,6 +194,9 @@ struct TopStatsIslandsView: View {
 
     @State private var activeTooltip: String? = nil
 
+    // Живой пульс из Apple Health — тот же монитор, что и на экране Overview
+    @State private var vitals = OverviewView.VitalsMonitor()
+
     var body: some View {
         HStack(spacing: 12) {
             StatIslandWithTooltip(
@@ -205,7 +208,7 @@ struct TopStatsIslandsView: View {
                 tooltipDesc: "Great time under load.",
                 statusText: nil,
                 statusColor: nil,
-                activeTooltip: $activeTooltip 
+                activeTooltip: $activeTooltip
             )
 
             let tons = Double(listViewModel.calculatedAvgVolume) / 1000.0
@@ -218,23 +221,37 @@ struct TopStatsIslandsView: View {
                 tooltipDesc: "Your total average tonnage.",
                 statusText: nil,
                 statusColor: nil,
-                activeTooltip: $activeTooltip 
+                activeTooltip: $activeTooltip
             )
 
+            // Живой пульс вместо захардкоженных 142
+            let bpm = Int(vitals.currentBPM)
             StatIslandWithTooltip(
                 icon: "heart.fill",
                 title: "Pulse",
-                value: "142",
+                value: bpm > 0 ? "\(bpm)" : "--",
                 color: .red,
-                tooltipTitle: "Average heart rate",
-                tooltipDesc: "Your pulse is normal..",
-                statusText: "The ideal indicator",
-                statusColor: .green,
-                activeTooltip: $activeTooltip 
+                tooltipTitle: "Current heart rate",
+                tooltipDesc: bpm > 0
+                    ? "Live from Apple Health · \(vitals.timeAgoText)"
+                    : "Waiting for heart rate data…",
+                statusText: bpm > 0 ? pulseStatus(bpm).text : nil,
+                statusColor: bpm > 0 ? pulseStatus(bpm).color : nil,
+                activeTooltip: $activeTooltip
             )
         }
         .padding(.horizontal, 20)
         .zIndex(30)
+        .onAppear { vitals.startMonitoring() }
+    }
+
+    private func pulseStatus(_ bpm: Int) -> (text: String, color: Color) {
+        switch bpm {
+        case ..<60:      return ("Resting", .green)
+        case 60..<100:   return ("Normal", .green)
+        case 100..<140:  return ("Elevated", .orange)
+        default:         return ("High", .red)
+        }
     }
 }
 

@@ -43,15 +43,7 @@ struct NewOnboardingView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(red: 0.18, green: 0.22, blue: 0.38),
-                         Color(red: 0.35, green: 0.25, blue: 0.45)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
-
-            FloatingGlassShapes()
+            AuroraBackground()
 
             WelcomeStepView(
                 onAppleRequest: { request in
@@ -85,7 +77,6 @@ struct NewOnboardingView: View {
         }
     }
 
-
     @MainActor
     private func authenticate(_ action: @escaping () async throws -> Void) async {
         isAuthenticating = true
@@ -101,6 +92,8 @@ struct NewOnboardingView: View {
     }
 }
 
+// MARK: - Welcome step (чистый заголовок + единые кнопки)
+
 private struct WelcomeStepView: View {
     let onAppleRequest: (ASAuthorizationAppleIDRequest) -> Void
     let onAppleCompletion: (Result<ASAuthorization, Error>) -> Void
@@ -108,153 +101,185 @@ private struct WelcomeStepView: View {
     let onGuestTap: () -> Void
     var isAuthenticating: Bool
 
-    @State private var buttonPulse = false
+    private let controlWidth: CGFloat = 320
+    private let controlHeight: CGFloat = 54
+    private let corner: CGFloat = 16
 
     var body: some View {
-        VStack(alignment: .center, spacing: 12) {
-            Spacer(minLength: 8)
-            VStack(alignment: .center, spacing: 10) {
-                ZStack(alignment: .center) {
-                    Text("Welcome 👋").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(.white).blur(radius: 6).opacity(0.6)
-                    Text("Welcome👋").font(.system(size: 28, weight: .bold, design: .rounded)).foregroundStyle(.white).shadow(color: .white.opacity(0.3), radius: 2)
-                }.minimumScaleFactor(0.7).lineLimit(1)
-                Text("Your body is a reflection of your discipline. Keep up the progress, beat your own records and reach a new level. Push your limits, no excuses.")
-                    .font(.system(size: 14, weight: .medium)).lineSpacing(3).multilineTextAlignment(.center).foregroundStyle(.white.opacity(0.9)).padding(.horizontal)
-            }
+        VStack(spacing: 0) {
             Spacer()
+
+            VStack(spacing: 16) {
+                Image(systemName: "figure.strengthtraining.traditional")
+                    .font(.system(size: 52, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(colors: [.white, .cyan],
+                                       startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .shadow(color: .cyan.opacity(0.4), radius: 20, y: 8)
+
+                Text("Welcome 👋")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+
+                Text("Your body is a reflection of your discipline. Keep pushing your limits — no excuses.")
+                    .font(.system(size: 15, weight: .medium))
+                    .lineSpacing(3)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(.white.opacity(0.75))
+                    .padding(.horizontal, 28)
+            }
+
+            Spacer()
+
             VStack(spacing: 12) {
                 SignInWithAppleButton(.continue,
                                       onRequest: onAppleRequest,
                                       onCompletion: onAppleCompletion)
                     .signInWithAppleButtonStyle(.white)
-                    .frame(maxWidth: 300)
-                    .frame(height: 50)
-                    .clipShape(Capsule())
-                    .scaleEffect(buttonPulse ? 1.02 : 1.0)
+                    .frame(maxWidth: controlWidth)
+                    .frame(height: controlHeight)
+                    .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
 
-                SignInButton(title: "Continue with Google", subtitle: "Log in via Google",
-                             icon: "globe", accent: Color.white.opacity(0.15),
-                             textColor: .white, action: onGoogleTap)
-
-                Button(action: onGuestTap) {
-                    Text("Stay a guest").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white.opacity(0.85)).frame(maxWidth: 300).padding(.vertical, 14)
-                        .overlay(Capsule().stroke(LinearGradient(colors: [.white.opacity(0.4), .clear], startPoint: .top, endPoint: .bottom), lineWidth: 1))
+                Button(action: onGoogleTap) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "globe")
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Continue with Google")
+                    }
                 }
+                .buttonStyle(GlassAuthButtonStyle(width: controlWidth, height: controlHeight, corner: corner))
+
+                Button("Stay a guest", action: onGuestTap)
+                    .buttonStyle(GhostAuthButtonStyle(width: controlWidth, height: controlHeight, corner: corner))
             }
             .disabled(isAuthenticating)
+            .opacity(isAuthenticating ? 0.6 : 1)
             .overlay { if isAuthenticating { ProgressView().tint(.white) } }
-            .onAppear { withAnimation(.easeInOut(duration: 2).repeatForever(autoreverses: true)) { buttonPulse = true } }
+            .padding(.bottom, 24)
         }
-        .padding(.horizontal, 20).padding(.vertical, 16)
+        .padding(.horizontal, 24)
     }
 }
 
-private struct SignInButton: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let accent: Color
-    let textColor: Color
-    let action: () -> Void
+private struct GlassAuthButtonStyle: ButtonStyle {
+    var width: CGFloat
+    var height: CGFloat
+    var corner: CGFloat
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 16, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white)
+            .frame(maxWidth: width)
+            .frame(height: height)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: corner, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .strokeBorder(.white.opacity(0.18), lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+private struct GhostAuthButtonStyle: ButtonStyle {
+    var width: CGFloat
+    var height: CGFloat
+    var corner: CGFloat
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 15, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white.opacity(0.85))
+            .frame(maxWidth: width)
+            .frame(height: height)
+            .overlay(
+                RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .strokeBorder(.white.opacity(0.22), lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+// MARK: - Премиальный фон вместо 3D-гантелей
+
+private struct AuroraBackground: View {
+    @State private var animate = false
+
+    private struct Orb: Identifiable {
+        let id = UUID()
+        let color: Color
+        let size: CGFloat
+        let from: CGSize
+        let to: CGSize
+    }
+
+    private let orbs: [Orb] = [
+        .init(color: .purple, size: 320, from: .init(width: -120, height: -260), to: .init(width: -60,  height: -200)),
+        .init(color: .blue,   size: 300, from: .init(width:  140, height: -110), to: .init(width:  90,  height:  -50)),
+        .init(color: .cyan,   size: 280, from: .init(width:  -80, height:  260), to: .init(width: -140, height:  200))
+    ]
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle().fill(textColor.opacity(0.15)).frame(width: 32, height: 32)
-                    Image(systemName: icon).font(.system(size: 15, weight: .semibold)).foregroundStyle(textColor)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.system(size: 13, weight: .bold)).lineLimit(1).shadow(color: .black.opacity(0.2), radius: 1, x: 0, y: 1)
-                    Text(subtitle).font(.system(size: 10, weight: .medium)).opacity(0.8).lineLimit(1)
-                }
-                Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).opacity(0.5)
+        ZStack {
+            LinearGradient(
+                colors: [Color(red: 0.10, green: 0.11, blue: 0.20),
+                         Color(red: 0.20, green: 0.16, blue: 0.34)],
+                startPoint: .top, endPoint: .bottom
+            )
+            ForEach(orbs) { orb in
+                Circle()
+                    .fill(orb.color.opacity(0.35))
+                    .frame(width: orb.size, height: orb.size)
+                    .blur(radius: 90)
+                    .offset(animate ? orb.to : orb.from)
             }
-            .foregroundStyle(textColor).padding(.horizontal, 20).padding(.vertical, 12).frame(maxWidth: 300)
-            .background(.ultraThinMaterial).clipShape(Capsule())
-            .overlay(Capsule().stroke(LinearGradient(colors: [.white.opacity(0.5), .white.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5))
-            .shadow(color: .black.opacity(0.12), radius: 10, x: 0, y: 5)
+        }
+        .ignoresSafeArea()
+        .onAppear {
+            withAnimation(.easeInOut(duration: 9).repeatForever(autoreverses: true)) { animate = true }
         }
     }
 }
 
 private struct GuestWarningView: View {
-    let onStayGuest: () -> Void; let onSignIn: () -> Void
+    let onStayGuest: () -> Void
+    let onSignIn: () -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Log in as a guest?").font(.system(size: 24, weight: .bold, design: .rounded)).foregroundStyle(.white)
             Text("If you stay as a guest, your training data will not be saved in the cloud.").font(.system(size: 13)).foregroundStyle(.white.opacity(0.86))
             Text("Why is it better to register:").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
-            VStack(alignment: .leading, spacing: 6) { bullet("Saving progress in the cloud"); bullet("Sync with iPad"); bullet("Smart Tips") }
+            VStack(alignment: .leading, spacing: 6) {
+                bullet("Saving progress in the cloud")
+                bullet("Sync with iPad")
+                bullet("Smart Tips")
+            }
             Spacer(minLength: 8)
             HStack(spacing: 12) {
-                Button(action: onStayGuest) { Text("Guest").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).padding(.vertical, 12).background(Color.white.opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12)) }
-                Button(action: onSignIn) { Text("Enter").font(.system(size: 14, weight: .bold)).foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 12).background(LinearGradient(colors: [.white, Color(white: 0.9)], startPoint: .top, endPoint: .bottom)).clipShape(RoundedRectangle(cornerRadius: 12)) }
+                Button(action: onStayGuest) {
+                    Text("Guest").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white).frame(maxWidth: .infinity).padding(.vertical, 12).background(Color.white.opacity(0.15)).clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                Button(action: onSignIn) {
+                    Text("Enter").font(.system(size: 14, weight: .bold)).foregroundStyle(.black).frame(maxWidth: .infinity).padding(.vertical, 12).background(LinearGradient(colors: [.white, Color(white: 0.9)], startPoint: .top, endPoint: .bottom)).clipShape(RoundedRectangle(cornerRadius: 12))
+                }
             }
-        }.padding(24)
+        }
+        .padding(24)
     }
-    private func bullet(_ text: String) -> some View { HStack(alignment: .top, spacing: 8) { Circle().fill(Color.cyan).frame(width: 4, height: 4).padding(.top, 6); Text(text).font(.system(size: 13)).foregroundStyle(.white.opacity(0.92)) } }
+
+    private func bullet(_ text: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Circle().fill(Color.cyan).frame(width: 4, height: 4).padding(.top, 6)
+            Text(text).font(.system(size: 13)).foregroundStyle(.white.opacity(0.92))
+        }
+    }
 }
 
-
-
-
-private struct FloatingGlassShapes: View {
-    @State private var moveX = false; @State private var moveY = false; @State private var floatZ = false
-    var body: some View {
-        ZStack {
-            Circle().fill(Color.purple.opacity(0.35)).frame(width: 300, height: 300).blur(radius: 60).offset(x: moveX ? 150 : -100, y: moveY ? -250 : 50)
-            HyperRealisticBarbell(accentColor: .blue).scaleEffect(floatZ ? 0.4 : 0.55).blur(radius: floatZ ? 5 : 3).rotationEffect(.degrees(-25)).rotation3DEffect(.degrees(moveX ? 3 : -3), axis: (x: 1, y: 0.2, z: 0)).offset(x: moveX ? -120 : -50, y: moveY ? -240 : -160).opacity(0.7)
-            HyperRealisticDumbbell(accentColor: .cyan).scaleEffect(floatZ ? 0.65 : 0.85).rotationEffect(.degrees(20)).rotation3DEffect(.degrees(moveY ? 4 : -4), axis: (x: 0.5, y: 0.5, z: 0)).offset(x: moveY ? 120 : 190, y: moveX ? -100 : -30).shadow(color: .black.opacity(0.4), radius: 20, x: -10, y: 15)
-            HyperRealisticBarbell(accentColor: .purple).scaleEffect(floatZ ? 0.8 : 1.0).rotationEffect(.degrees(15)).rotation3DEffect(.degrees(moveX ? 5 : -5), axis: (x: 1, y: 0, z: 0)).offset(x: moveX ? 10 : 80, y: moveY ? 180 : 260).shadow(color: .black.opacity(0.5), radius: 30, x: -15, y: 25)
-            HyperRealisticDumbbell(accentColor: .pink).scaleEffect(floatZ ? 1.0 : 1.25).rotationEffect(.degrees(70)).rotation3DEffect(.degrees(moveY ? -4 : 4), axis: (x: 1, y: 0.2, z: 0)).offset(x: moveY ? -140 : -220, y: moveX ? 40 : 120).shadow(color: .black.opacity(0.6), radius: 35, x: 15, y: 25)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 7.3).repeatForever(autoreverses: true)) { moveX = true }
-            withAnimation(.easeInOut(duration: 9.7).repeatForever(autoreverses: true)) { moveY = true }
-            withAnimation(.easeInOut(duration: 11.1).repeatForever(autoreverses: true)) { floatZ = true }
-        }
-    }
-}
-private struct MassivePlate3D: View {
-    var width: CGFloat; var height: CGFloat; var color: Color; var isBarbell: Bool
-    var body: some View {
-        ZStack {
-            Capsule().fill(Color.black.opacity(0.85)).frame(width: width, height: height).offset(x: -24, y: 4)
-            Capsule().fill(LinearGradient(colors: [.black.opacity(0.9), color.opacity(0.3), .black.opacity(0.9)], startPoint: .top, endPoint: .bottom)).frame(width: width, height: height).offset(x: -12, y: 2)
-            Capsule().fill(LinearGradient(colors: [color.opacity(0.6), color, color.opacity(0.7), .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)).frame(width: width, height: height).overlay(Capsule().stroke(LinearGradient(colors: [.white.opacity(0.95), .clear, .black.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2))
-            Capsule().fill(LinearGradient(colors: [.black.opacity(0.8), color.opacity(0.3), .white.opacity(0.3)], startPoint: .top, endPoint: .bottom)).frame(width: width * 0.75, height: height * 0.85)
-            if isBarbell { ZStack { Capsule().fill(LinearGradient(colors: [.black, .white, .gray, .black], startPoint: .top, endPoint: .bottom)).frame(width: width * 0.5, height: height * 0.25).overlay(Capsule().stroke(Color.black, lineWidth: 1.5)); Capsule().fill(Color.black).frame(width: width * 0.25, height: height * 0.12) } }
-        }
-    }
-}
-private struct HyperRealisticDumbbell: View {
-    var accentColor: Color
-    var body: some View {
-        ZStack {
-            Capsule().fill(LinearGradient(colors: [.black, .white, .gray, .black, .black], startPoint: .top, endPoint: .bottom)).frame(width: 220, height: 32).overlay(Capsule().stroke(LinearGradient(colors: [.white.opacity(0.8), .clear, .black.opacity(0.9)], startPoint: .top, endPoint: .bottom), lineWidth: 2))
-            Capsule().fill(Color.black.opacity(0.8)).frame(width: 14, height: 44).offset(x: -55)
-            Capsule().fill(Color.black.opacity(0.8)).frame(width: 14, height: 44).offset(x: 55)
-            HStack(spacing: 16) { MassivePlate3D(width: 44, height: 130, color: accentColor, isBarbell: false); MassivePlate3D(width: 48, height: 145, color: accentColor, isBarbell: false) }.offset(x: -90)
-            HStack(spacing: 16) { MassivePlate3D(width: 48, height: 145, color: accentColor, isBarbell: false); MassivePlate3D(width: 44, height: 130, color: accentColor, isBarbell: false) }.offset(x: 90)
-            Capsule().fill(LinearGradient(colors: [.white, .gray, .black], startPoint: .top, endPoint: .bottom)).frame(width: 18, height: 40).offset(x: -135)
-            Capsule().fill(LinearGradient(colors: [.white, .gray, .black], startPoint: .top, endPoint: .bottom)).frame(width: 18, height: 40).offset(x: 135)
-        }
-    }
-}
-private struct HyperRealisticBarbell: View {
-    var accentColor: Color
-    var body: some View {
-        ZStack {
-            Capsule().fill(LinearGradient(colors: [.black, .gray, .white, .white, .gray, .black, .black], startPoint: .top, endPoint: .bottom)).frame(width: 480, height: 22).overlay(Capsule().stroke(Color.white.opacity(0.6), lineWidth: 1.5))
-            Capsule().fill(LinearGradient(colors: [.black, .gray, .white, .gray, .black], startPoint: .top, endPoint: .bottom)).frame(width: 120, height: 28).offset(x: -170)
-            Capsule().fill(LinearGradient(colors: [.black, .gray, .white, .gray, .black], startPoint: .top, endPoint: .bottom)).frame(width: 120, height: 28).offset(x: 170)
-            HStack(spacing: 12) { Capsule().fill(LinearGradient(colors: [.white, .gray, .black], startPoint: .top, endPoint: .bottom)).frame(width: 18, height: 46); MassivePlate3D(width: 32, height: 180, color: accentColor, isBarbell: true); MassivePlate3D(width: 32, height: 180, color: Color.cyan, isBarbell: true); MassivePlate3D(width: 26, height: 120, color: Color.pink, isBarbell: true); Capsule().fill(LinearGradient(colors: [.white, .black], startPoint: .top, endPoint: .bottom)).frame(width: 20, height: 38) }.offset(x: -150)
-            HStack(spacing: 12) { Capsule().fill(LinearGradient(colors: [.white, .black], startPoint: .top, endPoint: .bottom)).frame(width: 20, height: 38); MassivePlate3D(width: 26, height: 120, color: Color.pink, isBarbell: true); MassivePlate3D(width: 32, height: 180, color: Color.cyan, isBarbell: true); MassivePlate3D(width: 32, height: 180, color: accentColor, isBarbell: true); Capsule().fill(LinearGradient(colors: [.white, .gray, .black], startPoint: .top, endPoint: .bottom)).frame(width: 18, height: 46) }.offset(x: 150)
-        }
-    }
-}
+// MARK: - God Mode (без изменений)
 
 struct GodModeUserMetrics {
     var age: Int = 25
@@ -269,15 +294,23 @@ enum GodModeActivityType: String, CaseIterable {
     case light = "Light movement"
     case active = "A charged motor"
     case beast = "Cyborg Mode"
-    
+
     var emoji: String {
         switch self {
-        case .none: return "😶"; case .office: return "👨‍💻"; case .light: return "🚶‍♂️"; case .active: return "⚡️"; case .beast: return "🦍"
+        case .none: return "😶"
+        case .office: return "👨‍💻"
+        case .light: return "🚶‍♂️"
+        case .active: return "⚡️"
+        case .beast: return "🦍"
         }
     }
     var description: String {
         switch self {
-        case .none: return ""; case .office: return "We sit at the table, minimum steps"; case .light: return "Warm-ups and 1-2 workouts"; case .active: return "Sports 3-4 times a week"; case .beast: return "Daily body loads"
+        case .none: return ""
+        case .office: return "We sit at the table, minimum steps"
+        case .light: return "Warm-ups and 1-2 workouts"
+        case .active: return "Sports 3-4 times a week"
+        case .beast: return "Daily body loads"
         }
     }
 }
@@ -289,15 +322,14 @@ struct OnboardingGodMode: View {
     @State private var step: Step = .welcome
     @State private var metrics = GodModeUserMetrics()
 
-    
     var body: some View {
         ZStack {
             Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
-            
+
             if step == .welcome || step == .metrics || step == .activity {
                 GodModeAnimatedBackground()
             }
-            
+
             VStack {
                 switch step {
                 case .welcome:
@@ -313,7 +345,7 @@ struct OnboardingGodMode: View {
             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: step)
         }
     }
-    
+
     private var pushTransition: AnyTransition {
         .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity))
     }
@@ -367,13 +399,17 @@ struct GodModeMetricsScreen: View {
 }
 
 struct GodModeWheelColumn: View {
-    let title: String; let range: ClosedRange<Int>; let suffix: String
+    let title: String
+    let range: ClosedRange<Int>
+    let suffix: String
     @Binding var selection: Int
     var body: some View {
         VStack(spacing: -10) {
             Text(title).font(.system(size: 14, weight: .bold)).foregroundStyle(.white.opacity(0.5)).padding(.bottom, 10)
             Picker(title, selection: $selection) {
-                ForEach(range, id: \.self) { value in Text("\(value) \(suffix)").font(.system(size: 20, weight: .semibold, design: .rounded)).foregroundStyle(.white).tag(value) }
+                ForEach(range, id: \.self) { value in
+                    Text("\(value) \(suffix)").font(.system(size: 20, weight: .semibold, design: .rounded)).foregroundStyle(.white).tag(value)
+                }
             }.pickerStyle(.wheel)
         }.frame(maxWidth: .infinity)
     }
@@ -454,7 +490,6 @@ struct GodModeFinishScreen: View {
 
             Color.white.ignoresSafeArea().opacity(flashWhite ? 1 : 0)
 
-            // Skip control — the warp sequence must never be forced (Guideline 4.0 / 2.1).
             if isJumping && !hasCompleted {
                 VStack {
                     HStack {
@@ -478,7 +513,7 @@ struct GodModeFinishScreen: View {
             }
         }
         .onAppear { HapticManager.playSuccess(); withAnimation(.spring()) { animateUI = true } }
-        .onDisappear { warpTask?.cancel() }   // никакие колбэки не выстрелят на исчезнувшем экране
+        .onDisappear { warpTask?.cancel() }
     }
 
     private func startExtendedHyperspaceJump() {
@@ -488,28 +523,27 @@ struct GodModeFinishScreen: View {
         withAnimation(.easeIn(duration: 3.5)) { isWarping = true }
         engine.startWarp()
 
-        // Single cancellable timeline instead of 6 detached asyncAfter callbacks.
         warpTask = Task { @MainActor in
             do {
                 try await Task.sleep(for: .seconds(2.5))
                 HapticManager.playLightImpact()
-                try await Task.sleep(for: .seconds(2.0))   // +4.5
+                try await Task.sleep(for: .seconds(2.0))
                 HapticManager.playMediumImpact()
-                try await Task.sleep(for: .seconds(2.0))   // +6.5
+                try await Task.sleep(for: .seconds(2.0))
                 HapticManager.playHeavyImpact()
-                try await Task.sleep(for: .seconds(1.3))   // +7.8
+                try await Task.sleep(for: .seconds(1.3))
                 HapticManager.playHeavyImpact()
                 withAnimation(.easeIn(duration: 0.2)) { flashWhite = true }
-                try await Task.sleep(for: .seconds(0.4))   // +8.2
+                try await Task.sleep(for: .seconds(0.4))
                 finishWarp()
             } catch {
-                // Cancelled (Skip tapped or screen dismissed) — nothing else to do.
+                // Cancelled (Skip tapped or screen dismissed)
             }
         }
     }
 
     private func finishWarp() {
-        guard !hasCompleted else { return }   // ровно один раз
+        guard !hasCompleted else { return }
         hasCompleted = true
         warpTask?.cancel()
         warpTask = nil
@@ -519,18 +553,27 @@ struct GodModeFinishScreen: View {
 
 class WarpEngine {
     struct Star { var x, y, z, pz: Double; var color: Color }
-    var stars: [Star] = []; var lastTime: TimeInterval = 0; var speed: Double = 0.2; var isWarping = false
+    var stars: [Star] = []
+    var lastTime: TimeInterval = 0
+    var speed: Double = 0.2
+    var isWarping = false
+
     init() {
         let colors: [Color] = [.white, .cyan, .blue, .white.opacity(0.8)]
-        for _ in 0..<500 { stars.append(Star(x: Double.random(in: -2000...2000), y: Double.random(in: -2000...2000), z: Double.random(in: 10...2000), pz: 0, color: colors.randomElement()!)) }
+        for _ in 0..<500 {
+            stars.append(Star(x: Double.random(in: -2000...2000), y: Double.random(in: -2000...2000), z: Double.random(in: 10...2000), pz: 0, color: colors.randomElement()!))
+        }
     }
     func startWarp() { isWarping = true }
     func update(time: TimeInterval) {
-        if lastTime == 0 { lastTime = time }; let dt = time - lastTime; lastTime = time
+        if lastTime == 0 { lastTime = time }
+        let dt = time - lastTime; lastTime = time
         if isWarping { speed = min(speed * 1.01, 220.0) }
         for i in 0..<stars.count {
             stars[i].pz = stars[i].z; stars[i].z -= speed * dt * 60
-            if stars[i].z <= 1 { stars[i].x = Double.random(in: -2000...2000); stars[i].y = Double.random(in: -2000...2000); stars[i].z = 2000; stars[i].pz = 2000 }
+            if stars[i].z <= 1 {
+                stars[i].x = Double.random(in: -2000...2000); stars[i].y = Double.random(in: -2000...2000); stars[i].z = 2000; stars[i].pz = 2000
+            }
         }
     }
     func draw(context: inout GraphicsContext, size: CGSize) {
@@ -547,13 +590,32 @@ class WarpEngine {
 }
 
 struct GodModeButton: View {
-    let title: String; let action: () -> Void; var isDisabled: Bool = false
-    var body: some View { Button(action: action) { Text(title).font(.system(size: 17, weight: .bold)).foregroundStyle(isDisabled ? Color.white.opacity(0.3) : .black).frame(maxWidth: .infinity).padding(.vertical, 16).background(isDisabled ? AnyShapeStyle(Color.white.opacity(0.1)) : AnyShapeStyle(LinearGradient(colors: [.white, Color(white: 0.85)], startPoint: .top, endPoint: .bottom))).clipShape(RoundedRectangle(cornerRadius: 16)).shadow(color: isDisabled ? .clear : .white.opacity(0.3), radius: 10, y: 5) }.disabled(isDisabled).buttonStyle(BouncyButtonStyle()) }
+    let title: String
+    let action: () -> Void
+    var isDisabled: Bool = false
+    var body: some View {
+        Button(action: action) {
+            Text(title).font(.system(size: 17, weight: .bold)).foregroundStyle(isDisabled ? Color.white.opacity(0.3) : .black).frame(maxWidth: .infinity).padding(.vertical, 16).background(isDisabled ? AnyShapeStyle(Color.white.opacity(0.1)) : AnyShapeStyle(LinearGradient(colors: [.white, Color(white: 0.85)], startPoint: .top, endPoint: .bottom))).clipShape(RoundedRectangle(cornerRadius: 16)).shadow(color: isDisabled ? .clear : .white.opacity(0.3), radius: 10, y: 5)
+        }.disabled(isDisabled).buttonStyle(BouncyButtonStyle())
+    }
 }
+
 struct BouncyButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View { configuration.label.scaleEffect(configuration.isPressed ? 0.95 : 1.0).opacity(configuration.isPressed ? 0.9 : 1.0).animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed) }
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.scaleEffect(configuration.isPressed ? 0.95 : 1.0).opacity(configuration.isPressed ? 0.9 : 1.0).animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+    }
 }
+
 struct GodModeAnimatedBackground: View {
-    @State private var move1 = false; @State private var move2 = false
-    var body: some View { ZStack { Circle().fill(Color.cyan.opacity(0.15)).frame(width: 300, height: 300).blur(radius: 80).offset(x: move1 ? 100 : -100, y: move1 ? -150 : 0); Circle().fill(Color.purple.opacity(0.15)).frame(width: 350, height: 350).blur(radius: 100).offset(x: move2 ? -150 : 150, y: move2 ? 200 : 50) }.onAppear { withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) { move1 = true }; withAnimation(.easeInOut(duration: 10).repeatForever(autoreverses: true)) { move2 = true } } }
+    @State private var move1 = false
+    @State private var move2 = false
+    var body: some View {
+        ZStack {
+            Circle().fill(Color.cyan.opacity(0.15)).frame(width: 300, height: 300).blur(radius: 80).offset(x: move1 ? 100 : -100, y: move1 ? -150 : 0)
+            Circle().fill(Color.purple.opacity(0.15)).frame(width: 350, height: 350).blur(radius: 100).offset(x: move2 ? -150 : 150, y: move2 ? 200 : 50)
+        }.onAppear {
+            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) { move1 = true }
+            withAnimation(.easeInOut(duration: 10).repeatForever(autoreverses: true)) { move2 = true }
+        }
+    }
 }
