@@ -67,7 +67,7 @@ struct FeedbackView: View {
 
             Section(header: Text(LocalizedStringKey("Alternative Contact"))) {
                 Button {
-                    if let url = URL(string: "mailto:support@workouttracker.app?subject=Feedback") {
+                    if let url = URL(string: "mailto:supportworkouttracker@gmail.com?subject=Feedback") {
                         UIApplication.shared.open(url)
                     }
                 } label: {
@@ -179,7 +179,7 @@ struct MailComposeView: UIViewControllerRepresentable {
         composer.mailComposeDelegate = context.coordinator
         composer.setSubject(subject)
         composer.setMessageBody(messageBody, isHTML: false)
-        composer.setToRecipients(["support@workouttracker.app"])
+        composer.setToRecipients(["supportworkouttracker@gmail.com"])
 
         composer.overrideUserInterfaceStyle = .unspecified
 
