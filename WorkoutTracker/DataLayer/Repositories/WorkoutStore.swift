@@ -31,6 +31,7 @@ actor WorkoutStore: WorkoutStoreProtocol {
     func createWorkoutFromAI(generated: GeneratedWorkoutDTO) async throws -> PersistentIdentifier {
         let newWorkout = Workout(title: generated.title, date: Date())
         newWorkout.icon = "brain.head.profile"
+        newWorkout.source = "ai_builder"
         modelContext.insert(newWorkout)
 
         for exDTO in generated.exercises {
@@ -78,6 +79,7 @@ actor WorkoutStore: WorkoutStoreProtocol {
 
             let newWorkout = Workout(title: title, date: Date(), exercises: exercises)
             newWorkout.icon = isAIGenerated ? "brain.head.profile" : "figure.run"
+            newWorkout.source = isAIGenerated ? "ai_builder" : (presetID != nil ? "template" : "manual")
             modelContext.insert(newWorkout)
             try modelContext.save()
             return newWorkout.persistentModelID
@@ -165,6 +167,23 @@ actor WorkoutStore: WorkoutStoreProtocol {
     func updateExercise(exerciseID: PersistentIdentifier, newEffort: Int) async throws {
         guard let exercise = modelContext.model(for: exerciseID) as? Exercise else { throw WorkoutRepositoryError.modelNotFound }
         exercise.effort = newEffort
+        try modelContext.save()
+    }
+
+    func updateExercise(exerciseID: PersistentIdentifier, isCompleted: Bool) async throws {
+        guard let exercise = modelContext.model(for: exerciseID) as? Exercise else { throw WorkoutRepositoryError.modelNotFound }
+        exercise.isCompleted = isCompleted
+        try modelContext.save()
+    }
+
+    func updateSet(setID: PersistentIdentifier, reps: Int?, weight: Double?, time: Int?, distance: Double?, type: SetType?, isCompleted: Bool?) async throws {
+        guard let set = modelContext.model(for: setID) as? WorkoutSet else { throw WorkoutRepositoryError.modelNotFound }
+        if let reps = reps { set.reps = reps }
+        if let weight = weight { set.weight = weight }
+        if let time = time { set.time = time }
+        if let distance = distance { set.distance = distance }
+        if let type = type { set.type = type }
+        if let isCompleted = isCompleted { set.isCompleted = isCompleted }
         try modelContext.save()
     }
 
@@ -577,10 +596,10 @@ actor WorkoutStore: WorkoutStoreProtocol {
         try modelContext.save()
     }
 
-    func fetchLatestWorkout() async throws -> Workout? {
+    func fetchLatestWorkoutID() async throws -> PersistentIdentifier? {
             var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
             descriptor.fetchLimit = 1
-            return try modelContext.fetch(descriptor).first
+            return try modelContext.fetch(descriptor).first?.persistentModelID
         }
 }
 extension WorkoutStore {

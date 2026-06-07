@@ -89,8 +89,11 @@ struct AddNewExerciseView: View {
                     Image(systemName: "dumbbell.fill")
                         .foregroundColor(themeManager.current.primaryAccent)
 
-                    TextField(LocalizedStringKey("Exercise Name"), text: $name)
+                    TextField(LocalizedStringKey("Exercise Name"), text: $name, axis: .vertical)
                         .font(.headline)
+                        .lineLimit(1...3)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
                         .submitLabel(.done)
                 }

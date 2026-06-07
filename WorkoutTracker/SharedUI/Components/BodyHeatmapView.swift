@@ -14,6 +14,7 @@ struct BodyHeatmapView: View {
 
     @State private var isFrontViewLocal = true
     @State private var selectedMuscle: MuscleGroup? = nil
+    @State private var animatedIntensities: [String: Int] = [:]
 
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) var colorScheme
@@ -123,6 +124,16 @@ struct BodyHeatmapView: View {
         .onChange(of: activeIsFront) { _, _ in
             withAnimation(.spring()) { selectedMuscle = nil }
         }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.0)) {
+                animatedIntensities = muscleIntensities
+            }
+        }
+        .onChange(of: muscleIntensities) { _, newValues in
+            withAnimation(.easeInOut(duration: 0.5)) {
+                animatedIntensities = newValues
+            }
+        }
     }
 
     func drawGhostMuscle(_ muscle: MuscleGroup, centeringOffset: CGFloat) -> some View {
@@ -135,7 +146,7 @@ struct BodyHeatmapView: View {
         let isSelected = selectedMuscle?.id == muscle.id
         let themeColor = activeIsFront ? Color.blue : Color.red
 
-        let intensity = muscleIntensities[muscle.slug]
+        let intensity = animatedIntensities[muscle.slug]
 
         var fillColor: Color = colorScheme == .dark ? Color.white.opacity(0.12) : Color.gray.opacity(0.15)
 
@@ -200,7 +211,7 @@ struct BodyHeatmapView: View {
 
         let isSelected = selectedMuscle?.id == muscle.id
         let themeColor = activeIsFront ? Color.blue : Color.red
-        let percent = isRecoveryMode ? (muscleIntensities[muscle.slug] ?? 100) : nil
+        let percent = isRecoveryMode ? (animatedIntensities[muscle.slug] ?? 100) : nil
 
         return InteractiveMuscleTag(
             name: muscle.name,

@@ -3,12 +3,14 @@
 internal import SwiftUI
 import SwiftData
 import Observation
+import FirebaseAuth
 
 enum WorkoutDetailEvent: Equatable {
     case showPR(PRLevel)
     case showShareSheet(Any)
     case showEmptyAlert
-    case showAchievement(Achievement)
+    case showXPBreakdownPopup(XPBreakdown, Bool, Int, String, [Achievement])
+    case showAchievements([Achievement])
     case showSwapExercise(Exercise)
     case workoutSuccessfullyFinished
 
@@ -109,12 +111,11 @@ final class WorkoutDetailViewModel {
                 completedSetsCount: totalCompletedSets
             )
 
-        Task {
-                   await PhoneWatchManager.shared.sendFullActiveStateToWatch()
-               }
-        }
+        PhoneWatchManager.shared.sendFullActiveStateToWatch()
+    }
 
     func addExercise(_ newExercise: Exercise, workout: Workout, scrollToExerciseId: @escaping (UUID) -> Void) {
+        TrackingManager.shared.track(.exerciseAdded(exerciseName: newExercise.name, source: "manual"))
         newExercise.workout = workout
 
         if let context = workout.modelContext {
@@ -181,19 +182,32 @@ final class WorkoutDetailViewModel {
         }
 
     func deleteEmptyWorkout(workoutID: PersistentIdentifier) async {
+           TrackingManager.shared.track(.workoutCancelled(durationMinutes: 0, exercisesDone: 0, reason: "empty_or_user_cancelled"))
            await workoutService.deleteWorkout(byID: workoutID)
        }
 
-    func startTimerIfNeeded(shouldStartTimer: Bool, suggestedDuration: Int?) {
+    func startTimerIfNeeded(shouldStartTimer: Bool, suggestedDuration: Int?, exerciseName: String, upcomingWeight: String?) {
         guard shouldStartTimer else { return }
         NotificationCenter.default.post(
             name: NSNotification.Name("ForceStartRestTimer"),
             object: nil,
-            userInfo: ["duration": suggestedDuration as Any]
+            userInfo: [
+                "duration": suggestedDuration as Any,
+                "exerciseName": exerciseName,
+                "upcomingWeight": upcomingWeight as Any
+            ]
         )
     }
 
     func handleSetCompleted(set: WorkoutSet, isLast: Bool, exerciseName: String, workout: Workout, weightUnit: String) {
+        if set.isCompleted {
+            TrackingManager.shared.track(.setLogged(
+                exerciseName: exerciseName,
+                weight: set.weight ?? 0.0,
+                reps: set.reps ?? 0,
+                setType: set.type == .warmup ? "warmup" : "normal"
+            ))
+        }
         updateWorkoutAnalytics(for: workout)
 
         if set.isCompleted, let context = workout.modelContext {
@@ -222,7 +236,7 @@ final class WorkoutDetailViewModel {
                           tier: .diamond,
                           progress: "100%"
                       )
-                      self.activeEvent = .showAchievement(goalAchieved)
+                      self.activeEvent = .showAchievements([goalAchieved])
                   }
               }
 
@@ -337,50 +351,69 @@ final class WorkoutDetailViewModel {
     }
 
     private func commitFinishWorkout(workout: Workout, progressManager: ProgressManager) async {
-            withAnimation {
-                self.isShowingSnackbar = false
-            }
+        withAnimation { self.isShowingSnackbar = false }
 
-            workoutService.stopLiveActivity()
-            await PhoneWatchManager.shared.sendFinishWorkoutToWatch(workoutID: workout.id.uuidString)
-            progressManager.addXP(for: workout)
-            try? workout.modelContext?.save()
+        workoutService.stopLiveActivity()
+        PhoneWatchManager.shared.sendFinishWorkoutToWatch(workoutID: workout.id.uuidString)
+        
+        var prCount = 0
+        for exercise in workout.exercises {
+            if calculatePRLevel(for: exercise, prCache: self.personalRecordsCache) != nil {
+                prCount += 1
+            }
+        }
+        
+        let oldLevel = progressManager.level
+        let xpBreakdown = progressManager.addXP(for: workout, prCount: prCount)
+        let newLevel = progressManager.level
+        let isLevelUp = newLevel > oldLevel
+        let newTitle = progressManager.currentTitle
+
+        try? workout.modelContext?.save()
 
         let workoutID = workout.persistentModelID
-                    let wTitle = workout.title
-                    let wStart = workout.date
-                    let wEnd = workout.endTime ?? Date()
-                    let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
+        let wTitle = workout.title
+        let wStart = workout.date
+        let wEnd = workout.endTime ?? Date()
+        let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
 
-                    let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
-                    let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
+        TrackingManager.shared.track(.workoutCompleted(
+            durationMinutes: wDuration / 60,
+            totalVolume: workout.totalStrengthVolume,
+            exercisesCompleted: workout.exercises.filter { $0.isCompleted }.count,
+            setsCompleted: workout.exercises.flatMap { $0.setsList }.filter { $0.isCompleted }.count,
+            avgEffort: workout.effortPercentage,
+            source: workout.source ?? "manual"
+        ))
 
-                    Task {
-                        do {
-                            try await HealthKitManager.shared.saveWorkout(
-                                title: wTitle,
-                                startDate: wStart,
-                                endDate: wEnd,
-                                durationSeconds: wDuration,
-                                calories: burnedCalories 
-                            )
-                        } catch {
-                            print("❌ ViewModel: HealthKit call error- \(error)")
-                        }
-                    }
+        let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+        let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
 
+        Task {
             do {
-                let result = try await analyticsService.finishWorkoutAndCalculateAchievements(workoutID: workoutID)
+                try await HealthKitManager.shared.saveWorkout(title: wTitle, startDate: wStart, endDate: wEnd, durationSeconds: wDuration, calories: burnedCalories)
+            } catch {
+                print("❌ ViewModel: HealthKit call error- \(error)")
+            }
+        }
 
+        let container = analyticsService.modelContainer
+        // Compute dominantMuscle here while still on @MainActor
+        let dominantMuscle = NotificationManager.getDominantGroup(for: workout)
+        Task.detached {
+            do {
+                let result = try await self.analyticsService.finishWorkoutAndCalculateAchievements(workoutID: workoutID)
                 var goalAchievementToShow: Achievement? = nil
-                if let context = workout.modelContext {
-                    let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
-                    let activeGoals = (try? context.fetch(goalDesc)) ?? []
+                let bgContext = ModelContext(container)
+                
+                let goalDesc = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false })
+                let activeGoals = (try? bgContext.fetch(goalDesc)) ?? []
 
+                if let currentWorkout = bgContext.model(for: workoutID) as? Workout {
                     for goal in activeGoals {
                         var goalAchieved = false
                         if goal.type == .strength, let exName = goal.exerciseName {
-                            let maxLifted = workout.exercises
+                            let maxLifted = currentWorkout.exercises
                                 .filter { $0.name == exName && $0.type == .strength }
                                 .flatMap { $0.setsList }
                                 .filter { $0.isCompleted && $0.type != .warmup && ($0.reps ?? 0) >= goal.targetReps }
@@ -389,7 +422,7 @@ final class WorkoutDetailViewModel {
                             if maxLifted >= goal.targetValue { goalAchieved = true }
                         } else if goal.type == .consistency {
                             let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime != nil }, sortBy: [SortDescriptor(\.date, order: .reverse)])
-                            let allWorkouts = (try? context.fetch(desc)) ?? []
+                            let allWorkouts = (try? bgContext.fetch(desc)) ?? []
                             let workoutDates = allWorkouts.map { $0.date }
                             let maxRestDays = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) > 0 ? UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue) : 2
                             let currentStreak = StreakCalculator.calculate(from: workoutDates, maxRestDays: maxRestDays)
@@ -407,43 +440,76 @@ final class WorkoutDetailViewModel {
                             )
                         }
                     }
-                    try? context.save()
+                    try? bgContext.save()
                 }
 
-                let bgContext = ModelContext(analyticsService.modelContainer)
+                await MainActor.run {
+                    self.appState.isInsideActiveWorkout = false
+                    self.appState.returnToActiveWorkoutId = nil
+
+                    // Show Guest Sign-Up Prompt once after the first workout
+                    if Auth.auth().currentUser?.isAnonymous == true {
+                        let hasSeen = UserDefaults.standard.bool(forKey: "hasSeenGuestSignUpPrompt")
+                        if !hasSeen {
+                            UserDefaults.standard.set(true, forKey: "hasSeenGuestSignUpPrompt")
+                            self.appState.showGuestSignUpPrompt = true
+                        }
+                    }
+                }
+
                 let allDesc = FetchDescriptor<Workout>(
                     predicate: #Predicate<Workout> { $0.endTime != nil },
                     sortBy: [SortDescriptor(\.date, order: .reverse)]
                 )
                 let allWorkouts = (try? bgContext.fetch(allDesc)) ?? []
+                let completedCount = allWorkouts.count
 
-                let currentStreak = await analyticsService.calculateWorkoutStreak(workouts: allWorkouts)
-                let forecast = await analyticsService.getProgressForecast(workouts: allWorkouts).first
+                let currentStreak = await self.analyticsService.calculateWorkoutStreak(workouts: allWorkouts)
+                let forecast = await self.analyticsService.getProgressForecast(workouts: allWorkouts).first
 
                 await NotificationManager.shared.scheduleSmartRetentions(
-                          workout: workout,
-                          currentStreak: currentStreak,
-                          forecast: forecast,
-                          unitsManager: UnitsManager.shared
-                      )
+                    dominantMuscle: dominantMuscle,
+                    currentStreak: currentStreak,
+                    forecast: forecast,
+                    unitsManager: UnitsManager.shared
+                )
 
-                NotificationCenter.default.post(name: .workoutCompletedEvent, object: workout.persistentModelID, userInfo: ["modelContainer": analyticsService.modelContainer])
-                self.updateWorkoutAnalytics(for: workout)
-                self.activeEvent = .workoutSuccessfullyFinished
-
+                var allUnlocks: [Achievement] = []
                 if let goalAchieved = goalAchievementToShow {
-                    try? await Task.sleep(for: .seconds(0.5))
-                    self.activeEvent = .showAchievement(goalAchieved)
-                } else if let firstUnlock = result.newUnlocks.first {
-                    try? await Task.sleep(for: .seconds(0.5))
-                    self.activeEvent = .showAchievement(firstUnlock)
+                    allUnlocks.append(goalAchieved)
+                }
+                allUnlocks.append(contentsOf: result.newUnlocks)
+                
+                await MainActor.run {
+                    // Trigger App Store Review on happy moments
+                    if completedCount == 3 || completedCount == 10 || completedCount == 25 {
+                        // Give a small delay so it appears smoothly after returning to the hub
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            AppReviewManager.requestAppStoreReview()
+                        }
+                    }
+                    NotificationCenter.default.post(name: .workoutCompletedEvent, object: workoutID, userInfo: ["modelContainer": container])
+                    self.updateWorkoutAnalytics(for: workout)
+                    self.activeEvent = .workoutSuccessfullyFinished
+                }
+
+                try? await Task.sleep(for: .seconds(0.5))
+                await MainActor.run { 
+                    self.activeEvent = .showXPBreakdownPopup(xpBreakdown, isLevelUp, newLevel, newTitle, allUnlocks) 
                 }
 
             } catch {
-                self.updateWorkoutAnalytics(for: workout)
-                self.activeEvent = .workoutSuccessfullyFinished
+                await MainActor.run {
+                    self.updateWorkoutAnalytics(for: workout)
+                    self.activeEvent = .workoutSuccessfullyFinished
+                }
+                try? await Task.sleep(for: .seconds(0.5))
+                await MainActor.run { 
+                    self.activeEvent = .showXPBreakdownPopup(xpBreakdown, isLevelUp, newLevel, newTitle, []) 
+                }
             }
         }
+    }
 
     private func calculatePRLevel(for exercise: Exercise, prCache: [String: Double]) -> PRLevel? {
         guard exercise.type == .strength else { return nil }
@@ -566,4 +632,25 @@ extension WorkoutDetailViewModel {
                 }
             }
         }
+}
+
+// MARK: - Safe Background Set/Exercise Mutations
+extension WorkoutDetailViewModel {
+    /// Route set mutations through WorkoutStore (@ModelActor) to avoid Data Races.
+    func updateSet(setID: PersistentIdentifier, reps: Int? = nil, weight: Double? = nil,
+                   time: Int? = nil, distance: Double? = nil,
+                   type: SetType? = nil, isCompleted: Bool? = nil) {
+        Task {
+            await workoutService.updateSet(setID: setID, reps: reps, weight: weight,
+                                          time: time, distance: distance,
+                                          type: type, isCompleted: isCompleted)
+        }
+    }
+
+    /// Route exercise completion through WorkoutStore (@ModelActor).
+    func updateExerciseCompleted(exerciseID: PersistentIdentifier, isCompleted: Bool) {
+        Task {
+            await workoutService.updateExerciseCompleted(exerciseID: exerciseID, isCompleted: isCompleted)
+        }
+    }
 }

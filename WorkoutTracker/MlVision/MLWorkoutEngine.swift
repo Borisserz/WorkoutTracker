@@ -33,12 +33,19 @@ final class MLWorkoutEngine: ObservableObject {
     }
 
     private func loadModel() {
-        Task {
+        let trace = TrackingManager.shared.startTrace(name: "ml_model_load")
+        Task.detached(priority: .userInitiated) {
             let config = MLModelConfiguration()
-            if let model = try? WorkoutClassifier(configuration: config).model {
-                self.actionClassifier = model
-            } else {
+            do {
+                let model = try WorkoutClassifier(configuration: config).model
+                await MainActor.run {
+                    self.actionClassifier = model
+                }
+                trace?.stop()
+            } catch {
                 print("❌ MLWorkoutEngine: Failed to load WorkoutClassifier")
+                TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "MLWorkoutEngine_init"])
+                trace?.stop()
             }
         }
     }

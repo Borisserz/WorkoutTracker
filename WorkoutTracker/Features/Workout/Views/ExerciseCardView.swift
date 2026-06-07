@@ -73,12 +73,8 @@ struct ExerciseCardView: View {
                     .stroke(cardBorderColor, lineWidth: (isActiveExercise || exercise.isCompleted) ? 2 : 1)
             )
             .shadow(color: isActiveExercise ? themeManager.current.primaryAccent.opacity(0.2) : .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 15, x: 0, y: 5)
-            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: exercise.isCompleted)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isActiveExercise)
-        }
-        .sheet(isPresented: $showEffortSheet, onDismiss: { completeExerciseAfterRPE() }) {
-            @Bindable var bindableExercise = exercise
-            EffortInputView(effort: $bindableExercise.effort)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showEffortSheet)
         }
         .sheet(isPresented: $showTechniqueSheet) {
             TechniqueSheetView(exerciseName: exercise.name, category: exercise.category)
@@ -100,6 +96,13 @@ struct ExerciseCardView: View {
             let isLast = currentIndex == sortedSets.count - 1
             let prevSet: WorkoutSet? = currentIndex < sortedPrevSets.count ? sortedPrevSets[currentIndex] : nil
 
+            let nextSet: WorkoutSet? = (currentIndex + 1 < sortedSets.count) ? sortedSets[currentIndex + 1] : nil
+            let upcomingWeightStr: String? = {
+                if let w = nextSet?.weight { return "\(w) \(unitsManager.weightUnitString())" }
+                if let pw = prevSet?.weight { return "\(pw) \(unitsManager.weightUnitString())" }
+                return nil
+            }()
+
             SetRowView(
                 set: set,
                 exerciseName: exercise.name,
@@ -110,7 +113,7 @@ struct ExerciseCardView: View {
                 isExerciseCompleted: exercise.isCompleted,
                 isWorkoutCompleted: isWorkoutCompleted,
                 onCheck: { checkedSet, shouldStartTimer, suggestedDuration in
-                    detailViewModel.startTimerIfNeeded(shouldStartTimer: shouldStartTimer, suggestedDuration: suggestedDuration)
+                    detailViewModel.startTimerIfNeeded(shouldStartTimer: shouldStartTimer, suggestedDuration: suggestedDuration, exerciseName: exercise.name, upcomingWeight: upcomingWeightStr)
                     detailViewModel.handleSetCompleted(set: checkedSet, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
                 },
                 onDataChange: {
@@ -129,6 +132,32 @@ struct ExerciseCardView: View {
                     } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
                 }
             }
+            .swipeActions(edge: .leading) {
+                if !set.isCompleted && !exercise.isCompleted && !isWorkoutCompleted {
+                    Button {
+                        if set.weight == nil && prevSet?.weight != nil { set.weight = prevSet?.weight }
+                        if set.reps == nil && prevSet?.reps != nil { set.reps = prevSet?.reps }
+                        if set.distance == nil && prevSet?.distance != nil { set.distance = prevSet?.distance }
+                        if set.time == nil && prevSet?.time != nil { set.time = prevSet?.time }
+                        
+                        detailViewModel.updateWorkoutAnalytics(for: workout)
+                        withAnimation { set.isCompleted = true }
+                        // Save is handled by handleSetCompleted → WorkoutStore (@ModelActor)
+                        
+                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        
+                        var suggestedDuration: Int? = nil
+                        if exercise.type == .strength {
+                            if exercise.effort >= 8 { suggestedDuration = 180 } else if exercise.effort >= 6 { suggestedDuration = 120 } else { suggestedDuration = 90 }
+                        }
+                        
+                        let autoStartTimer = UserDefaults.standard.bool(forKey: "autoStartTimer")
+                        detailViewModel.startTimerIfNeeded(shouldStartTimer: autoStartTimer && !isLast, suggestedDuration: autoStartTimer && !isLast ? suggestedDuration : nil, exerciseName: exercise.name, upcomingWeight: upcomingWeightStr)
+                        detailViewModel.handleSetCompleted(set: set, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
+                    } label: { Label(LocalizedStringKey("Log Set"), systemImage: "checkmark.circle.fill") }
+                    .tint(.green)
+                }
+            }
         }
     }
 
@@ -145,6 +174,10 @@ struct ExerciseCardView: View {
                         Text(LocalizationHelper.shared.translateName(exercise.name))
                             .font(.headline)
                             .foregroundColor(colorScheme == .dark ? .white : .black) 
+                            .lineLimit(nil)
+                            .minimumScaleFactor(0.8)
+                            .allowsTightening(true)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .buttonStyle(.plain)
@@ -173,7 +206,13 @@ struct ExerciseCardView: View {
             if !targetMuscles.isEmpty {
                 HStack(spacing: 6) {
                     Image(systemName: "figure.strengthtraining.traditional").font(.caption2).foregroundColor(.secondary)
-                    Text(targetMuscles.joined(separator: ", ")).font(.caption).foregroundColor(.secondary).lineLimit(1)
+                    Text(targetMuscles.joined(separator: ", "))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
+                        .fixedSize(horizontal: false, vertical: true)
                 }.padding(.leading, 28)
             }
         }
@@ -232,11 +271,52 @@ struct ExerciseCardView: View {
                 }
                 .buttonStyle(BorderlessButtonStyle()).disabled(isWorkoutCompleted)
             }
+            
+            if showEffortSheet && !exercise.isCompleted {
+                VStack(spacing: 12) {
+                    Text(LocalizedStringKey("Rate Your Effort (RPE)"))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.top, 4)
+                        
+                    HStack(spacing: 8) {
+                        ForEach(1...10, id: \.self) { val in
+                            Button {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                exercise.effort = val
+                                TrackingManager.shared.track(.rpeGiven(rpeValue: val, exerciseName: exercise.name))
+                                withAnimation { showEffortSheet = false }
+                                completeExerciseAfterRPE()
+                            } label: {
+                                Text("\(val)")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .frame(maxWidth: .infinity)
+                                    .frame(height: 36)
+                                    .background(exercise.effort == val ? Color.purple : Color.gray.opacity(0.15))
+                                    .foregroundColor(exercise.effort == val ? .white : .primary)
+                                    .cornerRadius(8)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                        }
+                    }
+                }
+                .padding()
+                .background(.ultraThinMaterial)
+                .cornerRadius(16)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
         }.padding(.top, 12)
     }
 
     private func finishExerciseAction() {
-        if exercise.isCompleted { withAnimation { exercise.isCompleted = false } } else { showEffortSheet = true }
+        if exercise.isCompleted { 
+            withAnimation { exercise.isCompleted = false } 
+        } else { 
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                showEffortSheet.toggle() 
+            }
+        }
     }
 
     private func completeExerciseAfterRPE() {

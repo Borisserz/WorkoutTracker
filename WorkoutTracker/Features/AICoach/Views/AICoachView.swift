@@ -33,6 +33,7 @@ struct MuscleStats: Identifiable {
 struct AICoachView: View {
     @Environment(DIContainer.self) private var di
     @Environment(AICoachViewModel.self) private var viewModel
+    @Environment(UserStatsViewModel.self) private var userStatsViewModel
     @Environment(\.colorScheme) private var colorScheme 
     @State private var actualHRV: Double? = nil
     @State private var actualRHR: Double? = nil
@@ -120,6 +121,10 @@ struct AICoachView: View {
                                         .offset(x: shimmerOffset * 150)
                                         .mask(Text(userName.isEmpty ? "Athlete" : userName).font(.system(size: 32, weight: .black, design: .rounded)))
                                 )
+                            Text(userStatsViewModel.progressManager.currentTitle)
+                                .font(.subheadline)
+                                .fontWeight(.bold)
+                                .foregroundColor(.orange)
                         }
                         Spacer()
 
@@ -182,6 +187,8 @@ struct AICoachView: View {
                                                 let fetchedSleep = await HealthKitManager.shared.fetchSleepDuration()
                                                 let fetchedHRV = await HealthKitManager.shared.fetchLatestHRV()
                                                 let fetchedRHR = await HealthKitManager.shared.fetchLatestRHR()
+                                                let baselineHRV = await HealthKitManager.shared.fetchAverageHRV(days: 30)
+                                                let baselineRHR = await HealthKitManager.shared.fetchAverageRHR(days: 30)
 
                                                 await MainActor.run {
 
@@ -198,7 +205,9 @@ struct AICoachView: View {
                                                     let newCNS = CNSCalculator.calculate(
                                                         sleepHours: self.sleepHours,
                                                         hrv: self.actualHRV,
+                                                        baselineHRV: baselineHRV,
                                                         rhr: self.actualRHR,
+                                                        baselineRHR: baselineRHR,
                                                         waterCups: water
                                                     )
 
@@ -366,6 +375,7 @@ struct AICoachView: View {
             .navigationBarHidden(true)
             .dynamicTypeSize(.medium ... .accessibility1)
             .onAppear {
+                TrackingManager.shared.track(.aiCoachOpened(source: "tab"))
                 speechRecognizer.requestPermission()
 
                 Task {
@@ -634,7 +644,6 @@ struct BestExercisesSheet: View {
                         Image(systemName: "checkmark.seal.fill")
                             .foregroundColor(.cyan)
                             .font(.title2)
-                            .symbolEffect(.bounce, options: .nonRepeating)
                     }
                 }
                 .padding(.horizontal, 24)
@@ -787,6 +796,7 @@ struct BestExercisesSheet: View {
         )
 
         let userContext = UserProfileContext(
+            userName: UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? "Athlete",
             weightKg: UnitsManager.shared.convertToKilograms(bodyWeight),
             experienceLevel: difficulty.rawValue,
             favoriteMuscles: [muscleGroup.engineName],
@@ -1410,7 +1420,7 @@ struct ProgressAnalysisSheet: View {
         Point out obvious imbalances or praise focus. Do not use Markdown formatting (no asterisks or bold).
         """
 
-        let userContext = UserProfileContext(weightKg: 80, experienceLevel: "Pro", favoriteMuscles: [], recentPRs: [:], language: "Russian", workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: [], availableExercises: [], aiCoachTone: "Strict", weightUnit: "kg")
+        let userContext = UserProfileContext(userName: "Athlete", weightKg: 80, experienceLevel: "Pro", favoriteMuscles: [], recentPRs: [:], language: "Russian", workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: [], availableExercises: [], aiCoachTone: "Strict", weightUnit: "kg")
 
         do {
             let stream = try await di.aiLogicService.streamChatResponse(userRequest: prompt + "\n\n" + contextStr, userProfile: userContext)
@@ -1553,9 +1563,14 @@ struct MicroMetric: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
-                Text(value).font(.system(size: 18, weight: .black, design: .rounded).monospacedDigit()).foregroundColor(color)
-                Text(unit).font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+            if value == "--" {
+                UnavailableMetricView(icon: "waveform.path.ecg", text: "No Data")
+                    .padding(.top, 2)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    Text(value).font(.system(size: 18, weight: .black, design: .rounded).monospacedDigit()).foregroundColor(color)
+                    Text(unit).font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+                }
             }
         }
     }

@@ -41,6 +41,7 @@ final class DashboardViewModel {
 
     func refreshAllCaches() {
         Task {
+            let trace = TrackingManager.shared.startTrace(name: "dashboard_cache_refresh")
             do {
 
                 try? await HealthKitManager.shared.requestAuthorization()
@@ -60,11 +61,17 @@ final class DashboardViewModel {
                     self.todayWaterLiters = fetchedWater
 
                     self.proactiveProposal = proposal
+                    if let prop = proposal {
+                        TrackingManager.shared.track(.proactiveWorkoutShown(reason: prop.workout.title))
+                    }
                     self.personalRecordsCache = cacheDTO.personalRecords
                     self.dashboardTotalExercises = cacheDTO.dashboardTotalExercises
                     self.dashboardTopExercises = cacheDTO.dashboardTopExercises
                     self.dashboardMuscleData = cacheDTO.dashboardMuscleData
                     self.streakCount = cacheDTO.streakCount
+                    
+                    TrackingManager.shared.setUserProperty(name: "current_streak", value: String(cacheDTO.streakCount))
+                    TrackingManager.shared.setUserProperty(name: "total_workouts", value: String(cacheDTO.totalWorkouts))
 
                     var newPerformancesCache: [String: Exercise] = [:]
                     for (name, data) in cacheDTO.lastPerformances {
@@ -78,9 +85,11 @@ final class DashboardViewModel {
                     self.bestMonthStats = cacheDTO.bestMonthStats
                     self.weakPoints = cacheDTO.weakPoints
                     self.recommendations = cacheDTO.recommendations
+                    trace?.stop()
                 }
             } catch {
-                print("Failed to refresh caches: \(error)")
+                print("Dashboard cache refresh error: \(error)")
+                trace?.stop()
             }
         }
     }

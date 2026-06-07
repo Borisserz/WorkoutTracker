@@ -47,7 +47,7 @@ struct WorkoutTrackerApp: App {
     @State private var catalogViewModel: CatalogViewModel?
     @State private var profileViewModel: ProfileViewModel?
 
-    @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
+    @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "dark"
     @State private var showImportAlert = false
     @State private var showImportError = false
     @State private var importErrorMessage: String = ""
@@ -101,8 +101,9 @@ struct WorkoutTrackerApp: App {
             .task {
                 await setupDependencies()
             }
-            .onChange(of: scenePhase) { _, newPhase in
+            .onChange(of: scenePhase) { newPhase in
                 if newPhase == .active {
+                    TrackingManager.shared.track(.appOpened(source: "scene_active"))
                     UNUserNotificationCenter.current().setBadgeCount(0)
                     UNUserNotificationCenter.current().removeAllDeliveredNotifications()
                 }
@@ -126,6 +127,7 @@ struct WorkoutTrackerApp: App {
             .environment(di)
             .environment(di.workoutService)
             .environment(di.presetService)
+            .environment(di.authManager)
             .environment(restTimerManager)
             .environment(tutorialManager)
             .environment(UnitsManager.shared)
@@ -224,19 +226,6 @@ struct WorkoutTrackerApp: App {
     @MainActor
     private func setupDependencies() async {
         do {
-            // 🔐 Bootstrap anonymous Firebase Auth before any Firestore writes
-            // (UGC features and reports require request.auth).
-            do {
-                _ = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
-                await BlockedUsersStore.shared.startListening()
-            } catch {
-                print("⚠️ Anonymous auth bootstrap failed: \(error.localizedDescription)")
-                // Non-fatal — catalog reads still work; UGC writes will fail with a clear error.
-            }
-
-            await RemoteConfigManager.shared.fetchCloudValues()
-            await ExerciseDatabaseService.shared.loadDatabase()
-
             let schema = Schema([
                 Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
                 ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
@@ -270,10 +259,6 @@ struct WorkoutTrackerApp: App {
             let di = DIContainer(modelContainer: container)
 
             PhoneWatchManager.shared.start(with: container)
-
-            let migrator = LegacyDataMigrator(modelContainer: container)
-            await migrator.migrateAllIfNeeded()
-            try? await di.exerciseCatalogService.checkAndGenerateDefaultPresets()
             MuscleColorManager.shared.initialize(modelContainer: container)
 
             self.dashboardViewModel = di.makeDashboardViewModel()
@@ -283,11 +268,32 @@ struct WorkoutTrackerApp: App {
             self.profileViewModel = di.makeProfileViewModel()
 
             self.diContainer = di
-            await self.catalogViewModel?.loadDictionary()
+
+            Task {
+                do {
+                    _ = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
+                    await BlockedUsersStore.shared.startListening()
+                } catch {
+                    print("⚠️ Anonymous auth bootstrap failed: \(error.localizedDescription)")
+                }
+
+                await RemoteConfigManager.shared.fetchCloudValues()
+                await ExerciseDatabaseService.shared.loadDatabase()
+
+                let migrator = LegacyDataMigrator(modelContainer: container)
+                await migrator.migrateAllIfNeeded()
+                
+                try? await di.exerciseCatalogService.checkAndGenerateDefaultPresets()
+                
+                await self.catalogViewModel?.loadDictionary()
+            }
 
         } catch {
+            TrackingManager.shared.track(.errorOccurred(errorType: "database_load_failed", screen: "WorkoutTrackerApp"))
             self.databaseLoadError = error
             print("❌ SwiftData Initialization Failed: \(error)")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "SwiftData_init"])
+            fatalError("Failed to create ModelContainer: \(error.localizedDescription)")
         }
     }
 

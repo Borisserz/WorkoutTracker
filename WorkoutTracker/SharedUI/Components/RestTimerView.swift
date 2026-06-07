@@ -6,6 +6,7 @@ struct RestTimerView: View {
     @Environment(RestTimerManager.self) var timerManager
     @Environment(ThemeManager.self) private var themeManager
     @State private var isPulsing = false
+    @State private var dragOffset: CGSize = .zero
 
     var body: some View {
         if timerManager.isRestTimerActive {
@@ -96,6 +97,41 @@ struct RestTimerView: View {
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .shadow(color: .black.opacity(0.15), radius: 20, x: 0, y: 10)
             .padding(.horizontal, 12)
+            .offset(y: dragOffset.height > 0 ? dragOffset.height : 0)
+            .offset(x: dragOffset.width)
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        dragOffset = value.translation
+                    }
+                    .onEnded { value in
+                        let generator = UIImpactFeedbackGenerator(style: .medium)
+                        
+                        if value.translation.height > 100 {
+                            generator.impactOccurred()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                timerManager.stopRestTimer()
+                                dragOffset = .zero
+                            }
+                        } else if value.translation.width > 100 {
+                            generator.impactOccurred()
+                            timerManager.addRestTime(15)
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                dragOffset = .zero
+                            }
+                        } else if value.translation.width < -100 {
+                            generator.impactOccurred()
+                            timerManager.subtractRestTime(15)
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                dragOffset = .zero
+                            }
+                        } else {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                dragOffset = .zero
+                            }
+                        }
+                    }
+            )
             .transition(.move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.95)))
             .scaleEffect(isPulsing ? 1.02 : 1.0)
             .onChange(of: timerManager.restTimerFinished) { _, finished in

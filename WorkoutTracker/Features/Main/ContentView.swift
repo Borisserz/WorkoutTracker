@@ -76,6 +76,9 @@ struct ContentView: View {
                 }
             )
         }
+        .sheet(isPresented: $appState.showGuestSignUpPrompt) {
+            GuestSignUpPromptView()
+        }
     }
 
     struct TimerOverlayContainer: View {

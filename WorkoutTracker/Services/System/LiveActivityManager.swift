@@ -20,6 +20,43 @@ final class LiveActivityManager: Sendable {
             )
         } catch {
             print("❌ LiveActivityManager: Failed to start activity: \(error)")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "LiveActivityManager_start"])
+        }
+    }
+
+    func updateRestTimer(endTime: Date, currentExerciseName: String?, upcomingWeight: String?) {
+        Task {
+            for activity in Activity<WorkoutActivityAttributes>.activities {
+                var newState = activity.content.state
+                newState.restTimerEndTime = endTime
+                newState.currentExerciseName = currentExerciseName
+                newState.upcomingWeight = upcomingWeight
+                
+                await activity.update(
+                    ActivityContent<WorkoutActivityAttributes.ContentState>(
+                        state: newState,
+                        staleDate: nil
+                    )
+                )
+            }
+        }
+    }
+
+    func clearRestTimer() {
+        Task {
+            for activity in Activity<WorkoutActivityAttributes>.activities {
+                var newState = activity.content.state
+                newState.restTimerEndTime = nil
+                newState.currentExerciseName = nil
+                newState.upcomingWeight = nil
+                
+                await activity.update(
+                    ActivityContent<WorkoutActivityAttributes.ContentState>(
+                        state: newState,
+                        staleDate: nil
+                    )
+                )
+            }
         }
     }
 

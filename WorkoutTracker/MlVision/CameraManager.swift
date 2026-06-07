@@ -95,7 +95,7 @@ final class CameraManager: ObservableObject {
     }
 }
 
-actor FrameCounter {
+class FrameCounter {
     private var count = 0
 
     func incrementAndCheck(stride: Int) -> Bool {
@@ -104,7 +104,7 @@ actor FrameCounter {
     }
 }
 
-actor VisionProcessor {
+class VisionProcessor {
     private let bodyRequest = VNDetectHumanBodyPoseRequest()
     private let handRequest: VNDetectHumanHandPoseRequest = {
         let req = VNDetectHumanHandPoseRequest()
@@ -154,21 +154,17 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
     }
 
     nonisolated func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        let shouldProcess = frameCounter.incrementAndCheck(stride: 3)
+        guard shouldProcess else { return }
 
-        Task {
-            let shouldProcess = await frameCounter.incrementAndCheck(stride: 3)
-            guard shouldProcess else { return }
-
-            do {
-
-                let result = try await visionProcessor.process(sampleBuffer: sampleBuffer)
-
-                onBodyPoseUpdate(result.bodyPose)
-                onUpdate(result.joints)
-                onHandUpdate(result.handPose)
-            } catch {
-                print("Vision request failed: \(error)")
-            }
+        do {
+            let result = try visionProcessor.process(sampleBuffer: sampleBuffer)
+            
+            onBodyPoseUpdate(result.bodyPose)
+            onUpdate(result.joints)
+            onHandUpdate(result.handPose)
+        } catch {
+            print("Vision request failed: \(error)")
         }
     }
 }

@@ -7,6 +7,7 @@ final class DIContainer: @unchecked Sendable {
     let modelContainer: ModelContainer
 
     let appState: AppStateManager
+    let authManager: AuthManager
     let liveActivityManager: LiveActivityManager
 
     let catalogRepository: CatalogRepository
@@ -28,6 +29,7 @@ final class DIContainer: @unchecked Sendable {
         self.modelContainer = modelContainer
 
         self.appState = AppStateManager()
+        self.authManager = AuthManager()
         self.liveActivityManager = LiveActivityManager()
 
         self.catalogRepository = CatalogRepository(modelContainer: modelContainer)

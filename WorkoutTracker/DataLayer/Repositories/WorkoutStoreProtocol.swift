@@ -15,11 +15,13 @@ protocol WorkoutStoreProtocol: Sendable {
     func deleteWorkout(workoutID: PersistentIdentifier) async throws
     func updateWorkoutFavoriteStatus(workoutID: PersistentIdentifier, isFavorite: Bool) async throws
     func updateExercise(exerciseID: PersistentIdentifier, newEffort: Int) async throws
+    func updateExercise(exerciseID: PersistentIdentifier, isCompleted: Bool) async throws
+    func updateSet(setID: PersistentIdentifier, reps: Int?, weight: Double?, time: Int?, distance: Double?, type: SetType?, isCompleted: Bool?) async throws
     func updateWorkoutChatHistory(workoutID: PersistentIdentifier, history: [AIChatMessage]) async throws
     func applyAIAdjustment(_ adjustment: InWorkoutResponseDTO, workoutID: PersistentIdentifier) async throws
     func processCompletedWorkout(workoutID: PersistentIdentifier) async throws
     func findActiveWorkoutsAndCleanup() async throws -> [PersistentIdentifier]
-    func fetchLatestWorkout() async throws -> Workout?
+    func fetchLatestWorkoutID() async throws -> PersistentIdentifier?
     func checkAndGenerateDefaultPresets() async throws
 
     func applySmartAction(proposal: SmartActionDTO, inWorkoutID: PersistentIdentifier) async throws

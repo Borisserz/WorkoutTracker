@@ -244,7 +244,7 @@ struct StatsContentView: View {
                 .edgesIgnoringSafeArea(.all)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
+                LazyVStack(spacing: 24) {
                     HeaderView(showProfile: $showProfile)
 
                     MascotStreakView(streak: dashboardViewModel.streakCount)
@@ -388,7 +388,7 @@ struct MascotStreakView: View {
                 Text(streak > 0 ? "You're on fire! 🔥" : "Start your streak today!")
                     .font(.subheadline)
                     .foregroundColor(colorScheme == .dark ? .gray : .secondary)
-                Text("\(streak) days of training in a row")
+                Text("\(streak) Day Streak")
                     .font(.headline)
                     .foregroundColor(colorScheme == .dark ? .white : .black)
             }
@@ -442,16 +442,15 @@ struct GoalsSectionView: View {
             }
 
             if viewModel.activeGoals.isEmpty {
-                VStack(spacing: 12) {
-                    Text("You have no active goals yet.")
-                        .foregroundColor(colorScheme == .dark ? .gray : .secondary)
-                        .font(.subheadline)
+                EmptyStateView(
+                    icon: "target",
+                    title: "No Active Goals",
+                    message: "Set a specific target to stay accountable and track your growth.",
+                    iconColor: .purple,
+                    actionTitle: "Set a Goal"
+                ) {
+                    showingAddGoal = true
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-                .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
-                .cornerRadius(16)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.03), radius: 5, y: 2)
             } else {
                 ForEach(viewModel.activeGoals) { goal in
                     DesignerGoalCard(goal: goal, currentValue: viewModel.activeGoalValues[goal.id] ?? 0, unitsManager: unitsManager) {
@@ -646,22 +645,46 @@ struct QuickStatsView: View {
             )
 
             let vol = unitsManager.convertFromKilograms(stats.totalVolume)
-            if vol > 1000 {
-                InteractiveStatCard(
-                    icon: "dumbbell.fill",
-                    title: "Volume (Tons)",
-                    value: LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0),
-                    metric: .volume,
-                    selectedMetric: $viewModel.selectedMetric
-                )
-            } else {
-                InteractiveStatCard(
-                    icon: "dumbbell.fill",
-                    title: "Volume (\(unitsManager.weightUnitString()))",
-                    value: "\(Int(vol))",
-                    metric: .volume,
-                    selectedMetric: $viewModel.selectedMetric
-                )
+            VStack {
+                if vol > 1000 {
+                    InteractiveStatCard(
+                        icon: "dumbbell.fill",
+                        title: "Volume (Tons)",
+                        value: LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0),
+                        metric: .volume,
+                        selectedMetric: $viewModel.selectedMetric
+                    )
+                } else {
+                    InteractiveStatCard(
+                        icon: "dumbbell.fill",
+                        title: "Volume (\(unitsManager.weightUnitString()))",
+                        value: "\(Int(vol))",
+                        metric: .volume,
+                        selectedMetric: $viewModel.selectedMetric
+                    )
+                }
+                
+                if viewModel.selectedMetric == .volume && vol > 0 {
+                    let elephants = Int(vol / 4000)
+                    let cars = Int(vol / 1500)
+                    
+                    if elephants > 0 {
+                        Text("You lifted \(elephants) elephants 🐘")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 2)
+                    } else if cars > 0 {
+                        Text("You lifted \(cars) cars 🚗")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 2)
+                    } else if vol > 100 {
+                        Text("You lifted \(Int(vol / 80)) people 👨‍👩‍👧")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 2)
+                    }
+                }
             }
 
             InteractiveStatCard(
@@ -734,6 +757,7 @@ struct ComparisonSectionView: View {
     let viewModel: StatsViewModel
     let unitsManager: UnitsManager
     @Environment(\.colorScheme) private var colorScheme
+    @State private var animateChart = false
 
     let chartGradient = LinearGradient(
         colors: [Color(hex: "E020FF"), Color(hex: "FA64FF")],
@@ -744,16 +768,19 @@ struct ComparisonSectionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
-            Text("Detailed comparison")
+            Text("Detailed Comparison")
                 .font(.title3).bold()
                 .foregroundColor(colorScheme == .dark ? .white : .black)
 
             VStack(spacing: 0) {
 
                 if viewModel.chartData.isEmpty {
-                    Text("No data for chart")
-                        .foregroundColor(.gray)
-                        .padding(.vertical, 60)
+                    EmptyStateView(
+                        icon: "chart.xyaxis.line",
+                        title: "Awaiting Data",
+                        message: "Complete your first tracked workout to unlock advanced analytics and charts.",
+                        iconColor: .cyan
+                    )
                 } else {
                     Chart {
                         ForEach(viewModel.chartData) { item in
@@ -761,13 +788,14 @@ struct ComparisonSectionView: View {
 
                             BarMark(
                                 x: .value("Period", item.label),
-                                y: .value("Meaning", displayVal)
+                                y: .value("Meaning", animateChart ? displayVal : 0)
                             )
                             .foregroundStyle(chartGradient)
                             .cornerRadius(8)
                         }
                     }
                     .frame(height: 180)
+                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: animateChart)
                     .chartYAxis(.hidden)
                     .chartXAxis {
                         AxisMarks { value in
@@ -777,6 +805,11 @@ struct ComparisonSectionView: View {
                         }
                     }
                     .padding(20)
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            animateChart = true
+                        }
+                    }
                 }
 
                 Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
@@ -1371,9 +1404,10 @@ struct SetsTrendDetailView: View {
 
                 if aggregatedData.isEmpty {
                     EmptyStateView(
-                        icon: "chart.xyaxis.line",
-                        title: "No Data",
-                        message: "You haven't trained \(selectedMuscle) in this period."
+                        icon: "figure.walk",
+                        title: "No Data Found",
+                        message: "You haven't trained \(selectedMuscle) in this period.",
+                        iconColor: .orange
                     )
                     .frame(height: 300)
                 } else {

@@ -99,8 +99,8 @@ struct SetRowView: View {
         .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
         .sheet(isPresented: $showSetTypeSheet) {
             SetTypeSelectionSheet(
-                selectedType: Binding(get: { set.type }, set: { set.type = $0; try? set.modelContext?.save() }),
-                onRemove: { if let ctx = set.modelContext, let ex = set.exercise { ex.removeSafeSet(set); ctx.delete(set); try? ctx.save() } }
+                selectedType: Binding(get: { set.type }, set: { set.type = $0; onDataChange?() }),
+                onRemove: { if let ctx = set.modelContext, let ex = set.exercise { ex.removeSafeSet(set); ctx.delete(set); onDataChange?() } }
             )
         }
     }
@@ -206,6 +206,7 @@ struct SetRowView: View {
                 AITrackerView(exerciseName: exerciseName) { countedReps in
                     if countedReps > 0 {
                         set.reps = countedReps
+                        onDataChange?()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { if !set.isCompleted { toggleComplete() } }
                     }
                 }
@@ -216,7 +217,8 @@ struct SetRowView: View {
     private func toggleComplete() {
            guard !isExerciseCompleted && !isWorkoutCompleted else { return }
            withAnimation { set.isCompleted.toggle() }
-           try? set.modelContext?.save()
+           // Do NOT call modelContext.save() here — route through onDataChange/onCheck
+           // so that WorkoutDetailViewModel orchestrates the save on its background context.
 
            if set.isCompleted {
                let generator = UIImpactFeedbackGenerator(style: .medium)

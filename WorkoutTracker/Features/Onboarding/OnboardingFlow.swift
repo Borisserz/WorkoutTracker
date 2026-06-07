@@ -1,4 +1,5 @@
 internal import SwiftUI
+import PhotosUI
 
 // MARK: - Model
 
@@ -44,13 +45,18 @@ struct OnboardingFlowView: View {
             }
         }
         .sensoryFeedback(.success, trigger: didFinish)
+        .onAppear {
+            TrackingManager.shared.track(.onboardingStarted)
+        }
     }
 
     private func nextStep() {
+        TrackingManager.shared.track(.onboardingStepCompleted(step: "Step \(currentTab + 1)"))
         withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { currentTab += 1 }
     }
 
     private func completeOnboarding() {
+        TrackingManager.shared.track(.onboardingCompleted(goal: "unknown", daysPerWeek: 0, experienceLevel: "unknown"))
         didFinish.toggle()
         withAnimation { isOnboardingCompleted = true }
     }
@@ -136,6 +142,9 @@ struct UserDataInputView: View {
     @State private var isWeightInvalid = false
     @State private var shakeTriggerName = 0
     @State private var shakeTriggerWeight = 0
+    
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var profileImage: UIImage?
 
     var body: some View {
         GeometryReader { geometry in
@@ -152,6 +161,53 @@ struct UserDataInputView: View {
                             .foregroundStyle(themeManager.current.secondaryText)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
+                    }
+
+                    // Avatar Picker
+                    PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [.red, .orange], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 80, height: 80)
+                                .shadow(color: .red.opacity(0.4), radius: 10, x: 0, y: 5)
+
+                            if let profileImage {
+                                Image(uiImage: profileImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 76, height: 76)
+                                    .clipShape(Circle())
+                            } else {
+                                Image(systemName: "camera.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.white)
+                            }
+                            
+                            // Edit Badge
+                            ZStack {
+                                Circle()
+                                    .fill(themeManager.current.primaryAccent)
+                                    .frame(width: 24, height: 24)
+                                    .overlay(
+                                        Circle().stroke(themeManager.current.background, lineWidth: 2)
+                                    )
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            .offset(x: 28, y: 28)
+                        }
+                    }
+                    .onChange(of: selectedPhotoItem) { _, newItem in
+                        Task {
+                            if let data = try? await newItem?.loadTransferable(type: Data.self),
+                               let uiImage = UIImage(data: data) {
+                                await MainActor.run {
+                                    profileImage = uiImage
+                                    ProfileImageManager.shared.saveImage(uiImage)
+                                }
+                            }
+                        }
                     }
 
                     VStack(spacing: 18) {

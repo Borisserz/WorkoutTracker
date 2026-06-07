@@ -173,8 +173,11 @@ struct PresetEditorView: View {
     }
 
     private var headerSection: some View {
-        TextField(LocalizedStringKey("Name of the training session..."), text: $vm.name)
+        TextField(LocalizedStringKey("Name of the training session..."), text: $vm.name, axis: .vertical)
             .font(.system(size: 32, weight: .heavy, design: .rounded))
+            .lineLimit(1...3)
+            .minimumScaleFactor(0.8)
+            .allowsTightening(true)
             .foregroundColor(colorScheme == .dark ? .white : .black) 
             .padding(.horizontal, 24)
             .padding(.top, 24)
@@ -302,6 +305,8 @@ struct PresetEditorView: View {
                     Text(LocalizationHelper.shared.translateName(exercise.name))
                         .font(.headline)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .buttonStyle(.plain)
 
@@ -322,6 +327,8 @@ struct PresetEditorView: View {
                 }
                 .font(.subheadline)
                 .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
             }
 
             Spacer()
@@ -481,6 +488,10 @@ struct PresetExerciseEditor: View {
                 VStack(spacing: 24) {
                     Text(LocalizationHelper.shared.translateName(exercise.name))
                         .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
+                        .lineLimit(nil)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)
                         .padding(.top, 24)

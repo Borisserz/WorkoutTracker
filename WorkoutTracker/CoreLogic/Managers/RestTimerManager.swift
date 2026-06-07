@@ -30,7 +30,9 @@ final class RestTimerManager {
         Task {
             for await notification in NotificationCenter.default.notifications(named: NSNotification.Name("ForceStartRestTimer")) {
                 let duration = notification.userInfo?["duration"] as? Int
-                self.startRestTimer(duration: duration)
+                let exerciseName = notification.userInfo?["exerciseName"] as? String
+                let upcomingWeight = notification.userInfo?["upcomingWeight"] as? String
+                self.startRestTimer(duration: duration, exerciseName: exerciseName, upcomingWeight: upcomingWeight)
             }
         }
         restoreTimerState()
@@ -81,7 +83,7 @@ final class RestTimerManager {
         }
     }
 
-    func startRestTimer(duration: Int? = nil) {
+    func startRestTimer(duration: Int? = nil, exerciseName: String? = nil, upcomingWeight: String? = nil) {
         let seconds = duration ?? defaultRestTime
         self.initialRestTime = seconds 
         self.restEndTime = Date().addingTimeInterval(Double(seconds))
@@ -93,6 +95,10 @@ final class RestTimerManager {
         Task {
             await NotificationManager.shared.scheduleRestTimerNotification(seconds: Double(seconds))
         }
+        
+        let manager = LiveActivityManager()
+        manager.updateRestTimer(endTime: self.restEndTime!, currentExerciseName: exerciseName, upcomingWeight: upcomingWeight)
+        
         startTicker()
     }
 
@@ -169,7 +175,11 @@ final class RestTimerManager {
           tickerTask = nil
           restTimerFinished = true
           restEndTime = nil
+          restEndTime = nil
           clearTimerState()
+          LiveActivityManager().clearRestTimer()
+          
+          TrackingManager.shared.track(.restTimerUsed(durationSeconds: initialRestTime, skipped: false))
 
           if !suppressAudio {
               let generator = UINotificationFeedbackGenerator()
@@ -191,7 +201,13 @@ final class RestTimerManager {
           isRestTimerActive = false
           restTimerFinished = false
           restEndTime = nil
+          restEndTime = nil
           clearTimerState()
+          LiveActivityManager().clearRestTimer()
+          
+          if !restTimerFinished {
+              TrackingManager.shared.track(.restTimerUsed(durationSeconds: initialRestTime, skipped: true))
+          }
 
           tickerTask?.cancel() 
           tickerTask = nil

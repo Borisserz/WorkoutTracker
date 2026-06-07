@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		29661A4F4520FD432B45E791 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 7C4118E39E451C7A1AA91DCF /* FirebasePerformance */; };
+		4BB047E4CF6B99ACE11CB0B7 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = EC45B54F3282D8918AE7217B /* FirebaseAnalytics */; };
 		AC55B4DF2FCA034F0081A8D1 /* FirebaseAppCheck in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4DE2FCA034F0081A8D1 /* FirebaseAppCheck */; };
 		AC55B4E92FCA2A790081A8D1 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */; };
 		AC55B4EB2FCA3A130081A8D1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = AC55B4EA2FCA3A130081A8D1 /* FirebaseAuth */; };
@@ -20,6 +22,7 @@
 		ACE68D102EFC421700FD186D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
 		ACF45A212F9E43F800206681 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A202F9E43F800206681 /* FirebaseFirestore */; };
 		ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A222F9E43F800206681 /* FirebaseRemoteConfig */; };
+		CBC64DC6807C3445CA4DC264 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 71E8212868B958014C937451 /* FirebaseCrashlytics */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -252,6 +255,9 @@
 				AC55B4DF2FCA034F0081A8D1 /* FirebaseAppCheck in Frameworks */,
 				ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */,
 				AC90B40B2FCB7133004B8377 /* GoogleSignIn in Frameworks */,
+				4BB047E4CF6B99ACE11CB0B7 /* FirebaseAnalytics in Frameworks */,
+				CBC64DC6807C3445CA4DC264 /* FirebaseCrashlytics in Frameworks */,
+				29661A4F4520FD432B45E791 /* FirebasePerformance in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -323,8 +329,6 @@
 				AC3CB98A2F8176AA008A6777 /* WatchApp */,
 			);
 			name = "WorkoutTrackerWatch Watch App";
-			packageProductDependencies = (
-			);
 			productName = "WorkoutTrackerWatch Watch App";
 			productReference = AC62B5672FCC5A640053AD14 /* WorkoutTrackerWatch Watch App.app */;
 			productType = "com.apple.product-type.application";
@@ -345,8 +349,6 @@
 				ACDA5BA12F06CF77007FF65F /* StatsWidget */,
 			);
 			name = StatsWidgetExtension;
-			packageProductDependencies = (
-			);
 			productName = StatsWidgetExtension;
 			productReference = AC62B5662FCC5A640053AD14 /* StatsWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -360,6 +362,7 @@
 				ACE68CD72EFBFD1900FD186D /* Resources */,
 				ACE68D262EFC421800FD186D /* Embed Foundation Extensions */,
 				ACF4FCAD2F01698F00850F6E /* Embed Watch Content */,
+				2C8C5B7DF210F68765FED759 /* Firebase Crashlytics */,
 			);
 			buildRules = (
 			);
@@ -385,6 +388,8 @@
 				AC55B4EA2FCA3A130081A8D1 /* FirebaseAuth */,
 				AC55B4F32FCAC45E0081A8D1 /* FirebaseFunctions */,
 				AC90B40A2FCB7133004B8377 /* GoogleSignIn */,
+				71E8212868B958014C937451 /* FirebaseCrashlytics */,
+				7C4118E39E451C7A1AA91DCF /* FirebasePerformance */,
 			);
 			productName = WorkoutTracker;
 			productReference = AC62B5642FCC5A640053AD14 /* WorkoutTracker.app */;
@@ -406,8 +411,6 @@
 				ACE68D112EFC421700FD186D /* WorkoutTimerWidget */,
 			);
 			name = WorkoutTimerWidgetExtension;
-			packageProductDependencies = (
-			);
 			productName = WorkoutTimerWidgetExtension;
 			productReference = AC62B5652FCC5A640053AD14 /* WorkoutTimerWidgetExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
@@ -495,6 +498,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		2C8C5B7DF210F68765FED759 /* Firebase Crashlytics */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Firebase Crashlytics";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${BUILD_DIR%Build/*}SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/run\"";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		AC3CB9852F8176AA008A6777 /* Sources */ = {
@@ -1058,6 +1082,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		71E8212868B958014C937451 /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		7C4118E39E451C7A1AA91DCF /* FirebasePerformance */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebasePerformance;
+		};
 		AC55B4DE2FCA034F0081A8D1 /* FirebaseAppCheck */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
@@ -1092,6 +1126,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseRemoteConfig;
+		};
+		EC45B54F3282D8918AE7217B /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = ACF45A1D2F9E43F800206681 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

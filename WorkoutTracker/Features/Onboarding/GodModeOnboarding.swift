@@ -9,6 +9,7 @@ internal import SwiftUI
 import Combine
 import AuthenticationServices
 import GoogleSignIn
+import PhotosUI
 
 struct RootGodModeOnboarding: View {
     let onFinish: () -> Void
@@ -250,9 +251,9 @@ private struct GuestWarningView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Log in as a guest?").font(.system(size: 24, weight: .bold, design: .rounded)).foregroundStyle(.white)
+            Text("Continue as a guest?").font(.system(size: 24, weight: .bold, design: .rounded)).foregroundStyle(.white)
             Text("If you stay as a guest, your training data will not be saved in the cloud.").font(.system(size: 13)).foregroundStyle(.white.opacity(0.86))
-            Text("Why is it better to register:").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
+            Text("Why you should register:").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
             VStack(alignment: .leading, spacing: 6) {
                 bullet("Saving progress in the cloud")
                 bullet("Sync with iPad")
@@ -282,6 +283,8 @@ private struct GuestWarningView: View {
 // MARK: - God Mode (без изменений)
 
 struct GodModeUserMetrics {
+    var name: String = ""
+    var avatarImage: UIImage? = nil
     var age: Int = 25
     var height: Int = 175
     var weight: Int = 75
@@ -317,7 +320,7 @@ enum GodModeActivityType: String, CaseIterable {
 
 struct OnboardingGodMode: View {
     let onNext: () -> Void
-    enum Step { case welcome, metrics, activity, finish }
+    enum Step { case welcome, profile, metrics, activity, finish }
 
     @State private var step: Step = .welcome
     @State private var metrics = GodModeUserMetrics()
@@ -326,18 +329,23 @@ struct OnboardingGodMode: View {
         ZStack {
             Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
 
-            if step == .welcome || step == .metrics || step == .activity {
+            if step == .welcome || step == .profile || step == .metrics || step == .activity {
                 GodModeAnimatedBackground()
             }
 
             VStack {
                 switch step {
                 case .welcome:
-                    GodModeWelcomeScreen(onNext: { navigate(to: .metrics) }).transition(pushTransition)
+                    GodModeWelcomeScreen(onNext: { navigate(to: .profile) }).transition(pushTransition)
+                case .profile:
+                    GodModeProfileScreen(metrics: $metrics, onNext: { navigate(to: .metrics) }).transition(pushTransition)
                 case .metrics:
                     GodModeMetricsScreen(metrics: $metrics, onNext: { navigate(to: .activity) }).transition(pushTransition)
                 case .activity:
-                    GodModeActivityScreen(metrics: $metrics, onNext: { navigate(to: .finish) }).transition(pushTransition)
+                    GodModeActivityScreen(metrics: $metrics, onNext: { 
+                        saveMetrics()
+                        navigate(to: .finish) 
+                    }).transition(pushTransition)
                 case .finish:
                     GodModeFinishScreen(onWarpComplete: { onNext() }).transition(.opacity)
                 }
@@ -349,6 +357,19 @@ struct OnboardingGodMode: View {
     private var pushTransition: AnyTransition {
         .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity))
     }
+
+    private func saveMetrics() {
+        let defaults = UserDefaults.standard
+        defaults.set(metrics.age, forKey: "userAge")
+        defaults.set(metrics.height, forKey: "userHeight")
+        defaults.set(Double(metrics.weight), forKey: "userBodyWeight")
+        defaults.set(metrics.name, forKey: Constants.UserDefaultsKeys.userName.rawValue)
+        
+        if let avatar = metrics.avatarImage {
+            ProfileImageManager.shared.saveImage(avatar)
+        }
+    }
+
     private func navigate(to nextStep: Step) {
         HapticManager.playLightImpact()
         step = nextStep
@@ -363,11 +384,75 @@ struct GodModeWelcomeScreen: View {
             Spacer()
             Text("Your\nNew\nEra.").font(.system(size: 56, weight: .black, design: .rounded)).foregroundStyle(LinearGradient(colors: [.white, .cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)).lineSpacing(-5)
                 .offset(y: isVisible ? 0 : 20).opacity(isVisible ? 1 : 0)
-            Text("You is a personal architect of the body. No garbage, just a pure focus on the result.\n\nHow to break the limits?").font(.system(size: 16, weight: .medium)).foregroundStyle(.white.opacity(0.7)).offset(y: isVisible ? 0 : 20).opacity(isVisible ? 1 : 0)
+            Text("You are the personal architect of your body. No garbage, just a pure focus on the result.\n\nHow to break the limits?").font(.system(size: 16, weight: .medium)).foregroundStyle(.white.opacity(0.7)).offset(y: isVisible ? 0 : 20).opacity(isVisible ? 1 : 0)
             Spacer()
             GodModeButton(title: "To begin", action: onNext).offset(y: isVisible ? 0 : 30).opacity(isVisible ? 1 : 0)
         }
         .padding(30).onAppear { withAnimation(.easeOut(duration: 0.8).delay(0.2)) { isVisible = true } }
+    }
+}
+
+struct GodModeProfileScreen: View {
+    @Binding var metrics: GodModeUserMetrics
+    let onNext: () -> Void
+    @State private var selectedPhotoItem: PhotosPickerItem?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 8) {
+                Text("Who are you?").font(.system(size: 32, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                Text("Let AI know you better").font(.system(size: 15)).foregroundStyle(.white.opacity(0.6))
+            }.padding(.top, 60)
+            
+            Spacer()
+            
+            VStack(spacing: 32) {
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images, photoLibrary: .shared()) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.white.opacity(0.05))
+                            .frame(width: 120, height: 120)
+                            .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
+                            .shadow(color: .cyan.opacity(0.2), radius: 15, y: 5)
+                            
+                        if let img = metrics.avatarImage {
+                            Image(uiImage: img).resizable().scaledToFill().frame(width: 110, height: 110).clipShape(Circle())
+                        } else {
+                            Image(systemName: "person.crop.circle.badge.plus")
+                                .font(.system(size: 40))
+                                .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
+                        }
+                    }
+                }
+                .onChange(of: selectedPhotoItem) { _, newItem in
+                    Task {
+                        if let data = try? await newItem?.loadTransferable(type: Data.self),
+                           let uiImage = UIImage(data: data) {
+                            await MainActor.run { metrics.avatarImage = uiImage }
+                        }
+                    }
+                }
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("NAME / ALIAS").font(.system(size: 13, weight: .bold)).foregroundStyle(.white.opacity(0.5)).padding(.leading, 4)
+                    TextField("Champion", text: $metrics.name)
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
+                        .background(Color.white.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                }
+                .padding(.horizontal, 30)
+            }
+            
+            Spacer()
+            
+            GodModeButton(title: "Continue", action: onNext, isDisabled: metrics.name.trimmingCharacters(in: .whitespaces).isEmpty)
+                .padding(.horizontal, 30)
+                .padding(.bottom, 30)
+        }
     }
 }
 
@@ -378,12 +463,12 @@ struct GodModeMetricsScreen: View {
         VStack(spacing: 0) {
             VStack(spacing: 8) {
                 Text("Digitize yourself").font(.system(size: 32, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                Text("Basic parameters for the start").font(.system(size: 15)).foregroundStyle(.white.opacity(0.6))
+                Text("Basic starting parameters").font(.system(size: 15)).foregroundStyle(.white.opacity(0.6))
             }.padding(.top, 60)
             Spacer()
             HStack(spacing: 0) {
                 GodModeWheelColumn(title: "Age", range: 14...100, suffix: "years", selection: $metrics.age)
-                GodModeWheelColumn(title: "Height", range: 140...230, suffix: "sm", selection: $metrics.height)
+                GodModeWheelColumn(title: "Height", range: 140...230, suffix: "cm", selection: $metrics.height)
                 GodModeWheelColumn(title: "Weight", range: 40...200, suffix: "kg", selection: $metrics.weight)
             }
             .frame(height: 220).background(RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.05)).overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.1), lineWidth: 1))).padding(.horizontal, 20)
@@ -422,7 +507,7 @@ struct GodModeActivityScreen: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Your rhythm").font(.system(size: 32, weight: .bold, design: .rounded)).foregroundStyle(.white)
-                Text("How is your usual day going?").font(.system(size: 15)).foregroundStyle(.white.opacity(0.6))
+                Text("What is your typical day like?").font(.system(size: 15)).foregroundStyle(.white.opacity(0.6))
             }.padding(.horizontal, 30).padding(.top, 60).padding(.bottom, 30)
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 12) {
@@ -476,7 +561,7 @@ struct GodModeFinishScreen: View {
                     Image(systemName: "bolt.shield.fill").font(.system(size: 50)).foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
                 }
                 VStack(spacing: 8) {
-                    Text("The profile is ready").font(.system(size: 32, weight: .black, design: .rounded)).foregroundStyle(.white)
+                    Text("Your profile is ready").font(.system(size: 32, weight: .black, design: .rounded)).foregroundStyle(.white)
                     Text("Your data is securely stored. Have a good workout, bro.").font(.system(size: 15, weight: .medium)).foregroundStyle(.white.opacity(0.6)).multilineTextAlignment(.center).padding(.horizontal, 30)
                 }
                 Spacer()

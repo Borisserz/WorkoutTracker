@@ -109,31 +109,22 @@ struct WorkoutShareCard: View {
 
     private var topMuscles: [String] {
         var counts: [String: Int] = [:]
-
         for ex in workout.exercises {
-
             let group = ex.isSuperset ? (ex.subExercises.first?.muscleGroup ?? "Mixed") : ex.muscleGroup
             counts[group, default: 0] += 1
         }
-
-        return counts.sorted { $0.value > $1.value }
-                     .prefix(3)
-                     .map { $0.key }
+        return counts.sorted { $0.value > $1.value }.prefix(3).map { $0.key }
     }
 
     var body: some View {
         ZStack {
-
             backgroundLayer
 
-            VStack(spacing: 25) {
-
+            VStack(spacing: 20) {
                 headerSection
 
                 titleSection
-
-                Divider().background(Color.gray.opacity(0.3))
-
+                
                 statsGridSection
 
                 tagsSection
@@ -142,126 +133,174 @@ struct WorkoutShareCard: View {
 
                 footerSection
             }
+            .padding(.top, 40)
         }
-        .frame(width: 400, height: 600) 
-        .cornerRadius(0) 
+        .frame(width: 440, height: 720)
+        .background(Color.black)
     }
 
     private var backgroundLayer: some View {
         ZStack {
-            LinearGradient(
-                colors: [Color(hex: "1a1a1a"), Color(hex: "000000")],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
+            // Base dark background
+            Color(hex: "0a0a0e").ignoresSafeArea()
+
+            // Dynamic Mesh/Aurora Glows
+            Circle()
+                .fill(themeManager.current.primaryAccent)
+                .frame(width: 350)
+                .blur(radius: 80)
+                .offset(x: -150, y: -250)
+                .opacity(0.4)
 
             Circle()
-                .fill(themeManager.current.primaryAccent.opacity(0.1))
+                .fill(Color.purple)
                 .frame(width: 300)
-                .offset(x: -150, y: -200)
-
+                .blur(radius: 90)
+                .offset(x: 180, y: 300)
+                .opacity(0.35)
+                
             Circle()
-                .fill(Color.purple.opacity(0.1))
+                .fill(Color.cyan)
                 .frame(width: 200)
-                .offset(x: 150, y: 250)
+                .blur(radius: 60)
+                .offset(x: -100, y: 150)
+                .opacity(0.2)
         }
     }
 
     private var headerSection: some View {
-        HStack {
-            Image(systemName: "dumbbell.fill")
-                .font(.title)
-                .foregroundColor(themeManager.current.primaryAccent)
+        HStack(spacing: 8) {
+            Image(systemName: "flame.fill")
+                .font(.system(size: 16, weight: .bold))
+                .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom))
+                .shadow(color: .orange.opacity(0.5), radius: 5, y: 2)
 
             Text(LocalizedStringKey("WORKOUT COMPLETE"))
-                .font(.headline)
-                .tracking(2) 
-                .foregroundColor(.white.opacity(0.7))
+                .font(.system(size: 14, weight: .black, design: .rounded))
+                .tracking(3)
+                .foregroundColor(.white.opacity(0.9))
         }
-        .padding(.top, 40)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .overlay(Capsule().stroke(Color.white.opacity(0.2), lineWidth: 1))
+        .shadow(color: .black.opacity(0.3), radius: 10, y: 5)
     }
 
     private var titleSection: some View {
-        VStack(spacing: 5) {
+        VStack(spacing: 6) {
             Text(workout.title)
-                .font(.system(size: 32, weight: .heavy, design: .rounded))
-                .foregroundColor(themeManager.current.background)
+                .font(.system(size: 38, weight: .heavy, design: .rounded))
+                .foregroundColor(.white)
                 .multilineTextAlignment(.center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
+                .shadow(color: .black.opacity(0.5), radius: 2, y: 2)
+                .padding(.horizontal, 20)
 
-            Text(workout.date.formatted(date: .long, time: .omitted))
-                .font(.subheadline)
-                .foregroundColor(themeManager.current.secondaryAccent)
+            Text(workout.date.formatted(date: .long, time: .shortened).uppercased())
+                .font(.system(size: 12, weight: .bold))
+                .tracking(1)
+                .foregroundColor(.white.opacity(0.6))
         }
+        .padding(.top, 10)
     }
 
     private var statsGridSection: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 30) {
-            statCell(title: "DURATION", value: "\(workout.durationSeconds / 60) min", icon: "stopwatch", color: .yellow)
-            statCell(title: "TOTAL VOLUME", value: "\(totalVolume) kg", icon: "scalemass", color: .green)
-            statCell(title: "EXERCISES", value: "\(workout.exercises.count)", icon: "list.bullet", color: themeManager.current.primaryAccent)
-            statCell(title: "AVG EFFORT", value: "\(workout.effortPercentage)%", icon: "flame.fill", color: .red)
+        VStack(spacing: 16) {
+            HStack(spacing: 16) {
+                statGlassCard(title: "DURATION", value: "\(workout.durationSeconds / 60)m", icon: "stopwatch.fill", color: .yellow)
+                statGlassCard(title: "VOLUME", value: "\(totalVolume) kg", icon: "scalemass.fill", color: .green)
+            }
+            HStack(spacing: 16) {
+                statGlassCard(title: "EXERCISES", value: "\(workout.exercises.count)", icon: "bolt.heart.fill", color: .cyan)
+                statGlassCard(title: "EFFORT", value: "\(workout.effortPercentage)%", icon: "chart.bar.fill", color: .orange)
+            }
         }
-        .padding(.horizontal)
+        .padding(.horizontal, 24)
+        .padding(.top, 20)
     }
 
     @ViewBuilder
     private var tagsSection: some View {
         if !topMuscles.isEmpty {
-            VStack(spacing: 10) {
-                Text(LocalizedStringKey("TARGETED MUSCLES"))
-                    .font(.caption)
-                    .fontWeight(.bold)
-                    .foregroundColor(themeManager.current.secondaryAccent)
+            VStack(spacing: 12) {
+                Text(LocalizedStringKey("TARGET MUSCLES"))
+                    .font(.system(size: 11, weight: .black))
+                    .tracking(2)
+                    .foregroundColor(.white.opacity(0.5))
 
-                HStack {
+                HStack(spacing: 10) {
                     ForEach(topMuscles, id: \.self) { muscle in
                         Text(muscle.uppercased())
-                            .font(.caption2)
-                            .bold()
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 5)
-                            .background(Color.white.opacity(0.1))
-                            .foregroundColor(themeManager.current.background)
-                            .cornerRadius(20)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                LinearGradient(colors: [themeManager.current.primaryAccent.opacity(0.8), themeManager.current.primaryAccent.opacity(0.4)], startPoint: .topLeading, endPoint: .bottomTrailing)
                             )
+                            .foregroundColor(.white)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                            .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 8, y: 4)
                     }
                 }
             }
+            .padding(.top, 20)
         }
     }
 
     private var footerSection: some View {
-        HStack {
+        VStack(spacing: 4) {
             Image(systemName: "applewatch")
-            Text(LocalizedStringKey("Tracked with WorkoutTracker"))
+                .font(.system(size: 24))
+                .foregroundStyle(LinearGradient(colors: [.white, .gray], startPoint: .top, endPoint: .bottom))
+            
+            Text(LocalizedStringKey("TRACKED WITH WORKOUTTRACKER"))
+                .font(.system(size: 10, weight: .bold))
+                .tracking(2)
+                .foregroundColor(.white.opacity(0.4))
         }
-        .font(.caption)
-        .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
         .padding(.bottom, 30)
     }
 
-    private func statCell(title: String, value: String, icon: String, color: Color) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-                .frame(width: 40, height: 40)
-                .background(color.opacity(0.1))
-                .clipShape(Circle())
+    private func statGlassCard(title: String, value: String, icon: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                ZStack {
+                    Circle()
+                        .fill(color.opacity(0.2))
+                        .frame(width: 32, height: 32)
+                    Image(systemName: icon)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(color)
+                }
+                Spacer()
+            }
 
-            Text(value)
-                .font(.title3)
-                .bold()
-                .foregroundColor(themeManager.current.background)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .foregroundColor(.white)
+                    .shadow(color: color.opacity(0.5), radius: 8, y: 2)
 
-            Text(title)
-                .font(.caption2)
-                .fontWeight(.bold)
-                .foregroundColor(themeManager.current.secondaryAccent)
+                Text(title)
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(1)
+                    .foregroundColor(.white.opacity(0.5))
+            }
         }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial)
+        .background(color.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(LinearGradient(colors: [Color.white.opacity(0.4), Color.white.opacity(0.0)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.2), radius: 10, y: 5)
     }
 }
 
@@ -281,4 +320,5 @@ struct ShareableImage: Transferable {
 
 #Preview {
     WorkoutShareCard(workout: Workout.examples[0])
+        .environment(ThemeManager.shared)
 }

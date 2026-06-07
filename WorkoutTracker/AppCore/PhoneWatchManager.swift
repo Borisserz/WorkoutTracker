@@ -28,6 +28,12 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
                              activationDidCompleteWith state: WCSessionActivationState,
                              error: Error?) {
         print("📱 activation: \(state.rawValue) reachable:\(session.isReachable) error:\(String(describing: error))")
+        if let error = error {
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "WCSessionActivation"])
+        }
+        if state == .activated {
+            TrackingManager.shared.setUserProperty(name: "has_apple_watch", value: String(session.isWatchAppInstalled))
+        }
     }
 
     nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
@@ -49,10 +55,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
-        Task { @MainActor in
-            if let data = message["syncPayload"] as? Data,
-               let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
-
+        if let data = message["syncPayload"] as? Data,
+           let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
+            Task { @MainActor in
                 if payload.action == .updateHeartRate, let hr = payload.heartRate {
                     NotificationCenter.default.post(name: NSNotification.Name("LiveHeartRateUpdate"), object: hr)
                     return
@@ -64,8 +69,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
                     NotificationCenter.default.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": payload])
                 }
             }
-            else if let request = message["request"] as? String, request == "presets" {
-                print("📱 got presets request (sendMessage)")
+        } else if let request = message["request"] as? String, request == "presets" {
+            print("📱 got presets request (sendMessage)")
+            Task { @MainActor in
                 self.sendPresetsToWatch()
             }
         }
@@ -100,7 +106,12 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     }
 
     private func sendPresetsToWatch() {
-        guard let container = modelContainer else { print("📱 ❌ no modelContainer"); return }
+        let trace = TrackingManager.shared.startTrace(name: "watch_send_presets")
+        guard let container = modelContainer else { 
+            print("📱 ❌ no modelContainer")
+            trace?.stop()
+            return 
+        }
         let context = ModelContext(container)
         do {
             let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
@@ -118,8 +129,11 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
             if WCSession.default.isReachable {
                 WCSession.default.sendMessage(["presetsBatch": data], replyHandler: nil)
             }
+            trace?.stop()
         } catch {
             print("📱 ❌ sendPresetsToWatch failed: \(error)")
+            TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "sendPresetsToWatch"])
+            trace?.stop()
         }
     }
 }

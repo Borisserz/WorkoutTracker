@@ -17,6 +17,7 @@ struct ProfileView: View {
     @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = ""
     @AppStorage("userHeight") private var userHeight = 180
     @AppStorage("userAge") private var userAge = 25
+    @AppStorage("userBodyWeight") private var userBodyWeight: Double = 75.0
 
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
@@ -27,6 +28,7 @@ struct ProfileView: View {
     @State private var profileImage: UIImage?
 
     @State private var isAppeared = false
+    @State private var showEditMetrics = false
 
     var body: some View {
         NavigationStack {
@@ -38,7 +40,8 @@ struct ProfileView: View {
                         ProfileHeader(
                             profileImage: $profileImage,
                             selectedPhotoItem: $selectedPhotoItem,
-                            userName: $userName
+                            userName: $userName,
+                            title: userStatsViewModel.progressManager.currentTitle
                         )
 
                         LevelProgressBar(progressManager: userStatsViewModel.progressManager)
@@ -65,7 +68,7 @@ struct ProfileView: View {
                             BodyProgressChartView(weightHistory: weightHistory, unitsManager: unitsManager)
                         }
 
-                        BodyStatsView(height: $userHeight, age: $userAge)
+                        UserMetricsOverviewCard(height: userHeight, age: userAge, weight: userBodyWeight) { showEditMetrics = true }
 
                         Spacer().frame(height: 40)
                     }
@@ -87,6 +90,12 @@ struct ProfileView: View {
             withAnimation(.easeOut(duration: 0.6)) { isAppeared = true }
         }
         .onChange(of: selectedPhotoItem) { _, newItem in handlePhotoSelection(newItem) }
+        .sheet(isPresented: $showEditMetrics) {
+            EditMetricsSheet()
+                .presentationDetents([.height(450)])
+                .presentationCornerRadius(35)
+                .presentationDragIndicator(.visible)
+        }
     }
 
     private var trackingNavigationSection: some View {
@@ -102,7 +111,7 @@ struct ProfileView: View {
                     subtitle: "Weight history and before/after comparison",
                     icon: "camera.macro",
                     color: .orange,
-                    destination: AnyView(WeightHistoryView())
+                    destination: WeightHistoryView()
                 )
 
                 ProfileMenuCard(
@@ -110,7 +119,7 @@ struct ProfileView: View {
                     subtitle: "Muscle volumes and fat percentage",
                     icon: "ruler.fill",
                     color: themeManager.current.primaryAccent,
-                    destination: AnyView(BodyMeasurementsView())
+                    destination: BodyMeasurementsView()
                 )
             }
             .padding(.horizontal, 20)
@@ -136,12 +145,12 @@ struct ProfileView: View {
     }
 }
 
-struct ProfileMenuCard: View {
+struct ProfileMenuCard<Destination: View>: View {
     let title: String
     let subtitle: String
     let icon: String
     let color: Color
-    let destination: AnyView
+    let destination: Destination
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
@@ -166,7 +175,7 @@ struct ProfileMenuCard: View {
                     Text(LocalizedStringKey(subtitle))
                         .font(.caption)
                         .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
-                        .lineLimit(2)
+                        .lineLimit(3).minimumScaleFactor(0.8).allowsTightening(true)
                         .multilineTextAlignment(.leading)
                 }
 
@@ -193,6 +202,7 @@ struct ProfileHeader: View {
     @Binding var profileImage: UIImage?
     @Binding var selectedPhotoItem: PhotosPickerItem?
     @Binding var userName: String
+    var title: String
     @Environment(\.colorScheme) private var colorScheme 
 
     var body: some View {
@@ -223,17 +233,43 @@ struct ProfileHeader: View {
                             .frame(width: 40, height: 40)
                             .foregroundColor(.white)
                     }
+                    
+                    // Edit Badge
+                    ZStack {
+                        Circle()
+                            .fill(Color.blue)
+                            .frame(width: 24, height: 24)
+                            .overlay(
+                                Circle().stroke(colorScheme == .dark ? Color.black : Color.white, lineWidth: 2)
+                            )
+                        Image(systemName: "pencil")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .offset(x: 28, y: 28)
                 }
             }
 
             VStack(spacing: 4) {
-                TextField("Athlete", text: $userName)
-                    .font(.title2).bold()
-                    .foregroundColor(colorScheme == .dark ? .white : .black) 
-                    .multilineTextAlignment(.center)
+                HStack(spacing: 6) {
+                    TextField("Athlete", text: $userName)
+                        .font(.title2).bold()
+                        .foregroundColor(colorScheme == .dark ? .white : .black) 
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: 160)
+                    
+                    Image(systemName: "pencil")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.gray)
+                }
 
-                Text("@" + (userName.isEmpty ? "athlete" : userName.lowercased().replacingOccurrences(of: " ", with: "_")))
+                Text(title)
                     .font(.subheadline)
+                    .fontWeight(.bold)
+                    .foregroundColor(.orange)
+                
+                Text("@" + (userName.isEmpty ? "athlete" : userName.lowercased().replacingOccurrences(of: " ", with: "_")))
+                    .font(.caption)
                     .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .gray) 
             }
         }
@@ -430,19 +466,19 @@ struct AchievementDesignerCard: View {
                         .font(.system(size: 14, weight: .bold))
                         .foregroundColor(colorScheme == .dark ? .white : (achievement.isUnlocked ? .black : .gray)) 
                         .multilineTextAlignment(.center)
-                        .lineLimit(2)
+                        .lineLimit(3).minimumScaleFactor(0.8).allowsTightening(true)
                         .minimumScaleFactor(0.7)
 
                     if achievement.isUnlocked {
                         Text(achievement.tier.name)
                             .font(.caption)
                             .foregroundColor(.gray)
-                            .lineLimit(1)
+                            .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
                     } else {
                         Text(achievement.progress)
                             .font(.caption)
                             .foregroundColor(.gray)
-                            .lineLimit(1)
+                            .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
                     }
                 }
             }
@@ -497,7 +533,7 @@ struct PersonalRecordsView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Personal bests")
+            Text("Personal Bests")
                 .font(.title3).bold()
                 .foregroundColor(colorScheme == .dark ? .white : .black) 
 
@@ -536,7 +572,7 @@ struct RecordRow: View {
             Text(value)
                 .font(.system(size: 20, weight: .heavy, design: .rounded))
                 .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing))
-                .lineLimit(1)
+                .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
                 .minimumScaleFactor(0.6)
         }
         .padding(.vertical, 8)
@@ -556,7 +592,7 @@ struct BodyProgressChartView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Weight dynamics").font(.title3).bold().foregroundColor(colorScheme == .dark ? .white : .black)
+                Text("Weight Dynamics").font(.title3).bold().foregroundColor(colorScheme == .dark ? .white : .black)
                 Spacer()
                 if let first = weightHistory.last?.weight, let last = weightHistory.first?.weight {
                     let diff = last - first
@@ -622,48 +658,77 @@ struct BodyProgressChartView: View {
     }
 }
 
-struct BodyStatsView: View {
-    @Binding var height: Int
-    @Binding var age: Int
+struct UserMetricsOverviewCard: View {
+    var height: Int
+    var age: Int
+    var weight: Double
+    var onEdit: () -> Void
     @Environment(\.colorScheme) private var colorScheme
-
-    var body: some View {
-        HStack(spacing: 16) {
-            StatAdjuster(title: "Height", value: "\(height)", unit: "sm", onMinus: { height -= 1 }, onPlus: { height += 1 })
-            StatAdjuster(title: "Age", value: "\(age)", unit: "years", onMinus: { age -= 1 }, onPlus: { age += 1 })
-        }
-        .padding(.horizontal, 20)
-    }
-}
-
-struct StatAdjuster: View {
-    var title: String; var value: String; var unit: String
-    var onMinus: () -> Void; var onPlus: () -> Void
-    @Environment(\.colorScheme) private var colorScheme 
+    @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         VStack(spacing: 12) {
-            Text(title).font(.caption).foregroundColor(.gray)
-            HStack(spacing: 0) {
-                Text(value).font(.system(size: 20, weight: .bold)).monospacedDigit()
-                Text(unit).font(.caption).foregroundColor(.gray).padding(.leading, 2)
+            HStack {
+                Text(LocalizedStringKey("Basic Metrics"))
+                    .font(.headline)
+                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                Spacer()
+                Button(action: onEdit) {
+                    Text(LocalizedStringKey("Edit"))
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(themeManager.current.primaryAccent)
+                }
             }
-            .foregroundColor(colorScheme == .dark ? .white : .black) 
+            .padding(.horizontal, 20)
 
-            HStack(spacing: 16) {
-                Button(action: { UIImpactFeedbackGenerator(style: .light).impactOccurred(); withAnimation { onMinus() } }) { Image(systemName: "minus.circle.fill").foregroundColor(colorScheme == .dark ? .white.opacity(0.3) : .gray.opacity(0.5)) } 
-                Button(action: { UIImpactFeedbackGenerator(style: .light).impactOccurred(); withAnimation { onPlus() } }) { Image(systemName: "plus.circle.fill").foregroundColor(colorScheme == .dark ? .white.opacity(0.3) : .gray.opacity(0.5)) } 
+            HStack(spacing: 12) {
+                metricBox(title: "Age", value: "\(age)", unit: "yrs", icon: "calendar")
+                metricBox(title: "Height", value: "\(height)", unit: "cm", icon: "ruler")
+                metricBox(title: "Weight", value: String(format: "%.1f", weight), unit: "kg", icon: "scalemass")
             }
-            .font(.title3)
+            .padding(.horizontal, 20)
+        }
+    }
+    
+    private func metricBox(title: LocalizedStringKey, value: String, unit: LocalizedStringKey, icon: String) -> some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.caption2)
+                    .foregroundColor(themeManager.current.secondaryAccent)
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(themeManager.current.secondaryText)
+            }
+            
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text(value)
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(themeManager.current.primaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                Text(unit)
+                    .font(.caption)
+                    .fontWeight(.medium)
+                    .foregroundColor(themeManager.current.secondaryText)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 16)
-        .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white)) 
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)) 
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) 
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
     }
 }
+
 
 struct ProfileBreathingBackground: View {
     @State private var phase = false
@@ -709,7 +774,7 @@ struct AllAchievementsView: View {
             VStack(alignment: .leading, spacing: 24) {
 
                 if !unlocked.isEmpty {
-                    Text("Unlocked trophies")
+                    Text("Unlocked Trophies")
                         .font(.title2).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .padding(.horizontal)
@@ -723,7 +788,7 @@ struct AllAchievementsView: View {
                 }
 
                 if !locked.isEmpty {
-                    Text("In process")
+                    Text("In Progress")
                         .font(.title2).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .padding(.horizontal)
@@ -740,7 +805,7 @@ struct AllAchievementsView: View {
             .padding(.vertical, 20)
         }
         .background(colorScheme == .dark ? Color(red: 0.05, green: 0.05, blue: 0.07) : Color(UIColor.systemGroupedBackground))
-        .navigationTitle("All the trophies")
+        .navigationTitle("All Trophies")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -781,7 +846,7 @@ struct AchievementListRow: View {
                 Text(achievement.description)
                     .font(.caption)
                     .foregroundColor(colorScheme == .dark ? .gray : .secondary)
-                    .lineLimit(2)
+                    .lineLimit(3).minimumScaleFactor(0.8).allowsTightening(true)
             }
 
             Spacer()

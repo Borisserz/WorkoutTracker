@@ -402,11 +402,12 @@ public actor AILogicService {
         \(customInstruction)
         You can chat, answer fitness questions, OR generate workout plans.
         USER PROFILE (non-sensitive):
+        Name: \(profile.userName.isEmpty ? "Athlete" : profile.userName)
         Experience level: \(profile.experienceLevel)
         Workouts this week: \(profile.workoutsThisWeek)
         Current streak: \(profile.currentStreak) days
         RULES FOR JSON RESPONSE:
-        "aiMessage": ALWAYS provide your conversational response here.
+        "aiMessage": ALWAYS provide your conversational response here. Occasionally address the user by their name to make the conversation more personal.
         "hasWorkout": Set to true ONLY if the user explicitly asks for a workout plan or routine. If they just say "Hello" or ask a general question, set it to false.
         "workoutTitle" and "exercises": ONLY fill these if hasWorkout is true.
         Weights must be in \(profile.weightUnit).

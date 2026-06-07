@@ -146,103 +146,316 @@ struct CustomDonutChart: View {
     }
 }
 
+
+struct ConfettiParticle: Identifiable {
+    let id = UUID()
+    var position: CGPoint
+    var color: Color
+    var size: CGFloat
+    var rotation: Double
+    var speed: Double
+    var xSpeed: Double
+}
+
+struct ConfettiView: View {
+    @State private var particles: [ConfettiParticle] = []
+    @State private var timer: Timer?
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                ForEach(particles) { particle in
+                    Rectangle()
+                        .fill(particle.color)
+                        .frame(width: particle.size, height: particle.size * 0.6)
+                        .rotationEffect(.degrees(particle.rotation))
+                        .position(particle.position)
+                }
+            }
+            .onAppear {
+                createParticles(in: geometry.size)
+                startAnimation(in: geometry.size)
+            }
+            .onDisappear {
+                timer?.invalidate()
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func createParticles(in size: CGSize) {
+        let colors: [Color] = [.red, .blue, .green, .yellow, .orange, .purple, .pink, .cyan]
+        for _ in 0..<80 {
+            let particle = ConfettiParticle(
+                position: CGPoint(x: CGFloat.random(in: 0...size.width), y: CGFloat.random(in: -size.height...0)),
+                color: colors.randomElement()!,
+                size: CGFloat.random(in: 8...16),
+                rotation: Double.random(in: 0...360),
+                speed: Double.random(in: 2...6),
+                xSpeed: Double.random(in: -2...2)
+            )
+            particles.append(particle)
+        }
+    }
+
+    private func startAnimation(in size: CGSize) {
+        timer = Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { _ in
+            for i in particles.indices {
+                particles[i].position.y += particles[i].speed
+                particles[i].position.x += particles[i].xSpeed
+                particles[i].rotation += particles[i].xSpeed * 2
+
+                if particles[i].position.y > size.height + 50 {
+                    particles[i].position.y = -50
+                    particles[i].position.x = CGFloat.random(in: 0...size.width)
+                }
+            }
+        }
+    }
+}
+
 struct AchievementPopupView: View {
-    let achievement: Achievement
+    let achievements: [Achievement]
     let onClose: () -> Void
-    @State private var isAnimating = false
+    
+    @State private var currentIndex = 0
+    @State private var isAnimatingRing = false
+    @State private var appearAnimation = false
+    @State private var showConfetti = false
+    
+    private var currentAchievement: Achievement { achievements[currentIndex] }
 
     var body: some View {
         ZStack {
+            // Background blur and dim
+            Color.black.opacity(0.6)
+                .ignoresSafeArea()
+                .onTapGesture { handleClose() }
+                .overlay(.ultraThinMaterial)
 
-            Color.black.opacity(0.85).ignoresSafeArea()
-
-            VStack(spacing: 24) {
-                ZStack {
-                    if achievement.isUnlocked {
-                        Circle()
-                            .fill(tierColor(achievement.tier).opacity(0.2))
-                            .frame(width: 160, height: 160)
-                            .scaleEffect(isAnimating ? 1.2 : 0.9)
-                            .opacity(isAnimating ? 0 : 1)
-                            .animation(.easeOut(duration: 1.5).repeatForever(autoreverses: false), value: isAnimating)
-                    }
-
-                    Image(systemName: achievement.isUnlocked ? achievement.icon : "lock.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(achievement.isUnlocked ? tierColor(achievement.tier) : .gray)
-                        .shadow(color: achievement.isUnlocked ? tierColor(achievement.tier).opacity(0.8) : .clear, radius: 20, x: 0, y: 0)
-                }
-                .padding(.bottom, 10)
-
-                if achievement.isUnlocked {
-                    Text("🏆").font(.largeTitle)
-                    Text(LocalizedStringKey("Achievement Unlocked!"))
-                        .font(.headline)
-                        .foregroundColor(.yellow)
-                        .textCase(.uppercase)
-                        .tracking(2)
-                } else {
-                    Text(LocalizedStringKey("Locked"))
-                        .font(.headline)
-                        .foregroundColor(.gray)
-                        .textCase(.uppercase)
-                        .tracking(2)
-                }
-
-                Text(achievement.title)
-                    .font(.system(size: 32, weight: .heavy, design: .rounded))
-                    .foregroundColor(.white)
-                    .multilineTextAlignment(.center)
-
-                Text(achievement.description)
-                    .font(.title3)
-                    .foregroundColor(.white.opacity(0.8))
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 30)
-
-                if achievement.isUnlocked {
-                    HStack(spacing: 6) {
-                        Text(LocalizedStringKey("Level:"))
-                            .font(.headline)
-                            .foregroundColor(.white.opacity(0.7))
-                        Text(achievement.tier.name)
-                            .font(.headline)
-                            .foregroundColor(tierColor(achievement.tier))
-                    }
-                    .padding(.top, 10)
-                } else if !achievement.progress.isEmpty {
-                    Text(achievement.progress)
-                        .font(.headline)
-                        .foregroundColor(.cyan)
-                        .padding(.top, 10)
-                }
-
-                Button(action: onClose) {
-                    Text(LocalizedStringKey("Close"))
-                        .font(.headline)
-                        .foregroundColor(.black)
-                        .frame(width: 200)
-                        .padding()
-                        .background(Color.white)
-                        .cornerRadius(16)
-                }
-                .padding(.top, 20)
+            if showConfetti && currentAchievement.isUnlocked {
+                FloatingParticles()
+                    .transition(.opacity)
+                    .zIndex(0.5)
+                ConfettiView()
+                    .transition(.opacity)
+                    .zIndex(1)
             }
-            .padding(30)
-            .background(.ultraThinMaterial)
-            .environment(\.colorScheme, .dark) 
-            .cornerRadius(32)
+
+            // Glow behind card
+            if currentAchievement.isUnlocked {
+                Circle()
+                    .fill(tierColor(currentAchievement.tier).opacity(0.3))
+                    .frame(width: 300, height: 300)
+                    .blur(radius: 80)
+                    .scaleEffect(isAnimatingRing ? 1.2 : 0.8)
+                    .animation(.easeInOut(duration: 2).repeatForever(autoreverses: true), value: isAnimatingRing)
+            }
+
+            VStack(spacing: 0) {
+                // Header / Icon area
+                ZStack {
+                    if currentAchievement.isUnlocked {
+                        // Premium spinning rays / rings
+                        Circle()
+                            .strokeBorder(
+                                LinearGradient(colors: [tierColor(currentAchievement.tier).opacity(0.8), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                lineWidth: 4
+                            )
+                            .frame(width: 140, height: 140)
+                            .rotationEffect(.degrees(isAnimatingRing ? 360 : 0))
+                            .animation(.linear(duration: 8).repeatForever(autoreverses: false), value: isAnimatingRing)
+                        
+                        Circle()
+                            .fill(tierColor(currentAchievement.tier).opacity(0.15))
+                            .frame(width: 120, height: 120)
+                            .scaleEffect(isAnimatingRing ? 1.1 : 0.9)
+                            .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: isAnimatingRing)
+                    }
+
+                    Image(systemName: currentAchievement.isUnlocked ? currentAchievement.icon : "lock.fill")
+                        .font(.system(size: 60, weight: .semibold))
+                        .foregroundColor(currentAchievement.isUnlocked ? tierColor(currentAchievement.tier) : .gray)
+                        .shadow(color: currentAchievement.isUnlocked ? tierColor(currentAchievement.tier).opacity(0.8) : .clear, radius: 15, x: 0, y: 0)
+                }
+                .padding(.top, 40)
+                .padding(.bottom, 24)
+
+                // Text Content
+                VStack(spacing: 12) {
+                    if currentAchievement.isUnlocked {
+                        Text(LocalizedStringKey("Achievement Unlocked!"))
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundColor(tierColor(currentAchievement.tier))
+                            .textCase(.uppercase)
+                            .tracking(2)
+                    } else {
+                        Text(LocalizedStringKey("Locked"))
+                            .font(.subheadline)
+                            .fontWeight(.bold)
+                            .foregroundColor(.gray)
+                            .textCase(.uppercase)
+                            .tracking(2)
+                    }
+
+                    Text(currentAchievement.title)
+                        .font(.system(size: 28, weight: .heavy, design: .rounded))
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 20)
+
+                    Text(currentAchievement.description)
+                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .padding(.top, 4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                // Tier Info / Progress
+                VStack(spacing: 8) {
+                    if currentAchievement.isUnlocked {
+                        HStack(spacing: 8) {
+                            Image(systemName: "star.fill")
+                                .font(.caption)
+                                .foregroundColor(tierColor(currentAchievement.tier))
+                            Text(currentAchievement.tier.name)
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                            Image(systemName: "star.fill")
+                                .font(.caption)
+                                .foregroundColor(tierColor(currentAchievement.tier))
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(tierColor(currentAchievement.tier).opacity(0.15))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(tierColor(currentAchievement.tier).opacity(0.3), lineWidth: 1))
+                    } else if !currentAchievement.progress.isEmpty {
+                        Text(currentAchievement.progress)
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(.cyan)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.cyan.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+                .padding(.top, 24)
+                .padding(.bottom, 32)
+
+                // Button
+                Button(action: handleClose) {
+                    HStack {
+                        Text(currentIndex < achievements.count - 1 ? LocalizedStringKey("Next") : LocalizedStringKey("Awesome"))
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                        if currentIndex < achievements.count - 1 {
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 16, weight: .bold))
+                        }
+                    }
+                    .foregroundColor(currentAchievement.isUnlocked ? .black : .white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 18)
+                    .background(
+                        currentAchievement.isUnlocked 
+                        ? AnyView(LinearGradient(colors: [.white, Color(white: 0.9)], startPoint: .top, endPoint: .bottom))
+                        : AnyView(Color.white.opacity(0.2))
+                    )
+                }
+                .buttonStyle(ScaleButtonStyle())
+                .clipShape(RoundedRectangle(cornerRadius: 0)) 
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 32)
+                    .fill(Color(red: 0.1, green: 0.1, blue: 0.15).opacity(0.8))
+            )
+            .background(
+                RoundedRectangle(cornerRadius: 32)
+                    .fill(.ultraThinMaterial)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 32))
             .overlay(
                 RoundedRectangle(cornerRadius: 32)
-                    .stroke(achievement.isUnlocked ? tierColor(achievement.tier).opacity(0.5) : Color.gray.opacity(0.3), lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                currentAchievement.isUnlocked ? tierColor(currentAchievement.tier).opacity(0.8) : .white.opacity(0.3),
+                                .clear,
+                                currentAchievement.isUnlocked ? tierColor(currentAchievement.tier).opacity(0.4) : .clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
             )
-            .shadow(color: .black.opacity(0.3), radius: 30, x: 0, y: 15)
-            .padding(.horizontal, 20)
+            .overlay(
+                // Holographic Shimmer Effect
+                GeometryReader { geo in
+                    LinearGradient(
+                        colors: [.clear, .white.opacity(0.2), .clear],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    .frame(width: geo.size.width * 2, height: geo.size.height * 2)
+                    .offset(x: appearAnimation ? geo.size.width : -geo.size.width * 2,
+                            y: appearAnimation ? geo.size.height : -geo.size.height * 2)
+                    .animation(.linear(duration: 2.5).delay(0.5).repeatForever(autoreverses: false), value: appearAnimation)
+                    .mask(RoundedRectangle(cornerRadius: 32))
+                }
+            )
+            .shadow(color: .black.opacity(0.5), radius: 40, x: 0, y: 20)
+            .padding(.horizontal, 24)
+            .rotation3DEffect(
+                .degrees(appearAnimation ? 0 : 15),
+                axis: (x: 1, y: 0, z: 0)
+            )
+            .scaleEffect(appearAnimation ? 1.0 : 0.8)
+            .opacity(appearAnimation ? 1.0 : 0.0)
+            .id(currentIndex)
+            .onTapGesture { handleClose() }
+            .zIndex(2)
         }
-        .onAppear {
-            if achievement.isUnlocked {
-                isAnimating = true
-                HapticManager.shared.impact(.heavy) 
+        .onAppear { setupAnimation() }
+        .onChange(of: currentIndex) { _ in setupAnimation() }
+    }
+    
+    private func setupAnimation() {
+        showConfetti = false
+        if currentAchievement.isUnlocked {
+            isAnimatingRing = true
+            HapticManager.shared.impact(.heavy)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                withAnimation { showConfetti = true }
+            }
+        } else {
+            isAnimatingRing = false
+        }
+        
+        appearAnimation = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                appearAnimation = true
+            }
+        }
+    }
+
+    private func handleClose() {
+        HapticManager.shared.impact(.light)
+        if currentIndex < achievements.count - 1 {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                currentIndex += 1
+            }
+        } else {
+            withAnimation(.easeIn(duration: 0.2)) {
+                appearAnimation = false
+                showConfetti = false
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                onClose()
             }
         }
     }
@@ -250,7 +463,7 @@ struct AchievementPopupView: View {
     private func tierColor(_ tier: AchievementTier) -> Color {
         switch tier {
         case .none: return .clear
-        case .bronze: return .brown
+        case .bronze: return .orange.opacity(0.8)
         case .silver: return .gray
         case .gold: return .yellow
         case .diamond: return .cyan

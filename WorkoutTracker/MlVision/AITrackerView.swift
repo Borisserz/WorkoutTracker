@@ -14,6 +14,9 @@ struct AITrackerView: View {
     @StateObject private var coach = VoiceCoach()
 
     @State private var repScale: CGFloat = 1.0
+    @State private var showPlusOne: Bool = false
+    @State private var plusOneOffset: CGFloat = .zero
+    @State private var plusOneOpacity: Double = 0.0
 
     var onFinish: ((Int) -> Void)?
 
@@ -38,6 +41,12 @@ struct AITrackerView: View {
 
             PoseOverlayView(joints: cameraManager.joints)
                 .ignoresSafeArea()
+                
+            Rectangle()
+                .stroke(feedbackColor(for: engine.feedbackMessage), lineWidth: 4)
+                .shadow(color: feedbackColor(for: engine.feedbackMessage).opacity(0.8), radius: 10)
+                .ignoresSafeArea()
+                .animation(.easeInOut(duration: 0.3), value: engine.feedbackMessage)
 
             VStack {
                 LinearGradient(colors: [.black.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom)
@@ -63,6 +72,16 @@ struct AITrackerView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
+            
+            if showPlusOne {
+                Text("+1")
+                    .font(.system(size: 60, weight: .heavy, design: .rounded))
+                    .foregroundColor(themeManager.current.primaryAccent)
+                    .shadow(color: themeManager.current.primaryAccent.opacity(0.8), radius: 10, x: 0, y: 0)
+                    .offset(y: plusOneOffset)
+                    .opacity(plusOneOpacity)
+                    .allowsHitTesting(false)
+            }
         }
         .navigationBarHidden(true)
 
@@ -178,8 +197,24 @@ struct AITrackerView: View {
         }
     }
 
+    private var gesturePill: some View {
+        HStack(spacing: 8) {
+            Text("✌️")
+            Text("Peace Sign to Finish")
+                .font(.caption)
+                .fontWeight(.bold)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .foregroundColor(.white)
+        .padding(.bottom, 8)
+    }
+
     private var topHUD: some View {
         VStack(spacing: 8) {
+            gesturePill
             Text("\(engine.repsCount)")
                 .font(.system(size: 80, weight: .heavy, design: .rounded))
                 .foregroundColor(.white)
@@ -255,13 +290,28 @@ struct AITrackerView: View {
     private func triggerRepAnimation() {
         let generator = UIImpactFeedbackGenerator(style: .heavy)
         generator.impactOccurred()
+        
         withAnimation(.spring(response: 0.2, dampingFraction: 0.4, blendDuration: 0)) {
             repScale = 1.3
         }
+        
+        plusOneOffset = 0
+        plusOneOpacity = 1
+        showPlusOne = true
+        
+        withAnimation(.easeOut(duration: 0.8)) {
+            plusOneOffset = -100
+            plusOneOpacity = 0
+        }
+        
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0)) {
                 repScale = 1.0
             }
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            showPlusOne = false
         }
     }
 }

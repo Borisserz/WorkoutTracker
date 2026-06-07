@@ -76,7 +76,10 @@ struct AddWorkoutView: View {
 
     private var nameSection: some View {
         Section(header: Text(LocalizedStringKey("Workout Name"))) {
-            TextField(LocalizedStringKey("E.g. Evening Pump"), text: $viewModel.title)
+            TextField(LocalizedStringKey("E.g. Evening Pump"), text: $viewModel.title, axis: .vertical)
+                .lineLimit(1...3)
+                .minimumScaleFactor(0.8)
+                .allowsTightening(true)
         }
     }
 
@@ -144,7 +147,10 @@ struct AddWorkoutView: View {
     private func exercisePreviewRow(exercise: Exercise) -> some View {
         HStack(alignment: .center, spacing: 8) {
             Circle().fill(Color.secondary.opacity(0.3)).frame(width: 6, height: 6)
-            Text(LocalizationHelper.shared.translateName(exercise.name)).foregroundColor(themeManager.current.secondaryText)
+            Text(LocalizationHelper.shared.translateName(exercise.name))
+                .foregroundColor(themeManager.current.secondaryText)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer()
             Text(exercise.formattedDetails(unitsManager: unitsManager))
                 .font(.caption)
@@ -167,7 +173,12 @@ struct AddWorkoutView: View {
             }
 
             VStack(alignment: .leading) {
-                Text(title).foregroundColor(themeManager.current.primaryText)
+                Text(title)
+                    .foregroundColor(themeManager.current.primaryText)
+                    .lineLimit(nil)
+                    .minimumScaleFactor(0.8)
+                    .allowsTightening(true)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(subtitle).font(.caption).foregroundColor(themeManager.current.secondaryText)
             }
             Spacer()

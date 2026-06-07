@@ -4,6 +4,8 @@ import Foundation
 internal import SwiftUI
 import Observation
 
+
+
 @Observable
 class ProgressManager {
 
@@ -19,6 +21,17 @@ class ProgressManager {
     init() {
         loadProgress()
         recalculateLevelFromXP()
+    }
+
+    var currentTitle: String {
+        switch level {
+        case 1...4: return "Rookie"
+        case 5...9: return "Iron Trainee"
+        case 10...19: return "Gym Regular"
+        case 20...29: return "Dedicated Athlete"
+        case 30...49: return "Iron Master"
+        default: return "Titan"
+        }
     }
 
     private func cumulativeXPRequired(forLevel n: Int) -> Int {
@@ -51,25 +64,46 @@ class ProgressManager {
         return min(max(progress, 0.0), 1.0)
     }
 
-    func addXP(for workout: Workout) {
-        let xpGained = calculateXP(for: workout)
-        totalXP += xpGained
+    func addXP(for workout: Workout, prCount: Int = 0) -> XPBreakdown {
+        let breakdown = calculateXP(for: workout, prCount: prCount)
+        totalXP += breakdown.total
 
         checkForLevelUp()
         saveProgress()
+        
+        return breakdown
     }
 
-    private func calculateXP(for workout: Workout) -> Int {
-
+    private func calculateXP(for workout: Workout, prCount: Int) -> XPBreakdown {
+        let baseCompletionXP = 150
+        
+        // Calculate duration XP (5 XP per minute)
+        let durationMinutes = workout.durationSeconds / 60
+        let durationXP = Int(durationMinutes * 5)
+        
+        // Calculate sets XP (10 XP per set)
+        let totalSets = workout.exercises.reduce(0) { $0 + $1.setsList.count }
+        let setsXP = totalSets * 10
+        
+        // Calculate PR XP (50 XP per PR)
+        let prXP = prCount * 50
+        
+        // Retain some volume XP so heavy lifters get rewarded, but scaled down
         let totalVolume = workout.exercises.reduce(0.0) { partialResult, exercise in
-
             return partialResult + exercise.exerciseVolume
         }
+        let volumeXP = Int(totalVolume / 20.0) // Scale down volume contribution
 
         let effortMultiplier = 1.0 + (Double(workout.effortPercentage) / 100.0)
-        let baseXp = totalVolume / 5.0
 
-        return Int(baseXp * effortMultiplier)
+        return XPBreakdown(
+            baseXP: baseCompletionXP,
+            durationXP: durationXP,
+            setsXP: setsXP,
+            prXP: prXP,
+            volumeXP: volumeXP,
+            effortMultiplier: effortMultiplier
+        )
     }
 
     private func checkForLevelUp() {

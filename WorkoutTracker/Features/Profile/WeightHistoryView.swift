@@ -95,6 +95,12 @@ struct WeightHistoryView: View {
             .sheet(item: $selectedEntryForGallery) { entry in
                 WeightPhotoGalleryView(entry: entry)
             }
+            .onAppear {
+                TrackingManager.shared.track(.progressChartViewed(chartType: "weight", timeRange: selectedPeriod.rawValue))
+            }
+            .onChange(of: selectedPeriod) { _, newValue in
+                TrackingManager.shared.track(.progressChartViewed(chartType: "weight", timeRange: newValue.rawValue))
+            }
         }
     }
 

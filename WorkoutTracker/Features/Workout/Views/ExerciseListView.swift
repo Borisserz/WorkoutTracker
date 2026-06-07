@@ -19,21 +19,18 @@ struct ExerciseListView: View {
 
     var body: some View {
         if workout.exercises.isEmpty {
-
-                   Button {
-                       onAddExerciseTap()
-                   } label: {
-                       EmptyStateView(
-                           icon: "plus.circle.fill",
-                           title: LocalizedStringKey("No exercises added yet"),
-                           message: LocalizedStringKey("Tap the + button above to add your first exercise to this workout.")
-                       )
-                       .padding(.vertical, 30)
-                       .frame(maxWidth: .infinity, maxHeight: .infinity)
-                       .contentShape(Rectangle()) 
-                   }
-                   .buttonStyle(.plain)
-               } else {
+            EmptyStateView(
+                icon: "plus.circle.fill",
+                title: LocalizedStringKey("Ready to Sweat?"),
+                message: LocalizedStringKey("Tap below to add exercises from the catalog or build a superset."),
+                iconColor: .cyan,
+                actionTitle: LocalizedStringKey("Add Exercise")
+            ) {
+                onAddExerciseTap()
+            }
+            .padding(.vertical, 30)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
                    VStack(spacing: 16) {
 
                 ForEach(sortedExercises) { exercise in

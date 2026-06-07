@@ -37,7 +37,7 @@ struct SupersetCardView: View {
             .shadow(color: isActiveExercise ? Color.blue.opacity(0.2) : Color.clear, radius: isActiveExercise ? 8 : 0, x: 0, y: 2)
         }
         .sheet(isPresented: $showEffortSheet, onDismiss: { if superset.isCompleted { finishSupersetAction() } }) {
-            EffortInputView(effort: $superset.effort)
+            EffortInputView(effort: $superset.effort, exerciseName: superset.name)
         }
     }
 

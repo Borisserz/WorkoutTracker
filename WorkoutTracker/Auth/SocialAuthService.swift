@@ -51,6 +51,26 @@ final class SocialAuthService {
         currentNonce = nil
     }
 
+    func signInWithApple() async throws {
+        let nonce = Self.randomNonce()
+        currentNonce = nonce
+        defer { currentNonce = nil }
+
+        let credential = try await performAppleAuthorization(nonce: nonce)
+        
+        guard let tokenData = credential.identityToken,
+              let idToken = String(data: tokenData, encoding: .utf8) else {
+            throw AuthError.invalidAppleCredential
+        }
+
+        let firebaseCredential = OAuthProvider.appleCredential(
+            withIDToken: idToken,
+            rawNonce: nonce,
+            fullName: credential.fullName
+        )
+        try await linkOrSignIn(with: firebaseCredential)
+    }
+
     // MARK: - Google
 
     func signInWithGoogle() async throws {
@@ -96,6 +116,14 @@ final class SocialAuthService {
         } else {
             _ = try await Auth.auth().signIn(with: credential)
         }
+    }
+
+    // MARK: - Sign Out
+
+    func signOut() async throws {
+        try Auth.auth().signOut()
+        // Ensure a new anonymous account is created immediately
+        try await AnonymousAuthBootstrap.shared.ensureSignedIn()
     }
 
     // MARK: - Helpers

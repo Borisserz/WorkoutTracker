@@ -195,6 +195,7 @@ class Workout: Identifiable {
     var icon: String = "figure.run"
     var isFavorite: Bool = false
     var aiChatHistoryData: Data? = nil
+    var source: String? = nil
 
     var durationSeconds: Int = 0
     var effortPercentage: Int = 0

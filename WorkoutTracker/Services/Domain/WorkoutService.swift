@@ -48,13 +48,15 @@ final class WorkoutService {
                   let payloadDict = notification.userInfo?["payload"],
                   let payload = payloadDict as? LiveSyncPayload else { return }
 
-            Task { @MainActor in
-                let bgContext = ModelContext(self.analyticsService.modelContainer)
+            Task.detached {
+                let container = await self.analyticsService.modelContainer
+                let bgContext = ModelContext(container)
                 let workoutUUID = UUID(uuidString: payload.workoutID)
 
                 switch payload.action {
                 case .startWorkout:
                     guard let uuid = workoutUUID else { return }
+                    TrackingManager.shared.track(.watchWorkoutStarted)
                     let newWorkout = Workout(id: uuid, title: payload.workoutTitle ?? "Watch Workout", date: Date(), exercises: [])
                     newWorkout.icon = "applewatch"
                     bgContext.insert(newWorkout)
@@ -71,8 +73,10 @@ final class WorkoutService {
                     }
                     try? bgContext.save()
 
-                    self.liveActivityManager.startWorkoutActivity(title: newWorkout.title)
-                    self.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
+                    await MainActor.run {
+                        self.liveActivityManager.startWorkoutActivity(title: newWorkout.title)
+                        self.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
+                    }
 
                 case .addExercise:
                     guard let uuid = workoutUUID, let exName = payload.exerciseName else { return }
@@ -104,7 +108,7 @@ final class WorkoutService {
                     if let workout = try? bgContext.fetch(desc).first,
                        let exercise = workout.exercises.first(where: { $0.name == exName }) {
                         exercise.effort = effort
-                        exercise.isCompleted = true 
+                        exercise.isCompleted = true
                         try? bgContext.save()
                     }
 
@@ -112,8 +116,14 @@ final class WorkoutService {
                     guard let uuid = workoutUUID else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
                     if let workout = try? bgContext.fetch(desc).first {
-                        await self.processCompletedWorkout(workout)
-                        self.appState.returnToActiveWorkoutId = nil
+                        let pid = workout.persistentModelID
+                        await MainActor.run {
+                            let mainContext = container.mainContext
+                            if let mainWorkout = mainContext.model(for: pid) as? Workout {
+                                Task { await self.processCompletedWorkout(mainWorkout) }
+                                self.appState.returnToActiveWorkoutId = nil
+                            }
+                        }
                     }
 
                 case .saveToHistory:
@@ -133,20 +143,33 @@ final class WorkoutService {
                             }
                         }
                         try? bgContext.save()
-                        await self.processCompletedWorkout(workout)
-                        self.appState.returnToActiveWorkoutId = nil
+                        TrackingManager.shared.track(.watchSyncCompleted(success: true, itemsSynced: workout.exercises.count))
+                        let pid = workout.persistentModelID
+                        await MainActor.run {
+                            let mainContext = container.mainContext
+                            if let mainWorkout = mainContext.model(for: pid) as? Workout {
+                                Task { await self.processCompletedWorkout(mainWorkout) }
+                                self.appState.returnToActiveWorkoutId = nil
+                            }
+                        }
                     }
 
                 case .discardWorkout:
                     guard let uuid = workoutUUID else { return }
                     let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == uuid })
                     if let workout = try? bgContext.fetch(desc).first {
-                        await self.deleteWorkout(workout)
+                        let pid = workout.persistentModelID
+                        await MainActor.run {
+                            let mainContext = container.mainContext
+                            if let mainWorkout = mainContext.model(for: pid) as? Workout {
+                                Task { await self.deleteWorkout(mainWorkout) }
+                            }
+                        }
                     }
 
-                case .requestActiveState, .syncFullState, .updateHeartRate: 
-                                    break
-                                }
+                case .requestActiveState, .syncFullState, .updateHeartRate:
+                    break
+                }
             }
         }
     }
@@ -160,7 +183,11 @@ final class WorkoutService {
 
     func fetchLatestWorkout() async -> Workout? {
         do {
-            return try await workoutStore.fetchLatestWorkout()
+            if let id = try await workoutStore.fetchLatestWorkoutID() {
+                let context = analyticsService.modelContainer.mainContext
+                return context.model(for: id) as? Workout
+            }
+            return nil
         } catch {
             appState.showError(title: "Error", message: "Failed to fetch latest workout")
             return nil
@@ -171,6 +198,10 @@ final class WorkoutService {
         do {
             try? await HealthKitManager.shared.requestAuthorization()
             let id = try await workoutStore.createWorkout(title: title, fromPresetID: presetID, isAIGenerated: isAIGenerated)
+            
+            let source = isAIGenerated ? "ai_builder" : (presetID != nil ? "template" : "manual")
+            TrackingManager.shared.track(.workoutStarted(source: source, exerciseCount: 0, estimatedDuration: 0))
+            
             liveActivityManager.startWorkoutActivity(title: title)   // ← единая точка старта
             return id
         } catch {
@@ -256,6 +287,22 @@ final class WorkoutService {
             try await workoutStore.updateExercise(exerciseID: exercise.persistentModelID, newEffort: newEffort)
         } catch {
             appState.showError(title: "Error", message: "Could not update exercise effort: \(error.localizedDescription)")
+        }
+    }
+
+    func updateExerciseCompleted(exerciseID: PersistentIdentifier, isCompleted: Bool) async {
+        do {
+            try await workoutStore.updateExercise(exerciseID: exerciseID, isCompleted: isCompleted)
+        } catch {
+            appState.showError(title: "Error", message: "Could not update exercise: \(error.localizedDescription)")
+        }
+    }
+
+    func updateSet(setID: PersistentIdentifier, reps: Int? = nil, weight: Double? = nil, time: Int? = nil, distance: Double? = nil, type: SetType? = nil, isCompleted: Bool? = nil) async {
+        do {
+            try await workoutStore.updateSet(setID: setID, reps: reps, weight: weight, time: time, distance: distance, type: type, isCompleted: isCompleted)
+        } catch {
+            appState.showError(title: "Error", message: "Could not update set: \(error.localizedDescription)")
         }
     }
 

@@ -60,7 +60,10 @@ actor AnalyticsService {
            let weakPts = getWeakPoints(recentWorkouts: recentWorkouts)
            let recs = getRecommendations(workouts: recentWorkouts, recoveryStatus: recovery)
 
-           return DashboardCacheDTO(personalRecords: partialPRs, lastPerformances: partialLastPerformances, recoveryStatus: recovery, dashboardMuscleData: sortedMuscleData, dashboardTotalExercises: totalExCount, dashboardTopExercises: topExercises, streakCount: streak, bestWeekStats: bWeek, bestMonthStats: bMonth, weakPoints: weakPts, recommendations: recs)
+           let userStats = (try? bgContext.fetch(FetchDescriptor<UserStats>()))?.first
+           let totalWorkouts = userStats?.totalWorkouts ?? 0
+
+           return DashboardCacheDTO(personalRecords: partialPRs, lastPerformances: partialLastPerformances, recoveryStatus: recovery, dashboardMuscleData: sortedMuscleData, dashboardTotalExercises: totalExCount, dashboardTopExercises: topExercises, streakCount: streak, totalWorkouts: totalWorkouts, bestWeekStats: bWeek, bestMonthStats: bMonth, weakPoints: weakPts, recommendations: recs)
        }
 
     func fetchStatsData(

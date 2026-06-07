@@ -20,7 +20,10 @@ struct PremiumRoutineCard: View {
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(themeManager.current.primaryText)
-                        .lineLimit(1)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(exercisesPreviewText)
                         .font(.subheadline)

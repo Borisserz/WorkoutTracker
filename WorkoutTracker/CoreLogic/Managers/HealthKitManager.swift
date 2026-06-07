@@ -91,21 +91,39 @@ actor HealthKitManager: Sendable {
          let now = Date()
          let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: now)!
          let predicate = HKQuery.predicateForSamples(withStart: yesterday, end: now, options: .strictEndDate)
-         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+         let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)
 
          return await withCheckedContinuation { continuation in
              let query = HKSampleQuery(sampleType: sleepType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, _ in
-                 guard let sleepSamples = samples as? [HKCategorySample] else {
+                 guard let sleepSamples = samples as? [HKCategorySample], !sleepSamples.isEmpty else {
                      continuation.resume(returning: nil)
                      return
                  }
 
-                 let totalSleepSeconds = sleepSamples
-                     .filter { $0.value == HKCategoryValueSleepAnalysis.asleep.rawValue ||
-                               $0.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue ||
-                               $0.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
-                               $0.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue }
-                     .reduce(0.0) { $0 + $1.endDate.timeIntervalSince($1.startDate) }
+                 let asleepSamples = sleepSamples.filter {
+                     $0.value == HKCategoryValueSleepAnalysis.asleep.rawValue ||
+                     $0.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue ||
+                     $0.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+                     $0.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue
+                 }
+
+                 // Fallback to inBed if no asleep data is available
+                 let samplesToProcess = asleepSamples.isEmpty ? sleepSamples.filter { $0.value == HKCategoryValueSleepAnalysis.inBed.rawValue } : asleepSamples
+
+                 var mergedIntervals: [(start: Date, end: Date)] = []
+                 for sample in samplesToProcess {
+                     if let last = mergedIntervals.last {
+                         if sample.startDate <= last.end {
+                             mergedIntervals[mergedIntervals.count - 1].end = max(last.end, sample.endDate)
+                         } else {
+                             mergedIntervals.append((sample.startDate, sample.endDate))
+                         }
+                     } else {
+                         mergedIntervals.append((sample.startDate, sample.endDate))
+                     }
+                 }
+
+                 let totalSleepSeconds = mergedIntervals.reduce(0.0) { $0 + $1.end.timeIntervalSince($1.start) }
 
                  if totalSleepSeconds > 0 {
                      continuation.resume(returning: totalSleepSeconds / 3600.0) 
@@ -285,28 +303,67 @@ actor HealthKitManager: Sendable {
             healthStore.execute(query)
         }
     }
+
+    func fetchAverageHRV(days: Int = 30) async -> Double? {
+        guard let hrvType = HKObjectType.quantityType(forIdentifier: .heartRateVariabilitySDNN) else { return nil }
+        let now = Date()
+        guard let startDate = Calendar.current.date(byAdding: .day, value: -days, to: now) else { return nil }
+        
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictStartDate)
+        
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: hrvType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, _ in
+                if let avg = result?.averageQuantity() {
+                    continuation.resume(returning: avg.doubleValue(for: HKUnit(from: "ms")))
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
+            healthStore.execute(query)
+        }
+    }
+    
+    func fetchAverageRHR(days: Int = 30) async -> Double? {
+        guard let rhrType = HKObjectType.quantityType(forIdentifier: .restingHeartRate) else { return nil }
+        let now = Date()
+        guard let startDate = Calendar.current.date(byAdding: .day, value: -days, to: now) else { return nil }
+        
+        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: now, options: .strictStartDate)
+        
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(quantityType: rhrType, quantitySamplePredicate: predicate, options: .discreteAverage) { _, result, _ in
+                if let avg = result?.averageQuantity() {
+                    continuation.resume(returning: avg.doubleValue(for: HKUnit(from: "count/min")))
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
+            healthStore.execute(query)
+        }
+    }
 }
 
 struct CNSCalculator {
 
-    static func calculate(sleepHours: Double, hrv: Double?, rhr: Double?, waterCups: Int = 8) -> Double {
+    static func calculate(sleepHours: Double, hrv: Double?, baselineHRV: Double?, rhr: Double?, baselineRHR: Double?, waterCups: Int = 8) -> Double {
 
         let sleepScore = min(40.0, max(0, (sleepHours / 8.0) * 40.0))
-
         let waterScore = min(10.0, max(0, (Double(waterCups) / 8.0) * 10.0))
 
         let hrvScore: Double
         if let hrv = hrv {
-
-            hrvScore = min(30.0, max(0, ((hrv - 20.0) / 40.0) * 30.0))
+            let base = baselineHRV ?? 40.0
+            let deviation = hrv - base
+            hrvScore = min(30.0, max(0, ((deviation + 20.0) / 20.0) * 30.0))
         } else {
             hrvScore = 20.0 
         }
 
         let rhrScore: Double
         if let rhr = rhr {
-
-            rhrScore = min(20.0, max(0, 20.0 - (((rhr - 50.0) / 30.0) * 20.0)))
+            let base = baselineRHR ?? 60.0
+            let deviation = rhr - base
+            rhrScore = min(20.0, max(0, 20.0 - ((deviation / 15.0) * 20.0)))
         } else {
             rhrScore = 15.0 
         }

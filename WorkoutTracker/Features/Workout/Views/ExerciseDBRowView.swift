@@ -25,7 +25,7 @@ struct ExerciseDBRowView: View {
             Text(LocalizationHelper.shared.translateName(exercise.name))
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundStyle(colorScheme == .dark ? .white : .primary)
-                .lineLimit(1)
+                .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true).fixedSize(horizontal: false, vertical: true)
                 .minimumScaleFactor(0.8)
 
             Spacer()

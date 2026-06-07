@@ -99,5 +99,17 @@
             </dict>
         </dict>
     </array>
+    <key>NSCameraUsageDescription</key>
+    <string>WorkoutTracker requires camera access to analyze your exercise form and automatically track repetitions using AI.</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>WorkoutTracker uses Health data to sync your daily steps, resting heart rate, and sleep data to generate personalized recovery metrics and proactive workout suggestions.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>WorkoutTracker saves your completed workouts, active calories burned, and duration directly to Apple Health.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>WorkoutTracker requires photo library access so you can attach progress photos to your weight logs and workout history.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>WorkoutTracker uses the microphone to power the Voice Coach feature, which provides real-time spoken feedback and rep counting during your workouts.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>WorkoutTracker uses speech recognition to detect voice commands during workouts, allowing you to log sets and navigate hands-free.</string>
 </dict>
 </plist>

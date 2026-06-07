@@ -51,10 +51,13 @@ final class AICoachViewModel {
         self.inputText = ""
     }
 
-    func sendMessage(userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil, isExplicitWorkoutRequest: Bool = false) async {
+    func sendMessage(userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil, isExplicitWorkoutRequest: Bool = false, context: String = "hub") async {
         let displayText = uiText ?? inputText
         let actualPrompt = aiPrompt ?? displayText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !actualPrompt.isEmpty, !isGenerating else { return }
+
+        TrackingManager.shared.setUserProperty(name: "uses_ai_coach", value: "true")
+        TrackingManager.shared.track(.aiCoachMessageSent(context: context, messageLength: actualPrompt.count, hasAttachment: false))
 
         let userMessage = AIChatMessage(isUser: true, text: displayText, proposedWorkout: nil, isAnimating: false)
         var isFirstMessage = false
@@ -112,6 +115,7 @@ final class AICoachViewModel {
 
     private func streamChat(prompt: String, userWeight: Double) async {
            let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
+           let savedName = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? ""
 
            let aiMessageId = UUID()
            let initialAIMessage = AIChatMessage(id: aiMessageId, isUser: false, text: "", proposedWorkout: nil, isAnimating: false)
@@ -119,6 +123,7 @@ final class AICoachViewModel {
            withAnimation { self.chatHistory.append(initialAIMessage) }
 
            let userContext = UserProfileContext(
+               userName: savedName,
                weightKg: UnitsManager.shared.convertToKilograms(userWeight), experienceLevel: "Intermediate", favoriteMuscles: [], recentPRs: [:],
                language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
                workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: [], availableExercises: [], aiCoachTone: savedTone, weightUnit: UnitsManager.shared.weightUnitString()
@@ -126,6 +131,7 @@ final class AICoachViewModel {
 
            currentTask?.cancel()
            currentTask = Task {
+               let trace = TrackingManager.shared.startTrace(name: "ai_coach_generation_stream")
                do {
                    let stream = try await aiLogicService.streamChatResponse(userRequest: prompt, userProfile: userContext)
 
@@ -151,9 +157,11 @@ final class AICoachViewModel {
                    }
                    try? modelContext.save()
                    self.isGenerating = false
+                   trace?.stop()
 
                } catch {
                    self.isGenerating = false
+                   trace?.stop()
 
                    self.chatHistory.removeAll { $0.id == aiMessageId }
                    handleError(error)
@@ -163,6 +171,7 @@ final class AICoachViewModel {
 
     private func requestWorkoutPlan(prompt: String, userWeight: Double) async {
         let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
+        let savedName = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? ""
         let savedRecoveryHours = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue)
         let fullRecoveryHours = savedRecoveryHours > 0 ? savedRecoveryHours : 48.0
 
@@ -175,6 +184,7 @@ final class AICoachViewModel {
         relevantExercises.append(contentsOf: customExercises.prefix(5))
 
         let userContext = UserProfileContext(
+            userName: savedName,
             weightKg: UnitsManager.shared.convertToKilograms(userWeight), experienceLevel: "Intermediate", favoriteMuscles: [], recentPRs: prCache,
             language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
             workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup },
@@ -183,6 +193,7 @@ final class AICoachViewModel {
 
         currentTask?.cancel()
         currentTask = Task {
+            let trace = TrackingManager.shared.startTrace(name: "ai_coach_generation_plan")
             do {
                 let response = try await aiLogicService.generateWorkoutPlan(userRequest: prompt, userProfile: userContext)
                 try Task.checkCancellation()
@@ -199,9 +210,11 @@ final class AICoachViewModel {
                     self.isGenerating = false
                 }
                 try? modelContext.save()
+                trace?.stop()
 
             } catch {
                 self.isGenerating = false
+                trace?.stop()
                 handleError(error)
             }
         }
@@ -223,6 +236,7 @@ final class AICoachViewModel {
     }
 
     func acceptWorkout(dto: GeneratedWorkoutDTO, completion: @escaping (Workout) -> Void) async {
+        TrackingManager.shared.track(.aiCoachSuggestionAccepted(suggestionType: "workout"))
         await workoutService.startGeneratedWorkout(dto)
         if let newWorkout = await workoutService.fetchLatestWorkout() {
             completion(newWorkout)

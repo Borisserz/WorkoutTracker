@@ -268,6 +268,7 @@ struct AddWeightSheet: View {
 
         if let weightVal = Double(weightString.replacingOccurrences(of: ",", with: ".")) {
             let weightInKg = unitsManager.convertToKilograms(weightVal)
+            TrackingManager.shared.track(.weightLogged(value: weightVal, unit: unitsManager.weightUnitString(), source: "manual_entry"))
             Task {
                 await userStatsViewModel.addWeightEntry(weight: weightInKg, date: date, images: selectedImages)
                 dismiss()

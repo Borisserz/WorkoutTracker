@@ -442,7 +442,7 @@ struct OverviewView: View {
                     Text(LocalizationHelper.shared.translateName(exercise.name))
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .lineLimit(1)
+                        .lineLimit(2).minimumScaleFactor(0.8)
 
                     Spacer()
 
@@ -521,7 +521,7 @@ struct OverviewView: View {
                     Text(LocalizationHelper.shared.translateName(item.name))
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .lineLimit(2)
+                        .lineLimit(3).minimumScaleFactor(0.8)
                         .multilineTextAlignment(.leading)
 
                     Text("\(item.count) sets")
@@ -808,11 +808,16 @@ struct OverviewView: View {
                     }
 
                     HStack(alignment: .bottom, spacing: 2) {
-                        Text(vitals.currentBPM > 0 ? "\(Int(vitals.currentBPM))" : "--")
-                            .font(.system(size: 28, weight: .black, design: .rounded))
-                            .foregroundStyle(.primary)
-                            .contentTransition(.numericText())
-                        Text("BPM").font(.caption.bold()).foregroundStyle(Color.red).padding(.bottom, 4)
+                        if vitals.currentBPM > 0 {
+                            Text("\(Int(vitals.currentBPM))")
+                                .font(.system(size: 28, weight: .black, design: .rounded))
+                                .foregroundStyle(.primary)
+                                .contentTransition(.numericText())
+                            Text("BPM").font(.caption.bold()).foregroundStyle(Color.red).padding(.bottom, 4)
+                        } else {
+                            UnavailableMetricView(icon: "applewatch.slash", text: "No Sensor Data")
+                                .padding(.top, 4)
+                        }
                     }
                 }
 
@@ -911,7 +916,7 @@ struct OverviewView: View {
                                 Text(LocalizedStringKey(item.muscle))
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
-                                    .lineLimit(1)
+                                    .lineLimit(2).minimumScaleFactor(0.8)
                                     .minimumScaleFactor(0.8)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)

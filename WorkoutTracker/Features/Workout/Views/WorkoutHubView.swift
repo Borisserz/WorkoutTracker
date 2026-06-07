@@ -395,6 +395,10 @@ struct CarouselSectionView: View {
                     Text(title)
                         .font(.title3).bold()
                         .foregroundColor(colorScheme == .dark ? .white : .black) 
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.9)
+                        .allowsTightening(true)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()
 
@@ -501,13 +505,17 @@ struct PremiumCarouselCardView: View {
                         .font(.headline)
                         .fontWeight(.bold)
                         .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .lineLimit(2)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
                         .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundColor(.gray)
-                        .lineLimit(1)
+                        .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
+                        .minimumScaleFactor(0.8)
                 }
             }
             .padding(16)
@@ -617,7 +625,10 @@ struct PremiumHubGlassButton: View {
                         .fontWeight(.bold)
                         .foregroundColor(colorScheme == .dark ? .white : .black)
                         .multilineTextAlignment(.leading)
-                        .lineLimit(2)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.8)
+                        .allowsTightening(true)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
@@ -772,5 +783,61 @@ struct FierySpeechBubble: View {
             .frame(width: 24, height: 16)
             .offset(x: 20)
         }
+    }
+}
+
+struct WorkoutHubEmptyStateView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let onExplore: () -> Void
+
+    var body: some View {
+        VStack(spacing: 24) {
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.15))
+                    .frame(width: 80, height: 80)
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 36))
+                    .foregroundStyle(Color.orange)
+            }
+            .padding(.top, 16)
+
+            VStack(spacing: 8) {
+                Text(LocalizedStringKey("No Templates Yet"))
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+
+                Text(LocalizedStringKey("Browse Explore Database or create a new program to get started."))
+                    .font(.subheadline)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 40)
+            }
+
+            Button(action: onExplore) {
+                HStack {
+                    Image(systemName: "safari.fill")
+                    Text(LocalizedStringKey("Explore Database"))
+                }
+                .font(.headline)
+                .foregroundColor(.white)
+                .frame(height: 50)
+                .frame(maxWidth: .infinity)
+                .background(Color.orange)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .shadow(color: Color.orange.opacity(0.3), radius: 10, y: 5)
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 24)
+        }
+        .frame(maxWidth: .infinity)
+        .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.orange.opacity(0.2), lineWidth: 1)
+        )
+        .padding(.horizontal, 20)
     }
 }

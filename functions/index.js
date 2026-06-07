@@ -7,8 +7,8 @@ const { GoogleAuth } = require("google-auth-library");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { getAuth } = require("firebase-admin/auth");
 // Per-user AI rate limit (abuse / cost control for the paid Vertex proxy).
-const AI_WEEKLY_LIMIT = 10;                       // requests per rolling 7-day window
 const AI_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;     // 7 days in ms
+const DEFAULT_AI_WEEKLY_LIMIT = 10;               // default requests per rolling 7-day window
 initializeApp();
 
 // ==========================================
@@ -16,7 +16,7 @@ initializeApp();
 // ==========================================
 const PROJECT_ID = "serzhanovich-ecosystem-ce700";
 const LOCATION = "us-central1";
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-1.5-flash";
 const AUTO_BLOCK_REPORT_THRESHOLD = 3;
 const SERVICE_ACCOUNT =
   "firebase-adminsdk-fbsvc@serzhanovich-ecosystem-ce700.iam.gserviceaccount.com";
@@ -63,9 +63,10 @@ async function vertexFetch(body) {
   return JSON.parse(text);
 }
 class RateLimitError extends Error {
-  constructor(retryAfterSeconds) {
+  constructor(retryAfterSeconds, limit) {
     super("rate_limited");
     this.retryAfterSeconds = retryAfterSeconds;
+    this.limit = limit;
   }
 }
 
@@ -73,6 +74,12 @@ class RateLimitError extends Error {
 // Counts on entry (so aborted/failed calls still count — abuse-resistant).
 async function enforceRateLimit(uid) {
   const db = getFirestore();
+  
+  // Fetch current global limit from Firestore (config/ai_settings)
+  const configSnap = await db.collection("config").doc("ai_settings").get();
+  const configData = configSnap.data() || {};
+  const aiWeeklyLimit = typeof configData.weeklyLimit === "number" ? configData.weeklyLimit : DEFAULT_AI_WEEKLY_LIMIT;
+
   const ref = db.collection("ai_usage").doc(uid);
 
   await db.runTransaction(async (tx) => {
@@ -91,9 +98,9 @@ async function enforceRateLimit(uid) {
       // else: window expired → reset (windowStart = now, count = 0)
     }
 
-    if (count >= AI_WEEKLY_LIMIT) {
+    if (count >= aiWeeklyLimit) {
       const retryAfterSeconds = Math.ceil((windowStart + AI_WINDOW_MS - now) / 1000);
-      throw new RateLimitError(retryAfterSeconds);
+      throw new RateLimitError(retryAfterSeconds, aiWeeklyLimit);
     }
 
     tx.set(ref, {
@@ -150,7 +157,7 @@ try {
     res.set("Retry-After", String(e.retryAfterSeconds));
     res.status(429).json({
       error: "weekly_limit_reached",
-      message: `You've reached your weekly limit of ${AI_WEEKLY_LIMIT} AI requests.`,
+      message: `You've reached your weekly limit of ${e.limit} AI requests.`,
       retryAfter: e.retryAfterSeconds,
     });
     return;

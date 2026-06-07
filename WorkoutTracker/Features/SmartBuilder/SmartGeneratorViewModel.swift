@@ -25,6 +25,7 @@ final class SmartGeneratorViewModel {
     func generateWorkout(historyCache: [String: Exercise]) async {
         isGenerating = true
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        TrackingManager.shared.track(.smartBuilderUsed(muscleGroupsSelected: Array(targetMuscles), goal: "custom"))
 
         var simpleHistory: [String: ExerciseHistoryContext] = [:]
         for (name, ex) in historyCache {

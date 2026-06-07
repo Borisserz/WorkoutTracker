@@ -313,16 +313,12 @@ struct DynamicWorkoutListView: View {
 
     var body: some View {
         if workouts.isEmpty {
-            VStack(spacing: 12) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 50))
-                    .foregroundColor(themeManager.current.secondaryAccent.opacity(0.3))
-                Text(LocalizedStringKey("No workouts found"))
-                    .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
-            }
-            .padding(.vertical, 60)
-            .frame(maxWidth: .infinity)
+            EmptyStateView(
+                icon: "dumbbell.fill",
+                title: LocalizedStringKey("No Workouts Yet"),
+                message: LocalizedStringKey("Your journey starts here. Tap 'Start Workout' above to begin.")
+            )
+            .padding(.vertical, 40)
         } else {
             ForEach(workouts) { workout in
                 HStack(spacing: 12) {
@@ -330,8 +326,8 @@ struct DynamicWorkoutListView: View {
                     if isEditing {
                         Button {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            withAnimation {
-                                Task { await workoutService.deleteWorkout(workout) }
+                            Task {
+                                await workoutService.deleteWorkout(workout)
                             }
                         } label: {
                             Image(systemName: "minus.circle.fill")

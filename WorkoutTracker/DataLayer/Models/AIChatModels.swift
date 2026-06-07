@@ -84,6 +84,7 @@ public struct AICoachResponseDTO: Sendable {
 }
 
 public struct UserProfileContext: Codable, Sendable {
+    let userName: String
     let weightKg: Double
     let experienceLevel: String
     let favoriteMuscles: [String]

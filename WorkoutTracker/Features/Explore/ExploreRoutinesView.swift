@@ -143,8 +143,15 @@ struct ExploreRoutinesView: View {
                             EmptyStateView(
                                 icon: "magnifyingglass",
                                 title: "No routines found",
-                                message: "Try adjusting your search or clearing your filters."
-                            )
+                                message: "Try adjusting your search or clearing your filters.",
+                                iconColor: .purple,
+                                actionTitle: "Clear Filters"
+                            ) {
+                                viewModel.searchDebouncer.inputText = ""
+                                viewModel.selectedLevel = nil
+                                viewModel.selectedGoal = nil
+                                viewModel.selectedEquipment = nil
+                            }
                             .padding(.top, 40)
                         } else {
                             LazyVStack(spacing: 20) {

@@ -229,7 +229,7 @@ struct TopStatsIslandsView: View {
             StatIslandWithTooltip(
                 icon: "heart.fill",
                 title: "Pulse",
-                value: bpm > 0 ? "\(bpm)" : "--",
+                value: bpm > 0 ? "\(bpm)" : "",
                 color: .red,
                 tooltipTitle: "Current heart rate",
                 tooltipDesc: bpm > 0
@@ -237,6 +237,9 @@ struct TopStatsIslandsView: View {
                     : "Waiting for heart rate data…",
                 statusText: bpm > 0 ? pulseStatus(bpm).text : nil,
                 statusColor: bpm > 0 ? pulseStatus(bpm).color : nil,
+                isUnavailable: bpm <= 0,
+                unavailableIcon: "applewatch.slash",
+                unavailableText: "No Watch",
                 activeTooltip: $activeTooltip
             )
         }
@@ -260,6 +263,10 @@ struct StatIslandWithTooltip: View {
     var icon: String; var title: String; var value: String; var color: Color
     var tooltipTitle: String; var tooltipDesc: String; var statusText: String?; var statusColor: Color?
 
+    var isUnavailable: Bool = false
+    var unavailableIcon: String = "applewatch.slash"
+    var unavailableText: LocalizedStringKey = "No Data"
+
     @Binding var activeTooltip: String?
 
     @State private var isBreathing = false
@@ -273,7 +280,12 @@ struct StatIslandWithTooltip: View {
             VStack(spacing: 8) {
                 Image(systemName: icon).font(.title2).foregroundStyle(LinearGradient(colors: [colorScheme == .dark ? .white : color, color], startPoint: .topLeading, endPoint: .bottomTrailing))
                 VStack(spacing: 2) {
-                    Text(value).font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
+                    if isUnavailable {
+                        UnavailableMetricView(icon: unavailableIcon, text: unavailableText)
+                            .padding(.top, 2)
+                    } else {
+                        Text(value).font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
+                    }
                     Text(title).font(.system(size: 11)).foregroundColor(.gray)
                 }
             }
@@ -368,7 +380,7 @@ struct SearchResultsDropdown: View {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(filtered[index].name).font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
-                        Text(filtered[index].description).font(.system(size: 12)).foregroundColor(.gray).lineLimit(1)
+                        Text(filtered[index].description).font(.system(size: 12)).foregroundColor(.gray).lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .contentShape(Rectangle())
@@ -459,7 +471,7 @@ struct PremiumCategoryCard: View {
                     .font(.system(size: 12, weight: .bold))
 
                     .foregroundColor(isActive ? (colorScheme == .dark ? .white : color) : .gray)
-                    .lineLimit(2)
+                    .lineLimit(3).minimumScaleFactor(0.8).allowsTightening(true)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -531,7 +543,7 @@ struct QuickWorkoutDetailSheet: View {
                 Button(action: onAddWorkout) {
                     HStack {
                         Image(systemName: "plus.circle.fill").font(.title3)
-                        Text("Create in my database").font(.system(size: 18, weight: .bold))
+                        Text("Save to My Database").font(.system(size: 18, weight: .bold))
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 18)
                     .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))

@@ -97,7 +97,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
     }
     
     // ИЗМЕНЕНИЕ 3: Добавляем async
-    func scheduleSmartRetentions(workout: Workout, currentStreak: Int, forecast: ProgressForecast?, unitsManager: UnitsManager) async {
+    func scheduleSmartRetentions(dominantMuscle: String, currentStreak: Int, forecast: ProgressForecast?, unitsManager: UnitsManager) async {
         let center = UNUserNotificationCenter.current()
 
         center.removePendingNotificationRequests(withIdentifiers: [recoveryId, streakRescueId])
@@ -108,7 +108,6 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
 
         let savedHours = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue)
         let recoveryHours = savedHours > 0 ? savedHours : 48.0
-        let dominantMuscle = getDominantGroup(for: workout)
 
    
         let recoveryCopy = await AICopywriter.recoveryText(for: tone, muscle: dominantMuscle)
@@ -152,7 +151,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
         Task { try? await UNUserNotificationCenter.current().add(request) }
     }
 
-    private func getDominantGroup(for workout: Workout) -> String {
+    static func getDominantGroup(for workout: Workout) -> String {
         var counts: [String: Int] = [:]
         for exercise in workout.exercises {
             let targets = exercise.isSuperset ? exercise.subExercises : [exercise]

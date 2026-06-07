@@ -217,22 +217,101 @@ struct MuscleDisplayHelper {
 
 struct EmptyStateView: View {
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
     let icon: String
     let title: LocalizedStringKey
     let message: LocalizedStringKey
     let iconSize: CGFloat
     let iconColor: Color
+    
+    var actionTitle: LocalizedStringKey? = nil
+    var action: (() -> Void)? = nil
 
-    init(icon: String, title: LocalizedStringKey, message: LocalizedStringKey, iconSize: CGFloat = 60, iconColor: Color = .gray.opacity(0.5)) {
-        self.icon = icon; self.title = title; self.message = message; self.iconSize = iconSize; self.iconColor = iconColor
+    @State private var isBreathing = false
+
+    init(icon: String, title: LocalizedStringKey, message: LocalizedStringKey, iconSize: CGFloat = 60, iconColor: Color? = nil, actionTitle: LocalizedStringKey? = nil, action: (() -> Void)? = nil) {
+        self.icon = icon; self.title = title; self.message = message; self.iconSize = iconSize;
+        self.iconColor = iconColor ?? .cyan
+        self.actionTitle = actionTitle
+        self.action = action
     }
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: icon).font(.system(size: iconSize)).foregroundColor(iconColor)
-            Text(title).font(.headline).foregroundColor(themeManager.current.primaryText)
-            Text(message).font(.subheadline).foregroundColor(themeManager.current.secondaryText).multilineTextAlignment(.center).padding(.horizontal)
+        VStack(spacing: 20) {
+            ZStack {
+                Circle()
+                    .fill(iconColor.opacity(0.15))
+                    .frame(width: iconSize * 1.8, height: iconSize * 1.8)
+                    .blur(radius: isBreathing ? 15 : 5)
+                    .scaleEffect(isBreathing ? 1.1 : 0.9)
+                
+                Image(systemName: icon)
+                    .font(.system(size: iconSize, weight: .light))
+                    .foregroundStyle(LinearGradient(colors: [iconColor, iconColor.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .offset(y: isBreathing ? -5 : 5)
+            }
+            .padding(.bottom, 8)
+            
+            VStack(spacing: 8) {
+                Text(title)
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                
+                Text(message)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(colorScheme == .dark ? .gray : .secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+            
+            if let actionTitle = actionTitle, let action = action {
+                Button(action: {
+                    HapticManager.shared.impact(.medium)
+                    action()
+                }) {
+                    Text(actionTitle)
+                        .font(.system(size: 16, weight: .bold))
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 1))
+                }
+                .padding(.top, 12)
+            }
         }
-        .frame(maxWidth: .infinity).padding(.vertical, 40)
+        .padding(32)
+        .frame(maxWidth: .infinity)
+        .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
+        .clipShape(RoundedRectangle(cornerRadius: 30))
+        .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(0.05), radius: 20, y: 10)
+        .padding(.horizontal, 20)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
+                isBreathing = true
+            }
+        }
+    }
+}
+
+struct UnavailableMetricView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let icon: String
+    let text: LocalizedStringKey
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+            Text(text)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+        .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.6) : Color.black.opacity(0.6))
+        .clipShape(Capsule())
     }
 }

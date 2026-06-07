@@ -194,8 +194,10 @@ struct WorkoutDetailContentView: View {
             activeSheet = .shareSheet
         case .showEmptyAlert:
             showEmptyAlert = true
-        case .showAchievement(let ach):
-            activeFullScreen = .achievementPopup(ach)
+        case .showXPBreakdownPopup(let breakdown, let isLevelUp, let newLevel, let newTitle, let achievements):
+            activeFullScreen = .xpBreakdownPopup(breakdown, isLevelUp, newLevel, newTitle, achievements)
+        case .showAchievements(let achievements):
+            activeFullScreen = .achievementPopup(achievements)
         case .showSwapExercise(let ex):
             activeSheet = .swapExercise(ex)
         case .workoutSuccessfullyFinished:
@@ -326,7 +328,7 @@ struct WorkoutDetailContentView: View {
                 Text(LocalizedStringKey("Exercises"))
                     .font(.title2)
                     .bold()
-                    .lineLimit(1)
+                    .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
                     .minimumScaleFactor(0.5)
 
                 Spacer(minLength: 5)
@@ -346,7 +348,7 @@ struct WorkoutDetailContentView: View {
                     Label(LocalizedStringKey("Superset"), systemImage: "plus")
                         .font(.caption)
                         .bold()
-                        .lineLimit(1)
+                        .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
                         .minimumScaleFactor(0.7)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
@@ -358,7 +360,7 @@ struct WorkoutDetailContentView: View {
                     Label(LocalizedStringKey("Exercise"), systemImage: "plus")
                         .font(.caption)
                         .bold()
-                        .lineLimit(1)
+                        .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
                         .minimumScaleFactor(0.7)
                         .padding(8)
                         .background(Color.accentColor.opacity(0.1))
@@ -382,10 +384,10 @@ struct WorkoutDetailContentView: View {
                 if viewModel.workoutAnalytics.chartExercises.isEmpty {
                     EmptyStateView(
                         icon: "chart.bar.xaxis",
-                        title: LocalizedStringKey("No Data Yet"),
-                        message: LocalizedStringKey("Complete exercises with weight to see your performance chart here.")
+                        title: LocalizedStringKey("No Performance Data"),
+                        message: LocalizedStringKey("Complete at least one set with weight to see your performance graph."),
+                        iconColor: .purple
                     )
-                    .frame(height: 220)
                 } else {
                     if let selected = selectedChartExerciseName {
                         Text(LocalizationHelper.shared.translateName(selected.trimmingCharacters(in: .whitespaces)))
@@ -541,7 +543,16 @@ Text(String(translatedName.prefix(3)).capitalized)
     private func renderFullScreenContent(for destination: DetailDestination) -> some View {
         switch destination {
         case .prCelebration(let level): PRCelebrationView(prLevel: level, onClose: { activeFullScreen = nil }).presentationBackground(.clear)
-        case .achievementPopup(let achievement): AchievementPopupView(achievement: achievement) { activeFullScreen = nil }.presentationBackground(.clear)
+        case .achievementPopup(let achievements): AchievementPopupView(achievements: achievements) { activeFullScreen = nil }.presentationBackground(.clear)
+        case .xpBreakdownPopup(let breakdown, let isLevelUp, let newLevel, let newTitle, let achievements):
+            XPBreakdownPopupView(breakdown: breakdown, isLevelUp: isLevelUp, newLevel: newLevel, newTitle: newTitle) {
+                if !achievements.isEmpty {
+                    activeFullScreen = .achievementPopup(achievements)
+                } else {
+                    activeFullScreen = nil
+                }
+            }
+            .presentationBackground(.clear)
         default: EmptyView()
         }
     }

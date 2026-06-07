@@ -75,6 +75,7 @@ final class AIProgramBuilderViewModel {
 
                 try await Task.sleep(for: .seconds(1.5))
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
+                TrackingManager.shared.track(.aiProgramGenerated(programLengthWeeks: dto.durationWeeks, difficulty: level.rawValue))
                 self.state = .success(dto)
             } catch AILogicError.aiConsentRequired {
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)

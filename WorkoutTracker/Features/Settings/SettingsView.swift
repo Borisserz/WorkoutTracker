@@ -3,12 +3,15 @@ internal import UniformTypeIdentifiers
 import SwiftData
 import UIKit
 import FirebaseAuth
+import AuthenticationServices
+import GoogleSignIn
 import FirebaseFunctions
 
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(DIContainer.self) private var di
+    @Environment(AuthManager.self) private var authManager
     @AppStorage(Constants.UserDefaultsKeys.includeWarmupsInStats.rawValue) private var includeWarmupsInStats: Bool = false
     @State private var isProcessing = false
     @State private var showTestDataAlert = false
@@ -17,127 +20,29 @@ struct SettingsView: View {
     @State private var fileToShare: SharedFileWrapper?
     @State private var showDeleteProfileAlert = false
     @State private var showDeleteSuccessAlert = false
+    @State private var showSignOutAlert = false
+    @State private var showSignOutSuccessAlert = false
     @State private var showDeleteAccountAlert = false
     @State private var deleteAccountError: String?
     @State private var showDeleteAccountError = false
+    @State private var authErrorMessage: String?
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         NavigationStack {
             List {
-                Section(header: Text(LocalizedStringKey("Preferences"))) {
-                    NavigationLink(destination: AppearanceSettingsView()) {
-                        Label(LocalizedStringKey("Appearance & Profile"), systemImage: "person.crop.circle")
-                    }
-                    NavigationLink(destination: UnitsSettingsView()) {
-                        Label(LocalizedStringKey("Units of Measure"), systemImage: "ruler")
-                    }
-                }
-
-                Section(header: Text(LocalizedStringKey("Workout Options"))) {
-                    NavigationLink(destination: TimerSettingsView()) {
-                        Label(LocalizedStringKey("Rest Timer"), systemImage: "timer")
-                    }
-                    NavigationLink(destination: AudioSettingsView()) {
-                        Label(LocalizedStringKey("Voice Coach"), systemImage: "speaker.wave.3.fill")
-                    }
-                    Toggle(isOn: $includeWarmupsInStats) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(LocalizedStringKey("Include Warmups in Stats"))
-                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
-                            Text(LocalizedStringKey("If enabled, warm-up sets will be counted in total volume and personal records."))
-                                .font(.caption)
-                                .foregroundColor(themeManager.current.secondaryText)
-                        }
-                    }
-                    .tint(.accentColor)
-                }
-
-                Section(header: Text(LocalizedStringKey("Gamification"))) {
-                    NavigationLink(destination: StreakSettingsView()) {
-                        Label(LocalizedStringKey("Streak Settings"), systemImage: "flame.fill")
-                    }
-                }
-
-                Section(header: Text(LocalizedStringKey("Support & Data"))) {
-                    NavigationLink(destination: FeedbackView()) {
-                        Label(LocalizedStringKey("Send Feedback"), systemImage: "envelope.fill")
-                    }
-
-                    Link(destination: Constants.Legal.privacyPolicyURL) {
-                        HStack {
-                            Label(LocalizedStringKey("Privacy Policy"), systemImage: "hand.raised.fill")
-                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
-                            Spacer()
-                            Image(systemName: "arrow.up.forward.app")
-                                .font(.caption)
-                                .foregroundColor(themeManager.current.secondaryText)
-                        }
-                    }
-
-                    Link(destination: Constants.Legal.eulaURL) {
-                        HStack {
-                            Label(LocalizedStringKey("Terms of Use (EULA)"), systemImage: "doc.text.fill")
-                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
-                            Spacer()
-                            Image(systemName: "arrow.up.forward.app")
-                                .font(.caption)
-                                .foregroundColor(themeManager.current.secondaryText)
-                        }
-                    }
-
-                    Menu {
-                        Button(action: { Task { await exportAllData(format: .json) } }) {
-                            Label("Export as JSON", systemImage: "curlybraces")
-                        }
-                        Button(action: { Task { await exportAllData(format: .csv) } }) {
-                            Label("Export as CSV", systemImage: "tablecells")
-                        }
-                    } label: {
-                        Label(LocalizedStringKey("Export All Data"), systemImage: "square.and.arrow.up")
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
-                    }
-
-                    Button(role: .destructive) {
-                        showDeleteProfileAlert = true
-                    } label: {
-                        Label(LocalizedStringKey("Delete Profile & Data"), systemImage: "trash")
-                            .foregroundColor(.red)
-                    }
-                }
-
-                Section(
-                    header: Text(LocalizedStringKey("Account")),
-                    footer: Text(LocalizedStringKey("Permanently deletes your account and all associated data from our servers, including shared workouts, your blocked list, and submitted reports. This cannot be undone."))
-                ) {
-                    Button(role: .destructive) {
-                        showDeleteAccountAlert = true
-                    } label: {
-                        HStack {
-                            Label(LocalizedStringKey("Delete Account"), systemImage: "person.crop.circle.badge.xmark")
-                                .foregroundColor(.red)
-                            Spacer()
-                            if isProcessing { ProgressView() }
-                        }
-                    }
-                    .disabled(isProcessing)
-                }
+                preferencesSection
+                workoutOptionsSection
+                gamificationSection
+                supportAndDataSection
+                accountSection
 
                 #if DEBUG
                 debugSection
                 #endif
 
-                Section {
-                    HStack {
-                        Spacer()
-                        Text(appVersionString)
-                            .font(.caption)
-                            .foregroundColor(themeManager.current.secondaryText)
-                        Spacer()
-                    }
-                }
-                .listRowBackground(Color.clear)
+                appVersionSection
             }
             .navigationTitle(LocalizedStringKey("Settings"))
             .toolbar {
@@ -175,6 +80,24 @@ struct SettingsView: View {
             } message: {
                 Text(deleteAccountError ?? "Unknown error")
             }
+            .alert("Sign Out", isPresented: $showSignOutAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Sign Out", role: .destructive) {
+                    Task { await signOut() }
+                }
+            } message: {
+                Text("Are you sure you want to sign out? This will clear all data on this device. You can access it again by signing back in.")
+            }
+            .alert("Signed Out", isPresented: $showSignOutSuccessAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("You have been successfully signed out. You are now using a guest account.")
+            }
+            .alert("Authentication Error", isPresented: Binding(get: { authErrorMessage != nil }, set: { if !$0 { authErrorMessage = nil } })) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(authErrorMessage ?? "")
+            }
             .alert("Data Deleted", isPresented: $showDeleteSuccessAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
@@ -190,13 +113,285 @@ struct SettingsView: View {
         }
     }
 
-    #if DEBUG
     @ViewBuilder
+    private var preferencesSection: some View {
+        Section(header: Text(LocalizedStringKey("Preferences"))) {
+            NavigationLink(destination: AppearanceSettingsView()) {
+                Label {
+                    Text(LocalizedStringKey("Appearance & Profile"))
+                } icon: {
+                    Image(systemName: "person.crop.circle").foregroundStyle(Color.accentColor)
+                }
+            }
+            NavigationLink(destination: UnitsSettingsView()) {
+                Label {
+                    Text(LocalizedStringKey("Units of Measure"))
+                } icon: {
+                    Image(systemName: "ruler").foregroundStyle(Color.accentColor)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var workoutOptionsSection: some View {
+        Section(header: Text(LocalizedStringKey("Workout Options"))) {
+            NavigationLink(destination: TimerSettingsView()) {
+                Label {
+                    Text(LocalizedStringKey("Rest Timer"))
+                } icon: {
+                    Image(systemName: "timer").foregroundStyle(Color.accentColor)
+                }
+            }
+            NavigationLink(destination: AudioSettingsView()) {
+                Label {
+                    Text(LocalizedStringKey("Voice Coach"))
+                } icon: {
+                    Image(systemName: "speaker.wave.3.fill").foregroundStyle(Color.accentColor)
+                }
+            }
+            Toggle(isOn: $includeWarmupsInStats) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("Include Warmups in Stats"))
+                        
+                    Text(LocalizedStringKey("If enabled, warm-up sets will be counted in total volume and personal records."))
+                        .font(.caption)
+                        .foregroundColor(themeManager.current.secondaryText)
+                }
+            }
+            .tint(.accentColor)
+        }
+    }
+
+    @ViewBuilder
+    private var gamificationSection: some View {
+        Section(header: Text(LocalizedStringKey("Gamification"))) {
+            NavigationLink(destination: StreakSettingsView()) {
+                Label {
+                    Text(LocalizedStringKey("Streak Settings"))
+                } icon: {
+                    Image(systemName: "flame.fill").foregroundStyle(Color.accentColor)
+                }
+            }
+        }
+    }
+
+        @ViewBuilder
+    private var supportAndDataSection: some View {
+        Section(header: Text(LocalizedStringKey("Support & Data"))) {
+            Button(action: {
+                AppReviewManager.openAppStoreReview()
+            }) {
+                Label {
+                    Text(LocalizedStringKey("Rate the App"))
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                } icon: {
+                    Image(systemName: "star.fill").foregroundStyle(Color.accentColor)
+                }
+            }
+
+            NavigationLink(destination: FeedbackView()) {
+                Label {
+                    Text(LocalizedStringKey("Send Feedback"))
+                } icon: {
+                    Image(systemName: "envelope.fill").foregroundStyle(Color.accentColor)
+                }
+            }
+
+            Link(destination: Constants.Legal.privacyPolicyURL) {
+                HStack {
+                    Label {
+                        Text(LocalizedStringKey("Privacy Policy"))
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                    } icon: {
+                        Image(systemName: "hand.raised.fill").foregroundStyle(Color.accentColor)
+                    }
+                    Spacer()
+                    Image(systemName: "arrow.up.forward.app")
+                        .font(.caption)
+                        .foregroundColor(themeManager.current.secondaryText)
+                }
+            }
+
+            Link(destination: Constants.Legal.eulaURL) {
+                HStack {
+                    Label {
+                        Text(LocalizedStringKey("Terms of Use (EULA)"))
+                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                    } icon: {
+                        Image(systemName: "doc.text.fill").foregroundStyle(Color.accentColor)
+                    }
+                    Spacer()
+                    Image(systemName: "arrow.up.forward.app")
+                        .font(.caption)
+                        .foregroundColor(themeManager.current.secondaryText)
+                }
+            }
+            
+            Menu {
+                Button(action: { Task { await exportAllData(format: .json) } }) {
+                    Label("Export as JSON", systemImage: "curlybraces")
+                }
+                Button(action: { Task { await exportAllData(format: .csv) } }) {
+                    Label("Export as CSV", systemImage: "tablecells")
+                }
+            } label: {
+                Label {
+                    Text(LocalizedStringKey("Export All Data"))
+                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                } icon: {
+                    Image(systemName: "square.and.arrow.up").foregroundStyle(Color.accentColor)
+                }
+            }
+
+            Button(role: .destructive) {
+                showDeleteProfileAlert = true
+            } label: {
+                Label {
+                    Text(LocalizedStringKey("Delete Profile & Data"))
+                        .foregroundColor(.red)
+                } icon: {
+                    Image(systemName: "trash").foregroundStyle(.red)
+                }
+            }
+            
+            if !authManager.isAnonymous {
+                Button(role: .destructive) {
+                    showDeleteAccountAlert = true
+                } label: {
+                    HStack {
+                        Label {
+                            Text(LocalizedStringKey("Delete Account"))
+                                .foregroundColor(.red)
+                        } icon: {
+                            Image(systemName: "person.crop.circle.badge.xmark").foregroundStyle(.red)
+                        }
+                        Spacer()
+                        if isProcessing { ProgressView() }
+                    }
+                }
+                .disabled(isProcessing)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var appVersionSection: some View {
+        Section {
+            HStack {
+                Spacer()
+                Text(appVersionString)
+                    .font(.caption)
+                    .foregroundColor(themeManager.current.secondaryText)
+                Spacer()
+            }
+        }
+        .listRowBackground(Color.clear)
+    }
+
+        @ViewBuilder
+    private var accountSection: some View {
+        if authManager.isAnonymous {
+            Section(
+                header: Text(LocalizedStringKey("Account")),
+                footer: Text(LocalizedStringKey("Register an account to securely save your progress, sync across devices, and share workouts."))
+            ) {
+                Button(action: {
+                    Task {
+                        isProcessing = true
+                        do {
+                            try await SocialAuthService.shared.signInWithApple()
+                        } catch {
+                            authErrorMessage = error.localizedDescription
+                        }
+                        isProcessing = false
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "apple.logo")
+                        Text("Continue with Apple")
+                        Spacer()
+                        if isProcessing { ProgressView() }
+                    }
+                }
+                .buttonStyle(SettingsGlassAuthButtonStyle())
+                .disabled(isProcessing)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+
+                Button(action: {
+                    Task {
+                        isProcessing = true
+                        do {
+                            try await SocialAuthService.shared.signInWithGoogle()
+                        } catch let error as NSError where error.code == GIDSignInError.canceled.rawValue {
+                            // Ignored
+                        } catch {
+                            authErrorMessage = error.localizedDescription
+                        }
+                        isProcessing = false
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "globe")
+                        Text("Continue with Google")
+                        Spacer()
+                        if isProcessing { ProgressView() }
+                    }
+                }
+                .buttonStyle(SettingsGlassAuthButtonStyle())
+                .disabled(isProcessing)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            }
+        } else {
+            Section(
+                header: Text(LocalizedStringKey("Account"))
+            ) {
+                if let user = authManager.currentUser {
+                    HStack {
+                        Label {
+                            Text("Signed in as")
+                                .foregroundColor(themeManager.current.secondaryText)
+                        } icon: {
+                            Image(systemName: "person.circle.fill").foregroundStyle(Color.accentColor)
+                        }
+                        Spacer()
+                        Text(user.email ?? user.displayName ?? "User")
+                            .foregroundColor(themeManager.current.primaryText)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                }
+                Button(role: .cancel) {
+                    showSignOutAlert = true
+                } label: {
+                    HStack {
+                        Label {
+                            Text(LocalizedStringKey("Sign Out"))
+                                .foregroundColor(.orange)
+                        } icon: {
+                            Image(systemName: "rectangle.portrait.and.arrow.right").foregroundStyle(.orange)
+                        }
+                        Spacer()
+                        if isProcessing { ProgressView() }
+                    }
+                }
+                .disabled(isProcessing)
+            }
+        }
+    }
+
+    #if DEBUG
     private var debugSection: some View {
         Section(footer: Text(LocalizedStringKey("These buttons are for testing only. Remove TestDataGenerator.swift and this section after testing."))) {
             Button(role: .destructive) { Task { await generateTestData() } } label: {
                 HStack {
-                    Label(LocalizedStringKey("Generate All Test Data"), systemImage: "flask.fill")
+                    Label {
+                    Text(LocalizedStringKey("Generate All Test Data"))
+                } icon: {
+                    Image(systemName: "flask.fill").foregroundStyle(Color.accentColor)
+                }
                     Spacer()
                     if isProcessing { ProgressView() }
                 }
@@ -205,7 +400,11 @@ struct SettingsView: View {
 
             Button(role: .destructive) { showClearAllAlert = true } label: {
                 HStack {
-                    Label(LocalizedStringKey("Clear All Data"), systemImage: "trash.fill")
+                    Label {
+                    Text(LocalizedStringKey("Clear All Data"))
+                } icon: {
+                    Image(systemName: "trash.fill").foregroundStyle(.red)
+                }
                     Spacer()
                     if isProcessing { ProgressView() }
                 }
@@ -261,6 +460,19 @@ struct SettingsView: View {
         } else {
             self.testDataAlertMessage = "Failed to export data. Please try again."
             self.showTestDataAlert = true
+        }
+    }
+
+    // MARK: - Sign Out
+    private func signOut() async {
+        isProcessing = true
+        defer { isProcessing = false }
+        do {
+            try await SocialAuthService.shared.signOut()
+            deleteLocalData()
+            showSignOutSuccessAlert = true
+        } catch {
+            authErrorMessage = "Failed to sign out: \(error.localizedDescription)"
         }
     }
 
@@ -381,7 +593,7 @@ struct UnitsSettingsView: View {
 }
 
 struct AppearanceSettingsView: View {
-    @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "system"
+    @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "dark"
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
@@ -402,7 +614,7 @@ struct AppearanceSettingsView: View {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
                 } label: {
                     HStack {
-                        Text(LocalizedStringKey("Language")).foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                        Text(LocalizedStringKey("Language"))
                         Spacer()
                         Text(Locale.current.language.languageCode?.identifier == "ru" ? "Русский" : "English").foregroundColor(themeManager.current.secondaryText)
                         Image(systemName: "arrow.up.forward.app").font(.caption).foregroundColor(themeManager.current.secondaryText)
@@ -500,7 +712,7 @@ struct SettingsCheckmarkRow: View {
         }) {
             HStack {
                 Text(title)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .primary)
+                    
                 Spacer()
                 if isSelected {
                     Image(systemName: "checkmark")
@@ -509,5 +721,24 @@ struct SettingsCheckmarkRow: View {
                 }
             }
         }
+    }
+}
+
+struct SettingsGlassAuthButtonStyle: ButtonStyle {
+    @Environment(\.colorScheme) private var colorScheme
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 16, weight: .semibold, design: .rounded))
+            .foregroundStyle(colorScheme == .dark ? .white : .black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
+            .padding(.horizontal, 16)
+            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(Color.accentColor.opacity(colorScheme == .dark ? 0.6 : 0.4), lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
     }
 }

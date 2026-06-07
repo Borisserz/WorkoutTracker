@@ -12,6 +12,7 @@ struct DashboardCacheDTO: Sendable {
     let dashboardTotalExercises: Int
     let dashboardTopExercises: [ExerciseCountDTO]
     let streakCount: Int
+    let totalWorkouts: Int
     let bestWeekStats: PeriodStats
     let bestMonthStats: PeriodStats
     let weakPoints: [WeakPoint]
@@ -119,11 +120,26 @@ enum WorkoutRepositoryError: Error {
     case invalidData
 }
 
+public struct XPBreakdown: Equatable, Sendable {
+    let baseXP: Int
+    let durationXP: Int
+    let setsXP: Int
+    let prXP: Int
+    let volumeXP: Int
+    let effortMultiplier: Double
+
+    var total: Int {
+        let subtotal = Double(baseXP + durationXP + setsXP + prXP + volumeXP)
+        return Int(subtotal * effortMultiplier)
+    }
+}
+
 enum DetailDestination: Identifiable, Equatable {
     case shareSheet
     case emptyWorkoutAlert
     case prCelebration(PRLevel)
-    case achievementPopup(Achievement)
+    case achievementPopup([Achievement])
+    case xpBreakdownPopup(XPBreakdown, Bool, Int, String, [Achievement])
     case exerciseSelection
     case supersetBuilder(Exercise?)
     case swapExercise(Exercise)
@@ -133,7 +149,8 @@ enum DetailDestination: Identifiable, Equatable {
         case .shareSheet: return "share"
         case .emptyWorkoutAlert: return "emptyAlert"
         case .prCelebration: return "pr"
-        case .achievementPopup(let a): return "ach_\(a.id)"
+        case .achievementPopup(let a): return "ach_\(a.first?.id.uuidString ?? "none")"
+        case .xpBreakdownPopup: return "xpBreakdown"
         case .exerciseSelection: return "exSel"
         case .supersetBuilder(let ex): return "super_\(ex?.id.uuidString ?? "new")"
         case .swapExercise(let ex): return "swap_\(ex.id.uuidString)"
@@ -153,7 +170,7 @@ enum DetailDestination: Identifiable, Equatable {
 
     var isFullScreen: Bool {
         switch self {
-        case .prCelebration, .achievementPopup: return true
+        case .prCelebration, .achievementPopup, .xpBreakdownPopup: return true
         default: return false
         }
     }
