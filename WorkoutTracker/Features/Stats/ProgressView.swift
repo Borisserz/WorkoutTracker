@@ -987,25 +987,18 @@ struct AdvancedStatsSectionView: View {
                                 endRadius: 120
                             )
 
-                            if let anatomy = viewModel.anatomyStats, !anatomy.heatmapIntensities.isEmpty {
-                                BodyHeatmapView(
-                                    muscleIntensities: anatomy.heatmapIntensities,
-                                    isRecoveryMode: false,
-                                    isCompactMode: true,
-                                    defaultToBack: false,
-                                    userGender: userGender,
-                                    showLabels: false
-                                )
-                                .frame(height: 240)
-                                .scaleEffect(0.9)
-                                .offset(y: 10)
-                                .allowsHitTesting(false) 
-                            } else {
-
-                                Image(systemName: "figure.arms.open")
-                                    .font(.system(size: 100))
-                                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.1) : .black.opacity(0.1))
-                            }
+                            BodyHeatmapView(
+                                muscleIntensities: viewModel.anatomyStats?.heatmapIntensities ?? [:],
+                                isRecoveryMode: false,
+                                isCompactMode: true,
+                                defaultToBack: false,
+                                userGender: userGender,
+                                showLabels: false
+                            )
+                            .frame(height: 240)
+                            .scaleEffect(0.9)
+                            .offset(y: 10)
+                            .allowsHitTesting(false)
                         }
                         .frame(height: 240)
 

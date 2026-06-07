@@ -24,6 +24,7 @@ struct ActiveWorkoutBanner: View {
     @Environment(DIContainer.self) private var di
     @Environment(WorkoutService.self) private var workoutService
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(RestTimerManager.self) private var timerManager
     let workout: Workout
 
     @State private var showDeleteAlert = false
@@ -110,6 +111,8 @@ struct ActiveWorkoutBanner: View {
         }
         .alert(LocalizedStringKey("Cancel Workout?"), isPresented: $showDeleteAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
+                
+                timerManager.stopRestTimer()
 
                 if di.appState.selectedTab == 2 {
 
@@ -120,7 +123,7 @@ struct ActiveWorkoutBanner: View {
                 }
             }
         }
-    } 
+    }
 
     private func returnToWorkout() {
         let generator = UIImpactFeedbackGenerator(style: .medium)

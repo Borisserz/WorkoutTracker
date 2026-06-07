@@ -466,7 +466,6 @@ struct WorkoutConfigSheet: View {
 
     @State private var selectedLevel: WorkoutDifficulty = .intermediate
     @State private var selectedMuscle: CoachMuscleGroup? = nil
-    @State private var showExercises = false
 
     func synergyFor(_ muscle: CoachMuscleGroup) -> String? {
         switch muscle {
@@ -537,7 +536,6 @@ struct WorkoutConfigSheet: View {
                                     Button(action: {
                                         HapticManager.shared.impact(.medium)
                                         selectedMuscle = muscle
-                                        Task { try? await Task.sleep(nanoseconds: 100_000_000); showExercises = true }
                                     }) {
                                         VStack(alignment: .leading, spacing: 8) {
                                             HStack {
@@ -588,17 +586,15 @@ struct WorkoutConfigSheet: View {
                 }
             }
             .navigationBarHidden(true)
-            .sheet(isPresented: $showExercises) {
-                if let m = selectedMuscle {
-                    BestExercisesSheet(muscleGroup: m, difficulty: selectedLevel)
-                        .presentationDetents([.fraction(0.9), .large])
-                        .presentationCornerRadius(35)
-                        .presentationDragIndicator(.visible)
-                }
+                        .sheet(item: $selectedMuscle) { m in
+                            BestExercisesSheet(muscleGroup: m, difficulty: selectedLevel)
+                                .presentationDetents([.fraction(0.9), .large])
+                                .presentationCornerRadius(35)
+                                .presentationDragIndicator(.visible)
+                        }
             }
         }
     }
-}
 
 struct BestExercisesSheet: View {
     @Environment(\.colorScheme) private var colorScheme 

@@ -110,12 +110,13 @@ struct WorkoutDetailContentView: View {
         .sheet(item: $activeSheet) { sheet in renderSheetContent(for: sheet) }
         .sheet(isPresented: $showTimerSetup) { TimerSetupSheet().environment(timerManager) }
         .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
-               Button(LocalizedStringKey("Delete"), role: .destructive) {
-                   isDeletingEmptyWorkout = true
-                   let safeID = workout.persistentModelID
-                   dismiss()
+                      Button(LocalizedStringKey("Delete"), role: .destructive) {
+                          isDeletingEmptyWorkout = true
+                          let safeID = workout.persistentModelID
+                          timerManager.stopRestTimer()
+                          dismiss()
 
-                   Task {
+                          Task {
                        try? await Task.sleep(for: .seconds(0.5))
                        await viewModel.deleteEmptyWorkout(workoutID: safeID)
                    }
@@ -208,13 +209,14 @@ struct WorkoutDetailContentView: View {
     }
 
     private var finishWorkoutButton: some View {
-        VStack {
-            Spacer()
-            Button {
-                let generator = UIImpactFeedbackGenerator(style: .heavy)
-                generator.impactOccurred()
-                viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
-            } label: {
+            VStack {
+                Spacer()
+                Button {
+                    let generator = UIImpactFeedbackGenerator(style: .heavy)
+                    generator.impactOccurred()
+                    timerManager.stopRestTimer()
+                    viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
+                } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "flag.checkered.circle.fill").font(.title2)
                     Text(LocalizedStringKey("Finish Workout")).font(.title3).bold()
