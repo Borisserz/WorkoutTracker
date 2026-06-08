@@ -39,18 +39,10 @@ struct RootGodModeOnboarding: View {
                 .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
             } else if currentStage == 2 {
                 OnboardingIntroView(onNext: { targetTab in
-                    savedTargetTab = targetTab
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                        currentStage = 3
-                    }
+                    hasSeenFeatureDiscovery = true
+                    onFinish(targetTab)
                 })
                 .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
-            } else if currentStage == 3 {
-                TheOathView(onComplete: {
-                    hasSeenFeatureDiscovery = true
-                    onFinish(savedTargetTab)
-                })
-                .transition(.opacity)
             }
         }
         .preferredColorScheme(.dark)
