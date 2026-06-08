@@ -90,5 +90,10 @@ class LocalizationHelper {
             return formatNumber(value, fractionDigits: fractionDigits)
         }
     }
+
+    func getAILanguageName() -> String {
+        let code = Locale.current.language.languageCode?.identifier ?? "en"
+        return Locale(identifier: "en").localizedString(forIdentifier: code) ?? "English"
+    }
 }
 

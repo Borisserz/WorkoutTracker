@@ -39,6 +39,7 @@ final class ExerciseHistoryViewModel {
 
     var primaryMuscles: [String] = []
     var secondaryMuscles: [String] = []
+    var gifUrl: String?
 
     var selectedFormula: RMFormula = .brzycki {
         didSet {
@@ -76,6 +77,7 @@ final class ExerciseHistoryViewModel {
         let dbItem = await ExerciseDatabaseService.shared.getExerciseItem(for: exerciseName)
         self.primaryMuscles = dbItem?.primaryMuscles ?? []
         self.secondaryMuscles = dbItem?.secondaryMuscles ?? []
+        self.gifUrl = dbItem?.gifUrl
 
         guard let payload = await analyticsService.fetchExerciseHistoryData(exerciseName: exerciseName) else {
             self.isDataLoaded = true

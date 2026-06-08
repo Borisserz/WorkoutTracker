@@ -188,10 +188,10 @@ public actor AILogicService {
     }
 
     public func generateChatTitle(for userMessage: String) async throws -> String {
-        let isRussian = Locale.current.language.languageCode?.identifier == "ru"
-        let systemPrompt = isRussian
-            ? "Придумай очень краткое название (максимум 2-3 слова) для чата о фитнесе. Верни только текст без кавычек."
-            : "Create a very short title (max 2-3 words) for a fitness chat. Return ONLY the text without quotes."
+        let languageId = Locale.current.language.languageCode?.identifier ?? "en"
+        let language = Locale(identifier: "en").localizedString(forIdentifier: languageId) ?? "English"
+        let langInstruction = language.lowercased() == "english" ? "ENGLISH" : language.uppercased()
+        let systemPrompt = "Create a very short title (max 2-3 words) for a fitness chat. Return ONLY the text without quotes. REPLY STRICTLY IN \(langInstruction)."
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
             contents: [.init(role: "user", parts: [.init(text: userMessage)])],
@@ -201,10 +201,9 @@ public actor AILogicService {
     }
 
     public func generatePerformanceReview(statsContext: String, language: String) async throws -> AIWeeklyReviewDTO {
-        let isRussian = language == "Russian"
-        let langInstruction = isRussian
-            ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (но значения ключей JSON оставь английскими). Будь кратким и мотивирующим."
-            : "REPLY STRICTLY IN ENGLISH. Be brief and motivational."
+        let langInstruction = language.lowercased() == "english"
+            ? "REPLY STRICTLY IN ENGLISH. Be brief and motivational."
+            : "REPLY STRICTLY IN \(language.uppercased()) (but keep any JSON keys in English). Be brief and motivational."
         let systemPrompt = """
         You are an elite data analyst and supportive AI strength coach.
         Analyze the user's weekly statistics.
@@ -212,7 +211,7 @@ public actor AILogicService {
         Assign a coachMood ('fire' for great week, 'ice' for average/consistent, 'warning' for skipped workouts or low volume).
         \(langInstruction)
         """
-        let userStatsHeader = isRussian ? "Моя статистика:" : "My stats:"
+        let userStatsHeader = "My stats:"
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
             contents: [.init(role: "user", parts: [.init(text: "\(userStatsHeader)\n\(statsContext)")])],
@@ -233,9 +232,9 @@ public actor AILogicService {
     }
 
     public func streamChatResponse(userRequest: String, userProfile: UserProfileContext) async throws -> AsyncThrowingStream<String, Error> {
-        let langLine = userProfile.language == "Russian"
-            ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ."
-            : ""
+        let langLine = userProfile.language.lowercased() == "english"
+            ? "REPLY STRICTLY IN ENGLISH."
+            : "REPLY STRICTLY IN \(userProfile.language.uppercased())."
         let prompt = """
         You are an elite AI Strength Coach. Your tone is \(userProfile.aiCoachTone).
         Answer the user's fitness questions conversationally. DO NOT generate structured workout plans here.
@@ -284,10 +283,9 @@ public actor AILogicService {
                                    catalogContext: String,
                                    weightUnit: String,
                                    language: String) async throws -> SmartActionDTO {
-        let isRussian = language == "Russian"
-        let langInstruction = isRussian
-            ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (но ключи JSON оставь на английском)."
-            : "REPLY STRICTLY IN ENGLISH."
+        let langInstruction = language.lowercased() == "english"
+            ? "REPLY STRICTLY IN ENGLISH."
+            : "REPLY STRICTLY IN \(language.uppercased()) (but keep any JSON keys in English)."
         let systemPrompt = """
         You are an elite AI-coach. Your task is to instantly adjust the current workout upon request.
         If switching from barbell to dumbbells — reduce weight by 15-20%. If "Too Heavy" - reduce by 10%.
@@ -315,10 +313,11 @@ public actor AILogicService {
                                      catalogContext: String,
                                      tone: String,
                                      weightUnit: String) async throws -> InWorkoutResponseDTO {
-        let isRussian = Locale.current.language.languageCode?.identifier == "ru"
-        let langInstruction = isRussian
-            ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ. Названия упражнений оставляй на английском."
-            : "REPLY STRICTLY IN ENGLISH."
+        let languageId = Locale.current.language.languageCode?.identifier ?? "en"
+        let language = Locale(identifier: "en").localizedString(forIdentifier: languageId) ?? "English"
+        let langInstruction = language.lowercased() == "english"
+            ? "REPLY STRICTLY IN ENGLISH."
+            : "REPLY STRICTLY IN \(language.uppercased()). Leave exercise names in English."
         let systemPrompt = """
         You are an elite AI Strength Coach. \(langInstruction)
         All weights are in \(weightUnit).
@@ -347,10 +346,9 @@ public actor AILogicService {
                                         musclesToExclude: [String],
                                         language: String,
                                         catalogContext: String) async throws -> GeneratedProgramDTO {
-        let isRussian = language == "Russian"
-        let langInstruction = isRussian
-            ? "ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (ключи JSON оставь на английском)."
-            : "REPLY STRICTLY IN ENGLISH."
+        let langInstruction = language.lowercased() == "english"
+            ? "REPLY STRICTLY IN ENGLISH."
+            : "REPLY STRICTLY IN \(language.uppercased()) (but keep any JSON keys in English)."
         let growList = musclesToGrow.isEmpty ? "None specified" : musclesToGrow.joined(separator: ", ")
         let excludeList = musclesToExclude.isEmpty ? "None specified" : musclesToExclude.joined(separator: ", ")
         let systemPrompt = """
@@ -419,8 +417,8 @@ public actor AILogicService {
         When recommending loads, use generic strength-training guidelines based on the user's experience level. Do NOT ask the user for their body weight.
         """
 
-        if profile.language == "Russian" {
-            prompt += "\nОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ (кроме названий упражнений)."
+        if profile.language.lowercased() != "english" {
+            prompt += "\nREPLY STRICTLY IN \(profile.language.uppercased()) (except for exercise names)."
         }
         if !profile.availableExercises.isEmpty {
             prompt += "\nAVAILABLE EXERCISES FOR WORKOUTS:\n\(profile.availableExercises.joined(separator: ", "))"

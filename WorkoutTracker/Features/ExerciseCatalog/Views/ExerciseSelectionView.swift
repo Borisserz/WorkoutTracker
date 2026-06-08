@@ -186,7 +186,10 @@ struct ExerciseSelectionView: View {
             ExerciseDBItem(
                 id: custom.id.uuidString, name: custom.name, equipment: "bodyweight", force: "push",
                 mechanic: "isolation", primaryMuscles: custom.targetedMuscles, secondaryMuscles: nil,
-                instructions: nil, category: custom.category, level: "beginner"
+                instructions: nil,
+                category: custom.category,
+                level: "beginner",
+                gifUrl: nil
             )
         }
 

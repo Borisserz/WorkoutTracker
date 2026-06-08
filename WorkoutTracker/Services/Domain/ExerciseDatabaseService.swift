@@ -23,11 +23,12 @@ public struct ExerciseDBItem: Codable, Sendable {
     public let instructions: [String]?
     public let category: String?
     public let level: String?
+    public let gifUrl: String?
 
     public var pattern: MovementPattern = .unsupported
 
     enum CodingKeys: String, CodingKey {
-        case id, name, equipment, force, mechanic, primaryMuscles, secondaryMuscles, instructions, category, level
+        case id, name, equipment, force, mechanic, primaryMuscles, secondaryMuscles, instructions, category, level, gifUrl
     }
 }
 
@@ -81,17 +82,35 @@ public actor ExerciseDatabaseService {
     public func loadDatabase() async {
         guard !isLoaded else { return }
         
+        let currentLang = Locale.current.language.languageCode?.identifier ?? "en"
+        let langPrefix = String(currentLang.prefix(2))
+        
+        // Define supported localizations
+        let supportedLocalizedLangs = ["ru", "de", "es", "fr", "it"]
+        var targetLangFile: String? = nil
+        
+        if supportedLocalizedLangs.contains(langPrefix) {
+            targetLangFile = "exercises_\(langPrefix).json"
+        } else if currentLang == "pt-PT" || langPrefix == "pt" {
+            targetLangFile = "exercises_pt-PT.json"
+        }
+        
         var enData: Data?
-        var ruData: Data?
+        var localizedData: Data?
         
         #if os(iOS)
         let storage = Storage.storage()
         let enRef = storage.reference(withPath: "exercises.json")
-        let ruRef = storage.reference(withPath: "exercises_ru.json")
+        var localizedRef: StorageReference?
+        if let targetLangFile = targetLangFile {
+            localizedRef = storage.reference(withPath: targetLangFile)
+        }
         
         do {
             enData = try await enRef.data(maxSize: 5 * 1024 * 1024)
-            ruData = try await ruRef.data(maxSize: 5 * 1024 * 1024)
+            if let localizedRef = localizedRef {
+                localizedData = try await localizedRef.data(maxSize: 5 * 1024 * 1024)
+            }
             print("☁️✅ The exercise catalog has been successfully uploaded from Firebase Storage!")
         } catch {
             print("☁️⚠️ Error downloading from Firebase: \(error.localizedDescription). We switch to local files.")
@@ -108,11 +127,12 @@ public actor ExerciseDatabaseService {
             }
         }
         
-        if ruData == nil {
-            if let localRuUrl = Bundle.main.url(forResource: "exercises_ru", withExtension: "json") {
-                ruData = try? Data(contentsOf: localRuUrl)
+        if targetLangFile != nil && localizedData == nil {
+            let fileName = targetLangFile!.replacingOccurrences(of: ".json", with: "")
+            if let localLocUrl = Bundle.main.url(forResource: fileName, withExtension: "json") {
+                localizedData = try? Data(contentsOf: localLocUrl)
                 #if os(iOS)
-                print("📱 The LOCAL Russian directory has been loaded.")
+                print("📱 The LOCAL \(fileName) directory has been loaded.")
                 #endif
             }
         }
@@ -125,17 +145,17 @@ public actor ExerciseDatabaseService {
         do {
             let items = try JSONDecoder().decode([ExerciseDBItem].self, from: finalEnData)
 
-            var ruDict: [String: ExerciseDBItem] = [:]
-            if Locale.current.language.languageCode?.identifier == "ru",
-               let finalRuData = ruData,
-               let ruItems = try? JSONDecoder().decode([ExerciseDBItem].self, from: finalRuData) {
-                for item in ruItems {
-                    if let id = item.id { ruDict[id] = item }
+            var locDict: [String: ExerciseDBItem] = [:]
+            if targetLangFile != nil,
+               let finalLocData = localizedData,
+               let locItems = try? JSONDecoder().decode([ExerciseDBItem].self, from: finalLocData) {
+                for item in locItems {
+                    if let id = item.id { locDict[id] = item }
                 }
             }
 
-            var tempNamesRU: [String: String] = [:]
-            var tempInstRU: [String: [String]] = [:]
+            var tempNamesLoc: [String: String] = [:]
+            var tempInstLoc: [String: [String]] = [:]
             var dict: [String: ExerciseDBItem] = [:]
             var catalog: [String: Set<String>] = [:]
 
@@ -146,9 +166,9 @@ public actor ExerciseDatabaseService {
                 let engKey = item.name.lowercased()
                 dict[engKey] = item
 
-                if let id = item.id, let ruItem = ruDict[id] {
-                    tempNamesRU[engKey] = ruItem.name
-                    if let inst = ruItem.instructions { tempInstRU[engKey] = inst }
+                if let id = item.id, let locItem = locDict[id] {
+                    tempNamesLoc[engKey] = locItem.name
+                    if let inst = locItem.instructions { tempInstLoc[engKey] = inst }
                 }
 
                 let groupKey = item.primaryMuscles?.first?.capitalized ?? item.category?.capitalized ?? "Other"
@@ -156,7 +176,7 @@ public actor ExerciseDatabaseService {
                 catalog[mappedGroup, default: []].insert(item.name)
             }
 
-            LocalizationHelper.shared.setTranslations(names: tempNamesRU, instructions: tempInstRU)
+            LocalizationHelper.shared.setTranslations(names: tempNamesLoc, instructions: tempInstLoc)
             self.exercisesDict = dict
             self.groupedCatalog = catalog.mapValues { Array($0).sorted() }
             self.isLoaded = true

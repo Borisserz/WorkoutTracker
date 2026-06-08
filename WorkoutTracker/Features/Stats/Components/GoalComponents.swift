@@ -322,6 +322,7 @@ struct GoalSelectionSheet: View {
 
         @State private var availableExercises: [String] = []
 
+        @State private var startingWeightString: String = ""
         @State private var targetWeightString: String = ""
         @State private var targetDays: Int = 10
         @State private var targetReps: Int = 1
@@ -347,6 +348,18 @@ struct GoalSelectionSheet: View {
                     }
 
                     if type == .strength || type == .bodyweight {
+                        if type == .bodyweight {
+                            HStack {
+                                Text(LocalizedStringKey("Current (\(unitsManager.weightUnitString()))"))
+                                Spacer()
+                                TextField("0", text: $startingWeightString)
+                                    .keyboardType(.decimalPad)
+                                    .multilineTextAlignment(.trailing)
+                                    .foregroundColor(themeManager.current.primaryText)
+                                    .bold()
+                            }
+                        }
+
                         HStack {
                             Text(LocalizedStringKey("Target (\(unitsManager.weightUnitString()))"))
                             Spacer()
@@ -415,6 +428,7 @@ struct GoalSelectionSheet: View {
                         targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentMax + 5.0))
                     } else if type == .bodyweight {
                         let offset = (isWeightLoss == true) ? -5.0 : 5.0
+                        startingWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentBodyWeight))
                         targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentBodyWeight + offset))
                     }
                 }
@@ -430,7 +444,8 @@ struct GoalSelectionSheet: View {
                 startingVal = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
                 targetVal = unitsManager.convertToKilograms(Double(targetWeightString.replacingOccurrences(of: ",", with: ".")) ?? 0)
             case .bodyweight:
-                startingVal = currentBodyWeight
+                startingVal = unitsManager.convertToKilograms(Double(startingWeightString.replacingOccurrences(of: ",", with: ".")) ?? 0)
+                currentBodyWeight = startingVal // Update the user's profile weight automatically
                 targetVal = unitsManager.convertToKilograms(Double(targetWeightString.replacingOccurrences(of: ",", with: ".")) ?? 0)
             case .consistency:
                 startingVal = Double(WidgetDataManager.load().streak)

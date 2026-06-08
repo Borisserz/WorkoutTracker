@@ -822,7 +822,7 @@ struct BestExercisesSheet: View {
         let prCache = dashboard.personalRecordsCache
         let tone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
         let bodyWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
-        let appLanguage = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
+        let appLanguage = LocalizationHelper.shared.getAILanguageName()
 
         let relevantExercises = await ExerciseDatabaseService.shared.getRelevantExercisesContext(
             for: muscleGroup.engineName,

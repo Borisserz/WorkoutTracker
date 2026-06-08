@@ -42,7 +42,7 @@ final class InWorkoutAICoachViewModel {
             do {
                 let context = await buildWorkoutContext(currentWorkout, userCommand: command)
                 let weightUnit = UnitsManager.shared.weightUnitString()
-                let language = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
+                let language = LocalizationHelper.shared.getAILanguageName()
 
                 let result = try await aiLogicService.processSmartAction(
                     commandType: command,

@@ -193,7 +193,8 @@ struct ExerciseView: View {
                 secondaryMuscles: nil,
                 instructions: nil,
                 category: custom.category,
-                level: "beginner"
+                level: "beginner",
+                gifUrl: nil
             )
         }
 

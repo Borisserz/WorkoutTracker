@@ -125,7 +125,7 @@ final class AICoachViewModel {
            let userContext = UserProfileContext(
                userName: savedName,
                weightKg: UnitsManager.shared.convertToKilograms(userWeight), experienceLevel: "Intermediate", favoriteMuscles: [], recentPRs: [:],
-               language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
+               language: LocalizationHelper.shared.getAILanguageName(),
                workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: [], availableExercises: [], aiCoachTone: savedTone, weightUnit: UnitsManager.shared.weightUnitString()
            )
 
@@ -186,7 +186,7 @@ final class AICoachViewModel {
         let userContext = UserProfileContext(
             userName: savedName,
             weightKg: UnitsManager.shared.convertToKilograms(userWeight), experienceLevel: "Intermediate", favoriteMuscles: [], recentPRs: prCache,
-            language: Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English",
+            language: LocalizationHelper.shared.getAILanguageName(),
             workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup },
             availableExercises: relevantExercises, aiCoachTone: savedTone, weightUnit: UnitsManager.shared.weightUnitString()
         )

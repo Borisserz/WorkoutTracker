@@ -81,6 +81,8 @@ struct TechniqueSheetView: View {
                             .padding(.top, 50)
                     } else {
                         if let item = dbItem {
+                            ExerciseVideoView(urlString: item.gifUrl)
+                                .padding(.bottom, 8)
 
                             if let primary = item.primaryMuscles, !primary.isEmpty {
 

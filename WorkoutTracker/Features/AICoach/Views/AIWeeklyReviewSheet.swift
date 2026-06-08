@@ -168,7 +168,7 @@ struct AIWeeklyReviewSheet: View {
 
         Task {
             let context = buildStatsContext()
-            let lang = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
+            let lang = LocalizationHelper.shared.getAILanguageName()
 
             do {
                 let dto = try await aiLogicService.generatePerformanceReview(statsContext: context, language: lang)

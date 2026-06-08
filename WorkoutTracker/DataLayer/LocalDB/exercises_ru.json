@@ -17,7 +17,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "3_4_Sit-Up"
+    "id": "3_4_Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0001-2gPfomN.gif"
   },
   {
     "name": "Растяжка бицепса бедра 90/90",
@@ -57,7 +58,8 @@
       "Повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Ab_Crunch_Machine"
+    "id": "Ab_Crunch_Machine",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Выкатывания с роликом для пресса",
@@ -78,7 +80,8 @@
       "После паузы в растянутом положении начните возвращать себя в исходное положение на выдохе. Совет: двигайтесь медленно и всегда держите пресс напряженным."
     ],
     "category": "strength",
-    "id": "Ab_Roller"
+    "id": "Ab_Roller",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0103-xnInPfE.gif"
   },
   {
     "name": "МФР приводящих мышц бедра",
@@ -96,7 +99,8 @@
       "Пытаясь расслабить мышцы внутренней поверхности бедра, перекатывайте пенопласт между бедром и коленом, удерживая точки напряжения в течение 10–30 секунд. Повторите с другой ногой."
     ],
     "category": "stretching",
-    "id": "Adductor"
+    "id": "Adductor",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1712-hC6oYY5.gif"
   },
   {
     "name": "Растяжка приводящих мышц с партнером",
@@ -138,7 +142,8 @@
       "Сделайте паузу на секунду и вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Advanced_Kettlebell_Windmill"
+    "id": "Advanced_Kettlebell_Windmill",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0517-Kal9cQQ.gif"
   },
   {
     "name": "Скручивания «Велосипед»",
@@ -159,7 +164,8 @@
       "Продолжайте чередовать таким образом, пока не будут выполнены все рекомендуемые повторения для каждой стороны."
     ],
     "category": "strength",
-    "id": "Air_Bike"
+    "id": "Air_Bike",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0003-1ZFqTDN.gif"
   },
   {
     "name": "Растяжка квадрицепса на четвереньках",
@@ -358,7 +364,8 @@
       "Опустите очищенную гирю в положение для подвешивания и очистите альтернативную гирю. Повторить."
     ],
     "category": "strength",
-    "id": "Alternating_Hang_Clean"
+    "id": "Alternating_Hang_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0518-I4tibZG.gif"
   },
   {
     "name": "Поочередный жим гирь стоя",
@@ -378,7 +385,8 @@
       "Опустите отжатую гирю в исходное положение и сразу же выполните жим другой рукой."
     ],
     "category": "strength",
-    "id": "Alternating_Kettlebell_Press"
+    "id": "Alternating_Kettlebell_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0520-5KLbZWx.gif"
   },
   {
     "name": "Поочередная тяга гирь в наклоне",
@@ -399,7 +407,8 @@
       "Опустите гирю в рабочую руку и повторите то же самое с другой рукой."
     ],
     "category": "strength",
-    "id": "Alternating_Kettlebell_Row"
+    "id": "Alternating_Kettlebell_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0522-Ca76jUE.gif"
   },
   {
     "name": "Тяга гирь в упоре лежа (Renegade Row)",
@@ -441,7 +450,8 @@
       "Когда вы закончите с правой ногой, повторите то же самое с левой ногой."
     ],
     "category": "stretching",
-    "id": "Ankle_Circles"
+    "id": "Ankle_Circles",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1368-uL9CsKm.gif"
   },
   {
     "name": "Растяжка ягодиц (лодыжка на колене)",
@@ -541,7 +551,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Arnold_Dumbbell_Press"
+    "id": "Arnold_Dumbbell_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2137-Xy4jlWA.gif"
   },
   {
     "name": "Круговые разведения с гантелями лежа",
@@ -666,7 +677,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Back_Flyes_-_With_Bands"
+    "id": "Back_Flyes_-_With_Bands",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0993-sTfvVsG.gif"
   },
   {
     "name": "Тяга саней спиной вперед",
@@ -729,7 +741,8 @@
       "Удерживайте баланс столько времени, сколько необходимо."
     ],
     "category": "strength",
-    "id": "Balance_Board"
+    "id": "Balance_Board",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0020-xAySMB0.gif"
   },
   {
     "name": "Сгибание ног на фитболе",
@@ -775,7 +788,8 @@
       "После небольшой паузы вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Band_Assisted_Pull-Up"
+    "id": "Band_Assisted_Pull-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0970-r1XNRYB.gif"
   },
   {
     "name": "Наклоны «Доброе утро» с резиновой петлей",
@@ -817,7 +831,8 @@
       "Вернитесь в исходное положение, двигая бедрами, чтобы вернуться в положение стоя."
     ],
     "category": "powerlifting",
-    "id": "Band_Good_Morning_Pull_Through"
+    "id": "Band_Good_Morning_Pull_Through",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0991-VtTbiP3.gif"
   },
   {
     "name": "Приведение бедра с эспандером стоя",
@@ -945,7 +960,8 @@
       "Когда закончите, поместите штангу обратно на стойку."
     ],
     "category": "strength",
-    "id": "Barbell_Bench_Press_-_Medium_Grip"
+    "id": "Barbell_Bench_Press_-_Medium_Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
   },
   {
     "name": "Подъем штанги на бицепс стоя",
@@ -967,7 +983,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Barbell_Curl"
+    "id": "Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0031-25GPyDY.gif"
   },
   {
     "name": "Подъем штанги на бицепс лежа животом на наклонной скамье",
@@ -986,7 +1003,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Barbell_Curls_Lying_Against_An_Incline"
+    "id": "Barbell_Curls_Lying_Against_An_Incline",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0072-WLvTAv5.gif"
   },
   {
     "name": "Становая тяга классическая",
@@ -1015,7 +1033,8 @@
       "Выполняйте количество повторений, прописанное в программе."
     ],
     "category": "strength",
-    "id": "Barbell_Deadlift"
+    "id": "Barbell_Deadlift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0032-ila4NZS.gif"
   },
   {
     "name": "Глубокие приседания со штангой",
@@ -1041,7 +1060,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Barbell_Full_Squat"
+    "id": "Barbell_Full_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0043-qXTaZnJ.gif"
   },
   {
     "name": "Ягодичный мостик со штангой",
@@ -1062,7 +1082,8 @@
       "Выпрямитесь как можно дальше, затем выполните обратное движение, чтобы вернуться в исходное положение."
     ],
     "category": "powerlifting",
-    "id": "Barbell_Glute_Bridge"
+    "id": "Barbell_Glute_Bridge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1409-qKBpF7I.gif"
   },
   {
     "name": "Жим «Гильотина» со штангой лежа",
@@ -1108,7 +1129,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Barbell_Hack_Squat"
+    "id": "Barbell_Hack_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0046-5VCj6iH.gif"
   },
   {
     "name": "Ягодичный мостик (Hip Thrust) со штангой",
@@ -1152,7 +1174,8 @@
       "Когда закончите, поместите штангу обратно на стойку."
     ],
     "category": "strength",
-    "id": "Barbell_Incline_Bench_Press_-_Medium_Grip"
+    "id": "Barbell_Incline_Bench_Press_-_Medium_Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0047-3TZduzM.gif"
   },
   {
     "name": "Фронтальные подъемы со штангой лежа на наклонной скамье",
@@ -1197,7 +1220,8 @@
       "Повторите движение рекомендованное количество повторений, а затем выполните левой ногой."
     ],
     "category": "strength",
-    "id": "Barbell_Lunge"
+    "id": "Barbell_Lunge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0054-t8iSghb.gif"
   },
   {
     "name": "Тяга штанги в наклоне на задние дельты",
@@ -1221,7 +1245,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Barbell_Rear_Delt_Row"
+    "id": "Barbell_Rear_Delt_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0076-S9zHIvU.gif"
   },
   {
     "name": "Выкатывания со штангой с опорой на скамью",
@@ -1265,7 +1290,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Barbell_Seated_Calf_Raise"
+    "id": "Barbell_Seated_Calf_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1371-ipvgBnC.gif"
   },
   {
     "name": "Жим штанги сидя",
@@ -1307,7 +1333,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Barbell_Shrug"
+    "id": "Barbell_Shrug",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0095-dG7tG5y.gif"
   },
   {
     "name": "Шраги со штангой за спиной",
@@ -1399,7 +1426,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Barbell_Squat"
+    "id": "Barbell_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0102-oR7O9LW.gif"
   },
   {
     "name": "Приседания со штангой на тумбу/скамью",
@@ -1474,7 +1502,8 @@
       "Сделайте шаг вперед задней ногой, повторив выпад на противоположную ногу."
     ],
     "category": "strength",
-    "id": "Barbell_Walking_Lunge"
+    "id": "Barbell_Walking_Lunge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1460-IZVHb27.gif"
   },
   {
     "name": "Волны боевыми канатами",
@@ -1496,7 +1525,8 @@
       "Продолжайте чередовать левую и правую руки, раскручивая веревки вверх и вниз так быстро, как только можете."
     ],
     "category": "strength",
-    "id": "Battling_Ropes"
+    "id": "Battling_Ropes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0128-RJa4tCo.gif"
   },
   {
     "name": "Тяга саней в «Медвежьей походке»",
@@ -1517,7 +1547,8 @@
       "Начните с движения ногами, попеременно влево и вправо. Используйте руки, чтобы сохранять равновесие и помогать тянуть. Старайтесь держать спину ровной при движении на заданное расстояние."
     ],
     "category": "strongman",
-    "id": "Bear_Crawl_Sled_Drags"
+    "id": "Bear_Crawl_Sled_Drags",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3360-0Yz8WdV.gif"
   },
   {
     "name": "Растяжка грудных с партнером (руки за головой)",
@@ -1560,7 +1591,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Bench_Dips"
+    "id": "Bench_Dips",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1754-gtO1ErP.gif"
   },
   {
     "name": "Перепрыгивания через скамью",
@@ -1633,7 +1665,8 @@
       "Повторите движение заданное количество повторений вашей тренировочной программы."
     ],
     "category": "strength",
-    "id": "Bench_Press_-_With_Bands"
+    "id": "Bench_Press_-_With_Bands",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1254-khlHMqs.gif"
   },
   {
     "name": "Жим лежа с цепями",
@@ -1866,7 +1899,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Bent_Over_Two-Arm_Long_Bar_Row"
+    "id": "Bent_Over_Two-Arm_Long_Bar_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1349-BgljGjd.gif"
   },
   {
     "name": "Тяга гантелей в наклоне",
@@ -1936,7 +1970,8 @@
       "Вернитесь в вертикальное положение, поместив гирю над головой. Верните гирю к плечу и повторите желаемое количество повторений."
     ],
     "category": "strength",
-    "id": "Bent_Press"
+    "id": "Bent_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0524-kjE55n5.gif"
   },
   {
     "name": "Езда на велосипеде",
@@ -1956,7 +1991,8 @@
       "Для начала сядьте на велосипед и отрегулируйте сиденье по своему росту."
     ],
     "category": "cardio",
-    "id": "Bicycling"
+    "id": "Bicycling",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2138-H1PESYI.gif"
   },
   {
     "name": "Велотренажер",
@@ -1977,7 +2013,8 @@
       "Выберите нужную опцию из меню. Возможно, вам придется начать крутить педали, чтобы включить его. Вы можете использовать ручную настройку или выбрать программу для использования. Обычно вы можете ввести свой возраст и вес, чтобы оценить количество калорий, сожженных во время тренировки. Уровень сопротивления можно менять в течение тренировки. Ручки можно использовать для контроля сердечного ритма, чтобы поддерживать необходимую интенсивность."
     ],
     "category": "cardio",
-    "id": "Bicycling_Stationary"
+    "id": "Bicycling_Stationary",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2138-H1PESYI.gif"
   },
   {
     "name": "Жим штанги лежа с бруска (Board Press)",
@@ -2023,7 +2060,8 @@
       "Повторите."
     ],
     "category": "strength",
-    "id": "Body-Up"
+    "id": "Body-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0137-U6G2gk9.gif"
   },
   {
     "name": "Французский жим с весом тела (от перекладины)",
@@ -2043,7 +2081,8 @@
       "Уменьшайте собственный вес, добавляя цепи на плечи."
     ],
     "category": "strength",
-    "id": "Body_Tricep_Press"
+    "id": "Body_Tricep_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0816-fSrPP6B.gif"
   },
   {
     "name": "Разведения рук в упоре лежа (слайды)",
@@ -2088,7 +2127,8 @@
       "После небольшой паузы вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Bodyweight_Mid_Row"
+    "id": "Bodyweight_Mid_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0499-bZGHsAZ.gif"
   },
   {
     "name": "Воздушные приседания (Air Squats)",
@@ -2109,7 +2149,8 @@
       "Продолжайте опускаться на полную глубину, если можете, и быстро меняйте направление движения, пока не вернетесь в исходное положение. Приседая, держите голову и грудь поднятыми, а колени выдвиньте вперед."
     ],
     "category": "strength",
-    "id": "Bodyweight_Squat"
+    "id": "Bodyweight_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3168-3xK09Sk.gif"
   },
   {
     "name": "Шагающие выпады без отягощения",
@@ -2132,7 +2173,8 @@
       "Сделайте шаг вперед задней ногой, повторив выпад на противоположную ногу."
     ],
     "category": "strength",
-    "id": "Bodyweight_Walking_Lunge"
+    "id": "Bodyweight_Walking_Lunge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1460-IZVHb27.gif"
   },
   {
     "name": "Скручивания в кроссовере на полусфере Bosu с наклонами",
@@ -2157,7 +2199,8 @@
       "Опустите руки вниз по бокам; держите их прямо. Начните делать попеременные наклоны в стороны; дотянись до пяток! Это завершающее движение будет сосредоточено на косых мышцах."
     ],
     "category": "strength",
-    "id": "Bosu_Ball_Cable_Crunch_With_Side_Bends"
+    "id": "Bosu_Ball_Cable_Crunch_With_Side_Bends",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Взятие гири на грудь дном вверх из виса",
@@ -2177,7 +2220,8 @@
       "С силой верните гирю назад, а затем с силой поменяйте направление движения. Сожмите рукоятку гири как можно сильнее и поднимите гирю к плечу."
     ],
     "category": "strength",
-    "id": "Bottoms-Up_Clean_From_The_Hang_Position"
+    "id": "Bottoms-Up_Clean_From_The_Hang_Position",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0138-CI6baTY.gif"
   },
   {
     "name": "Подъем таза с прямыми ногами (Bottoms Up)",
@@ -2195,7 +2239,8 @@
       "После небольшой паузы вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Bottoms_Up"
+    "id": "Bottoms_Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0525-4KJEpzb.gif"
   },
   {
     "name": "Многократные запрыгивания на тумбу",
@@ -2219,7 +2264,8 @@
       "Немедленно спрыгните или прыгните обратно в исходное исходное место; затем повторите последовательность."
     ],
     "category": "plyometrics",
-    "id": "Box_Jump_Multiple_Response"
+    "id": "Box_Jump_Multiple_Response",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1374-iPm26QU.gif"
   },
   {
     "name": "Перепрыгивания тумб",
@@ -2383,7 +2429,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Butt-Ups"
+    "id": "Butt-Ups",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0870-qcNN2FN.gif"
   },
   {
     "name": "Ягодичный мостик (без отягощения)",
@@ -2488,7 +2535,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Cable_Crunch"
+    "id": "Cable_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Становая тяга в кроссовере",
@@ -2512,7 +2560,8 @@
       "Достигнув полной позиции стоя, вернитесь в исходное положение и повторите."
     ],
     "category": "strength",
-    "id": "Cable_Deadlifts"
+    "id": "Cable_Deadlifts",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0157-eGDudUV.gif"
   },
   {
     "name": "Сгибания «Молоток» с канатом в кроссовере",
@@ -2555,7 +2604,8 @@
       "Повторите рекомендуемое количество повторений, а затем повторите то же движение с противоположной ногой."
     ],
     "category": "strength",
-    "id": "Cable_Hip_Adduction"
+    "id": "Cable_Hip_Adduction",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0168-hBGWILP.gif"
   },
   {
     "name": "Пуловер с верхнего блока на наклонной скамье",
@@ -2595,7 +2645,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Cable_Incline_Triceps_Extension"
+    "id": "Cable_Incline_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0173-Hx1WC8I.gif"
   },
   {
     "name": "Внутренняя ротация плеча в кроссовере",
@@ -2655,7 +2706,8 @@
       "Затем измените положение и повторите ту же серию движений на противоположной стороне."
     ],
     "category": "strength",
-    "id": "Cable_Judo_Flip"
+    "id": "Cable_Judo_Flip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0174-MvQPqVW.gif"
   },
   {
     "name": "Французский жим в кроссовере лежа",
@@ -2675,7 +2727,8 @@
       "Задержитесь на секунду в сокращенном положении и повторите рекомендуемое количество повторений."
     ],
     "category": "strength",
-    "id": "Cable_Lying_Triceps_Extension"
+    "id": "Cable_Lying_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0186-uxJcFUU.gif"
   },
   {
     "name": "Разгибание одной руки на трицепс в кроссовере",
@@ -2720,7 +2773,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Cable_Preacher_Curl"
+    "id": "Cable_Preacher_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0195-P2lNrGL.gif"
   },
   {
     "name": "Обратные разведения в кроссовере (на задние дельты)",
@@ -2760,7 +2814,8 @@
       "Повторите то же движение до отказа."
     ],
     "category": "strength",
-    "id": "Cable_Reverse_Crunch"
+    "id": "Cable_Reverse_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0873-RqOtqD7.gif"
   },
   {
     "name": "Разгибание рук с канатом из-за головы в кроссовере",
@@ -2826,7 +2881,8 @@
       "Затем измените положение и повторите ту же серию движений на противоположной стороне."
     ],
     "category": "strength",
-    "id": "Cable_Russian_Twists"
+    "id": "Cable_Russian_Twists",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0211-d9Xaxq6.gif"
   },
   {
     "name": "Скручивания сидя в кроссовере",
@@ -2846,7 +2902,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Cable_Seated_Crunch"
+    "id": "Cable_Seated_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0212-8xUv4J7.gif"
   },
   {
     "name": "Махи руками в стороны сидя в кроссовере",
@@ -2892,7 +2949,8 @@
       "Сделав паузу в верхней точке, вернитесь в исходное положение и повторите."
     ],
     "category": "strength",
-    "id": "Cable_Shoulder_Press"
+    "id": "Cable_Shoulder_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0219-PzQanLE.gif"
   },
   {
     "name": "Шраги с нижнего блока в кроссовере",
@@ -2912,7 +2970,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Cable_Shrugs"
+    "id": "Cable_Shrugs",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0220-Eg98Ft9.gif"
   },
   {
     "name": "Сгибание запястий в кроссовере",
@@ -2933,7 +2992,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Cable_Wrist_Curl"
+    "id": "Cable_Wrist_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0247-LrV4s90.gif"
   },
   {
     "name": "Шраги в тренажере для икр",
@@ -3258,7 +3318,8 @@
       "Повторите для другой ноги."
     ],
     "category": "stretching",
-    "id": "Chair_Leg_Extended_Stretch"
+    "id": "Chair_Leg_Extended_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1548-xGgAGPm.gif"
   },
   {
     "name": "Растяжка поясницы сидя на стуле",
@@ -3432,7 +3493,8 @@
       "Делая второй шаг, резко толкните мяч вперед, сразу же после его броска пробежав 10 ярдов. Если вы действительно быстры, вы сможете поймать свой пас!"
     ],
     "category": "plyometrics",
-    "id": "Chest_Push_with_Run_Release"
+    "id": "Chest_Push_with_Run_Release",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Растяжка грудных мышц на фитболе",
@@ -3495,7 +3557,8 @@
       "Повторите это движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Chin-Up"
+    "id": "Chin-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif"
   },
   {
     "name": "Растяжка шеи (подбородок к груди)",
@@ -3669,7 +3732,8 @@
       "В этот момент, когда ступни отрываются от пола, ступни необходимо как можно быстрее поставить в принимающую позицию. В тот короткий момент, когда ступни не прижимаются активно к платформе, попытка спортсмена подтолкнуть штангу вверх приведет их к падению. Ноги должны быть разделены, одна нога вперед, другая назад. Возьмите штангу, вытянув руки над головой. Вернитесь в положение стоя."
     ],
     "category": "olympic weightlifting",
-    "id": "Clean_and_Jerk"
+    "id": "Clean_and_Jerk",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0537-vzAxBtt.gif"
   },
   {
     "name": "Взятие на грудь и армейский жим",
@@ -3702,7 +3766,8 @@
       "Не двигая ногами, на выдохе нажмите штангу над головой. Опустите штангу под контролем."
     ],
     "category": "strength",
-    "id": "Clean_and_Press"
+    "id": "Clean_and_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0028-SGY8Zui.gif"
   },
   {
     "name": "Взятие на грудь с плинтов",
@@ -3751,7 +3816,8 @@
       "Вернитесь в исходное положение и повторите упражнение, работая по кругу, пока не вернетесь к исходной позиции."
     ],
     "category": "strength",
-    "id": "Clock_Push-Up"
+    "id": "Clock_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0258-CMAxnsG.gif"
   },
   {
     "name": "Жим штанги лежа узким хватом",
@@ -3774,7 +3840,8 @@
       "Когда закончите, поместите штангу обратно на стойку."
     ],
     "category": "strength",
-    "id": "Close-Grip_Barbell_Bench_Press"
+    "id": "Close-Grip_Barbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0030-J6Dx1Mu.gif"
   },
   {
     "name": "Жим гантелей лежа узким хватом",
@@ -3797,7 +3864,8 @@
       "Вернитесь в исходное положение, разгибая локти."
     ],
     "category": "strength",
-    "id": "Close-Grip_Dumbbell_Press"
+    "id": "Close-Grip_Dumbbell_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0296-RxayqAZ.gif"
   },
   {
     "name": "Сгибания рук с EZ-штангой и резиновой петлей узким хватом",
@@ -3912,7 +3980,8 @@
       "После паузы в сокращенном положении повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Close-Grip_Push-Up_off_of_a_Dumbbell"
+    "id": "Close-Grip_Push-Up_off_of_a_Dumbbell",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0259-x6KpKpq.gif"
   },
   {
     "name": "Подъем штанги на бицепс узким хватом",
@@ -3934,7 +4003,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Close-Grip_Standing_Barbell_Curl"
+    "id": "Close-Grip_Standing_Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0446-V4ryaZa.gif"
   },
   {
     "name": "Скручивания «Кокон»",
@@ -3952,7 +4022,8 @@
       "После небольшой паузы вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Cocoons"
+    "id": "Cocoons",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0260-SLKj2pX.gif"
   },
   {
     "name": "Карусель Конана",
@@ -3999,7 +4070,8 @@
       "Повторите рекомендованное количество повторений. Затем повторите движение левой рукой."
     ],
     "category": "strength",
-    "id": "Concentration_Curls"
+    "id": "Concentration_Curls",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0297-gvsWLQw.gif"
   },
   {
     "name": "Диагональные скручивания",
@@ -4019,7 +4091,8 @@
       "Продолжайте чередовать таким образом, пока не будут выполнены все предписанные повторения."
     ],
     "category": "strength",
-    "id": "Cross-Body_Crunch"
+    "id": "Cross-Body_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Подъем на бицепс хватом «Молоток» перед грудью",
@@ -4127,7 +4200,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Crunch_-_Hands_Overhead"
+    "id": "Crunch_-_Hands_Overhead",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Скручивания с закинутыми на фитбол ногами",
@@ -4149,7 +4223,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Crunch_-_Legs_On_Exercise_Ball"
+    "id": "Crunch_-_Legs_On_Exercise_Ball",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Скручивания",
@@ -4170,7 +4245,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Crunches"
+    "id": "Crunches",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Кубинский жим",
@@ -4192,7 +4268,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Cuban_Press"
+    "id": "Cuban_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0299-QfAKy1G.gif"
   },
   {
     "name": "Поза скручивания сидя (Растяжка танцора)",
@@ -4236,7 +4313,8 @@
       "Повторите то же самое с противоположной стороны, чередуя, пока подход не будет завершен."
     ],
     "category": "strength",
-    "id": "Dead_Bug"
+    "id": "Dead_Bug",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0276-iny3m5y.gif"
   },
   {
     "name": "Становая тяга с резиновыми петлями",
@@ -4311,7 +4389,8 @@
       "Когда закончите, поместите штангу обратно на стойку."
     ],
     "category": "strength",
-    "id": "Decline_Barbell_Bench_Press"
+    "id": "Decline_Barbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0033-GrO65fd.gif"
   },
   {
     "name": "Жим узким хватом и французский жим на скамье с отрицательным наклоном",
@@ -4357,7 +4436,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Decline_Crunch"
+    "id": "Decline_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Жим гантелей лежа на скамье с отрицательным наклоном",
@@ -4381,7 +4461,8 @@
       "Повторите движение заданное количество повторений вашей тренировочной программы."
     ],
     "category": "strength",
-    "id": "Decline_Dumbbell_Bench_Press"
+    "id": "Decline_Dumbbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0301-DwhEmmE.gif"
   },
   {
     "name": "Разведения с гантелями лежа на скамье с отрицательным наклоном",
@@ -4401,7 +4482,8 @@
       "Задержитесь на секунду в сокращенном положении и повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Decline_Dumbbell_Flyes"
+    "id": "Decline_Dumbbell_Flyes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0302-xXm4nYq.gif"
   },
   {
     "name": "Французский жим с гантелями на скамье с отрицательным наклоном",
@@ -4421,7 +4503,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Decline_Dumbbell_Triceps_Extension"
+    "id": "Decline_Dumbbell_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0306-OTgkHwR.gif"
   },
   {
     "name": "Французский жим с EZ-штангой на скамье с отрицательным наклоном",
@@ -4462,7 +4545,8 @@
       "Выполнив один подход справа с рекомендуемым количеством повторений, переключитесь на левую сторону. Совет: сосредоточьтесь на том, чтобы по-настоящему скрутить туловище и почувствовать сокращение, когда вы находитесь в верхнем положении."
     ],
     "category": "strength",
-    "id": "Decline_Oblique_Crunch"
+    "id": "Decline_Oblique_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Отжимания с ногами на возвышенности",
@@ -4484,7 +4568,8 @@
       "После короткой паузы в верхней сокращенной позиции вы можете снова начать опускаться вниз, сделав столько повторений, сколько необходимо."
     ],
     "category": "strength",
-    "id": "Decline_Push-Up"
+    "id": "Decline_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0279-i5cEhka.gif"
   },
   {
     "name": "Обратные скручивания на скамье с отрицательным наклоном",
@@ -4504,7 +4589,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Decline_Reverse_Crunch"
+    "id": "Decline_Reverse_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0872-nCU1Ekp.gif"
   },
   {
     "name": "Жим в Смите на скамье с отрицательным наклоном",
@@ -4600,7 +4686,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Dip_Machine"
+    "id": "Dip_Machine",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0814-X6C6i5Y.gif"
   },
   {
     "name": "Отжимания на брусьях с акцентом на грудь",
@@ -4622,7 +4709,8 @@
       "Повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Dips_-_Chest_Version"
+    "id": "Dips_-_Chest_Version",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-9WTm7dq.gif"
   },
   {
     "name": "Отжимания на брусьях с акцентом на трицепс",
@@ -4644,7 +4732,8 @@
       "Повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Dips_-_Triceps_Version"
+    "id": "Dips_-_Triceps_Version",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0814-X6C6i5Y.gif"
   },
   {
     "name": "Подъемы на носки в наклоне («Ослик»)",
@@ -4664,7 +4753,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Donkey_Calf_Raises"
+    "id": "Donkey_Calf_Raises",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0284-u5ESqzH.gif"
   },
   {
     "name": "Поочередное взятие двух гирь на грудь из виса",
@@ -4784,7 +4874,8 @@
       "Сделайте паузу на секунду после того, как поднимете гирю с земли, и вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Double_Kettlebell_Windmill"
+    "id": "Double_Kettlebell_Windmill",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0554-9Tkqa9O.gif"
   },
   {
     "name": "Прыжки с захлестом голени (двумя ногами)",
@@ -4850,7 +4941,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Drag_Curl"
+    "id": "Drag_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0038-IENzBdA.gif"
   },
   {
     "name": "Плиометрические отжимания с падением (Drop Push)",
@@ -4871,7 +4963,8 @@
       "Сохраняя правильную осанку, спрыгивайте с платформ, нажимая вверх и перемещая руки на ширину плеч, смягчая приземление, поглощая удар через руку."
     ],
     "category": "plyometrics",
-    "id": "Drop_Push"
+    "id": "Drop_Push",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Поочередный подъем гантелей на бицепс стоя",
@@ -4916,7 +5009,8 @@
       "Повторите движение заданное количество повторений вашей тренировочной программы."
     ],
     "category": "strength",
-    "id": "Dumbbell_Bench_Press"
+    "id": "Dumbbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0289-SpYC0Kp.gif"
   },
   {
     "name": "Жим гантелей лежа параллельным (нейтральным) хватом",
@@ -4959,7 +5053,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Dumbbell_Bicep_Curl"
+    "id": "Dumbbell_Bicep_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0294-NbVPDMW.gif"
   },
   {
     "name": "Взятие гантелей на грудь",
@@ -4987,7 +5082,8 @@
       "Получив вес в положении приседа, выпрямите бедра и колени и закончите в положении стоя с гирями на плечах."
     ],
     "category": "strength",
-    "id": "Dumbbell_Clean"
+    "id": "Dumbbell_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0295-7Hg55JG.gif"
   },
   {
     "name": "Жим гантелей лежа на полу",
@@ -5028,7 +5124,8 @@
       "Задержитесь на секунду в сокращенном положении и повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Dumbbell_Flyes"
+    "id": "Dumbbell_Flyes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0308-yz9nUhF.gif"
   },
   {
     "name": "Тяга гантелей в наклоне с упором грудью в скамью",
@@ -5052,7 +5149,8 @@
       "Сделайте паузу в верхней точке движения, а затем вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Dumbbell_Incline_Row"
+    "id": "Dumbbell_Incline_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0327-7vG5o25.gif"
   },
   {
     "name": "Фронтальные подъемы гантелей лежа на наклонной скамье",
@@ -5097,7 +5195,8 @@
       "Повторите движение рекомендованное количество повторений, а затем выполните левой ногой."
     ],
     "category": "strength",
-    "id": "Dumbbell_Lunges"
+    "id": "Dumbbell_Lunges",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0336-RRWFUcw.gif"
   },
   {
     "name": "Махи одной рукой с гантелью лежа на животе (на задние дельты)",
@@ -5140,7 +5239,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Dumbbell_Lying_Pronation"
+    "id": "Dumbbell_Lying_Pronation",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0347-mym4hJo.gif"
   },
   {
     "name": "Махи гантелями лежа на животе (на задние дельты)",
@@ -5181,7 +5281,8 @@
       "Повторите рекомендуемое количество повторений, а затем переключитесь на другую руку."
     ],
     "category": "strength",
-    "id": "Dumbbell_Lying_Supination"
+    "id": "Dumbbell_Lying_Supination",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0349-M2Pm3zj.gif"
   },
   {
     "name": "Жим гантели одной рукой сидя",
@@ -5269,7 +5370,8 @@
       "Повторите рекомендованное количество раз."
     ],
     "category": "strength",
-    "id": "Dumbbell_Prone_Incline_Curl"
+    "id": "Dumbbell_Prone_Incline_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0374-mwpPcr1.gif"
   },
   {
     "name": "Махи гантелями перед собой",
@@ -5290,7 +5392,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Dumbbell_Raise"
+    "id": "Dumbbell_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0310-3eGE2JC.gif"
   },
   {
     "name": "Обратные выпады с гантелями",
@@ -5419,7 +5522,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Dumbbell_Shrug"
+    "id": "Dumbbell_Shrug",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0406-NJzBsGJ.gif"
   },
   {
     "name": "Наклоны в сторону с гантелью",
@@ -5438,7 +5542,8 @@
       "Повторите рекомендуемое количество повторений, а затем поменяйте руки."
     ],
     "category": "strength",
-    "id": "Dumbbell_Side_Bend"
+    "id": "Dumbbell_Side_Bend",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0407-IpONWYv.gif"
   },
   {
     "name": "Приседания с гантелями",
@@ -5463,7 +5568,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Dumbbell_Squat"
+    "id": "Dumbbell_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0413-HsvHqgf.gif"
   },
   {
     "name": "Приседания с гантелями на тумбу/скамью",
@@ -5511,7 +5617,8 @@
       "Повторите с правой ногой рекомендуемое количество повторений, а затем выполните с левой ногой."
     ],
     "category": "strength",
-    "id": "Dumbbell_Step_Ups"
+    "id": "Dumbbell_Step_Ups",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0431-aXtJhlg.gif"
   },
   {
     "name": "Французский жим с гантелями лежа пронированным хватом",
@@ -5566,7 +5673,8 @@
       "Держа руки прямыми, быстро отведите их назад как можно дальше и снова внутрь, подобно преувеличенному хлопку в ладоши. Повторите 5–10 раз, увеличивая при этом скорость."
     ],
     "category": "stretching",
-    "id": "Dynamic_Chest_Stretch"
+    "id": "Dynamic_Chest_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1167-3uj0Ozg.gif"
   },
   {
     "name": "Подъем EZ-штанги на бицепс стоя",
@@ -5645,7 +5753,8 @@
       "Вернитесь в исходное положение и повторите движение желаемое количество повторений, прежде чем сменить сторону."
     ],
     "category": "strength",
-    "id": "Elbow_to_Knee"
+    "id": "Elbow_to_Knee",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2312-AQIhRjM.gif"
   },
   {
     "name": "Сведение локтей за спиной (растяжка)",
@@ -5753,7 +5862,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Exercise_Ball_Crunch"
+    "id": "Exercise_Ball_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Подтягивание коленей к груди на фитболе в планке",
@@ -6043,7 +6153,8 @@
       "Поставьте руки перед собой, когда достигнете пола. Это движение очень сложное, и вы, возможно, не сможете выполнить его без посторонней помощи. Слегка оттолкнитесь руками от пола, чтобы помочь вам вернуться в исходное положение."
     ],
     "category": "strength",
-    "id": "Floor_Glute-Ham_Raise"
+    "id": "Floor_Glute-Ham_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3193-Vvwjz6N.gif"
   },
   {
     "name": "Жим штанги лежа на полу",
@@ -6108,7 +6219,8 @@
       "Продолжайте чередовать движения таким образом (как если бы вы выполняли прыжок ногой в воде), пока не выполните рекомендуемое количество повторений для каждой ноги. Убедитесь, что вы всегда сохраняете контролируемое движение. Совет: при выполнении этого движения вы будете дышать нормально."
     ],
     "category": "strength",
-    "id": "Flutter_Kicks"
+    "id": "Flutter_Kicks",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0459-UVo2Qs2.gif"
   },
   {
     "name": "МФР стопы",
@@ -6173,7 +6285,8 @@
       "Вернитесь в вертикальное положение, проведя через переднюю часть пятки и выпрямив колени и бедра."
     ],
     "category": "olympic weightlifting",
-    "id": "Frankenstein_Squat"
+    "id": "Frankenstein_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3194-bdWcbaU.gif"
   },
   {
     "name": "Выпрыгивания из приседа (Jump Squat)",
@@ -6198,7 +6311,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Freehand_Jump_Squat"
+    "id": "Freehand_Jump_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0514-LIlE5Tn.gif"
   },
   {
     "name": "Прыжки «Лягушка»",
@@ -6266,7 +6380,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Front_Barbell_Squat"
+    "id": "Front_Barbell_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0042-zG0zs85.gif"
   },
   {
     "name": "Фронтальные приседания со штангой на тумбу",
@@ -6381,7 +6496,8 @@
       "Продолжайте чередовать таким образом до тех пор, пока не будет выполнено все рекомендуемое количество повторений для каждой руки."
     ],
     "category": "strength",
-    "id": "Front_Dumbbell_Raise"
+    "id": "Front_Dumbbell_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0310-3eGE2JC.gif"
   },
   {
     "name": "Фронтальные подъемы гантелей лежа на наклонной скамье",
@@ -6461,7 +6577,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Front_Raise_And_Pullover"
+    "id": "Front_Raise_And_Pullover",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0041-b2Uoz54.gif"
   },
   {
     "name": "Фронтальные приседания (штанга на груди)",
@@ -6484,7 +6601,8 @@
       "Начинайте поднимать штангу на выдохе, толкая пол преимущественно пяткой или серединой стопы, снова выпрямляя ноги и возвращаясь в исходное положение."
     ],
     "category": "strength",
-    "id": "Front_Squat_Clean_Grip"
+    "id": "Front_Squat_Clean_Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0042-zG0zs85.gif"
   },
   {
     "name": "Фронтальные приседания с двумя гирями",
@@ -6505,7 +6623,8 @@
       "Поднимитесь обратно, двигаясь пятками, и повторите."
     ],
     "category": "strength",
-    "id": "Front_Squats_With_Two_Kettlebells"
+    "id": "Front_Squats_With_Two_Kettlebells",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0533-DB0n8AG.gif"
   },
   {
     "name": "Подъем двух гантелей перед собой",
@@ -6524,7 +6643,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Front_Two-Dumbbell_Raise"
+    "id": "Front_Two-Dumbbell_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0310-3eGE2JC.gif"
   },
   {
     "name": "Тяга верхнего блока по полной амплитуде (двумя руками накрест)",
@@ -6569,7 +6689,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Gironda_Sternum_Chins"
+    "id": "Gironda_Sternum_Chins",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif"
   },
   {
     "name": "Сгибания голени в тренажере GHR (Glute-Ham Raise)",
@@ -6590,7 +6711,8 @@
       "Вернитесь в исходное положение, сохраняя контроль над спуском."
     ],
     "category": "powerlifting",
-    "id": "Glute_Ham_Raise"
+    "id": "Glute_Ham_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3193-Vvwjz6N.gif"
   },
   {
     "name": "Отведение ноги назад на четвереньках",
@@ -6634,7 +6756,8 @@
       "В нижнем положении сделайте паузу и локтями вытолкните колени наружу. Вернитесь в исходное положение и повторите 10–20 повторений."
     ],
     "category": "strength",
-    "id": "Goblet_Squat"
+    "id": "Goblet_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1760-yn8yg1r.gif"
   },
   {
     "name": "Наклоны со штангой (Good Morning)",
@@ -6656,7 +6779,8 @@
       "Измените движение, вытягивая бедра ягодицами и подколенными сухожилиями. Продолжайте, пока не вернетесь в исходное положение."
     ],
     "category": "powerlifting",
-    "id": "Good_Morning"
+    "id": "Good_Morning",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0044-XlZ4lAC.gif"
   },
   {
     "name": "Наклоны со штангой с ограничителей (Pins)",
@@ -6677,7 +6801,8 @@
       "Начните движение с вытягивания ягодиц и подколенных сухожилий через бедра, и вы встанете с весом. Медленно опустите вес обратно на штифты, возвращаясь в исходное положение."
     ],
     "category": "powerlifting",
-    "id": "Good_Morning_off_Pins"
+    "id": "Good_Morning_off_Pins",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0044-XlZ4lAC.gif"
   },
   {
     "name": "Подтягивания «Горилла» (с подтягиванием коленей)",
@@ -6700,7 +6825,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Gorilla_Chin_Crunch"
+    "id": "Gorilla_Chin_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0467-bmwlYvD.gif"
   },
   {
     "name": "Растяжка спины и паха сидя",
@@ -6762,7 +6888,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Hack_Squat"
+    "id": "Hack_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0046-5VCj6iH.gif"
   },
   {
     "name": "Подъем гантелей на бицепс хватом «Молоток»",
@@ -6782,7 +6909,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Hammer_Curls"
+    "id": "Hammer_Curls",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0313-slDvUAU.gif"
   },
   {
     "name": "Жим гантелей лежа на наклонной скамье нейтральным хватом",
@@ -6843,7 +6971,8 @@
       "Потяните за ремень, чтобы создать напряжение в икрах и подколенных сухожилиях. Удерживайте эту растяжку 10–30 секунд и повторите с другой ногой."
     ],
     "category": "stretching",
-    "id": "Hamstring_Stretch"
+    "id": "Hamstring_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1511-99rWm7w.gif"
   },
   {
     "name": "Отжимания в стойке на руках",
@@ -6865,7 +6994,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Handstand_Push-Ups"
+    "id": "Handstand_Push-Ups",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3302-XooAdhl.gif"
   },
   {
     "name": "Взятие штанги на грудь с виса",
@@ -6891,7 +7021,8 @@
       "Немедленно восстановите равновесие, нажимая пятки, удерживая туловище в вертикальном положении и локти вверх. Продолжайте, пока не подниметесь в положение стоя."
     ],
     "category": "olympic weightlifting",
-    "id": "Hang_Clean"
+    "id": "Hang_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0518-I4tibZG.gif"
   },
   {
     "name": "Взятие штанги на грудь с виса ниже колен",
@@ -7016,7 +7147,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Hanging_Leg_Raise"
+    "id": "Hanging_Leg_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0472-I3tsCnC.gif"
   },
   {
     "name": "Поднос прямых ног к перекладине (Уголок в висе)",
@@ -7036,7 +7168,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Hanging_Pike"
+    "id": "Hanging_Pike",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0473-nuBF9MO.gif"
   },
   {
     "name": "Уходы в рывковый сед со штангой на плечах (Heaving Snatch Balance)",
@@ -7274,7 +7407,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Hyperextensions_Back_Extensions"
+    "id": "Hyperextensions_Back_Extensions",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0489-zhMwOwE.gif"
   },
   {
     "name": "Гиперэкстензия на плоской скамье (с партнером)",
@@ -7297,7 +7431,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Hyperextensions_With_No_Hyperextension_Bench"
+    "id": "Hyperextensions_With_No_Hyperextension_Bench",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0489-zhMwOwE.gif"
   },
   {
     "name": "Растяжка подвздошно-большеберцового тракта и ягодиц",
@@ -7352,7 +7487,8 @@
       "Продолжайте идти, пока ваши ноги не окажутся на часовых стрелках, сохраняя при этом ноги прямыми."
     ],
     "category": "stretching",
-    "id": "Inchworm"
+    "id": "Inchworm",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1471-ZgsNQ6d.gif"
   },
   {
     "name": "Французский жим со штангой на наклонной скамье",
@@ -7375,7 +7511,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Incline_Barbell_Triceps_Extension"
+    "id": "Incline_Barbell_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0449-KyLtiLT.gif"
   },
   {
     "name": "Тяга гантелей в наклоне с упором на скамью",
@@ -7511,7 +7648,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Incline_Dumbbell_Flyes"
+    "id": "Incline_Dumbbell_Flyes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0319-ESOd5Pl.gif"
   },
   {
     "name": "Разведения гантелей на наклонной скамье с супинацией",
@@ -7534,7 +7672,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Incline_Dumbbell_Flyes_-_With_A_Twist"
+    "id": "Incline_Dumbbell_Flyes_-_With_A_Twist",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0319-ESOd5Pl.gif"
   },
   {
     "name": "Жим гантелей на наклонной скамье",
@@ -7577,7 +7716,8 @@
       "Продолжайте движение до верхней точки и сделайте паузу, затем медленно вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Incline_Hammer_Curls"
+    "id": "Incline_Hammer_Curls",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0320-ByX0WxV.gif"
   },
   {
     "name": "Сгибание рук с гантелями на наклонной скамье (на внутренний пучок бицепса)",
@@ -7618,7 +7758,8 @@
       "Поднимите корпус вверх, пока руки не выпрямятся. Повторить."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up"
+    "id": "Incline_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Отжимания от возвышенности узким хватом",
@@ -7641,7 +7782,8 @@
       "Вернитесь в исходное положение, разгибая локти и снова поднимая себя вверх."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up_Close-Grip"
+    "id": "Incline_Push-Up_Close-Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Плиометрические отжимания от платформ с прыжком",
@@ -7663,7 +7805,8 @@
       "Повторите движение, чтобы вернуться в исходное положение."
     ],
     "category": "plyometrics",
-    "id": "Incline_Push-Up_Depth_Jump"
+    "id": "Incline_Push-Up_Depth_Jump",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Отжимания от возвышенности средним хватом",
@@ -7687,7 +7830,8 @@
       "Вернитесь в исходное положение, разгибая локти и снова поднимая себя вверх."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up_Medium"
+    "id": "Incline_Push-Up_Medium",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Отжимания от возвышенности обратным хватом",
@@ -7711,7 +7855,8 @@
       "Вернитесь в исходное положение, разгибая локти и снова поднимая себя вверх."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up_Reverse_Grip"
+    "id": "Incline_Push-Up_Reverse_Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Отжимания от возвышенности широким хватом",
@@ -7735,7 +7880,8 @@
       "Вернитесь в исходное положение, разгибая локти и снова поднимая себя вверх."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up_Wide"
+    "id": "Incline_Push-Up_Wide",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Растяжка паха с ремнем лежа (средний уровень)",
@@ -7769,7 +7915,8 @@
       "Согните колено и вытяните бедро растягиваемой ноги, натягивая ремень обеими руками. Колено и бедро должны отрываться от пола, создавая напряжение в сгибателях бедра и квадрицепсах. Удерживайте растяжку 10–20 секунд и повторите на другую ногу."
     ],
     "category": "stretching",
-    "id": "Intermediate_Hip_Flexor_and_Quad_Stretch"
+    "id": "Intermediate_Hip_Flexor_and_Quad_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1564-tFGKm99.gif"
   },
   {
     "name": "Внутренняя ротация плеча с резиновой петлей стоя",
@@ -7811,7 +7958,8 @@
       "Повторите необходимое количество повторений."
     ],
     "category": "strength",
-    "id": "Inverted_Row"
+    "id": "Inverted_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0499-bZGHsAZ.gif"
   },
   {
     "name": "Австралийские подтягивания на петлях (TRX)",
@@ -7833,7 +7981,8 @@
       "Повторите необходимое количество повторений."
     ],
     "category": "strength",
-    "id": "Inverted_Row_with_Straps"
+    "id": "Inverted_Row_with_Straps",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0499-bZGHsAZ.gif"
   },
   {
     "name": "Удержание гантелей в разведенных руках",
@@ -7854,7 +8003,8 @@
     ],
     "instructions": [],
     "category": "strength",
-    "id": "Iron_Cross"
+    "id": "Iron_Cross",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0332-cALkHHX.gif"
   },
   {
     "name": "Динамическая растяжка «Железный крест»",
@@ -7895,7 +8045,8 @@
       "Отдохните рекомендуемое время и повторите."
     ],
     "category": "plyometrics",
-    "id": "Isometric_Chest_Squeezes"
+    "id": "Isometric_Chest_Squeezes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1297-HbSG1Pw.gif"
   },
   {
     "name": "Изометрическое сопротивление шеи (вперед/назад)",
@@ -7958,7 +8109,8 @@
       "Повторите необходимое количество повторений."
     ],
     "category": "strength",
-    "id": "Isometric_Wipers"
+    "id": "Isometric_Wipers",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0500-11wrviz.gif"
   },
   {
     "name": "Жим JM со штангой",
@@ -8000,7 +8152,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Jackknife_Sit-Up"
+    "id": "Jackknife_Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0507-mbkgB44.gif"
   },
   {
     "name": "Скручивания Янды",
@@ -8019,7 +8172,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Janda_Sit-Up"
+    "id": "Janda_Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0508-1GPHRyK.gif"
   },
   {
     "name": "Приседания Джефферсона (Тяга между ног)",
@@ -8047,7 +8201,8 @@
       "Теперь вернитесь в исходное положение, отталкиваясь ногами. Совет: держите штангу висящей на расстоянии вытянутой руки, а локти слегка согнутыми. Руки служат только крючками. Избегайте каких-либо подъемов с их помощью. Делайте подъем бедрами; не твои руки."
     ],
     "category": "strength",
-    "id": "Jefferson_Squats"
+    "id": "Jefferson_Squats",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0051-pkSoCW9.gif"
   },
   {
     "name": "Толчок в ножницы (Jerk Balance)",
@@ -8160,7 +8315,8 @@
       "Верните гирю в исходное положение ладонью внутрь."
     ],
     "category": "strength",
-    "id": "Kettlebell_Arnold_Press"
+    "id": "Kettlebell_Arnold_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0523-UM8mgyG.gif"
   },
   {
     "name": "Взятие гири на грудь с пола",
@@ -8204,7 +8360,8 @@
       "Возьмите гирю и передайте ее в другую руку между ног. Принимающая рука должна доходить из-за ног. Сделайте несколько повторений вперед и назад."
     ],
     "category": "strength",
-    "id": "Kettlebell_Figure_8"
+    "id": "Kettlebell_Figure_8",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0532-L4ay0PW.gif"
   },
   {
     "name": "Взятие гири на грудь из виса",
@@ -8228,7 +8385,8 @@
       "Опустите гирю в висовое положение между ног, сохраняя при этом нагрузку на подколенные сухожилия. Всегда держите голову поднятой."
     ],
     "category": "strength",
-    "id": "Kettlebell_Hang_Clean"
+    "id": "Kettlebell_Hang_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0535-LHWF7us.gif"
   },
   {
     "name": "Становая тяга с гирей на одной ноге",
@@ -8315,7 +8473,8 @@
       "Снова опуститесь и повторите."
     ],
     "category": "strength",
-    "id": "Kettlebell_Pistol_Squat"
+    "id": "Kettlebell_Pistol_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0544-5bpPTHv.gif"
   },
   {
     "name": "Жим гири сидя на полу",
@@ -8335,7 +8494,8 @@
       "Выжмите гирю вверх и наружу, пока она не зафиксируется над головой. Вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Kettlebell_Seated_Press"
+    "id": "Kettlebell_Seated_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0546-BkxB8LW.gif"
   },
   {
     "name": "Жим гирь «Качели»",
@@ -8355,7 +8515,8 @@
       "Опустите гирю и сразу же нажмите на другую гирю. Обязательно делайте одинаковое количество повторений с обеих сторон."
     ],
     "category": "strength",
-    "id": "Kettlebell_Seesaw_Press"
+    "id": "Kettlebell_Seesaw_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0547-UDm6cGl.gif"
   },
   {
     "name": "Тяга гири к подбородку из стойки сумо",
@@ -8378,7 +8539,8 @@
       "Начните с выпрямления бедер и коленей, одновременно подтягивая гирю к плечам, при этом поднимая локти. Выполните обратное движение, чтобы вернуться в исходное положение."
     ],
     "category": "strength",
-    "id": "Kettlebell_Sumo_High_Pull"
+    "id": "Kettlebell_Sumo_High_Pull",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0548-8ARQ9Hw.gif"
   },
   {
     "name": "Трастеры с гирями",
@@ -8400,7 +8562,8 @@
       "Начиная следующее повторение, верните вес на плечи."
     ],
     "category": "strength",
-    "id": "Kettlebell_Thruster"
+    "id": "Kettlebell_Thruster",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0550-yWxMvB5.gif"
   },
   {
     "name": "Турецкий подъем с гирей (через выпад)",
@@ -8470,7 +8633,8 @@
       "Сделайте паузу на секунду после достижения земли и вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Kettlebell_Windmill"
+    "id": "Kettlebell_Windmill",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0554-9Tkqa9O.gif"
   },
   {
     "name": "Выход силой на кольцах с киппингом",
@@ -8498,7 +8662,8 @@
       "Будьте осторожны, опускаясь на землю."
     ],
     "category": "strength",
-    "id": "Kipping_Muscle_Up"
+    "id": "Kipping_Muscle_Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0558-pM07UxU.gif"
   },
   {
     "name": "Скручивание таза лежа (колено в сторону)",
@@ -8628,7 +8793,8 @@
       "Продолжайте эту серию движений до отказа."
     ],
     "category": "strength",
-    "id": "Kneeling_Cable_Crunch_With_Alternating_Oblique_Twists"
+    "id": "Kneeling_Cable_Crunch_With_Alternating_Oblique_Twists",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0175-WW95auq.gif"
   },
   {
     "name": "Французский жим в кроссовере с колен",
@@ -8730,7 +8896,8 @@
       "Продолжайте приседать, двигая пятками и разгибая колени, чтобы принять положение стоя."
     ],
     "category": "olympic weightlifting",
-    "id": "Kneeling_Jump_Squat"
+    "id": "Kneeling_Jump_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1420-UgDm3oy.gif"
   },
   {
     "name": "Тяга верхнего блока одной рукой стоя на коленях",
@@ -8798,7 +8965,8 @@
       "Продолжайте чередовать движения, пока подход не будет завершен."
     ],
     "category": "strength",
-    "id": "Landmine_180s"
+    "id": "Landmine_180s",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0562-QYysSLV.gif"
   },
   {
     "name": "Взрывной жим штанги стоя (Landmine Linear Jammer)",
@@ -8977,7 +9145,8 @@
       "Медленно выпрямите ноги, насколько это возможно, а затем потяните ногу к носу. Поменяйте стороны."
     ],
     "category": "stretching",
-    "id": "Leg-Up_Hamstring_Stretch"
+    "id": "Leg-Up_Hamstring_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1511-99rWm7w.gif"
   },
   {
     "name": "Разгибание ног в тренажере сидя",
@@ -9018,7 +9187,8 @@
       "Повторите движение с противоположной ногой."
     ],
     "category": "strength",
-    "id": "Leg_Lift"
+    "id": "Leg_Lift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3663-tFToB7l.gif"
   },
   {
     "name": "Жим ногами в тренажере",
@@ -9042,7 +9212,8 @@
       "Повторите рекомендуемое количество повторений и, когда закончите, обязательно зафиксируйте булавки. Вы не хотите, чтобы платформа упала на вас полностью загруженной."
     ],
     "category": "strength",
-    "id": "Leg_Press"
+    "id": "Leg_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2287-V07qpXy.gif"
   },
   {
     "name": "Подтягивание коленей к груди сидя на полу",
@@ -9348,7 +9519,8 @@
       "Сохраняя тело прямым, выполните обратное движение, возвращаясь, передавая руки, в исходное положение."
     ],
     "category": "strength",
-    "id": "London_Bridges"
+    "id": "London_Bridges",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0609-bLyQokI.gif"
   },
   {
     "name": "Растяжка квадрицепсов стоя на коленях (прогиб назад)",
@@ -9465,7 +9637,8 @@
       "Используя мышцы нижней части спины, вытяните позвоночник, поднимая грудь от земли. Не используйте руки, чтобы подтолкнуть себя вверх. Во время движения держите голову поднятой. Повторите 10-20 повторений."
     ],
     "category": "stretching",
-    "id": "Lower_Back_Curl"
+    "id": "Lower_Back_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1352-ANbbry2.gif"
   },
   {
     "name": "Выпады с передачей гири под ногой",
@@ -9489,7 +9662,8 @@
       "Повторите движение рекомендованное количество повторений, чередуя ноги."
     ],
     "category": "strength",
-    "id": "Lunge_Pass_Through"
+    "id": "Lunge_Pass_Through",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0536-WKMQzCD.gif"
   },
   {
     "name": "Плиометрические выпады со сменой ног в тренажере Смита",
@@ -9551,7 +9725,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Lying_Cable_Curl"
+    "id": "Lying_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Тяга изогнутой штанги лежа на животе",
@@ -9596,7 +9771,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Lying_Close-Grip_Bar_Curl_On_High_Pulley"
+    "id": "Lying_Close-Grip_Bar_Curl_On_High_Pulley",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0182-61GrD55.gif"
   },
   {
     "name": "Французский жим штанги лежа из-за головы",
@@ -9616,7 +9792,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Lying_Close-Grip_Barbell_Triceps_Extension_Behind_The_Head"
+    "id": "Lying_Close-Grip_Barbell_Triceps_Extension_Behind_The_Head",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0061-iZop9xO.gif"
   },
   {
     "name": "Жим штанги узким хватом ко лбу (французский жим)",
@@ -9636,7 +9813,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Lying_Close-Grip_Barbell_Triceps_Press_To_Chin"
+    "id": "Lying_Close-Grip_Barbell_Triceps_Press_To_Chin",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0816-fSrPP6B.gif"
   },
   {
     "name": "Скручивание лежа с партнером (растяжка)",
@@ -9677,7 +9855,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Lying_Dumbbell_Tricep_Extension"
+    "id": "Lying_Dumbbell_Tricep_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0351-mpKZGWz.gif"
   },
   {
     "name": "Разгибания шеи с блином лежа на животе",
@@ -9736,7 +9915,8 @@
       "Через 10–20 секунд полностью расслабьтесь, пока ваш партнер осторожно подталкивает лодыжку и колено к вашей груди. Обязательно сообщите своему помощнику, когда растяжка достаточна, чтобы предотвратить травму или перенапряжение."
     ],
     "category": "stretching",
-    "id": "Lying_Glute"
+    "id": "Lying_Glute",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1709-yn0LjwL.gif"
   },
   {
     "name": "Растяжка бицепса бедра лежа с партнером",
@@ -9775,7 +9955,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Lying_High_Bench_Barbell_Curl"
+    "id": "Lying_High_Bench_Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0072-WLvTAv5.gif"
   },
   {
     "name": "Сгибание голени в тренажере лежа",
@@ -9898,7 +10079,8 @@
       "Очень медленно вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Lying_Supine_Dumbbell_Curl"
+    "id": "Lying_Supine_Dumbbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0350-KUaZst7.gif"
   },
   {
     "name": "Тяга Т-грифа лежа на животе",
@@ -9942,7 +10124,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Lying_Triceps_Press"
+    "id": "Lying_Triceps_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0816-fSrPP6B.gif"
   },
   {
     "name": "Жим от груди в тренажере сидя",
@@ -10176,7 +10359,8 @@
       "В следующем наборе поменяйте захваты; Итак, если у вас была правая рука ладонями к себе, а левая ладонями вперед, в следующем подходе ладони будут обращены вперед для правой руки и к себе для левой."
     ],
     "category": "strength",
-    "id": "Mixed_Grip_Chin"
+    "id": "Mixed_Grip_Chin",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif"
   },
   {
     "name": "Шаги в стороны с эспандером (Monster Walk)",
@@ -10194,7 +10378,8 @@
       "После нескольких шагов сделайте обратное и вернитесь туда, откуда начали."
     ],
     "category": "strength",
-    "id": "Monster_Walk"
+    "id": "Monster_Walk",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0628-O95afRA.gif"
   },
   {
     "name": "Упражнение «Скалолаз»",
@@ -10215,7 +10400,8 @@
       "Резко поменяйте местами ноги, вытягивая согнутую ногу до тех пор, пока нога не станет прямой и не будет поддерживаться носком, и поднимите другую ногу вверх, согнув бедро и колено. Повторяйте поочередно в течение 20–30 секунд."
     ],
     "category": "plyometrics",
-    "id": "Mountain_Climbers"
+    "id": "Mountain_Climbers",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0630-RJgzwny.gif"
   },
   {
     "name": "Беговое упражнение «Царапающий шаг»",
@@ -10287,7 +10473,8 @@
       "Будьте осторожны, опускаясь на землю."
     ],
     "category": "strength",
-    "id": "Muscle_Up"
+    "id": "Muscle_Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0631-yJUHKTn.gif"
   },
   {
     "name": "Гакк-приседания с узкой постановкой ног",
@@ -10386,7 +10573,8 @@
       "Если вы не можете выполнить повторение, используйте резинку, партнера или оттолкнитесь от ящика, чтобы помочь выполнить повторение."
     ],
     "category": "strength",
-    "id": "Natural_Glute_Ham_Raise"
+    "id": "Natural_Glute_Ham_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3193-Vvwjz6N.gif"
   },
   {
     "name": "МФР мышц шеи",
@@ -10448,7 +10636,8 @@
       "Продолжайте чередовать таким образом, пока не будут выполнены все рекомендуемые повторения для каждой стороны."
     ],
     "category": "strength",
-    "id": "Oblique_Crunches"
+    "id": "Oblique_Crunches",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Боковые скручивания лежа на полу",
@@ -10468,7 +10657,8 @@
       "Не забывайте вдыхать во время эксцентрической (опускающейся) части упражнения и выдыхать во время концентрической (подъёмной) части упражнения."
     ],
     "category": "strength",
-    "id": "Oblique_Crunches_-_On_The_Floor"
+    "id": "Oblique_Crunches_-_On_The_Floor",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Тяжелоатлетические приседания (High Bar Squat)",
@@ -11058,7 +11248,8 @@
       "Медленно наклонитесь к руке, пока не почувствуете растяжение в широчайших."
     ],
     "category": "stretching",
-    "id": "One_Arm_Against_Wall"
+    "id": "One_Arm_Against_Wall",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1355-ZZTGMKh.gif"
   },
   {
     "name": "Подтягивания на одной руке (с полотенцем)",
@@ -11084,7 +11275,8 @@
       "Поменяйте руки и повторите движение."
     ],
     "category": "strength",
-    "id": "One_Arm_Chin-Up"
+    "id": "One_Arm_Chin-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif"
   },
   {
     "name": "Жим одной гантели лежа на скамье",
@@ -11375,7 +11567,8 @@
       "Повторяйте рекомендованное количество повторений, указанное в вашей программе."
     ],
     "category": "strength",
-    "id": "Overhead_Cable_Curl"
+    "id": "Overhead_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Растяжка широчайших с партнером (рука за головой)",
@@ -11414,7 +11607,8 @@
       "Возьмите мяч обеими руками на отскоке и повторите движение."
     ],
     "category": "plyometrics",
-    "id": "Overhead_Slam"
+    "id": "Overhead_Slam",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1354-oHg8eop.gif"
   },
   {
     "name": "Приседания со штангой над головой",
@@ -11443,7 +11637,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "olympic weightlifting",
-    "id": "Overhead_Squat"
+    "id": "Overhead_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0069-gfk9kD4.gif"
   },
   {
     "name": "Растяжка рук и спины вверх 'Замок'",
@@ -11485,7 +11680,8 @@
       "Через 10–20 секунд расслабьте руку и позвольте партнеру еще больше растянуть трицепс, слегка надавив на запястье. Удерживайте положение 10–20 секунд, а затем поменяйте сторону."
     ],
     "category": "stretching",
-    "id": "Overhead_Triceps"
+    "id": "Overhead_Triceps",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0092-5uFK1xr.gif"
   },
   {
     "name": "Жим Паллофа (антиротация с блоком)",
@@ -11510,7 +11706,8 @@
       "По завершении подхода повторите, повернувшись в другую сторону."
     ],
     "category": "strength",
-    "id": "Pallof_Press"
+    "id": "Pallof_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0979-9pa4H5m.gif"
   },
   {
     "name": "Жим Паллофа с поворотом корпуса",
@@ -11666,7 +11863,8 @@
       "Чтобы войти в мостик, поднимите весь позвоночник, кроме шеи."
     ],
     "category": "stretching",
-    "id": "Pelvic_Tilt_Into_Bridge"
+    "id": "Pelvic_Tilt_Into_Bridge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1422-D9qe7CM.gif"
   },
   {
     "name": "МФР малоберцовых мышц",
@@ -11700,7 +11898,8 @@
       "Вытянув ногу и оторвав пятку от земли, потяните ремень так, чтобы ступня перевернулась, при этом внутренняя часть ступни потянулась к вам. Удерживайте положение 10–20 секунд, а затем поменяйте сторону."
     ],
     "category": "stretching",
-    "id": "Peroneals_Stretch"
+    "id": "Peroneals_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1388-XhfS1DZ.gif"
   },
   {
     "name": "Ягодичный мостик с ногами на фитболе",
@@ -11747,7 +11946,8 @@
       "Верните штангу на штангу, сделав паузу перед началом следующего повторения."
     ],
     "category": "powerlifting",
-    "id": "Pin_Presses"
+    "id": "Pin_Presses",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1751-bndCa3Q.gif"
   },
   {
     "name": "МФР грушевидной мышцы",
@@ -11781,7 +11981,8 @@
       "Всегда держите тело прямо и удерживайте это положение как можно дольше. Для увеличения сложности можно поднять руку или ногу."
     ],
     "category": "strength",
-    "id": "Plank"
+    "id": "Plank",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3544-5VXmnV5.gif"
   },
   {
     "name": "Удержание дисков щипковым хватом",
@@ -11867,7 +12068,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Plie_Dumbbell_Squat"
+    "id": "Plie_Dumbbell_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0413-HsvHqgf.gif"
   },
   {
     "name": "Плиометрические отжимания с переносом руки через гирю",
@@ -11912,7 +12114,8 @@
       "Для большей сложности добавьте к движению хлопки, пока вы находитесь в воздухе."
     ],
     "category": "plyometrics",
-    "id": "Plyo_Push-up"
+    "id": "Plyo_Push-up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0545-ktf3nvW.gif"
   },
   {
     "name": "Растяжка задней большеберцовой мышцы с ремнем",
@@ -11929,7 +12132,8 @@
       "Вытянув ногу и оторвав пятку от земли, потяните ремень так, чтобы ступня вывернулась, а внешняя часть ступни потянулась к вам. Удерживайте положение 10–20 секунд, а затем поменяйте сторону."
     ],
     "category": "stretching",
-    "id": "Posterior_Tibialis_Stretch"
+    "id": "Posterior_Tibialis_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1389-DEEqoI2.gif"
   },
   {
     "name": "Взятие штанги на грудь в стойку (Power Clean)",
@@ -11978,7 +12182,8 @@
       "Начните заново с фазы 1 и повторите рекомендуемое количество повторений."
     ],
     "category": "strength",
-    "id": "Power_Clean"
+    "id": "Power_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0648-SiWCcTN.gif"
   },
   {
     "name": "Взятие штанги на грудь в стойку с плинтов",
@@ -12000,7 +12205,8 @@
       "Немедленно восстановите равновесие, нажимая пятки, удерживая туловище в вертикальном положении и локти вверх. Продолжайте, пока не подниметесь в положение стоя, и завершите повторение, вернув вес на ящики."
     ],
     "category": "olympic weightlifting",
-    "id": "Power_Clean_from_Blocks"
+    "id": "Power_Clean_from_Blocks",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0648-SiWCcTN.gif"
   },
   {
     "name": "Толчковый швунг штанги",
@@ -12151,7 +12357,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Preacher_Curl"
+    "id": "Preacher_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0059-SYJ4Bkt.gif"
   },
   {
     "name": "Сгибания рук с гантелями «Молоток» на скамье Скотта",
@@ -12195,7 +12402,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Press_Sit-Up"
+    "id": "Press_Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0071-wnEscH8.gif"
   },
   {
     "name": "Сгибание ног лежа с сопротивлением партнера",
@@ -12257,7 +12465,8 @@
       "Начните движение, вытянув ноги как можно дальше, сгибая бедра. Колени держите слегка согнутыми. Держа руки прямыми, вытяните бедра и встаньте прямо. Избегайте тяги вверх через плечи; все движения должны происходить через бедра."
     ],
     "category": "strength",
-    "id": "Pull_Through"
+    "id": "Pull_Through",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0991-VtTbiP3.gif"
   },
   {
     "name": "Подтягивания на перекладине",
@@ -12303,7 +12512,8 @@
       "После паузы в сокращенном положении повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Push-Up_Wide"
+    "id": "Push-Up_Wide",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Отжимания от пола узким хватом (на трицепс)",
@@ -12325,7 +12535,8 @@
       "После второй паузы в сокращенном положении повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Push-Ups_-_Close_Triceps_Position"
+    "id": "Push-Ups_-_Close_Triceps_Position",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0259-x6KpKpq.gif"
   },
   {
     "name": "Отжимания от пола с ногами на возвышенности",
@@ -12348,7 +12559,8 @@
       "После второй паузы в сокращенном положении повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Push-Ups_With_Feet_Elevated"
+    "id": "Push-Ups_With_Feet_Elevated",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0279-i5cEhka.gif"
   },
   {
     "name": "Отжимания от пола с ногами на фитболе",
@@ -12371,7 +12583,8 @@
       "После второй паузы в сокращенном положении повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Push-Ups_With_Feet_On_An_Exercise_Ball"
+    "id": "Push-Ups_With_Feet_On_An_Exercise_Ball",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0279-i5cEhka.gif"
   },
   {
     "name": "Швунг жимовой (Push Press)",
@@ -12388,7 +12601,8 @@
     ],
     "instructions": [],
     "category": "olympic weightlifting",
-    "id": "Push_Press"
+    "id": "Push_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1700-FS63wTN.gif"
   },
   {
     "name": "Швунг жимовой из-за головы",
@@ -12478,7 +12692,8 @@
       "После второй паузы в сокращенном положении повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Pushups_Close_and_Wide_Hand_Positions"
+    "id": "Pushups_Close_and_Wide_Hand_Positions",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Поза пирамиды на фитболе",
@@ -12497,7 +12712,8 @@
       "Положите руки и ноги на пол. Ваши руки и ноги могут быть слегка согнутыми или прямыми, в зависимости от размера мяча, вашей гибкости и длины конечностей. Это также помогает развить стабилизирующую силу туловища и плеч."
     ],
     "category": "stretching",
-    "id": "Pyramid"
+    "id": "Pyramid",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1341-yU7w7CA.gif"
   },
   {
     "name": "Растяжка квадрицепса лежа на боку с ремнем",
@@ -12514,7 +12730,8 @@
       "Удерживая ремень через плечо или над головой, осторожно потяните его, чтобы увеличить растяжение квадрицепсов. Удерживайте положение 10–20 секунд, а затем поменяйте сторону."
     ],
     "category": "stretching",
-    "id": "Quad_Stretch"
+    "id": "Quad_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1512-qBcKorM.gif"
   },
   {
     "name": "МФР квадрицепса",
@@ -12708,7 +12925,8 @@
       "Сделайте паузу, когда штанга коснется вашего туловища, а затем поднимите штангу вверх с максимально возможной силой. Локти должны быть согнуты до локаута."
     ],
     "category": "powerlifting",
-    "id": "Reverse_Band_Bench_Press"
+    "id": "Reverse_Band_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1254-khlHMqs.gif"
   },
   {
     "name": "Приседания на тумбу с облегчающими резиновыми петлями",
@@ -12837,7 +13055,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Reverse_Barbell_Curl"
+    "id": "Reverse_Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0031-25GPyDY.gif"
   },
   {
     "name": "Сгибания на скамье Скотта с EZ-штангой обратным хватом",
@@ -12859,7 +13078,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Reverse_Barbell_Preacher_Curls"
+    "id": "Reverse_Barbell_Preacher_Curls",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0070-qOgPVf6.gif"
   },
   {
     "name": "Сгибание рук с нижнего блока обратным хватом",
@@ -12880,7 +13100,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Reverse_Cable_Curl"
+    "id": "Reverse_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Обратные скручивания лежа",
@@ -12900,7 +13121,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Reverse_Crunch"
+    "id": "Reverse_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0872-nCU1Ekp.gif"
   },
   {
     "name": "Обратные разведения с гантелями лежа на животе",
@@ -12943,7 +13165,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Reverse_Flyes_With_External_Rotation"
+    "id": "Reverse_Flyes_With_External_Rotation",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0383-EAs3xL9.gif"
   },
   {
     "name": "Тяга штанги в наклоне обратным хватом",
@@ -12987,7 +13210,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Reverse_Grip_Triceps_Pushdown"
+    "id": "Reverse_Grip_Triceps_Pushdown",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0207-VjYliFZ.gif"
   },
   {
     "name": "Обратная гиперэкстензия в тренажере",
@@ -13010,7 +13234,8 @@
       "Повторите необходимое количество повторений."
     ],
     "category": "strength",
-    "id": "Reverse_Hyperextension"
+    "id": "Reverse_Hyperextension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0489-zhMwOwE.gif"
   },
   {
     "name": "Обратные разведения в тренажере (Пек-Дек)",
@@ -13164,7 +13389,8 @@
       "Повторите необходимое количество повторений."
     ],
     "category": "strength",
-    "id": "Ring_Dips"
+    "id": "Ring_Dips",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0677-ezTvXcr.gif"
   },
   {
     "name": "Выпрыгивания вверх (Rocket Jump)",
@@ -13233,7 +13459,8 @@
       "Как только вы опуститесь обратно в исходное положение, повторите упражнение заданное в вашей программе количество повторений."
     ],
     "category": "strength",
-    "id": "Rocky_Pull-Ups_Pulldowns"
+    "id": "Rocky_Pull-Ups_Pulldowns",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif"
   },
   {
     "name": "Румынская тяга",
@@ -13257,7 +13484,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Romanian_Deadlift"
+    "id": "Romanian_Deadlift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0085-wQ2c4XD.gif"
   },
   {
     "name": "Румынская тяга из ямы (с дефицитом)",
@@ -13305,7 +13533,8 @@
       "Чтобы опуститься, ослабьте хватку ног на веревке и скользите вниз, совершая движения руками."
     ],
     "category": "strength",
-    "id": "Rope_Climb"
+    "id": "Rope_Climb",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0680-yaAxcQr.gif"
   },
   {
     "name": "Скручивания «Молитва» с канатом",
@@ -13325,7 +13554,8 @@
       "Это можно делать с поворотами или в сторону, чтобы коснуться косых мышц."
     ],
     "category": "strength",
-    "id": "Rope_Crunch"
+    "id": "Rope_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Прыжки со скакалкой",
@@ -13430,7 +13660,8 @@
       "Положите руки по обе стороны от передней ноги. Чтобы получить больше от этой растяжки, поднимите ягодицы к потолку, а затем постепенно опустите их обратно к полу. Вы растянете сгибатели бедра задней ноги, а также подколенные сухожилия и ягодицы передней ноги."
     ],
     "category": "stretching",
-    "id": "Runners_Stretch"
+    "id": "Runners_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Бег на беговой дорожке",
@@ -13451,7 +13682,8 @@
       "Беговые дорожки удобны, полезны для сердечно-сосудистой системы и обычно оказывают меньшее воздействие, чем бег на улице. Человек весом 150 фунтов сожжет более 450 калорий, бегая со скоростью 8 миль в час в течение 30 минут. Во время бега сохраняйте правильную осанку и держитесь за ручки только в случае необходимости, например, при спешивании или проверке сердечного ритма."
     ],
     "category": "cardio",
-    "id": "Running_Treadmill"
+    "id": "Running_Treadmill",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Русские скручивания",
@@ -13473,7 +13705,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Russian_Twist"
+    "id": "Russian_Twist",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0687-XVDdcoj.gif"
   },
   {
     "name": "Подъем и переноска сэндбэга",
@@ -13524,7 +13757,8 @@
       "Сделайте паузу в завершении движения, а затем медленно вернитесь в исходное положение, прежде чем выполнить еще несколько повторений."
     ],
     "category": "strength",
-    "id": "Scapular_Pull-Up"
+    "id": "Scapular_Pull-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0688-uTBt1HV.gif"
   },
   {
     "name": "Упражнение «Ножницы» лежа",
@@ -13692,7 +13926,8 @@
       "Повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Seated_Bent-Over_Two-Arm_Dumbbell_Triceps_Extension"
+    "id": "Seated_Bent-Over_Two-Arm_Dumbbell_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2188-kont8Ut.gif"
   },
   {
     "name": "Растяжка бицепса сидя с партнером",
@@ -13713,7 +13948,8 @@
       "Через 10–20 секунд расслабьте руки, пока партнер осторожно потянет ваши запястья вверх, чтобы растянуть бицепсы. Обязательно сообщите своему партнеру, когда уместна растяжка, чтобы предотвратить травму или перенапряжение."
     ],
     "category": "stretching",
-    "id": "Seated_Biceps"
+    "id": "Seated_Biceps",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0390-WgJnBH5.gif"
   },
   {
     "name": "Горизонтальная тяга в блочном тренажере",
@@ -13758,7 +13994,8 @@
       "Вы также можете выполнять это движение, оторвавшись от коврика и поменяв руки."
     ],
     "category": "strength",
-    "id": "Seated_Cable_Shoulder_Press"
+    "id": "Seated_Cable_Shoulder_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0219-PzQanLE.gif"
   },
   {
     "name": "Подъем на носки сидя",
@@ -13779,7 +14016,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Seated_Calf_Raise"
+    "id": "Seated_Calf_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1371-ipvgBnC.gif"
   },
   {
     "name": "Растяжка икроножных мышц сидя",
@@ -13801,7 +14039,8 @@
       "Используя ленту, полотенце или руку, если можете дотянуться, потяните пальцы ног на себя. Удерживайте положение от 10 до 20 секунд, затем поменяйте сторону."
     ],
     "category": "stretching",
-    "id": "Seated_Calf_Stretch"
+    "id": "Seated_Calf_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1390-17bqEXD.gif"
   },
   {
     "name": "Концентрированные сгибания со штангой сидя",
@@ -13967,7 +14206,8 @@
       "Наклонитесь вперед от бедер и дотроньтесь до лодыжки, пока не почувствуете растяжение подколенных сухожилий. Удерживайте положение 15 секунд, затем повторите для другой стороны."
     ],
     "category": "stretching",
-    "id": "Seated_Floor_Hamstring_Stretch"
+    "id": "Seated_Floor_Hamstring_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1511-99rWm7w.gif"
   },
   {
     "name": "Растяжка передних дельт с партнером сидя",
@@ -14007,7 +14247,8 @@
       "Теперь расслабьте мышцы, пока ваш партнер увеличивает растяжку, осторожно толкая туловище вперед на 10–20 секунд."
     ],
     "category": "stretching",
-    "id": "Seated_Glute"
+    "id": "Seated_Glute",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1424-DeDThfG.gif"
   },
   {
     "name": "Наклоны «Доброе утро» сидя со штангой",
@@ -14048,7 +14289,8 @@
       "Теперь расслабьте мышцы, пока ваш партнер увеличивает растяжку, осторожно толкая туловище вперед на 10–20 секунд."
     ],
     "category": "stretching",
-    "id": "Seated_Hamstring"
+    "id": "Seated_Hamstring",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1560-yRYyfdA.gif"
   },
   {
     "name": "Растяжка бицепса бедра и икр сидя с ремнем",
@@ -14108,7 +14350,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Seated_Leg_Curl"
+    "id": "Seated_Leg_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0599-Zg3XY7P.gif"
   },
   {
     "name": "Скручивания «Книжка» сидя без опоры рук",
@@ -14291,7 +14534,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Seated_Triceps_Press"
+    "id": "Seated_Triceps_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0816-fSrPP6B.gif"
   },
   {
     "name": "Сгибание запястий с нижнего блока сидя",
@@ -14399,7 +14643,8 @@
       "На выдохе поднимите рукоятки вверх, пока руки полностью не выпрямятся над головой."
     ],
     "category": "strength",
-    "id": "Shoulder_Press_-_With_Bands"
+    "id": "Shoulder_Press_-_With_Bands",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0997-peAeMR3.gif"
   },
   {
     "name": "Попеременные шраги без веса",
@@ -14417,7 +14662,8 @@
       "Расслабьте руки по бокам и поднимите плечи вверх к ушам, затем опустите."
     ],
     "category": "stretching",
-    "id": "Shoulder_Raise"
+    "id": "Shoulder_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0050-xi0yckC.gif"
   },
   {
     "name": "Растяжка плеча перед грудью",
@@ -14433,7 +14679,8 @@
       "Протяните левую руку через тело и держите ее прямо."
     ],
     "category": "stretching",
-    "id": "Shoulder_Stretch"
+    "id": "Shoulder_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1271-Uto7l43.gif"
   },
   {
     "name": "Боковая растяжка лежа на боку",
@@ -14466,7 +14713,8 @@
     ],
     "instructions": [],
     "category": "strength",
-    "id": "Side_Bridge"
+    "id": "Side_Bridge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1774-WL4EmxJ.gif"
   },
   {
     "name": "Боковые прыжки через барьер со спринтом",
@@ -14545,7 +14793,8 @@
       "Опустите гири в исходное положение."
     ],
     "category": "strength",
-    "id": "Side_Laterals_to_Front_Raise"
+    "id": "Side_Laterals_to_Front_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0335-xMjBKwn.gif"
   },
   {
     "name": "Махи ногой в сторону стоя",
@@ -14669,7 +14918,8 @@
       "Медленно выпрямите, потяните и поднимите его до уровня плеч, как показано на рисунке. Почувствуйте, как это растяжение происходит в вашей спине, а не в плечах, и не тяните слишком сильно плечевой сустав. Поменяйте стороны."
     ],
     "category": "stretching",
-    "id": "Side_Wrist_Pull"
+    "id": "Side_Wrist_Pull",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0721-UtmIqcI.gif"
   },
   {
     "name": "Перепрыгивания через тумбу из стороны в сторону",
@@ -14756,7 +15006,8 @@
       "Медленно опускайтесь и двигайтесь в обратном направлении, вытягивая руку и возвращаясь в исходное положение."
     ],
     "category": "strength",
-    "id": "Single-Arm_Push-Up"
+    "id": "Single-Arm_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Бег вокруг конуса (спринт-упражнение)",
@@ -14910,7 +15161,8 @@
       "Вернитесь в исходное положение и повторите рекомендуемое количество повторений."
     ],
     "category": "strength",
-    "id": "Single_Dumbbell_Raise"
+    "id": "Single_Dumbbell_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0376-c9MnDRp.gif"
   },
   {
     "name": "Прыжки с захлестом голени (одной ногой)",
@@ -14994,7 +15246,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Sit-Up"
+    "id": "Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0001-2gPfomN.gif"
   },
   {
     "name": "Полуприседы (разминка)",
@@ -15213,7 +15466,8 @@
       "Когда закончите, поместите штангу обратно на стойку."
     ],
     "category": "strength",
-    "id": "Smith_Incline_Shoulder_Raise"
+    "id": "Smith_Incline_Shoulder_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0759-ayAHcEm.gif"
   },
   {
     "name": "Шраги в тренажере Смита за спиной",
@@ -15376,7 +15630,8 @@
       "Вытяните бедра и колени, чтобы принять положение стоя, положив штангу на плечи и завершив движение."
     ],
     "category": "strength",
-    "id": "Smith_Machine_Hang_Power_Clean"
+    "id": "Smith_Machine_Hang_Power_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0648-SiWCcTN.gif"
   },
   {
     "name": "Подъем таза в тренажере Смита (на скамье)",
@@ -15734,7 +15989,8 @@
       "Не должно быть необходимости активно тянуть руки для ускорения веса; в конце второй тяги корпус должен быть полностью выпрямлен, слегка откинувшись назад. Полное вытягивание должно быть резким и резким, и убедитесь, что вы не продлеваете его дольше, чем необходимо."
     ],
     "category": "strength",
-    "id": "Snatch_Pull"
+    "id": "Snatch_Pull",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0776-dG5Smob.gif"
   },
   {
     "name": "Шраги рывковым хватом",
@@ -15874,7 +16130,8 @@
       "Продолжайте чередовать, вращая с одной стороны на другую, пока подход не будет завершен."
     ],
     "category": "strength",
-    "id": "Spell_Caster"
+    "id": "Spell_Caster",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0777-p9cCe2r.gif"
   },
   {
     "name": "Отжимания «Человек-паук» (с подтягиванием колена)",
@@ -15896,7 +16153,8 @@
       "Верните эту ногу в исходное положение и повторите то же самое на противоположную сторону."
     ],
     "category": "strength",
-    "id": "Spider_Crawl"
+    "id": "Spider_Crawl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0778-P9GFBME.gif"
   },
   {
     "name": "Сгибания рук «Паук» (на скамье Скотта)",
@@ -15918,7 +16176,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Spider_Curl"
+    "id": "Spider_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1667-VdLZ3nB.gif"
   },
   {
     "name": "Скручивания позвоночника сидя (растяжка)",
@@ -16093,7 +16352,8 @@
       "Когда вы спускаетесь, немедленно измените направление, вставайте и подпрыгивайте, меняя положение ног. Повторите 5-10 раз на каждую ногу."
     ],
     "category": "stretching",
-    "id": "Split_Squats"
+    "id": "Split_Squats",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2368-9E25EOx.gif"
   },
   {
     "name": "Толчок в низкий сед (Squat Jerk)",
@@ -16117,7 +16377,8 @@
       "Удерживая штангу над передней частью пяток, подняв голову и грудь, проведите через пятки ног, чтобы перейти в положение стоя. Осторожно верните вес на пол."
     ],
     "category": "strength",
-    "id": "Squat_Jerk"
+    "id": "Squat_Jerk",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0786-IMRsOCn.gif"
   },
   {
     "name": "Приседания со штангой и резиновыми петлями",
@@ -16221,7 +16482,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Squats_-_With_Bands"
+    "id": "Squats_-_With_Bands",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1004-TUZLh71.gif"
   },
   {
     "name": "Степпер (Stairmaster)",
@@ -16369,7 +16631,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Standing_Biceps_Cable_Curl"
+    "id": "Standing_Biceps_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Растяжка бицепса (руки в замок за спиной)",
@@ -16412,7 +16675,8 @@
       "Чередуйте таким образом, пока не выполните рекомендуемое количество повторений."
     ],
     "category": "strength",
-    "id": "Standing_Bradford_Press"
+    "id": "Standing_Bradford_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0105-dCPESfR.gif"
   },
   {
     "name": "Жим от груди стоя в кроссовере",
@@ -16525,7 +16789,8 @@
       "Повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Standing_Concentration_Curl"
+    "id": "Standing_Concentration_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2414-vsMcDi9.gif"
   },
   {
     "name": "Подъемы на носки стоя с гантелями",
@@ -16647,7 +16912,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Standing_Dumbbell_Upright_Row"
+    "id": "Standing_Dumbbell_Upright_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0437-ainizkb.gif"
   },
   {
     "name": "Растяжка квадрицепса стоя с упором ноги",
@@ -16685,7 +16951,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Standing_Front_Barbell_Raise_Over_Head"
+    "id": "Standing_Front_Barbell_Raise_Over_Head",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0041-b2Uoz54.gif"
   },
   {
     "name": "Растяжка икроножных мышц стоя",
@@ -16723,7 +16990,8 @@
       "Используя ремень, потяните верхнюю часть стопы, чтобы увеличить растяжение икр. Задержитесь на 10–20 секунд и повторите с другой ногой."
     ],
     "category": "stretching",
-    "id": "Standing_Hamstring_and_Calf_Stretch"
+    "id": "Standing_Hamstring_and_Calf_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1599-xTjr103.gif"
   },
   {
     "name": "Вращения бедром стоя",
@@ -16802,7 +17070,8 @@
       "Распределяйте вес равномерно между обеими ногами (не опирайтесь на левое бедро). Поменяйте стороны."
     ],
     "category": "stretching",
-    "id": "Standing_Lateral_Stretch"
+    "id": "Standing_Lateral_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0794-1jXLYEw.gif"
   },
   {
     "name": "Сгибание одной ноги стоя в тренажере",
@@ -16914,7 +17183,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Standing_Military_Press"
+    "id": "Standing_Military_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0774-jjUPrze.gif"
   },
   {
     "name": "Сдавливание блинов пальцами",
@@ -16956,7 +17226,8 @@
       "Поменяйте руки во время выполнения этого упражнения."
     ],
     "category": "strength",
-    "id": "Standing_One-Arm_Cable_Curl"
+    "id": "Standing_One-Arm_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Концентрированные сгибания одной рукой стоя (с упором в спинку скамьи)",
@@ -17109,7 +17380,8 @@
       "Возможно, вам захочется несколько раз подвигать тазом вперед, назад и назад, прежде чем удерживать копчик вперед во время этой растяжки."
     ],
     "category": "stretching",
-    "id": "Standing_Pelvic_Tilt"
+    "id": "Standing_Pelvic_Tilt",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1364-cuKYxhu.gif"
   },
   {
     "name": "Скручивания стоя с канатом в кроссовере",
@@ -17128,7 +17400,8 @@
       "Удерживайте пиковое сокращение на мгновение, прежде чем вернуться в исходное положение."
     ],
     "category": "strength",
-    "id": "Standing_Rope_Crunch"
+    "id": "Standing_Rope_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Растяжка камбаловидной мышцы и ахилла стоя",
@@ -17227,7 +17500,8 @@
       "При приземлении верните конечности обратно и поглотите удар ногами."
     ],
     "category": "plyometrics",
-    "id": "Star_Jump"
+    "id": "Star_Jump",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3223-HtfCpfi.gif"
   },
   {
     "name": "Зашагивания на тумбу с подъемом колена",
@@ -17339,7 +17613,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Stiff_Leg_Barbell_Good_Morning"
+    "id": "Stiff_Leg_Barbell_Good_Morning",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0044-XlZ4lAC.gif"
   },
   {
     "name": "Упражнение «Вакуум» стоя",
@@ -17384,7 +17659,8 @@
       "Задержите вес в исходном положении на секунду и повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Straight-Arm_Dumbbell_Pullover"
+    "id": "Straight-Arm_Dumbbell_Pullover",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0375-9XjtHvS.gif"
   },
   {
     "name": "Тяга верхнего блока прямыми руками",
@@ -17497,7 +17773,8 @@
       "Верните вес на землю, сгибая бедра и контролируя вес при опускании."
     ],
     "category": "powerlifting",
-    "id": "Sumo_Deadlift"
+    "id": "Sumo_Deadlift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0117-KgI0tqW.gif"
   },
   {
     "name": "Становая тяга сумо с резиновыми петлями",
@@ -17576,7 +17853,8 @@
       "Повторяйте рекомендованное количество повторений, указанное в вашей программе."
     ],
     "category": "stretching",
-    "id": "Superman"
+    "id": "Superman",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0803-4GqRrAk.gif"
   },
   {
     "name": "Бросок медбола от груди лежа на спине",
@@ -17598,7 +17876,8 @@
       "Поймайте мяч обеими руками, когда он падает."
     ],
     "category": "plyometrics",
-    "id": "Supine_Chest_Throw"
+    "id": "Supine_Chest_Throw",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1750-Al3tP0D.gif"
   },
   {
     "name": "Скручивания с броском медбола одной рукой (с партнером)",
@@ -17689,7 +17968,8 @@
       "Продолжайте, пока локти не развернутся на 90 градусов, делая паузу, прежде чем выпрямиться и вернуться в исходное положение."
     ],
     "category": "strength",
-    "id": "Suspended_Push-Up"
+    "id": "Suspended_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0806-IaGQCrC.gif"
   },
   {
     "name": "Обратные скручивания на петлях TRX",
@@ -17708,7 +17988,8 @@
       "В верхней точке контролируемого движения вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Suspended_Reverse_Crunch"
+    "id": "Suspended_Reverse_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0807-R1WYG5D.gif"
   },
   {
     "name": "Горизонтальные подтягивания на петлях TRX",
@@ -17729,7 +18010,8 @@
       "По завершении движения сделайте паузу, а затем вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Suspended_Row"
+    "id": "Suspended_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0808-4OaumBr.gif"
   },
   {
     "name": "Болгарские сплит-приседания на петлях TRX",
@@ -17754,7 +18036,8 @@
       "В нижней части движения выполните обратное движение, проходя через бедро и колено, чтобы вернуться в исходное положение."
     ],
     "category": "strength",
-    "id": "Suspended_Split_Squat"
+    "id": "Suspended_Split_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0809-QpXqiq8.gif"
   },
   {
     "name": "Жим Свенда (Сдавливание блинов перед грудью)",
@@ -17777,7 +18060,8 @@
       "Сделайте паузу в верхней точке движения, а затем медленно вернитесь в исходное положение."
     ],
     "category": "strength",
-    "id": "Svend_Press"
+    "id": "Svend_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0856-I1OBLnn.gif"
   },
   {
     "name": "Тяга Т-грифа (через V-образную рукоять)",
@@ -17823,7 +18107,8 @@
       "Повторите движение заданное количество повторений вашей тренировочной программы."
     ],
     "category": "strength",
-    "id": "Tate_Press"
+    "id": "Tate_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0436-s5PdDyY.gif"
   },
   {
     "name": "Складка ноги врозь сидя (растяжка)",
@@ -17914,7 +18199,8 @@
       "Когда шина достигнет угла 45 градусов, сделайте шаг вперед и вбейте колено в шину. При этом отрегулируйте хватку за верхнюю часть шины и толкните ее вперед как можно сильнее, чтобы завершить поворот. Повторите по мере необходимости."
     ],
     "category": "strongman",
-    "id": "Tire_Flip"
+    "id": "Tire_Flip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2459-oZjMu1t.gif"
   },
   {
     "name": "Скручивания с касанием пальцев ног (Книжка)",
@@ -17973,7 +18259,8 @@
       "Человек весом 150 фунтов может сжечь более 200 калорий за 30 минут ходьбы в гору по сравнению со 175 калориями на ровной поверхности. Бегая по тропе, человек весом 150 фунтов может сжечь более 500 калорий за 30 минут."
     ],
     "category": "cardio",
-    "id": "Trail_Running_Walking"
+    "id": "Trail_Running_Walking",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Становая тяга с трэп-грифом (Hex Bar)",
@@ -17995,7 +18282,8 @@
       "По завершении движения опустите вес обратно на землю под контроль."
     ],
     "category": "strength",
-    "id": "Trap_Bar_Deadlift"
+    "id": "Trap_Bar_Deadlift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0811-jQGwmxN.gif"
   },
   {
     "name": "Разгибание руки с гантелью назад в наклоне",
@@ -18071,7 +18359,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Triceps_Pushdown"
+    "id": "Triceps_Pushdown",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2406-ThKP69G.gif"
   },
   {
     "name": "Разгибание рук на трицепс в кроссовере с канатом",
@@ -18129,7 +18418,8 @@
       "Протяните руку за головой, возьмитесь за локоть и осторожно потяните. Удерживайте положение от 10 до 20 секунд, затем поменяйте сторону."
     ],
     "category": "stretching",
-    "id": "Triceps_Stretch"
+    "id": "Triceps_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0817-uOV3Itw.gif"
   },
   {
     "name": "Скручивания с поднятыми ногами (Tuck Crunch)",
@@ -18150,7 +18440,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Tuck_Crunch"
+    "id": "Tuck_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0871-BMMolZ3.gif"
   },
   {
     "name": "Сгибания рук с гантелями на скамье Скотта",
@@ -18169,7 +18460,8 @@
       "Сильно сожмите бицепс на секунду в сокращенном положении и повторите рекомендуемое количество повторений."
     ],
     "category": "strength",
-    "id": "Two-Arm_Dumbbell_Preacher_Curl"
+    "id": "Two-Arm_Dumbbell_Preacher_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0372-jivWf8n.gif"
   },
   {
     "name": "Взятие двух гирь на грудь",
@@ -18277,7 +18569,8 @@
       "Повторите это движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Underhand_Cable_Pulldowns"
+    "id": "Underhand_Cable_Pulldowns",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0245-xBYcQHj.gif"
   },
   {
     "name": "Растяжка спины сидя с обхватом бедер",
@@ -18315,7 +18608,8 @@
       "Сцепите пальцы вместе, большие пальцы должны быть направлены вниз, обхватите плечи и вытяните руки вперед."
     ],
     "category": "stretching",
-    "id": "Upper_Back_Stretch"
+    "id": "Upper_Back_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1365-GSDioYu.gif"
   },
   {
     "name": "Тяга штанги к подбородку (Upright Row)",
@@ -18514,7 +18808,8 @@
       "Повторяйте рекомендованное количество повторений, указанное в вашей программе."
     ],
     "category": "strength",
-    "id": "Weighted_Ball_Hyperextension"
+    "id": "Weighted_Ball_Hyperextension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0489-zhMwOwE.gif"
   },
   {
     "name": "Боковые скручивания на фитболе с отягощением",
@@ -18559,7 +18854,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Weighted_Bench_Dip"
+    "id": "Weighted_Bench_Dip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0830-MU9HnE7.gif"
   },
   {
     "name": "Скручивания с отягощением",
@@ -18579,7 +18875,8 @@
       "Затем вдохните и медленно опуститесь обратно в исходное положение."
     ],
     "category": "strength",
-    "id": "Weighted_Crunches"
+    "id": "Weighted_Crunches",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Выпрыгивания из приседа с весом",
@@ -18603,7 +18900,8 @@
       "Когда вы вернетесь на землю, поглотите удар ногами."
     ],
     "category": "strength",
-    "id": "Weighted_Jump_Squat"
+    "id": "Weighted_Jump_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0514-LIlE5Tn.gif"
   },
   {
     "name": "Подтягивания с отягощением",
@@ -18648,7 +18946,8 @@
       "Повторите рекомендованное количество раз."
     ],
     "category": "strength",
-    "id": "Weighted_Sissy_Squat"
+    "id": "Weighted_Sissy_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0851-0lQnxMZ.gif"
   },
   {
     "name": "Скручивания на наклонной скамье с резиновыми петлями",
@@ -18691,7 +18990,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Weighted_Squat"
+    "id": "Weighted_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0852-JZuApnB.gif"
   },
   {
     "name": "Жим штанги лежа широким хватом",
@@ -18713,7 +19013,8 @@
       "Повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Barbell_Bench_Press"
+    "id": "Wide-Grip_Barbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
   },
   {
     "name": "Жим штанги на скамье с отрицательным наклоном широким хватом",
@@ -18735,7 +19036,8 @@
       "Повторите движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Decline_Barbell_Bench_Press"
+    "id": "Wide-Grip_Decline_Barbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
   },
   {
     "name": "Пуловер со штангой на скамье с отрицательным наклоном широким хватом",
@@ -18759,7 +19061,8 @@
       "Закончив подход, медленно опустите штангу обратно вниз, пока она не окажется на уровне головы, и отпустите ее."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Decline_Barbell_Pullover"
+    "id": "Wide-Grip_Decline_Barbell_Pullover",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0073-i6LWjok.gif"
   },
   {
     "name": "Тяга верхнего блока широким хватом",
@@ -18833,7 +19136,8 @@
       "Повторите это движение заданное количество повторений."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Rear_Pull-Up"
+    "id": "Wide-Grip_Rear_Pull-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif"
   },
   {
     "name": "Сгибание рук со штангой стоя широким хватом",
@@ -18853,7 +19157,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Standing_Barbell_Curl"
+    "id": "Wide-Grip_Standing_Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0031-25GPyDY.gif"
   },
   {
     "name": "Приседания со штангой с широкой постановкой ног",
@@ -18919,7 +19224,8 @@
       "Продолжайте чередовать ноги, пока подход не будет завершен."
     ],
     "category": "strength",
-    "id": "Wind_Sprints"
+    "id": "Wind_Sprints",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0858-Qoujh3Q.gif"
   },
   {
     "name": "Мельница ногами (растяжка лежа)",
@@ -18981,7 +19287,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "stretching",
-    "id": "Wrist_Circles"
+    "id": "Wrist_Circles",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1428-2zNKRUB.gif"
   },
   {
     "name": "Наматывание троса с весом на прямую рукоять (Wrist Roller)",
@@ -19003,7 +19310,8 @@
       "Повторите заданное количество повторений в вашей программе."
     ],
     "category": "strength",
-    "id": "Wrist_Roller"
+    "id": "Wrist_Roller",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0859-bd5b860.gif"
   },
   {
     "name": "Вращения запястьями с прямым грифом стоя",
@@ -19097,7 +19405,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Zottman_Curl"
+    "id": "Zottman_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0439-kXaIn5A.gif"
   },
   {
     "name": "Сгибания Зоттмана на скамье Скотта",
@@ -19120,7 +19429,8 @@
       "Повторите рекомендованное количество повторений."
     ],
     "category": "strength",
-    "id": "Zottman_Preacher_Curl"
+    "id": "Zottman_Preacher_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1672-sxY5Biu.gif"
   },
   {
     "name": "Сведение рук в тренажере Бабочка",
@@ -19165,7 +19475,8 @@
       "Повторите заданное количество раз."
     ],
     "category": "strength",
-    "id": "Diamond_Push-Up"
+    "id": "Diamond_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0283-soIB2rj.gif"
   },
   {
     "name": "Тяга Медоуза",
@@ -19261,7 +19572,8 @@
       "Оттолкнитесь пятками, чтобы вернуться в исходное положение."
     ],
     "category": "strength",
-    "id": "Sumo_Squat"
+    "id": "Sumo_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3142-dzz6BiV.gif"
   },
   {
     "name": "Стульчик у стены",
@@ -19332,7 +19644,8 @@
       "Повторите заданное количество раз."
     ],
     "category": "strength",
-    "id": "Pike_Push-Up"
+    "id": "Pike_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Жим Лэндмайн (Landmine Press)",
@@ -19375,7 +19688,8 @@
       "Повторите заданное количество раз."
     ],
     "category": "strength",
-    "id": "French_Press"
+    "id": "French_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1736-ziFKQXP.gif"
   },
   {
     "name": "Разгибание руки на трицепс в кроссовере в наклоне",

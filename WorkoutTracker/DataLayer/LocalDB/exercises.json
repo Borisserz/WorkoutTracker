@@ -17,7 +17,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "3_4_Sit-Up"
+    "id": "3_4_Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0001-2gPfomN.gif"
   },
   {
     "name": "90/90 Hamstring",
@@ -57,7 +58,8 @@
       "Repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Ab_Crunch_Machine"
+    "id": "Ab_Crunch_Machine",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Ab Roller",
@@ -78,7 +80,8 @@
       "After a pause at the stretched position, start pulling yourself back to the starting position as you breathe out. Tip: Go slowly and keep your abs tight at all times."
     ],
     "category": "strength",
-    "id": "Ab_Roller"
+    "id": "Ab_Roller",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0103-xnInPfE.gif"
   },
   {
     "name": "Adductor",
@@ -96,7 +99,8 @@
       "While trying to relax the muscles if the inner thigh, roll over the foam between your hip and knee, holding points of tension for 10-30 seconds. Repeat with the other leg."
     ],
     "category": "stretching",
-    "id": "Adductor"
+    "id": "Adductor",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1712-hC6oYY5.gif"
   },
   {
     "name": "Adductor Groin Stretch",
@@ -138,7 +142,8 @@
       "Pause for a second and reverse the motion back to the starting position."
     ],
     "category": "strength",
-    "id": "Advanced_Kettlebell_Windmill"
+    "id": "Advanced_Kettlebell_Windmill",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0517-Kal9cQQ.gif"
   },
   {
     "name": "Air Bike",
@@ -159,7 +164,8 @@
       "Continue alternating in this manner until all of the recommended repetitions for each side have been completed."
     ],
     "category": "strength",
-    "id": "Air_Bike"
+    "id": "Air_Bike",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0003-1ZFqTDN.gif"
   },
   {
     "name": "All Fours Quad Stretch",
@@ -358,7 +364,8 @@
       "Lower the cleaned kettlebell to a hanging position and clean the alternate kettlebell. Repeat."
     ],
     "category": "strength",
-    "id": "Alternating_Hang_Clean"
+    "id": "Alternating_Hang_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0518-I4tibZG.gif"
   },
   {
     "name": "Kettlebell Alternating Press",
@@ -378,7 +385,8 @@
       "Lower the pressed kettlebell to the starting position and immediately press with your other arm."
     ],
     "category": "strength",
-    "id": "Alternating_Kettlebell_Press"
+    "id": "Alternating_Kettlebell_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0520-5KLbZWx.gif"
   },
   {
     "name": "Kettlebell Alternating Row",
@@ -399,7 +407,8 @@
       "Lower the kettlebell in the working arm and repeat with your other arm."
     ],
     "category": "strength",
-    "id": "Alternating_Kettlebell_Row"
+    "id": "Alternating_Kettlebell_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0522-Ca76jUE.gif"
   },
   {
     "name": "Kettlebell Alt Renegade Row",
@@ -441,7 +450,8 @@
       "When you are done with the right foot, then repeat with the left leg."
     ],
     "category": "stretching",
-    "id": "Ankle_Circles"
+    "id": "Ankle_Circles",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1368-uL9CsKm.gif"
   },
   {
     "name": "Ankle On The Knee",
@@ -541,7 +551,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Arnold_Dumbbell_Press"
+    "id": "Arnold_Dumbbell_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2137-Xy4jlWA.gif"
   },
   {
     "name": "Dumbbell Around the World",
@@ -666,7 +677,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Back_Flyes_-_With_Bands"
+    "id": "Back_Flyes_-_With_Bands",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0993-sTfvVsG.gif"
   },
   {
     "name": "Sled Backward Drag",
@@ -729,7 +741,8 @@
       "Hold the balance for as long as desired."
     ],
     "category": "strength",
-    "id": "Balance_Board"
+    "id": "Balance_Board",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0020-xAySMB0.gif"
   },
   {
     "name": "Stability Ball Leg Curl",
@@ -775,7 +788,8 @@
       "After a brief pause, return to the starting position."
     ],
     "category": "strength",
-    "id": "Band_Assisted_Pull-Up"
+    "id": "Band_Assisted_Pull-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0970-r1XNRYB.gif"
   },
   {
     "name": "Band Good Morning",
@@ -817,7 +831,8 @@
       "Return to the starting position be driving through with the hips to come back to a standing position."
     ],
     "category": "powerlifting",
-    "id": "Band_Good_Morning_Pull_Through"
+    "id": "Band_Good_Morning_Pull_Through",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0991-VtTbiP3.gif"
   },
   {
     "name": "Band Hip Adductions",
@@ -945,7 +960,8 @@
       "When you are done, place the bar back in the rack."
     ],
     "category": "strength",
-    "id": "Barbell_Bench_Press_-_Medium_Grip"
+    "id": "Barbell_Bench_Press_-_Medium_Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
   },
   {
     "name": "Barbell Curl",
@@ -967,7 +983,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Barbell_Curl"
+    "id": "Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0031-25GPyDY.gif"
   },
   {
     "name": "Barbell Prone Incline Curl",
@@ -986,7 +1003,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Barbell_Curls_Lying_Against_An_Incline"
+    "id": "Barbell_Curls_Lying_Against_An_Incline",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0072-WLvTAv5.gif"
   },
   {
     "name": "Barbell Deadlift",
@@ -1015,7 +1033,8 @@
       "Perform the amount of repetitions prescribed in the program."
     ],
     "category": "strength",
-    "id": "Barbell_Deadlift"
+    "id": "Barbell_Deadlift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0032-ila4NZS.gif"
   },
   {
     "name": "Barbell Full Squat",
@@ -1041,7 +1060,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Barbell_Full_Squat"
+    "id": "Barbell_Full_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0043-qXTaZnJ.gif"
   },
   {
     "name": "Barbell Glute Bridge",
@@ -1062,7 +1082,8 @@
       "Extend as far as possible, then reverse the motion to return to the starting position."
     ],
     "category": "powerlifting",
-    "id": "Barbell_Glute_Bridge"
+    "id": "Barbell_Glute_Bridge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1409-qKBpF7I.gif"
   },
   {
     "name": "Barbell Guillotine Press",
@@ -1108,7 +1129,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Barbell_Hack_Squat"
+    "id": "Barbell_Hack_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0046-5VCj6iH.gif"
   },
   {
     "name": "Barbell Hip Thrust",
@@ -1152,7 +1174,8 @@
       "When you are done, place the bar back in the rack."
     ],
     "category": "strength",
-    "id": "Barbell_Incline_Bench_Press_-_Medium_Grip"
+    "id": "Barbell_Incline_Bench_Press_-_Medium_Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0047-3TZduzM.gif"
   },
   {
     "name": "Barbell Incline Front Raise",
@@ -1197,7 +1220,8 @@
       "Repeat the movement for the recommended amount of repetitions and then perform with the left leg."
     ],
     "category": "strength",
-    "id": "Barbell_Lunge"
+    "id": "Barbell_Lunge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0054-t8iSghb.gif"
   },
   {
     "name": "Barbell Rear Delt Row",
@@ -1221,7 +1245,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Barbell_Rear_Delt_Row"
+    "id": "Barbell_Rear_Delt_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0076-S9zHIvU.gif"
   },
   {
     "name": "Barbell Bench Rollout",
@@ -1265,7 +1290,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Barbell_Seated_Calf_Raise"
+    "id": "Barbell_Seated_Calf_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1371-ipvgBnC.gif"
   },
   {
     "name": "Barbell Shoulder Press",
@@ -1307,7 +1333,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Barbell_Shrug"
+    "id": "Barbell_Shrug",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0095-dG7tG5y.gif"
   },
   {
     "name": "Barbell Behind Back Shrug",
@@ -1399,7 +1426,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Barbell_Squat"
+    "id": "Barbell_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0102-oR7O9LW.gif"
   },
   {
     "name": "Barbell Box Squat",
@@ -1474,7 +1502,8 @@
       "Step forward with your rear foot, repeating the lunge on the opposite leg."
     ],
     "category": "strength",
-    "id": "Barbell_Walking_Lunge"
+    "id": "Barbell_Walking_Lunge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1460-IZVHb27.gif"
   },
   {
     "name": "Battling Ropes",
@@ -1496,7 +1525,8 @@
       "Continue alternating your left and right arms, whipping the ropes up and down as fast as you can."
     ],
     "category": "strength",
-    "id": "Battling_Ropes"
+    "id": "Battling_Ropes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0128-RJa4tCo.gif"
   },
   {
     "name": "Sled Bear Crawl Drag",
@@ -1517,7 +1547,8 @@
       "Begin by driving with legs, alternating left and right. Use your hands to maintain balance and to help pull. Try to keep your back flat as you move over a given distance."
     ],
     "category": "strongman",
-    "id": "Bear_Crawl_Sled_Drags"
+    "id": "Bear_Crawl_Sled_Drags",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3360-0Yz8WdV.gif"
   },
   {
     "name": "Behind the Head Chest Stretch",
@@ -1560,7 +1591,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Bench_Dips"
+    "id": "Bench_Dips",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1754-gtO1ErP.gif"
   },
   {
     "name": "Bench Jump",
@@ -1633,7 +1665,8 @@
       "Repeat the movement for the prescribed amount of repetitions of your training program."
     ],
     "category": "strength",
-    "id": "Bench_Press_-_With_Bands"
+    "id": "Bench_Press_-_With_Bands",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1254-khlHMqs.gif"
   },
   {
     "name": "Barbell Chain Bench Press",
@@ -1866,7 +1899,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Bent_Over_Two-Arm_Long_Bar_Row"
+    "id": "Bent_Over_Two-Arm_Long_Bar_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1349-BgljGjd.gif"
   },
   {
     "name": "Dumbbell Bent-Over Row",
@@ -1936,7 +1970,8 @@
       "Return to an upright position, with the kettlebell above your head. Return the kettlebell to the shoulder and repeat for the desired number of repetitions."
     ],
     "category": "strength",
-    "id": "Bent_Press"
+    "id": "Bent_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0524-kjE55n5.gif"
   },
   {
     "name": "Stationary Bike",
@@ -1956,7 +1991,8 @@
       "To begin, seat yourself on the bike and adjust the seat to your height."
     ],
     "category": "cardio",
-    "id": "Bicycling"
+    "id": "Bicycling",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2138-H1PESYI.gif"
   },
   {
     "name": "Stationary Bike",
@@ -1977,7 +2013,8 @@
       "Select the desired option from the menu. You may have to start pedaling to turn it on. You can use the manual setting, or you can select a program to use. Typically, you can enter your age and weight to estimate the amount of calories burned during exercise. The level of resistance can be changed throughout the workout. The handles can be used to monitor your heart rate to help you stay at an appropriate intensity."
     ],
     "category": "cardio",
-    "id": "Bicycling_Stationary"
+    "id": "Bicycling_Stationary",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2138-H1PESYI.gif"
   },
   {
     "name": "Barbell Board Press",
@@ -2023,7 +2060,8 @@
       "Repeat."
     ],
     "category": "strength",
-    "id": "Body-Up"
+    "id": "Body-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0137-U6G2gk9.gif"
   },
   {
     "name": "Bodyweight Triceps Press",
@@ -2043,7 +2081,8 @@
       "Progress from bodyweight by adding chains over your shoulders."
     ],
     "category": "strength",
-    "id": "Body_Tricep_Press"
+    "id": "Body_Tricep_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0816-fSrPP6B.gif"
   },
   {
     "name": "Bodyweight Fly",
@@ -2088,7 +2127,8 @@
       "After a brief pause, return to the starting position."
     ],
     "category": "strength",
-    "id": "Bodyweight_Mid_Row"
+    "id": "Bodyweight_Mid_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0499-bZGHsAZ.gif"
   },
   {
     "name": "Bodyweight Squat",
@@ -2109,7 +2149,8 @@
       "Continue down to full depth if you are able,and quickly reverse the motion until you return to the starting position. As you squat, keep your head and chest up and push your knees out."
     ],
     "category": "strength",
-    "id": "Bodyweight_Squat"
+    "id": "Bodyweight_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3168-3xK09Sk.gif"
   },
   {
     "name": "Bodyweight Walking Lunge",
@@ -2132,7 +2173,8 @@
       "Step forward with your rear foot, repeating the lunge on the opposite leg."
     ],
     "category": "strength",
-    "id": "Bodyweight_Walking_Lunge"
+    "id": "Bodyweight_Walking_Lunge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1460-IZVHb27.gif"
   },
   {
     "name": "Bosu Cable Crunch & Twist",
@@ -2157,7 +2199,8 @@
       "Lower your arms down to your side; keep them straight. Start doing alternating side bends; reach for your heels! This finishing movement will focus on your obliques."
     ],
     "category": "strength",
-    "id": "Bosu_Ball_Cable_Crunch_With_Side_Bends"
+    "id": "Bosu_Ball_Cable_Crunch_With_Side_Bends",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Kettlebell Bottoms-Up Hang Clean",
@@ -2177,7 +2220,8 @@
       "Swing the kettlebell back forcefully and then reverse the motion forcefully. Crush the kettlebell handle as hard as possible and raise the kettlebell to your shoulder."
     ],
     "category": "strength",
-    "id": "Bottoms-Up_Clean_From_The_Hang_Position"
+    "id": "Bottoms-Up_Clean_From_The_Hang_Position",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0138-CI6baTY.gif"
   },
   {
     "name": "Bottoms Up",
@@ -2195,7 +2239,8 @@
       "After a brief pause, return to the starting position."
     ],
     "category": "strength",
-    "id": "Bottoms_Up"
+    "id": "Bottoms_Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0525-4KJEpzb.gif"
   },
   {
     "name": "Box Jump",
@@ -2219,7 +2264,8 @@
       "Immediately drop or jump back down to the original starting place; then repeat the sequence."
     ],
     "category": "plyometrics",
-    "id": "Box_Jump_Multiple_Response"
+    "id": "Box_Jump_Multiple_Response",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1374-iPm26QU.gif"
   },
   {
     "name": "Box Skip",
@@ -2383,7 +2429,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Butt-Ups"
+    "id": "Butt-Ups",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0870-qcNN2FN.gif"
   },
   {
     "name": "Butt Lift (Bridge)",
@@ -2488,7 +2535,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Cable_Crunch"
+    "id": "Cable_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Cable Deadlifts",
@@ -2512,7 +2560,8 @@
       "After reaching a full standing position, Return to the starting position and repeat."
     ],
     "category": "strength",
-    "id": "Cable_Deadlifts"
+    "id": "Cable_Deadlifts",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0157-eGDudUV.gif"
   },
   {
     "name": "Cable Rope Hammer Curl",
@@ -2555,7 +2604,8 @@
       "Repeat for the recommended amount of repetitions and then repeat the same movement with the opposite leg."
     ],
     "category": "strength",
-    "id": "Cable_Hip_Adduction"
+    "id": "Cable_Hip_Adduction",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0168-hBGWILP.gif"
   },
   {
     "name": "Cable Incline Straight-Arm Pull",
@@ -2595,7 +2645,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Cable_Incline_Triceps_Extension"
+    "id": "Cable_Incline_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0173-Hx1WC8I.gif"
   },
   {
     "name": "Cable Internal Rotation",
@@ -2655,7 +2706,8 @@
       "Then, reposition and repeat the same series of movements on the opposite side."
     ],
     "category": "strength",
-    "id": "Cable_Judo_Flip"
+    "id": "Cable_Judo_Flip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0174-MvQPqVW.gif"
   },
   {
     "name": "Cable Lying Triceps Extension",
@@ -2675,7 +2727,8 @@
       "Hold for a second at the contracted position and repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Cable_Lying_Triceps_Extension"
+    "id": "Cable_Lying_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0186-uxJcFUU.gif"
   },
   {
     "name": "Cable Single-Arm Triceps Ext",
@@ -2720,7 +2773,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Cable_Preacher_Curl"
+    "id": "Cable_Preacher_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0195-P2lNrGL.gif"
   },
   {
     "name": "Cable Rear Delt Fly",
@@ -2760,7 +2814,8 @@
       "Repeat the same movement to failure."
     ],
     "category": "strength",
-    "id": "Cable_Reverse_Crunch"
+    "id": "Cable_Reverse_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0873-RqOtqD7.gif"
   },
   {
     "name": "Cable Rope Overhead Triceps Ext",
@@ -2826,7 +2881,8 @@
       "Then, reposition and repeat the same series of movements on the opposite side."
     ],
     "category": "strength",
-    "id": "Cable_Russian_Twists"
+    "id": "Cable_Russian_Twists",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0211-d9Xaxq6.gif"
   },
   {
     "name": "Cable Seated Crunch",
@@ -2846,7 +2902,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Cable_Seated_Crunch"
+    "id": "Cable_Seated_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0212-8xUv4J7.gif"
   },
   {
     "name": "Cable Seated Lateral Raise",
@@ -2892,7 +2949,8 @@
       "After pausing at the top, return to the starting position and repeat."
     ],
     "category": "strength",
-    "id": "Cable_Shoulder_Press"
+    "id": "Cable_Shoulder_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0219-PzQanLE.gif"
   },
   {
     "name": "Cable Shrug",
@@ -2912,7 +2970,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Cable_Shrugs"
+    "id": "Cable_Shrugs",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0220-Eg98Ft9.gif"
   },
   {
     "name": "Cable Wrist Curl",
@@ -2933,7 +2992,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Cable_Wrist_Curl"
+    "id": "Cable_Wrist_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0247-LrV4s90.gif"
   },
   {
     "name": "Machine Shrug",
@@ -3258,7 +3318,8 @@
       "Repeat for your other leg."
     ],
     "category": "stretching",
-    "id": "Chair_Leg_Extended_Stretch"
+    "id": "Chair_Leg_Extended_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1548-xGgAGPm.gif"
   },
   {
     "name": "Chair Lower Back Stretch",
@@ -3432,7 +3493,8 @@
       "As you take the second step, explosively push the ball forward, immediately sprinting for 10 yards after the release. If you are really fast, you can catch your own pass!"
     ],
     "category": "plyometrics",
-    "id": "Chest_Push_with_Run_Release"
+    "id": "Chest_Push_with_Run_Release",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Stability Ball Chest Stretch",
@@ -3495,7 +3557,8 @@
       "Repeat this motion for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Chin-Up"
+    "id": "Chin-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif"
   },
   {
     "name": "Chin To Chest Stretch",
@@ -3569,7 +3632,8 @@
       "Immediately recover by driving through the heels, keeping the torso upright and elbows up. Continue until you have risen to a standing position."
     ],
     "category": "olympic weightlifting",
-    "id": "Clean"
+    "id": "Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0028-SGY8Zui.gif"
   },
   {
     "name": "Clean Deadlift",
@@ -3669,7 +3733,8 @@
       "At this moment as the feet leave the floor, the feet must be placed into the receiving position as quickly as possible. In the brief moment the feet are not actively driving against the platform, the athletes effort to push the bar up will drive them down. The feet should be split, with one foot forward, and one foot back. Receive the bar with the arms locked out overhead. Return to a standing position."
     ],
     "category": "olympic weightlifting",
-    "id": "Clean_and_Jerk"
+    "id": "Clean_and_Jerk",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0537-vzAxBtt.gif"
   },
   {
     "name": "Clean and Press",
@@ -3702,7 +3767,8 @@
       "Without moving your feet, press the bar overhead as you exhale. Lower the bar under control ."
     ],
     "category": "strength",
-    "id": "Clean_and_Press"
+    "id": "Clean_and_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0028-SGY8Zui.gif"
   },
   {
     "name": "Clean from Blocks",
@@ -3751,7 +3817,8 @@
       "Return to the starting position and repeat the exercise, working all the way around until you are back where you started."
     ],
     "category": "strength",
-    "id": "Clock_Push-Up"
+    "id": "Clock_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0258-CMAxnsG.gif"
   },
   {
     "name": "Barbell Close-Grip Bench Press",
@@ -3774,7 +3841,8 @@
       "When you are done, place the bar back in the rack."
     ],
     "category": "strength",
-    "id": "Close-Grip_Barbell_Bench_Press"
+    "id": "Close-Grip_Barbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0030-J6Dx1Mu.gif"
   },
   {
     "name": "Dumbbell Close-Grip Press",
@@ -3797,7 +3865,8 @@
       "Return to the starting position by extending the elbows."
     ],
     "category": "strength",
-    "id": "Close-Grip_Dumbbell_Press"
+    "id": "Close-Grip_Dumbbell_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0296-RxayqAZ.gif"
   },
   {
     "name": "Banded EZ-Bar Close-Grip Curl",
@@ -3912,7 +3981,8 @@
       "After a pause at the contracted position, repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Close-Grip_Push-Up_off_of_a_Dumbbell"
+    "id": "Close-Grip_Push-Up_off_of_a_Dumbbell",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0259-x6KpKpq.gif"
   },
   {
     "name": "Barbell Close-Grip Curl",
@@ -3934,7 +4004,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Close-Grip_Standing_Barbell_Curl"
+    "id": "Close-Grip_Standing_Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0446-V4ryaZa.gif"
   },
   {
     "name": "Cocoons",
@@ -3952,7 +4023,8 @@
       "After a brief pause, return to the starting position."
     ],
     "category": "strength",
-    "id": "Cocoons"
+    "id": "Cocoons",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0260-SLKj2pX.gif"
   },
   {
     "name": "Conan's Wheel",
@@ -3999,7 +4071,8 @@
       "Repeat for the recommended amount of repetitions. Then repeat the movement with the left arm."
     ],
     "category": "strength",
-    "id": "Concentration_Curls"
+    "id": "Concentration_Curls",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0297-gvsWLQw.gif"
   },
   {
     "name": "Bodyweight Cross-Body Crunch",
@@ -4019,7 +4092,8 @@
       "Continue alternating in this manner until all prescribed repetitions are done."
     ],
     "category": "strength",
-    "id": "Cross-Body_Crunch"
+    "id": "Cross-Body_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Dumbbell Cross-Body Hammer Curl",
@@ -4127,7 +4201,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Crunch_-_Hands_Overhead"
+    "id": "Crunch_-_Hands_Overhead",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Stability Ball Crunch",
@@ -4149,7 +4224,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Crunch_-_Legs_On_Exercise_Ball"
+    "id": "Crunch_-_Legs_On_Exercise_Ball",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Bodyweight Crunch",
@@ -4170,7 +4246,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Crunches"
+    "id": "Crunches",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Dumbbell Cuban Press",
@@ -4192,7 +4269,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Cuban_Press"
+    "id": "Cuban_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0299-QfAKy1G.gif"
   },
   {
     "name": "Dancer's Stretch",
@@ -4236,7 +4314,8 @@
       "Repeat on the opposite side, alternating until the set is complete."
     ],
     "category": "strength",
-    "id": "Dead_Bug"
+    "id": "Dead_Bug",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0276-iny3m5y.gif"
   },
   {
     "name": "Deadlift with Bands",
@@ -4311,7 +4390,8 @@
       "When you are done, place the bar back in the rack."
     ],
     "category": "strength",
-    "id": "Decline_Barbell_Bench_Press"
+    "id": "Decline_Barbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0033-GrO65fd.gif"
   },
   {
     "name": "Barbell Decline Close-Grip Ext",
@@ -4357,7 +4437,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Decline_Crunch"
+    "id": "Decline_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Dumbbell Decline Bench Press",
@@ -4381,7 +4462,8 @@
       "Repeat the movement for the prescribed amount of repetitions of your training program."
     ],
     "category": "strength",
-    "id": "Decline_Dumbbell_Bench_Press"
+    "id": "Decline_Dumbbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0301-DwhEmmE.gif"
   },
   {
     "name": "Dumbbell Decline Fly",
@@ -4401,7 +4483,8 @@
       "Hold for a second at the contracted position and repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Decline_Dumbbell_Flyes"
+    "id": "Decline_Dumbbell_Flyes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0302-xXm4nYq.gif"
   },
   {
     "name": "Dumbbell Decline Triceps Ext",
@@ -4421,7 +4504,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Decline_Dumbbell_Triceps_Extension"
+    "id": "Decline_Dumbbell_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0306-OTgkHwR.gif"
   },
   {
     "name": "EZ-Bar Decline Triceps Ext",
@@ -4462,7 +4546,8 @@
       "After completing one set on the right for the recommended amount of repetitions, switch to your left side. Tip: Focus on really twisting your torso and feeling the contraction when you are in the up position."
     ],
     "category": "strength",
-    "id": "Decline_Oblique_Crunch"
+    "id": "Decline_Oblique_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Bodyweight Decline Push-Up",
@@ -4484,7 +4569,8 @@
       "After a brief pause at the top contracted position, you can begin to lower yourself downward again for as many repetitions as needed."
     ],
     "category": "strength",
-    "id": "Decline_Push-Up"
+    "id": "Decline_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0279-i5cEhka.gif"
   },
   {
     "name": "Decline Bench Reverse Crunch",
@@ -4504,7 +4590,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Decline_Reverse_Crunch"
+    "id": "Decline_Reverse_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0872-nCU1Ekp.gif"
   },
   {
     "name": "Decline Smith Press",
@@ -4600,7 +4687,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dip_Machine"
+    "id": "Dip_Machine",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0814-X6C6i5Y.gif"
   },
   {
     "name": "Bodyweight Chest Dip",
@@ -4622,7 +4710,8 @@
       "Repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dips_-_Chest_Version"
+    "id": "Dips_-_Chest_Version",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0251-9WTm7dq.gif"
   },
   {
     "name": "Bodyweight Triceps Dip",
@@ -4644,7 +4733,8 @@
       "Repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dips_-_Triceps_Version"
+    "id": "Dips_-_Triceps_Version",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0814-X6C6i5Y.gif"
   },
   {
     "name": "Machine Donkey Calf Raise",
@@ -4664,7 +4754,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Donkey_Calf_Raises"
+    "id": "Donkey_Calf_Raises",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0284-u5ESqzH.gif"
   },
   {
     "name": "Dual Kettlebell Alt Hang Clean",
@@ -4784,7 +4875,8 @@
       "Pause for a second after retrieving the kettlebell from the ground and reverse the motion back to the starting position."
     ],
     "category": "strength",
-    "id": "Double_Kettlebell_Windmill"
+    "id": "Double_Kettlebell_Windmill",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0554-9Tkqa9O.gif"
   },
   {
     "name": "Bodyweight Double Leg Butt Kick",
@@ -4850,7 +4942,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Drag_Curl"
+    "id": "Drag_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0038-IENzBdA.gif"
   },
   {
     "name": "Bodyweight Drop Push-Up",
@@ -4871,7 +4964,8 @@
       "With good posture, drop from the platforms by pressing up and moving your hands to shoulder width, cushioning your landing by absorbing the impact through the arm."
     ],
     "category": "plyometrics",
-    "id": "Drop_Push"
+    "id": "Drop_Push",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Dumbbell Alternating Biceps Curl",
@@ -4916,7 +5010,8 @@
       "Repeat the movement for the prescribed amount of repetitions of your training program."
     ],
     "category": "strength",
-    "id": "Dumbbell_Bench_Press"
+    "id": "Dumbbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0289-SpYC0Kp.gif"
   },
   {
     "name": "Dumbbell Neutral Bench Press",
@@ -4959,7 +5054,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dumbbell_Bicep_Curl"
+    "id": "Dumbbell_Bicep_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0294-NbVPDMW.gif"
   },
   {
     "name": "Dumbbell Clean",
@@ -4987,7 +5083,8 @@
       "Upon receiving the weight in the squat position, extend the hips and knees to finish in a standing position with the weights on your shoulders."
     ],
     "category": "strength",
-    "id": "Dumbbell_Clean"
+    "id": "Dumbbell_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0295-7Hg55JG.gif"
   },
   {
     "name": "Dumbbell Floor Press",
@@ -5028,7 +5125,8 @@
       "Hold for a second at the contracted position and repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dumbbell_Flyes"
+    "id": "Dumbbell_Flyes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0308-yz9nUhF.gif"
   },
   {
     "name": "Dumbbell Incline Row",
@@ -5052,7 +5150,8 @@
       "Pause at the top of the motion, and then return to the starting position."
     ],
     "category": "strength",
-    "id": "Dumbbell_Incline_Row"
+    "id": "Dumbbell_Incline_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0327-7vG5o25.gif"
   },
   {
     "name": "Dumbbell Incline Front Raise",
@@ -5097,7 +5196,8 @@
       "Repeat the movement for the recommended amount of repetitions and then perform with the left leg."
     ],
     "category": "strength",
-    "id": "Dumbbell_Lunges"
+    "id": "Dumbbell_Lunges",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0336-RRWFUcw.gif"
   },
   {
     "name": "Dumbbell Lying 1-Arm Rear Fly",
@@ -5140,7 +5240,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dumbbell_Lying_Pronation"
+    "id": "Dumbbell_Lying_Pronation",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0347-mym4hJo.gif"
   },
   {
     "name": "Dumbbell Lying Rear Delt Fly",
@@ -5181,7 +5282,8 @@
       "Repeat for the recommended amount of repetitions and then switch to the other arm."
     ],
     "category": "strength",
-    "id": "Dumbbell_Lying_Supination"
+    "id": "Dumbbell_Lying_Supination",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0349-M2Pm3zj.gif"
   },
   {
     "name": "Dumbbell 1-Arm Shoulder Press",
@@ -5269,7 +5371,8 @@
       "Repeat for the recommended amount of times."
     ],
     "category": "strength",
-    "id": "Dumbbell_Prone_Incline_Curl"
+    "id": "Dumbbell_Prone_Incline_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0374-mwpPcr1.gif"
   },
   {
     "name": "Dumbbell Front Raise",
@@ -5290,7 +5393,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dumbbell_Raise"
+    "id": "Dumbbell_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0310-3eGE2JC.gif"
   },
   {
     "name": "Dumbbell Reverse Lunge",
@@ -5419,7 +5523,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dumbbell_Shrug"
+    "id": "Dumbbell_Shrug",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0406-NJzBsGJ.gif"
   },
   {
     "name": "Dumbbell Side Bend",
@@ -5438,7 +5543,8 @@
       "Repeat for the recommended amount of repetitions and then change hands."
     ],
     "category": "strength",
-    "id": "Dumbbell_Side_Bend"
+    "id": "Dumbbell_Side_Bend",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0407-IpONWYv.gif"
   },
   {
     "name": "Dumbbell Squat",
@@ -5463,7 +5569,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Dumbbell_Squat"
+    "id": "Dumbbell_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0413-HsvHqgf.gif"
   },
   {
     "name": "Dumbbell Box Squat",
@@ -5511,7 +5618,8 @@
       "Repeat with the right leg for the recommended amount of repetitions and then perform with the left leg."
     ],
     "category": "strength",
-    "id": "Dumbbell_Step_Ups"
+    "id": "Dumbbell_Step_Ups",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0431-aXtJhlg.gif"
   },
   {
     "name": "Dumbbell Pronated Triceps Ext",
@@ -5566,7 +5674,8 @@
       "Keeping your arms straight, quickly move your arms back as far as possible and back in again, similar to an exaggerated clapping motion. Repeat 5-10 times, increasing speed as you do so."
     ],
     "category": "stretching",
-    "id": "Dynamic_Chest_Stretch"
+    "id": "Dynamic_Chest_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1167-3uj0Ozg.gif"
   },
   {
     "name": "EZ-Bar Curl",
@@ -5645,7 +5754,8 @@
       "Return to the starting position and repeat the movement for the desired number of repetitions before switching sides."
     ],
     "category": "strength",
-    "id": "Elbow_to_Knee"
+    "id": "Elbow_to_Knee",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2312-AQIhRjM.gif"
   },
   {
     "name": "Elbows Back",
@@ -5753,7 +5863,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Exercise_Ball_Crunch"
+    "id": "Exercise_Ball_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Stability Ball Pull-In",
@@ -6043,7 +6154,8 @@
       "Place your hands in front of you as you reach the floor. This movement is very difficult and you may be unable to do it unaided. Use your arms to lightly push off the floor to aid your return to the starting position."
     ],
     "category": "strength",
-    "id": "Floor_Glute-Ham_Raise"
+    "id": "Floor_Glute-Ham_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3193-Vvwjz6N.gif"
   },
   {
     "name": "Barbell Floor Press",
@@ -6108,7 +6220,8 @@
       "Continue alternating in this manner (as though you are doing a flutter kick in water) until you have done the recommended amount of repetitions for each leg. Make sure that you keep a controlled movement at all times. Tip: You will breathe normally as you perform this movement."
     ],
     "category": "strength",
-    "id": "Flutter_Kicks"
+    "id": "Flutter_Kicks",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0459-UVo2Qs2.gif"
   },
   {
     "name": "Foot-SMR",
@@ -6173,7 +6286,8 @@
       "Return to the upright position by driving through the front of the heel and extending the knees and hips."
     ],
     "category": "olympic weightlifting",
-    "id": "Frankenstein_Squat"
+    "id": "Frankenstein_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3194-bdWcbaU.gif"
   },
   {
     "name": "Bodyweight Jump Squat",
@@ -6198,7 +6312,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Freehand_Jump_Squat"
+    "id": "Freehand_Jump_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0514-LIlE5Tn.gif"
   },
   {
     "name": "Bodyweight Frog Hops",
@@ -6266,7 +6381,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Front_Barbell_Squat"
+    "id": "Front_Barbell_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0042-zG0zs85.gif"
   },
   {
     "name": "Barbell Front Box Squat",
@@ -6381,7 +6497,8 @@
       "Continue alternating in this fashion until all of the recommended amount of repetitions have been performed for each arm."
     ],
     "category": "strength",
-    "id": "Front_Dumbbell_Raise"
+    "id": "Front_Dumbbell_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0310-3eGE2JC.gif"
   },
   {
     "name": "Dumbbell Incline Front Raise",
@@ -6461,7 +6578,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Front_Raise_And_Pullover"
+    "id": "Front_Raise_And_Pullover",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0041-b2Uoz54.gif"
   },
   {
     "name": "Barbell Front Squat",
@@ -6484,7 +6602,8 @@
       "Begin to raise the bar as you exhale by pushing the floor mainly with the heel or middle of your foot as you straighten the legs again and return to the starting position."
     ],
     "category": "strength",
-    "id": "Front_Squat_Clean_Grip"
+    "id": "Front_Squat_Clean_Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0042-zG0zs85.gif"
   },
   {
     "name": "Dual Kettlebell Front Squat",
@@ -6505,7 +6624,8 @@
       "Rise back up by driving through your heels and repeat."
     ],
     "category": "strength",
-    "id": "Front_Squats_With_Two_Kettlebells"
+    "id": "Front_Squats_With_Two_Kettlebells",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0533-DB0n8AG.gif"
   },
   {
     "name": "Dumbbell Front Raise",
@@ -6524,7 +6644,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Front_Two-Dumbbell_Raise"
+    "id": "Front_Two-Dumbbell_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0310-3eGE2JC.gif"
   },
   {
     "name": "Cable Full ROM Pulldown",
@@ -6569,7 +6690,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Gironda_Sternum_Chins"
+    "id": "Gironda_Sternum_Chins",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif"
   },
   {
     "name": "Machine Glute-Ham Raise",
@@ -6590,7 +6712,8 @@
       "Return to the starting position, keeping your descent under control."
     ],
     "category": "powerlifting",
-    "id": "Glute_Ham_Raise"
+    "id": "Glute_Ham_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3193-Vvwjz6N.gif"
   },
   {
     "name": "Glute Kickback",
@@ -6634,7 +6757,8 @@
       "At the bottom position, pause and use your elbows to push your knees out. Return to the starting position, and repeat for 10-20 repetitions."
     ],
     "category": "strength",
-    "id": "Goblet_Squat"
+    "id": "Goblet_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1760-yn8yg1r.gif"
   },
   {
     "name": "Barbell Good Morning",
@@ -6656,7 +6780,8 @@
       "Reverse the motion by extending through the hips with your glutes and hamstrings. Continue until you have returned to the starting position."
     ],
     "category": "powerlifting",
-    "id": "Good_Morning"
+    "id": "Good_Morning",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0044-XlZ4lAC.gif"
   },
   {
     "name": "Barbell Good Morning off Pins",
@@ -6677,7 +6802,8 @@
       "Begin the motion by extending through the hips with your glutes and hamstrings, and you are standing with the weight. Slowly lower the weight back to the pins returning to the starting position."
     ],
     "category": "powerlifting",
-    "id": "Good_Morning_off_Pins"
+    "id": "Good_Morning_off_Pins",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0044-XlZ4lAC.gif"
   },
   {
     "name": "Bodyweight Gorilla Chin Crunch",
@@ -6700,7 +6826,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Gorilla_Chin_Crunch"
+    "id": "Gorilla_Chin_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0467-bmwlYvD.gif"
   },
   {
     "name": "Groin and Back Stretch",
@@ -6762,7 +6889,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Hack_Squat"
+    "id": "Hack_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0046-5VCj6iH.gif"
   },
   {
     "name": "Dumbbell Hammer Curl",
@@ -6782,7 +6910,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Hammer_Curls"
+    "id": "Hammer_Curls",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0313-slDvUAU.gif"
   },
   {
     "name": "Dumbbell Neutral Incline Press",
@@ -6843,7 +6972,8 @@
       "Pull on the belt to create tension in the calves and hamstrings. Hold this stretch for 10-30 seconds, and repeat with the other leg."
     ],
     "category": "stretching",
-    "id": "Hamstring_Stretch"
+    "id": "Hamstring_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1511-99rWm7w.gif"
   },
   {
     "name": "Handstand Push-Ups",
@@ -6865,7 +6995,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Handstand_Push-Ups"
+    "id": "Handstand_Push-Ups",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3302-XooAdhl.gif"
   },
   {
     "name": "Hang Clean",
@@ -6891,7 +7022,8 @@
       "Immediately recover by driving through the heels, keeping the torso upright and elbows up. Continue until you have risen to a standing position."
     ],
     "category": "olympic weightlifting",
-    "id": "Hang_Clean"
+    "id": "Hang_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0518-I4tibZG.gif"
   },
   {
     "name": "Hang Clean - Below the Knees",
@@ -7016,7 +7148,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Hanging_Leg_Raise"
+    "id": "Hanging_Leg_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0472-I3tsCnC.gif"
   },
   {
     "name": "Hanging Pike",
@@ -7036,7 +7169,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Hanging_Pike"
+    "id": "Hanging_Pike",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0473-nuBF9MO.gif"
   },
   {
     "name": "Heaving Snatch Balance",
@@ -7274,7 +7408,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Hyperextensions_Back_Extensions"
+    "id": "Hyperextensions_Back_Extensions",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0489-zhMwOwE.gif"
   },
   {
     "name": "Flat Bench Hyperextensions",
@@ -7297,7 +7432,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Hyperextensions_With_No_Hyperextension_Bench"
+    "id": "Hyperextensions_With_No_Hyperextension_Bench",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0489-zhMwOwE.gif"
   },
   {
     "name": "IT Band and Glute Stretch",
@@ -7352,7 +7488,8 @@
       "Continue walking until your feet are by hour hands, keeping your legs straight as you do so."
     ],
     "category": "stretching",
-    "id": "Inchworm"
+    "id": "Inchworm",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1471-ZgsNQ6d.gif"
   },
   {
     "name": "Barbell Incline Triceps Ext",
@@ -7375,7 +7512,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Incline_Barbell_Triceps_Extension"
+    "id": "Incline_Barbell_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0449-KyLtiLT.gif"
   },
   {
     "name": "Dumbbell Incline Bench Pull",
@@ -7511,7 +7649,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Incline_Dumbbell_Flyes"
+    "id": "Incline_Dumbbell_Flyes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0319-ESOd5Pl.gif"
   },
   {
     "name": "Dumbbell Incline Fly w/ Twist",
@@ -7534,7 +7673,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Incline_Dumbbell_Flyes_-_With_A_Twist"
+    "id": "Incline_Dumbbell_Flyes_-_With_A_Twist",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0319-ESOd5Pl.gif"
   },
   {
     "name": "Incline Dumbbell Press",
@@ -7577,7 +7717,8 @@
       "Continue to the top of the movement and pause, then slowly return to the start position."
     ],
     "category": "strength",
-    "id": "Incline_Hammer_Curls"
+    "id": "Incline_Hammer_Curls",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0320-ByX0WxV.gif"
   },
   {
     "name": "Dumbbell Incline Inner Bicep Curl",
@@ -7618,7 +7759,8 @@
       "Push body up until arms are extended. Repeat."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up"
+    "id": "Incline_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Bodyweight Close-Grip Incline Push-Up",
@@ -7641,7 +7783,8 @@
       "Return to the starting position by extending the elbows, pressing yourself back up."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up_Close-Grip"
+    "id": "Incline_Push-Up_Close-Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Incline Push-Up Depth Jump",
@@ -7663,7 +7806,8 @@
       "Repeat the motion to return to the starting position."
     ],
     "category": "plyometrics",
-    "id": "Incline_Push-Up_Depth_Jump"
+    "id": "Incline_Push-Up_Depth_Jump",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Incline Push-Up Medium",
@@ -7687,7 +7831,8 @@
       "Return to the starting position by extending the elbows, pressing yourself back up."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up_Medium"
+    "id": "Incline_Push-Up_Medium",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Bodyweight Reverse Incline Push-Up",
@@ -7711,7 +7856,8 @@
       "Return to the starting position by extending the elbows, pressing yourself back up."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up_Reverse_Grip"
+    "id": "Incline_Push-Up_Reverse_Grip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Incline Push-Up Wide",
@@ -7735,7 +7881,8 @@
       "Return to the starting position by extending the elbows, pressing yourself back up."
     ],
     "category": "strength",
-    "id": "Incline_Push-Up_Wide"
+    "id": "Incline_Push-Up_Wide",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0493-B1EVP9F.gif"
   },
   {
     "name": "Intermediate Groin Stretch",
@@ -7769,7 +7916,8 @@
       "Flex the knee and extend the hip of the leg to be stretched, using both hands to pull on the belt. Your knee and your hip should come off of the floor, creating tension in the hip flexors and quadriceps. Hold the stretch for 10-20 seconds, and repeat on the other leg."
     ],
     "category": "stretching",
-    "id": "Intermediate_Hip_Flexor_and_Quad_Stretch"
+    "id": "Intermediate_Hip_Flexor_and_Quad_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1564-tFGKm99.gif"
   },
   {
     "name": "Band Internal Rotation",
@@ -7811,7 +7959,8 @@
       "Repeat for the desired number of repetitions."
     ],
     "category": "strength",
-    "id": "Inverted_Row"
+    "id": "Inverted_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0499-bZGHsAZ.gif"
   },
   {
     "name": "Suspension Inverted Row",
@@ -7833,7 +7982,8 @@
       "Repeat for the desired number of repetitions."
     ],
     "category": "strength",
-    "id": "Inverted_Row_with_Straps"
+    "id": "Inverted_Row_with_Straps",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0499-bZGHsAZ.gif"
   },
   {
     "name": "Dumbbell Iron Cross",
@@ -7854,7 +8004,8 @@
     ],
     "instructions": [],
     "category": "strength",
-    "id": "Iron_Cross"
+    "id": "Iron_Cross",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0332-cALkHHX.gif"
   },
   {
     "name": "Iron Crosses (stretch)",
@@ -7895,7 +8046,8 @@
       "Rest for the recommended amount of time and repeat."
     ],
     "category": "plyometrics",
-    "id": "Isometric_Chest_Squeezes"
+    "id": "Isometric_Chest_Squeezes",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1297-HbSG1Pw.gif"
   },
   {
     "name": "Isometric Neck Hold (Front/Back)",
@@ -7958,7 +8110,8 @@
       "Repeat for the desired number of repetitions."
     ],
     "category": "strength",
-    "id": "Isometric_Wipers"
+    "id": "Isometric_Wipers",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0500-11wrviz.gif"
   },
   {
     "name": "Barbell JM Press",
@@ -8000,7 +8153,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Jackknife_Sit-Up"
+    "id": "Jackknife_Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0507-mbkgB44.gif"
   },
   {
     "name": "Janda Sit-Up",
@@ -8019,7 +8173,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Janda_Sit-Up"
+    "id": "Janda_Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0508-1GPHRyK.gif"
   },
   {
     "name": "Barbell Jefferson Squat",
@@ -8047,7 +8202,8 @@
       "Now drive yourself back up to the starting position by pushing with the feet . Tip: Keep the bar hanging at arm's length and your elbows locked with a slight bend. The arms only serve as hooks. Avoid doing any lifting with them. Do the lifting with your thighs; not your arms."
     ],
     "category": "strength",
-    "id": "Jefferson_Squats"
+    "id": "Jefferson_Squats",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0051-pkSoCW9.gif"
   },
   {
     "name": "Jerk Balance",
@@ -8160,7 +8316,8 @@
       "Return the kettlebell to the starting position, with the palm facing in."
     ],
     "category": "strength",
-    "id": "Kettlebell_Arnold_Press"
+    "id": "Kettlebell_Arnold_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0523-UM8mgyG.gif"
   },
   {
     "name": "Kettlebell Dead Clean",
@@ -8204,7 +8361,8 @@
       "Pick up a kettlebell and pass it to your other hand between your legs. The receiving hand should reach from behind the legs. Go back and forth for several repetitions."
     ],
     "category": "strength",
-    "id": "Kettlebell_Figure_8"
+    "id": "Kettlebell_Figure_8",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0532-L4ay0PW.gif"
   },
   {
     "name": "Kettlebell Hang Clean",
@@ -8228,7 +8386,8 @@
       "Lower kettlebell to a hanging position between your legs while keeping the hamstrings loaded. Keep your head up at all times."
     ],
     "category": "strength",
-    "id": "Kettlebell_Hang_Clean"
+    "id": "Kettlebell_Hang_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0535-LHWF7us.gif"
   },
   {
     "name": "Kettlebell One-Legged Deadlift",
@@ -8315,7 +8474,8 @@
       "Lower yourself again and repeat."
     ],
     "category": "strength",
-    "id": "Kettlebell_Pistol_Squat"
+    "id": "Kettlebell_Pistol_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0544-5bpPTHv.gif"
   },
   {
     "name": "Kettlebell Seated Press",
@@ -8335,7 +8495,8 @@
       "Press the kettlebell up and out until it is locked out overhead. Return to the starting position."
     ],
     "category": "strength",
-    "id": "Kettlebell_Seated_Press"
+    "id": "Kettlebell_Seated_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0546-BkxB8LW.gif"
   },
   {
     "name": "Kettlebell Seesaw Press",
@@ -8355,7 +8516,8 @@
       "Lower the kettlebell and immediately press the other kettlebell. Make sure to do the same amount of reps on both sides."
     ],
     "category": "strength",
-    "id": "Kettlebell_Seesaw_Press"
+    "id": "Kettlebell_Seesaw_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0547-UDm6cGl.gif"
   },
   {
     "name": "Kettlebell Sumo High Pull",
@@ -8378,7 +8540,8 @@
       "Begin by extending the hips and knees, simultaneously pulling the kettlebell to your shoulders, raising your elbows as you do so. Reverse the motion to return to the starting position."
     ],
     "category": "strength",
-    "id": "Kettlebell_Sumo_High_Pull"
+    "id": "Kettlebell_Sumo_High_Pull",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0548-8ARQ9Hw.gif"
   },
   {
     "name": "Kettlebell Thruster",
@@ -8400,7 +8563,8 @@
       "As you begin the next repetition, return the weights to the shoulders."
     ],
     "category": "strength",
-    "id": "Kettlebell_Thruster"
+    "id": "Kettlebell_Thruster",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0550-yWxMvB5.gif"
   },
   {
     "name": "Kettlebell Turkish Get-Up (Lunge)",
@@ -8470,7 +8634,8 @@
       "Pause for a second after reaching the ground and reverse the motion back to the starting position."
     ],
     "category": "strength",
-    "id": "Kettlebell_Windmill"
+    "id": "Kettlebell_Windmill",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0554-9Tkqa9O.gif"
   },
   {
     "name": "Kipping Muscle Up",
@@ -8498,7 +8663,8 @@
       "Use care when lowering yourself to the ground."
     ],
     "category": "strength",
-    "id": "Kipping_Muscle_Up"
+    "id": "Kipping_Muscle_Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0558-pM07UxU.gif"
   },
   {
     "name": "Knee Across The Body",
@@ -8628,7 +8794,8 @@
       "Continue this series of movements to failure."
     ],
     "category": "strength",
-    "id": "Kneeling_Cable_Crunch_With_Alternating_Oblique_Twists"
+    "id": "Kneeling_Cable_Crunch_With_Alternating_Oblique_Twists",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0175-WW95auq.gif"
   },
   {
     "name": "Kneeling Cable Triceps Extension",
@@ -8730,7 +8897,8 @@
       "Continue with the squat by driving through your heels and extending the knees to come to a standing position."
     ],
     "category": "olympic weightlifting",
-    "id": "Kneeling_Jump_Squat"
+    "id": "Kneeling_Jump_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1420-UgDm3oy.gif"
   },
   {
     "name": "Kneeling Single-Arm High Pulley Row",
@@ -8798,7 +8966,8 @@
       "Continue alternating the movement until the set is complete."
     ],
     "category": "strength",
-    "id": "Landmine_180s"
+    "id": "Landmine_180s",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0562-QYysSLV.gif"
   },
   {
     "name": "Landmine Linear Jammer",
@@ -8977,7 +9146,8 @@
       "Slowly straighten the legs as much as possible and then pull the leg toward your nose. Switch sides."
     ],
     "category": "stretching",
-    "id": "Leg-Up_Hamstring_Stretch"
+    "id": "Leg-Up_Hamstring_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1511-99rWm7w.gif"
   },
   {
     "name": "Leg Extensions",
@@ -9018,7 +9188,8 @@
       "Repeat the movement with the opposite leg."
     ],
     "category": "strength",
-    "id": "Leg_Lift"
+    "id": "Leg_Lift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3663-tFToB7l.gif"
   },
   {
     "name": "Leg Press",
@@ -9042,7 +9213,8 @@
       "Repeat for the recommended amount of repetitions and ensure to lock the safety pins properly once you are done. You do not want that platform falling on you fully loaded."
     ],
     "category": "strength",
-    "id": "Leg_Press"
+    "id": "Leg_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2287-V07qpXy.gif"
   },
   {
     "name": "Leg Pull-In",
@@ -9348,7 +9520,8 @@
       "Keeping your body straight, reverse the motion, going hand over hand back to the starting position."
     ],
     "category": "strength",
-    "id": "London_Bridges"
+    "id": "London_Bridges",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0609-bLyQokI.gif"
   },
   {
     "name": "Looking At Ceiling",
@@ -9465,7 +9638,8 @@
       "Using your lower back muscles, extend your spine lifting your chest off of the ground. Do not use your arms to push yourself up. Keep your head up during the movement. Repeat for 10-20 repetitions."
     ],
     "category": "stretching",
-    "id": "Lower_Back_Curl"
+    "id": "Lower_Back_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1352-ANbbry2.gif"
   },
   {
     "name": "Lunge Pass Through",
@@ -9489,7 +9663,8 @@
       "Repeat the movement for the recommended amount of repetitions, alternating legs."
     ],
     "category": "strength",
-    "id": "Lunge_Pass_Through"
+    "id": "Lunge_Pass_Through",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0536-WKMQzCD.gif"
   },
   {
     "name": "Lunge Sprint",
@@ -9551,7 +9726,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Lying_Cable_Curl"
+    "id": "Lying_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Barbell Lying Cambered Row",
@@ -9596,7 +9772,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Lying_Close-Grip_Bar_Curl_On_High_Pulley"
+    "id": "Lying_Close-Grip_Bar_Curl_On_High_Pulley",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0182-61GrD55.gif"
   },
   {
     "name": "Barbell Lying Triceps Ext",
@@ -9616,7 +9793,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Lying_Close-Grip_Barbell_Triceps_Extension_Behind_The_Head"
+    "id": "Lying_Close-Grip_Barbell_Triceps_Extension_Behind_The_Head",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0061-iZop9xO.gif"
   },
   {
     "name": "EZ-Bar Lying Triceps Press",
@@ -9636,7 +9814,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Lying_Close-Grip_Barbell_Triceps_Press_To_Chin"
+    "id": "Lying_Close-Grip_Barbell_Triceps_Press_To_Chin",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0816-fSrPP6B.gif"
   },
   {
     "name": "Lying Crossover",
@@ -9677,7 +9856,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Lying_Dumbbell_Tricep_Extension"
+    "id": "Lying_Dumbbell_Tricep_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0351-mpKZGWz.gif"
   },
   {
     "name": "Plate Prone Neck Extension",
@@ -9736,7 +9916,8 @@
       "After 10-20 seconds, completely relax as your partner gently pushes the ankle and knee towards your chest. Be sure to inform your helper when the stretch is adequate to prevent injury or overstretching."
     ],
     "category": "stretching",
-    "id": "Lying_Glute"
+    "id": "Lying_Glute",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1709-yn0LjwL.gif"
   },
   {
     "name": "Lying Hamstring",
@@ -9775,7 +9956,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Lying_High_Bench_Barbell_Curl"
+    "id": "Lying_High_Bench_Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0072-WLvTAv5.gif"
   },
   {
     "name": "Machine Lying Leg Curl",
@@ -9898,7 +10080,8 @@
       "Return back to the starting position very slowly."
     ],
     "category": "strength",
-    "id": "Lying_Supine_Dumbbell_Curl"
+    "id": "Lying_Supine_Dumbbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0350-KUaZst7.gif"
   },
   {
     "name": "Machine Lying T-Bar Row",
@@ -9942,7 +10125,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Lying_Triceps_Press"
+    "id": "Lying_Triceps_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0816-fSrPP6B.gif"
   },
   {
     "name": "Machine Chest Press",
@@ -10176,7 +10360,8 @@
       "On the following set, switch grips; so if you had the right hand with the palms facing you and the left one with the palms facing forward, on the next set you will have the palms facing forward for the right hand and facing you for the left."
     ],
     "category": "strength",
-    "id": "Mixed_Grip_Chin"
+    "id": "Mixed_Grip_Chin",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif"
   },
   {
     "name": "Monster Walk",
@@ -10194,7 +10379,8 @@
       "After several steps, do just the opposite and walk backward to where you started."
     ],
     "category": "strength",
-    "id": "Monster_Walk"
+    "id": "Monster_Walk",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0628-O95afRA.gif"
   },
   {
     "name": "Bodyweight Mountain Climber",
@@ -10215,7 +10401,8 @@
       "Explosively reverse the positions of your legs, extending the bent leg until the leg is straight and supported by the toe, and bringing the other foot up with the hip and knee flexed. Repeat in an alternating fashion for 20-30 seconds."
     ],
     "category": "plyometrics",
-    "id": "Mountain_Climbers"
+    "id": "Mountain_Climbers",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0630-RJgzwny.gif"
   },
   {
     "name": "Moving Claw Series",
@@ -10287,7 +10474,8 @@
       "Use care when lowering yourself to the ground."
     ],
     "category": "strength",
-    "id": "Muscle_Up"
+    "id": "Muscle_Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0631-yJUHKTn.gif"
   },
   {
     "name": "Machine Narrow Hack Squat",
@@ -10386,7 +10574,8 @@
       "If you are unable to complete a rep, use a band, a partner, or push off of a box to aid in completing a repetition."
     ],
     "category": "strength",
-    "id": "Natural_Glute_Ham_Raise"
+    "id": "Natural_Glute_Ham_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3193-Vvwjz6N.gif"
   },
   {
     "name": "Neck-SMR",
@@ -10448,7 +10637,8 @@
       "Continue alternating in this manner until all of the recommended repetitions for each side have been completed."
     ],
     "category": "strength",
-    "id": "Oblique_Crunches"
+    "id": "Oblique_Crunches",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Bodyweight Oblique Crunch",
@@ -10468,7 +10658,8 @@
       "Remember to breathe in during the eccentric (lowering) part of the exercise and to breathe out during the concentric (elevation) part of the exercise."
     ],
     "category": "strength",
-    "id": "Oblique_Crunches_-_On_The_Floor"
+    "id": "Oblique_Crunches_-_On_The_Floor",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Barbell Olympic Squat",
@@ -11058,7 +11249,8 @@
       "Slowly lean toward your arm until you feel a stretch in your lats."
     ],
     "category": "stretching",
-    "id": "One_Arm_Against_Wall"
+    "id": "One_Arm_Against_Wall",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1355-ZZTGMKh.gif"
   },
   {
     "name": "Bodyweight Single-Arm Chin-Up",
@@ -11084,7 +11276,8 @@
       "Switch arms and repeat the movement."
     ],
     "category": "strength",
-    "id": "One_Arm_Chin-Up"
+    "id": "One_Arm_Chin-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1326-T2mxWqc.gif"
   },
   {
     "name": "Dumbbell 1-Arm Bench Press",
@@ -11375,7 +11568,8 @@
       "Repeat for the recommended amount of repetitions prescribed in your program."
     ],
     "category": "strength",
-    "id": "Overhead_Cable_Curl"
+    "id": "Overhead_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Overhead Lat",
@@ -11414,7 +11608,8 @@
       "Receive the ball with both hands on the bounce and repeat the movement."
     ],
     "category": "plyometrics",
-    "id": "Overhead_Slam"
+    "id": "Overhead_Slam",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1354-oHg8eop.gif"
   },
   {
     "name": "Overhead Squat",
@@ -11443,7 +11638,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "olympic weightlifting",
-    "id": "Overhead_Squat"
+    "id": "Overhead_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0069-gfk9kD4.gif"
   },
   {
     "name": "Overhead Stretch",
@@ -11485,7 +11681,8 @@
       "After 10-20 seconds, relax the arm and allow your partner to further stretch the tricep by applying gentle pressure to the wrist. Hold for 10-20 seconds, and then switch sides."
     ],
     "category": "stretching",
-    "id": "Overhead_Triceps"
+    "id": "Overhead_Triceps",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0092-5uFK1xr.gif"
   },
   {
     "name": "Pallof Press",
@@ -11510,7 +11707,8 @@
       "At the conclusion of the set, repeat facing the other direction."
     ],
     "category": "strength",
-    "id": "Pallof_Press"
+    "id": "Pallof_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0979-9pa4H5m.gif"
   },
   {
     "name": "Pallof Press With Rotation",
@@ -11666,7 +11864,8 @@
       "To go into a bridge, lift the entire spine except the neck."
     ],
     "category": "stretching",
-    "id": "Pelvic_Tilt_Into_Bridge"
+    "id": "Pelvic_Tilt_Into_Bridge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1422-D9qe7CM.gif"
   },
   {
     "name": "Peroneals-SMR",
@@ -11700,7 +11899,8 @@
       "With the leg extended and the heel off of the ground, pull on the belt so that the foot is inverted, with the inside of the foot being pulled towards you. Hold for 10-20 seconds, and then switch sides."
     ],
     "category": "stretching",
-    "id": "Peroneals_Stretch"
+    "id": "Peroneals_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1388-XhfS1DZ.gif"
   },
   {
     "name": "Physioball Hip Bridge",
@@ -11747,7 +11947,8 @@
       "Return the bar to the pins, pausing before beginning the next repetition."
     ],
     "category": "powerlifting",
-    "id": "Pin_Presses"
+    "id": "Pin_Presses",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1751-bndCa3Q.gif"
   },
   {
     "name": "Piriformis-SMR",
@@ -11781,7 +11982,8 @@
       "Keep your body straight at all times, and hold this position as long as possible. To increase difficulty, an arm or leg can be raised."
     ],
     "category": "strength",
-    "id": "Plank"
+    "id": "Plank",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3544-5VXmnV5.gif"
   },
   {
     "name": "Plate Pinch",
@@ -11867,7 +12069,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Plie_Dumbbell_Squat"
+    "id": "Plie_Dumbbell_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0413-HsvHqgf.gif"
   },
   {
     "name": "Plyo Kettlebell Pushups",
@@ -11912,7 +12115,8 @@
       "For added difficulty, add claps into the movement while you are air borne."
     ],
     "category": "plyometrics",
-    "id": "Plyo_Push-up"
+    "id": "Plyo_Push-up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0545-ktf3nvW.gif"
   },
   {
     "name": "Posterior Tibialis Stretch",
@@ -11929,7 +12133,8 @@
       "With the leg extended and the heel off of the ground, pull on the belt so that the foot is everted, with the outside of the foot being pulled towards you. Hold for 10-20 seconds, and then switch sides."
     ],
     "category": "stretching",
-    "id": "Posterior_Tibialis_Stretch"
+    "id": "Posterior_Tibialis_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1389-DEEqoI2.gif"
   },
   {
     "name": "Power Clean",
@@ -11978,7 +12183,8 @@
       "Start over at Phase 1 and repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Power_Clean"
+    "id": "Power_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0648-SiWCcTN.gif"
   },
   {
     "name": "Power Clean from Blocks",
@@ -12000,7 +12206,8 @@
       "Immediately recover by driving through the heels, keeping the torso upright and elbows up. Continue until you have risen to a standing position, and complete the repetition by returning the weight to the boxes."
     ],
     "category": "olympic weightlifting",
-    "id": "Power_Clean_from_Blocks"
+    "id": "Power_Clean_from_Blocks",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0648-SiWCcTN.gif"
   },
   {
     "name": "Power Jerk",
@@ -12151,7 +12358,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Preacher_Curl"
+    "id": "Preacher_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0059-SYJ4Bkt.gif"
   },
   {
     "name": "Preacher Hammer Dumbbell Curl",
@@ -12195,7 +12403,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Press_Sit-Up"
+    "id": "Press_Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0071-wnEscH8.gif"
   },
   {
     "name": "Prone Manual Hamstring",
@@ -12257,7 +12466,8 @@
       "Begin the movement by reaching through your legs as far as possible, bending at the hips. Keep your knees slightly bent. Keeping your arms straight, extend through the hip to stand straight up. Avoid pulling upward through the shoulders; all of the motion should originate through the hips."
     ],
     "category": "strength",
-    "id": "Pull_Through"
+    "id": "Pull_Through",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0991-VtTbiP3.gif"
   },
   {
     "name": "Pullups",
@@ -12303,7 +12513,8 @@
       "After pausing at the contracted position, repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Push-Up_Wide"
+    "id": "Push-Up_Wide",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Close-Grip Push-Up",
@@ -12325,7 +12536,8 @@
       "After a second pause at the contracted position, repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Push-Ups_-_Close_Triceps_Position"
+    "id": "Push-Ups_-_Close_Triceps_Position",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0259-x6KpKpq.gif"
   },
   {
     "name": "Decline Push-Up",
@@ -12348,7 +12560,8 @@
       "After a second pause at the contracted position, repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Push-Ups_With_Feet_Elevated"
+    "id": "Push-Ups_With_Feet_Elevated",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0279-i5cEhka.gif"
   },
   {
     "name": "Swiss Ball Decline Push-Up",
@@ -12371,7 +12584,8 @@
       "After a second pause at the contracted position, repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Push-Ups_With_Feet_On_An_Exercise_Ball"
+    "id": "Push-Ups_With_Feet_On_An_Exercise_Ball",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0279-i5cEhka.gif"
   },
   {
     "name": "Push Press",
@@ -12388,7 +12602,8 @@
     ],
     "instructions": [],
     "category": "olympic weightlifting",
-    "id": "Push_Press"
+    "id": "Push_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1700-FS63wTN.gif"
   },
   {
     "name": "Push Press - Behind the Neck",
@@ -12478,7 +12693,8 @@
       "After a second pause at the contracted position, repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Pushups_Close_and_Wide_Hand_Positions"
+    "id": "Pushups_Close_and_Wide_Hand_Positions",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Pyramid",
@@ -12497,7 +12713,8 @@
       "Rest your hands and feet on the floor. Your arms and legs can be slightly bent or straight, depending on the size of the ball, your flexibility, and the length of your limbs. This also helps develop stabilizing strength in your torso and shoulders."
     ],
     "category": "stretching",
-    "id": "Pyramid"
+    "id": "Pyramid",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1341-yU7w7CA.gif"
   },
   {
     "name": "Quad Stretch",
@@ -12514,7 +12731,8 @@
       "With the belt being held over the shoulder or overhead, gently pull to increase the stretch in the quadriceps. Hold for 10-20 seconds, and then switch sides."
     ],
     "category": "stretching",
-    "id": "Quad_Stretch"
+    "id": "Quad_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1512-qBcKorM.gif"
   },
   {
     "name": "Quadriceps-SMR",
@@ -12708,7 +12926,8 @@
       "Pause when the barbell touches your torso, and then drive the bar up with as much force as possible. The elbows should be tucked in until lockout."
     ],
     "category": "powerlifting",
-    "id": "Reverse_Band_Bench_Press"
+    "id": "Reverse_Band_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1254-khlHMqs.gif"
   },
   {
     "name": "Reverse Band Box Squat",
@@ -12837,7 +13056,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Reverse_Barbell_Curl"
+    "id": "Reverse_Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0031-25GPyDY.gif"
   },
   {
     "name": "Reverse Barbell Preacher Curls",
@@ -12859,7 +13079,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Reverse_Barbell_Preacher_Curls"
+    "id": "Reverse_Barbell_Preacher_Curls",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0070-qOgPVf6.gif"
   },
   {
     "name": "Reverse Cable Curl",
@@ -12880,7 +13101,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Reverse_Cable_Curl"
+    "id": "Reverse_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Reverse Crunch",
@@ -12900,7 +13122,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Reverse_Crunch"
+    "id": "Reverse_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0872-nCU1Ekp.gif"
   },
   {
     "name": "Reverse Flyes",
@@ -12943,7 +13166,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Reverse_Flyes_With_External_Rotation"
+    "id": "Reverse_Flyes_With_External_Rotation",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0383-EAs3xL9.gif"
   },
   {
     "name": "Barbell Reverse-Grip Row",
@@ -12987,7 +13211,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Reverse_Grip_Triceps_Pushdown"
+    "id": "Reverse_Grip_Triceps_Pushdown",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0207-VjYliFZ.gif"
   },
   {
     "name": "Reverse Hyperextension",
@@ -13010,7 +13235,8 @@
       "Repeat for the desired number of repetitions."
     ],
     "category": "strength",
-    "id": "Reverse_Hyperextension"
+    "id": "Reverse_Hyperextension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0489-zhMwOwE.gif"
   },
   {
     "name": "Machine Reverse Fly",
@@ -13164,7 +13390,8 @@
       "Repeat for the desired number of repetitions."
     ],
     "category": "strength",
-    "id": "Ring_Dips"
+    "id": "Ring_Dips",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0677-ezTvXcr.gif"
   },
   {
     "name": "Rocket Jump",
@@ -13233,7 +13460,8 @@
       "Once you have lowered yourself back down to the starting position, repeat the exercise for the prescribed amount of repetitions in your program."
     ],
     "category": "strength",
-    "id": "Rocky_Pull-Ups_Pulldowns"
+    "id": "Rocky_Pull-Ups_Pulldowns",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif"
   },
   {
     "name": "Romanian Deadlift",
@@ -13257,7 +13485,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Romanian_Deadlift"
+    "id": "Romanian_Deadlift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0085-wQ2c4XD.gif"
   },
   {
     "name": "Romanian Deadlift from Deficit",
@@ -13305,7 +13534,8 @@
       "To lower yourself, loosen the grip of your feet on the rope as you slide down using a hand over hand motion."
     ],
     "category": "strength",
-    "id": "Rope_Climb"
+    "id": "Rope_Climb",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0680-yaAxcQr.gif"
   },
   {
     "name": "Rope Crunch",
@@ -13325,7 +13555,8 @@
       "These can be done with twists or to the side to hit the obliques."
     ],
     "category": "strength",
-    "id": "Rope_Crunch"
+    "id": "Rope_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Rope Jumping",
@@ -13430,7 +13661,8 @@
       "Place your hands on either side of your front leg. To get more out of this stretch, push your butt up toward the ceiling, and then gradually lower it back toward the floor. You'll Stretch the hip flexor of the back leg and the hamstring and buttocks of the front."
     ],
     "category": "stretching",
-    "id": "Runners_Stretch"
+    "id": "Runners_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Running, Treadmill",
@@ -13451,7 +13683,8 @@
       "Treadmills offer convenience, cardiovascular benefits, and usually have less impact than running outside. A 150 lb person will burn over 450 calories running 8 miles per hour for 30 minutes. Maintain proper posture as you run, and only hold onto the handles when necessary, such as when dismounting or checking your heart rate."
     ],
     "category": "cardio",
-    "id": "Running_Treadmill"
+    "id": "Running_Treadmill",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Russian Twist",
@@ -13473,7 +13706,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Russian_Twist"
+    "id": "Russian_Twist",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0687-XVDdcoj.gif"
   },
   {
     "name": "Sandbag Load",
@@ -13524,7 +13758,8 @@
       "Pause at the completion of the movement, and then slowly return to the starting position before performing more repetitions."
     ],
     "category": "strength",
-    "id": "Scapular_Pull-Up"
+    "id": "Scapular_Pull-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0688-uTBt1HV.gif"
   },
   {
     "name": "Scissor Kick",
@@ -13692,7 +13927,8 @@
       "Repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Seated_Bent-Over_Two-Arm_Dumbbell_Triceps_Extension"
+    "id": "Seated_Bent-Over_Two-Arm_Dumbbell_Triceps_Extension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2188-kont8Ut.gif"
   },
   {
     "name": "Seated Biceps",
@@ -13713,7 +13949,8 @@
       "After 10-20 seconds, relax your arms while your partner gently pulls your wrists up to stretch your biceps. Be sure to let your partner know when the stretch is appropriate to prevent injury or overstretching."
     ],
     "category": "stretching",
-    "id": "Seated_Biceps"
+    "id": "Seated_Biceps",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0390-WgJnBH5.gif"
   },
   {
     "name": "Seated Cable Rows",
@@ -13758,7 +13995,8 @@
       "You can also execute this movement with your back off the pad and alternate hands."
     ],
     "category": "strength",
-    "id": "Seated_Cable_Shoulder_Press"
+    "id": "Seated_Cable_Shoulder_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0219-PzQanLE.gif"
   },
   {
     "name": "Seated Calf Raise",
@@ -13779,7 +14017,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Seated_Calf_Raise"
+    "id": "Seated_Calf_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1371-ipvgBnC.gif"
   },
   {
     "name": "Seated Calf Stretch",
@@ -13801,7 +14040,8 @@
       "Using a band, towel, or your hand if you can reach, pull the toes toward you. Hold for 10 to 20 seconds, then switch sides."
     ],
     "category": "stretching",
-    "id": "Seated_Calf_Stretch"
+    "id": "Seated_Calf_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1390-17bqEXD.gif"
   },
   {
     "name": "Barbell Seated Concentration Curl",
@@ -13967,7 +14207,8 @@
       "Lean forward from your hips and reach for your ankle until you feel a stretch in your hamstring. Hold for 15 seconds, then repeat for your other side."
     ],
     "category": "stretching",
-    "id": "Seated_Floor_Hamstring_Stretch"
+    "id": "Seated_Floor_Hamstring_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1511-99rWm7w.gif"
   },
   {
     "name": "Seated Front Deltoid",
@@ -14007,7 +14248,8 @@
       "Now relax your muscles as your partner increases the stretch by gently pushing your torso forward for 10-20 seconds."
     ],
     "category": "stretching",
-    "id": "Seated_Glute"
+    "id": "Seated_Glute",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1424-DeDThfG.gif"
   },
   {
     "name": "Seated Good Mornings",
@@ -14048,7 +14290,8 @@
       "Now relax your muscles as your partner increases the stretch by gently pushing your torso forward for 10-20 seconds."
     ],
     "category": "stretching",
-    "id": "Seated_Hamstring"
+    "id": "Seated_Hamstring",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1560-yRYyfdA.gif"
   },
   {
     "name": "Seated Hamstring and Calf Stretch",
@@ -14108,7 +14351,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Seated_Leg_Curl"
+    "id": "Seated_Leg_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0599-Zg3XY7P.gif"
   },
   {
     "name": "Seated Leg Tucks",
@@ -14291,7 +14535,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Seated_Triceps_Press"
+    "id": "Seated_Triceps_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0816-fSrPP6B.gif"
   },
   {
     "name": "Cable Seated Supinated Wrist Curl",
@@ -14399,7 +14644,8 @@
       "As you exhale, lift the handles up until your arms are fully extended overhead."
     ],
     "category": "strength",
-    "id": "Shoulder_Press_-_With_Bands"
+    "id": "Shoulder_Press_-_With_Bands",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0997-peAeMR3.gif"
   },
   {
     "name": "Shoulder Raise",
@@ -14417,7 +14663,8 @@
       "Relax your arms to your sides and raise your shoulders up toward your ears, then back down."
     ],
     "category": "stretching",
-    "id": "Shoulder_Raise"
+    "id": "Shoulder_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0050-xi0yckC.gif"
   },
   {
     "name": "Shoulder Stretch",
@@ -14433,7 +14680,8 @@
       "Reach your left arm across your body and hold it straight."
     ],
     "category": "stretching",
-    "id": "Shoulder_Stretch"
+    "id": "Shoulder_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1271-Uto7l43.gif"
   },
   {
     "name": "Side-Lying Floor Stretch",
@@ -14466,7 +14714,8 @@
     ],
     "instructions": [],
     "category": "strength",
-    "id": "Side_Bridge"
+    "id": "Side_Bridge",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1774-WL4EmxJ.gif"
   },
   {
     "name": "Side Hop-Sprint",
@@ -14545,7 +14794,8 @@
       "Lower the weights to the starting position."
     ],
     "category": "strength",
-    "id": "Side_Laterals_to_Front_Raise"
+    "id": "Side_Laterals_to_Front_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0335-xMjBKwn.gif"
   },
   {
     "name": "Side Leg Raises",
@@ -14669,7 +14919,8 @@
       "Slowly straighten, pull, and lift it up to shoulder height, as pictured. Feel this stretch originate in your back, not your shoulders, and don't pull too hard on the shoulders joint. Switch sides."
     ],
     "category": "stretching",
-    "id": "Side_Wrist_Pull"
+    "id": "Side_Wrist_Pull",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0721-UtmIqcI.gif"
   },
   {
     "name": "Side to Side Box Shuffle",
@@ -14756,7 +15007,8 @@
       "Descend slowly, and reverse direction be extending the arm to return to the starting position."
     ],
     "category": "strength",
-    "id": "Single-Arm_Push-Up"
+    "id": "Single-Arm_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Single-Cone Sprint Drill",
@@ -14910,7 +15162,8 @@
       "Return to the starting position and repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Single_Dumbbell_Raise"
+    "id": "Single_Dumbbell_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0376-c9MnDRp.gif"
   },
   {
     "name": "Single Leg Butt Kick",
@@ -14994,7 +15247,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Sit-Up"
+    "id": "Sit-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0001-2gPfomN.gif"
   },
   {
     "name": "Sit Squats",
@@ -15213,7 +15467,8 @@
       "When you are done, place the bar back in the rack."
     ],
     "category": "strength",
-    "id": "Smith_Incline_Shoulder_Raise"
+    "id": "Smith_Incline_Shoulder_Raise",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0759-ayAHcEm.gif"
   },
   {
     "name": "Smith Machine Behind Back Shrug",
@@ -15376,7 +15631,8 @@
       "Extend through the hips and knees to come to a standing position with the bar racked on your shoulders to complete the movement."
     ],
     "category": "strength",
-    "id": "Smith_Machine_Hang_Power_Clean"
+    "id": "Smith_Machine_Hang_Power_Clean",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0648-SiWCcTN.gif"
   },
   {
     "name": "Smith Machine Hip Raise",
@@ -15659,7 +15915,8 @@
       "Finalize the movement by rising up out of the squat position to finish the lift. At the end of the lift both feet should be on line and the arms fully extended holding the barbell overhead."
     ],
     "category": "olympic weightlifting",
-    "id": "Snatch"
+    "id": "Snatch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0067-xHKN2s8.gif"
   },
   {
     "name": "Snatch Balance",
@@ -15734,7 +15991,8 @@
       "There should be no need to actively pull through the arms to accelerate the weight; at the end of the second pull, the body should be fully extended, leaning slightly back. Full extension should be violent and abrupt, and ensure that you do not prolong the extension for longer than necessary."
     ],
     "category": "strength",
-    "id": "Snatch_Pull"
+    "id": "Snatch_Pull",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0776-dG5Smob.gif"
   },
   {
     "name": "Snatch Shrug",
@@ -15874,7 +16132,8 @@
       "Continue alternating, rotating from one side to the other until the set is complete."
     ],
     "category": "strength",
-    "id": "Spell_Caster"
+    "id": "Spell_Caster",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0777-p9cCe2r.gif"
   },
   {
     "name": "Spider Crawl",
@@ -15896,7 +16155,8 @@
       "Return this leg to the starting position and repeat on the opposite side."
     ],
     "category": "strength",
-    "id": "Spider_Crawl"
+    "id": "Spider_Crawl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0778-P9GFBME.gif"
   },
   {
     "name": "Spider Curl",
@@ -15918,7 +16178,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Spider_Curl"
+    "id": "Spider_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1667-VdLZ3nB.gif"
   },
   {
     "name": "Spinal Stretch",
@@ -16093,7 +16354,8 @@
       "As you descend, immediately reverse direction, standing back up and jumping, reversing the position of your legs. Repeat 5-10 times on each leg."
     ],
     "category": "stretching",
-    "id": "Split_Squats"
+    "id": "Split_Squats",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2368-9E25EOx.gif"
   },
   {
     "name": "Squat Jerk",
@@ -16117,7 +16379,8 @@
       "Keeping the bar aligned over the front of the heels, your head and chest up, drive throught heels of the feet to move to a standing position. Carefully return the weight to floor."
     ],
     "category": "strength",
-    "id": "Squat_Jerk"
+    "id": "Squat_Jerk",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0786-IMRsOCn.gif"
   },
   {
     "name": "Squat with Bands",
@@ -16221,7 +16484,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Squats_-_With_Bands"
+    "id": "Squats_-_With_Bands",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1004-TUZLh71.gif"
   },
   {
     "name": "Stairmaster",
@@ -16369,7 +16633,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Standing_Biceps_Cable_Curl"
+    "id": "Standing_Biceps_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Standing Biceps Stretch",
@@ -16412,7 +16677,8 @@
       "Alternate in this manner until you complete the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Standing_Bradford_Press"
+    "id": "Standing_Bradford_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0105-dCPESfR.gif"
   },
   {
     "name": "Standing Cable Chest Press",
@@ -16525,7 +16791,8 @@
       "Repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Standing_Concentration_Curl"
+    "id": "Standing_Concentration_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2414-vsMcDi9.gif"
   },
   {
     "name": "Standing Dumbbell Calf Raise",
@@ -16647,7 +16914,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Standing_Dumbbell_Upright_Row"
+    "id": "Standing_Dumbbell_Upright_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0437-ainizkb.gif"
   },
   {
     "name": "Standing Elevated Quad Stretch",
@@ -16685,7 +16953,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Standing_Front_Barbell_Raise_Over_Head"
+    "id": "Standing_Front_Barbell_Raise_Over_Head",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0041-b2Uoz54.gif"
   },
   {
     "name": "Standing Gastrocnemius Calf Stretch",
@@ -16723,7 +16992,8 @@
       "Using the belt, pull on the top of the foot to increase the stretch in the calf. Hold for 10-20 seconds and repeat with the other foot."
     ],
     "category": "stretching",
-    "id": "Standing_Hamstring_and_Calf_Stretch"
+    "id": "Standing_Hamstring_and_Calf_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1599-xTjr103.gif"
   },
   {
     "name": "Standing Hip Circles",
@@ -16802,7 +17072,8 @@
       "Keep your weight evenly distributed between both legs (don't lean into your left hip). Switch sides."
     ],
     "category": "stretching",
-    "id": "Standing_Lateral_Stretch"
+    "id": "Standing_Lateral_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0794-1jXLYEw.gif"
   },
   {
     "name": "Standing Leg Curl",
@@ -16914,7 +17185,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Standing_Military_Press"
+    "id": "Standing_Military_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0774-jjUPrze.gif"
   },
   {
     "name": "Standing Olympic Plate Hand Squeeze",
@@ -16956,7 +17228,8 @@
       "Switch arms while performing this exercise."
     ],
     "category": "strength",
-    "id": "Standing_One-Arm_Cable_Curl"
+    "id": "Standing_One-Arm_Cable_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0868-G08RZcQ.gif"
   },
   {
     "name": "Dumbbell One-Arm Preacher Curl",
@@ -17109,7 +17382,8 @@
       "You may want to move your pelvis forward and backward and back few times before holding the tailbone forward in this stretch."
     ],
     "category": "stretching",
-    "id": "Standing_Pelvic_Tilt"
+    "id": "Standing_Pelvic_Tilt",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1364-cuKYxhu.gif"
   },
   {
     "name": "Standing Rope Crunch",
@@ -17128,7 +17402,8 @@
       "Hold the peak contraction for a moment before returning to the starting position."
     ],
     "category": "strength",
-    "id": "Standing_Rope_Crunch"
+    "id": "Standing_Rope_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Standing Soleus And Achilles Stretch",
@@ -17227,7 +17502,8 @@
       "As you land, bring your limbs back in and absorb your impact through the legs."
     ],
     "category": "plyometrics",
-    "id": "Star_Jump"
+    "id": "Star_Jump",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3223-HtfCpfi.gif"
   },
   {
     "name": "Step-up with Knee Raise",
@@ -17339,7 +17615,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Stiff_Leg_Barbell_Good_Morning"
+    "id": "Stiff_Leg_Barbell_Good_Morning",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0044-XlZ4lAC.gif"
   },
   {
     "name": "Stomach Vacuum",
@@ -17384,7 +17661,8 @@
       "Hold the weight on the initial position for a second and repeat the motion for the prescribed number of repetitions."
     ],
     "category": "strength",
-    "id": "Straight-Arm_Dumbbell_Pullover"
+    "id": "Straight-Arm_Dumbbell_Pullover",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0375-9XjtHvS.gif"
   },
   {
     "name": "Straight-Arm Pulldown",
@@ -17497,7 +17775,8 @@
       "Return the weight to the ground by bending at the hips and controlling the weight on the way down."
     ],
     "category": "powerlifting",
-    "id": "Sumo_Deadlift"
+    "id": "Sumo_Deadlift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0117-KgI0tqW.gif"
   },
   {
     "name": "Sumo Deadlift with Bands",
@@ -17576,7 +17855,8 @@
       "Repeat for the recommended amount of repetitions prescribed in your program."
     ],
     "category": "stretching",
-    "id": "Superman"
+    "id": "Superman",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0803-4GqRrAk.gif"
   },
   {
     "name": "Supine Chest Throw",
@@ -17598,7 +17878,8 @@
       "Catch the ball with both hands as it comes down."
     ],
     "category": "plyometrics",
-    "id": "Supine_Chest_Throw"
+    "id": "Supine_Chest_Throw",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1750-Al3tP0D.gif"
   },
   {
     "name": "Supine One-Arm Overhead Throw",
@@ -17689,7 +17970,8 @@
       "Continue until your elbows break 90 degrees, pausing before you extend to return to the starting position."
     ],
     "category": "strength",
-    "id": "Suspended_Push-Up"
+    "id": "Suspended_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0806-IaGQCrC.gif"
   },
   {
     "name": "Suspended Reverse Crunch",
@@ -17708,7 +17990,8 @@
       "At the top of the controlled motion, return to the starting position."
     ],
     "category": "strength",
-    "id": "Suspended_Reverse_Crunch"
+    "id": "Suspended_Reverse_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0807-R1WYG5D.gif"
   },
   {
     "name": "Suspended Row",
@@ -17729,7 +18012,8 @@
       "At the completion of the motion pause, and then return to the starting position."
     ],
     "category": "strength",
-    "id": "Suspended_Row"
+    "id": "Suspended_Row",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0808-4OaumBr.gif"
   },
   {
     "name": "Suspended Split Squat",
@@ -17754,7 +18038,8 @@
       "At the bottom of the movement, reverse the motion, extending through the hip and knee to return to the starting position."
     ],
     "category": "strength",
-    "id": "Suspended_Split_Squat"
+    "id": "Suspended_Split_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0809-QpXqiq8.gif"
   },
   {
     "name": "Svend Press",
@@ -17777,7 +18062,8 @@
       "Pause at the top of the motion, and then slowly return to the starting position."
     ],
     "category": "strength",
-    "id": "Svend_Press"
+    "id": "Svend_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0856-I1OBLnn.gif"
   },
   {
     "name": "T-Bar Row with Handle",
@@ -17823,7 +18109,8 @@
       "Repeat the movement for the prescribed amount of repetitions of your training program."
     ],
     "category": "strength",
-    "id": "Tate_Press"
+    "id": "Tate_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0436-s5PdDyY.gif"
   },
   {
     "name": "The Straddle",
@@ -17914,7 +18201,8 @@
       "As the tire reaches a 45 degree angle, step forward and drive a knee into the tire. As you do so adjust your grip to the upper portion of the tire and push it forward as hard as possible to complete the turn. Repeat as necessary."
     ],
     "category": "strongman",
-    "id": "Tire_Flip"
+    "id": "Tire_Flip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2459-oZjMu1t.gif"
   },
   {
     "name": "Toe Touchers",
@@ -17973,7 +18261,8 @@
       "A 150 lb person can burn over 200 calories for 30 minutes walking uphill, compared to 175 on a flat surface. If running the trail, a 150 lb person can burn well over 500 calories in 30 minutes."
     ],
     "category": "cardio",
-    "id": "Trail_Running_Walking"
+    "id": "Trail_Running_Walking",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Trap Bar Deadlift",
@@ -17995,7 +18284,8 @@
       "At the completion of the movement, lower the weight back to the ground under control."
     ],
     "category": "strength",
-    "id": "Trap_Bar_Deadlift"
+    "id": "Trap_Bar_Deadlift",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0811-jQGwmxN.gif"
   },
   {
     "name": "Dumbbell Triceps Kickback",
@@ -18071,7 +18361,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Triceps_Pushdown"
+    "id": "Triceps_Pushdown",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/2406-ThKP69G.gif"
   },
   {
     "name": "Cable Rope Triceps Pushdown",
@@ -18129,7 +18420,8 @@
       "Reach your hand behind your head, grasp your elbow and gently pull. Hold for 10 to 20 seconds, then switch sides."
     ],
     "category": "stretching",
-    "id": "Triceps_Stretch"
+    "id": "Triceps_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0817-uOV3Itw.gif"
   },
   {
     "name": "Tuck Crunch",
@@ -18150,7 +18442,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Tuck_Crunch"
+    "id": "Tuck_Crunch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0871-BMMolZ3.gif"
   },
   {
     "name": "Dumbbell Preacher Curl",
@@ -18169,7 +18462,8 @@
       "Squeeze the biceps hard for a second at the contracted position and repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Two-Arm_Dumbbell_Preacher_Curl"
+    "id": "Two-Arm_Dumbbell_Preacher_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0372-jivWf8n.gif"
   },
   {
     "name": "Dual Kettlebell Clean",
@@ -18277,7 +18571,8 @@
       "Repeat this motion for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Underhand_Cable_Pulldowns"
+    "id": "Underhand_Cable_Pulldowns",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0245-xBYcQHj.gif"
   },
   {
     "name": "Upper Back-Leg Grab",
@@ -18315,7 +18610,8 @@
       "Clasp fingers together with your thumbs pointing down, round your shoulders as you reach your hands forward."
     ],
     "category": "stretching",
-    "id": "Upper_Back_Stretch"
+    "id": "Upper_Back_Stretch",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1365-GSDioYu.gif"
   },
   {
     "name": "Upright Barbell Row",
@@ -18514,7 +18810,8 @@
       "Repeat for the recommended amount of repetitions prescribed in your program."
     ],
     "category": "strength",
-    "id": "Weighted_Ball_Hyperextension"
+    "id": "Weighted_Ball_Hyperextension",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0489-zhMwOwE.gif"
   },
   {
     "name": "Weighted Ball Side Bend",
@@ -18559,7 +18856,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Weighted_Bench_Dip"
+    "id": "Weighted_Bench_Dip",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0830-MU9HnE7.gif"
   },
   {
     "name": "Weighted Crunches",
@@ -18579,7 +18877,8 @@
       "Then inhale and slowly lower yourself back down to the starting position."
     ],
     "category": "strength",
-    "id": "Weighted_Crunches"
+    "id": "Weighted_Crunches",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0685-oLrKqDH.gif"
   },
   {
     "name": "Weighted Jump Squat",
@@ -18603,7 +18902,8 @@
       "As you return to the ground, absorb the impact through your legs."
     ],
     "category": "strength",
-    "id": "Weighted_Jump_Squat"
+    "id": "Weighted_Jump_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0514-LIlE5Tn.gif"
   },
   {
     "name": "Weighted Pull Ups",
@@ -18648,7 +18948,8 @@
       "Repeat for the recommended amount of times."
     ],
     "category": "strength",
-    "id": "Weighted_Sissy_Squat"
+    "id": "Weighted_Sissy_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0851-0lQnxMZ.gif"
   },
   {
     "name": "Band Weighted Sit-Up",
@@ -18691,7 +18992,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Weighted_Squat"
+    "id": "Weighted_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0852-JZuApnB.gif"
   },
   {
     "name": "Wide-Grip Barbell Bench Press",
@@ -18713,7 +19015,8 @@
       "Repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Barbell_Bench_Press"
+    "id": "Wide-Grip_Barbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
   },
   {
     "name": "Wide-Grip Decline Barbell Bench Press",
@@ -18735,7 +19038,8 @@
       "Repeat the movement for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Decline_Barbell_Bench_Press"
+    "id": "Wide-Grip_Decline_Barbell_Bench_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0025-EIeI8Vf.gif"
   },
   {
     "name": "Wide-Grip Decline Barbell Pullover",
@@ -18759,7 +19063,8 @@
       "When finished with your set, slowly lower the barbell back down until it is level with your head and release it."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Decline_Barbell_Pullover"
+    "id": "Wide-Grip_Decline_Barbell_Pullover",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0073-i6LWjok.gif"
   },
   {
     "name": "Wide-Grip Lat Pulldown",
@@ -18833,7 +19138,8 @@
       "Repeat this motion for the prescribed amount of repetitions."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Rear_Pull-Up"
+    "id": "Wide-Grip_Rear_Pull-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0652-lBDjFxJ.gif"
   },
   {
     "name": "Wide-Grip Standing Barbell Curl",
@@ -18853,7 +19159,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Wide-Grip_Standing_Barbell_Curl"
+    "id": "Wide-Grip_Standing_Barbell_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0031-25GPyDY.gif"
   },
   {
     "name": "Wide Stance Barbell Squat",
@@ -18919,7 +19226,8 @@
       "Continue alternating between legs until the set is complete."
     ],
     "category": "strength",
-    "id": "Wind_Sprints"
+    "id": "Wind_Sprints",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0858-Qoujh3Q.gif"
   },
   {
     "name": "Windmills",
@@ -18981,7 +19289,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "stretching",
-    "id": "Wrist_Circles"
+    "id": "Wrist_Circles",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1428-2zNKRUB.gif"
   },
   {
     "name": "Wrist Roller",
@@ -19003,7 +19312,8 @@
       "Repeat for the prescribed amount of repetitions in your program."
     ],
     "category": "strength",
-    "id": "Wrist_Roller"
+    "id": "Wrist_Roller",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0859-bd5b860.gif"
   },
   {
     "name": "Wrist Rotations with Straight Bar",
@@ -19097,7 +19407,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Zottman_Curl"
+    "id": "Zottman_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0439-kXaIn5A.gif"
   },
   {
     "name": "Zottman Preacher Curl",
@@ -19120,7 +19431,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Zottman_Preacher_Curl"
+    "id": "Zottman_Preacher_Curl",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1672-sxY5Biu.gif"
   },
   {
     "name": "Pec Deck Machine",
@@ -19165,7 +19477,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Diamond_Push-Up"
+    "id": "Diamond_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0283-soIB2rj.gif"
   },
   {
     "name": "Meadows Row",
@@ -19261,7 +19574,8 @@
       "Drive through your heels to return to the starting position."
     ],
     "category": "strength",
-    "id": "Sumo_Squat"
+    "id": "Sumo_Squat",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/3142-dzz6BiV.gif"
   },
   {
     "name": "Wall Sit",
@@ -19332,7 +19646,8 @@
       "Repeat for the recommended amount of repetitions."
     ],
     "category": "strength",
-    "id": "Pike_Push-Up"
+    "id": "Pike_Push-Up",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/0662-I4hDWkc.gif"
   },
   {
     "name": "Landmine Press",
@@ -19375,7 +19690,8 @@
       "Repeat for the desired amount of repetitions."
     ],
     "category": "strength",
-    "id": "French_Press"
+    "id": "French_Press",
+    "gifUrl": "https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/videos/1736-ziFKQXP.gif"
   },
   {
     "name": "Cable Triceps Kickback",

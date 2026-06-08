@@ -395,7 +395,7 @@ struct SmartBuilderIllustration: View {
     let colors: [Color]
     var body: some View {
         VStack(spacing: 8) {
-            ForEach(0..<3) { i in
+            ForEach(0..<3, id: \.self) { i in
                 SmartBuilderRowView(index: i, colors: colors)
             }
         }
@@ -403,6 +403,49 @@ struct SmartBuilderIllustration: View {
         .background(Color.black.opacity(0.2))
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+    }
+    
+    @ViewBuilder
+    private func rowView(for i: Int) -> some View {
+        let iconName = i == 0 ? "checkmark.circle.fill" : (i == 1 ? "play.circle.fill" : "circle")
+        let iconColor = i == 1 ? colors[0] : (i == 0 ? Color.green : Color.white.opacity(0.3))
+        
+        let titleText = i == 0 ? "1. Warmup Setup" : (i == 1 ? "2. Bench Press (4 Sets)" : "3. Incline DB Flyes")
+        let titleColor = i == 1 ? Color.white : Color.white.opacity(0.6)
+        
+        let subtitleText = i == 0 ? "Completed" : (i == 1 ? "AI Tailored - Heavy Focus" : "Pending")
+        let timeText = i == 0 ? "5 min" : (i == 1 ? "12 min" : "8 min")
+        
+        let bgColor = Color.white.opacity(i == 1 ? 0.08 : 0.03)
+        let strokeColor = i == 1 ? colors[0].opacity(0.5) : Color.clear
+        
+        HStack {
+            Image(systemName: iconName)
+                .foregroundColor(iconColor)
+                .font(.system(size: 13))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(titleText)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(titleColor)
+                
+                Text(subtitleText)
+                    .font(.system(size: 8))
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            Spacer()
+            
+            Text(timeText)
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundColor(.white.opacity(0.5))
+        }
+        .padding(6)
+        .background(bgColor)
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(strokeColor, lineWidth: 1)
+        )
     }
 }
 

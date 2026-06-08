@@ -157,6 +157,9 @@ struct ExerciseHistoryView: View {
                 .bold()
                 .padding(.bottom, 4)
 
+            ExerciseVideoView(urlString: vm.gifUrl)
+                .padding(.bottom, 8)
+
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "book.pages.fill")

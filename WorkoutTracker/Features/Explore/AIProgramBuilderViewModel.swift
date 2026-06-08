@@ -52,7 +52,7 @@ final class AIProgramBuilderViewModel {
 
             let growList = muscleStates.filter { $0.value == .grow }.map { $0.key }
             let excludeList = muscleStates.filter { $0.value == .exclude }.map { $0.key }
-            let isRussian = Locale.current.language.languageCode?.identifier == "ru" ? "Russian" : "English"
+            let languageName = LocalizationHelper.shared.getAILanguageName()
 
             let relevantCatalogArray = await ExerciseDatabaseService.shared.getRelevantExercisesContext(
                 for: "full body program \(growList.joined(separator: " "))",
@@ -69,7 +69,7 @@ final class AIProgramBuilderViewModel {
                     equipment: equipment.rawValue,
                     musclesToGrow: growList,
                     musclesToExclude: excludeList,
-                    language: isRussian,
+                    language: languageName,
                     catalogContext: safeCatalogContext 
                 )
 
