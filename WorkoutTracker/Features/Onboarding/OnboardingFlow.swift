@@ -5,222 +5,99 @@ import Charts
 
 // MARK: - Model
 
-enum OnboardingGraphicType {
-    case aiCamera
-    case smartBuilder
-    case analyticsChart
-    case watchMock
-    case anatomyHeatmap
-    case aiChatbot
-    case appleHealth
+enum CardDecorationType {
+    case orb
+    case stars
+    case ring
+    case ghost
 }
 
 struct OnboardingItem: Identifiable {
     let id = UUID()
-    let graphic: OnboardingGraphicType
-    let title: LocalizedStringKey
-    let description: LocalizedStringKey
+    let iconName: String
+    let category: String
+    let title: String
+    let description: String
     let colors: [Color]
+    let chips: [String]
+    let decoration: CardDecorationType
     let targetTab: Int?
 }
 
-// MARK: - Mock Graphics
+// MARK: - Decoration Components
 
-struct MockAppleHealthView: View {
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
-                .frame(width: 80, height: 80)
-                .shadow(color: .black.opacity(0.1), radius: 10, y: 5)
-            
-            Image(systemName: "heart.fill")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 45, height: 45)
-                .foregroundColor(Color(red: 1.0, green: 0.2, blue: 0.3)) // Classic Apple Health pink/red
-        }
-    }
-}
-
-struct MockAnalyticsChartView: View {
+struct CardDecorationView: View {
+    let type: CardDecorationType
     let colors: [Color]
-    let data: [Double] = [30, 45, 60, 50, 80, 70, 95]
-    @State private var animatedData: [Double] = [0, 0, 0, 0, 0, 0, 0]
+    let iconName: String
     
     var body: some View {
-        Chart {
-            ForEach(Array(data.enumerated()), id: \.offset) { index, value in
-                BarMark(
-                    x: .value("Day", index),
-                    y: .value("Value", animatedData[index])
-                )
-                .foregroundStyle(LinearGradient(colors: colors, startPoint: .bottom, endPoint: .top))
-                .cornerRadius(4)
-            }
-        }
-        .chartXAxis(.hidden)
-        .chartYAxis(.hidden)
-        .frame(width: 90, height: 70)
-        .onAppear {
-            for (index, val) in data.enumerated() {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(Double(index) * 0.05)) {
-                    animatedData[index] = val
+        ZStack {
+            switch type {
+            case .orb:
+                Circle()
+                    .fill(RadialGradient(
+                        colors: [colors[0].opacity(0.85), colors[0].opacity(0.0)],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 55
+                    ))
+                    .frame(width: 130, height: 130)
+                    .blur(radius: 8)
+                    .offset(x: 35, y: -35)
+                
+            case .stars:
+                ZStack {
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 34, weight: .light))
+                        .foregroundColor(colors[0])
+                        .shadow(color: colors[0], radius: 10)
+                        .offset(x: 10, y: -10)
+                    
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 16, weight: .light))
+                        .foregroundColor(colors[1])
+                        .shadow(color: colors[1], radius: 5)
+                        .offset(x: -18, y: 18)
+                    
+                    Image(systemName: "sparkle")
+                        .font(.system(size: 20, weight: .light))
+                        .foregroundColor(colors[0].opacity(0.8))
+                        .shadow(color: colors[0], radius: 7)
+                        .offset(x: 24, y: 22)
                 }
-            }
-        }
-    }
-}
-
-struct MockAICameraView: View {
-    @State private var phase: CGFloat = 0
-    @State private var glowPhase: CGFloat = 0
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [5]))
-                .frame(width: 70, height: 90)
-                .scaleEffect(1.0 + 0.05 * sin(phase))
-            
-            Image(systemName: "figure.walk")
-                .font(.system(size: 35))
-                .foregroundColor(.white)
-            
-            Circle()
-                .fill(Color.green)
-                .frame(width: 12, height: 12)
-                .offset(x: 20, y: -20)
-                .shadow(color: .green, radius: glowPhase * 10)
-        }
-        .onAppear {
-            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: true)) {
-                phase = .pi
-            }
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                glowPhase = 1.0
-            }
-        }
-    }
-}
-
-struct MockSmartBuilderView: View {
-    @State private var appear = false
-
-    var body: some View {
-        VStack(spacing: 8) {
-            ForEach(0..<3) { i in
-                HStack {
-                    Circle().fill(Color.white.opacity(0.8)).frame(width: 14, height: 14)
-                    RoundedRectangle(cornerRadius: 4).fill(Color.white.opacity(0.3)).frame(width: 50, height: 10)
+                .frame(width: 80, height: 80)
+                .offset(x: -15, y: 15)
+                
+            case .ring:
+                ZStack {
+                    Circle()
+                        .stroke(
+                            LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
+                            lineWidth: 2.5
+                        )
+                        .frame(width: 110, height: 110)
+                    
+                    Circle()
+                        .stroke(
+                            LinearGradient(colors: colors.map { $0.opacity(0.4) }, startPoint: .topLeading, endPoint: .bottomTrailing),
+                            lineWidth: 1.5
+                        )
+                        .frame(width: 75, height: 75)
                 }
-                .offset(x: appear ? 0 : 20)
-                .opacity(appear ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.7).delay(Double(i) * 0.15), value: appear)
-            }
-        }
-        .onAppear {
-            appear = true
-        }
-    }
-}
-
-struct MockAnatomyHeatmapView: View {
-    @State private var pulse = false
-    var body: some View {
-        ZStack {
-            Image(systemName: "figure.mind.and.body")
-                .font(.system(size: 50))
-                .foregroundColor(.white.opacity(0.8))
-            
-            Circle()
-                .fill(Color.red.opacity(0.6))
-                .frame(width: 16, height: 16)
-                .blur(radius: 4)
-                .offset(x: -15, y: -5)
-                .scaleEffect(pulse ? 1.5 : 1.0)
-                .opacity(pulse ? 0.4 : 1.0)
-            
-            Circle()
-                .fill(Color.orange.opacity(0.8))
-                .frame(width: 12, height: 12)
-                .blur(radius: 2)
-                .offset(x: 10, y: 15)
-                .scaleEffect(pulse ? 1.3 : 1.0)
-                .opacity(pulse ? 0.6 : 1.0)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
-                pulse = true
-            }
-        }
-    }
-}
-
-struct MockAIChatbotView: View {
-    @State private var wave = false
-    var body: some View {
-        ZStack {
-            Image(systemName: "message.fill")
-                .font(.system(size: 50))
-                .foregroundColor(.white.opacity(0.3))
-                .offset(y: -5)
-            
-            Image(systemName: "sparkles")
-                .font(.system(size: 24))
-                .foregroundColor(.yellow)
-                .offset(x: 20, y: -25)
-                .rotationEffect(.degrees(wave ? 15 : -15))
-                .scaleEffect(wave ? 1.2 : 0.9)
-            
-            HStack(spacing: 4) {
-                Circle().fill(Color.white).frame(width: 6, height: 6).offset(y: wave ? -3 : 3)
-                Circle().fill(Color.white).frame(width: 6, height: 6).offset(y: wave ? 3 : -3)
-                Circle().fill(Color.white).frame(width: 6, height: 6).offset(y: wave ? -3 : 3)
-            }
-            .offset(y: -5)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
-                wave = true
-            }
-        }
-    }
-}
-
-struct MockWatchView: View {
-    @State private var drawRing: CGFloat = 0.0
-    @State private var showText = false
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 14)
-                .fill(Color.black.opacity(0.6))
-                .frame(width: 60, height: 80)
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.3), lineWidth: 2))
-            
-            Circle()
-                .stroke(Color.green.opacity(0.2), lineWidth: 4)
-                .frame(width: 34, height: 34)
-
-            Circle()
-                .trim(from: 0, to: drawRing)
-                .stroke(Color.green, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                .frame(width: 34, height: 34)
-                .rotationEffect(.degrees(-90))
-            
-            Text("142")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.white)
-                .opacity(showText ? 1 : 0)
-                .scaleEffect(showText ? 1 : 0.5)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 1.2)) {
-                drawRing = 0.8
-            }
-            withAnimation(.spring().delay(0.5)) {
-                showText = true
+                .offset(x: 35, y: -35)
+                
+            case .ghost:
+                Image(systemName: iconName)
+                    .font(.system(size: 110, weight: .semibold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: colors.map { $0.opacity(0.12) },
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .offset(x: 20, y: 15)
             }
         }
     }
@@ -296,38 +173,64 @@ struct OnboardingIntroView: View {
 
     private var items: [OnboardingItem] {
         let namePrefix = userName.isEmpty ? "" : "\(userName), "
-        let namePrefixCap = userName.isEmpty ? "" : "\(userName), "
         
         return [
-            OnboardingItem(graphic: .appleHealth,
-                           title: LocalizedStringKey("Works with Apple Health"),
-                           description: LocalizedStringKey("Using Workout Tracker with the Apple Health app on iPhone empowers you to better manage your health and track your progress in one place."),
+            OnboardingItem(iconName: "heart.fill",
+                           category: "HEALTH TRACKING",
+                           title: "Works with Apple Health",
+                           description: "Using Workout Tracker with the Apple Health app on iPhone empowers you to manage health data in one cohesive dashboard.",
                            colors: [Color.pink, Color.red.opacity(0.8)],
+                           chips: ["Activity", "Vitals", "Sleep"],
+                           decoration: .orb,
                            targetTab: nil),
-            OnboardingItem(graphic: .aiCamera,
+            OnboardingItem(iconName: "camera.viewfinder",
+                           category: "COMPUTER VISION",
                            title: "AI Camera Coach",
                            description: "\(namePrefix)a flawless eye on your form. Real-time tracking and rep counting that ensures you never cheat a set.",
-                           colors: [.purple, .blue], targetTab: 3),
-            OnboardingItem(graphic: .smartBuilder,
+                           colors: [.purple, .blue],
+                           chips: ["Rep Count", "Form Check", "Real-Time"],
+                           decoration: .stars,
+                           targetTab: 3),
+            OnboardingItem(iconName: "slider.horizontal.3",
+                           category: "PRODUCTIVITY",
                            title: "Smart Builder",
                            description: "Zero guesswork. Tell the AI what equipment you have, and it crafts the ultimate workout tailored just for you.",
-                           colors: [.blue, .cyan], targetTab: 2),
-            OnboardingItem(graphic: .anatomyHeatmap,
+                           colors: [.blue, .cyan],
+                           chips: ["Productivity", "Vitals", "Sleep"],
+                           decoration: .ring,
+                           targetTab: 2),
+            OnboardingItem(iconName: "figure.walk",
+                           category: "WELLNESS",
                            title: "Unlock Your Anatomy",
                            description: "Visualize your recovery. See exactly which muscles are ready to perform and which ones need rest on a dynamic heatmap.",
-                           colors: [.red, .orange], targetTab: 4),
-            OnboardingItem(graphic: .analyticsChart,
+                           colors: [.red, .orange],
+                           chips: ["Activity", "Vitals", "Sleep"],
+                           decoration: .ghost,
+                           targetTab: 4),
+            OnboardingItem(iconName: "chart.bar.fill",
+                           category: "DATA INSIGHTS",
                            title: "Deep Analytics",
-                           description: "Your body, decoded. Advanced charts reveal exactly what’s working and what’s next.",
-                           colors: [.cyan, .green], targetTab: 4),
-            OnboardingItem(graphic: .aiChatbot,
-                           title: "24/7 AI Architect",
-                           description: "Not sure what to do? Chat with the AI Coach anytime to generate multi-week programs or adjust your routine.",
-                           colors: [.indigo, .purple], targetTab: 3),
-            OnboardingItem(graphic: .watchMock,
-                           title: "Watch Integration",
+                           description: "Unlock the power of your data. Advanced charts reveal exactly what’s working and what’s next.",
+                           colors: [.cyan, .green],
+                           chips: ["Data Insights", "Your Data"],
+                           decoration: .ring,
+                           targetTab: 4),
+            OnboardingItem(iconName: "sparkles",
+                           category: "DESIGN",
+                           title: "AI Architect",
+                           description: "Shape your vision with AI. Chat with the AI Coach anytime to generate multi-week programs or adjust your routine.",
+                           colors: [.indigo, .purple],
+                           chips: ["Design", "Vitals", "Sleep"],
+                           decoration: .orb,
+                           targetTab: 3),
+            OnboardingItem(iconName: "applewatch",
+                           category: "CONNECTIVITY",
+                           title: "Apple Watch",
                            description: "Leave your phone in the locker. Full, seamless workout tracking right from your wrist.",
-                           colors: [.green, .yellow], targetTab: 0)
+                           colors: [.green, .yellow],
+                           chips: ["Activity", "Vitals", "Sleep"],
+                           decoration: .stars,
+                           targetTab: 0)
         ]
     }
 
@@ -437,90 +340,125 @@ struct PremiumFeatureCard: View {
         VStack(spacing: 0) {
             Spacer()
             
-            VStack(spacing: 28) {
-                // Glowing Icon
-                ZStack {
-                    Circle()
-                        .fill(LinearGradient(colors: item.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 140, height: 140)
-                        .shadow(color: item.colors[0].opacity(0.5), radius: 25, y: 15)
-                    
-                    switch item.graphic {
-                    case .aiCamera:
-                        MockAICameraView()
-                    case .smartBuilder:
-                        MockSmartBuilderView()
-                    case .analyticsChart:
-                        MockAnalyticsChartView(colors: item.colors)
-                    case .watchMock:
-                        MockWatchView()
-                    case .anatomyHeatmap:
-                        MockAnatomyHeatmapView()
-                    case .aiChatbot:
-                        MockAIChatbotView()
-                    case .appleHealth:
-                        MockAppleHealthView()
-                    }
-                }
-                .scaleEffect(isSelected ? 1.0 : 0.85)
-                .animation(.spring(response: 0.5, dampingFraction: 0.7), value: isSelected)
-                .padding(.bottom, 10)
-
-                VStack(spacing: 24) {
-                    Text(item.title)
-                        .font(.system(size: 30, weight: .black, design: .rounded))
-                        .foregroundStyle(themeManager.current.primaryText)
-                        .multilineTextAlignment(.center)
+            ZStack(alignment: .topTrailing) {
+                // Top-right decoration view (bleeds out of card bounds if clipped is not set on outer card, but Card itself has rounded clip)
+                CardDecorationView(type: item.decoration, colors: item.colors, iconName: item.iconName)
+                
+                VStack(alignment: .leading, spacing: 0) {
+                    // Top Row: App Icon style feature badge
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(LinearGradient(colors: item.colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 56, height: 56)
+                            .shadow(color: item.colors[0].opacity(0.35), radius: 10, y: 5)
                         
+                        Image(systemName: item.iconName)
+                            .font(.system(size: 26, weight: .medium))
+                            .foregroundColor(.white)
+                    }
+                    .padding(.bottom, 24)
+                    
+                    // Category Tag
+                    Text(item.category)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(colors: item.colors, startPoint: .leading, endPoint: .trailing)
+                        )
+                        .padding(.bottom, 8)
+                    
+                    // Feature Title
+                    Text(item.title)
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .foregroundStyle(themeManager.current.primaryText)
+                        .padding(.bottom, 12)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    // Feature Description
                     Text(item.description)
-                        .font(.system(size: 16, weight: .medium, design: .rounded))
+                        .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundStyle(themeManager.current.secondaryText)
-                        .multilineTextAlignment(.center)
-                        .lineSpacing(6)
-                        .padding(.horizontal, 24)
-
-                    Button(action: {
-                        if !isSaved { onTryNow() }
-                    }) {
-                        HStack(spacing: 8) {
-                            if isSaved {
-                                Image(systemName: "checkmark")
+                        .lineSpacing(5)
+                        .padding(.bottom, 24)
+                        .fixedSize(horizontal: false, vertical: true)
+                    
+                    // Neon accent divider line
+                    LinearGradient(colors: [item.colors[0].opacity(0.8), item.colors[1].opacity(0.1)], startPoint: .leading, endPoint: .trailing)
+                        .frame(height: 1.5)
+                        .padding(.bottom, 20)
+                    
+                    // Bottom Row: Chips + Try it now Button
+                    HStack(spacing: 0) {
+                        // Chips list
+                        HStack(spacing: 6) {
+                            ForEach(item.chips, id: \.self) { chip in
+                                Text(chip.uppercased())
+                                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                                    .foregroundColor(themeManager.current.secondaryText)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        Capsule()
+                                            .fill(themeManager.current.surface.opacity(0.5))
+                                    )
+                                    .overlay(
+                                        Capsule()
+                                            .stroke(themeManager.current.secondaryAccent.opacity(0.15), lineWidth: 1)
+                                    )
                             }
-                            Text(isSaved ? "Saved!" : "Try it now")
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
                         }
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 12)
+                        
+                        Spacer()
+                        
+                        // Button Try it now / Saved
+                        Button(action: {
+                            if !isSaved { onTryNow() }
+                        }) {
+                            HStack(spacing: 6) {
+                                if isSaved {
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                                Text(isSaved ? "Saved" : "Try it now")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                
+                                if !isSaved {
+                                    Image(systemName: "arrow.right")
+                                        .font(.system(size: 11, weight: .bold))
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
                             .background(
                                 LinearGradient(colors: item.colors, startPoint: .topLeading, endPoint: .bottomTrailing)
                             )
                             .clipShape(Capsule())
-                            .shadow(color: item.colors[0].opacity(0.4), radius: 8, y: 4)
+                            .shadow(color: item.colors[0].opacity(0.4), radius: 6, y: 3)
+                        }
                     }
-                    .padding(.top, 8)
                 }
+                .padding(.all, 30)
             }
-            .padding(.vertical, 40)
             .frame(maxWidth: .infinity)
             .background {
                 // Glassmorphic Card Background
                 RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(themeManager.current.surface.opacity(0.6))
+                    .fill(themeManager.current.surface.opacity(0.45))
                     .background(
                         RoundedRectangle(cornerRadius: 32, style: .continuous)
                             .stroke(LinearGradient(colors: [
-                                .white.opacity(0.4),
-                                .white.opacity(0.0)
-                            ], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
+                                .white.opacity(0.25),
+                                .white.opacity(0.02)
+                            ], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.2)
                     )
-                    .shadow(color: Color.black.opacity(0.15), radius: 30, y: 15)
+                    .shadow(color: Color.black.opacity(0.2), radius: 25, y: 12)
             }
-            .padding(.horizontal, 24)
-            .scaleEffect(isSelected ? 1.0 : 0.9)
-            .opacity(isSelected ? 1.0 : 0.6)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: isSelected)
-
+            .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+            .padding(.horizontal, 20)
+            .scaleEffect(isSelected ? 1.0 : 0.92)
+            .opacity(isSelected ? 1.0 : 0.65)
+            .animation(.spring(response: 0.45, dampingFraction: 0.8), value: isSelected)
+            
             Spacer()
         }
     }

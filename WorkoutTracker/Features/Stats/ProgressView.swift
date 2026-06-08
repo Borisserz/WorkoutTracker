@@ -231,6 +231,7 @@ struct StatsContentView: View {
 
     @State private var showingAddGoal = false
     @State private var showProfile = false
+    @State private var showProgressComparison = false
 
     @State private var showAIReviewSheet = false
     @State private var isFetchingReviewData = false
@@ -251,6 +252,10 @@ struct StatsContentView: View {
                     MascotStreakView(streak: dashboardViewModel.streakCount)
 
                     GoalsSectionView(showingAddGoal: $showingAddGoal, viewModel: viewModel, unitsManager: unitsManager)
+
+                    BodyTransformBannerCard {
+                        showProgressComparison = true
+                    }
 
                     ZStack(alignment: .top) {
                         VStack(spacing: 24) {
@@ -301,6 +306,11 @@ struct StatsContentView: View {
                 .environment(userStatsViewModel.progressManager)
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $showProgressComparison) {
+            ProgressComparisonWrapper()
+                .environment(unitsManager)
+                .environment(themeManager)
         }
         .sheet(isPresented: $showAIReviewSheet) {
             if let data = reviewData {
@@ -364,7 +374,6 @@ struct StatsContentView: View {
 struct HeaderView: View {
     @Binding var showProfile: Bool
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(TutorialManager.self) var tutorialManager
 
     var body: some View {
         HStack {
@@ -372,21 +381,6 @@ struct HeaderView: View {
                 .font(.system(size: 34, weight: .black, design: .rounded))
                 .foregroundColor(colorScheme == .dark ? .white : .black)
             Spacer()
-
-            Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                if tutorialManager.currentStep == .discoverPhotoCompare {
-                    tutorialManager.complete()
-                }
-                // Placeholder for actual photo view launch
-            }) {
-                Image(systemName: "camera.viewfinder")
-                    .font(.system(size: 20))
-                    .frame(width: 44, height: 44)
-                    .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
-                    .clipShape(Circle())
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-            }
 
             Button(action: {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -613,39 +607,221 @@ struct DesignerGoalCard: View {
     }
 }
 
+// MARK: - Body Transform Banner Card
+
+struct ProgressComparisonWrapper: View {
+    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Environment(UnitsManager.self) private var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
+
+    var body: some View {
+        ProgressComparisonView(entriesWithPhotos: weightHistory.filter { !$0.imageFileNames.isEmpty })
+            .environment(unitsManager)
+            .environment(themeManager)
+    }
+}
+
+struct BodyTransformBannerCard: View {
+    let onTap: () -> Void
+    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
+
+    @State private var isPressed = false
+    @State private var shimmerOffset: CGFloat = -200
+
+    private var photoCount: Int {
+        weightHistory.filter { !$0.imageFileNames.isEmpty }.count
+    }
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            onTap()
+        }) {
+            ZStack {
+                // Background card
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+
+                // Shimmer effect
+                if colorScheme == .dark {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [.clear, .white.opacity(0.04), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .offset(x: shimmerOffset)
+                        .onAppear {
+                            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
+                                shimmerOffset = 400
+                            }
+                        }
+                        .clipped()
+                }
+
+                // Content
+                HStack(spacing: 16) {
+                    // Left Side: Glowing camera viewfinder icon container
+                    ZStack {
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color.purple.opacity(0.3), Color.blue.opacity(0.2)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 56, height: 56)
+                        
+                        Circle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(red: 0.45, green: 0.3, blue: 1.0), Color(red: 0.2, green: 0.5, blue: 1.0)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 48, height: 48)
+                            .shadow(color: Color.purple.opacity(0.3), radius: 5, y: 3)
+
+                        Image(systemName: "camera.viewfinder")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+
+                    // Text block
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("Body Transform")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+
+                            if photoCount >= 2 {
+                                Text("\(photoCount) photos")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(Color.purple.opacity(0.18))
+                                    .foregroundColor(.purple)
+                                    .clipShape(Capsule())
+                            }
+                        }
+
+                        Text("Before & after slider · Track your progress")
+                            .font(.system(size: 13, weight: .medium, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.5))
+                            .lineLimit(1)
+                    }
+
+                    Spacer()
+
+                    // Chevron
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.4) : .black.opacity(0.3))
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: colorScheme == .dark 
+                                ? [Color.purple, Color.blue] 
+                                : [Color.purple.opacity(0.5), Color.blue.opacity(0.4)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: 2
+                    )
+            )
+            .shadow(
+                color: colorScheme == .dark ? Color.purple.opacity(0.3) : Color.purple.opacity(0.08),
+                radius: 12, x: 0, y: 6
+            )
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
 struct AIIslandView: View {
     let action: () -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isPressed = false
 
     var body: some View {
         Button(action: {
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
             action()
         }) {
-            HStack(spacing: 16) {
-                Image(systemName: "sparkles")
-                    .font(.title2)
-                    .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .top, endPoint: .bottom))
-
-                Text("AI Efficiency Overview")
-                    .font(.system(size: 16, weight: .semibold))
-
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .gray)
-            }
-            .padding()
-
-            .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .overlay(
+            ZStack {
+                // Background card
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(LinearGradient(colors: [colorScheme == .dark ? .white.opacity(0.4) : .purple.opacity(0.4), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
+                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+
+                HStack(spacing: 16) {
+                    // Custom sparkles layout (float styled)
+                    ZStack {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 26))
+                            .foregroundStyle(
+                                LinearGradient(colors: [.purple, .cyan], startPoint: .top, endPoint: .bottom)
+                            )
+                            .shadow(color: .purple.opacity(0.3), radius: 4)
+                    }
+                    .frame(width: 44, height: 44)
+
+                    Text("AI Efficiency Overview")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    
+                    Spacer()
+                    
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.4) : .black.opacity(0.3))
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 22)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: colorScheme == .dark 
+                                ? [Color.blue.opacity(0.4), Color.purple] 
+                                : [Color.blue.opacity(0.3), Color.purple.opacity(0.5)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: 2
+                    )
             )
-            .shadow(color: .purple.opacity(colorScheme == .dark ? 0.15 : 0.1), radius: 15, x: 0, y: 8)
+            .shadow(
+                color: colorScheme == .dark ? Color.purple.opacity(0.25) : Color.purple.opacity(0.06),
+                radius: 10, x: 0, y: 5
+            )
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
         .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
     }
 }
 
