@@ -97,6 +97,7 @@ struct WorkoutTrackerApp: App {
                         })
                         .preferredColorScheme(.dark)
                         .environment(ThemeManager.shared)
+                        .environment(di.appState)
                     } else {
                         mainContent(di: di, dvm: dvm, usvm: usvm, aicvm: aicvm, cvm: cvm, pvm: pvm)
                     }
@@ -146,6 +147,7 @@ struct WorkoutTrackerApp: App {
             .environment(aicvm)
             .environment(cvm)
             .environment(pvm)
+            .environment(di.appState)
             .preferredColorScheme(colorScheme)
             .alert("Update Available", isPresented: Binding(
                 get: { versionManager.updateRequirement == .softUpdate && !versionManager.hasDismissedSoftUpdate },
