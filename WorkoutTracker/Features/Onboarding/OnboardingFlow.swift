@@ -656,7 +656,7 @@ struct OnboardingFlowView: View {
     @AppStorage("userBodyWeight") private var userBodyWeight = 0.0
     @AppStorage("userGoal") private var userGoal = ""
 
-    private let stepCount = 6
+    private let stepCount = 5
 
     var body: some View {
         ZStack {
@@ -672,8 +672,7 @@ struct OnboardingFlowView: View {
                     UserDataInputView(name: $userName, weight: $userBodyWeight, goal: $userGoal, onNext: nextStep).tag(1)
                     PermissionsView(onNext: nextStep).tag(2)
                     HealthPermissionsView(onNext: nextStep).tag(3)
-                    TutorialChoiceView(onFinish: nextStep).tag(4)
-                    AnalyzingView(onFinish: completeOnboarding).tag(5)
+                    TutorialChoiceView(onFinish: completeOnboarding).tag(4)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .animation(.spring(response: 0.45, dampingFraction: 0.85), value: currentTab)
