@@ -40,7 +40,8 @@ struct WorkoutHubView: View {
 
     private var programFolders: [String: [WorkoutPreset]] {
             var dict = [String: [WorkoutPreset]]()
-            for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName && p.folderName != "HiddenFolder" { 
+            let favStr = String(localized: "Favorites")
+            for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName && p.folderName != "HiddenFolder" && p.folderName != "Favorites" && p.folderName != favStr { 
                 dict[p.folderName!, default: []].append(p)
             }
             return dict

@@ -588,44 +588,6 @@ extension WorkoutDetailViewModel {
 
             Task {
                 await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: isNowFavorite)
-
-                if isNowFavorite {
-                    let folderName = String(localized: "Favorites")
-
-                    func cleanExerciseDTO(_ dto: ExerciseDTO) -> ExerciseDTO {
-
-                        var cleanDto = dto
-                        cleanDto.isCompleted = false
-
-                        cleanDto.setsList = (dto.setsList ?? []).map { set in
-                            WorkoutSetDTO(index: set.index, weight: set.weight, reps: set.reps, distance: set.distance, time: set.time, isCompleted: false, type: set.type)
-                        }
-
-                        cleanDto.subExercises = (dto.subExercises ?? []).map { cleanExerciseDTO($0) }
-
-                        return cleanDto
-                    }
-
-                    let cleanExercises = workout.exercises.map { cleanExerciseDTO($0.toDTO()) }.map { Exercise(from: $0) }
-
-                    await presetService.savePreset(
-                        preset: nil,
-                        name: workout.title,
-                        icon: "star.fill",
-                        folderName: folderName,
-                        exercises: cleanExercises
-                    )
-
-                    await MainActor.run {
-                        let currentFolders = UserDefaults.standard.string(forKey: "customPresetFolders") ?? ""
-                        var foldersArray = currentFolders.isEmpty ? [] : currentFolders.components(separatedBy: "|")
-
-                        if !foldersArray.contains(folderName) {
-                            foldersArray.insert(folderName, at: 0)
-                            UserDefaults.standard.set(foldersArray.joined(separator: "|"), forKey: "customPresetFolders")
-                        }
-                    }
-                }
             }
         }
 }
