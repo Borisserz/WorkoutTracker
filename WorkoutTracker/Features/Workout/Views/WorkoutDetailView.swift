@@ -178,7 +178,7 @@ struct WorkoutDetailContentView: View {
                 finishWorkoutButton
             }
 
-            if viewModel.isShowingSnackbar { snackbarOverlay }
+            if viewModel.isShowingSnackbar && activeFullScreen == nil { snackbarOverlay }
         }
     }
 

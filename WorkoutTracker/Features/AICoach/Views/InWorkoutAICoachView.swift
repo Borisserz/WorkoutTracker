@@ -63,7 +63,7 @@ struct InWorkoutAICoachView: View {
                 .background(.ultraThinMaterial)
                 .cornerRadius(28)
                 .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color.white.opacity(0.1), lineWidth: 1))
-                .spotlight(step: .discoverAICamera, manager: tutorialManager, text: "AI Coach tracks your form and output in real-time here.", alignment: .bottom)
+
 
                 VStack(alignment: .leading, spacing: 16) {
                     Text(LocalizedStringKey("Intelligent Adjustments"))
