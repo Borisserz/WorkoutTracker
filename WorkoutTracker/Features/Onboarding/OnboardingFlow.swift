@@ -12,6 +12,16 @@ enum CardDecorationType {
     case ghost
 }
 
+enum OnboardingIllustrationType {
+    case appleHealth
+    case aiCamera
+    case smartBuilder
+    case anatomy
+    case analytics
+    case aiArchitect
+    case watch
+}
+
 struct OnboardingItem: Identifiable {
     let id = UUID()
     let iconName: String
@@ -21,6 +31,7 @@ struct OnboardingItem: Identifiable {
     let colors: [Color]
     let chips: [String]
     let decoration: CardDecorationType
+    let illustration: OnboardingIllustrationType
     let targetTab: Int?
 }
 
@@ -103,6 +114,438 @@ struct CardDecorationView: View {
     }
 }
 
+// MARK: - Onboarding Illustrations
+
+struct OnboardingIllustrationView: View {
+    let type: OnboardingIllustrationType
+    let colors: [Color]
+    
+    var body: some View {
+        Group {
+            switch type {
+            case .appleHealth:
+                AppleHealthIllustration(colors: colors)
+            case .aiCamera:
+                AICameraIllustration(colors: colors)
+            case .smartBuilder:
+                SmartBuilderIllustration(colors: colors)
+            case .anatomy:
+                UnlockAnatomyIllustration(colors: colors)
+            case .analytics:
+                DeepAnalyticsIllustration(colors: colors)
+            case .aiArchitect:
+                AIArchitectIllustration(colors: colors)
+            case .watch:
+                AppleWatchIllustration(colors: colors)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: 100)
+    }
+}
+
+struct AppleHealthIllustration: View {
+    let colors: [Color]
+    @State private var animate = false
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "heart.fill")
+                        .foregroundColor(.pink)
+                        .scaleEffect(animate ? 1.15 : 0.95)
+                    Text("Heart Rate")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                Text("72 bpm")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.05))
+            .cornerRadius(12)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: "flame.fill")
+                        .foregroundColor(.orange)
+                    Text("Energy")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.white.opacity(0.7))
+                }
+                Text("340 kcal")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(.white)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.05))
+            .cornerRadius(12)
+        }
+        .padding(12)
+        .background(Color.black.opacity(0.2))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                animate = true
+            }
+        }
+    }
+}
+
+struct AICameraIllustration: View {
+    let colors: [Color]
+    @State private var scanOffset: CGFloat = -40
+    @State private var pulse = false
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+            
+            Path { path in
+                for i in 1..<5 {
+                    let y = CGFloat(i) * 20.0
+                    path.move(to: CGPoint(x: 0, y: y))
+                    path.addLine(to: CGPoint(x: 320, y: y))
+                }
+                for i in 1..<12 {
+                    let x = CGFloat(i) * 28.0
+                    path.move(to: CGPoint(x: x, y: 0))
+                    path.addLine(to: CGPoint(x: x, y: 100))
+                }
+            }
+            .stroke(Color.white.opacity(0.04), lineWidth: 1)
+            
+            GeometryReader { geo in
+                let w = geo.size.width
+                let midX = w / 2
+                
+                ZStack {
+                    Path { path in
+                        path.move(to: CGPoint(x: midX, y: 25))
+                        path.addLine(to: CGPoint(x: midX, y: 45))
+                        
+                        path.move(to: CGPoint(x: midX, y: 45))
+                        path.addLine(to: CGPoint(x: midX - 25, y: 65))
+                        path.addLine(to: CGPoint(x: midX, y: 80))
+                        
+                        path.move(to: CGPoint(x: midX, y: 45))
+                        path.addLine(to: CGPoint(x: midX + 25, y: 65))
+                        path.addLine(to: CGPoint(x: midX, y: 80))
+                        
+                        path.move(to: CGPoint(x: midX, y: 25))
+                        path.addLine(to: CGPoint(x: midX - 30, y: 35))
+                        path.addLine(to: CGPoint(x: midX - 20, y: 15))
+                        
+                        path.move(to: CGPoint(x: midX, y: 25))
+                        path.addLine(to: CGPoint(x: midX + 30, y: 35))
+                        path.addLine(to: CGPoint(x: midX + 20, y: 15))
+                    }
+                    .stroke(
+                        LinearGradient(colors: colors, startPoint: .top, endPoint: .bottom),
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round)
+                    )
+                    
+                    Circle()
+                        .stroke(colors[0], lineWidth: 2)
+                        .background(Circle().fill(colors[0].opacity(0.2)))
+                        .frame(width: 14, height: 14)
+                        .position(x: midX, y: 15)
+                    
+                    ForEach([
+                        CGPoint(x: midX, y: 25),
+                        CGPoint(x: midX, y: 45),
+                        CGPoint(x: midX - 25, y: 65),
+                        CGPoint(x: midX + 25, y: 65),
+                        CGPoint(x: midX, y: 80)
+                    ], id: \.x) { pt in
+                        Circle()
+                            .fill(colors[1])
+                            .frame(width: 6, height: 6)
+                            .position(pt)
+                    }
+                }
+            }
+            
+            VStack {
+                HStack {
+                    Text("REP: 12")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(4)
+                    
+                    Spacer()
+                    
+                    Text("FORM: GOOD")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.black.opacity(0.6))
+                        .cornerRadius(4)
+                }
+                .padding(8)
+                Spacer()
+            }
+            
+            Rectangle()
+                .fill(LinearGradient(colors: [.clear, colors[0].opacity(0.35), .clear], startPoint: .top, endPoint: .bottom))
+                .frame(height: 15)
+                .offset(y: scanOffset)
+                .onAppear {
+                    withAnimation(.linear(duration: 2.0).repeatForever(autoreverses: true)) {
+                        scanOffset = 40
+                    }
+                }
+        }
+        .frame(height: 100)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+    }
+}
+
+struct SmartBuilderIllustration: View {
+    let colors: [Color]
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(0..<3) { i in
+                HStack {
+                    Image(systemName: i == 0 ? "checkmark.circle.fill" : (i == 1 ? "play.circle.fill" : "circle"))
+                        .foregroundColor(i == 1 ? colors[0] : (i == 0 ? .green : .white.opacity(0.3)))
+                        .font(.system(size: 13))
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(i == 0 ? "1. Warmup Setup" : (i == 1 ? "2. Bench Press (4 Sets)" : "3. Incline DB Flyes"))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(i == 1 ? .white : .white.opacity(0.6))
+                        
+                        Text(i == 0 ? "Completed" : (i == 1 ? "AI Tailored - Heavy Focus" : "Pending"))
+                            .font(.system(size: 8))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                    Spacer()
+                    
+                    Text(i == 0 ? "5 min" : (i == 1 ? "12 min" : "8 min"))
+                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                        .foregroundColor(.white.opacity(0.5))
+                }
+                .padding(6)
+                .background(Color.white.opacity(i == 1 ? 0.08 : 0.03))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(i == 1 ? colors[0].opacity(0.5) : Color.clear, lineWidth: 1)
+                )
+            }
+        }
+        .padding(8)
+        .background(Color.black.opacity(0.2))
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+    }
+}
+
+struct UnlockAnatomyIllustration: View {
+    let colors: [Color]
+    @State private var pulse = false
+    var body: some View {
+        ZStack {
+            Image(systemName: "figure.mind.and.body")
+                .font(.system(size: 55))
+                .foregroundColor(.white.opacity(0.15))
+            
+            Circle()
+                .fill(colors[0].opacity(0.65))
+                .frame(width: 24, height: 24)
+                .blur(radius: 5)
+                .offset(x: -8, y: -10)
+                .scaleEffect(pulse ? 1.35 : 1.0)
+            
+            Circle()
+                .fill(colors[1].opacity(0.7))
+                .frame(width: 18, height: 18)
+                .blur(radius: 4)
+                .offset(x: 8, y: 15)
+                .scaleEffect(pulse ? 1.25 : 0.9)
+            
+            VStack {
+                Spacer()
+                HStack {
+                    Text("Chest: 85% Active")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.white.opacity(0.8))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(colors[0].opacity(0.25))
+                        .cornerRadius(4)
+                    
+                    Spacer()
+                    
+                    Text("Legs: Recovered")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(.green)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.green.opacity(0.2))
+                        .cornerRadius(4)
+                }
+                .padding(6)
+            }
+        }
+        .frame(height: 100)
+        .background(Color.black.opacity(0.2))
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+        }
+    }
+}
+
+struct DeepAnalyticsIllustration: View {
+    let colors: [Color]
+    @State private var animate = false
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Text("Weekly Muscle Volume")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(.white.opacity(0.7))
+                Spacer()
+                Text("+15% vs Last Week")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(.green)
+            }
+            .padding(.horizontal, 6)
+            
+            HStack(alignment: .bottom, spacing: 14) {
+                ForEach([30, 45, 60, 50, 80, 70, 95], id: \.self) { val in
+                    VStack(spacing: 4) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(LinearGradient(colors: colors, startPoint: .bottom, endPoint: .top))
+                            .frame(height: animate ? CGFloat(val) * 0.55 : 0)
+                        
+                        Text("M")
+                            .font(.system(size: 7))
+                            .foregroundColor(.white.opacity(0.4))
+                    }
+                }
+            }
+            .frame(height: 70)
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.2))
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+                animate = true
+            }
+        }
+    }
+}
+
+struct AIArchitectIllustration: View {
+    let colors: [Color]
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Spacer()
+                Text("Design a 3-day push/pull split for strength.")
+                    .font(.system(size: 9))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(10, corners: [.topLeft, .topRight, .bottomLeft])
+            }
+            
+            HStack {
+                Text("Sure! Here's your optimized program with compound lifts...")
+                    .font(.system(size: 9))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .cornerRadius(10, corners: [.topLeft, .topRight, .bottomRight])
+                Spacer()
+            }
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.2))
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+    }
+}
+
+struct AppleWatchIllustration: View {
+    let colors: [Color]
+    @State private var trim = 0.0
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .stroke(colors[0].opacity(0.2), lineWidth: 6)
+                    .frame(width: 50, height: 50)
+                Circle()
+                    .trim(from: 0, to: trim)
+                    .stroke(colors[0], style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .frame(width: 50, height: 50)
+                    .rotationEffect(.degrees(-90))
+                
+                Image(systemName: "applewatch")
+                    .font(.system(size: 20))
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Watch Syncing: Connected")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Text("Real-time heart rate and sets tracked.")
+                    .font(.system(size: 8))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            Spacer()
+        }
+        .padding(10)
+        .background(Color.black.opacity(0.2))
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.white.opacity(0.1), lineWidth: 1))
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.2)) {
+                trim = 0.85
+            }
+        }
+    }
+}
+
+// RoundedCorner helper
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
+    }
+}
+
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape(RoundedCorner(radius: radius, corners: corners))
+    }
+}
+
 // MARK: - Root Flow
 
 struct OnboardingFlowView: View {
@@ -182,6 +625,7 @@ struct OnboardingIntroView: View {
                            colors: [Color.pink, Color.red.opacity(0.8)],
                            chips: ["Activity", "Vitals", "HealthKit"],
                            decoration: .orb,
+                           illustration: .appleHealth,
                            targetTab: nil),
             OnboardingItem(iconName: "camera.viewfinder",
                            category: "COMPUTER VISION",
@@ -190,6 +634,7 @@ struct OnboardingIntroView: View {
                            colors: [.purple, .blue],
                            chips: ["Rep Count", "Form Check", "Real-Time"],
                            decoration: .stars,
+                           illustration: .aiCamera,
                            targetTab: 3),
             OnboardingItem(iconName: "slider.horizontal.3",
                            category: "AI WORKOUTS",
@@ -198,6 +643,7 @@ struct OnboardingIntroView: View {
                            colors: [.blue, .cyan],
                            chips: ["Personalized", "Equipment", "Instant"],
                            decoration: .ring,
+                           illustration: .smartBuilder,
                            targetTab: 2),
             OnboardingItem(iconName: "figure.walk",
                            category: "BIOMETRICS",
@@ -206,6 +652,7 @@ struct OnboardingIntroView: View {
                            colors: [.red, .orange],
                            chips: ["Heatmap", "Recovery", "Anatomy"],
                            decoration: .ghost,
+                           illustration: .anatomy,
                            targetTab: 4),
             OnboardingItem(iconName: "chart.bar.fill",
                            category: "DATA INSIGHTS",
@@ -214,6 +661,7 @@ struct OnboardingIntroView: View {
                            colors: [.cyan, .green],
                            chips: ["Charts", "Vitals", "Analytics"],
                            decoration: .ring,
+                           illustration: .analytics,
                            targetTab: 4),
             OnboardingItem(iconName: "sparkles",
                            category: "AI PROGRAMMING",
@@ -222,6 +670,7 @@ struct OnboardingIntroView: View {
                            colors: [.indigo, .purple],
                            chips: ["AI Chat", "Programs", "Adaptive"],
                            decoration: .orb,
+                           illustration: .aiArchitect,
                            targetTab: 3),
             OnboardingItem(iconName: "applewatch",
                            category: "CONNECTIVITY",
@@ -230,6 +679,7 @@ struct OnboardingIntroView: View {
                            colors: [.green, .yellow],
                            chips: ["WatchOS", "Sync Active", "Phone-Free"],
                            decoration: .stars,
+                           illustration: .watch,
                            targetTab: 0)
         ]
     }
@@ -378,8 +828,12 @@ struct PremiumFeatureCard: View {
                         .font(.system(size: 15, weight: .medium, design: .rounded))
                         .foregroundStyle(themeManager.current.secondaryText)
                         .lineSpacing(5)
-                        .padding(.bottom, 24)
+                        .padding(.bottom, 18)
                         .fixedSize(horizontal: false, vertical: true)
+                    
+                    // Feature Illustration Preview (glowing vector mockup illustration)
+                    OnboardingIllustrationView(type: item.illustration, colors: item.colors)
+                        .padding(.bottom, 22)
                     
                     // Neon accent divider line
                     LinearGradient(colors: [item.colors[0].opacity(0.8), item.colors[1].opacity(0.1)], startPoint: .leading, endPoint: .trailing)
