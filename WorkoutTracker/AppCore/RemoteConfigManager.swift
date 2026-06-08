@@ -46,6 +46,14 @@ actor RemoteConfigManager: Sendable {
     func getString(forKey key: String) -> String {
         return remoteConfig.configValue(forKey: key).stringValue ?? ""
     }
+    
+    var minimumAppVersion: String {
+        return getString(forKey: "minimum_ios_version")
+    }
+    
+    var recommendedAppVersion: String {
+        return getString(forKey: "recommended_ios_version")
+    }
 
     func getAllPersonas() -> [AIPersona] {
         return cachedPersonas

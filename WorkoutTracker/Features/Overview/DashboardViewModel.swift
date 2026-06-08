@@ -19,6 +19,7 @@ final class DashboardViewModel {
     var todayWaterLiters: Double = 0.0
 
     var streakCount: Int = 0
+    var totalWorkouts: Int = 0
     var bestWeekStats = PeriodStats()
     var bestMonthStats = PeriodStats()
 
@@ -69,6 +70,7 @@ final class DashboardViewModel {
                     self.dashboardTopExercises = cacheDTO.dashboardTopExercises
                     self.dashboardMuscleData = cacheDTO.dashboardMuscleData
                     self.streakCount = cacheDTO.streakCount
+                    self.totalWorkouts = cacheDTO.totalWorkouts
                     
                     TrackingManager.shared.setUserProperty(name: "current_streak", value: String(cacheDTO.streakCount))
                     TrackingManager.shared.setUserProperty(name: "total_workouts", value: String(cacheDTO.totalWorkouts))

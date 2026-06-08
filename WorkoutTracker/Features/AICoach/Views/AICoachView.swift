@@ -37,6 +37,9 @@ struct AICoachView: View {
     @Environment(\.colorScheme) private var colorScheme 
     @State private var actualHRV: Double? = nil
     @State private var actualRHR: Double? = nil
+    
+    @AppStorage("hasSeenAICoachTooltip") private var hasSeenTooltip = false
+    @State private var showTooltip = false
     @State private var showChatView = false
     @State private var showWorkoutSheet = false
     @State private var showProgressSheet = false
@@ -328,6 +331,42 @@ struct AICoachView: View {
                         .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05), lineWidth: 1))
                         .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
                         .padding(.horizontal, 24)
+                        .overlay(alignment: .top) {
+                            if showTooltip {
+                                VStack(spacing: 0) {
+                                    Text("Try asking: 'Generate a 3-day split for mass'")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundColor(colorScheme == .dark ? .black : .white)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 10)
+                                        .background(colorScheme == .dark ? Color.white : Color.black)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                                        .shadow(color: .cyan.opacity(0.3), radius: 10, y: 5)
+                                    
+                                    Path { p in p.move(to: CGPoint(x: 0, y: 0)); p.addLine(to: CGPoint(x: 16, y: 0)); p.addLine(to: CGPoint(x: 8, y: 8)); p.closeSubpath() }
+                                        .fill(colorScheme == .dark ? Color.white : Color.black)
+                                        .frame(width: 16, height: 8)
+                                }
+                                .offset(y: -50)
+                                .transition(.scale(scale: 0.8, anchor: .bottom).combined(with: .opacity))
+                                .onTapGesture {
+                                    withAnimation { showTooltip = false }
+                                }
+                            }
+                        }
+                        .onAppear {
+                            if !hasSeenTooltip {
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                    withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) {
+                                        showTooltip = true
+                                        hasSeenTooltip = true
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                                        withAnimation { showTooltip = false }
+                                    }
+                                }
+                            }
+                        }
 
                         ScrollView(.horizontal, showsIndicators: false) {
                             LazyHStack(spacing: 12) {

@@ -44,7 +44,11 @@ struct CyberNeonTheme: AppTheme {
     var tertiaryText: Color { Color(white: 0.4) }
     var onAccentText: Color { .white }
 
-    var primaryAccent: Color { .neonBlue }
+    var primaryAccent: Color {
+        // We'll use ThemeManager.shared.accentColor when needed, but to avoid circularity, 
+        // ThemeManager will just expose an accentColor property directly that overrides this in views.
+        return .neonBlue
+    }
     var secondaryAccent: Color { .neonPurple }
     var secondaryMidTone: Color { .neonOrange }
     var deepPremiumAccent: Color { .neonPurple }
@@ -68,12 +72,18 @@ struct CyberNeonTheme: AppTheme {
 }
 
 @Observable
-final class ThemeManager: Sendable {
+@MainActor
+final class ThemeManager {
     static let shared = ThemeManager()
 
-    let current: AppTheme = CyberNeonTheme()
+    var current: AppTheme = CyberNeonTheme()
+    var accentColor: Color = .neonBlue
 
     private init() {}
+    
+    func setAccentColor(_ color: Color) {
+        accentColor = color
+    }
 }
 
 extension View {

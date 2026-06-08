@@ -16,28 +16,33 @@ public enum AILogicError: Error, LocalizedError, Sendable {
     case invalidData
     case friendlyError
     case apiError(statusCode: Int, message: String)
+    case badRequest(reason: String)
     case decodingFailed(Error)
     case rateLimited(retryAfter: TimeInterval?)
+    
     public var errorDescription: String? {
         switch self {
         case .invalidURL:        return "The URL provided is invalid."
         case .invalidResponse:   return "Received an invalid response from the server."
         case .aiConsentRequired:
-                   return NSLocalizedString(
-                       "AI features require your consent before your messages can be sent for processing.",
-                       comment: "Shown when the user hasn't consented to AI processing yet"
-                   )
+            return NSLocalizedString(
+                "AI features require your consent before your messages can be sent for processing.",
+                comment: "Shown when the user hasn't consented to AI processing yet"
+            )
         case .noDataReturned:    return "No data was returned from the server."
         case .invalidData:       return "The AI response was malformed."
-        case .rateLimited(let retryAfter):
-            if let retryAfter {
-                let days = Int(ceil(retryAfter / 86_400))
-                return "You've reached your weekly AI limit. Please try again in about \(days) day(s)."
-            }
-            return "You've reached your weekly AI limit. Please try again later."
+        case .rateLimited:
+            return "The AI is currently under high load. Please wait a moment while we reconnect."
         case .friendlyError:     return "Sorry, I got a little confused. Could you rephrase that?"
+        case .badRequest(let reason):
+            return "Your request couldn't be processed. \(reason)"
         case .apiError(let code, let msg):
-            return "API Error (\(code)): \(msg)"
+            if code == 400 {
+                return "The request was invalid or too large. Please try asking a shorter question."
+            } else if code >= 500 {
+                return "Google's AI servers are currently experiencing issues. Please try again later."
+            }
+            return "Server Error (\(code)): \(msg)"
         case .decodingFailed(let err):
             return "Decoding failed: \(err.localizedDescription)"
         }

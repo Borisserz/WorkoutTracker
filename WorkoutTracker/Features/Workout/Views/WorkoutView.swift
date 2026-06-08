@@ -313,12 +313,9 @@ struct DynamicWorkoutListView: View {
 
     var body: some View {
         if workouts.isEmpty {
-            EmptyStateView(
-                icon: "dumbbell.fill",
-                title: LocalizedStringKey("No Workouts Yet"),
-                message: LocalizedStringKey("Your journey starts here. Tap 'Start Workout' above to begin.")
-            )
-            .padding(.vertical, 40)
+            PremiumHistoryEmptyState {
+                di.appState.selectedTab = 2 // Go to Workout Tab
+            }
         } else {
             ForEach(workouts) { workout in
                 HStack(spacing: 12) {
@@ -635,5 +632,101 @@ struct WorkoutHistoryStatCard: View {
         .background(themeManager.current.surface)
         .cornerRadius(12)
         .compositingGroup()
+    }
+}
+
+// MARK: - Premium Empty State
+
+struct PremiumHistoryEmptyState: View {
+    var onStartWorkout: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        ZStack {
+            // Blurred Mock Background
+            VStack(spacing: 12) {
+                MockWorkoutRow(title: "Leg Day Destroyer", duration: "1h 15m", volume: "12 t", isBlinking: true)
+                MockWorkoutRow(title: "Upper Body Power", duration: "45m", volume: "8.5 t", isBlinking: false)
+                MockWorkoutRow(title: "Core & Cardio", duration: "30m", volume: "0 t", isBlinking: false)
+            }
+            .opacity(0.4)
+            .blur(radius: 8)
+
+            // Foreground CTA
+            VStack(spacing: 16) {
+                Image(systemName: "clock.arrow.circlepath")
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .shadow(color: .cyan.opacity(0.5), radius: 10, y: 5)
+
+                Text("A Blank Slate")
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+
+                Text("Every legend starts from zero.\nComplete your first workout to start building your history.")
+                    .font(.system(size: 15))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+                    .lineSpacing(4)
+
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    onStartWorkout()
+                }) {
+                    Text("Start First Session")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 14)
+                        .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))
+                        .clipShape(Capsule())
+                        .shadow(color: .cyan.opacity(0.4), radius: 10, y: 5)
+                }
+                .padding(.top, 8)
+            }
+            .padding(30)
+            .background(colorScheme == .dark ? Color.black.opacity(0.5) : Color.white.opacity(0.8))
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 30))
+            .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+            .shadow(color: .black.opacity(0.1), radius: 20, y: 10)
+            .padding(.horizontal, 20)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 40)
+    }
+}
+
+struct MockWorkoutRow: View {
+    let title: String
+    let duration: String
+    let volume: String
+    let isBlinking: Bool
+    @Environment(\.colorScheme) private var colorScheme
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Circle()
+                .fill(Color.cyan.opacity(0.2))
+                .frame(width: 40, height: 40)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                HStack {
+                    Text(duration).font(.caption).foregroundColor(.gray)
+                    Text("•").foregroundColor(.gray)
+                    Text(volume).font(.caption).foregroundColor(.gray)
+                }
+            }
+            Spacer()
+        }
+        .padding()
+        .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(isBlinking ? Color.cyan.opacity(0.5) : Color.clear, lineWidth: 2))
+        .padding(.horizontal, 20)
     }
 }

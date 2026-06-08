@@ -9,6 +9,7 @@ struct InWorkoutAICoachView: View {
 
     @Environment(WorkoutDetailViewModel.self) private var detailViewModel
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
+    @Environment(TutorialManager.self) var tutorialManager
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -62,6 +63,7 @@ struct InWorkoutAICoachView: View {
                 .background(.ultraThinMaterial)
                 .cornerRadius(28)
                 .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                .spotlight(step: .discoverAICamera, manager: tutorialManager, text: "AI Coach tracks your form and output in real-time here.", alignment: .bottom)
 
                 VStack(alignment: .leading, spacing: 16) {
                     Text(LocalizedStringKey("Intelligent Adjustments"))
@@ -100,6 +102,16 @@ struct InWorkoutAICoachView: View {
             AIConsentSheet(onConsent: { viewModel.retryPendingCommand() })
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
+        }
+        .onAppear {
+            if UserDefaults.standard.bool(forKey: "hasSeenFeatureDiscovery") && !UserDefaults.standard.bool(forKey: "hasSeenAICameraSpotlight") {
+                if tutorialManager.currentStep == .completed || tutorialManager.currentStep == .discoverPhotoCompare {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                        tutorialManager.setStep(.discoverAICamera)
+                        UserDefaults.standard.set(true, forKey: "hasSeenAICameraSpotlight")
+                    }
+                }
+            }
         }
     }
 

@@ -12,8 +12,10 @@ import GoogleSignIn
 import PhotosUI
 
 struct RootGodModeOnboarding: View {
-    let onFinish: () -> Void
+    let onFinish: (Int?) -> Void
     @State private var currentStage = 0
+    @AppStorage("hasSeenFeatureDiscovery") private var hasSeenFeatureDiscovery = false
+    @State private var savedTargetTab: Int? = nil
 
     var body: some View {
         ZStack {
@@ -26,9 +28,29 @@ struct RootGodModeOnboarding: View {
                 .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
             } else if currentStage == 1 {
                 OnboardingGodMode(onNext: {
-                    onFinish()
+                    if hasSeenFeatureDiscovery {
+                        onFinish(nil)
+                    } else {
+                        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                            currentStage = 2
+                        }
+                    }
                 })
                 .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+            } else if currentStage == 2 {
+                OnboardingIntroView(onNext: { targetTab in
+                    savedTargetTab = targetTab
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        currentStage = 3
+                    }
+                })
+                .transition(.asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading)))
+            } else if currentStage == 3 {
+                TheOathView(onComplete: {
+                    hasSeenFeatureDiscovery = true
+                    onFinish(savedTargetTab)
+                })
+                .transition(.opacity)
             }
         }
         .preferredColorScheme(.dark)
@@ -701,6 +723,120 @@ struct GodModeAnimatedBackground: View {
         }.onAppear {
             withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) { move1 = true }
             withAnimation(.easeInOut(duration: 10).repeatForever(autoreverses: true)) { move2 = true }
+        }
+    }
+}
+// removed ThemeCustomizationView
+
+// MARK: - The Oath (Hold to Commit)
+
+struct TheOathView: View {
+    let onComplete: () -> Void
+    @Environment(ThemeManager.self) private var themeManager
+    @AppStorage("userGoal") private var userGoal = ""
+    
+    @State private var holdProgress: CGFloat = 0.0
+    @State private var isHolding = false
+    @State private var isCompleted = false
+    
+    let timer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    
+    var body: some View {
+        ZStack {
+            Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+            
+            // Dramatic background glow
+            Circle()
+                .fill(themeManager.accentColor.opacity(0.15))
+                .frame(width: 300, height: 300)
+                .blur(radius: 80)
+                .scaleEffect(1.0 + holdProgress * 0.5)
+                .opacity(0.5 + holdProgress * 0.5)
+                .animation(.linear(duration: 0.1), value: holdProgress)
+            
+            VStack(spacing: 30) {
+                Spacer()
+                
+                Image(systemName: "lock.shield")
+                    .font(.system(size: 60, weight: .light))
+                    .foregroundColor(themeManager.accentColor)
+                    .scaleEffect(isCompleted ? 1.2 : 1.0)
+                    .animation(.spring, value: isCompleted)
+                
+                let goalText = userGoal.isEmpty ? "your goals" : userGoal
+                Text("You said you want to\n**\(goalText)**.")
+                    .font(.system(size: 28, design: .rounded))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 30)
+                
+                Text("The AI is ready to guide you. But the effort must come from you.\n\nAre you ready?")
+                    .font(.system(size: 16))
+                    .foregroundColor(.white.opacity(0.7))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 40)
+                
+                Spacer()
+                
+                // Hold to Commit Button
+                ZStack {
+                    // Background track
+                    Circle()
+                        .stroke(Color.white.opacity(0.1), lineWidth: 4)
+                        .frame(width: 120, height: 120)
+                    
+                    // Progress ring
+                    Circle()
+                        .trim(from: 0, to: holdProgress)
+                        .stroke(themeManager.accentColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                        .frame(width: 120, height: 120)
+                        .rotationEffect(.degrees(-90))
+                    
+                    // Fingerprint or text
+                    if isCompleted {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 40, weight: .bold))
+                            .foregroundColor(themeManager.accentColor)
+                            .transition(.scale)
+                    } else {
+                        Text("Hold")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(isHolding ? themeManager.accentColor : .white)
+                            .scaleEffect(isHolding ? 1.1 : 1.0)
+                    }
+                }
+                .padding(.bottom, 60)
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { _ in
+                            if !isCompleted {
+                                isHolding = true
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            }
+                        }
+                        .onEnded { _ in
+                            isHolding = false
+                            if !isCompleted {
+                                withAnimation(.spring) {
+                                    holdProgress = 0.0
+                                }
+                            }
+                        }
+                )
+                .onReceive(timer) { _ in
+                    if isHolding && !isCompleted {
+                        holdProgress += 0.05
+                        if holdProgress >= 1.0 {
+                            isCompleted = true
+                            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                                onComplete()
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

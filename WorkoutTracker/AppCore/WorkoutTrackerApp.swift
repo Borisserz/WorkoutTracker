@@ -57,6 +57,7 @@ struct WorkoutTrackerApp: App {
     @State private var lastImportedWorkoutName: String = ""
     @State private var restTimerManager = RestTimerManager()
     @State private var tutorialManager = TutorialManager()
+    @StateObject private var versionManager = VersionManager.shared
 
     @AppStorage("hasCompletedGodModeOnboarding_v1") private var hasCompletedGodModeOnboarding = false
 
@@ -81,13 +82,21 @@ struct WorkoutTrackerApp: App {
                           let cvm = catalogViewModel,
                           let pvm = profileViewModel {
 
-                    if !hasCompletedGodModeOnboarding {
-                        RootGodModeOnboarding(onFinish: {
+                    if versionManager.updateRequirement == .hardUpdate {
+                        ForceUpdateView()
+                            .environment(ThemeManager.shared)
+                            .preferredColorScheme(colorScheme)
+                    } else if !hasCompletedGodModeOnboarding {
+                        RootGodModeOnboarding(onFinish: { targetTab in
                             withAnimation(.easeInOut(duration: 0.8)) {
                                 hasCompletedGodModeOnboarding = true
                             }
+                            if let tab = targetTab {
+                                di.appState.selectedTab = tab
+                            }
                         })
                         .preferredColorScheme(.dark)
+                        .environment(ThemeManager.shared)
                     } else {
                         mainContent(di: di, dvm: dvm, usvm: usvm, aicvm: aicvm, cvm: cvm, pvm: pvm)
                     }
@@ -138,6 +147,19 @@ struct WorkoutTrackerApp: App {
             .environment(cvm)
             .environment(pvm)
             .preferredColorScheme(colorScheme)
+            .alert("Update Available", isPresented: Binding(
+                get: { versionManager.updateRequirement == .softUpdate && !versionManager.hasDismissedSoftUpdate },
+                set: { if !$0 { versionManager.hasDismissedSoftUpdate = true } }
+            )) {
+                Button("Update Now") {
+                    AppReviewManager.openAppStoreReview()
+                }
+                Button("Later", role: .cancel) {
+                    versionManager.hasDismissedSoftUpdate = true
+                }
+            } message: {
+                Text("A new version of the app is available. Update now to get the latest features and fixes.")
+            }
             .onOpenURL { url in
                 if url.scheme == "workouttracker" && url.host == "shared" {
                     guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
@@ -278,6 +300,7 @@ struct WorkoutTrackerApp: App {
                 }
 
                 await RemoteConfigManager.shared.fetchCloudValues()
+                await versionManager.checkForUpdates()
                 await ExerciseDatabaseService.shared.loadDatabase()
 
                 let migrator = LegacyDataMigrator(modelContainer: container)

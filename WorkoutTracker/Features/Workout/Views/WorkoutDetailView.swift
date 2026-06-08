@@ -79,6 +79,7 @@ struct WorkoutDetailContentView: View {
 
             if let fullScreen = activeFullScreen {
                 renderFullScreenContent(for: fullScreen)
+                    .id(fullScreen.id)
                     .ignoresSafeArea()
                     .zIndex(200)
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
@@ -545,13 +546,19 @@ Text(String(translatedName.prefix(3)).capitalized)
     private func renderFullScreenContent(for destination: DetailDestination) -> some View {
         switch destination {
         case .prCelebration(let level): PRCelebrationView(prLevel: level, onClose: { activeFullScreen = nil }).presentationBackground(.clear)
-        case .achievementPopup(let achievements): AchievementPopupView(achievements: achievements) { activeFullScreen = nil }.presentationBackground(.clear)
+        case .achievementPopup(let achievements): AchievementPopupView(achievements: achievements) { 
+            activeFullScreen = nil
+            AppReviewManager.processQueuedReview()
+        }.presentationBackground(.clear)
         case .xpBreakdownPopup(let breakdown, let isLevelUp, let newLevel, let newTitle, let achievements):
             XPBreakdownPopupView(breakdown: breakdown, isLevelUp: isLevelUp, newLevel: newLevel, newTitle: newTitle) {
+                activeFullScreen = nil
                 if !achievements.isEmpty {
-                    activeFullScreen = .achievementPopup(achievements)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        activeFullScreen = .achievementPopup(achievements)
+                    }
                 } else {
-                    activeFullScreen = nil
+                    AppReviewManager.processQueuedReview()
                 }
             }
             .presentationBackground(.clear)

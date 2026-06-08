@@ -25,4 +25,21 @@ final class AppReviewManager {
         guard let url = URL(string: urlString) else { return }
         UIApplication.shared.open(url)
     }
+    
+    static var shouldRequestReviewAfterPopups: Bool = false
+    
+    static func checkAndQueueReview(completedWorkouts: Int) {
+        if completedWorkouts == 3 || completedWorkouts == 10 || completedWorkouts == 25 {
+            shouldRequestReviewAfterPopups = true
+        }
+    }
+    
+    static func processQueuedReview() {
+        if shouldRequestReviewAfterPopups {
+            shouldRequestReviewAfterPopups = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                requestAppStoreReview()
+            }
+        }
+    }
 }

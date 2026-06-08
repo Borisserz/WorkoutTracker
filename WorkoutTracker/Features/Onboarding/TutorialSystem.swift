@@ -5,7 +5,7 @@ import Combine
 import Observation
 
 enum TutorialStep: Int, CaseIterable, Equatable {
-    case tapPlus = 0, createEmpty,tapStartNow, addExercise, finishExercise, explainEffort, highlightChart, highlightBody, finishWorkout, recoveryCheck, recoverySlider, historyTab, exercisesTab, createCustom, progressTab, completed
+    case tapPlus = 0, createEmpty,tapStartNow, addExercise, finishExercise, explainEffort, highlightChart, highlightBody, finishWorkout, recoveryCheck, recoverySlider, historyTab, exercisesTab, createCustom, progressTab, discoverPhotoCompare, discoverAICamera, discoverProgressChart, completed
 }
 @Observable
 class TutorialManager {

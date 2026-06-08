@@ -16,7 +16,7 @@ initializeApp();
 // ==========================================
 const PROJECT_ID = "serzhanovich-ecosystem-ce700";
 const LOCATION = "us-central1";
-const MODEL = "gemini-1.5-flash";
+const MODEL = "gemini-3.5-flash";
 const AUTO_BLOCK_REPORT_THRESHOLD = 3;
 const SERVICE_ACCOUNT =
   "firebase-adminsdk-fbsvc@serzhanovich-ecosystem-ce700.iam.gserviceaccount.com";
@@ -46,8 +46,8 @@ async function vertexFetch(body) {
   const client = await auth.getClient();
   const accessToken = (await client.getAccessToken()).token;
   const url =
-    `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}` +
-    `/locations/${LOCATION}/publishers/google/models/${MODEL}:generateContent`;
+    `https://aiplatform.googleapis.com/v1/projects/${PROJECT_ID}` +
+    `/locations/global/publishers/google/models/${MODEL}:generateContent`;
   const resp = await fetch(url, {
     method: "POST",
     headers: {
@@ -178,8 +178,8 @@ try {
     const method = streaming ? "streamGenerateContent" : "generateContent";
     const sse = streaming ? "?alt=sse" : "";
     const url =
-      `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}` +
-      `/locations/${LOCATION}/publishers/google/models/${MODEL}:${method}${sse}`;
+      `https://aiplatform.googleapis.com/v1/projects/${PROJECT_ID}` +
+      `/locations/global/publishers/google/models/${MODEL}:${method}${sse}`;
 
     const upstream = await fetch(url, {
       method: "POST",

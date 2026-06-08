@@ -227,6 +227,7 @@ struct StatsContentView: View {
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.colorScheme) private var colorScheme 
     @AppStorage("userGender") private var userGender = "male"
+    @Environment(TutorialManager.self) var tutorialManager
 
     @State private var showingAddGoal = false
     @State private var showProfile = false
@@ -251,20 +252,34 @@ struct StatsContentView: View {
 
                     GoalsSectionView(showingAddGoal: $showingAddGoal, viewModel: viewModel, unitsManager: unitsManager)
 
-                    AIIslandView { fetchReviewDataAndShowSheet() }
-                        .disabled(isFetchingReviewData)
-                        .opacity(isFetchingReviewData ? 0.5 : 1.0)
+                    ZStack(alignment: .top) {
+                        VStack(spacing: 24) {
+                            AIIslandView { fetchReviewDataAndShowSheet() }
+                                .disabled(isFetchingReviewData)
+                                .opacity(isFetchingReviewData ? 0.5 : 1.0)
 
-                    VStack(spacing: 16) {
-                        PeriodPicker(selectedPeriod: $viewModel.selectedPeriod)
-                        QuickStatsView(stats: currentStats, unitsManager: unitsManager, period: viewModel.selectedPeriod, viewModel: viewModel)
+                            VStack(spacing: 16) {
+                                PeriodPicker(selectedPeriod: $viewModel.selectedPeriod)
+                                QuickStatsView(stats: currentStats, unitsManager: unitsManager, period: viewModel.selectedPeriod, viewModel: viewModel)
+                            }
+
+                            ComparisonSectionView(viewModel: viewModel, unitsManager: unitsManager)
+
+                            AdvancedStatsSectionView(viewModel: viewModel, userGender: userGender)
+
+                            AllTimeResultsView(bestStats: dashboardViewModel.bestMonthStats, unitsManager: unitsManager)
+                        }
+                        .blur(radius: dashboardViewModel.totalWorkouts == 0 ? 15 : 0)
+                        .opacity(dashboardViewModel.totalWorkouts == 0 ? 0.5 : 1.0)
+                        .disabled(dashboardViewModel.totalWorkouts == 0)
+
+                        if dashboardViewModel.totalWorkouts == 0 {
+                            PremiumStatsEmptyState {
+                                di.appState.selectedTab = 2
+                            }
+                            .padding(.top, 60)
+                        }
                     }
-
-                    ComparisonSectionView(viewModel: viewModel, unitsManager: unitsManager)
-
-                    AdvancedStatsSectionView(viewModel: viewModel, userGender: userGender)
-
-                    AllTimeResultsView(bestStats: dashboardViewModel.bestMonthStats, unitsManager: unitsManager)
 
                     Spacer().frame(height: 40)
                 }
@@ -301,6 +316,21 @@ struct StatsContentView: View {
                     .presentationDetents([.medium])
             }
         }
+        .onAppear {
+            if UserDefaults.standard.bool(forKey: "hasSeenFeatureDiscovery") {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    if tutorialManager.currentStep == .completed {
+                        if !UserDefaults.standard.bool(forKey: "hasSeenProgressChartSpotlight") {
+                            tutorialManager.setStep(.discoverProgressChart)
+                            UserDefaults.standard.set(true, forKey: "hasSeenProgressChartSpotlight")
+                        } else if !UserDefaults.standard.bool(forKey: "hasSeenPhotoSpotlight") {
+                            tutorialManager.setStep(.discoverPhotoCompare)
+                            UserDefaults.standard.set(true, forKey: "hasSeenPhotoSpotlight")
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private func fetchReviewDataAndShowSheet() {
@@ -334,6 +364,7 @@ struct StatsContentView: View {
 struct HeaderView: View {
     @Binding var showProfile: Bool
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(TutorialManager.self) var tutorialManager
 
     var body: some View {
         HStack {
@@ -341,6 +372,21 @@ struct HeaderView: View {
                 .font(.system(size: 34, weight: .black, design: .rounded))
                 .foregroundColor(colorScheme == .dark ? .white : .black)
             Spacer()
+
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                if tutorialManager.currentStep == .discoverPhotoCompare {
+                    tutorialManager.complete()
+                }
+                // Placeholder for actual photo view launch
+            }) {
+                Image(systemName: "camera.viewfinder")
+                    .font(.system(size: 20))
+                    .frame(width: 44, height: 44)
+                    .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                    .clipShape(Circle())
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+            }
 
             Button(action: {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -519,17 +565,30 @@ struct DesignerGoalCard: View {
         .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
     }
 
-    private var iconName: String { goal.type == .strength ? "dumbbell.fill" : (goal.type == .bodyweight ? "scalemass.fill" : "flame.fill") }
-    private var iconColor: Color { goal.type == .strength ? .blue : (goal.type == .bodyweight ? .purple : .orange) }
-    private var title: String { goal.type == .strength ? (goal.exerciseName ?? "Exercise") : (goal.type == .bodyweight ? "Body Weight" : "Streak") }
-    private var subtitle: String { goal.type == .strength ? "Strength Goal" : (goal.type == .bodyweight ? "Transformation" : "Discipline") }
+    private var iconName: String { 
+        if goal.type == .bodyweight { return goal.targetValue < goal.startingValue ? "arrow.down.right.circle.fill" : "arrow.up.right.circle.fill" }
+        return goal.type == .strength ? "dumbbell.fill" : "flame.fill" 
+    }
+    private var iconColor: Color { 
+        if goal.type == .bodyweight { return goal.targetValue < goal.startingValue ? .mint : .orange }
+        return goal.type == .strength ? .blue : .orange 
+    }
+    private var title: String { 
+        if goal.type == .bodyweight { return goal.targetValue < goal.startingValue ? "Lose Weight" : "Gain Mass" }
+        return goal.type == .strength ? (goal.exerciseName ?? "Exercise") : "Streak" 
+    }
+    private var subtitle: String { 
+        if goal.type == .bodyweight { return goal.targetValue < goal.startingValue ? "Shed fat and get leaner" : "Build muscle and increase size" }
+        return goal.type == .strength ? "Strength Goal" : "Discipline" 
+    }
 
     private func calculateProgress() -> Double {
         if goal.type == .bodyweight {
-            let totalDist = abs(goal.targetValue - goal.startingValue)
-            let curDist = abs(currentValue - goal.startingValue)
-            if totalDist == 0 { return 1.0 }
-            return min(1.0, curDist / totalDist)
+            let isLoss = goal.targetValue < goal.startingValue
+            let totalDist = isLoss ? (goal.startingValue - goal.targetValue) : (goal.targetValue - goal.startingValue)
+            let curDist = isLoss ? (goal.startingValue - currentValue) : (currentValue - goal.startingValue)
+            if totalDist <= 0 { return 1.0 }
+            return min(1.0, max(0.0, curDist / totalDist))
         } else {
             let totalDist = goal.targetValue - goal.startingValue
             let curDist = currentValue - goal.startingValue
@@ -773,7 +832,6 @@ struct ComparisonSectionView: View {
                 .foregroundColor(colorScheme == .dark ? .white : .black)
 
             VStack(spacing: 0) {
-
                 if viewModel.chartData.isEmpty {
                     EmptyStateView(
                         icon: "chart.xyaxis.line",
@@ -3354,3 +3412,71 @@ struct StorySlideOutro: View {
             .frame(maxWidth: .infinity)
         }
     }
+
+// MARK: - Premium Stats Empty State
+
+struct PremiumStatsEmptyState: View {
+    var onStartWorkout: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var appear = false
+
+    var body: some View {
+        VStack(spacing: 24) {
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.15))
+                    .frame(width: 100, height: 100)
+                    .blur(radius: 20)
+                
+                Image(systemName: "lock.shield.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .shadow(color: .purple.opacity(0.4), radius: 15, y: 5)
+            }
+            .scaleEffect(appear ? 1.0 : 0.5)
+            .opacity(appear ? 1.0 : 0)
+
+            VStack(spacing: 12) {
+                Text("Analytics Locked")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+
+                Text("Your journey starts here. Complete your first workout to unlock deep muscle analytics, AI insights, and progress charts.")
+                    .font(.system(size: 15))
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(6)
+                    .padding(.horizontal, 20)
+            }
+            .offset(y: appear ? 0 : 20)
+            .opacity(appear ? 1.0 : 0)
+
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                onStartWorkout()
+            }) {
+                Text("Start First Workout")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 32)
+                    .padding(.vertical, 16)
+                    .background(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing))
+                    .clipShape(Capsule())
+                    .shadow(color: .purple.opacity(0.4), radius: 10, y: 5)
+            }
+            .padding(.top, 10)
+            .offset(y: appear ? 0 : 20)
+            .opacity(appear ? 1.0 : 0)
+        }
+        .padding(32)
+        .background(colorScheme == .dark ? Color.black.opacity(0.6) : Color.white.opacity(0.8))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 32))
+        .overlay(RoundedRectangle(cornerRadius: 32).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+        .shadow(color: .black.opacity(0.15), radius: 30, y: 15)
+        .padding(.horizontal, 20)
+        .onAppear {
+            withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { appear = true }
+        }
+    }
+}

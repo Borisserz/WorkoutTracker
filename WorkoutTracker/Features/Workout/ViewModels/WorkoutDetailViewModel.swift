@@ -481,13 +481,9 @@ final class WorkoutDetailViewModel {
                 allUnlocks.append(contentsOf: result.newUnlocks)
                 
                 await MainActor.run {
-                    // Trigger App Store Review on happy moments
-                    if completedCount == 3 || completedCount == 10 || completedCount == 25 {
-                        // Give a small delay so it appears smoothly after returning to the hub
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                            AppReviewManager.requestAppStoreReview()
-                        }
-                    }
+                    // Queue App Store Review on happy moments
+                    AppReviewManager.checkAndQueueReview(completedWorkouts: completedCount)
+                    
                     NotificationCenter.default.post(name: .workoutCompletedEvent, object: workoutID, userInfo: ["modelContainer": container])
                     self.updateWorkoutAnalytics(for: workout)
                     self.activeEvent = .workoutSuccessfullyFinished

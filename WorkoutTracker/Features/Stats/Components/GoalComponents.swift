@@ -18,8 +18,8 @@ struct ActiveGoalCard: View {
             if let goal = goal {
                 HStack(alignment: .top) {
                     ZStack {
-                        Circle().fill(iconColor(for: goal.type).opacity(0.15)).frame(width: 48, height: 48)
-                        Image(systemName: icon(for: goal.type)).font(.title3).foregroundColor(iconColor(for: goal.type))
+                        Circle().fill(dynamicIconColor(for: goal).opacity(0.15)).frame(width: 48, height: 48)
+                        Image(systemName: dynamicIcon(for: goal)).font(.title3).foregroundColor(dynamicIconColor(for: goal))
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
@@ -126,6 +126,14 @@ struct ActiveGoalCard: View {
     private func icon(for type: GoalType) -> String {
         switch type { case .strength: return "dumbbell.fill"; case .bodyweight: return "scalemass.fill"; case .consistency: return "flame.fill" }
     }
+    
+    private func dynamicIcon(for goal: UserGoal) -> String {
+        if goal.type == .bodyweight {
+            return goal.targetValue < goal.startingValue ? "arrow.down.right.circle.fill" : "arrow.up.right.circle.fill"
+        }
+        return icon(for: goal.type)
+    }
+
     private func iconColor(for type: GoalType) -> Color {
         @Environment(ThemeManager.self) var themeManager
         switch type { 
@@ -134,11 +142,26 @@ struct ActiveGoalCard: View {
             case .consistency: return ThemeManager.shared.current.secondaryMidTone
         }
     }
+    
+    private func dynamicIconColor(for goal: UserGoal) -> Color {
+        if goal.type == .bodyweight {
+            return goal.targetValue < goal.startingValue ? .mint : .orange
+        }
+        return iconColor(for: goal.type)
+    }
     private func title(for goal: UserGoal) -> LocalizedStringKey {
-        switch goal.type { case .strength: return LocalizedStringKey("\(goal.exerciseName ?? "Exercise")"); case .bodyweight: return LocalizedStringKey("Target Bodyweight"); case .consistency: return LocalizedStringKey("Workout Streak") }
+        switch goal.type { 
+            case .strength: return LocalizedStringKey("\(goal.exerciseName ?? "Exercise")")
+            case .bodyweight: return goal.targetValue < goal.startingValue ? LocalizedStringKey("Lose Weight") : LocalizedStringKey("Gain Mass")
+            case .consistency: return LocalizedStringKey("Workout Streak") 
+        }
     }
     private func subtitle(for goal: UserGoal) -> LocalizedStringKey {
-        switch goal.type { case .strength: return LocalizedStringKey("Strength Goal"); case .bodyweight: return LocalizedStringKey("Bodyweight Goal"); case .consistency: return LocalizedStringKey("Consistency Goal") }
+        switch goal.type { 
+            case .strength: return LocalizedStringKey("Strength Goal")
+            case .bodyweight: return goal.targetValue < goal.startingValue ? LocalizedStringKey("Shed fat and get leaner") : LocalizedStringKey("Build muscle and increase size")
+            case .consistency: return LocalizedStringKey("Consistency Goal") 
+        }
     }
     private func daysLeft(from date: Date) -> String {
         let days = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
@@ -148,10 +171,11 @@ struct ActiveGoalCard: View {
     }
     private func calculateProgress(goal: UserGoal, current: Double) -> Double {
         if goal.type == .bodyweight {
-            let totalDist = abs(goal.targetValue - goal.startingValue)
-            let curDist = abs(current - goal.startingValue)
-            if totalDist == 0 { return 1.0 }
-            return min(1.0, curDist / totalDist)
+            let isLoss = goal.targetValue < goal.startingValue
+            let totalDist = isLoss ? (goal.startingValue - goal.targetValue) : (goal.targetValue - goal.startingValue)
+            let curDist = isLoss ? (goal.startingValue - current) : (current - goal.startingValue)
+            if totalDist <= 0 { return 1.0 }
+            return min(1.0, max(0.0, curDist / totalDist))
         } else {
             let totalDist = goal.targetValue - goal.startingValue
             let curDist = current - goal.startingValue
@@ -181,6 +205,7 @@ struct GoalSelectionSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var navigateToStrength = false
     @State private var navigateToBodyweight = false
+    @State private var navigateToBodyweightGain = false
     @State private var navigateToConsistency = false
 
     var body: some View {
@@ -196,11 +221,19 @@ struct GoalSelectionSheet: View {
                     )
 
                     goalTypeCard(
-                        title: "Bodyweight Goal",
-                        subtitle: "Transform your body and reach your target weight!",
-                        icon: "scalemass.fill",
-                        color: .purple,
+                        title: "Lose Weight",
+                        subtitle: "Shed fat and get leaner!",
+                        icon: "arrow.down.right.circle.fill",
+                        color: .mint,
                         action: { navigateToBodyweight = true }
+                    )
+                    
+                    goalTypeCard(
+                        title: "Gain Mass",
+                        subtitle: "Build muscle and increase size!",
+                        icon: "arrow.up.right.circle.fill",
+                        color: .orange,
+                        action: { navigateToBodyweightGain = true }
                     )
 
                     goalTypeCard(
@@ -225,7 +258,10 @@ struct GoalSelectionSheet: View {
                 GoalSetupDetailView(type: .strength, onComplete: { dismiss(); onGoalCreated() })
             }
             .navigationDestination(isPresented: $navigateToBodyweight) {
-                GoalSetupDetailView(type: .bodyweight, onComplete: { dismiss(); onGoalCreated() })
+                GoalSetupDetailView(type: .bodyweight, isWeightLoss: true, onComplete: { dismiss(); onGoalCreated() })
+            }
+            .navigationDestination(isPresented: $navigateToBodyweightGain) {
+                GoalSetupDetailView(type: .bodyweight, isWeightLoss: false, onComplete: { dismiss(); onGoalCreated() })
             }
             .navigationDestination(isPresented: $navigateToConsistency) {
                 GoalSetupDetailView(type: .consistency, onComplete: { dismiss(); onGoalCreated() })
@@ -275,6 +311,7 @@ struct GoalSelectionSheet: View {
 
     struct GoalSetupDetailView: View {
         let type: GoalType
+        var isWeightLoss: Bool? = nil
         var onComplete: () -> Void
 
         @Environment(\.modelContext) private var context
@@ -377,7 +414,8 @@ struct GoalSelectionSheet: View {
                         let currentMax = dashboardViewModel.personalRecordsCache[selectedExercise] ?? 0.0
                         targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentMax + 5.0))
                     } else if type == .bodyweight {
-                        targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentBodyWeight))
+                        let offset = (isWeightLoss == true) ? -5.0 : 5.0
+                        targetWeightString = LocalizationHelper.shared.formatDecimal(unitsManager.convertFromKilograms(currentBodyWeight + offset))
                     }
                 }
             }
