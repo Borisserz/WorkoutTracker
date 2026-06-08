@@ -826,6 +826,7 @@ struct OnboardingIntroView: View {
                             }
                         }
                     }
+                    .scrollTargetLayout()
                 }
                 .scrollTargetBehavior(.paging)
                 .scrollPosition(id: $slideIndex)
