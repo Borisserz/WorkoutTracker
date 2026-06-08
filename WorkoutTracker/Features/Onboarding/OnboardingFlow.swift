@@ -821,8 +821,8 @@ struct OnboardingIntroView: View {
                             .scrollTransition(axis: .horizontal) { content, phase in
                                 content
                                     .rotation3DEffect(.degrees(phase.value * -15), axis: (x: 0, y: 1, z: 0))
-                                    .scaleEffect(phase.isIdentity ? 1.0 : 0.85)
-                                    .opacity(phase.isIdentity ? 1.0 : 0.5)
+                                    .scaleEffect(1.0 - (abs(phase.value) * 0.15))
+                                    .opacity(1.0 - (abs(phase.value) * 0.5))
                             }
                         }
                     }
