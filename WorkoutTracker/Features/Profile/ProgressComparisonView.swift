@@ -251,80 +251,95 @@ struct BeforeAfterSliderView: View {
     @State private var sliderPercentage: CGFloat = 0.5
     @State private var isDragging: Bool = false
 
-        @Environment(ThemeManager.self) private var themeManager
+    @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
-
-                if let after = afterImage {
+                if let before = beforeImage, let after = afterImage {
+                    // Both images available: Show interactive slider comparison
                     Image(uiImage: after)
                         .resizable()
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
-                } else {
-                    placeholderView(title: "After")
-                        .frame(width: geo.size.width, height: geo.size.height)
-                }
 
-                if let before = beforeImage {
                     Image(uiImage: before)
                         .resizable()
                         .scaledToFill()
                         .frame(width: geo.size.width, height: geo.size.height)
                         .clipped()
-
                         .mask(alignment: .leading) {
                             Rectangle()
                                 .frame(width: geo.size.width * sliderPercentage, height: geo.size.height)
                         }
+
+                    // Slider divider and handle drag interface
+                    ZStack {
+                        Rectangle()
+                            .fill(Color.white)
+                            .frame(width: 4, height: geo.size.height)
+                            .shadow(color: .black.opacity(0.4), radius: 5, x: 0, y: 0)
+
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 44, height: 44)
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                            .overlay(
+                                Image(systemName: "chevron.left.and.right")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(themeManager.current.background)
+                            )
+                            .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
+                            .scaleEffect(isDragging ? 1.1 : 1.0)
+                    }
+                    .position(x: geo.size.width * sliderPercentage, y: geo.size.height / 2)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                withAnimation(.interactiveSpring()) {
+                                    isDragging = true
+                                    sliderPercentage = min(max(0.02, value.location.x / geo.size.width), 0.98)
+                                }
+                            }
+                            .onEnded { _ in
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    isDragging = false
+                                }
+                                let generator = UIImpactFeedbackGenerator(style: .light)
+                                generator.impactOccurred()
+                            }
+                    )
                 } else {
-                    placeholderView(title: "Before")
-                        .frame(width: geo.size.width, height: geo.size.height)
-
-                        .mask(alignment: .leading) {
-                            Rectangle()
-                                .frame(width: geo.size.width * sliderPercentage, height: geo.size.height)
-                        }
-                }
-
-                ZStack {
-                    Rectangle()
-                        .fill(Color.white)
-                        .frame(width: 4, height: geo.size.height)
-                        .shadow(color: .black.opacity(0.4), radius: 5, x: 0, y: 0)
-
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .frame(width: 44, height: 44)
-                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                        .overlay(
-                            Image(systemName: "chevron.left.and.right")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(themeManager.current.background)
-                        )
-                        .shadow(color: .black.opacity(0.3), radius: 8, x: 0, y: 4)
-                        .scaleEffect(isDragging ? 1.1 : 1.0)
-                }
-                .position(x: geo.size.width * sliderPercentage, y: geo.size.height / 2)
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            withAnimation(.interactiveSpring()) {
-                                isDragging = true
-
-                                sliderPercentage = min(max(0.02, value.location.x / geo.size.width), 0.98)
+                    // One or both images missing: Show side-by-side 50/50 layout to prevent overlaps
+                    HStack(spacing: 2) {
+                        Group {
+                            if let before = beforeImage {
+                                Image(uiImage: before)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: (geo.size.width - 2) / 2, height: geo.size.height)
+                                    .clipped()
+                            } else {
+                                placeholderView(title: "Before")
+                                    .frame(width: (geo.size.width - 2) / 2, height: geo.size.height)
                             }
                         }
-                        .onEnded { _ in
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                isDragging = false
+
+                        Group {
+                            if let after = afterImage {
+                                Image(uiImage: after)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: (geo.size.width - 2) / 2, height: geo.size.height)
+                                    .clipped()
+                            } else {
+                                placeholderView(title: "After")
+                                    .frame(width: (geo.size.width - 2) / 2, height: geo.size.height)
                             }
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
                         }
-                )
+                    }
+                }
             }
             .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
@@ -335,13 +350,17 @@ struct BeforeAfterSliderView: View {
     }
 
     private func placeholderView(title: String) -> some View {
-        ZStack {
+        let localizedTitle = NSLocalizedString(title, comment: "")
+        return ZStack {
             Color.gray.opacity(0.2)
             VStack(spacing: 12) {
                 Image(systemName: "photo.on.rectangle.angled")
-                    .font(.system(size: 50))
-                Text("Select \(title) Photo")
-                    .font(.headline)
+                    .font(.system(size: 30))
+                Text("Select \(localizedTitle) Photo")
+                    .font(.subheadline)
+                    .bold()
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 10)
             }
             .foregroundColor(themeManager.current.secondaryAccent.opacity(0.6))
         }
