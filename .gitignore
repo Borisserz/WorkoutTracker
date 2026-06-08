@@ -53,3 +53,4 @@ functions/.runtimeconfig.json
 firebase-debug.log
 firebase-debug.*.log
 ui-debug.log
+.agents/
