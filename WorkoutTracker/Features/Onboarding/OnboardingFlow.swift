@@ -689,7 +689,7 @@ struct OnboardingIntroView: View {
                            description: "Zero guesswork. Tell the AI what equipment you have, and it crafts the ultimate customized workout program.",
                            colors: [.blue, .cyan],
                            chips: ["Personalized", "Equipment", "Instant"],
-                           decoration: .ring,
+                           decoration: .orb,
                            illustration: .smartBuilder,
                            targetTab: 2),
             OnboardingItem(iconName: "figure.walk",
@@ -698,7 +698,7 @@ struct OnboardingIntroView: View {
                            description: "Visualize recovery. See exactly which muscles are ready to perform and which ones need rest on a dynamic heatmap.",
                            colors: [.red, .orange],
                            chips: ["Heatmap", "Recovery", "Anatomy"],
-                           decoration: .ghost,
+                           decoration: .orb,
                            illustration: .anatomy,
                            targetTab: 4),
             OnboardingItem(iconName: "chart.bar.fill",
@@ -707,7 +707,7 @@ struct OnboardingIntroView: View {
                            description: "Unlock the power of your data. Advanced interactive charts reveal your trends and personal records over time.",
                            colors: [.cyan, .green],
                            chips: ["Charts", "Vitals", "Analytics"],
-                           decoration: .ring,
+                           decoration: .orb,
                            illustration: .analytics,
                            targetTab: 4),
             OnboardingItem(iconName: "sparkles",
@@ -770,6 +770,8 @@ struct OnboardingIntroView: View {
                             .scrollTransition(axis: .horizontal) { content, phase in
                                 content
                                     .rotation3DEffect(.degrees(phase.value * -15), axis: (x: 0, y: 1, z: 0))
+                                    .scaleEffect(phase.isIdentity ? 1.0 : 0.92)
+                                    .opacity(phase.isIdentity ? 1.0 : 0.65)
                             }
                         }
                     }
@@ -955,8 +957,6 @@ struct PremiumFeatureCard: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
             .padding(.horizontal, 20)
-            .scaleEffect(isSelected ? 1.0 : 0.92)
-            .opacity(isSelected ? 1.0 : 0.65)
             .animation(.spring(response: 0.45, dampingFraction: 0.8), value: isSelected)
             
             Spacer()
