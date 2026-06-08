@@ -310,38 +310,93 @@ struct AICameraIllustration: View {
     }
 }
 
+struct SmartBuilderRowView: View {
+    let index: Int
+    let colors: [Color]
+    
+    private var backgroundColor: Color {
+        Color.white.opacity(index == 1 ? 0.08 : 0.03)
+    }
+    
+    private var strokeColor: Color {
+        if index == 1 {
+            return colors.first?.opacity(0.5) ?? Color.clear
+        } else {
+            return Color.clear
+        }
+    }
+    
+    var body: some View {
+        HStack {
+            Image(systemName: systemName)
+                .foregroundColor(foregroundColor)
+                .font(.system(size: 13))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(titleColor)
+                
+                Text(subtitle)
+                    .font(.system(size: 8))
+                    .foregroundColor(.white.opacity(0.4))
+            }
+            Spacer()
+            
+            Text(duration)
+                .font(.system(size: 9, weight: .semibold, design: .monospaced))
+                .foregroundColor(.white.opacity(0.5))
+        }
+        .padding(6)
+        .background(backgroundColor)
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(strokeColor, lineWidth: 1)
+        )
+    }
+    
+    private var systemName: String {
+        if index == 0 { return "checkmark.circle.fill" }
+        if index == 1 { return "play.circle.fill" }
+        return "circle"
+    }
+    
+    private var foregroundColor: Color {
+        if index == 1 { return colors.first ?? .white.opacity(0.3) }
+        if index == 0 { return .green }
+        return .white.opacity(0.3)
+    }
+    
+    private var title: String {
+        if index == 0 { return "1. Warmup Setup" }
+        if index == 1 { return "2. Bench Press (4 Sets)" }
+        return "3. Incline DB Flyes"
+    }
+    
+    private var titleColor: Color {
+        index == 1 ? .white : .white.opacity(0.6)
+    }
+    
+    private var subtitle: String {
+        if index == 0 { return "Completed" }
+        if index == 1 { return "AI Tailored - Heavy Focus" }
+        return "Pending"
+    }
+    
+    private var duration: String {
+        if index == 0 { return "5 min" }
+        if index == 1 { return "12 min" }
+        return "8 min"
+    }
+}
+
 struct SmartBuilderIllustration: View {
     let colors: [Color]
     var body: some View {
         VStack(spacing: 8) {
             ForEach(0..<3) { i in
-                HStack {
-                    Image(systemName: i == 0 ? "checkmark.circle.fill" : (i == 1 ? "play.circle.fill" : "circle"))
-                        .foregroundColor(i == 1 ? colors[0] : (i == 0 ? .green : .white.opacity(0.3)))
-                        .font(.system(size: 13))
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(i == 0 ? "1. Warmup Setup" : (i == 1 ? "2. Bench Press (4 Sets)" : "3. Incline DB Flyes"))
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundColor(i == 1 ? .white : .white.opacity(0.6))
-                        
-                        Text(i == 0 ? "Completed" : (i == 1 ? "AI Tailored - Heavy Focus" : "Pending"))
-                            .font(.system(size: 8))
-                            .foregroundColor(.white.opacity(0.4))
-                    }
-                    Spacer()
-                    
-                    Text(i == 0 ? "5 min" : (i == 1 ? "12 min" : "8 min"))
-                        .font(.system(size: 9, weight: .semibold, design: .monospaced))
-                        .foregroundColor(.white.opacity(0.5))
-                }
-                .padding(6)
-                .background(Color.white.opacity(i == 1 ? 0.08 : 0.03))
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(i == 1 ? colors[0].opacity(0.5) : Color.clear, lineWidth: 1)
-                )
+                SmartBuilderRowView(index: i, colors: colors)
             }
         }
         .padding(8)
