@@ -199,8 +199,8 @@ public actor ExerciseDatabaseService {
 
             if query.contains(itemPrimary) || query.contains(itemCategory) { score += 10 }
             if (query.contains("chest") || query.contains("pecs")) && itemPrimary == "chest" { score += 10 }
-            if (query.contains("back") || query.contains("lats")) && itemPrimary == "lats" { score += 10 }
-            if (query.contains("legs") || query.contains("quads") || query.contains("glutes")) && (itemCategory == "legs" || itemPrimary == "quadriceps") { score += 10 }
+            if (query.contains("back") || query.contains("lats")) && (itemPrimary == "lats" || itemPrimary == "middle back" || itemPrimary == "lower back" || itemPrimary == "traps") { score += 10 }
+            if (query.contains("legs") || query.contains("quads") || query.contains("glutes")) && (itemCategory == "legs" || itemPrimary == "quadriceps" || itemPrimary == "hamstrings" || itemPrimary == "calves" || itemPrimary == "glutes") { score += 10 }
             if (query.contains("arm") || query.contains("bicep") || query.contains("tricep")) && (itemPrimary == "biceps" || itemPrimary == "triceps") { score += 10 }
             if (query.contains("shoulder") || query.contains("delt")) && itemPrimary == "deltoids" { score += 10 }
 
@@ -225,6 +225,7 @@ public actor ExerciseDatabaseService {
         }
 
         let topItems = scoredItems
+            .shuffled()
             .sorted { $0.score > $1.score }
             .prefix(limit)
             .map { $0.name }
