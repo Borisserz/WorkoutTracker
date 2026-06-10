@@ -97,31 +97,44 @@ struct TechniqueSheetView: View {
                             let stepsToDisplay = LocalizationHelper.shared.translateInstructions(for: exerciseName) ?? item.instructions ?? []
 
                             if !stepsToDisplay.isEmpty {
-                                VStack(alignment: .leading, spacing: 16) {
-                                    Text(LocalizedStringKey("How to Perform"))
-                                        .font(.headline)
-                                        .foregroundColor(themeManager.current.secondaryText)
+                                VStack(alignment: .leading, spacing: 20) {
+                                    HStack {
+                                        Image(systemName: "list.number")
+                                            .foregroundColor(themeManager.current.primaryAccent)
+                                        Text(LocalizedStringKey("How to Perform"))
+                                            .font(.headline)
+                                    }
 
-                                    ForEach(Array(stepsToDisplay.enumerated()), id: \.offset) { index, step in
-                                        HStack(alignment: .top, spacing: 12) {
-                                            Text("\(index + 1)")
-                                                .font(.caption)
-                                                .fontWeight(.bold)
-                                                .foregroundColor(.white)
-                                                .frame(width: 24, height: 24)
-                                                .background(themeManager.current.primaryAccent) 
-                                                .clipShape(Circle())
+                                    VStack(alignment: .leading, spacing: 16) {
+                                        ForEach(Array(stepsToDisplay.enumerated()), id: \.offset) { index, step in
+                                            HStack(alignment: .top, spacing: 16) {
+                                                Text("\(index + 1)")
+                                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                                    .foregroundColor(.white)
+                                                    .frame(width: 28, height: 28)
+                                                    .background(
+                                                        LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                                    )
+                                                    .clipShape(Circle())
+                                                    .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 4, y: 2)
 
-                                            Text(step)
-                                                .font(.body)
-                                                .lineSpacing(4)
+                                                Text(step)
+                                                    .font(.subheadline)
+                                                    .lineSpacing(6)
+                                                    .foregroundColor(Color.primary.opacity(0.8))
+                                            }
                                         }
                                     }
                                 }
-                                .padding()
+                                .padding(20)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .background(themeManager.current.surface)
-                                .cornerRadius(12)
+                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                .shadow(color: Color.black.opacity(0.05), radius: 15, y: 5)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                                )
                             } else {
                                 fallbackView
                             }
@@ -151,67 +164,94 @@ struct TechniqueSheetView: View {
     }
 
     private func musclesSection(title: String, muscles: [String], color: Color, icon: String) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Image(systemName: icon).foregroundColor(color)
                 Text(LocalizedStringKey(title)).font(.headline)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 12) {
                     ForEach(muscles, id: \.self) { muscle in
                         Text(LocalizedStringKey(muscle.capitalized))
-                            .font(.caption)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
-                            .background(color.opacity(0.15))
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(color.opacity(0.1))
                             .foregroundColor(color)
-                            .cornerRadius(8)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(color.opacity(0.2), lineWidth: 1))
                     }
                 }
             }
         }
-        .padding()
+        .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(themeManager.current.surface)
-        .cornerRadius(12)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: Color.black.opacity(0.05), radius: 15, y: 5)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+        )
     }
 
     private var fallbackView: some View {
         Group {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(LocalizedStringKey("How to Perform"))
-                    .font(.headline)
-                    .foregroundColor(themeManager.current.secondaryText)
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "list.bullet.rectangle.portrait")
+                        .foregroundColor(themeManager.current.primaryAccent)
+                    Text(LocalizedStringKey("How to Perform"))
+                        .font(.headline)
+                }
                 Text(TechniqueHelper.getDescription(for: category))
-                    .font(.body)
-                    .lineSpacing(4)
+                    .font(.subheadline)
+                    .lineSpacing(6)
+                    .foregroundColor(Color.primary.opacity(0.8))
             }
-            .padding()
+            .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(themeManager.current.surface)
-            .cornerRadius(12)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(0.05), radius: 15, y: 5)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+            )
 
-            VStack(alignment: .leading, spacing: 12) {
-                Text(LocalizedStringKey("Key Tips"))
-                    .font(.headline)
-                    .foregroundColor(themeManager.current.secondaryText)
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Image(systemName: "lightbulb.fill")
+                        .foregroundColor(.yellow)
+                    Text(LocalizedStringKey("Key Tips"))
+                        .font(.headline)
+                }
 
-                ForEach(TechniqueHelper.getTips(for: category), id: \.self) { tip in
-                    HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(themeManager.current.primaryAccent) 
-                            .font(.caption)
-                            .padding(.top, 4)
-                        Text(tip).font(.body).lineSpacing(4)
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(TechniqueHelper.getTips(for: category), id: \.self) { tip in
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.green) 
+                                .font(.system(size: 16))
+                                .padding(.top, 2)
+                            Text(tip)
+                                .font(.subheadline)
+                                .lineSpacing(4)
+                                .foregroundColor(Color.primary.opacity(0.9))
+                        }
                     }
                 }
             }
-            .padding()
+            .padding(20)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(themeManager.current.surface)
-            .cornerRadius(12)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .shadow(color: Color.black.opacity(0.05), radius: 15, y: 5)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+            )
         }
     }
 }

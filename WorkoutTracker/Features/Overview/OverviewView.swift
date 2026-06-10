@@ -1692,6 +1692,17 @@ struct AICameraExerciseSelectorSheet: View {
     
     let onSelect: (String) -> Void
     
+    @State private var supportedExercises: [ExerciseDBItem] = []
+    @State private var searchText: String = ""
+    
+    var filteredExercises: [ExerciseDBItem] {
+        if searchText.isEmpty {
+            return supportedExercises
+        } else {
+            return supportedExercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        }
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -1720,6 +1731,11 @@ struct AICameraExerciseSelectorSheet: View {
                         .padding(.bottom, 10)
                         
                         VStack(spacing: 16) {
+                            Text("Featured")
+                                .font(.title3.bold())
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 4)
+
                             AICameraExerciseCard(
                                 title: "Squats",
                                 subtitle: "Track depth and knee alignment",
@@ -1746,6 +1762,85 @@ struct AICameraExerciseSelectorSheet: View {
                         }
                         .padding(.horizontal, 20)
                         
+                        if !supportedExercises.isEmpty {
+                            VStack(spacing: 16) {
+                                Text("All Supported Exercises")
+                                    .font(.title3.bold())
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 4)
+                                    .padding(.top, 10)
+                                    
+                                HStack {
+                                    Image(systemName: "magnifyingglass")
+                                        .foregroundColor(.gray)
+                                    TextField("Search exercises...", text: $searchText)
+                                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    if !searchText.isEmpty {
+                                        Button(action: { searchText = "" }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                }
+                                .padding(12)
+                                .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                                .cornerRadius(12)
+
+                                LazyVStack(spacing: 12) {
+                                    if filteredExercises.isEmpty {
+                                        Text("No exercises found")
+                                            .foregroundColor(.gray)
+                                            .padding(.top, 20)
+                                    } else {
+                                        ForEach(filteredExercises, id: \.name) { exercise in
+                                            if !["Squats", "Pushups", "Pullups"].contains(exercise.name) || !searchText.isEmpty {
+                                                Button {
+                                                    handleSelection(exercise.name)
+                                                } label: {
+                                                    HStack(spacing: 16) {
+                                                        Circle()
+                                                            .fill(themeManager.current.primaryAccent.opacity(0.1))
+                                                            .frame(width: 40, height: 40)
+                                                            .overlay(
+                                                                Image(systemName: "camera.viewfinder")
+                                                                    .foregroundColor(themeManager.current.primaryAccent)
+                                                            )
+
+                                                        VStack(alignment: .leading, spacing: 4) {
+                                                            Text(LocalizationHelper.shared.translateName(exercise.name))
+                                                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                                            
+                                                            if let category = exercise.category {
+                                                                Text(category.capitalized)
+                                                                    .font(.caption)
+                                                                    .foregroundColor(.gray)
+                                                            }
+                                                        }
+                                                        
+                                                        Spacer()
+                                                        
+                                                        Image(systemName: "chevron.right")
+                                                            .font(.caption)
+                                                            .foregroundColor(.gray.opacity(0.5))
+                                                    }
+                                                    .padding(16)
+                                                    .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                            .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                                                    )
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        
                         Spacer(minLength: 40)
                     }
                 }
@@ -1761,6 +1856,14 @@ struct AICameraExerciseSelectorSheet: View {
                             .foregroundColor(.gray.opacity(0.5))
                     }
                 }
+            }
+        }
+        .task {
+            let all = await ExerciseDatabaseService.shared.getAllExerciseItems()
+            let supported = all.filter { $0.pattern != .unsupported }
+            let sorted = supported.sorted { $0.name < $1.name }
+            await MainActor.run {
+                self.supportedExercises = sorted
             }
         }
     }

@@ -75,12 +75,23 @@ public actor ExerciseDatabaseService {
 
     private var exercisesDict: [String: ExerciseDBItem] = [:]
     private var groupedCatalog: [String: [String]] = [:]
-    private var isLoaded: Bool = false
+    public private(set) var isLoaded: Bool = false
+    private var isLoading: Bool = false
+    private var loadContinuations: [CheckedContinuation<Void, Never>] = []
 
     private init() {}
 
     public func loadDatabase() async {
-        guard !isLoaded else { return }
+        if isLoaded { return }
+        
+        if isLoading {
+            await withCheckedContinuation { continuation in
+                loadContinuations.append(continuation)
+            }
+            return
+        }
+        
+        isLoading = true
         
         let currentLang = Locale.current.language.languageCode?.identifier ?? "en"
         let langPrefix = String(currentLang.prefix(2))
@@ -184,9 +195,16 @@ public actor ExerciseDatabaseService {
         } catch {
             print("❌ JSON parsing error for exercises: \(error)")
         }
+        
+        self.isLoading = false
+        for continuation in loadContinuations {
+            continuation.resume()
+        }
+        loadContinuations.removeAll()
     }
 
-    public func getRelevantExercisesContext(for prompt: String, equipmentPref: String = "any", limit: Int = 20) -> [String] {
+    public func getRelevantExercisesContext(for prompt: String, equipmentPref: String = "any", limit: Int = 20) async -> [String] {
+        await loadDatabase()
         let query = prompt.lowercased()
         var scoredItems: [(name: String, score: Int)] = []
 
@@ -237,12 +255,29 @@ public actor ExerciseDatabaseService {
         return Array(topItems)
     }
 
-    public func getCatalog() -> [String: [String]] { return groupedCatalog }
-    public func getAllExerciseItems() -> [ExerciseDBItem] { return Array(exercisesDict.values) }
-    public func getPattern(for exerciseName: String) -> MovementPattern { return exercisesDict[exerciseName.lowercased()]?.pattern ?? .unsupported }
-    public func getExerciseItem(for exerciseName: String) -> ExerciseDBItem? { return exercisesDict[exerciseName.lowercased()] }
+    public func getCatalog() async -> [String: [String]] {
+        await loadDatabase()
+        return groupedCatalog 
+    }
+    public func getAllExerciseItems() async -> [ExerciseDBItem] {
+        await loadDatabase()
+        return Array(exercisesDict.values) 
+    }
+    public func getPattern(for exerciseName: String) async -> MovementPattern {
+        await loadDatabase()
+        if let item = exercisesDict[exerciseName.lowercased()] {
+            return item.pattern
+        }
+        // Fallback for generic names like 'Squats' that might not be in the DB
+        return PatternClassifier.classify(name: exerciseName, force: nil, mechanic: nil, primaryMuscles: nil)
+    }
+    public func getExerciseItem(for exerciseName: String) async -> ExerciseDBItem? {
+        await loadDatabase()
+        return exercisesDict[exerciseName.lowercased()] 
+    }
 
-    public func getMuscleActivations(for exerciseName: String, fallbackGroup: String) -> [MuscleActivation] {
+    public func getMuscleActivations(for exerciseName: String, fallbackGroup: String) async -> [MuscleActivation] {
+        await loadDatabase()
         guard let item = exercisesDict[exerciseName.lowercased()] else {
             return [MuscleActivation(slug: mapToSlug(fallbackGroup), multiplier: 1.0)]
         }

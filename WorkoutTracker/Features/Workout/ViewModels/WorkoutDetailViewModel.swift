@@ -189,9 +189,9 @@ final class WorkoutDetailViewModel {
             }
         }
 
-    func deleteEmptyWorkout(workoutID: PersistentIdentifier) async {
+    func deleteEmptyWorkout(id: UUID) async {
            TrackingManager.shared.track(.workoutCancelled(durationMinutes: 0, exercisesDone: 0, reason: "empty_or_user_cancelled"))
-           await workoutService.deleteWorkout(byID: workoutID)
+           await workoutService.deleteWorkout(id: id)
        }
 
     func startTimerIfNeeded(shouldStartTimer: Bool, suggestedDuration: Int?, exerciseName: String, upcomingWeight: String?) {
@@ -270,6 +270,7 @@ final class WorkoutDetailViewModel {
 
         let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
         if !uncompletedSets.isEmpty {
+            exercise.removeSafeSets(uncompletedSets)
             Task { await workoutService.deleteSets(uncompletedSets, from: exercise) }
         }
 
@@ -286,6 +287,7 @@ final class WorkoutDetailViewModel {
         for sub in superset.subExercises {
             let uncompleted = sub.setsList.filter { !$0.isCompleted }
             if !uncompleted.isEmpty {
+                sub.removeSafeSets(uncompleted)
                 Task { await workoutService.deleteSets(uncompleted, from: sub) }
             }
             sub.isCompleted = true

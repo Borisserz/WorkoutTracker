@@ -113,13 +113,12 @@ struct WorkoutDetailContentView: View {
         .alert(LocalizedStringKey("Empty Workout"), isPresented: $showEmptyAlert) {
                       Button(LocalizedStringKey("Delete"), role: .destructive) {
                           isDeletingEmptyWorkout = true
-                          let safeID = workout.persistentModelID
                           timerManager.stopRestTimer()
                           dismiss()
 
                           Task {
                        try? await Task.sleep(for: .seconds(0.5))
-                       await viewModel.deleteEmptyWorkout(workoutID: safeID)
+                       await viewModel.deleteEmptyWorkout(id: workout.id)
                    }
                }
                Button(LocalizedStringKey("Continue"), role: .cancel) { }

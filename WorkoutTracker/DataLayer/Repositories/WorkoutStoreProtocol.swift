@@ -12,7 +12,7 @@ protocol WorkoutStoreProtocol: Sendable {
     func deleteSets(setIDs: [PersistentIdentifier], fromExerciseID: PersistentIdentifier) async throws
     func removeSubExercise(subID: PersistentIdentifier, fromSupersetID: PersistentIdentifier) async throws
     func removeExercise(exerciseID: PersistentIdentifier, fromWorkoutID: PersistentIdentifier) async throws
-    func deleteWorkout(workoutID: PersistentIdentifier) async throws
+    func deleteWorkout(id: UUID) async throws
     func updateWorkoutFavoriteStatus(workoutID: PersistentIdentifier, isFavorite: Bool) async throws
     func updateExercise(exerciseID: PersistentIdentifier, newEffort: Int) async throws
     func updateExercise(exerciseID: PersistentIdentifier, isCompleted: Bool) async throws

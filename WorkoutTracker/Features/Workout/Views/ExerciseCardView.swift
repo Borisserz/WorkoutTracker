@@ -182,7 +182,21 @@ struct ExerciseCardView: View {
                 }
                 .buttonStyle(.plain)
 
-                Button { showTechniqueSheet = true } label: { Image(systemName: "info.circle").font(.subheadline).foregroundColor(.secondary).padding(.horizontal, 4) }.buttonStyle(BorderlessButtonStyle())
+                Button { 
+                    showTechniqueSheet = true 
+                } label: { 
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle.fill")
+                        Text(LocalizedStringKey("Technique"))
+                    }
+                    .font(.caption2.bold())
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(themeManager.current.primaryAccent.opacity(0.15))
+                    .foregroundColor(themeManager.current.primaryAccent)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(BorderlessButtonStyle())
 
                 Spacer()
 
@@ -196,6 +210,7 @@ struct ExerciseCardView: View {
                 }
 
                 Menu {
+                    Button { showHistory = true } label: { Label(LocalizedStringKey("Exercise Info & History"), systemImage: "info.circle") }
                     if !isEmbeddedInSuperset { Button { detailViewModel.activeEvent = .showSwapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") } }
                     Button(role: .destructive) { detailViewModel.removeExercise(exercise, from: workout) } label: { Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash") }
                 } label: { Image(systemName: "ellipsis").foregroundColor(.gray).padding(10) }
@@ -258,6 +273,20 @@ struct ExerciseCardView: View {
                 .cornerRadius(14)
             }
             .buttonStyle(BorderlessButtonStyle()).disabled(exercise.isCompleted || isWorkoutCompleted)
+
+            Button(action: { showHistory = true }) {
+                HStack {
+                    Image(systemName: "book.pages")
+                    Text(LocalizedStringKey("Exercise Info & History"))
+                }
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05))
+                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .cornerRadius(14)
+            }
+            .buttonStyle(BorderlessButtonStyle())
 
             if !isEmbeddedInSuperset {
                 Button(action: { finishExerciseAction() }) {

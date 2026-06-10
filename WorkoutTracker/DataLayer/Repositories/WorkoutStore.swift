@@ -129,8 +129,9 @@ actor WorkoutStore: WorkoutStoreProtocol {
         try modelContext.save()
     }
 
-    func deleteWorkout(workoutID: PersistentIdentifier) async throws {
-        guard let workout = modelContext.model(for: workoutID) as? Workout, !workout.isDeleted else {
+    func deleteWorkout(id: UUID) async throws {
+        let descriptor = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == id })
+        guard let workout = (try? modelContext.fetch(descriptor))?.first, !workout.isDeleted else {
             throw WorkoutRepositoryError.modelNotFound
         }
 
