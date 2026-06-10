@@ -594,7 +594,7 @@ struct OverviewView: View {
         let isCompleted: Bool
         let onDelete: () -> Void
 
-        @StateObject private var colorManager = MuscleColorManager.shared
+        @State private var colorManager = MuscleColorManager.shared
         @State private var offset: CGFloat = 0
         @Environment(\.colorScheme) var colorScheme
 
@@ -1031,7 +1031,7 @@ struct OverviewView: View {
 
     struct MusclePieChartIsland: View {
         let viewModel: DashboardViewModel
-        @StateObject private var colorManager = MuscleColorManager.shared
+        @State private var colorManager = MuscleColorManager.shared
         @State private var animateChart = false
         @Environment(\.colorScheme) private var colorScheme: ColorScheme 
 

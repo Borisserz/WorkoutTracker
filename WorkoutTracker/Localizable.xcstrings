@@ -56372,7 +56372,11 @@
         }
       }
     },
+    "We've added powerful new features, AI enhancements, and critical fixes. Please update to the latest version to continue crushing your goals." : {
+
+    },
     "We've added some powerful new features and critical fixes. Please update to the latest version to continue crushing your workouts." : {
+      "extractionState" : "stale",
       "localizations" : {
         "de" : {
           "stringUnit" : {

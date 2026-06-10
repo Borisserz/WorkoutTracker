@@ -7,12 +7,12 @@ import Combine
 
 @MainActor
 final class CameraManager: ObservableObject {
-    @Published var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-    @Published var handPose: VNHumanHandPoseObservation? = nil
-    @Published var bodyPose: VNHumanBodyPoseObservation? = nil
-    @Published var isAuthorized = false
-    @Published var authorizationStatus: AVAuthorizationStatus = .notDetermined
-    @Published var isSimulator = false
+    var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+    var handPose: VNHumanHandPoseObservation? = nil
+    var bodyPose: VNHumanBodyPoseObservation? = nil
+    var isAuthorized = false
+    var authorizationStatus: AVAuthorizationStatus = .notDetermined
+    var isSimulator = false
 
     let session = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()

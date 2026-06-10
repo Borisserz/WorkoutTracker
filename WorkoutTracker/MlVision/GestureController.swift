@@ -15,10 +15,10 @@ enum RecognizedGesture {
 @MainActor
 final class GestureController: ObservableObject {
 
-    @Published var activeGesture: RecognizedGesture = .none
-    @Published var gestureProgress: Double = 0.0
-    @Published var didConfirmSet: Bool = false
-    @Published var didCancelSet: Bool = false
+    var activeGesture: RecognizedGesture = .none
+    var gestureProgress: Double = 0.0
+    var didConfirmSet: Bool = false
+    var didCancelSet: Bool = false
 
     private var currentTrackingGesture: RecognizedGesture = .none
     private var gestureStartTime: Date?

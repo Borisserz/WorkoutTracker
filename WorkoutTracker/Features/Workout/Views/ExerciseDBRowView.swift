@@ -7,7 +7,7 @@ struct ExerciseDBRowView: View {
     var isSelectionMode: Bool = true 
 
     @Environment(ThemeManager.self) private var themeManager
-    @StateObject private var colorManager = MuscleColorManager.shared
+    @State private var colorManager = MuscleColorManager.shared
     @Environment(\.colorScheme) private var colorScheme 
 
     var body: some View {

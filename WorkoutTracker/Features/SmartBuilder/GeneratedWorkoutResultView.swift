@@ -7,7 +7,7 @@ struct GeneratedWorkoutResultView: View {
     @Environment(UnitsManager.self) var unitsManager
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
-    @StateObject private var colorManager = MuscleColorManager.shared
+    @State private var colorManager = MuscleColorManager.shared
 
     var onStart: ([ExerciseDTO]) -> Void
 

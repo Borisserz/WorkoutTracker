@@ -64,7 +64,7 @@ struct AICoachView: View {
     @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
 
-    @StateObject private var speechRecognizer = SpeechRecognizer()
+    @State private var speechRecognizer = SpeechRecognizer()
 
     let quickPrompts = ["How to break a plateau?", "Bench Press Mechanics", "Recovery Tips", "Hypertrophy Split"]
 
@@ -1097,7 +1097,7 @@ struct ProgressAnalysisSheet: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
-    @StateObject private var colorManager = MuscleColorManager.shared
+    @State private var colorManager = MuscleColorManager.shared
 
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
