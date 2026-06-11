@@ -8,6 +8,7 @@ struct SetRowView: View {
     @AppStorage("autoStartTimer") private var autoStartTimer: Bool = true
     @Environment(UnitsManager.self) var unitsManager
     @Environment(\.colorScheme) private var colorScheme 
+    @Environment(ThemeManager.self) private var themeManager
     @State private var showSetTypeSheet: Bool = false
     @State private var showAITracker: Bool = false
 
@@ -34,6 +35,47 @@ struct SetRowView: View {
     @State private var activeBindingType: InputFieldType = .weight
     @State private var hasAutoFocused: Bool = false
 
+    private var previousPerformanceText: String {
+        switch exerciseType {
+        case .strength:
+            if let w = prevWeight, let r = prevReps {
+                let convertedW = unitsManager.convertFromKilograms(w)
+                return "\(LocalizationHelper.shared.formatFlexible(convertedW)) × \(r)"
+            } else if let r = prevReps {
+                return "— × \(r)"
+            } else {
+                return "—"
+            }
+        case .cardio:
+            if let d = prevDist, let t = prevTime {
+                let convertedD = unitsManager.convertFromMeters(d)
+                return "\(LocalizationHelper.shared.formatDecimal(convertedD)) × \(formatTime(t))"
+            } else if let d = prevDist {
+                let convertedD = unitsManager.convertFromMeters(d)
+                return "\(LocalizationHelper.shared.formatDecimal(convertedD))"
+            } else if let t = prevTime {
+                return formatTime(t)
+            } else {
+                return "—"
+            }
+        case .duration:
+            if let t = prevTime {
+                return "\(t)s"
+            } else {
+                return "—"
+            }
+        }
+    }
+
+    private var previousColumn: some View {
+        Text(previousPerformanceText)
+            .font(.system(size: 13, weight: .medium, design: .rounded))
+            .foregroundColor(.secondary)
+            .frame(width: 70, alignment: .leading)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+    }
+
     private var repsBinding: Binding<Double?> {
         Binding<Double?>(get: { set.reps.map { Double($0) } }, set: { set.reps = $0.map { InputValidator.validateReps(Int($0)).clampedValue }; onDataChange?() })
     }
@@ -50,6 +92,7 @@ struct SetRowView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 8) {
             indexLabel
+            previousColumn
             inputsSection
             aiTrackerButton
             checkButton
@@ -110,13 +153,13 @@ struct SetRowView: View {
         HStack(spacing: 8) {
             switch exerciseType {
             case .strength:
-                inputColumn(type: .weight, binding: weightBinding, ghostText: prevWeight.map { LocalizationHelper.shared.formatFlexible(unitsManager.convertFromKilograms($0)) })
-                inputColumn(type: .reps, binding: repsBinding, ghostText: prevReps.map { "\($0)" })
+                inputColumn(type: .weight, binding: weightBinding)
+                inputColumn(type: .reps, binding: repsBinding)
             case .cardio:
-                inputColumn(type: .distance, binding: distanceBinding, ghostText: prevDist.map { LocalizationHelper.shared.formatDecimal(unitsManager.convertFromMeters($0)) })
-                inputColumn(type: .timeMin, binding: timeBinding, ghostText: prevTime.map { formatTime($0) })
+                inputColumn(type: .distance, binding: distanceBinding)
+                inputColumn(type: .timeMin, binding: timeBinding)
             case .duration:
-                inputColumn(type: .timeSec, binding: timeBinding, ghostText: prevTime.map { "\($0)s" })
+                inputColumn(type: .timeSec, binding: timeBinding)
             }
         }
     }
@@ -128,53 +171,59 @@ struct SetRowView: View {
     private func formatValue(_ value: Double?, type: InputFieldType) -> String {
         guard let value = value, value >= 0 else { return type.title(unitsManager: unitsManager) }
         switch type {
-        case .weight: return LocalizationHelper.shared.formatFlexible(value)
-        case .reps: return LocalizationHelper.shared.formatInteger(value)
-        case .distance: return LocalizationHelper.shared.formatDecimal(value)
-        case .timeMin, .timeSec: return LocalizationHelper.shared.formatInteger(value)
+        case .weight:
+            return "\(LocalizationHelper.shared.formatFlexible(value)) \(unitsManager.weightUnitString())"
+        case .reps:
+            return LocalizationHelper.shared.formatInteger(value)
+        case .distance:
+            return "\(LocalizationHelper.shared.formatDecimal(value)) \(unitsManager.distanceUnitString())"
+        case .timeMin:
+            return "\(LocalizationHelper.shared.formatInteger(value)) min"
+        case .timeSec:
+            return "\(LocalizationHelper.shared.formatInteger(value)) sec"
         }
     }
 
-    private func inputColumn(type: InputFieldType, binding: Binding<Double?>, ghostText: String?) -> some View {
-        VStack(spacing: 2) {
-            Button {
-                activeBindingType = type
-                showSliderSheet = true
-            } label: {
-                Text(formatValue(binding.wrappedValue, type: type))
-                    .font(.system(size: 18, weight: .semibold, design: .rounded))
-
-                    .foregroundColor(binding.wrappedValue != nil ? (colorScheme == .dark ? .white : .black) : .secondary)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color(UIColor.systemGray6))
-                    .cornerRadius(10)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
-
-            if let ghost = ghostText {
-                Text(ghost).font(.system(size: 10, weight: .medium, design: .rounded)).foregroundColor(.gray)
-            }
+    private func inputColumn(type: InputFieldType, binding: Binding<Double?>) -> some View {
+        Button {
+            activeBindingType = type
+            showSliderSheet = true
+        } label: {
+            Text(formatValue(binding.wrappedValue, type: type))
+                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                .foregroundColor(binding.wrappedValue != nil ? (colorScheme == .dark ? .white : .black) : .secondary)
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(colorScheme == .dark ? Color.white.opacity(0.06) : Color(UIColor.systemGray6))
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.08), lineWidth: 1)
+                )
         }
+        .buttonStyle(.plain)
         .frame(maxWidth: .infinity)
     }
 
     private var checkButton: some View {
         Button(action: toggleComplete) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-
-                    .fill(set.isCompleted ? Color.green : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.gray.opacity(0.15)))
-                    .frame(width: 44, height: 44)
-
-                Image(systemName: "checkmark")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundColor(set.isCompleted ? .white : Color.gray.opacity(0.5))
-                    .symbolEffect(.bounce, value: set.isCompleted)
+                if set.isCompleted {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(themeManager.current.successColor)
+                        .frame(width: 44, height: 44)
+                        .shadow(color: themeManager.current.successColor.opacity(0.3), radius: 6, x: 0, y: 3)
+                    
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.black)
+                        .symbolEffect(.bounce, value: set.isCompleted)
+                } else {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.2), lineWidth: 2)
+                        .background(Color.white.opacity(0.03))
+                        .frame(width: 44, height: 44)
+                }
             }
         }
         .buttonStyle(.plain)

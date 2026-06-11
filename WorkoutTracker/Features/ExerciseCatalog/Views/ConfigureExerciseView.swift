@@ -1,5 +1,3 @@
-
-
 internal import SwiftUI
 
 struct ConfigureExerciseView: View {
@@ -21,25 +19,37 @@ struct ConfigureExerciseView: View {
         ))
     }
 
-    private var weightBinding: Binding<Double?> {
+    private var weightValueBinding: Binding<Double> {
         Binding(
             get: {
-                guard let w = viewModel.form.weight else { return nil }
-                let converted = unitsManager.convertFromKilograms(w)
-                return (converted * 10).rounded() / 10
+                let w = viewModel.form.weight ?? 0.0
+                return unitsManager.convertFromKilograms(w)
             },
-            set: { viewModel.form.weight = $0.map { unitsManager.convertToKilograms($0) } }
+            set: { viewModel.form.weight = unitsManager.convertToKilograms($0) }
         )
     }
 
-    private var distanceBinding: Binding<Double?> {
+    private var distanceValueBinding: Binding<Double> {
         Binding(
             get: {
-                guard let d = viewModel.form.distance else { return nil }
-                let converted = unitsManager.convertFromMeters(d)
-                return (converted * 100).rounded() / 100
+                let d = viewModel.form.distance ?? 0.0
+                return unitsManager.convertFromMeters(d)
             },
-            set: { viewModel.form.distance = $0.map { unitsManager.convertToMeters($0) } }
+            set: { viewModel.form.distance = unitsManager.convertToMeters($0) }
+        )
+    }
+
+    private var repsBinding: Binding<Double> {
+        Binding(
+            get: { Double(viewModel.form.reps) },
+            set: { viewModel.form.reps = Int($0) }
+        )
+    }
+
+    private var setsBinding: Binding<Double> {
+        Binding(
+            get: { Double(viewModel.form.sets) },
+            set: { viewModel.form.sets = Int($0) }
         )
     }
 
@@ -54,23 +64,39 @@ struct ConfigureExerciseView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+                themeManager.current.background.ignoresSafeArea()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        Text(LocalizationHelper.shared.translateName(viewModel.exerciseName))
-                            .font(.system(size: 32, weight: .heavy, design: .rounded))
-
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 16)
+                        
+                        // Header Title + Muscle Badge
+                        HStack(alignment: .center, spacing: 16) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(LocalizationHelper.shared.translateName(viewModel.exerciseName))
+                                    .font(.system(size: 32, weight: .heavy, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .minimumScaleFactor(0.8)
+                                
+                                if let prevText = viewModel.previousPerformanceText {
+                                    Text(prevText)
+                                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                                        .foregroundColor(themeManager.current.secondaryText)
+                                }
+                            }
+                            
+                            Spacer()
+                            
+                            MuscleSilhouetteBadge(muscleGroup: viewModel.muscleGroup)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
 
                         if viewModel.showOverloadBanner {
                             overloadBannerCard
                                 .padding(.horizontal, 20)
                         }
 
-                        VStack(spacing: 16) {
+                        VStack(spacing: 20) {
                             switch viewModel.exerciseType {
                             case .strength: strengthConfig
                             case .cardio: cardioConfig
@@ -79,18 +105,11 @@ struct ConfigureExerciseView: View {
                         }
                         .padding(.horizontal, 20)
 
-                        Spacer(minLength: 100)
+                        Spacer(minLength: 120)
                     }
                 }
             }
-            .navigationTitle(LocalizedStringKey("Configure"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(LocalizedStringKey("Cancel")) { dismiss() }
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                }
-            }
             .safeAreaInset(edge: .bottom) {
                 floatingAddButton
             }
@@ -106,54 +125,48 @@ struct ConfigureExerciseView: View {
     }
 
     private var floatingAddButton: some View {
-            Button {
-                handleSave()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
-                    Text(LocalizedStringKey("Add Exercise"))
-                        .font(.headline)
-                        .fontWeight(.bold)
-                }
+        Button {
+            handleSave()
+        } label: {
+            Text(LocalizedStringKey("Add Exercise"))
+                .font(.headline)
+                .fontWeight(.bold)
                 .foregroundColor(.white) 
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
+                .padding(.vertical, 16)
                 .background(themeManager.current.primaryAccent) 
-                .cornerRadius(20)
-                .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, x: 0, y: 8)
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 10)
-            .background(
-                LinearGradient(colors: [colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white, (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white).opacity(0)], startPoint: .bottom, endPoint: .top)
-                    .ignoresSafeArea()
-            )
+                .cornerRadius(14)
+                .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
         }
+        .padding(.horizontal, 20)
+        .padding(.bottom, 10)
+        .background(
+            LinearGradient(
+                colors: [themeManager.current.background, themeManager.current.background.opacity(0)],
+                startPoint: .bottom,
+                endPoint: .top
+            )
+            .ignoresSafeArea()
+        )
+    }
 
     private var overloadBannerCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
-                ZStack {
-                    Circle()
-                        .fill(Color.green.opacity(0.2))
-                        .frame(width: 40, height: 40)
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .foregroundColor(.green)
-                        .font(.headline)
-                }
+                Image(systemName: "sparkles")
+                    .foregroundColor(themeManager.current.successColor)
+                    .font(.headline)
                 Text(LocalizedStringKey("Progressive Overload"))
                     .font(.headline)
-                    .foregroundColor(.green)
+                    .foregroundColor(themeManager.current.successColor)
             }
 
             let convertedWeight = unitsManager.convertFromKilograms(viewModel.recommendedWeight)
             let weightStr = LocalizationHelper.shared.formatFlexible((convertedWeight * 10).rounded() / 10)
 
-            Text(LocalizedStringKey("Your forecast allows it! Try **\(weightStr) \(unitsManager.weightUnitString())** today for better results."))
+            Text(LocalizedStringKey("Recommended weight increase to **\(weightStr) \(unitsManager.weightUnitString())** for this workout."))
                 .font(.subheadline)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
-                .lineSpacing(4)
+                .foregroundColor(.white.opacity(0.8))
 
             HStack(spacing: 12) {
                 Button {
@@ -161,13 +174,13 @@ struct ConfigureExerciseView: View {
                     gen.impactOccurred()
                     withAnimation(.spring()) { viewModel.showOverloadBanner = false }
                 } label: {
-                    Text(LocalizedStringKey("Discard"))
+                    Text(LocalizedStringKey("Dismiss"))
                         .font(.subheadline).bold()
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.gray.opacity(0.15))
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
-                        .cornerRadius(12)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.1))
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
                 }
 
                 Button {
@@ -178,36 +191,204 @@ struct ConfigureExerciseView: View {
                     Text(LocalizedStringKey("Apply"))
                         .font(.subheadline).bold()
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(Color.green)
-                        .foregroundColor(themeManager.current.background)
-                        .cornerRadius(12)
-                        .shadow(color: .green.opacity(0.3), radius: 5, x: 0, y: 3)
+                        .padding(.vertical, 10)
+                        .background(themeManager.current.successColor)
+                        .foregroundColor(.black)
+                        .cornerRadius(10)
                 }
             }
         }
-        .padding(20)
-        .background(Color.green.opacity(0.05))
-        .cornerRadius(20)
+        .padding(16)
+        .background(themeManager.current.surface)
+        .cornerRadius(16)
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.green.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(themeManager.current.successColor.opacity(0.3), lineWidth: 1)
         )
     }
 
     @ViewBuilder private var strengthConfig: some View {
-        CustomStepperCard(title: "Sets", value: $viewModel.form.sets, range: 1...20)
-        CustomStepperCard(title: "Reps", value: $viewModel.form.reps, range: 1...100)
-        CustomInputCard(title: "Weight (\(unitsManager.weightUnitString()))", placeholder: "0.0", binding: weightBinding)
+        // Focus Mode Selector
+        VStack(alignment: .leading, spacing: 10) {
+            Text(LocalizedStringKey("Focus Mode"))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(themeManager.current.secondaryText)
+                .padding(.horizontal, 4)
+            
+            Picker("Focus Mode", selection: Binding(
+                get: { viewModel.selectedFocusMode },
+                set: { viewModel.selectFocusMode($0) }
+            )) {
+                ForEach(ConfigureExerciseViewModel.FocusMode.allCases) { mode in
+                    Text(mode.localizedName).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .padding(.bottom, 8)
+
+        // Sets Card
+        VStack(spacing: 8) {
+            Text(LocalizedStringKey("Sets"))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(themeManager.current.secondaryText)
+            
+            Text("\(viewModel.form.sets)")
+                .font(.system(size: 38, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+            
+            TactileRulerPicker(
+                value: setsBinding,
+                range: 1...20,
+                step: 1.0,
+                majorInterval: 5.0,
+                format: "%.0f"
+            )
+        }
+        .padding(.vertical, 14)
+        .background(themeManager.current.surface)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+
+        // Reps Card
+        VStack(spacing: 8) {
+            Text(LocalizedStringKey("Reps"))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(themeManager.current.secondaryText)
+            
+            Text("\(viewModel.form.reps)")
+                .font(.system(size: 38, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+            
+            TactileRulerPicker(
+                value: repsBinding,
+                range: 1...100,
+                step: 1.0,
+                majorInterval: 5.0,
+                format: "%.0f"
+            )
+        }
+        .padding(.vertical, 14)
+        .background(themeManager.current.surface)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+
+        // Weight Card
+        VStack(spacing: 8) {
+            Text(LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(themeManager.current.secondaryText)
+            
+            let wVal = unitsManager.convertFromKilograms(viewModel.form.weight ?? 0.0)
+            Text(String(format: "%.1f", wVal))
+                .font(.system(size: 38, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+            
+            TactileRulerPicker(
+                value: weightValueBinding,
+                range: 0...300,
+                step: 0.5,
+                majorInterval: 5.0,
+                format: "%.0f"
+            )
+            
+            // Quick Plate Increments
+            HStack(spacing: 12) {
+                ForEach([1.25, 2.5, 5.0], id: \.self) { val in
+                    Button {
+                        let cur = unitsManager.convertFromKilograms(viewModel.form.weight ?? 0.0)
+                        viewModel.form.weight = unitsManager.convertToKilograms(cur + val)
+                        
+                        let gen = UIImpactFeedbackGenerator(style: .medium)
+                        gen.impactOccurred()
+                    } label: {
+                        Text("+\(LocalizationHelper.shared.formatFlexible(val))")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(themeManager.current.primaryAccent)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(themeManager.current.primaryAccent.opacity(0.12))
+                            .cornerRadius(8)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(themeManager.current.primaryAccent.opacity(0.25), lineWidth: 1)
+                            )
+                    }
+                }
+            }
+            .padding(.top, 4)
+        }
+        .padding(.vertical, 14)
+        .background(themeManager.current.surface)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
     }
 
     @ViewBuilder private var cardioConfig: some View {
-        CustomInputCard(title: "Distance (\(unitsManager.distanceUnitString()))", placeholder: "0.0", binding: distanceBinding)
+        VStack(spacing: 8) {
+            Text(LocalizedStringKey("Distance (\(unitsManager.distanceUnitString()))"))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(themeManager.current.secondaryText)
+            
+            let dVal = unitsManager.convertFromMeters(viewModel.form.distance ?? 0.0)
+            Text(String(format: "%.2f", dVal))
+                .font(.system(size: 38, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+            
+            TactileRulerPicker(
+                value: distanceValueBinding,
+                range: 0...50,
+                step: 0.1,
+                majorInterval: 1.0,
+                format: "%.1f"
+            )
+        }
+        .padding(.vertical, 14)
+        .background(themeManager.current.surface)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+
         CustomTimeCard(title: "Duration", minBinding: minutesBinding, secBinding: secondsBinding)
     }
 
     @ViewBuilder private var durationConfig: some View {
-        CustomStepperCard(title: "Sets", value: $viewModel.form.sets, range: 1...10)
+        VStack(spacing: 8) {
+            Text(LocalizedStringKey("Sets"))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(themeManager.current.secondaryText)
+            
+            Text("\(viewModel.form.sets)")
+                .font(.system(size: 38, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+            
+            TactileRulerPicker(
+                value: setsBinding,
+                range: 1...20,
+                step: 1.0,
+                majorInterval: 5.0,
+                format: "%.0f"
+            )
+        }
+        .padding(.vertical, 14)
+        .background(themeManager.current.surface)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
+
         CustomTimeCard(title: "Set Time", minBinding: minutesBinding, secBinding: secondsBinding)
     }
 
@@ -221,89 +402,144 @@ struct ConfigureExerciseView: View {
     }
 }
 
-struct CustomStepperCard: View {
+// MARK: - Muscle Silhouette Badge
+struct MuscleSilhouetteBadge: View {
+    let muscleGroup: String
     @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme
-    let title: LocalizedStringKey
-    @Binding var value: Int
-    let range: ClosedRange<Int>
-
+    
+    private var systemImageName: String {
+        let group = muscleGroup.lowercased()
+        if group.contains("core") || group.contains("abs") {
+            return "figure.core.training"
+        } else if group.contains("cardio") || group.contains("run") || group.contains("cycle") {
+            return "figure.run"
+        } else if group.contains("legs") || group.contains("quad") || group.contains("calves") {
+            return "figure.strengthtraining.traditional"
+        } else {
+            return "figure.strengthtraining.traditional"
+        }
+    }
+    
     var body: some View {
-        HStack {
-            Text(title)
-                .font(.headline)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+        ZStack {
+            RoundedRectangle(cornerRadius: 12)
+                .fill(themeManager.current.surface)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                )
+            
+            Image(systemName: systemImageName)
+                .font(.system(size: 24))
+                .foregroundColor(.white)
+        }
+        .frame(width: 50, height: 50)
+    }
+}
 
-            Spacer()
-
-            HStack(spacing: 16) {
-                Button {
-                    let gen = UIImpactFeedbackGenerator(style: .light)
-                    gen.impactOccurred()
-                    if value > range.lowerBound { value -= 1 }
-                } label: {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(value > range.lowerBound ? themeManager.current.primaryAccent : .gray.opacity(0.3))
+// MARK: - Tactile Ruler Picker
+struct TactileRulerPicker: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let majorInterval: Double
+    let format: String
+    
+    @GestureState private var dragOffset: CGFloat = 0
+    @State private var baseValue: Double = 0
+    @State private var isDragging: Bool = false
+    
+    private let tickSpacing: CGFloat = 8
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let midX = geometry.size.width / 2
+            
+            ZStack {
+                Canvas { context, size in
+                    let midY = size.height / 2
+                    let currentValue = value
+                    
+                    let maxTicksVisible = Int(size.width / (tickSpacing * 2)) + 5
+                    let startTick = max(range.lowerBound, (currentValue - Double(maxTicksVisible) * step).roundedTick(step: step))
+                    let endTick = min(range.upperBound, (currentValue + Double(maxTicksVisible) * step).roundedTick(step: step))
+                    
+                    var current = startTick
+                    while current <= endTick {
+                        let offset = CGFloat(current - currentValue) * (tickSpacing / step)
+                        let x = midX + offset
+                        
+                        if x >= 0 && x <= size.width {
+                            let isMajor = abs(current.truncatingRemainder(dividingBy: majorInterval)) < 0.001
+                            let tickHeight: CGFloat = isMajor ? 28.0 : 14.0
+                            
+                            var path = Path()
+                            path.move(to: CGPoint(x: x, y: midY - tickHeight / 2.0 - 5.0))
+                            path.addLine(to: CGPoint(x: x, y: midY + tickHeight / 2.0 - 5.0))
+                            
+                            context.stroke(
+                                path,
+                                with: .color(isMajor ? .white : .white.opacity(0.25)),
+                                style: StrokeStyle(lineWidth: isMajor ? 1.8 : 1.0, lineCap: .round)
+                            )
+                            
+                            if isMajor {
+                                let label = String(format: format, current)
+                                context.draw(
+                                    Text(label)
+                                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                                        .foregroundColor(.white.opacity(0.5)),
+                                    at: CGPoint(x: x, y: midY + 18)
+                                )
+                            }
+                        }
+                        current += step
+                    }
                 }
-
-                Text("\(value)")
-                    .font(.title3)
-                    .bold()
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                    .frame(minWidth: 35, alignment: .center)
-
-                Button {
-                    let gen = UIImpactFeedbackGenerator(style: .light)
-                    gen.impactOccurred()
-                    if value < range.upperBound { value += 1 }
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(value < range.upperBound ? themeManager.current.primaryAccent : .gray.opacity(0.3))
-                }
+                
+                // Center Tick Indicator
+                RoundedRectangle(cornerRadius: 1.5)
+                    .fill(Color(red: 0.20, green: 0.60, blue: 1.0)) // Themed primary Accent color
+                    .frame(width: 3, height: 36)
+                    .offset(y: -5)
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 12)
-
-            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color(UIColor.systemGray6))
-            .cornerRadius(12)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 3)
+                    .onChanged { gesture in
+                        if !isDragging {
+                            isDragging = true
+                            baseValue = value
+                        }
+                        let deltaX = gesture.translation.width
+                        let valChange = -Double(deltaX / tickSpacing) * step
+                        let newValue = baseValue + valChange
+                        value = min(max(newValue, range.lowerBound), range.upperBound)
+                    }
+                    .onEnded { _ in
+                        withAnimation(.easeOut(duration: 0.15)) {
+                            value = (value / step).rounded() * step
+                            value = min(max(value, range.lowerBound), range.upperBound)
+                        }
+                        isDragging = false
+                        baseValue = 0
+                        
+                        let impact = UIImpactFeedbackGenerator(style: .light)
+                        impact.impactOccurred()
+                    }
+            )
         }
-        .padding(16)
-
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 8, x: 0, y: 3)
+        .frame(height: 65)
     }
 }
 
-struct CustomInputCard: View {
-    @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme
-    let title: LocalizedStringKey
-    let placeholder: String
-    let binding: Binding<Double?>
-
-    var body: some View {
-        HStack {
-            Text(title)
-                .font(.headline)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
-
-            Spacer()
-
-            ClearableTextField(placeholder: placeholder, value: binding)
-                .frame(width: 90)
-                .font(.headline)
-                .padding(.vertical, 4)
-        }
-        .padding(16)
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
-        .cornerRadius(16)
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 8, x: 0, y: 3)
+extension Double {
+    fileprivate func roundedTick(step: Double) -> Double {
+        return (self / step).rounded() * step
     }
 }
 
+// MARK: - Custom Time Card
 struct CustomTimeCard: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
@@ -315,7 +551,7 @@ struct CustomTimeCard: View {
         HStack {
             Text(title)
                 .font(.headline)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                .foregroundColor(.white)
 
             Spacer()
 
@@ -323,7 +559,8 @@ struct CustomTimeCard: View {
                 ClearableTextField(placeholder: "0", value: minBinding)
                     .frame(width: 50)
                 Text(LocalizedStringKey("min"))
-                    .font(.subheadline).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    .font(.subheadline)
+                    .foregroundColor(themeManager.current.secondaryText)
 
                 ClearableTextField(placeholder: "0", value: secBinding)
                     .frame(width: 50)
@@ -331,12 +568,16 @@ struct CustomTimeCard: View {
                         if let s = newValue, s > 59 { secBinding.wrappedValue = 59 }
                     }
                 Text(LocalizedStringKey("sec"))
-                    .font(.subheadline).foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    .font(.subheadline)
+                    .foregroundColor(themeManager.current.secondaryText)
             }
         }
         .padding(16)
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .background(themeManager.current.surface)
         .cornerRadius(16)
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 8, x: 0, y: 3)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+        )
     }
 }

@@ -64,15 +64,22 @@ struct ExerciseCardView: View {
                 }
             }
             .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(cardBackgroundColor)
-            )
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(cardBorderColor, lineWidth: (isActiveExercise || exercise.isCompleted) ? 2 : 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: isActiveExercise 
+                                ? [themeManager.current.primaryAccent, themeManager.current.secondaryAccent] 
+                                : [Color.white.opacity(0.12), Color.white.opacity(0.04)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: isActiveExercise ? 2 : 1
+                    )
             )
-            .shadow(color: isActiveExercise ? themeManager.current.primaryAccent.opacity(0.2) : .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 15, x: 0, y: 5)
+            .shadow(color: isActiveExercise ? themeManager.current.primaryAccent.opacity(0.15) : .black.opacity(0.15), radius: 15, x: 0, y: 5)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isActiveExercise)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showEffortSheet)
         }
@@ -142,7 +149,6 @@ struct ExerciseCardView: View {
                         
                         detailViewModel.updateWorkoutAnalytics(for: workout)
                         withAnimation { set.isCompleted = true }
-                        // Save is handled by handleSetCompleted → WorkoutStore (@ModelActor)
                         
                         UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                         
@@ -163,85 +169,144 @@ struct ExerciseCardView: View {
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Image(systemName: "line.3.horizontal").foregroundColor(colorScheme == .dark ? .gray : .gray.opacity(0.5)).font(.caption).frame(width: 20, height: 20)
-
+            HStack(spacing: 12) {
+                // Reorder handle or icon
+                Image(systemName: "line.3.horizontal")
+                    .foregroundColor(.gray)
+                    .font(.caption)
+                    .frame(width: 16)
+                
+                // Exercise Icon and Title (tap to see history)
                 Button {
                     showHistory = true
                 } label: {
-                    HStack {
-                        Image(systemName: getIcon()).foregroundColor(getColor()).font(.caption)
+                    HStack(spacing: 6) {
+                        Image(systemName: getIcon())
+                            .foregroundColor(getColor())
+                            .font(.system(size: 14, weight: .bold))
+                        
                         Text(LocalizationHelper.shared.translateName(exercise.name))
-                            .font(.headline)
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
-                            .lineLimit(nil)
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
                             .minimumScaleFactor(0.8)
-                            .allowsTightening(true)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
                 .buttonStyle(.plain)
-
-                Button { showTechniqueSheet = true } label: { Image(systemName: "info.circle").font(.subheadline).foregroundColor(.secondary).padding(.horizontal, 4) }.buttonStyle(BorderlessButtonStyle())
-
+                
+                // Technique pill
+                Button {
+                    showTechniqueSheet = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("Technique")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        LinearGradient(
+                            colors: [themeManager.current.primaryAccent.opacity(0.24), themeManager.current.primaryAccent.opacity(0.12)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(themeManager.current.primaryAccent.opacity(0.4), lineWidth: 1)
+                    )
+                    .shadow(color: themeManager.current.primaryAccent.opacity(0.15), radius: 4, x: 0, y: 2)
+                }
+                .buttonStyle(BorderlessButtonStyle())
+                
                 Spacer()
-
+                
+                // Completed Sets pill/text
                 let completedCount = exercise.setsList.filter { $0.isCompleted }.count
                 let totalCount = exercise.setsList.count
-
-                HStack(spacing: 4) {
-                    Image(systemName: completedCount == totalCount && totalCount > 0 ? "checkmark.circle.fill" : "checkmark.circle")
-                        .foregroundColor(completedCount == totalCount && totalCount > 0 ? .green : (completedCount > 0 ? themeManager.current.primaryAccent : .gray)).font(.caption)
-                    Text("\(completedCount)/\(totalCount)").font(.subheadline).foregroundColor(.secondary)
-                }
-
+                Text("\(completedCount)/\(totalCount) Completed")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(.secondary)
+                
+                // Menu dots
                 Menu {
-                    if !isEmbeddedInSuperset { Button { detailViewModel.activeEvent = .showSwapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") } }
+                    if !isEmbeddedInSuperset {
+                        Button { detailViewModel.activeEvent = .showSwapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") }
+                    }
                     Button(role: .destructive) { detailViewModel.removeExercise(exercise, from: workout) } label: { Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash") }
-                } label: { Image(systemName: "ellipsis").foregroundColor(.gray).padding(10) }
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundColor(.gray)
+                        .padding(6)
+                }
                 .highPriorityGesture(TapGesture().onEnded { })
             }
-
+            
+            // Muscle category badge
             let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exercise.name, muscleGroup: exercise.muscleGroup)
             if !targetMuscles.isEmpty {
-                HStack(spacing: 6) {
-                    Image(systemName: "figure.strengthtraining.traditional").font(.caption2).foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.system(size: 10))
                     Text(targetMuscles.joined(separator: ", "))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        .allowsTightening(true)
-                        .fixedSize(horizontal: false, vertical: true)
-                }.padding(.leading, 28)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(themeManager.current.secondaryText)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.06))
+                .cornerRadius(6)
+                .padding(.leading, 28)
             }
         }
-        .padding(.bottom, 10).contentShape(Rectangle())
-        .onTapGesture { withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { isExpanded.toggle() } }
+        .padding(.bottom, 12)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                isExpanded.toggle()
+            }
+        }
     }
 
     private var columnHeadersSection: some View {
         HStack(spacing: 8) {
-            Text(LocalizedStringKey("Set")).font(.caption2.bold()).frame(width: 32).foregroundColor(.secondary)
+            Text(LocalizedStringKey("Set"))
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .frame(width: 32)
+                .foregroundColor(.secondary)
+
+            Text(LocalizedStringKey("Previous"))
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .frame(width: 70, alignment: .leading)
+                .foregroundColor(.secondary)
 
             HStack(spacing: 8) {
                 switch exercise.type {
                 case .strength:
-                    Text(unitsManager.weightUnitString()).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
-                    Text(LocalizedStringKey("Reps")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Weight")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Reps")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
                 case .cardio:
-                    Text(unitsManager.distanceUnitString()).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
-                    Text(LocalizedStringKey("Time")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Distance")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Time")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
                 case .duration:
-                    Text(LocalizedStringKey("Time")).font(.caption2.bold()).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text(LocalizedStringKey("Time")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
                 }
             }
 
             if isAISupported {
-                Image(systemName: "brain").font(.caption2.bold()).frame(width: 44).foregroundColor(.secondary)
+                Image(systemName: "brain").font(.system(size: 11, weight: .bold)).frame(width: 44).foregroundColor(.secondary)
             }
-            Image(systemName: "checkmark").font(.caption2.bold()).frame(width: 44).foregroundColor(.secondary)
-        }.padding(.horizontal, 10).padding(.bottom, 4)
+            Text(LocalizedStringKey("Check"))
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .frame(width: 44)
+                .foregroundColor(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.bottom, 6)
     }
 
     private var collapsedInfoSection: some View {
@@ -250,26 +315,64 @@ struct ExerciseCardView: View {
 
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
-            Button(action: { withAnimation { detailViewModel.addSet(to: exercise, context: context) } }) {
-                Text(LocalizedStringKey("+ Add Set"))
-                .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 14)
-                .background(themeManager.current.primaryAccent.opacity(0.15))
-                .foregroundColor(themeManager.current.primaryAccent)
-                .cornerRadius(14)
-            }
-            .buttonStyle(BorderlessButtonStyle()).disabled(exercise.isCompleted || isWorkoutCompleted)
-
-            if !isEmbeddedInSuperset {
-                Button(action: { finishExerciseAction() }) {
-                    Text(exercise.isCompleted ? LocalizedStringKey("Resume Exercise") : LocalizedStringKey("Finish Exercise"))
-                        .font(.headline)
+            HStack(spacing: 12) {
+                if !isEmbeddedInSuperset {
+                    Button(action: { finishExerciseAction() }) {
+                        HStack(spacing: 6) {
+                            if exercise.isCompleted {
+                                Image(systemName: "arrow.uturn.backward")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text(LocalizedStringKey("Resume"))
+                            } else {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text(LocalizedStringKey("Finish Exercise"))
+                            }
+                        }
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(exercise.isCompleted ? themeManager.current.primaryAccent.opacity(0.15) : Color.green.opacity(0.15))
-                        .foregroundColor(exercise.isCompleted ? themeManager.current.primaryAccent : .green)
+                        .padding(.vertical, 12)
+                        .background(
+                            exercise.isCompleted 
+                                ? Color.white.opacity(0.06) 
+                                : themeManager.current.successColor.opacity(0.15)
+                        )
+                        .foregroundColor(
+                            exercise.isCompleted 
+                                ? .secondary 
+                                : themeManager.current.successColor
+                        )
                         .cornerRadius(14)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14)
+                                .stroke(
+                                    exercise.isCompleted 
+                                        ? Color.white.opacity(0.12) 
+                                        : themeManager.current.successColor.opacity(0.35),
+                                    lineWidth: 1
+                                )
+                        )
+                    }
+                    .buttonStyle(BorderlessButtonStyle())
+                    .disabled(isWorkoutCompleted)
                 }
-                .buttonStyle(BorderlessButtonStyle()).disabled(isWorkoutCompleted)
+
+                Button(action: { withAnimation { detailViewModel.addSet(to: exercise, context: context) } }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .bold))
+                        Text(LocalizedStringKey("Add Set"))
+                    }
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(themeManager.current.premiumGradient)
+                    .foregroundColor(.white)
+                    .cornerRadius(14)
+                    .shadow(color: themeManager.current.primaryAccent.opacity(0.25), radius: 8, x: 0, y: 4)
+                }
+                .buttonStyle(BorderlessButtonStyle())
+                .disabled(exercise.isCompleted || isWorkoutCompleted)
             }
             
             if showEffortSheet && !exercise.isCompleted {
@@ -293,7 +396,7 @@ struct ExerciseCardView: View {
                                     .fontWeight(.bold)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 36)
-                                    .background(exercise.effort == val ? Color.purple : Color.gray.opacity(0.15))
+                                    .background(exercise.effort == val ? themeManager.current.secondaryAccent : Color.white.opacity(0.08))
                                     .foregroundColor(exercise.effort == val ? .white : .primary)
                                     .cornerRadius(8)
                             }

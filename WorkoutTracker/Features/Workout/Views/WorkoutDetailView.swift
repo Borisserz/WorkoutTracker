@@ -44,6 +44,8 @@ struct WorkoutDetailContentView: View {
     @Bindable var viewModel: WorkoutDetailViewModel
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
 
+    @Environment(ThemeManager.self) private var themeManager
+
     @State private var activeSheet: DetailDestination?
     @State private var activeFullScreen: DetailDestination?
     @State private var showEmptyAlert = false
@@ -152,7 +154,8 @@ struct WorkoutDetailContentView: View {
                                     expandedExercises: $expandedExercises,
                                     draggedExercise: $draggedExercise,
                                     scrollToExerciseId: { id in self.scrollToExerciseId = id },
-                                    onAddExerciseTap: { activeSheet = .exerciseSelection }
+                                    onAddExerciseTap: { activeSheet = .exerciseSelection },
+                                    onAddSupersetTap: { activeSheet = .supersetBuilder(nil) }
                                 )
                                 .environment(viewModel)
                             } else if selectedTab == .analytics {
@@ -210,24 +213,40 @@ struct WorkoutDetailContentView: View {
     }
 
     private var finishWorkoutButton: some View {
-            VStack {
-                Spacer()
-                Button {
-                    let generator = UIImpactFeedbackGenerator(style: .heavy)
-                    generator.impactOccurred()
-                    timerManager.stopRestTimer()
-                    viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
-                } label: {
+        VStack {
+            Spacer()
+            
+            let isEmpty = workout.exercises.isEmpty
+            Button {
+                let generator = UIImpactFeedbackGenerator(style: isEmpty ? .medium : .heavy)
+                generator.impactOccurred()
+                timerManager.stopRestTimer()
+                viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
+            } label: {
                 HStack(spacing: 8) {
-                    Image(systemName: "flag.checkered.circle.fill").font(.title2)
-                    Text(LocalizedStringKey("Finish Workout")).font(.title3).bold()
+                    if isEmpty {
+                        Image(systemName: "xmark.circle.fill").font(.title2)
+                        Text(LocalizedStringKey("Cancel Workout")).font(.title3).bold()
+                    } else {
+                        Image(systemName: "flag.checkered.circle.fill").font(.title2)
+                        Text(LocalizedStringKey("Finish Workout")).font(.title3).bold()
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
-                .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))
-                .foregroundColor(.white)
+                .background(isEmpty 
+                    ? AnyShapeStyle(Color.red.opacity(0.12)) 
+                    : AnyShapeStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing)))
+                .foregroundColor(isEmpty ? .red : .white)
                 .clipShape(Capsule())
-                .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)
+                .overlay(
+                    Group {
+                        if isEmpty {
+                            Capsule().stroke(Color.red.opacity(0.3), lineWidth: 1.5)
+                        }
+                    }
+                )
+                .shadow(color: isEmpty ? Color.clear : .blue.opacity(0.4), radius: 15, x: 0, y: 8)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, timerManager.isRestTimerActive ? 180 : 16)
@@ -237,7 +256,7 @@ struct WorkoutDetailContentView: View {
         .background(
             VStack {
                 Spacer()
-                LinearGradient(colors: [Color(UIColor.systemBackground).opacity(0), Color(UIColor.systemBackground)], startPoint: .top, endPoint: .bottom)
+                LinearGradient(colors: [themeManager.current.background.opacity(0), themeManager.current.background], startPoint: .top, endPoint: .bottom)
                     .frame(height: timerManager.isRestTimerActive ? 280 : 100)
             }
             .ignoresSafeArea()
