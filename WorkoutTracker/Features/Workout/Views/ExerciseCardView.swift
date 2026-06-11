@@ -64,22 +64,13 @@ struct ExerciseCardView: View {
                 }
             }
             .padding()
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .background(colorScheme == .dark ? Color(white: 0.1) : Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: isActiveExercise 
-                                ? [themeManager.current.primaryAccent, themeManager.current.secondaryAccent] 
-                                : [Color.white.opacity(0.12), Color.white.opacity(0.04)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: isActiveExercise ? 2 : 1
-                    )
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(isActiveExercise ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05)), lineWidth: isActiveExercise ? 2 : 1)
             )
-            .shadow(color: isActiveExercise ? themeManager.current.primaryAccent.opacity(0.15) : .black.opacity(0.15), radius: 15, x: 0, y: 5)
+            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isActiveExercise)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showEffortSheet)
         }
@@ -201,27 +192,18 @@ struct ExerciseCardView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "info.circle.fill")
                             .font(.system(size: 11, weight: .bold))
-                        Text("Technique")
+                        Text(LocalizedStringKey("Technique"))
                             .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .lineLimit(1)
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(colorScheme == .dark ? .white : .primary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
-                    .background(
-                        LinearGradient(
-                            colors: [themeManager.current.primaryAccent.opacity(0.24), themeManager.current.primaryAccent.opacity(0.12)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .background(themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.2 : 0.1))
                     .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(themeManager.current.primaryAccent.opacity(0.4), lineWidth: 1)
-                    )
-                    .shadow(color: themeManager.current.primaryAccent.opacity(0.15), radius: 4, x: 0, y: 2)
                 }
                 .buttonStyle(BorderlessButtonStyle())
+                .fixedSize(horizontal: true, vertical: false)
                 
                 Spacer()
                 
@@ -319,39 +301,18 @@ struct ExerciseCardView: View {
                 if !isEmbeddedInSuperset {
                     Button(action: { finishExerciseAction() }) {
                         HStack(spacing: 6) {
-                            if exercise.isCompleted {
-                                Image(systemName: "arrow.uturn.backward")
-                                    .font(.system(size: 14, weight: .bold))
-                                Text(LocalizedStringKey("Resume"))
-                            } else {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 14, weight: .bold))
-                                Text(LocalizedStringKey("Finish Exercise"))
-                            }
+                            Image(systemName: exercise.isCompleted ? "arrow.uturn.backward" : "checkmark.circle.fill")
+                                .font(.system(size: 14, weight: .bold))
+                            Text(exercise.isCompleted ? LocalizedStringKey("Resume") : LocalizedStringKey("Finish Exercise"))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(
-                            exercise.isCompleted 
-                                ? Color.white.opacity(0.06) 
-                                : themeManager.current.successColor.opacity(0.15)
-                        )
-                        .foregroundColor(
-                            exercise.isCompleted 
-                                ? .secondary 
-                                : themeManager.current.successColor
-                        )
-                        .cornerRadius(14)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14)
-                                .stroke(
-                                    exercise.isCompleted 
-                                        ? Color.white.opacity(0.12) 
-                                        : themeManager.current.successColor.opacity(0.35),
-                                    lineWidth: 1
-                                )
-                        )
+                        .background(exercise.isCompleted ? themeManager.current.surfaceVariant : themeManager.current.successColor.opacity(0.15))
+                        .foregroundColor(exercise.isCompleted ? .secondary : themeManager.current.successColor)
+                        .cornerRadius(12)
                     }
                     .buttonStyle(BorderlessButtonStyle())
                     .disabled(isWorkoutCompleted)
@@ -362,14 +323,15 @@ struct ExerciseCardView: View {
                         Image(systemName: "plus")
                             .font(.system(size: 14, weight: .bold))
                         Text(LocalizedStringKey("Add Set"))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(themeManager.current.premiumGradient)
+                    .background(themeManager.current.primaryAccent)
                     .foregroundColor(.white)
-                    .cornerRadius(14)
-                    .shadow(color: themeManager.current.primaryAccent.opacity(0.25), radius: 8, x: 0, y: 4)
+                    .cornerRadius(12)
                 }
                 .buttonStyle(BorderlessButtonStyle())
                 .disabled(exercise.isCompleted || isWorkoutCompleted)

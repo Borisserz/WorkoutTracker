@@ -30,9 +30,8 @@ struct SetRowView: View {
     var prevTime: Int? = nil
 
     var autoFocus: Bool = false
-
-    @State private var showSliderSheet: Bool = false
-    @State private var activeBindingType: InputFieldType = .weight
+    
+    @FocusState private var focusedField: InputFieldType?
     @State private var hasAutoFocused: Bool = false
 
     private var previousPerformanceText: String {
@@ -101,24 +100,21 @@ struct SetRowView: View {
         .padding(.horizontal, 10)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-
-                .fill(set.isCompleted ? Color.green.opacity(colorScheme == .dark ? 0.15 : 0.08) : Color.clear)
+                .fill(set.isCompleted ? Color.green.opacity(colorScheme == .dark ? 0.15 : 0.08) : themeManager.current.surfaceVariant.opacity(0.3))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(set.isCompleted ? Color.green.opacity(0.3) : Color.clear, lineWidth: 1)
+                .stroke(set.isCompleted ? Color.green.opacity(0.3) : Color.white.opacity(0.05), lineWidth: 1)
         )
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: set.isCompleted)
         .compositingGroup()
         .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
-        .sheet(isPresented: $showSliderSheet) {
-            SliderSheetView(fieldType: activeBindingType, value: getActiveBinding(), isPresented: $showSliderSheet)
-        }
         .onAppear {
             if autoFocus && !hasAutoFocused {
                 hasAutoFocused = true
-                activeBindingType = exerciseType == .strength ? .weight : (exerciseType == .cardio ? .distance : .timeSec)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { showSliderSheet = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { 
+                    focusedField = exerciseType == .strength ? .weight : (exerciseType == .cardio ? .distance : .timeSec) 
+                }
             }
         }
     }
@@ -164,45 +160,42 @@ struct SetRowView: View {
         }
     }
 
-    private func getActiveBinding() -> Binding<Double?> {
-        switch activeBindingType { case .weight: return weightBinding; case .reps: return repsBinding; case .distance: return distanceBinding; case .timeMin, .timeSec: return timeBinding }
-    }
-
-    private func formatValue(_ value: Double?, type: InputFieldType) -> String {
-        guard let value = value, value >= 0 else { return type.title(unitsManager: unitsManager) }
-        switch type {
-        case .weight:
-            return "\(LocalizationHelper.shared.formatFlexible(value)) \(unitsManager.weightUnitString())"
-        case .reps:
-            return LocalizationHelper.shared.formatInteger(value)
-        case .distance:
-            return "\(LocalizationHelper.shared.formatDecimal(value)) \(unitsManager.distanceUnitString())"
-        case .timeMin:
-            return "\(LocalizationHelper.shared.formatInteger(value)) min"
-        case .timeSec:
-            return "\(LocalizationHelper.shared.formatInteger(value)) sec"
-        }
+    private func textBinding(for binding: Binding<Double?>) -> Binding<String> {
+        Binding<String>(
+            get: {
+                if let val = binding.wrappedValue {
+                    return val.truncatingRemainder(dividingBy: 1) == 0 ? String(format: "%.0f", val) : String(val)
+                } else {
+                    return ""
+                }
+            },
+            set: {
+                if let val = Double($0.replacingOccurrences(of: ",", with: ".")) {
+                    binding.wrappedValue = val
+                } else if $0.isEmpty {
+                    binding.wrappedValue = nil
+                }
+            }
+        )
     }
 
     private func inputColumn(type: InputFieldType, binding: Binding<Double?>) -> some View {
-        Button {
-            activeBindingType = type
-            showSliderSheet = true
-        } label: {
-            Text(formatValue(binding.wrappedValue, type: type))
+        HStack(spacing: 0) {
+            TextField(type.title(unitsManager: unitsManager), text: textBinding(for: binding))
+                .keyboardType(type == .reps ? .numberPad : .decimalPad)
+                .multilineTextAlignment(.center)
                 .font(.system(size: 16, weight: .semibold, design: .rounded))
                 .foregroundColor(binding.wrappedValue != nil ? (colorScheme == .dark ? .white : .black) : .secondary)
+                .focused($focusedField, equals: type)
                 .frame(maxWidth: .infinity)
-                .frame(height: 44)
+                .frame(height: 40)
                 .background(colorScheme == .dark ? Color.white.opacity(0.06) : Color(UIColor.systemGray6))
-                .cornerRadius(12)
+                .cornerRadius(10)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.08), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(focusedField == type ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.08)), lineWidth: focusedField == type ? 2 : 1)
                 )
         }
-        .buttonStyle(.plain)
-        .frame(maxWidth: .infinity)
     }
 
     private var checkButton: some View {
