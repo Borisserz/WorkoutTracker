@@ -235,14 +235,14 @@ struct WorkoutDetailContentView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
                 .background(isEmpty 
-                    ? AnyShapeStyle(Color.red.opacity(0.12)) 
+                    ? AnyShapeStyle(themeManager.current.surface) 
                     : AnyShapeStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing)))
                 .foregroundColor(isEmpty ? .red : .white)
                 .clipShape(Capsule())
                 .overlay(
                     Group {
                         if isEmpty {
-                            Capsule().stroke(Color.red.opacity(0.3), lineWidth: 1.5)
+                            Capsule().stroke(Color.red, lineWidth: 1.5)
                         }
                     }
                 )
@@ -254,10 +254,12 @@ struct WorkoutDetailContentView: View {
             .disabled(viewModel.isShowingSnackbar)
         }
         .background(
-            VStack {
+            VStack(spacing: 0) {
                 Spacer()
                 LinearGradient(colors: [themeManager.current.background.opacity(0), themeManager.current.background], startPoint: .top, endPoint: .bottom)
-                    .frame(height: timerManager.isRestTimerActive ? 280 : 100)
+                    .frame(height: 50)
+                themeManager.current.background
+                    .frame(height: timerManager.isRestTimerActive ? 230 : 50)
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)

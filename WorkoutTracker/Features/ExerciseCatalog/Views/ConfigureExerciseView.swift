@@ -208,25 +208,6 @@ struct ConfigureExerciseView: View {
     }
 
     @ViewBuilder private var strengthConfig: some View {
-        // Focus Mode Selector
-        VStack(alignment: .leading, spacing: 10) {
-            Text(LocalizedStringKey("Focus Mode"))
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(themeManager.current.secondaryText)
-                .padding(.horizontal, 4)
-            
-            Picker("Focus Mode", selection: Binding(
-                get: { viewModel.selectedFocusMode },
-                set: { viewModel.selectFocusMode($0) }
-            )) {
-                ForEach(ConfigureExerciseViewModel.FocusMode.allCases) { mode in
-                    Text(mode.localizedName).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
-        .padding(.bottom, 8)
-
         // Sets Card
         VStack(spacing: 8) {
             Text(LocalizedStringKey("Sets"))
