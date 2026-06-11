@@ -52,44 +52,84 @@ struct ExerciseListView: View {
                         .padding(.horizontal, 24)
                 }
                 
-                VStack(spacing: 12) {
+                HStack(spacing: 16) {
+                    // Add Exercise Square Button
                     Button(action: {
                         HapticManager.shared.impact(.medium)
                         onAddExerciseTap()
                     }) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
+                        VStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.cyan.opacity(0.12))
+                                    .frame(width: 48, height: 48)
+                                Image(systemName: "dumbbell.fill")
+                                    .font(.title3)
+                                    .foregroundColor(.cyan)
+                            }
+                            
                             Text(LocalizedStringKey("Add Exercise"))
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(.cyan)
+                            
+                            Text(LocalizedStringKey("Log single exercises with sets and weight"))
+                                .font(.system(size: 11, weight: .regular, design: .rounded))
+                                .foregroundColor(themeManager.current.secondaryText)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(3)
+                                .minimumScaleFactor(0.8)
                         }
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(.black)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(themeManager.current.primaryAccent)
-                        .cornerRadius(12)
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, minHeight: 155)
+                        .background(themeManager.current.surfaceVariant.opacity(0.3))
+                        .cornerRadius(16)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.cyan.opacity(0.4), lineWidth: 1.5)
+                        )
                     }
-                    
+                    .buttonStyle(.plain)
+
+                    // Build Superset Square Button
                     Button(action: {
                         HapticManager.shared.impact(.medium)
                         onAddSupersetTap()
                     }) {
-                        HStack {
-                            Image(systemName: "rectangle.stack.badge.plus")
+                        VStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.purple.opacity(0.12))
+                                    .frame(width: 48, height: 48)
+                                Image(systemName: "rectangle.stack.badge.plus")
+                                    .font(.title3)
+                                    .foregroundColor(.purple)
+                            }
+                            
                             Text(LocalizedStringKey("Build Superset"))
+                                .font(.system(size: 15, weight: .bold, design: .rounded))
+                                .foregroundColor(.purple)
+                            
+                            Text(LocalizedStringKey("Group exercises to perform back-to-back"))
+                                .font(.system(size: 11, weight: .regular, design: .rounded))
+                                .foregroundColor(themeManager.current.secondaryText)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(3)
+                                .minimumScaleFactor(0.8)
                         }
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.white.opacity(0.08))
-                        .cornerRadius(12)
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, minHeight: 155)
+                        .background(themeManager.current.surfaceVariant.opacity(0.3))
+                        .cornerRadius(16)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.purple.opacity(0.4), lineWidth: 1.5)
                         )
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 16)
                 .padding(.top, 10)
             }
             .padding(.vertical, 32)
