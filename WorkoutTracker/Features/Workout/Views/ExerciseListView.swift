@@ -52,41 +52,49 @@ struct ExerciseListView: View {
                         .padding(.horizontal, 24)
                 }
                 
-                HStack(spacing: 16) {
+                HStack(spacing: 20) {
                     // Add Exercise Square Button
                     Button(action: {
                         HapticManager.shared.impact(.medium)
                         onAddExerciseTap()
                     }) {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 16) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.cyan.opacity(0.12))
-                                    .frame(width: 48, height: 48)
+                                    .fill(themeManager.current.primaryAccent.opacity(0.12))
+                                    .frame(width: 56, height: 56)
                                 Image(systemName: "dumbbell.fill")
-                                    .font(.title3)
-                                    .foregroundColor(.cyan)
+                                    .font(.system(size: 24))
+                                    .foregroundColor(themeManager.current.primaryAccent)
                             }
                             
-                            Text(LocalizedStringKey("Add Exercise"))
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundColor(.cyan)
-                            
-                            Text(LocalizedStringKey("Log single exercises with sets and weight"))
-                                .font(.system(size: 11, weight: .regular, design: .rounded))
-                                .foregroundColor(themeManager.current.secondaryText)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(3)
-                                .minimumScaleFactor(0.8)
+                            VStack(spacing: 6) {
+                                Text(LocalizedStringKey("Add Exercise"))
+                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                                    .foregroundColor(themeManager.current.primaryAccent)
+                                
+                                Text(LocalizedStringKey("Log single exercises with sets and weight"))
+                                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                                    .foregroundColor(themeManager.current.secondaryText)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(3)
+                                    .minimumScaleFactor(0.8)
+                            }
                         }
-                        .padding(.vertical, 16)
-                        .padding(.horizontal, 12)
-                        .frame(maxWidth: .infinity, minHeight: 155)
-                        .background(themeManager.current.surfaceVariant.opacity(0.3))
-                        .cornerRadius(16)
+                        .padding(.vertical, 20)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity, minHeight: 185)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(themeManager.current.surfaceVariant.opacity(0.4))
+                        )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.cyan.opacity(0.4), lineWidth: 1.5)
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(
+                                    LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    lineWidth: 1.5
+                                )
+                                .shadow(color: themeManager.current.primaryAccent.opacity(0.35), radius: 10, x: 0, y: 4)
                         )
                     }
                     .buttonStyle(.plain)
@@ -96,35 +104,43 @@ struct ExerciseListView: View {
                         HapticManager.shared.impact(.medium)
                         onAddSupersetTap()
                     }) {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 16) {
                             ZStack {
                                 Circle()
-                                    .fill(Color.purple.opacity(0.12))
-                                    .frame(width: 48, height: 48)
+                                    .fill(themeManager.current.secondaryMidTone.opacity(0.12))
+                                    .frame(width: 56, height: 56)
                                 Image(systemName: "rectangle.stack.badge.plus")
-                                    .font(.title3)
-                                    .foregroundColor(.purple)
+                                    .font(.system(size: 24))
+                                    .foregroundColor(themeManager.current.secondaryMidTone)
                             }
                             
-                            Text(LocalizedStringKey("Build Superset"))
-                                .font(.system(size: 15, weight: .bold, design: .rounded))
-                                .foregroundColor(.purple)
-                            
-                            Text(LocalizedStringKey("Group exercises to perform back-to-back"))
-                                .font(.system(size: 11, weight: .regular, design: .rounded))
-                                .foregroundColor(themeManager.current.secondaryText)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(3)
-                                .minimumScaleFactor(0.8)
+                            VStack(spacing: 6) {
+                                Text(LocalizedStringKey("Build Superset"))
+                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                                    .foregroundColor(themeManager.current.secondaryMidTone)
+                                
+                                Text(LocalizedStringKey("Group exercises to perform back-to-back"))
+                                    .font(.system(size: 12, weight: .regular, design: .rounded))
+                                    .foregroundColor(themeManager.current.secondaryText)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(3)
+                                    .minimumScaleFactor(0.8)
+                            }
                         }
-                        .padding(.vertical, 16)
-                        .padding(.horizontal, 12)
-                        .frame(maxWidth: .infinity, minHeight: 155)
-                        .background(themeManager.current.surfaceVariant.opacity(0.3))
-                        .cornerRadius(16)
+                        .padding(.vertical, 20)
+                        .padding(.horizontal, 16)
+                        .frame(maxWidth: .infinity, minHeight: 185)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20)
+                                .fill(themeManager.current.surfaceVariant.opacity(0.4))
+                        )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.purple.opacity(0.4), lineWidth: 1.5)
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(
+                                    LinearGradient(colors: [themeManager.current.secondaryMidTone, themeManager.current.secondaryMidTone.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                    lineWidth: 1.5
+                                )
+                                .shadow(color: themeManager.current.secondaryMidTone.opacity(0.35), radius: 10, x: 0, y: 4)
                         )
                     }
                     .buttonStyle(.plain)
