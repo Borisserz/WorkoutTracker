@@ -237,12 +237,10 @@ struct ConfigureExerciseView: View {
                 .font(.system(size: 38, weight: .black, design: .rounded))
                 .foregroundColor(.white)
             
-            TactileRulerPicker(
+            PremiumSliderPicker(
                 value: setsBinding,
                 range: 1...20,
-                step: 1.0,
-                majorInterval: 5.0,
-                format: "%.0f"
+                step: 1.0
             )
         }
         .padding(.vertical, 14)
@@ -263,12 +261,10 @@ struct ConfigureExerciseView: View {
                 .font(.system(size: 38, weight: .black, design: .rounded))
                 .foregroundColor(.white)
             
-            TactileRulerPicker(
+            PremiumSliderPicker(
                 value: repsBinding,
                 range: 1...100,
-                step: 1.0,
-                majorInterval: 5.0,
-                format: "%.0f"
+                step: 1.0
             )
         }
         .padding(.vertical, 14)
@@ -290,12 +286,10 @@ struct ConfigureExerciseView: View {
                 .font(.system(size: 38, weight: .black, design: .rounded))
                 .foregroundColor(.white)
             
-            TactileRulerPicker(
+            PremiumSliderPicker(
                 value: weightValueBinding,
                 range: 0...300,
-                step: 0.5,
-                majorInterval: 5.0,
-                format: "%.0f"
+                step: 0.5
             )
             
             // Quick Plate Increments
@@ -344,12 +338,10 @@ struct ConfigureExerciseView: View {
                 .font(.system(size: 38, weight: .black, design: .rounded))
                 .foregroundColor(.white)
             
-            TactileRulerPicker(
+            PremiumSliderPicker(
                 value: distanceValueBinding,
                 range: 0...50,
-                step: 0.1,
-                majorInterval: 1.0,
-                format: "%.1f"
+                step: 0.1
             )
         }
         .padding(.vertical, 14)
@@ -373,12 +365,10 @@ struct ConfigureExerciseView: View {
                 .font(.system(size: 38, weight: .black, design: .rounded))
                 .foregroundColor(.white)
             
-            TactileRulerPicker(
+            PremiumSliderPicker(
                 value: setsBinding,
                 range: 1...20,
-                step: 1.0,
-                majorInterval: 5.0,
-                format: "%.0f"
+                step: 1.0
             )
         }
         .padding(.vertical, 14)
@@ -437,104 +427,58 @@ struct MuscleSilhouetteBadge: View {
     }
 }
 
-// MARK: - Tactile Ruler Picker
-struct TactileRulerPicker: View {
+// MARK: - Premium Slider Picker
+struct PremiumSliderPicker: View {
     @Binding var value: Double
     let range: ClosedRange<Double>
     let step: Double
-    let majorInterval: Double
-    let format: String
     
-    @GestureState private var dragOffset: CGFloat = 0
-    @State private var baseValue: Double = 0
-    @State private var isDragging: Bool = false
-    
-    private let tickSpacing: CGFloat = 8
+    @Environment(ThemeManager.self) private var themeManager
     
     var body: some View {
-        GeometryReader { geometry in
-            let midX = geometry.size.width / 2
-            
-            ZStack {
-                Canvas { context, size in
-                    let midY = size.height / 2
-                    let currentValue = value
-                    
-                    let maxTicksVisible = Int(size.width / (tickSpacing * 2)) + 5
-                    let startTick = max(range.lowerBound, (currentValue - Double(maxTicksVisible) * step).roundedTick(step: step))
-                    let endTick = min(range.upperBound, (currentValue + Double(maxTicksVisible) * step).roundedTick(step: step))
-                    
-                    var current = startTick
-                    while current <= endTick {
-                        let offset = CGFloat(current - currentValue) * (tickSpacing / step)
-                        let x = midX + offset
-                        
-                        if x >= 0 && x <= size.width {
-                            let isMajor = abs(current.truncatingRemainder(dividingBy: majorInterval)) < 0.001
-                            let tickHeight: CGFloat = isMajor ? 28.0 : 14.0
-                            
-                            var path = Path()
-                            path.move(to: CGPoint(x: x, y: midY - tickHeight / 2.0 - 5.0))
-                            path.addLine(to: CGPoint(x: x, y: midY + tickHeight / 2.0 - 5.0))
-                            
-                            context.stroke(
-                                path,
-                                with: .color(isMajor ? .white : .white.opacity(0.25)),
-                                style: StrokeStyle(lineWidth: isMajor ? 1.8 : 1.0, lineCap: .round)
-                            )
-                            
-                            if isMajor {
-                                let label = String(format: format, current)
-                                context.draw(
-                                    Text(label)
-                                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                                        .foregroundColor(.white.opacity(0.5)),
-                                    at: CGPoint(x: x, y: midY + 18)
-                                )
-                            }
-                        }
-                        current += step
-                    }
-                }
-                
-                // Center Tick Indicator
-                RoundedRectangle(cornerRadius: 1.5)
-                    .fill(Color(red: 0.20, green: 0.60, blue: 1.0)) // Themed primary Accent color
-                    .frame(width: 3, height: 36)
-                    .offset(y: -5)
+        HStack(spacing: 16) {
+            Button {
+                decrement()
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(value > range.lowerBound ? themeManager.current.primaryAccent : .white.opacity(0.15))
             }
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 3)
-                    .onChanged { gesture in
-                        if !isDragging {
-                            isDragging = true
-                            baseValue = value
-                        }
-                        let deltaX = gesture.translation.width
-                        let valChange = -Double(deltaX / tickSpacing) * step
-                        let newValue = baseValue + valChange
-                        value = min(max(newValue, range.lowerBound), range.upperBound)
-                    }
-                    .onEnded { _ in
-                        withAnimation(.easeOut(duration: 0.15)) {
-                            value = (value / step).rounded() * step
-                            value = min(max(value, range.lowerBound), range.upperBound)
-                        }
-                        isDragging = false
-                        baseValue = 0
-                        
-                        let impact = UIImpactFeedbackGenerator(style: .light)
-                        impact.impactOccurred()
-                    }
-            )
+            .buttonStyle(.plain)
+            .disabled(value <= range.lowerBound)
+            
+            Slider(value: $value, in: range, step: step)
+                .tint(themeManager.current.primaryAccent)
+            
+            Button {
+                increment()
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(value < range.upperBound ? themeManager.current.primaryAccent : .white.opacity(0.15))
+            }
+            .buttonStyle(.plain)
+            .disabled(value >= range.upperBound)
         }
-        .frame(height: 65)
+        .padding(.horizontal, 10)
+        .frame(height: 44)
+    }
+    
+    private func decrement() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        value = max((value - step).roundedToStep(step: step), range.lowerBound)
+    }
+    
+    private func increment() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        value = min((value + step).roundedToStep(step: step), range.upperBound)
     }
 }
 
 extension Double {
-    fileprivate func roundedTick(step: Double) -> Double {
+    fileprivate func roundedToStep(step: Double) -> Double {
         return (self / step).rounded() * step
     }
 }
