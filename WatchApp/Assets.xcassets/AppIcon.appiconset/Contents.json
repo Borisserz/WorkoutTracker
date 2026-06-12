@@ -1,9 +1,8 @@
 {
   "images" : [
     {
-      "filename" : "photo_2026-06-01_18-21-25-2.jpg",
+      "filename" : "AppIcon1024x1024.png",
       "idiom" : "universal",
-      "platform" : "watchos",
       "size" : "1024x1024"
     }
   ],

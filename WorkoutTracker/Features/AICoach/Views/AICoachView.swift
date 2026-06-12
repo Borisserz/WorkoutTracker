@@ -480,6 +480,16 @@ struct CyberReadinessCard: View {
     
     @Environment(\.colorScheme) private var colorScheme
     
+    private func getReadinessAdvice(for score: Double) -> (pillText: String, recommendation: String, color: Color) {
+        if score >= 80 {
+            return ("Ready for PRs", "CNS is fully recovered. Great day for heavy compound lifts (Squat, Deadlift, Bench Press)!", .cyberGreen)
+        } else if score >= 60 {
+            return ("Optimal Load", "Moderate fatigue. Work with 70-80% of your max and focus on technique.", .cyberOrange)
+        } else {
+            return ("Deload / Rest", "High CNS fatigue. Deload or focus on active recovery and stretching.", .cyberRed)
+        }
+    }
+    
     var body: some View {
         VStack(spacing: 16) {
             HStack(spacing: 16) {
@@ -525,6 +535,37 @@ struct CyberReadinessCard: View {
                 Spacer()
                 CyberMetric(title: "Sleep", value: hasSleep ? String(format: "%.1f", sleep) : "--", unit: "hrs", color: .cyberOrange)
             }
+            
+            Divider().background(Color.white.opacity(0.1))
+            
+            let advice = getReadinessAdvice(for: score)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(advice.color)
+                        .frame(width: 8, height: 8)
+                    Text(advice.pillText)
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(advice.color)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(advice.color.opacity(0.15))
+                .cornerRadius(8)
+                
+                Text(advice.recommendation)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.8))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(advice.color.opacity(0.05))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(advice.color.opacity(0.3), lineWidth: 1)
+            )
         }
         .padding(16)
         .background(Color(red: 0.09, green: 0.09, blue: 0.12))
@@ -610,9 +651,14 @@ struct CyberAssistantCard: View {
                 )
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(isListening ? "Listening..." : "Voice Coach Active")
-                        .font(.system(size: 16, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
+                    HStack(spacing: 8) {
+                        Text(isListening ? "Listening..." : "Voice Coach Active")
+                            .font(.system(size: 16, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                        if isListening {
+                            SiriWaveformView()
+                        }
+                    }
                     Text(isListening ? (textTranscript.isEmpty ? "Speak now..." : textTranscript) : "Tap the sphere to talk to AI")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundColor(isListening ? .cyberGreen : .gray)
@@ -652,6 +698,47 @@ struct CyberAssistantCard: View {
                 .stroke(Color.cyberPurple.opacity(0.6), lineWidth: 1.5)
         )
         .shadow(color: Color.cyberPurple.opacity(0.3), radius: 0, x: 4, y: 4)
+    }
+}
+
+struct SiriWaveformView: View {
+    @State private var phase: CGFloat = 0.0
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<6) { index in
+                WaveBar(index: index, phase: phase)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.6).repeatForever(autoreverses: true)) {
+                phase = 1.0
+            }
+        }
+    }
+}
+
+struct WaveBar: View {
+    let index: Int
+    let phase: CGFloat
+
+    var height: CGFloat {
+        let baseHeights: [CGFloat] = [6, 16, 24, 18, 10, 5]
+        let variation: CGFloat = 8
+        let value = baseHeights[index % baseHeights.count]
+        return phase == 0.0 ? value : max(4, value + (index % 2 == 0 ? variation : -variation))
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 1.5)
+            .fill(
+                LinearGradient(
+                    colors: [.cyberPurple, .cyberCyan, .cyberGreen],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            )
+            .frame(width: 3, height: height)
     }
 }
 

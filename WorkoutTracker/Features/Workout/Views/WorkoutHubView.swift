@@ -30,22 +30,68 @@ struct WorkoutHubView: View {
     @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
     private var favoriteWorkouts: [Workout]
 
+    @State private var searchText = ""
+    @State private var selectedMuscleGroup: String? = nil
+    private let muscleGroups = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
+
+    private func filterPreset(_ preset: WorkoutPreset) -> Bool {
+        if !searchText.isEmpty {
+            let query = searchText.lowercased()
+            if !preset.name.lowercased().contains(query) {
+                return false
+            }
+        }
+        if let targetGroup = selectedMuscleGroup {
+            let hasMuscle = preset.exercises.contains { ex in
+                MuscleCategoryMapper.getBroadCategory(for: ex.muscleGroup) == targetGroup
+            }
+            if !hasMuscle {
+                return false
+            }
+        }
+        return true
+    }
+
+    private func filterWorkout(_ workout: Workout) -> Bool {
+        if !searchText.isEmpty {
+            let query = searchText.lowercased()
+            if !workout.title.lowercased().contains(query) {
+                return false
+            }
+        }
+        if let targetGroup = selectedMuscleGroup {
+            let hasMuscle = workout.exercises.contains { ex in
+                MuscleCategoryMapper.getBroadCategory(for: ex.muscleGroup) == targetGroup
+            }
+            if !hasMuscle {
+                return false
+            }
+        }
+        return true
+    }
+
     private var myRoutines: [WorkoutPreset] {
-        userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "Today's Plan" }
+        userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "Today's Plan" && filterPreset($0) }
     }
 
     private var savedSingleRoutines: [WorkoutPreset] {
-        userPresets.filter { $0.folderName == PresetService.savedRoutinesFolderName }
+        userPresets.filter { $0.folderName == PresetService.savedRoutinesFolderName && filterPreset($0) }
     }
 
     private var programFolders: [String: [WorkoutPreset]] {
-            var dict = [String: [WorkoutPreset]]()
-            let favStr = String(localized: "Favorites")
-            for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName && p.folderName != "HiddenFolder" && p.folderName != "Favorites" && p.folderName != favStr { 
+        var dict = [String: [WorkoutPreset]]()
+        let favStr = String(localized: "Favorites")
+        for p in userPresets where !(p.folderName ?? "").isEmpty && p.folderName != PresetService.savedRoutinesFolderName && p.folderName != "HiddenFolder" && p.folderName != "Favorites" && p.folderName != favStr { 
+            if filterPreset(p) {
                 dict[p.folderName!, default: []].append(p)
             }
-            return dict
         }
+        return dict
+    }
+
+    private var filteredFavorites: [Workout] {
+        favoriteWorkouts.filter { filterWorkout($0) }
+    }
 
     @State private var navigateToActiveWorkout: Workout? = nil
     @State private var navigateToExplore = false
@@ -97,6 +143,7 @@ struct WorkoutHubView: View {
                     VStack(alignment: .leading, spacing: 32) {
                         headerSection
                         topActionsSection
+                        searchAndFilterSection
                         carouselsSection
                         Spacer(minLength: 120)
                     }
@@ -210,16 +257,16 @@ struct WorkoutHubView: View {
     }
 
     private var topActionsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                PremiumHubGlassButton(
-                    title: "Start Empty Workout",
-                    subtitle: "Freestyle Mode",
-                    icon: "play.circle.fill",
-                    colorTint: .blue,
-                    isSmall: true
-                ) { startEmptyWorkout() }
+        VStack(spacing: 12) {
+            PremiumHubGlassButton(
+                title: "Start Empty Workout",
+                subtitle: "Freestyle Mode - track sets and weights on the fly",
+                icon: "play.circle.fill",
+                colorTint: .blue,
+                isSmall: false
+            ) { startEmptyWorkout() }
 
+            HStack(spacing: 12) {
                 PremiumHubGlassButton(
                     title: "Smart Builder",
                     subtitle: "Tailored for You",
@@ -241,18 +288,106 @@ struct WorkoutHubView: View {
                     presetToEdit = nil
                     showPresetEditor = true
                 }
+            }
 
-                PremiumHubGlassButton(
-                    title: "Explore Database",
-                    subtitle: "Browse Library",
-                    icon: "safari.fill",
-                    colorTint: .orange,
-                    isSmall: true
-                ) {
-                    navigateToExplore = true
+            PremiumHubGlassButton(
+                title: "Explore Database",
+                subtitle: "Browse community and pre-made routines library",
+                icon: "safari.fill",
+                colorTint: .orange,
+                isSmall: false
+            ) {
+                navigateToExplore = true
+            }
+        }
+        .padding(.horizontal, 20)
+    }
+
+    private var searchAndFilterSection: some View {
+        VStack(spacing: 16) {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.gray)
+                
+                TextField(String(localized: "Search routines..."), text: $searchText)
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .font(.system(.body, design: .rounded))
+                
+                if !searchText.isEmpty {
+                    Button(action: {
+                        searchText = ""
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.gray)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06), lineWidth: 0.7)
+            )
             .padding(.horizontal, 20)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    Button(action: {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        selectedMuscleGroup = nil
+                    }) {
+                        Text(LocalizedStringKey("All"))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .foregroundColor(selectedMuscleGroup == nil ? .white : (colorScheme == .dark ? .white : .black))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                selectedMuscleGroup == nil ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)),
+                                in: Capsule()
+                            )
+                            .overlay(
+                                Capsule()
+                                    .stroke(
+                                        selectedMuscleGroup == nil ? Color.clear : (colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06)),
+                                        lineWidth: 0.7
+                                    )
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    
+                    ForEach(muscleGroups, id: \.self) { group in
+                        let isSelected = selectedMuscleGroup == group
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            selectedMuscleGroup = isSelected ? nil : group
+                        }) {
+                            Text(LocalizedStringKey(group))
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(
+                                    isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)),
+                                    in: Capsule()
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(
+                                            isSelected ? Color.clear : (colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06)),
+                                            lineWidth: 0.7
+                                        )
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 20)
+            }
         }
     }
 

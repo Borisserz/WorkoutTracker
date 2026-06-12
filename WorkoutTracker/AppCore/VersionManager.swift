@@ -23,7 +23,7 @@ final class VersionManager: ObservableObject {
     private init() {}
     
     func checkForUpdates() async {
-        #if DEBUG
+        #if DEBUG || targetEnvironment(simulator)
         // Bypass force updates in developer / simulator environment
         self.updateRequirement = .noUpdate
         #else

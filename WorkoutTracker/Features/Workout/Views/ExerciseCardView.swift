@@ -57,6 +57,14 @@ struct ExerciseCardView: View {
 
                 if isExpanded {
                     columnHeadersSection
+                    if isActiveExercise {
+                        Text("💡 Tip: Swipe set row right to log")
+                            .font(.system(size: 10, weight: .medium, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .opacity(0.7)
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 6)
+                    }
                     setsSection
                     actionButtonsSection
                 } else {

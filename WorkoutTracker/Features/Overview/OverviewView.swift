@@ -85,6 +85,8 @@ struct OverviewView: View {
 
                         LiveVitalsCard()
 
+                        dailyPlanSection
+
                         MusclePieChartIsland(viewModel: dashboardViewModel)
 
                         ZStack {
@@ -121,8 +123,6 @@ struct OverviewView: View {
                                 .padding(.horizontal, 20)
                             }
                         }
-
-                        dailyPlanSection
 
                         topExercisesSection
 
@@ -1013,6 +1013,74 @@ struct OverviewView: View {
 
         @State private var pulseReady = false
         @State private var showRecoverySettings = false
+        @State private var isCollapsed = false
+
+        var fatiguedMuscles: [String] {
+            recoveryDict.filter { $0.value < 75 }.map { $0.key.capitalized }
+        }
+
+        var fatiguedMusclesText: String {
+            let list = fatiguedMuscles
+            if list.isEmpty {
+                return "All muscles fully recovered"
+            } else {
+                return "Fatigued: " + list.joined(separator: ", ")
+            }
+        }
+
+        var compactView: some View {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .stroke(Color.primary.opacity(0.05), lineWidth: 4)
+                        .frame(width: 54, height: 54)
+                    
+                    Circle()
+                        .trim(from: 0, to: CGFloat(Double(muscleReadiness) / 100.0))
+                        .stroke(
+                            LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing),
+                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                        )
+                        .frame(width: 54, height: 54)
+                        .rotationEffect(.degrees(-90))
+                    
+                    Text("\(muscleReadiness)%")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Recovery Index")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    Text(fatiguedMusclesText)
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray)
+                        .lineLimit(2)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.gray)
+            }
+            .padding(20)
+            .background(islandBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(Color.primary.opacity(0.05), lineWidth: 1.5)
+            )
+            .shadow(color: Color.black.opacity(0.04), radius: 10, y: 5)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                    isCollapsed = false
+                }
+            }
+        }
 
         var muscleReadiness: Int {
             guard !recoveryDict.isEmpty else { return 100 }
@@ -1030,12 +1098,25 @@ struct OverviewView: View {
             colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white.opacity(0.8))
         }
 
-        var body: some View {
+        private var expandedView: some View {
             VStack(alignment: .leading, spacing: 20) {
-
-                Text("Muscle Recovery")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundStyle(colorScheme == .dark ? .white : .black)
+                HStack {
+                    Text("Muscle Recovery")
+                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                        .foregroundStyle(colorScheme == .dark ? .white : .black)
+                    Spacer()
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                            isCollapsed = true
+                        }
+                    } label: {
+                        Image(systemName: "chevron.up.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
 
                 HStack(spacing: 12) {
                     AnatomyToggleButton(title: "Front", isSelected: isFrontView) { isFrontView = true }
@@ -1109,6 +1190,16 @@ struct OverviewView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).stroke(Color.primary.opacity(0.05), lineWidth: 1.5))
                 .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 5)
+            }
+        }
+
+        var body: some View {
+            Group {
+                if isCollapsed {
+                    compactView
+                } else {
+                    expandedView
+                }
             }
             .onAppear {
                 withAnimation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true)) {
