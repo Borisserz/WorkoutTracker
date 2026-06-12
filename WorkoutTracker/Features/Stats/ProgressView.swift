@@ -1093,6 +1093,7 @@ struct CurrentStreakSquareCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
     @State private var isPressed = false
+    @State private var showSheet = false
 
     var body: some View {
         let isDark = colorScheme == .dark
@@ -1102,6 +1103,7 @@ struct CurrentStreakSquareCard: View {
 
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            showSheet = true
         }) {
             ZStack {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -1155,6 +1157,9 @@ struct CurrentStreakSquareCard: View {
                 .onChanged { _ in isPressed = true }
                 .onEnded { _ in isPressed = false }
         )
+        .sheet(isPresented: $showSheet) {
+            CurrentStreakDetailSheet(streak: streak)
+        }
     }
 }
 
@@ -1163,6 +1168,7 @@ struct ActivityThisWeekSquareCard: View {
     let chartData: [ChartDataPoint]
     @Environment(\.colorScheme) private var colorScheme
     @State private var isPressed = false
+    @State private var showSheet = false
 
     var body: some View {
         let isDark = colorScheme == .dark
@@ -1172,6 +1178,7 @@ struct ActivityThisWeekSquareCard: View {
 
         Button(action: {
             UISelectionFeedbackGenerator().selectionChanged()
+            showSheet = true
         }) {
             ZStack {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -1225,6 +1232,9 @@ struct ActivityThisWeekSquareCard: View {
                 .onChanged { _ in isPressed = true }
                 .onEnded { _ in isPressed = false }
         )
+        .sheet(isPresented: $showSheet) {
+            WeeklyActivityDetailSheet(stats: stats, chartData: chartData)
+        }
     }
 }
 
