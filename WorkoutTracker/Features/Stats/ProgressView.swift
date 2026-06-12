@@ -249,6 +249,8 @@ struct StatsContentView: View {
                 LazyVStack(spacing: 24) {
                     HeaderView(showProfile: $showProfile)
 
+                    PersonalRecordsShowcaseView(viewModel: viewModel)
+
                     GoalsSectionView(showingAddGoal: $showingAddGoal, viewModel: viewModel, unitsManager: unitsManager)
 
                     // 2x2 Grid Layout with 4 Square Buttons
@@ -4088,5 +4090,114 @@ struct PremiumStatsEmptyState: View {
         .onAppear {
             withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { appear = true }
         }
+    }
+}
+
+// MARK: - Personal Records Showcase View
+struct PersonalRecordsShowcaseView: View {
+    @Bindable var viewModel: StatsViewModel
+    @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(UnitsManager.self) var unitsManager
+    @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
+
+    var displayPRs: [PersonalRecord] {
+        if !viewModel.recentPRs.isEmpty {
+            return viewModel.recentPRs
+        } else {
+            return dashboardViewModel.personalRecordsCache.map { (key, value) in
+                PersonalRecord(exerciseName: key, weight: value, date: Date())
+            }
+            .sorted { $0.weight > $1.weight }
+        }
+    }
+
+    private func getGlowColor(for exerciseName: String) -> Color {
+        let category = ExerciseCategory.determine(from: exerciseName)
+        switch category {
+        case .squat: return .green
+        case .press: return .red
+        case .deadlift: return .orange
+        case .pull: return .blue
+        case .curl: return .purple
+        case .core: return .cyan
+        case .cardio: return .pink
+        case .other: return .yellow
+        }
+    }
+
+    var body: some View {
+        let prs = displayPRs
+        if !prs.isEmpty {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Trophy Case")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .padding(.horizontal, 20)
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 16) {
+                        ForEach(prs) { pr in
+                            NavigationLink(destination: ExerciseHistoryView(exerciseName: pr.exerciseName)) {
+                                trophyCard(for: pr)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func trophyCard(for pr: PersonalRecord) -> some View {
+        let glowColor = getGlowColor(for: pr.exerciseName)
+        let convertedWeight = unitsManager.convertFromKilograms(pr.weight)
+        
+        VStack(alignment: .center, spacing: 10) {
+            ZStack {
+                Circle()
+                    .fill(glowColor.opacity(0.15))
+                    .frame(width: 38, height: 38)
+                
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(glowColor)
+            }
+            
+            VStack(spacing: 2) {
+                Text(LocalizationHelper.shared.translateName(pr.exerciseName))
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                
+                Text("\(LocalizationHelper.shared.formatFlexible(convertedWeight)) \(unitsManager.weightUnitString())")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+            }
+        }
+        .frame(width: 140, height: 110)
+        .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
+        .cornerRadius(18)
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(
+                    LinearGradient(
+                        colors: [glowColor, glowColor.opacity(0.3)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1.5
+                )
+        )
+        .shadow(
+            color: glowColor.opacity(colorScheme == .dark ? 0.35 : 0.15),
+            radius: 6,
+            x: 0,
+            y: 3
+        )
     }
 }

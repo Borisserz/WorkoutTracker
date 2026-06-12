@@ -56,12 +56,13 @@ struct ContentView: View {
                 Spacer() 
 
                 ActiveWorkoutBannerContainer()
-
-                TimerOverlayContainer()
             }
             .padding(.bottom, 50) 
             .ignoresSafeArea(.keyboard, edges: .bottom) 
-            .zIndex(100) 
+            .zIndex(100)
+
+            TimerOverlayContainer()
+                .zIndex(200) 
         }
         .onAppear {
             dashboardViewModel.refreshAllCaches()

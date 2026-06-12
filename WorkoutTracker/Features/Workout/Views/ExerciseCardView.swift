@@ -26,6 +26,64 @@ struct ExerciseCardView: View {
     private var isActiveExercise: Bool { isCurrentExercise && !exercise.isCompleted && workout.isActive }
     private var isWorkoutCompleted: Bool { !workout.isActive }
 
+    private var bestSessionSet: WorkoutSet? {
+        let completed = exercise.setsList.filter { $0.isCompleted }
+        switch exercise.type {
+        case .strength:
+            return completed.filter { $0.type != .warmup }
+                .sorted { (s1, s2) -> Bool in
+                    let w1 = s1.weight ?? 0.0
+                    let w2 = s2.weight ?? 0.0
+                    if w1 != w2 { return w1 < w2 }
+                    return (s1.reps ?? 0) < (s2.reps ?? 0)
+                }
+                .last
+        case .cardio:
+            return completed.sorted { (s1, s2) -> Bool in
+                let d1 = s1.distance ?? 0.0
+                let d2 = s2.distance ?? 0.0
+                if d1 != d2 { return d1 < d2 }
+                return (s1.time ?? 0) < (s2.time ?? 0)
+            }
+            .last
+        case .duration:
+            return completed.sorted { (s1, s2) -> Bool in
+                return (s1.time ?? 0) < (s2.time ?? 0)
+            }
+            .last
+        }
+    }
+
+    private func formatBestSet(_ set: WorkoutSet) -> String {
+        switch exercise.type {
+        case .strength:
+            if let w = set.weight, let r = set.reps {
+                let convertedW = unitsManager.convertFromKilograms(w)
+                return "\(LocalizationHelper.shared.formatFlexible(convertedW)) \(unitsManager.weightUnitString()) × \(r)"
+            }
+            return ""
+        case .cardio:
+            if let d = set.distance {
+                let convertedD = unitsManager.convertFromMeters(d)
+                let unit = unitsManager.distanceUnitString()
+                if let t = set.time {
+                    return "\(LocalizationHelper.shared.formatTwoDecimals(convertedD)) \(unit) in \(formatTime(t))"
+                }
+                return "\(LocalizationHelper.shared.formatTwoDecimals(convertedD)) \(unit)"
+            }
+            return ""
+        case .duration:
+            if let t = set.time {
+                return formatTime(t)
+            }
+            return ""
+        }
+    }
+
+    private func formatTime(_ totalSeconds: Int) -> String {
+        String(format: "%d:%02d", totalSeconds / 60, totalSeconds % 60)
+    }
+
     private var cardBackgroundColor: Color {
         if exercise.isCompleted {
             return colorScheme == .dark ? Color.green.opacity(0.1) : Color.green.opacity(0.05)
@@ -250,6 +308,51 @@ struct ExerciseCardView: View {
                 .padding(.vertical, 4)
                 .background(Color.white.opacity(0.06))
                 .cornerRadius(6)
+                .padding(.leading, 28)
+            }
+            
+            // Quick Stats
+            let completedSets = exercise.setsList.filter { $0.isCompleted }
+            if !completedSets.isEmpty {
+                HStack(spacing: 12) {
+                    if exercise.type == .strength {
+                        let volume = exercise.exerciseVolume
+                        let convertedVolume = unitsManager.convertFromKilograms(volume)
+                        HStack(spacing: 4) {
+                            Image(systemName: "chart.bar.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(themeManager.current.primaryAccent)
+                            Text("Volume:")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(themeManager.current.secondaryText)
+                            Text("\(LocalizationHelper.shared.formatInteger(convertedVolume)) \(unitsManager.weightUnitString())")
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    
+                    if let bestSet = bestSessionSet {
+                        HStack(spacing: 4) {
+                            Image(systemName: "trophy.fill")
+                                .font(.system(size: 9))
+                                .foregroundColor(.yellow)
+                            Text("Best:")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(themeManager.current.secondaryText)
+                            Text(formatBestSet(bestSet))
+                                .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                .foregroundColor(.white)
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(6)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                )
                 .padding(.leading, 28)
             }
         }

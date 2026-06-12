@@ -100,6 +100,7 @@ struct WorkoutHubView: View {
     @State private var showPresetEditor = false
     @State private var presetToEdit: WorkoutPreset? = nil
     @State private var showStreakPopup = false
+    @State private var showWorkoutLauncher = false
 
     @State private var itemToDelete: CarouselItemType? = nil
     @State private var showDeleteAlert = false
@@ -200,6 +201,16 @@ struct WorkoutHubView: View {
                     }
                 })
             }
+            .sheet(isPresented: $showWorkoutLauncher) {
+                SmartWorkoutLauncherSheet(
+                    onStartEmptySession: { startEmptyWorkout() },
+                    onSmartWorkoutTap: { showSmartBuilder = true },
+                    onPresetTap: { preset in startWorkoutFromPreview(item: .preset(preset)) },
+                    onExploreTap: { navigateToExplore = true }
+                )
+                .presentationDetents([.fraction(0.65), .medium])
+                .presentationDragIndicator(.visible)
+            }
             .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: { Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one.")) }
@@ -257,50 +268,66 @@ struct WorkoutHubView: View {
     }
 
     private var topActionsSection: some View {
-        VStack(spacing: 12) {
-            PremiumHubGlassButton(
-                title: "Start Empty Workout",
-                subtitle: "Freestyle Mode - track sets and weights on the fly",
-                icon: "play.circle.fill",
-                colorTint: .blue,
-                isSmall: false
-            ) { startEmptyWorkout() }
-
-            HStack(spacing: 12) {
-                PremiumHubGlassButton(
-                    title: "Smart Workout",
-                    subtitle: "Tailored for You",
-                    icon: "wand.and.stars",
-                    colorTint: .purple,
-                    isSmall: true
-                ) {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    showSmartBuilder = true
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            showWorkoutLauncher = true
+        }) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [.neonBlue.opacity(0.15), .neonPurple.opacity(0.15)], startPoint: .top, endPoint: .bottom))
+                        .frame(width: 50, height: 50)
+                    Image(systemName: "bolt.fill")
+                        .font(.title2)
+                        .foregroundStyle(LinearGradient(colors: [.neonBlue, .neonPurple], startPoint: .topLeading, endPoint: .bottomTrailing))
                 }
-
-                PremiumHubGlassButton(
-                    title: "New Program",
-                    subtitle: "Create Custom",
-                    icon: "plus.app.fill",
-                    colorTint: .green,
-                    isSmall: true
-                ) {
-                    presetToEdit = nil
-                    showPresetEditor = true
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("Start Session"))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    Text(LocalizedStringKey("AI Smart Generator, freestyle session, or routines"))
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(.gray)
                 }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
+                    .font(.headline)
             }
-
-            PremiumHubGlassButton(
-                title: "Explore Database",
-                subtitle: "Browse community and pre-made routines library",
-                icon: "safari.fill",
-                colorTint: .orange,
-                isSmall: false
-            ) {
-                navigateToExplore = true
-            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(themeManager.current.surface)
+                    
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [.neonBlue, .neonPurple],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .opacity(0.12)
+                }
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [.neonBlue.opacity(0.5), .neonPurple.opacity(0.3)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
+            )
+            .shadow(color: .neonPurple.opacity(0.2), radius: 15, x: 0, y: 6)
+            .padding(.horizontal, 20)
         }
-        .padding(.horizontal, 20)
+        .buttonStyle(.plain)
     }
 
     private var searchAndFilterSection: some View {
