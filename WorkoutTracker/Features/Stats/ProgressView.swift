@@ -885,6 +885,15 @@ struct BodyTransformSquareCard: View {
     }
 
     var body: some View {
+        let isDark = colorScheme == .dark
+        let cardBg = isDark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white
+        let shimmerBg = Color.white.opacity(0.04)
+        let strokeColors = isDark ? [Color.purple, Color.blue] : [Color.purple.opacity(0.5), Color.blue.opacity(0.4)]
+        let strokeGradient = LinearGradient(colors: strokeColors, startPoint: .leading, endPoint: .trailing)
+        let shadowColor = isDark ? Color.purple.opacity(0.2) : Color.purple.opacity(0.06)
+        let titleColor = isDark ? Color.white : Color.black
+        let subtitleColor = isDark ? Color.white.opacity(0.55) : Color.black.opacity(0.5)
+
         Button(action: {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             onTap()
@@ -892,14 +901,14 @@ struct BodyTransformSquareCard: View {
             ZStack {
                 // Background card
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+                    .fill(cardBg)
 
                 // Shimmer effect
-                if colorScheme == .dark {
+                if isDark {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(
                             LinearGradient(
-                                colors: [.clear, .white.opacity(0.04), .clear],
+                                colors: [.clear, shimmerBg, .clear],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
@@ -957,13 +966,13 @@ struct BodyTransformSquareCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Body Transform")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .foregroundColor(titleColor)
                             .minimumScaleFactor(0.9)
                             .lineLimit(1)
 
                         Text("Before & after slider to track visual progress.")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.5))
+                            .foregroundColor(subtitleColor)
                             .lineLimit(3)
                             .multilineTextAlignment(.leading)
                     }
@@ -974,19 +983,10 @@ struct BodyTransformSquareCard: View {
             .frame(height: 150)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: colorScheme == .dark 
-                                ? [Color.purple, Color.blue] 
-                                : [Color.purple.opacity(0.5), Color.blue.opacity(0.4)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        lineWidth: 2
-                    )
+                    .stroke(strokeGradient, lineWidth: 2)
             )
             .shadow(
-                color: colorScheme == .dark ? Color.purple.opacity(0.2) : Color.purple.opacity(0.06),
+                color: shadowColor,
                 radius: 8, x: 0, y: 4
             )
             .scaleEffect(isPressed ? 0.97 : 1.0)
@@ -1008,6 +1008,14 @@ struct AIIslandSquareView: View {
     @State private var isPressed = false
 
     var body: some View {
+        let isDark = colorScheme == .dark
+        let cardBg = isDark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white
+        let strokeColors = isDark ? [Color.blue.opacity(0.4), Color.purple] : [Color.blue.opacity(0.3), Color.purple.opacity(0.5)]
+        let strokeGradient = LinearGradient(colors: strokeColors, startPoint: .leading, endPoint: .trailing)
+        let shadowColor = isDark ? Color.purple.opacity(0.2) : Color.purple.opacity(0.06)
+        let titleColor = isDark ? Color.white : Color.black
+        let subtitleColor = isDark ? Color.white.opacity(0.55) : Color.black.opacity(0.5)
+
         Button(action: {
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
             action()
@@ -1015,7 +1023,7 @@ struct AIIslandSquareView: View {
             ZStack {
                 // Background card
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+                    .fill(cardBg)
 
                 // Content
                 VStack(alignment: .leading, spacing: 10) {
@@ -1043,13 +1051,13 @@ struct AIIslandSquareView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("AI Efficiency")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .foregroundColor(titleColor)
                             .minimumScaleFactor(0.9)
                             .lineLimit(1)
                         
                         Text(isFetching ? "Analyzing..." : "Review stats with weekly AI coach insights.")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.5))
+                            .foregroundColor(subtitleColor)
                             .lineLimit(3)
                             .multilineTextAlignment(.leading)
                     }
@@ -1060,19 +1068,10 @@ struct AIIslandSquareView: View {
             .frame(height: 150)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: colorScheme == .dark 
-                                ? [Color.blue.opacity(0.4), Color.purple] 
-                                : [Color.blue.opacity(0.3), Color.purple.opacity(0.5)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        lineWidth: 2
-                    )
+                    .stroke(strokeGradient, lineWidth: 2)
             )
             .shadow(
-                color: colorScheme == .dark ? Color.purple.opacity(0.2) : Color.purple.opacity(0.06),
+                color: shadowColor,
                 radius: 8, x: 0, y: 4
             )
             .scaleEffect(isPressed ? 0.97 : 1.0)
@@ -1094,12 +1093,17 @@ struct CurrentStreakSquareCard: View {
     @State private var isPressed = false
 
     var body: some View {
+        let isDark = colorScheme == .dark
+        let cardBg = isDark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white
+        let strokeColor = isDark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)
+        let titleColor = isDark ? Color.white : Color.black
+
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
         }) {
             ZStack {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+                    .fill(cardBg)
 
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -1117,7 +1121,7 @@ struct CurrentStreakSquareCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Current Streak")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .foregroundColor(titleColor)
                             .lineLimit(1)
                         
                         Text("\(streak) Days")
@@ -1137,9 +1141,9 @@ struct CurrentStreakSquareCard: View {
             .frame(height: 150)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+                    .stroke(strokeColor, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+            .shadow(color: .black.opacity(isDark ? 0 : 0.05), radius: 8, y: 4)
             .scaleEffect(isPressed ? 0.97 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
@@ -1159,12 +1163,17 @@ struct ActivityThisWeekSquareCard: View {
     @State private var isPressed = false
 
     var body: some View {
+        let isDark = colorScheme == .dark
+        let cardBg = isDark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white
+        let strokeColor = isDark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)
+        let titleColor = isDark ? Color.white : Color.black
+
         Button(action: {
             UISelectionFeedbackGenerator().selectionChanged()
         }) {
             ZStack {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+                    .fill(cardBg)
 
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
@@ -1182,7 +1191,7 @@ struct ActivityThisWeekSquareCard: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Weekly Activity")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .foregroundColor(titleColor)
                             .lineLimit(1)
                         
                         Text("\(stats.workoutCount) Workouts")
@@ -1202,9 +1211,9 @@ struct ActivityThisWeekSquareCard: View {
             .frame(height: 150)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+                    .stroke(strokeColor, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+            .shadow(color: .black.opacity(isDark ? 0 : 0.05), radius: 8, y: 4)
             .scaleEffect(isPressed ? 0.97 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
@@ -1808,6 +1817,15 @@ struct MuscleRow: View {
     }
 }
 
+struct MoodSticker: Identifiable, Sendable {
+    let id = UUID()
+    let emoji: String
+    let title: String
+    let subtitle: String
+    let color: Color
+    let motivation: String
+}
+
 struct AllTimeResultsView: View {
     let bestStats: PeriodStats
     let unitsManager: UnitsManager
@@ -1816,16 +1834,7 @@ struct AllTimeResultsView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
 
-    struct MoodSticker: Identifiable {
-        let id = UUID()
-        let emoji: String
-        let title: String
-        let subtitle: String
-        let color: Color
-        let motivation: String
-    }
-
-    private let stickers = [
+    private static let stickersList = [
         MoodSticker(emoji: "🔥", title: "Limitless", subtitle: "Beast Mode", color: .orange, motivation: "LFG! You are in Beast Mode today! 🔥"),
         MoodSticker(emoji: "⚡", title: "High Energy", subtitle: "Unstoppable", color: .yellow, motivation: "High energy day! Smash those targets! ⚡"),
         MoodSticker(emoji: "🔋", title: "Recovery", subtitle: "Recharging", color: .green, motivation: "Rest and recharge. Muscles grow when you rest! 🔋"),
@@ -1849,8 +1858,13 @@ struct AllTimeResultsView: View {
                         .foregroundColor(.gray)
                     
                     HStack(spacing: 8) {
-                        ForEach(0..<stickers.count, id: \.self) { index in
-                            let sticker = stickers[index]
+                        ForEach(0..<Self.stickersList.count, id: \.self) { index in
+                            let sticker = Self.stickersList[index]
+                            let isSelected = selectedStickerIndex == index
+                            let circleColor = isSelected ? sticker.color.opacity(0.15) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05))
+                            let borderStrokeColor = isSelected ? sticker.color : Color.clear
+                            let nameColor = isSelected ? (colorScheme == .dark ? Color.white : Color.black) : Color.gray
+                            
                             Button(action: {
                                 UISelectionFeedbackGenerator().selectionChanged()
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
@@ -1860,13 +1874,13 @@ struct AllTimeResultsView: View {
                                 VStack(spacing: 8) {
                                     ZStack {
                                         Circle()
-                                            .fill(selectedStickerIndex == index ? sticker.color.opacity(0.15) : Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05))
+                                            .fill(circleColor)
                                             .frame(width: 44, height: 44)
                                             .overlay(
                                                 Circle()
-                                                    .stroke(selectedStickerIndex == index ? sticker.color : Color.clear, lineWidth: 2)
+                                                    .stroke(borderStrokeColor, lineWidth: 2)
                                             )
-                                            .shadow(color: selectedStickerIndex == index ? sticker.color.opacity(0.3) : .clear, radius: 4)
+                                            .shadow(color: isSelected ? sticker.color.opacity(0.3) : .clear, radius: 4)
 
                                         Text(sticker.emoji)
                                             .font(.system(size: 22))
@@ -1875,7 +1889,7 @@ struct AllTimeResultsView: View {
                                     VStack(spacing: 2) {
                                         Text(sticker.title)
                                             .font(.system(size: 9, weight: .bold))
-                                            .foregroundColor(selectedStickerIndex == index ? (colorScheme == .dark ? .white : .black) : .gray)
+                                            .foregroundColor(nameColor)
                                             .lineLimit(1)
                                         Text(sticker.subtitle)
                                             .font(.system(size: 7))
@@ -1890,12 +1904,14 @@ struct AllTimeResultsView: View {
                     }
                     .padding(.vertical, 8)
                     
-                    Text(stickers[selectedStickerIndex].motivation)
+                    let activeSticker = Self.stickersList[selectedStickerIndex]
+                    
+                    Text(activeSticker.motivation)
                         .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(stickers[selectedStickerIndex].color)
+                        .foregroundColor(activeSticker.color)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.vertical, 6)
-                        .background(stickers[selectedStickerIndex].color.opacity(0.08))
+                        .background(activeSticker.color.opacity(0.08))
                         .cornerRadius(10)
                 }
 
