@@ -249,28 +249,36 @@ struct StatsContentView: View {
                 LazyVStack(spacing: 24) {
                     HeaderView(showProfile: $showProfile)
 
-                    MascotStreakView(streak: dashboardViewModel.streakCount)
-
                     GoalsSectionView(showingAddGoal: $showingAddGoal, viewModel: viewModel, unitsManager: unitsManager)
 
-                    BodyTransformBannerCard {
-                        showProgressComparison = true
+                    // 2x2 Grid Layout with 4 Square Buttons
+                    VStack(spacing: 12) {
+                        HStack(spacing: 12) {
+                            BodyTransformSquareCard {
+                                showProgressComparison = true
+                            }
+                            
+                            AIIslandSquareView(isFetching: isFetchingReviewData) {
+                                fetchReviewDataAndShowSheet()
+                            }
+                            .disabled(isFetchingReviewData || dashboardViewModel.totalWorkouts == 0)
+                            .opacity(isFetchingReviewData ? 0.5 : (dashboardViewModel.totalWorkouts == 0 ? 0.4 : 1.0))
+                        }
+
+                        HStack(spacing: 12) {
+                            CurrentStreakSquareCard(streak: dashboardViewModel.streakCount)
+                            
+                            ActivityThisWeekSquareCard(stats: currentStats, chartData: viewModel.chartData)
+                        }
                     }
 
                     ZStack(alignment: .top) {
                         VStack(spacing: 24) {
-                            AIIslandView { fetchReviewDataAndShowSheet() }
-                                .disabled(isFetchingReviewData)
-                                .opacity(isFetchingReviewData ? 0.5 : 1.0)
-
-                            VStack(spacing: 16) {
-                                PeriodPicker(selectedPeriod: $viewModel.selectedPeriod)
-                                QuickStatsView(stats: currentStats, unitsManager: unitsManager, period: viewModel.selectedPeriod, viewModel: viewModel)
-                            }
-
-                            ComparisonSectionView(viewModel: viewModel, unitsManager: unitsManager)
+                            PeriodPicker(selectedPeriod: $viewModel.selectedPeriod)
 
                             AdvancedStatsSectionView(viewModel: viewModel, userGender: userGender)
+
+                            ComparisonSectionView(viewModel: viewModel, unitsManager: unitsManager)
 
                             AllTimeResultsView(bestStats: dashboardViewModel.bestMonthStats, unitsManager: unitsManager)
                         }
@@ -482,15 +490,7 @@ struct GoalsSectionView: View {
             }
 
             if viewModel.activeGoals.isEmpty {
-                EmptyStateView(
-                    icon: "target",
-                    title: "No Active Goals",
-                    message: "Set a specific target to stay accountable and track your growth.",
-                    iconColor: .purple,
-                    actionTitle: "Set a Goal"
-                ) {
-                    showingAddGoal = true
-                }
+                CompactGoalEmptyState(showingAddGoal: $showingAddGoal)
             } else {
                 ForEach(viewModel.activeGoals) { goal in
                     DesignerGoalCard(goal: goal, currentValue: viewModel.activeGoalValues[goal.id] ?? 0, unitsManager: unitsManager) {
@@ -509,6 +509,54 @@ struct GoalsSectionView: View {
             context.delete(goal)
             try? context.save()
         }
+    }
+}
+
+struct CompactGoalEmptyState: View {
+    @Binding var showingAddGoal: Bool
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.purple.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                Image(systemName: "target")
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.purple)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("No Active Goals")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                Text("Set targets to stay accountable")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.gray)
+            }
+            
+            Spacer()
+            
+            Button(action: {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                showingAddGoal = true
+            }) {
+                Text("Set Goal")
+                    .font(.system(size: 13, weight: .bold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .clipShape(Capsule())
+            }
+        }
+        .padding()
+        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .cornerRadius(20)
+        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
     }
 }
 
@@ -824,6 +872,351 @@ struct AIIslandView: View {
         )
     }
 }
+
+struct BodyTransformSquareCard: View {
+    let onTap: () -> Void
+    @Query(sort: \WeightEntry.date, order: .reverse) private var weightHistory: [WeightEntry]
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isPressed = false
+    @State private var shimmerOffset: CGFloat = -200
+
+    private var photoCount: Int {
+        weightHistory.filter { !$0.imageFileNames.isEmpty }.count
+    }
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            onTap()
+        }) {
+            ZStack {
+                // Background card
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+
+                // Shimmer effect
+                if colorScheme == .dark {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [.clear, .white.opacity(0.04), .clear],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .offset(x: shimmerOffset)
+                        .onAppear {
+                            withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) {
+                                shimmerOffset = 250
+                            }
+                        }
+                        .clipped()
+                }
+
+                // Content
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.purple.opacity(0.3), Color.blue.opacity(0.2)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 40, height: 40)
+                            
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color(red: 0.45, green: 0.3, blue: 1.0), Color(red: 0.2, green: 0.5, blue: 1.0)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 32, height: 32)
+                                .shadow(color: Color.purple.opacity(0.3), radius: 3, y: 2)
+
+                            Image(systemName: "camera.viewfinder")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.white)
+                        }
+                        Spacer()
+                        if photoCount >= 2 {
+                            Text("\(photoCount)")
+                                .font(.system(size: 10, weight: .bold))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.purple.opacity(0.18))
+                                .foregroundColor(.purple)
+                                .clipShape(Capsule())
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Body Transform")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .minimumScaleFactor(0.9)
+                            .lineLimit(1)
+
+                        Text("Before & after slider to track visual progress.")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.5))
+                            .lineLimit(3)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(16)
+            }
+            .frame(height: 150)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: colorScheme == .dark 
+                                ? [Color.purple, Color.blue] 
+                                : [Color.purple.opacity(0.5), Color.blue.opacity(0.4)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: 2
+                    )
+            )
+            .shadow(
+                color: colorScheme == .dark ? Color.purple.opacity(0.2) : Color.purple.opacity(0.06),
+                radius: 8, x: 0, y: 4
+            )
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+struct AIIslandSquareView: View {
+    let isFetching: Bool
+    let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            action()
+        }) {
+            ZStack {
+                // Background card
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+
+                // Content
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [Color.blue.opacity(0.25), Color.purple.opacity(0.15)],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 18))
+                                .foregroundStyle(
+                                    LinearGradient(colors: [.purple, .cyan], startPoint: .top, endPoint: .bottom)
+                                )
+                                .shadow(color: .purple.opacity(0.3), radius: 3)
+                        }
+                        Spacer()
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("AI Efficiency")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .minimumScaleFactor(0.9)
+                            .lineLimit(1)
+                        
+                        Text(isFetching ? "Analyzing..." : "Review stats with weekly AI coach insights.")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.5))
+                            .lineLimit(3)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(16)
+            }
+            .frame(height: 150)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: colorScheme == .dark 
+                                ? [Color.blue.opacity(0.4), Color.purple] 
+                                : [Color.blue.opacity(0.3), Color.purple.opacity(0.5)],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: 2
+                    )
+            )
+            .shadow(
+                color: colorScheme == .dark ? Color.purple.opacity(0.2) : Color.purple.opacity(0.06),
+                radius: 8, x: 0, y: 4
+            )
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+struct CurrentStreakSquareCard: View {
+    let streak: Int
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [.orange.opacity(0.25), .red.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.orange)
+                        }
+                        Spacer()
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Current Streak")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .lineLimit(1)
+                        
+                        Text("\(streak) Days")
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                            .foregroundColor(.orange)
+                            .contentTransition(.numericText())
+                        
+                        Text(streak > 0 ? "You're on fire! 🔥" : "Start your streak today!")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(16)
+            }
+            .frame(height: 150)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
+struct ActivityThisWeekSquareCard: View {
+    let stats: PeriodStats
+    let chartData: [ChartDataPoint]
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var isPressed = false
+
+    var body: some View {
+        Button(action: {
+            UISelectionFeedbackGenerator().selectionChanged()
+        }) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
+
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [Color.cyan.opacity(0.25), Color.blue.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "chart.xyaxis.line")
+                                .font(.system(size: 16))
+                                .foregroundColor(.cyan)
+                        }
+                        Spacer()
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Weekly Activity")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .lineLimit(1)
+                        
+                        Text("\(stats.workoutCount) Workouts")
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                            .foregroundColor(.cyan)
+                            .lineLimit(1)
+                        
+                        Text("\(stats.totalDuration) Min · \(stats.totalReps) Reps")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundColor(.gray)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .padding(16)
+            }
+            .frame(height: 150)
+            .background(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)
+            )
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 8, y: 4)
+            .scaleEffect(isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 0)
+                .onChanged { _ in isPressed = true }
+                .onEnded { _ in isPressed = false }
+        )
+    }
+}
+
 
 struct PeriodPicker: View {
     @Binding var selectedPeriod: StatsView.Period
@@ -1423,7 +1816,24 @@ struct AllTimeResultsView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
 
-    @State private var historicalData: [Double] = Array(repeating: 0.0, count: 6)
+    struct MoodSticker: Identifiable {
+        let id = UUID()
+        let emoji: String
+        let title: String
+        let subtitle: String
+        let color: Color
+        let motivation: String
+    }
+
+    private let stickers = [
+        MoodSticker(emoji: "🔥", title: "Limitless", subtitle: "Beast Mode", color: .orange, motivation: "LFG! You are in Beast Mode today! 🔥"),
+        MoodSticker(emoji: "⚡", title: "High Energy", subtitle: "Unstoppable", color: .yellow, motivation: "High energy day! Smash those targets! ⚡"),
+        MoodSticker(emoji: "🔋", title: "Recovery", subtitle: "Recharging", color: .green, motivation: "Rest and recharge. Muscles grow when you rest! 🔋"),
+        MoodSticker(emoji: "💪", title: "Strength", subtitle: "Solid Gains", color: .blue, motivation: "Lift heavy, stay focused. Gains are incoming! 💪"),
+        MoodSticker(emoji: "🚀", title: "Dedication", subtitle: "Pure Focus", color: .purple, motivation: "Pure focus. Consistency is key! 🚀")
+    ]
+
+    @State private var selectedStickerIndex = 0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -1432,29 +1842,63 @@ struct AllTimeResultsView: View {
                 .foregroundColor(colorScheme == .dark ? .white : .black)
 
             VStack(spacing: 20) {
+                
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Today's Workout Vibe")
+                        .font(.caption).bold()
+                        .foregroundColor(.gray)
+                    
+                    HStack(spacing: 8) {
+                        ForEach(Array(stickers.enumerated()), id: \.element.id) { index, sticker in
+                            Button(action: {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
+                                    selectedStickerIndex = index
+                                }
+                            }) {
+                                VStack(spacing: 8) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(selectedStickerIndex == index ? sticker.color.opacity(0.15) : Color.black.opacity(colorScheme == .dark ? 0.3 : 0.05))
+                                            .frame(width: 44, height: 44)
+                                            .overlay(
+                                                Circle()
+                                                    .stroke(selectedStickerIndex == index ? sticker.color : Color.clear, lineWidth: 2)
+                                            )
+                                            .shadow(color: selectedStickerIndex == index ? sticker.color.opacity(0.3) : .clear, radius: 4)
 
-                Chart {
-                    ForEach(Array(historicalData.enumerated()), id: \.offset) { i, val in
-                        LineMark(
-                            x: .value("Month", i),
-                            y: .value("Volume", val)
-                        )
-                        .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .leading, endPoint: .trailing))
-                        .interpolationMethod(.catmullRom) 
-                        .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round))
-
-                        AreaMark(
-                            x: .value("Month", i),
-                            y: .value("Volume", val)
-                        )
-                        .foregroundStyle(LinearGradient(colors: [.purple.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom))
-                        .interpolationMethod(.catmullRom)
+                                        Text(sticker.emoji)
+                                            .font(.system(size: 22))
+                                    }
+                                    
+                                    VStack(spacing: 2) {
+                                        Text(sticker.title)
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundColor(selectedStickerIndex == index ? (colorScheme == .dark ? .white : .black) : .gray)
+                                            .lineLimit(1)
+                                        Text(sticker.subtitle)
+                                            .font(.system(size: 7))
+                                            .foregroundColor(.gray)
+                                            .lineLimit(1)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
+                    .padding(.vertical, 8)
+                    
+                    Text(stickers[selectedStickerIndex].motivation)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(stickers[selectedStickerIndex].color)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 6)
+                        .background(stickers[selectedStickerIndex].color.opacity(0.08))
+                        .cornerRadius(10)
                 }
-                .frame(height: 120)
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                .chartYScale(domain: .automatic(includesZero: true))
+
+                Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
 
                 HStack {
                     VStack(alignment: .leading) {
@@ -1480,33 +1924,6 @@ struct AllTimeResultsView: View {
             .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, y: 5)
         }
         .padding(.top, 10)
-        .onAppear {
-            calculateHistoricalData()
-        }
-    }
-
-    private func calculateHistoricalData() {
-        let cal = Calendar.current
-        let now = Date()
-
-        var monthlyVolumes: [Double] = Array(repeating: 0.0, count: 6)
-
-        for workout in allWorkouts {
-
-            let monthsAgo = cal.dateComponents([.month], from: workout.date, to: now).month ?? 0
-
-            if monthsAgo >= 0 && monthsAgo < 6 {
-
-                let index = 5 - monthsAgo
-
-                let convertedVolume = unitsManager.convertFromKilograms(workout.totalStrengthVolume)
-                monthlyVolumes[index] += convertedVolume
-            }
-        }
-
-        withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) {
-            self.historicalData = monthlyVolumes
-        }
     }
 }
 
