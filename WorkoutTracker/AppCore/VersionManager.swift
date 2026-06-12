@@ -23,6 +23,10 @@ final class VersionManager: ObservableObject {
     private init() {}
     
     func checkForUpdates() async {
+        #if DEBUG
+        // Bypass force updates in developer / simulator environment
+        self.updateRequirement = .noUpdate
+        #else
         let minVersion = await RemoteConfigManager.shared.minimumAppVersion
         let recVersion = await RemoteConfigManager.shared.recommendedAppVersion
         let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
@@ -32,6 +36,7 @@ final class VersionManager: ObservableObject {
         if newRequirement != self.updateRequirement {
             self.updateRequirement = newRequirement
         }
+        #endif
     }
     
     private func evaluateRequirement(current: String, minimum: String, recommended: String) -> UpdateRequirement {
