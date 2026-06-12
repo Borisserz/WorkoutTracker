@@ -266,7 +266,7 @@ struct WorkoutHubView: View {
                     onExploreTap: { navigateToExplore = true },
                     onNewProgramTap: { presetToEdit = nil; showPresetEditor = true }
                 )
-                .presentationDetents([.fraction(0.65), .medium])
+                .presentationDetents([.fraction(0.85), .large])
                 .presentationDragIndicator(.visible)
             }
             .sheet(item: $selectedLegendaryRoutine) { routine in
