@@ -206,7 +206,8 @@ struct WorkoutHubView: View {
                     onStartEmptySession: { startEmptyWorkout() },
                     onSmartWorkoutTap: { showSmartBuilder = true },
                     onPresetTap: { preset in startWorkoutFromPreview(item: .preset(preset)) },
-                    onExploreTap: { navigateToExplore = true }
+                    onExploreTap: { navigateToExplore = true },
+                    onNewProgramTap: { presetToEdit = nil; showPresetEditor = true }
                 )
                 .presentationDetents([.fraction(0.65), .medium])
                 .presentationDragIndicator(.visible)
