@@ -60,12 +60,7 @@ struct OverviewView: View {
     @AppStorage("hasSeenCommitmentSheet") private var hasSeenCommitmentSheet = false
     @State private var showCommitmentSheet = false
 
-    // Hero Actions State
-    @State private var showSmartBuilder = false
-    @State private var showAIBuilder = false
-    @State private var showAICameraSelector = false
-    @State private var showGlobalAICamera = false
-    @State private var selectedAIExercise: String = "Squats"
+
 
     var body: some View {
         NavigationStack(path: $router.path) {
@@ -78,7 +73,7 @@ struct OverviewView: View {
 
                         headerSection
 
-                        heroActionsSection
+
 
                         if recentWorkouts.isEmpty {
                             FirstStepsChecklistView { targetTab in
@@ -225,22 +220,6 @@ struct OverviewView: View {
                     }
                 })
             }
-            .sheet(isPresented: $showAIBuilder) {
-                AIProgramBuilderSheet(aiLogicService: di.aiLogicService)
-            }
-            .actionSheet(isPresented: $showAICameraSelector) {
-                ActionSheet(title: Text("Select Exercise for AI Camera"), buttons: [
-                    .default(Text("Squats")) { selectedAIExercise = "Squats"; showGlobalAICamera = true },
-                    .default(Text("Pushups")) { selectedAIExercise = "Pushups"; showGlobalAICamera = true },
-                    .default(Text("Pullups")) { selectedAIExercise = "Pullups"; showGlobalAICamera = true },
-                    .cancel()
-                ])
-            }
-            .fullScreenCover(isPresented: $showGlobalAICamera) {
-                AITrackerView(exerciseName: selectedAIExercise) { _ in
-                    // Freestyle mode: just dismiss
-                }
-            }
             .sheet(isPresented: $showCommitmentSheet) {
                 FutureSelfCommitmentSheet {
                     hasSeenCommitmentSheet = true
@@ -289,7 +268,7 @@ struct OverviewView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Overview")
-                        .font(.system(size: 34, weight: .heavy, design: .rounded))
+                        .font(.system(size: 34, weight: .bold, design: .rounded))
                         .foregroundStyle(.primary)
                     Text("Ready to crush it?")
                         .font(.subheadline)
@@ -316,95 +295,7 @@ struct OverviewView: View {
         .padding(.top, 10)
     }
 
-    private var heroActionsSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 16) {
-                if recentWorkouts.isEmpty {
-                    Button(action: {
-                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                        let generatedDTO = GeneratedWorkoutDTO(
-                            title: "Starter Activation",
-                            aiMessage: "A perfect 15-minute full-body activation to get you started.",
-                            exercises: [
-                                GeneratedExerciseDTO(name: "Squats", muscleGroup: "Legs", type: "Reps", sets: 3, reps: 10, recommendedWeightKg: nil, restSeconds: 60),
-                                GeneratedExerciseDTO(name: "Pushups", muscleGroup: "Chest", type: "Reps", sets: 3, reps: 10, recommendedWeightKg: nil, restSeconds: 60),
-                                GeneratedExerciseDTO(name: "Plank", muscleGroup: "Core", type: "Time", sets: 3, reps: 0, recommendedWeightKg: nil, restSeconds: 60)
-                            ]
-                        )
-                        Task { @MainActor in
-                            await di.workoutService.startGeneratedWorkout(generatedDTO)
-                            if let newWorkout = await di.workoutService.fetchLatestWorkout() {
-                                router.push(.workoutDetail(newWorkout))
-                            }
-                        }
-                    }) {
-                        HeroActionCard(
-                            title: "Magic Starter",
-                            subtitle: "15 Min Workout",
-                            iconName: "bolt.fill",
-                            gradientColors: [.yellow, .orange]
-                        )
-                        .frame(width: 140)
-                    }
-                    .buttonStyle(.plain)
-                }
 
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    showAICameraSelector = true
-                }) {
-                    HeroActionCard(
-                        title: recentWorkouts.isEmpty ? "2-Min Magic" : "AI Camera",
-                        subtitle: recentWorkouts.isEmpty ? "Try the Camera!" : "Form Tracking",
-                        iconName: "sparkles.tv",
-                        gradientColors: [.purple, .blue]
-                    )
-                    .frame(width: 140)
-                    .overlay(
-                        Group {
-                            if recentWorkouts.isEmpty {
-                                RoundedRectangle(cornerRadius: 24)
-                                    .stroke(LinearGradient(colors: [.purple, .blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
-                                    .opacity(0.8)
-                            }
-                        }
-                    )
-                }
-                .buttonStyle(.plain)
-
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    showSmartBuilder = true
-                }) {
-                    HeroActionCard(
-                        title: "Smart Builder",
-                        subtitle: "Single Workout",
-                        iconName: "wand.and.stars",
-                        gradientColors: [.blue, .cyan]
-                    )
-                    .frame(width: 140)
-                }
-                .buttonStyle(.plain)
-                
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    showAIBuilder = true
-                }) {
-                    HeroActionCard(
-                        title: "AI Architect",
-                        subtitle: "Program Gen",
-                        iconName: "calendar.badge.plus",
-                        gradientColors: [.orange, .red]
-                    )
-                    .frame(width: 140)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 8)
-        }
-        .padding(.horizontal, -20) // Negate parent padding
-    }
 
     private var dailyPlanSection: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -929,7 +820,7 @@ struct OverviewView: View {
 
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
                             Text(config.value)
-                                .font(.system(size: 56, weight: .heavy, design: .rounded))
+                                .font(.system(size: 56, weight: .bold, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
                             Text(config.unit)
                                 .font(.title3)
@@ -1165,7 +1056,7 @@ struct OverviewView: View {
             VStack(alignment: .leading, spacing: 20) {
 
                 Text("Muscle Recovery")
-                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
                     .foregroundStyle(colorScheme == .dark ? .white : .black)
 
                 HStack(spacing: 12) {
@@ -1389,7 +1280,7 @@ struct OverviewView: View {
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
                 }
-                .shadow(color: gradientColors[0].opacity(0.5), radius: 8, y: 4)
+                .shadow(color: gradientColors[0].opacity(0.3), radius: 6, y: 3)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
@@ -1416,7 +1307,7 @@ struct OverviewView: View {
 
                     GeometryReader { geo in
                         Circle()
-                            .fill(gradientColors[0].opacity(0.15))
+                            .fill(gradientColors[0].opacity(0.12))
                             .blur(radius: 20)
                             .frame(width: geo.size.width * 0.8)
                             .offset(x: -geo.size.width * 0.1, y: -geo.size.height * 0.1)
@@ -1427,15 +1318,78 @@ struct OverviewView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(
-                        LinearGradient(
-                            colors: [gradientColors[0].opacity(0.5), .clear],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.5
+                        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06),
+                        lineWidth: 0.7
                     )
             )
-            .shadow(color: colorScheme == .dark ? .black.opacity(0.3) : gradientColors[0].opacity(0.15), radius: 15, x: 0, y: 8)
+            .shadow(color: colorScheme == .dark ? .black.opacity(0.15) : .black.opacity(0.04), radius: 10, x: 0, y: 6)
+        }
+    }
+
+    struct HeroActionRowCard: View {
+        let title: String
+        let subtitle: String
+        let iconName: String
+        let gradientColors: [Color]
+        @Environment(\.colorScheme) private var colorScheme
+
+        var body: some View {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 44, height: 44)
+                    Image(systemName: iconName)
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .shadow(color: gradientColors[0].opacity(0.3), radius: 6, y: 3)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .black.opacity(0.7))
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.4) : .black.opacity(0.3))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 14)
+            .background(
+                ZStack {
+                    if colorScheme == .dark {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color.white.opacity(0.05))
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    } else {
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(Color.white)
+                    }
+
+                    GeometryReader { geo in
+                        Circle()
+                            .fill(gradientColors[0].opacity(0.1))
+                            .blur(radius: 15)
+                            .frame(width: geo.size.width * 0.4)
+                            .offset(x: -geo.size.width * 0.05, y: -geo.size.height * 0.1)
+                    }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(
+                        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06),
+                        lineWidth: 0.7
+                    )
+            )
+            .shadow(color: colorScheme == .dark ? .black.opacity(0.15) : .black.opacity(0.04), radius: 10, x: 0, y: 6)
         }
     }
 

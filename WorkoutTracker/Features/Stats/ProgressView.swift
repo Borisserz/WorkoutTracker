@@ -2129,7 +2129,7 @@ struct SetsTrendDetailView: View {
                     .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
 
                 Text("\(totalSets)")
-                    .font(.system(size: 40, weight: .heavy, design: .rounded))
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
                     .foregroundColor(colorManager.getColor(for: selectedMuscle))
                     .contentTransition(.numericText())
             }
@@ -2147,7 +2147,7 @@ struct SetsTrendDetailView: View {
                     .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray) 
 
                 Text("\(maxSetsInPoint)")
-                    .font(.system(size: 40, weight: .heavy, design: .rounded))
+                    .font(.system(size: 40, weight: .bold, design: .rounded))
                     .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black) 
                     .contentTransition(.numericText())
             }
@@ -3392,7 +3392,7 @@ struct HeatmapDetailView: View {
                 Spacer()
 
                 Text(value)
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .shadow(color: color.opacity(0.8), radius: 10)
             }

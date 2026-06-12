@@ -36,8 +36,8 @@ struct ContentView: View {
 
                 AICoachView()
                     .tabItem {
-                        Image(systemName: "brain.head.profile")
-                        Text(LocalizedStringKey("AI Coach"))
+                        Image(systemName: "sparkles")
+                        Text(LocalizedStringKey("AI Hub"))
                     }
                     .tag(3)
 

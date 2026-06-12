@@ -185,7 +185,7 @@ struct WorkoutHubView: View {
     private var headerSection: some View {
         HStack {
             Text(LocalizedStringKey("Workout"))
-                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .font(.system(size: 34, weight: .bold, design: .rounded))
                 .foregroundStyle(colorScheme == .dark ? .white : .black) 
 
             Spacer()
@@ -210,55 +210,49 @@ struct WorkoutHubView: View {
     }
 
     private var topActionsSection: some View {
-        VStack(alignment: .leading, spacing: 32) {
-            VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 PremiumHubGlassButton(
                     title: "Start Empty Workout",
                     subtitle: "Freestyle Mode",
                     icon: "play.circle.fill",
-                    colorTint: .blue
+                    colorTint: .blue,
+                    isSmall: true
                 ) { startEmptyWorkout() }
 
                 PremiumHubGlassButton(
                     title: "Smart Builder",
                     subtitle: "Tailored for You",
                     icon: "wand.and.stars",
-                    colorTint: .purple
+                    colorTint: .purple,
+                    isSmall: true
                 ) {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     showSmartBuilder = true
                 }
+
+                PremiumHubGlassButton(
+                    title: "New Program",
+                    subtitle: "Create Custom",
+                    icon: "plus.app.fill",
+                    colorTint: .green,
+                    isSmall: true
+                ) {
+                    presetToEdit = nil
+                    showPresetEditor = true
+                }
+
+                PremiumHubGlassButton(
+                    title: "Explore Database",
+                    subtitle: "Browse Library",
+                    icon: "safari.fill",
+                    colorTint: .orange,
+                    isSmall: true
+                ) {
+                    navigateToExplore = true
+                }
             }
             .padding(.horizontal, 20)
-
-            VStack(alignment: .leading, spacing: 16) {
-                Text(LocalizedStringKey("Programs"))
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(colorScheme == .dark ? .white : .black) 
-                    .padding(.horizontal, 20)
-
-                HStack(spacing: 16) {
-                    PremiumHubGlassButton(
-                        title: "New\nProgram",
-                        icon: "plus.app.fill",
-                        colorTint: .green,
-                        isSmall: true
-                    ) {
-                        presetToEdit = nil
-                        showPresetEditor = true
-                    }
-
-                    PremiumHubGlassButton(
-                        title: "Explore\nDatabase",
-                        icon: "safari.fill",
-                        colorTint: .orange,
-                        isSmall: true
-                    ) {
-                        navigateToExplore = true
-                    }
-                }
-                .padding(.horizontal, 20)
-            }
         }
     }
 
@@ -608,15 +602,11 @@ struct PremiumCarouselCardView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(
-                        LinearGradient(
-                            colors: [accentColor.opacity(colorScheme == .dark ? 0.6 : 0.3), .clear],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1
+                        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06),
+                        lineWidth: 0.7
                     )
             )
-            .shadow(color: accentColor.opacity(colorScheme == .dark ? 0.15 : 0.05), radius: 15, x: 0, y: 8)
+            .shadow(color: colorScheme == .dark ? .black.opacity(0.15) : .black.opacity(0.04), radius: 10, x: 0, y: 6)
         }
         .buttonStyle(.plain)
     }
@@ -680,22 +670,31 @@ struct PremiumHubGlassButton: View {
                         Image(systemName: icon).font(.title3).foregroundColor(colorTint)
                     }
 
-                    Text(title)
-                        .font(.headline)
-                        .fontWeight(.bold)
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                        .multilineTextAlignment(.leading)
-                        .lineLimit(3)
-                        .minimumScaleFactor(0.8)
-                        .allowsTightening(true)
-                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(title)
+                            .font(.headline)
+                            .fontWeight(.bold)
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .multilineTextAlignment(.leading)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.8)
+                            .allowsTightening(true)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        if let sub = subtitle {
+                            Text(sub)
+                                .font(.caption2)
+                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
+                                .lineLimit(1)
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(16)
 
                 .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white), in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [colorTint.opacity(colorScheme == .dark ? 0.5 : 0.2), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
-                .shadow(color: colorTint.opacity(0.15), radius: 15, x: 0, y: 8)
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06), lineWidth: 0.7))
+                .shadow(color: colorScheme == .dark ? .black.opacity(0.15) : .black.opacity(0.04), radius: 10, x: 0, y: 6)
             } else {
                 HStack(spacing: 16) {
                     ZStack {
@@ -716,8 +715,8 @@ struct PremiumHubGlassButton: View {
                 .padding(16)
 
                 .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white), in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(LinearGradient(colors: [colorTint.opacity(colorScheme == .dark ? 0.5 : 0.2), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1))
-                .shadow(color: colorTint.opacity(0.15), radius: 15, x: 0, y: 8)
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06), lineWidth: 0.7))
+                .shadow(color: colorScheme == .dark ? .black.opacity(0.15) : .black.opacity(0.04), radius: 10, x: 0, y: 6)
             }
         }
         .buttonStyle(.plain)
@@ -821,7 +820,7 @@ struct FierySpeechBubble: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(text)
-                .font(.system(size: 18, weight: .heavy, design: .rounded))
+                .font(.system(size: 18, weight: .bold, design: .rounded))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white)
                 .padding(.horizontal, 24)
