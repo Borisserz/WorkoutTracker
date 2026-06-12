@@ -266,13 +266,17 @@ struct WorkoutDetailContentView: View {
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                     }
                 }
-                .foregroundColor(isEmpty ? .red : .white)
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
                     ZStack {
                         if isEmpty {
-                            colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04)
+                            LinearGradient(
+                                colors: [Color.red, Color(red: 0.8, green: 0.1, blue: 0.1)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         } else {
                             LinearGradient(
                                 colors: [.cyan, .blue],
@@ -286,15 +290,13 @@ struct WorkoutDetailContentView: View {
                 .overlay(
                     Capsule()
                         .stroke(
-                            isEmpty 
-                            ? Color.red.opacity(0.5) 
-                            : Color.white.opacity(0.2), 
+                            Color.white.opacity(0.2),
                             lineWidth: 1.5
                         )
                 )
                 .shadow(
                     color: isEmpty 
-                    ? Color.red.opacity(0.1) 
+                    ? Color.red.opacity(0.4) 
                     : Color.blue.opacity(0.4), 
                     radius: 12, 
                     x: 0, 
