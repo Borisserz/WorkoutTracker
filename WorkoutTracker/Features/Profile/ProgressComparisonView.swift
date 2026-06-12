@@ -17,6 +17,7 @@ struct ProgressComparisonView: View {
 
     @State private var showLeftPicker = false
     @State private var showRightPicker = false
+    @State private var showAddWeightSheet = false
 
         @Environment(ThemeManager.self) private var themeManager
 
@@ -53,21 +54,46 @@ struct ProgressComparisonView: View {
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
-                    } label: {
-                        Image(systemName: "square.and.arrow.up")
-                            .fontWeight(.semibold)
+                    HStack {
+                        Button {
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                            generator.impactOccurred()
+                            showAddWeightSheet = true
+                        } label: {
+                            Image(systemName: "plus")
+                                .fontWeight(.semibold)
+                        }
+                        
+                        Button {
+                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                            generator.impactOccurred()
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                                .fontWeight(.semibold)
+                        }
                     }
                 }
             }
             .onAppear { setupInitialEntries() }
             .onChange(of: leftEntry) { _, newEntry in loadLeftImage(for: newEntry) }
             .onChange(of: rightEntry) { _, newEntry in loadRightImage(for: newEntry) }
+            .onChange(of: entriesWithPhotos) { oldEntries, newEntries in
+                if newEntries.count > oldEntries.count {
+                    let sortedNew = newEntries.sorted { $0.date < $1.date }
+                    if let newest = sortedNew.last {
+                        if leftEntry == nil {
+                            leftEntry = newest
+                        } else {
+                            rightEntry = newest
+                        }
+                    }
+                }
+            }
             .sheet(isPresented: $showLeftPicker) { photoPickerSheet(isLeft: true) }
             .sheet(isPresented: $showRightPicker) { photoPickerSheet(isLeft: false) }
+            .sheet(isPresented: $showAddWeightSheet) {
+                AddWeightSheet(latestWeight: entriesWithPhotos.sorted(by: { $0.date > $1.date }).first?.weight)
+            }
         }
     }
 
@@ -178,32 +204,84 @@ struct ProgressComparisonView: View {
 
     private func photoPickerSheet(isLeft: Bool) -> some View {
         NavigationStack {
-            List {
-                ForEach(entriesWithPhotos.sorted(by: { $0.date > $1.date })) { entry in
-                    Button {
-                        let generator = UISelectionFeedbackGenerator()
-                        generator.selectionChanged()
-
-                        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                            if isLeft { leftEntry = entry } else { rightEntry = entry }
+            Group {
+                if entriesWithPhotos.isEmpty {
+                    VStack(spacing: 20) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray.opacity(0.5))
+                        Text(LocalizedStringKey("No Progress Photos"))
+                            .font(.headline)
+                            .foregroundColor(themeManager.current.primaryText)
+                        Text(LocalizedStringKey("Add a new weight entry with a photo to compare your progress."))
+                            .font(.subheadline)
+                            .foregroundColor(themeManager.current.secondaryText)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        
+                        Button {
+                            if isLeft { showLeftPicker = false } else { showRightPicker = false }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showAddWeightSheet = true
+                            }
+                        } label: {
+                            Text(LocalizedStringKey("Add Photo"))
+                                .bold()
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(themeManager.current.primaryAccent)
+                                .foregroundColor(.white)
+                                .cornerRadius(16)
                         }
-                        if isLeft { showLeftPicker = false } else { showRightPicker = false }
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(entry.date.formatted(date: .abbreviated, time: .omitted))
+                        .padding(.horizontal, 40)
+                        .padding(.top, 10)
+                    }
+                } else {
+                    List {
+                        Button {
+                            if isLeft { showLeftPicker = false } else { showRightPicker = false }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                showAddWeightSheet = true
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(themeManager.current.primaryAccent)
+                                Text(LocalizedStringKey("Add New Photo"))
                                     .font(.headline)
                                     .foregroundColor(themeManager.current.primaryText)
-                                let weight = unitsManager.convertFromKilograms(entry.weight)
-                                Text("\(LocalizationHelper.shared.formatDecimal(weight)) \(unitsManager.weightUnitString())")
-                                    .font(.subheadline)
-                                    .foregroundColor(themeManager.current.secondaryText)
                             }
-                            Spacer()
-                            if (isLeft && leftEntry?.id == entry.id) || (!isLeft && rightEntry?.id == entry.id) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.title3)
-                                    .foregroundColor(themeManager.current.primaryAccent)
+                            .padding(.vertical, 4)
+                        }
+
+                        ForEach(entriesWithPhotos.sorted(by: { $0.date > $1.date })) { entry in
+                            Button {
+                                let generator = UISelectionFeedbackGenerator()
+                                generator.selectionChanged()
+
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                                    if isLeft { leftEntry = entry } else { rightEntry = entry }
+                                }
+                                if isLeft { showLeftPicker = false } else { showRightPicker = false }
+                            } label: {
+                                HStack {
+                                    VStack(alignment: .leading) {
+                                        Text(entry.date.formatted(date: .abbreviated, time: .omitted))
+                                            .font(.headline)
+                                            .foregroundColor(themeManager.current.primaryText)
+                                        let weight = unitsManager.convertFromKilograms(entry.weight)
+                                        Text("\(LocalizationHelper.shared.formatDecimal(weight)) \(unitsManager.weightUnitString())")
+                                            .font(.subheadline)
+                                            .foregroundColor(themeManager.current.secondaryText)
+                                    }
+                                    Spacer()
+                                    if (isLeft && leftEntry?.id == entry.id) || (!isLeft && rightEntry?.id == entry.id) {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.title3)
+                                            .foregroundColor(themeManager.current.primaryAccent)
+                                    }
+                                }
                             }
                         }
                     }

@@ -136,6 +136,18 @@ public actor AILogicService {
         )
     }
 
+    nonisolated private var builderWorkoutSchema: GeminiSchema {
+        GeminiSchema(
+            type: .object,
+            properties: [
+                "aiMessage": GeminiSchema(type: .string, description: "Short motivating greeting for the user."),
+                "workoutTitle": GeminiSchema(type: .string, description: "Title of the workout."),
+                "exercises": GeminiSchema(type: .array, items: exerciseSchema, description: "Exactly 4 or 5 exercises for the requested muscle group.")
+            ],
+            required: ["aiMessage", "workoutTitle", "exercises"]
+        )
+    }
+
     nonisolated private var chatResponseSchema: GeminiSchema {
         GeminiSchema(
             type: .object,
@@ -247,6 +259,63 @@ public actor AILogicService {
             generationConfig: .init(temperature: 0.7, responseMimeType: "text/plain", responseSchema: nil)
         )
         return try await networkClient.streamText(from: requestBody)
+    }
+
+    public func generateBuilderRoutine(muscleGroup: String, difficulty: String, availableExercises: [String], weightUnit: String, language: String, userName: String, fatiguedMuscles: [String] = []) async throws -> AICoachResponseDTO {
+        let langLine = language.lowercased() == "english"
+            ? "REPLY STRICTLY IN ENGLISH."
+            : "REPLY STRICTLY IN \(language.uppercased()) (but keep exercise names in English)."
+        let exerciseList = availableExercises.isEmpty
+            ? "Bench Press, Squat, Deadlift, Pull-ups, Dumbbell Curls, Shoulder Press, Lunges, Plank"
+            : availableExercises.joined(separator: ", ")
+        var systemPrompt = """
+        You are an elite AI Strength Coach. Your ONLY task right now is to generate a strength workout.
+        \(langLine)
+        Weights must be in \(weightUnit).
+        RULES:
+        - Generate EXACTLY 4 or 5 exercises in the "exercises" array. This is MANDATORY.
+        - Choose exercises ONLY from this approved list: \(exerciseList)
+        - User experience level: \(difficulty).
+        - "workoutTitle": Set to "Protocol: \(muscleGroup)".
+        - "aiMessage": Write a short, energetic motivating message. Address the user as \(userName.isEmpty ? "Athlete" : userName).
+        """
+        if !fatiguedMuscles.isEmpty {
+            systemPrompt += "\n- FATIGUED MUSCLES (avoid heavy loading on these): \(fatiguedMuscles.joined(separator: ", "))"
+        }
+        let requestBody = GeminiRequest(
+            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
+            contents: [.init(role: "user", parts: [.init(text: "Generate a \(muscleGroup) workout at \(difficulty) level.")])],
+            generationConfig: .init(
+                temperature: 0.4,
+                responseMimeType: "application/json",
+                responseSchema: builderWorkoutSchema
+            )
+        )
+        let responseText = try await networkClient.generateText(from: requestBody)
+        let cleaned = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: "```json", with: "")
+            .replacingOccurrences(of: "```", with: "")
+            
+        guard let jsonData = cleaned.data(using: .utf8) else {
+            throw AILogicError.noDataReturned
+        }
+
+        struct BuilderResponse: Codable {
+            let aiMessage: String
+            let workoutTitle: String?
+            let exercises: [GeneratedExerciseDTO]?
+        }
+
+        let parsed = try JSONDecoder().decode(BuilderResponse.self, from: jsonData)
+        guard let exs = parsed.exercises, !exs.isEmpty else {
+            throw AILogicError.invalidData
+        }
+        let workoutDTO = GeneratedWorkoutDTO(
+            title: parsed.workoutTitle ?? "Protocol: \(muscleGroup)",
+            aiMessage: parsed.aiMessage,
+            exercises: exs
+        )
+        return AICoachResponseDTO(text: parsed.aiMessage, workout: workoutDTO)
     }
 
     public func generateWorkoutPlan(userRequest: String, userProfile: UserProfileContext) async throws -> AICoachResponseDTO {

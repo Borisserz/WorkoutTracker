@@ -4,10 +4,11 @@ import SwiftData
 import Combine
 
 @MainActor
-class MuscleColorManager: ObservableObject {
-    static let shared = MuscleColorManager()
+@Observable
+class MuscleColorManager {
+    @ObservationIgnored static let shared = MuscleColorManager()
 
-    @Published var colors: [String: String] = [:]
+    var colors: [String: String] = [:]
 
     private var defaultColors: [String: Color] {
           let theme = ThemeManager.shared.current

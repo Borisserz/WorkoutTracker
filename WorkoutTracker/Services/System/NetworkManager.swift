@@ -4,14 +4,16 @@ import Foundation
 import Network
 import Combine
 
-class NetworkManager: ObservableObject {
+@MainActor
+@Observable
+class NetworkManager {
 
-    static let shared = NetworkManager()
+    @ObservationIgnored static let shared = NetworkManager()
 
-    private let monitor = NWPathMonitor()
-    private let queue = DispatchQueue(label: "NetworkMonitor")
+    @ObservationIgnored private let monitor = NWPathMonitor()
+    @ObservationIgnored private let queue = DispatchQueue(label: "NetworkMonitor")
 
-    @Published var isConnected: Bool = false
+    var isConnected: Bool = false
 
     private init() {
         startMonitoring()
@@ -19,7 +21,7 @@ class NetworkManager: ObservableObject {
 
     private func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.isConnected = path.status == .satisfied
             }
         }

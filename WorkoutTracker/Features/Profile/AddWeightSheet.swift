@@ -21,6 +21,7 @@ struct AddWeightSheet: View {
     @State private var selectedPhotoItems: [PhotosPickerItem] = []
     @State private var selectedImages: [UIImage] = []
     @State private var isProcessingImage = false
+    @State private var showPhotoPicker = false
 
     var body: some View {
         NavigationStack {
@@ -68,6 +69,13 @@ struct AddWeightSheet: View {
             .onChange(of: selectedPhotoItems) { _, newItems in
                 processSelectedPhotos(newItems)
             }
+            .photosPicker(
+                isPresented: $showPhotoPicker,
+                selection: $selectedPhotoItems,
+                maxSelectionCount: 4 - selectedImages.count,
+                matching: .images,
+                photoLibrary: .shared()
+            )
         }
     }
 
@@ -142,7 +150,9 @@ struct AddWeightSheet: View {
                                 Label(LocalizedStringKey("Smart Camera (Ghost)"), systemImage: "camera.viewfinder")
                             }
 
-                            PhotosPicker(selection: $selectedPhotoItems, maxSelectionCount: 4 - selectedImages.count, matching: .images, photoLibrary: .shared()) {
+                            Button {
+                                showPhotoPicker = true
+                            } label: {
                                 Label(LocalizedStringKey("Choose from Library"), systemImage: "photo.on.rectangle")
                             }
                         } label: {

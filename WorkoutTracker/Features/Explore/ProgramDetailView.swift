@@ -211,7 +211,11 @@ struct RoutinePreviewCard: View {
             if !hideHeader {
                 HStack(spacing: 12) {
                     if UIImage(named: routine.icon) != nil {
-                        Image(routine.icon).resizable().scaledToFit().frame(width: 24, height: 24)
+                        Image(routine.icon)
+                            .renderingMode(.template)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 24, height: 24)
                     } else {
                         Image(systemName: routine.icon) .foregroundColor(themeManager.current.primaryAccent)
                     }

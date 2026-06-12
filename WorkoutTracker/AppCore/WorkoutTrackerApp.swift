@@ -57,7 +57,7 @@ struct WorkoutTrackerApp: App {
     @State private var lastImportedWorkoutName: String = ""
     @State private var restTimerManager = RestTimerManager()
     @State private var tutorialManager = TutorialManager()
-    @StateObject private var versionManager = VersionManager.shared
+    @State private var versionManager = VersionManager.shared
 
     @AppStorage("hasCompletedGodModeOnboarding_v1") private var hasCompletedGodModeOnboarding = false
 

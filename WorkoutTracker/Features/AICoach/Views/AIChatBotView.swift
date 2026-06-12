@@ -12,7 +12,7 @@ struct AIChatBotView: View {
     @Bindable var viewModel: AICoachViewModel
     @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight = 75.0
 
-    @StateObject private var speechRecognizer = SpeechRecognizer()
+    @State private var speechRecognizer = SpeechRecognizer()
     @State private var isPulsingMic = false
 
     @State private var showHistorySheet = false

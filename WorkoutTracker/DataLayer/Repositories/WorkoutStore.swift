@@ -96,7 +96,8 @@ actor WorkoutStore: WorkoutStoreProtocol {
 
     func deleteSet(setID: PersistentIdentifier, fromExerciseID exerciseID: PersistentIdentifier) async throws {
         guard let exercise = modelContext.model(for: exerciseID) as? Exercise,
-              let set = modelContext.model(for: setID) as? WorkoutSet else { throw WorkoutRepositoryError.modelNotFound }
+              let set = modelContext.model(for: setID) as? WorkoutSet,
+              !exercise.isDeleted, !set.isDeleted else { throw WorkoutRepositoryError.modelNotFound }
 
         exercise.removeSafeSet(set)
         modelContext.delete(set)
@@ -105,7 +106,8 @@ actor WorkoutStore: WorkoutStoreProtocol {
 
     func removeSubExercise(subID: PersistentIdentifier, fromSupersetID supersetID: PersistentIdentifier) async throws {
         guard let superset = modelContext.model(for: supersetID) as? Exercise,
-              let subExercise = modelContext.model(for: subID) as? Exercise else { throw WorkoutRepositoryError.modelNotFound }
+              let subExercise = modelContext.model(for: subID) as? Exercise,
+              !superset.isDeleted, !subExercise.isDeleted else { throw WorkoutRepositoryError.modelNotFound }
 
         if let index = superset.subExercises.firstIndex(where: { $0.persistentModelID == subID }) {
             superset.subExercises.remove(at: index)
@@ -117,7 +119,8 @@ actor WorkoutStore: WorkoutStoreProtocol {
 
     func removeExercise(exerciseID: PersistentIdentifier, fromWorkoutID workoutID: PersistentIdentifier) async throws {
         guard let workout = modelContext.model(for: workoutID) as? Workout,
-              let exercise = modelContext.model(for: exerciseID) as? Exercise else { throw WorkoutRepositoryError.modelNotFound }
+              let exercise = modelContext.model(for: exerciseID) as? Exercise,
+              !workout.isDeleted, !exercise.isDeleted else { throw WorkoutRepositoryError.modelNotFound }
 
         if let index = workout.exercises.firstIndex(where: { $0.persistentModelID == exerciseID }) {
             workout.exercises.remove(at: index)
@@ -126,8 +129,9 @@ actor WorkoutStore: WorkoutStoreProtocol {
         try modelContext.save()
     }
 
-    func deleteWorkout(workoutID: PersistentIdentifier) async throws {
-        guard let workout = modelContext.model(for: workoutID) as? Workout else {
+    func deleteWorkout(id: UUID) async throws {
+        let descriptor = FetchDescriptor<Workout>(predicate: #Predicate { $0.id == id })
+        guard let workout = (try? modelContext.fetch(descriptor))?.first, !workout.isDeleted else {
             throw WorkoutRepositoryError.modelNotFound
         }
 

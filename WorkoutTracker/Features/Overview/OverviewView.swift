@@ -465,7 +465,7 @@ struct OverviewView: View {
         let isCompleted: Bool
         let onDelete: () -> Void
 
-        @StateObject private var colorManager = MuscleColorManager.shared
+        @State private var colorManager = MuscleColorManager.shared
         @State private var offset: CGFloat = 0
         @Environment(\.colorScheme) var colorScheme
 
@@ -902,7 +902,7 @@ struct OverviewView: View {
 
     struct MusclePieChartIsland: View {
         let viewModel: DashboardViewModel
-        @StateObject private var colorManager = MuscleColorManager.shared
+        @State private var colorManager = MuscleColorManager.shared
         @State private var animateChart = false
         @Environment(\.colorScheme) private var colorScheme: ColorScheme 
 
@@ -1705,6 +1705,254 @@ struct CommitmentButton: View {
             .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color(UIColor.secondarySystemGroupedBackground))
             .cornerRadius(16)
             .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct AICameraExerciseSelectorSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
+    
+    let onSelect: (String) -> Void
+    
+    @State private var supportedExercises: [ExerciseDBItem] = []
+    @State private var searchText: String = ""
+    
+    var filteredExercises: [ExerciseDBItem] {
+        if searchText.isEmpty {
+            return supportedExercises
+        } else {
+            return supportedExercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+                    .ignoresSafeArea()
+                
+                ScrollView {
+                    VStack(spacing: 24) {
+                        
+                        VStack(spacing: 8) {
+                            Image(systemName: "sparkles.tv")
+                                .font(.system(size: 48, weight: .thin))
+                                .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            
+                            Text("AI Form Tracker")
+                                .font(.system(size: 28, weight: .bold, design: .rounded))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            
+                            Text("Select an exercise to analyze your form in real-time.")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                        }
+                        .padding(.top, 20)
+                        .padding(.bottom, 10)
+                        
+                        VStack(spacing: 16) {
+                            Text("Featured")
+                                .font(.title3.bold())
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 4)
+
+                            AICameraExerciseCard(
+                                title: "Squats",
+                                subtitle: "Track depth and knee alignment",
+                                icon: "figure.strengthtraining.traditional",
+                                colors: [.blue, .cyan],
+                                action: { handleSelection("Squats") }
+                            )
+                            
+                            AICameraExerciseCard(
+                                title: "Pushups",
+                                subtitle: "Track chest-to-floor and back posture",
+                                icon: "figure.core.training",
+                                colors: [.orange, .red],
+                                action: { handleSelection("Pushups") }
+                            )
+                            
+                            AICameraExerciseCard(
+                                title: "Pullups",
+                                subtitle: "Track chin over bar and extension",
+                                icon: "figure.climbing",
+                                colors: [.purple, .pink],
+                                action: { handleSelection("Pullups") }
+                            )
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        if !supportedExercises.isEmpty {
+                            VStack(spacing: 16) {
+                                Text("All Supported Exercises")
+                                    .font(.title3.bold())
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.horizontal, 4)
+                                    .padding(.top, 10)
+                                    
+                                HStack {
+                                    Image(systemName: "magnifyingglass")
+                                        .foregroundColor(.gray)
+                                    TextField("Search exercises...", text: $searchText)
+                                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    if !searchText.isEmpty {
+                                        Button(action: { searchText = "" }) {
+                                            Image(systemName: "xmark.circle.fill")
+                                                .foregroundColor(.gray)
+                                        }
+                                    }
+                                }
+                                .padding(12)
+                                .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                                .cornerRadius(12)
+
+                                LazyVStack(spacing: 12) {
+                                    if filteredExercises.isEmpty {
+                                        Text("No exercises found")
+                                            .foregroundColor(.gray)
+                                            .padding(.top, 20)
+                                    } else {
+                                        ForEach(filteredExercises, id: \.name) { exercise in
+                                            if !["Squats", "Pushups", "Pullups"].contains(exercise.name) || !searchText.isEmpty {
+                                                Button {
+                                                    handleSelection(exercise.name)
+                                                } label: {
+                                                    HStack(spacing: 16) {
+                                                        Circle()
+                                                            .fill(themeManager.current.primaryAccent.opacity(0.1))
+                                                            .frame(width: 40, height: 40)
+                                                            .overlay(
+                                                                Image(systemName: "camera.viewfinder")
+                                                                    .foregroundColor(themeManager.current.primaryAccent)
+                                                            )
+
+                                                        VStack(alignment: .leading, spacing: 4) {
+                                                            Text(LocalizationHelper.shared.translateName(exercise.name))
+                                                                .font(.system(size: 16, weight: .semibold, design: .rounded))
+                                                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                                            
+                                                            if let category = exercise.category {
+                                                                Text(category.capitalized)
+                                                                    .font(.caption)
+                                                                    .foregroundColor(.gray)
+                                                            }
+                                                        }
+                                                        
+                                                        Spacer()
+                                                        
+                                                        Image(systemName: "chevron.right")
+                                                            .font(.caption)
+                                                            .foregroundColor(.gray.opacity(0.5))
+                                                    }
+                                                    .padding(16)
+                                                    .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
+                                                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                            .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                                                    )
+                                                }
+                                                .buttonStyle(.plain)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        Spacer(minLength: 40)
+                    }
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .foregroundColor(.gray.opacity(0.5))
+                    }
+                }
+            }
+        }
+        .task {
+            let all = await ExerciseDatabaseService.shared.getAllExerciseItems()
+            let supported = all.filter { $0.pattern != .unsupported }
+            let sorted = supported.sorted { $0.name < $1.name }
+            await MainActor.run {
+                self.supportedExercises = sorted
+            }
+        }
+    }
+    
+    private func handleSelection(_ exercise: String) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        dismiss()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            onSelect(exercise)
+        }
+    }
+}
+
+struct AICameraExerciseCard: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let colors: [Color]
+    let action: () -> Void
+    @Environment(\.colorScheme) private var colorScheme
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 20) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 60, height: 60)
+                        .shadow(color: colors[0].opacity(0.4), radius: 10, y: 5)
+                    
+                    Image(systemName: icon)
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(.white)
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.headline)
+                    .foregroundColor(colors[0].opacity(0.8))
+            }
+            .padding(20)
+            .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(colors: [colors[0].opacity(0.3), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 15, y: 8)
         }
         .buttonStyle(.plain)
     }

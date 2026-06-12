@@ -1964,7 +1964,7 @@ struct SetsTrendDetailView: View {
 
     @State private var selectedPeriod: TrendPeriod = .month
     @State private var selectedMuscle: String = "Chest"
-    @StateObject private var colorManager = MuscleColorManager.shared
+    @State private var colorManager = MuscleColorManager.shared
 
     private let primaryMuscles = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
 
@@ -2264,7 +2264,7 @@ struct RadarChartDetailView: View {
 
     @State private var selectedPeriod: TrendPeriod = .month
     @State private var highlightedMuscle: String? = nil
-    @StateObject private var colorManager = MuscleColorManager.shared
+    @State private var colorManager = MuscleColorManager.shared
 
     private let axes = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core"]
 

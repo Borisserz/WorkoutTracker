@@ -40,19 +40,22 @@ final class FirestoreProgramService {
             let legendarySnapshot = try await db.collection("legendary_routines").getDocuments()
             var fetchedLegendary: [LegendaryRoutine] = []
             for doc in legendarySnapshot.documents {
-                if let fb = try? doc.data(as: FBLegendaryRoutine.self) {
+                do {
+                    let fb = try doc.data(as: FBLegendaryRoutine.self)
                     let routine = LegendaryRoutine(
-                        title: fb.title,
-                        eraTitle: fb.eraTitle,
-                        shortVibe: fb.shortVibe,
-                        loreDescription: fb.loreDescription,
-                        gradientColors: fb.hexColors.compactMap { Color(hex: $0) },
-                        difficulty: ProgramLevel(rawValue: fb.difficulty) ?? .intermediate,
-                        estimatedMinutes: fb.estimatedMinutes,
-                        benefits: fb.benefits,
-                        exercises: fb.exercises
+                        title: fb.title ?? "Unknown Title",
+                        eraTitle: fb.eraTitle ?? "Unknown Era",
+                        shortVibe: fb.shortVibe ?? "",
+                        loreDescription: fb.loreDescription ?? "",
+                        gradientColors: (fb.hexColors ?? []).compactMap { Color(hex: $0) },
+                        difficulty: ProgramLevel(rawValue: fb.difficulty ?? "") ?? .intermediate,
+                        estimatedMinutes: fb.estimatedMinutes ?? 0,
+                        benefits: fb.benefits ?? [],
+                        exercises: (fb.exercises ?? []).map { $0.toDTO() }
                     )
                     fetchedLegendary.append(routine)
+                } catch {
+                    print("❌ Error decoding FBLegendaryRoutine for doc \(doc.documentID): \(error)")
                 }
             }
 
@@ -60,18 +63,21 @@ final class FirestoreProgramService {
             let programsSnapshot = try await db.collection("explore_programs").getDocuments()
             var fetchedPrograms: [WorkoutProgramDefinition] = []
             for doc in programsSnapshot.documents {
-                if let fb = try? doc.data(as: FBWorkoutProgram.self) {
+                do {
+                    let fb = try doc.data(as: FBWorkoutProgram.self)
                     let prog = WorkoutProgramDefinition(
-                        title: fb.title,
-                        description: fb.descriptionText,
-                        level: ProgramLevel(rawValue: fb.level) ?? .intermediate,
-                        goal: ProgramGoal(rawValue: fb.goal) ?? .buildMuscle,
-                        equipment: ProgramEquipment(rawValue: fb.equipment) ?? .fullGym,
-                        gradientColors: fb.hexColors.compactMap { Color(hex: $0) },
-                        isSingleRoutine: fb.isSingleRoutine,
-                        routines: fb.routines
+                        title: fb.title ?? "Unknown Program",
+                        description: fb.descriptionText ?? "",
+                        level: ProgramLevel(rawValue: fb.level ?? "") ?? .intermediate,
+                        goal: ProgramGoal(rawValue: fb.goal ?? "") ?? .buildMuscle,
+                        equipment: ProgramEquipment(rawValue: fb.equipment ?? "") ?? .fullGym,
+                        gradientColors: (fb.hexColors ?? []).compactMap { Color(hex: $0) },
+                        isSingleRoutine: fb.isSingleRoutine ?? false,
+                        routines: (fb.routines ?? []).map { $0.toDTO() }
                     )
                     fetchedPrograms.append(prog)
+                } catch {
+                    print("❌ Error decoding FBWorkoutProgram for doc \(doc.documentID): \(error)")
                 }
             }
 
@@ -220,11 +226,11 @@ final class FirestoreProgramService {
         cleaned.removeValue(forKey: "description")
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: cleaned),
-              let presetDTO = try? JSONDecoder().decode(WorkoutPresetDTO.self, from: jsonData) else {
+              let fbPresetDTO = try? JSONDecoder().decode(FBWorkoutPresetDTO.self, from: jsonData) else {
             throw SharedWorkoutError.decodingFailed
         }
 
-        return presetDTO
+        return fbPresetDTO.toDTO()
     }
 
     /// Returns (presetDTO, creatorUid) so callers can attach the creator UID to UI
@@ -259,10 +265,10 @@ final class FirestoreProgramService {
             .forEach { cleaned.removeValue(forKey: $0) }
 
         guard let jsonData = try? JSONSerialization.data(withJSONObject: cleaned),
-              let presetDTO = try? JSONDecoder().decode(WorkoutPresetDTO.self, from: jsonData) else {
+              let fbPresetDTO = try? JSONDecoder().decode(FBWorkoutPresetDTO.self, from: jsonData) else {
             throw SharedWorkoutError.decodingFailed
         }
-        return (presetDTO, creatorUid)
+        return (fbPresetDTO.toDTO(), creatorUid)
     }
 
     // MARK: - UGC: Reports

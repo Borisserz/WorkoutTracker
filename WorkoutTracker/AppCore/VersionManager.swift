@@ -8,11 +8,12 @@ internal import SwiftUI
 import Combine
 
 @MainActor
-final class VersionManager: ObservableObject {
+@Observable
+final class VersionManager {
     static let shared = VersionManager()
     
-    @Published var updateRequirement: UpdateRequirement = .noUpdate
-    @Published var hasDismissedSoftUpdate: Bool = false
+    var updateRequirement: UpdateRequirement = .noUpdate
+    var hasDismissedSoftUpdate: Bool = false
     
     enum UpdateRequirement: Equatable {
         case hardUpdate

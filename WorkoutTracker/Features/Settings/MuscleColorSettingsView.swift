@@ -4,7 +4,7 @@ import SwiftData
 struct MuscleColorSettingsView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var colorManager = MuscleColorManager.shared
+    @State private var colorManager = MuscleColorManager.shared
 
     let muscles = [
         "Chest", "Back", "Legs", "Shoulders", "Arms", "Core"

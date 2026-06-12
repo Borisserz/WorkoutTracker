@@ -158,20 +158,28 @@ final class WorkoutDetailViewModel {
        }
 
        func removeSet(_ set: WorkoutSet, from exercise: Exercise, context: ModelContext) {
-           exercise.setsList.removeAll(where: { $0.id == set.id })
-           context.delete(set)
-
-           for (i, s) in exercise.sortedSets.enumerated() {
-               s.index = i + 1
-           }
-           try? context.save()
-
-           if let w = exercise.workout ?? exercise.parentExercise?.workout {
-               self.updateWorkoutAnalytics(for: w)
+           let workout = exercise.workout ?? exercise.parentExercise?.workout
+           
+           // CRITICAL: Remove the set from the array on the main thread FIRST
+           // This prevents updateWorkoutAnalytics from iterating over a deleted SwiftData object.
+           exercise.removeSafeSet(set)
+           
+           Task {
+               await workoutService.deleteSet(set, from: exercise)
+               if let w = workout {
+                   await MainActor.run {
+                       self.updateWorkoutAnalytics(for: w)
+                   }
+               }
            }
        }
 
     func removeExercise(_ exercise: Exercise, from workout: Workout) {
+        // CRITICAL: Remove from array on main thread FIRST to avoid EXC_BREAKPOINT in analytics
+        if let index = workout.exercises.firstIndex(where: { $0.id == exercise.id }) {
+            workout.exercises.remove(at: index)
+        }
+        
         Task { await workoutService.removeExercise(exercise, from: workout) }
     }
 
@@ -181,9 +189,9 @@ final class WorkoutDetailViewModel {
             }
         }
 
-    func deleteEmptyWorkout(workoutID: PersistentIdentifier) async {
+    func deleteEmptyWorkout(id: UUID) async {
            TrackingManager.shared.track(.workoutCancelled(durationMinutes: 0, exercisesDone: 0, reason: "empty_or_user_cancelled"))
-           await workoutService.deleteWorkout(byID: workoutID)
+           await workoutService.deleteWorkout(id: id)
        }
 
     func startTimerIfNeeded(shouldStartTimer: Bool, suggestedDuration: Int?, exerciseName: String, upcomingWeight: String?) {
@@ -262,6 +270,7 @@ final class WorkoutDetailViewModel {
 
         let uncompletedSets = exercise.setsList.filter { !$0.isCompleted }
         if !uncompletedSets.isEmpty {
+            exercise.removeSafeSets(uncompletedSets)
             Task { await workoutService.deleteSets(uncompletedSets, from: exercise) }
         }
 
@@ -278,6 +287,7 @@ final class WorkoutDetailViewModel {
         for sub in superset.subExercises {
             let uncompleted = sub.setsList.filter { !$0.isCompleted }
             if !uncompleted.isEmpty {
+                sub.removeSafeSets(uncompleted)
                 Task { await workoutService.deleteSets(uncompleted, from: sub) }
             }
             sub.isCompleted = true

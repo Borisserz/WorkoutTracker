@@ -250,7 +250,6 @@ struct ExerciseCardView: View {
                     }
                 }
                 .buttonStyle(.plain)
-                
                 // Technique pill
                 Button {
                     showTechniqueSheet = true
@@ -270,7 +269,6 @@ struct ExerciseCardView: View {
                 }
                 .buttonStyle(BorderlessButtonStyle())
                 .fixedSize(horizontal: true, vertical: false)
-                
                 Spacer()
                 
                 // Completed Sets pill/text
@@ -282,6 +280,7 @@ struct ExerciseCardView: View {
                 
                 // Menu dots
                 Menu {
+                    Button { showHistory = true } label: { Label(LocalizedStringKey("Exercise Info & History"), systemImage: "info.circle") }
                     if !isEmbeddedInSuperset {
                         Button { detailViewModel.activeEvent = .showSwapExercise(exercise) } label: { Label(LocalizedStringKey("Swap Exercise"), systemImage: "arrow.triangle.2.circlepath") }
                     }

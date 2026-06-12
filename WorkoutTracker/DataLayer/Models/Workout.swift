@@ -253,7 +253,7 @@ class MuscleStat {
     init(muscleName: String = "", totalCount: Int = 0) { self.muscleName = muscleName; self.totalCount = totalCount }
 }
 
-struct WorkoutSetDTO: Codable {
+struct WorkoutSetDTO: Codable, Sendable {
     let index: Int; let weight: Double?; let reps: Int?; let distance: Double?; let time: Int?; let isCompleted: Bool; let type: SetType
 }
 
@@ -300,7 +300,7 @@ extension Exercise {
         )
     }
 }
-struct WorkoutPresetDTO: Codable {
+struct WorkoutPresetDTO: Codable, Sendable {
     let name: String
     let icon: String
     var folderName: String? = nil 
@@ -372,7 +372,7 @@ extension Exercise {
     }
 }
 
-struct WorkoutDTO: Codable {
+struct WorkoutDTO: Codable, Sendable {
     let id: UUID
     let title: String
     let date: Date

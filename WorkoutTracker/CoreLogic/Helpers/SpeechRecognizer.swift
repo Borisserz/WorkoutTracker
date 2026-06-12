@@ -4,11 +4,12 @@ import AVFoundation
 import Combine
 
 @MainActor
-final class SpeechRecognizer: ObservableObject {
-    @Published var transcript: String = ""
-    @Published var isRecording: Bool = false
-    @Published var hasPermission: Bool = false
-    @Published var errorMessage: String?
+@Observable
+final class SpeechRecognizer {
+    var transcript: String = ""
+    var isRecording: Bool = false
+    var hasPermission: Bool = false
+    var errorMessage: String?
 
     private var audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?

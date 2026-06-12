@@ -151,6 +151,7 @@ struct TemplatePreviewSheetView: View {
                             .foregroundStyle(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     } else if UIImage(named: item.icon) != nil {
                         Image(item.icon)
+                            .renderingMode(.template)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 44, height: 44)

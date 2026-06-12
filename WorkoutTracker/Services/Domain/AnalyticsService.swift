@@ -61,7 +61,9 @@ actor AnalyticsService {
            let recs = getRecommendations(workouts: recentWorkouts, recoveryStatus: recovery)
 
            let userStats = (try? bgContext.fetch(FetchDescriptor<UserStats>()))?.first
-           let totalWorkouts = userStats?.totalWorkouts ?? 0
+           let countDesc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime != nil })
+           let robustTotalWorkouts = (try? bgContext.fetchCount(countDesc)) ?? 0
+           let totalWorkouts = max(userStats?.totalWorkouts ?? 0, robustTotalWorkouts)
 
            return DashboardCacheDTO(personalRecords: partialPRs, lastPerformances: partialLastPerformances, recoveryStatus: recovery, dashboardMuscleData: sortedMuscleData, dashboardTotalExercises: totalExCount, dashboardTopExercises: topExercises, streakCount: streak, totalWorkouts: totalWorkouts, bestWeekStats: bWeek, bestMonthStats: bMonth, weakPoints: weakPts, recommendations: recs)
        }

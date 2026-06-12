@@ -8,7 +8,7 @@ struct CoachSheetItem: Identifiable {
 }
 
 enum CoachMuscleGroup: String, CaseIterable, Identifiable {
-    case chest = "Chest", back = "Back", legs = "Legs", shoulders = "Shoulders", arms = "Arms", abs = "Abss"
+    case chest = "Chest", back = "Back", legs = "Legs", shoulders = "Shoulders", arms = "Arms", abs = "Abs"
     var id: String { self.rawValue }
 
     var engineName: String {
@@ -64,7 +64,7 @@ struct AICoachView: View {
     @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
 
-    @StateObject private var speechRecognizer = SpeechRecognizer()
+    @State private var speechRecognizer = SpeechRecognizer()
 
     let quickPrompts = ["How to break a plateau?", "Bench Press Mechanics", "Recovery Tips", "Hypertrophy Split"]
 
@@ -1116,10 +1116,8 @@ struct BestExercisesSheet: View {
             self.generatedWorkout = nil
         }
 
-        let prCache = dashboard.personalRecordsCache
-        let tone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
-        let bodyWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
         let appLanguage = LocalizationHelper.shared.getAILanguageName()
+        let userName = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? ""
 
         let relevantExercises = await ExerciseDatabaseService.shared.getRelevantExercisesContext(
             for: muscleGroup.engineName,
@@ -1127,32 +1125,22 @@ struct BestExercisesSheet: View {
             limit: 20
         )
 
-        let userContext = UserProfileContext(
-            userName: UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? "Athlete",
-            weightKg: UnitsManager.shared.convertToKilograms(bodyWeight),
-            experienceLevel: difficulty.rawValue,
-            favoriteMuscles: [muscleGroup.engineName],
-            recentPRs: prCache,
-            language: appLanguage,
-            workoutsThisWeek: 0,
-            currentStreak: dashboard.streakCount,
-            fatiguedMuscles: [],
-            availableExercises: relevantExercises,
-            aiCoachTone: tone,
-            weightUnit: unitsManager.weightUnitString()
-        )
+        let savedRecoveryHours = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue)
+        let fullRecoveryHours = savedRecoveryHours > 0 ? savedRecoveryHours : 48.0
+        let workouts = await di.analyticsService.fetchRecentWorkoutsForAnalytics()
+        let recoveryStatus = await di.analyticsService.calculateRecovery(hours: fullRecoveryHours, workouts: workouts)
+        let fatigued = recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup }
 
-        let prompt = """
-        Your task: Generate a strength workout for the muscle group: \(muscleGroup.rawValue).
-        User skill level: \(difficulty.rawValue).
-        MANDATORY JSON REQUIREMENTS:
-        1. Set "hasWorkout" strictly to true.
-        2. Set "workoutTitle" to "Protocol: \(muscleGroup.rawValue)".
-        3. Generate exactly 4 or 5 exercises in the "exercises" array. Choose only from the available list.
-        4. "aiMessage": Write an energetic, motivating greeting in \(appLanguage).
-        """
         do {
-            let response = try await di.aiLogicService.generateWorkoutPlan(userRequest: prompt, userProfile: userContext)
+            let response = try await di.aiLogicService.generateBuilderRoutine(
+                muscleGroup: muscleGroup.rawValue,
+                difficulty: difficulty.rawValue,
+                availableExercises: relevantExercises,
+                weightUnit: unitsManager.weightUnitString(),
+                language: appLanguage,
+                userName: userName,
+                fatiguedMuscles: fatigued
+            )
 
             await MainActor.run {
                 if let workout = response.workout, !workout.exercises.isEmpty {
@@ -1168,13 +1156,13 @@ struct BestExercisesSheet: View {
                     }
                     self.estimatedTonnage = unitsManager.convertFromKilograms(tonnage)
                 } else {
-                    self.aiErrorMessage = "The AI ​​responded, but forgot to add exercises. Click Cancel and try again."
+                    self.aiErrorMessage = String(localized: "The AI responded, but forgot to add exercises. Click Cancel and try again.")
                 }
                 withAnimation(.easeOut(duration: 0.4)) { self.isGenerating = false }
             }
         } catch {
             await MainActor.run {
-                self.aiErrorMessage = "Communication error with AI: \(error.localizedDescription)"
+                self.aiErrorMessage = String(localized: "Communication error with AI: \(error.localizedDescription)")
                 withAnimation(.easeOut(duration: 0.4)) { self.isGenerating = false }
             }
         }
@@ -1406,7 +1394,7 @@ struct ProgressAnalysisSheet: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(UnitsManager.self) private var unitsManager
     @Environment(\.colorScheme) private var colorScheme
-    @StateObject private var colorManager = MuscleColorManager.shared
+    @State private var colorManager = MuscleColorManager.shared
 
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]

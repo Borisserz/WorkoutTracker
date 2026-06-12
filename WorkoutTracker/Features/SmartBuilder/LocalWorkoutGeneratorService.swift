@@ -50,15 +50,15 @@ actor LocalWorkoutGeneratorService {
 
             let pool = await filterCatalog(for: muscle, equipment: config.equipment)
 
-            let sortedPool = pool.sorted { ex1, ex2 in
-                let hasHistory1 = config.history[ex1] != nil
-                let hasHistory2 = config.history[ex2] != nil
-                if hasHistory1 && !hasHistory2 { return Double.random(in: 0...1) > 0.3 }
-                if !hasHistory1 && hasHistory2 { return Double.random(in: 0...1) < 0.3 }
-                return Bool.random()
+            let scoredPool = pool.map { ex -> (String, Double) in
+                let hasHistory = config.history[ex] != nil
+                let score = (hasHistory ? 10.0 : 0.0) + Double.random(in: 0...5.0)
+                return (ex, score)
             }
-
-            let selectedNames = Array(sortedPool.prefix(countToPick))
+            
+            let selectedNames = scoredPool.sorted(by: { $0.1 > $1.1 })
+                .prefix(countToPick)
+                .map { $0.0 }
 
             for name in selectedNames {
                 let exerciseType: ExerciseType = (muscle == "Cardio" || name == "Plank" || name == "Running") ? (muscle == "Cardio" ? .cardio : .duration) : .strength

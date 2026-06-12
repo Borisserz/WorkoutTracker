@@ -7,10 +7,12 @@ import Combine
 
 @MainActor
 final class CameraManager: ObservableObject {
-    @Published var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
-    @Published var handPose: VNHumanHandPoseObservation? = nil
-    @Published var bodyPose: VNHumanBodyPoseObservation? = nil
-    @Published var isAuthorized = false
+    var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
+    var handPose: VNHumanHandPoseObservation? = nil
+    var bodyPose: VNHumanBodyPoseObservation? = nil
+    var isAuthorized = false
+    var authorizationStatus: AVAuthorizationStatus = .notDetermined
+    var isSimulator = false
 
     let session = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
@@ -28,13 +30,17 @@ final class CameraManager: ObservableObject {
     }
 
     func checkPermission() {
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        authorizationStatus = status
+        
+        switch status {
         case .authorized:
             isAuthorized = true
             setupSession()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 Task { @MainActor in
+                    self?.authorizationStatus = granted ? .authorized : .denied
                     self?.isAuthorized = granted
                     if granted { self?.setupSession() }
                 }
@@ -54,6 +60,9 @@ final class CameraManager: ObservableObject {
               let videoInput = try? AVCaptureDeviceInput(device: videoDevice),
               session.canAddInput(videoInput) else {
             session.commitConfiguration()
+            #if targetEnvironment(simulator)
+            Task { @MainActor in self.isSimulator = true }
+            #endif
             return
         }
         session.addInput(videoInput)

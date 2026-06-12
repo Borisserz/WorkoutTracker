@@ -57,30 +57,43 @@ struct AITrackerView: View {
             }
             .ignoresSafeArea()
 
-            VStack {
-                topHUD
-                Spacer()
-
-                HStack(alignment: .bottom) {
-                    liveMusclePiP
+            if cameraManager.isSimulator {
+                cameraNotSupportedView
+            } else if cameraManager.authorizationStatus == .denied || cameraManager.authorizationStatus == .restricted {
+                permissionDeniedView
+            } else if cameraManager.isAuthorized {
+                VStack {
+                    topHUD
                     Spacer()
-                    gestureHUD
-                }
-                .padding(.bottom, 10)
 
-                finishButton
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            
-            if showPlusOne {
-                Text("+1")
-                    .font(.system(size: 60, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.primaryAccent)
-                    .shadow(color: themeManager.current.primaryAccent.opacity(0.8), radius: 10, x: 0, y: 0)
-                    .offset(y: plusOneOffset)
-                    .opacity(plusOneOpacity)
-                    .allowsHitTesting(false)
+                    HStack(alignment: .bottom) {
+                        liveMusclePiP
+                        Spacer()
+                        gestureHUD
+                    }
+                    .padding(.bottom, 10)
+
+                    finishButton
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
+                
+                if showPlusOne {
+                    Text("+1")
+                        .font(.system(size: 60, weight: .heavy, design: .rounded))
+                        .foregroundColor(themeManager.current.primaryAccent)
+                        .shadow(color: themeManager.current.primaryAccent.opacity(0.8), radius: 10, x: 0, y: 0)
+                        .offset(y: plusOneOffset)
+                        .opacity(plusOneOpacity)
+                        .allowsHitTesting(false)
+                }
+            } else {
+                VStack {
+                    Spacer()
+                    finishButton
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 16)
             }
         }
         .navigationBarHidden(true)
@@ -142,6 +155,89 @@ struct AITrackerView: View {
                                generator.notificationOccurred(.warning)
                            }
                        }
+    }
+    
+    @ViewBuilder
+    private var permissionDeniedView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "camera.slash.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.red)
+                .padding()
+                .background(Color.red.opacity(0.1))
+                .clipShape(Circle())
+            
+            VStack(spacing: 8) {
+                Text("Camera Access Required")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text("AI Tracking needs camera access to analyze your form and count reps. Please enable it in Settings.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 32)
+            }
+            
+            Button(action: {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }) {
+                Text("Open Settings")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 32)
+                    .background(themeManager.current.primaryAccent)
+                    .clipShape(Capsule())
+            }
+            .padding(.top, 16)
+            
+            Spacer()
+            finishButton
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+        .background(Color.black.opacity(0.8))
+        .ignoresSafeArea()
+    }
+    
+    @ViewBuilder
+    private var cameraNotSupportedView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+            
+            Image(systemName: "apple.terminal.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.orange)
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .clipShape(Circle())
+            
+            VStack(spacing: 8) {
+                Text("Simulator Not Supported")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                Text("The iOS Simulator does not support the camera. Please run the app on a physical device to use AI Tracking.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 32)
+            }
+            
+            Spacer()
+            finishButton
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+        .background(Color.black.opacity(0.8))
+        .ignoresSafeArea()
     }
 
         @ViewBuilder

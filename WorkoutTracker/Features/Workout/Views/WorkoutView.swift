@@ -364,6 +364,7 @@ struct PremiumRealWorkoutCard: View {
                 if UIImage(named: workout.icon) != nil {
                     Image(workout.icon)
                         .resizable()
+                        .renderingMode(.template)
                         .scaledToFit()
                         .frame(width: 24, height: 24)
                         .foregroundColor(themeManager.current.primaryAccent)
