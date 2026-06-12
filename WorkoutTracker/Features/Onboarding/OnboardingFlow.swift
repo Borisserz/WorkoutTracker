@@ -685,7 +685,7 @@ struct OnboardingIntroView: View {
                            targetTab: 3),
             OnboardingItem(iconName: "slider.horizontal.3",
                            category: "AI WORKOUTS",
-                           title: "Smart Builder",
+                           title: "Smart Workout",
                            description: "Zero guesswork. Tell the AI what equipment you have, and it crafts the ultimate customized workout program.",
                            colors: [.blue, .cyan],
                            chips: ["Personalized", "Equipment", "Instant"],

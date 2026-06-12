@@ -11,6 +11,7 @@ struct SetRowView: View {
     @Environment(ThemeManager.self) private var themeManager
     @State private var showSetTypeSheet: Bool = false
     @State private var showAITracker: Bool = false
+    @State private var isAISupported: Bool = false
 
     let exerciseName: String
     let cached1RM: Double
@@ -116,6 +117,10 @@ struct SetRowView: View {
                     focusedField = exerciseType == .strength ? .weight : (exerciseType == .cardio ? .distance : .timeSec) 
                 }
             }
+        }
+        .task {
+            let pattern = await ExerciseDatabaseService.shared.getPattern(for: exerciseName)
+            isAISupported = pattern != .unsupported
         }
     }
 
@@ -225,9 +230,6 @@ struct SetRowView: View {
 
     @ViewBuilder
     private var aiTrackerButton: some View {
-        let category = ExerciseCategory.determine(from: exerciseName)
-        let isAISupported = [.squat, .curl, .press, .deadlift, .pull].contains(category)
-
         if isAISupported {
             Button {
                 showAITracker = true

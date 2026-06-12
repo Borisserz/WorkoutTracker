@@ -21,14 +21,10 @@ struct ExerciseCardView: View {
 
     @State private var showEffortSheet = false
     @State private var showTechniqueSheet = false
+    @State private var isAISupported: Bool = false
 
     private var isActiveExercise: Bool { isCurrentExercise && !exercise.isCompleted && workout.isActive }
     private var isWorkoutCompleted: Bool { !workout.isActive }
-
-    private var isAISupported: Bool {
-        let category = ExerciseCategory.determine(from: exercise.name)
-        return [.squat, .curl, .press, .deadlift, .pull].contains(category)
-    }
 
     private var cardBackgroundColor: Color {
         if exercise.isCompleted {
@@ -89,6 +85,10 @@ struct ExerciseCardView: View {
         }
         .navigationDestination(isPresented: $showHistory) {
             ExerciseHistoryView(exerciseName: exercise.name)
+        }
+        .task {
+            let pattern = await ExerciseDatabaseService.shared.getPattern(for: exercise.name)
+            isAISupported = pattern != .unsupported
         }
     }
 

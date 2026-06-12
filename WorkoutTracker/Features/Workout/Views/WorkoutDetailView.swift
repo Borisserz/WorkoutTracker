@@ -348,54 +348,63 @@ struct WorkoutDetailContentView: View {
     }
 
     private var exercisesToolbarSection: some View {
-            HStack {
-                Text(LocalizedStringKey("Exercises"))
-                    .font(.title2)
-                    .bold()
-                    .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
-                    .minimumScaleFactor(0.5)
+        HStack {
+            Text(LocalizedStringKey("Exercises"))
+                .font(.title2)
+                .bold()
+                .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
+                .minimumScaleFactor(0.5)
 
-                Spacer(minLength: 5)
+            Spacer(minLength: 5)
 
-                if workout.isActive {
-                    Button { showTimerSetup = true } label: {
-                        Image(systemName: "timer")
-                            .font(.headline)
-                            .padding(8)
-                            .background(Color.accentColor.opacity(0.1))
-                            .foregroundColor(.accentColor)
-                            .cornerRadius(8)
-                    }
+            if workout.isActive {
+                Button { showTimerSetup = true } label: {
+                    Image(systemName: "timer")
+                        .font(.system(size: 16, weight: .bold))
+                        .frame(width: 36, height: 36)
+                        .background(themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.18 : 0.12))
+                        .foregroundColor(themeManager.current.primaryAccent)
+                        .cornerRadius(10)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(themeManager.current.primaryAccent.opacity(0.3), lineWidth: 1)
+                        )
                 }
-
-                Button { activeSheet = .supersetBuilder(nil) } label: {
-                    Label(LocalizedStringKey("Superset"), systemImage: "plus")
-                        .font(.caption)
-                        .bold()
-                        .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
-                        .minimumScaleFactor(0.7)
-                        .padding(8)
-                        .background(Color.accentColor.opacity(0.1))
-                        .foregroundColor(.accentColor)
-                        .cornerRadius(8)
-                }.disabled(!workout.isActive)
-
-                Button { activeSheet = .exerciseSelection } label: {
-                    Label(LocalizedStringKey("Exercise"), systemImage: "plus")
-                        .font(.caption)
-                        .bold()
-                        .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
-                        .minimumScaleFactor(0.7)
-                        .padding(8)
-                        .background(Color.accentColor.opacity(0.1))
-                        .foregroundColor(.accentColor)
-                        .cornerRadius(8)
-                }
-                .disabled(!workout.isActive)
-                .spotlight(step: .addExercise, manager: tutorialManager, text: "Tap here to add an exercise.", alignment: .top, xOffset: -50, yOffset: 10)
             }
-            .zIndex(15)
+
+            Button { activeSheet = .supersetBuilder(nil) } label: {
+                Label(LocalizedStringKey("Superset"), systemImage: "plus")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .padding(.horizontal, 12)
+                    .frame(height: 36)
+                    .background(themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.18 : 0.12))
+                    .foregroundColor(themeManager.current.primaryAccent)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(themeManager.current.primaryAccent.opacity(0.3), lineWidth: 1)
+                    )
+            }
+            .disabled(!workout.isActive)
+
+            Button { activeSheet = .exerciseSelection } label: {
+                Label(LocalizedStringKey("Exercise"), systemImage: "plus")
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .padding(.horizontal, 12)
+                    .frame(height: 36)
+                    .background(themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.18 : 0.12))
+                    .foregroundColor(themeManager.current.primaryAccent)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(themeManager.current.primaryAccent.opacity(0.3), lineWidth: 1)
+                    )
+            }
+            .disabled(!workout.isActive)
+            .spotlight(step: .addExercise, manager: tutorialManager, text: "Tap here to add an exercise.", alignment: .top, xOffset: -50, yOffset: 10)
         }
+        .zIndex(15)
+    }
 
     private var chartSection: some View {
         VStack(alignment: .leading, spacing: 16) {

@@ -238,7 +238,12 @@ public actor ExerciseDatabaseService {
 
     public func getCatalog() -> [String: [String]] { return groupedCatalog }
     public func getAllExerciseItems() -> [ExerciseDBItem] { return Array(exercisesDict.values) }
-    public func getPattern(for exerciseName: String) -> MovementPattern { return exercisesDict[exerciseName.lowercased()]?.pattern ?? .unsupported }
+    public func getPattern(for exerciseName: String) -> MovementPattern {
+        if let pattern = exercisesDict[exerciseName.lowercased()]?.pattern {
+            return pattern
+        }
+        return PatternClassifier.classify(name: exerciseName, force: nil, mechanic: nil, primaryMuscles: nil)
+    }
     public func getExerciseItem(for exerciseName: String) -> ExerciseDBItem? { return exercisesDict[exerciseName.lowercased()] }
 
     public func getMuscleActivations(for exerciseName: String, fallbackGroup: String) -> [MuscleActivation] {
