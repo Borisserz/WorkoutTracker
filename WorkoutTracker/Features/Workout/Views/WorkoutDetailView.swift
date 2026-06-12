@@ -45,6 +45,7 @@ struct WorkoutDetailContentView: View {
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
 
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var activeSheet: DetailDestination?
     @State private var activeFullScreen: DetailDestination?
