@@ -27,9 +27,6 @@ struct WorkoutHubView: View {
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
     private var userPresets: [WorkoutPreset]
 
-    @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == true }, sort: \WorkoutPreset.name)
-    private var systemPresets: [WorkoutPreset]
-
     @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
     private var favoriteWorkouts: [Workout]
 
@@ -110,6 +107,7 @@ struct WorkoutHubView: View {
     @State private var showActiveWorkoutAlert = false
     @State private var isProcessing = false
     @State private var selectedPreview: PreviewItem? = nil
+    @State private var selectedLegendaryRoutine: LegendaryRoutine? = nil
 
     private func fallbackRoutine(_ name: String, _ icon: String, _ exercises: [ExerciseDTO]) -> WorkoutPresetDTO {
         WorkoutPresetDTO(name: name, icon: icon, folderName: nil, exercises: exercises)
@@ -206,6 +204,52 @@ struct WorkoutHubView: View {
         return Array(progs.prefix(5))
     }
 
+    private var fallbackLegendaryRoutines: [LegendaryRoutine] {
+        [
+            LegendaryRoutine(
+                title: "Arnold's Golden Split",
+                eraTitle: "Golden Era",
+                shortVibe: "High Volume, Classic V-Taper focus",
+                loreDescription: "The exact weekly protocol Arnold used to dominate the stage. Focused heavily on chest, back, and building the classic aesthetic proportion.",
+                gradientColors: [.orange, .red],
+                difficulty: .advanced,
+                estimatedMinutes: 75,
+                benefits: ["V-Taper", "Volume", "Mass"],
+                exercises: [
+                    GeneratedExerciseDTO(name: "Barbell Bench Press - Medium Grip", muscleGroup: "Chest", type: "Strength", sets: 5, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
+                    GeneratedExerciseDTO(name: "Incline Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
+                    GeneratedExerciseDTO(name: "Wide-Grip Lat Pulldown", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
+                    GeneratedExerciseDTO(name: "Bent-Over Barbell Row", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
+                    GeneratedExerciseDTO(name: "Dumbbell Bicep Curl", muscleGroup: "Arms", type: "Hypertrophy", sets: 3, reps: 12, recommendedWeightKg: nil, restSeconds: 60)
+                ]
+            ),
+            LegendaryRoutine(
+                title: "Mike Mentzer Heavy Duty",
+                eraTitle: "High Intensity Era",
+                shortVibe: "Maximum Intensity, Low Volume",
+                loreDescription: "The revolutionary High-Intensity Training (HIT) system. Train to absolute failure with one heavy working set, followed by complete rest for ultimate growth.",
+                gradientColors: [.purple, .indigo],
+                difficulty: .advanced,
+                estimatedMinutes: 45,
+                benefits: ["HIT", "Intensity", "Hypertrophy"],
+                exercises: [
+                    GeneratedExerciseDTO(name: "Incline Dumbbell Press", muscleGroup: "Chest", type: "Strength", sets: 2, reps: 8, recommendedWeightKg: nil, restSeconds: 120),
+                    GeneratedExerciseDTO(name: "Dumbbell Flyes", muscleGroup: "Chest", type: "Hypertrophy", sets: 1, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
+                    GeneratedExerciseDTO(name: "Barbell Deadlift", muscleGroup: "Back", type: "Strength", sets: 2, reps: 6, recommendedWeightKg: nil, restSeconds: 120),
+                    GeneratedExerciseDTO(name: "Pullups", muscleGroup: "Back", type: "Bodyweight", sets: 2, reps: 10, recommendedWeightKg: nil, restSeconds: 90)
+                ]
+            )
+        ]
+    }
+
+    private var legendaryPrograms: [LegendaryRoutine] {
+        let routines = FirestoreProgramService.shared.legendaryRoutines
+        if routines.isEmpty {
+            return fallbackLegendaryRoutines
+        }
+        return routines
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -285,6 +329,11 @@ struct WorkoutHubView: View {
                 .presentationDetents([.fraction(0.65), .medium])
                 .presentationDragIndicator(.visible)
             }
+            .sheet(item: $selectedLegendaryRoutine) { routine in
+                LegendaryTemplatePreviewSheet(routine: routine) {
+                    startLegendaryRoutine(routine)
+                }
+            }
             .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
                 Button(LocalizedStringKey("OK"), role: .cancel) { }
             } message: { Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one.")) }
@@ -302,7 +351,7 @@ struct WorkoutHubView: View {
                 }
             }
             .task {
-                if FirestoreProgramService.shared.explorePrograms.isEmpty {
+                if FirestoreProgramService.shared.explorePrograms.isEmpty || FirestoreProgramService.shared.legendaryRoutines.isEmpty {
                     await FirestoreProgramService.shared.fetchAllPrograms()
                 }
             }
@@ -513,16 +562,29 @@ struct WorkoutHubView: View {
                     }
                 }
 
-                if !systemPresets.isEmpty {
-                    CarouselSectionView(
-                        title: "System Programs",
-                        folderName: nil,
-                        items: systemPresets.map { .preset($0) },
-                        onItemTapped: handleItemStart,
-                        onEdit: nil,
-                        onDuplicate: duplicatePreset,
-                        onDelete: nil
-                    )
+                if !legendaryPrograms.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(LocalizedStringKey("Legendary Programs"))
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(colorScheme == .dark ? .white : .black)
+                            .padding(.horizontal, 20)
+                        
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 16) {
+                                ForEach(legendaryPrograms) { routine in
+                                    Button {
+                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                        selectedLegendaryRoutine = routine
+                                    } label: {
+                                        LegendaryHubCardView(routine: routine)
+                                    }
+                                    .buttonStyle(PremiumScaleButtonStyle())
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.bottom, 10)
+                        }
+                    }
                 }
 
                 if let dailyPlan = userPresets.first(where: { $0.name == "Today's Plan" }), !dailyPlan.exercises.isEmpty {
@@ -647,6 +709,36 @@ struct WorkoutHubView: View {
     private func routeToLatestWorkout() {
         var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]); descriptor.fetchLimit = 1
         if let newWorkout = try? context.fetch(descriptor).first { self.navigateToActiveWorkout = newWorkout }
+    }
+
+    private func startLegendaryRoutine(_ routine: LegendaryRoutine) {
+        guard !isProcessing else { return }
+        isProcessing = true
+        
+        let generator = UIImpactFeedbackGenerator(style: .heavy)
+        generator.impactOccurred()
+        
+        Task { @MainActor in
+            if await workoutService.hasActiveWorkout() {
+                showActiveWorkoutAlert = true
+                isProcessing = false
+                return
+            }
+            
+            let generatedDTO = GeneratedWorkoutDTO(
+                title: routine.title,
+                aiMessage: "Entering \(routine.eraTitle). \(routine.loreDescription)",
+                exercises: routine.exercises
+            )
+            
+            await workoutService.startGeneratedWorkout(generatedDTO)
+            
+            if let newWorkout = await workoutService.fetchLatestWorkout() {
+                self.navigateToActiveWorkout = newWorkout
+            }
+            
+            isProcessing = false
+        }
     }
 
     private func duplicatePreset(_ preset: WorkoutPreset) {
@@ -1141,5 +1233,71 @@ struct WorkoutHubEmptyStateView: View {
                 .stroke(Color.orange.opacity(0.2), lineWidth: 1)
         )
         .padding(.horizontal, 20)
+    }
+}
+
+struct LegendaryHubCardView: View {
+    let routine: LegendaryRoutine
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "crown.fill").foregroundColor(.orange).font(.caption)
+                    Text(LocalizedStringKey(routine.eraTitle))
+                        .font(.system(size: 10, weight: .bold))
+                        .tracking(1.5)
+                        .foregroundColor(.orange)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.orange.opacity(0.15))
+                .cornerRadius(6)
+
+                Spacer()
+
+                HStack(spacing: 4) {
+                    Image(systemName: "stopwatch").font(.caption)
+                    Text(LocalizedStringKey("\(routine.estimatedMinutes) min"))
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .foregroundColor(.white.opacity(0.7))
+            }
+
+            Spacer()
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(LocalizedStringKey(routine.title))
+                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                Text(LocalizedStringKey(routine.shortVibe))
+                    .font(.system(size: 12))
+                    .italic()
+                    .foregroundColor(.cyan)
+                    .lineLimit(1)
+                    .multilineTextAlignment(.leading)
+            }
+        }
+        .padding(20)
+        .frame(width: 280, height: 180)
+        .background(
+            ZStack {
+                LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
+                
+                // Dark overlay at the bottom for readability
+                LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)
+                
+                // Subtle texture/glow overlay
+                RoundedRectangle(cornerRadius: 24)
+                    .stroke(LinearGradient(colors: [.white.opacity(0.3), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
+            }
+        )
+        .cornerRadius(24)
+        .shadow(color: routine.gradientColors[0].opacity(0.3), radius: 10, x: 0, y: 5)
     }
 }

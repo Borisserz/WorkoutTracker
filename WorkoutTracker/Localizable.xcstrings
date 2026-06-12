@@ -41,6 +41,16 @@
         }
       }
     },
+    "Legendary Programs" : {
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Легендарные программы"
+          }
+        }
+      }
+    },
     "" : {
       "localizations" : {
         "ru" : {
