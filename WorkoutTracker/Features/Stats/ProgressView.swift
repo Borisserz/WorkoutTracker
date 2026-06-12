@@ -1849,7 +1849,8 @@ struct AllTimeResultsView: View {
                         .foregroundColor(.gray)
                     
                     HStack(spacing: 8) {
-                        ForEach(Array(stickers.enumerated()), id: \.element.id) { index, sticker in
+                        ForEach(0..<stickers.count, id: \.self) { index in
+                            let sticker = stickers[index]
                             Button(action: {
                                 UISelectionFeedbackGenerator().selectionChanged()
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
