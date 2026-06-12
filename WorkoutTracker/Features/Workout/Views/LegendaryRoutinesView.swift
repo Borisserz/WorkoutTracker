@@ -40,9 +40,7 @@ struct LegendaryRoutinesView: View {
                             LegendaryCardView(routine: routine) {
                                 startRoutine(routine)
                             }
-
                             .containerRelativeFrame(.horizontal, count: 1, spacing: 16)
-
                             .scrollTransition(axis: .horizontal) { content, phase in
                                 content
                                     .scaleEffect(phase.isIdentity ? 1.0 : 0.85)
@@ -57,6 +55,7 @@ struct LegendaryRoutinesView: View {
                             .id(routine.id)
                         }
                     }
+                    .padding(.vertical, 20)
                     .scrollTargetLayout()
                 }
                 .scrollTargetBehavior(.viewAligned)
@@ -134,14 +133,23 @@ struct LegendaryCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
+            // Header Section
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Image(systemName: "star.fill").font(.title3).foregroundColor(.yellow)
+                    Image(systemName: "star.fill")
+                        .font(.title3)
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: routine.gradientColors,
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
                     Text(LocalizedStringKey(routine.eraTitle))
                         .font(.headline)
                         .fontWeight(.heavy)
                         .tracking(2)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(.white)
                 }
 
                 Text(LocalizedStringKey(routine.title))
@@ -149,66 +157,99 @@ struct LegendaryCardView: View {
                     .foregroundColor(.white)
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
+                    .shadow(color: routine.gradientColors.first?.opacity(0.5) ?? .clear, radius: 10, x: 0, y: 4)
 
                 Text(LocalizedStringKey(routine.shortVibe))
                     .font(.subheadline)
                     .italic()
-                    .foregroundColor(.cyan)
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: routine.gradientColors,
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
             }
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.black.opacity(0.4))
+            .background(
+                LinearGradient(
+                    colors: [
+                        (routine.gradientColors.first ?? .black).opacity(0.3),
+                        Color.black.opacity(0.6)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
 
-            VStack(alignment: .leading, spacing: 20) {
+            // Content Section
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 20) {
 
-                Text(LocalizedStringKey(routine.loreDescription))
-                    .font(.body)
-                    .foregroundColor(.white.opacity(0.9))
-                    .lineSpacing(6)
-                    .fixedSize(horizontal: false, vertical: true)
+                    Text(LocalizedStringKey(routine.loreDescription))
+                        .font(.body)
+                        .foregroundColor(.white.opacity(0.9))
+                        .lineSpacing(6)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 20) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "stopwatch.fill").foregroundColor(.white.opacity(0.6))
-                        Text(LocalizedStringKey("~\(routine.estimatedMinutes) min")).fontWeight(.bold)
+                    HStack(spacing: 20) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "stopwatch.fill").foregroundColor(.white.opacity(0.6))
+                            Text(LocalizedStringKey("~\(routine.estimatedMinutes) min")).fontWeight(.bold)
+                        }
+                        HStack(spacing: 4) {
+                            Image(systemName: "flame.fill").foregroundColor(routine.gradientColors.last ?? .orange)
+                            Text(LocalizedStringKey(routine.difficulty.rawValue)).fontWeight(.bold)
+                        }
                     }
-                    HStack(spacing: 4) {
-                        Image(systemName: "flame.fill").foregroundColor(.orange)
-                        Text(LocalizedStringKey(routine.difficulty.rawValue)).fontWeight(.bold)
-                    }
-                }
-                .font(.subheadline)
-                .foregroundColor(.white)
+                    .font(.subheadline)
+                    .foregroundColor(.white)
 
-                HStack {
-                    ForEach(routine.benefits.prefix(3), id: \.self) { benefit in
-                        Text(LocalizedStringKey(benefit))
-                            .font(.caption2)
-                            .fontWeight(.bold)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color.white.opacity(0.15))
+                    HStack {
+                        ForEach(routine.benefits.prefix(3), id: \.self) { benefit in
+                            Text(LocalizedStringKey(benefit))
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.black.opacity(0.4))
+                                )
+                                .overlay(
+                                    Capsule()
+                                        .stroke(
+                                            LinearGradient(
+                                                colors: routine.gradientColors,
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            ),
+                                            lineWidth: 1
+                                        )
+                                )
+                                .foregroundColor(.white)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(LocalizedStringKey("Exercises in Protocol:"))
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+
+                        Text(LocalizedStringKey("\(routine.exercises.count) main exercises included."))
+                            .font(.subheadline)
+                            .bold()
                             .foregroundColor(.white)
-                            .clipShape(Capsule())
                     }
+                    .padding(.top, 10)
                 }
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(LocalizedStringKey("Exercises in Protocol:"))
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-
-                    Text(LocalizedStringKey("\(routine.exercises.count) main exercises included."))
-                        .font(.subheadline)
-                        .bold()
-                        .foregroundColor(.white)
-                }
-                .padding(.top, 10)
+                .padding(24)
             }
-            .padding(24)
 
-            Spacer()
+            Spacer(minLength: 20)
 
+            // Button Section
             Button(action: onStart) {
                 HStack {
                     Text(LocalizedStringKey("Start Routine"))
@@ -216,23 +257,35 @@ struct LegendaryCardView: View {
                         .fontWeight(.bold)
                     Image(systemName: "bolt.fill")
                 }
-                .foregroundColor(.black)
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 20)
                 .background(
                     LinearGradient(
-                        colors: [.white, Color(white: 0.8)],
-                        startPoint: .top,
-                        endPoint: .bottom
+                        colors: routine.gradientColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
                 )
                 .cornerRadius(20)
-                .shadow(color: .white.opacity(0.4), radius: 10, x: 0, y: 5)
+                .shadow(color: (routine.gradientColors.first ?? .white).opacity(0.5), radius: 15, x: 0, y: 8)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
         }
-
+        .background(
+            ZStack {
+                Color.black.opacity(0.5)
+                LinearGradient(
+                    colors: [
+                        (routine.gradientColors.first ?? .clear).opacity(0.1),
+                        .clear
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        )
         .background(.ultraThinMaterial)
         .environment(\.colorScheme, .dark) 
         .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
@@ -240,14 +293,14 @@ struct LegendaryCardView: View {
             RoundedRectangle(cornerRadius: 32, style: .continuous)
                 .stroke(
                     LinearGradient(
-                        colors: [.white.opacity(0.4), .clear],
+                        colors: routine.gradientColors + [.clear],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: 1.5
+                    lineWidth: 2
                 )
         )
-        .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
+        .shadow(color: (routine.gradientColors.first ?? .black).opacity(0.3), radius: 25, x: 0, y: 15)
     }
 }
 
