@@ -403,7 +403,7 @@ struct AICoachView: View {
                 })
             }
             .navigationDestination(for: Workout.self) { workout in
-                WorkoutDetailView(workout: workout)
+                WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
                     .environment(di)
             }
         }
