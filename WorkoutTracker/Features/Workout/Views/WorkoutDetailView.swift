@@ -66,11 +66,41 @@ struct WorkoutDetailContentView: View {
         }
     }
 
+    @Namespace private var tabNamespace
+    
     private var tabPicker: some View {
-        Picker(LocalizedStringKey("View Mode"), selection: $selectedTab) {
-            ForEach(Tab.allCases, id: \.self) { Text($0.localizedName).tag($0) }
+        HStack(spacing: 0) {
+            ForEach(Tab.allCases, id: \.self) { tab in
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                        selectedTab = tab
+                        UISelectionFeedbackGenerator().selectionChanged()
+                    }
+                } label: {
+                    Text(tab.localizedName)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(selectedTab == tab ? .white : .secondary)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .background {
+                            if selectedTab == tab {
+                                Capsule()
+                                    .fill(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.secondaryAccent], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
+                                    .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 6, x: 0, y: 3)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+            }
         }
-        .pickerStyle(.segmented)
+        .padding(4)
+        .background(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+        .clipShape(Capsule())
+        .overlay(
+            Capsule()
+                .stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.06), lineWidth: 1)
+        )
     }
 
     var body: some View {
@@ -223,47 +253,32 @@ struct WorkoutDetailContentView: View {
                 timerManager.stopRestTimer()
                 viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
             } label: {
-                HStack(spacing: 8) {
+                ZStack {
                     if isEmpty {
-                        Image(systemName: "xmark.circle.fill").font(.title2)
-                        Text(LocalizedStringKey("Cancel Workout")).font(.title3).bold()
-                    } else {
-                        Image(systemName: "flag.checkered.circle.fill").font(.title2)
-                        Text(LocalizedStringKey("Finish Workout")).font(.title3).bold()
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(isEmpty 
-                    ? AnyShapeStyle(themeManager.current.surface) 
-                    : AnyShapeStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing)))
-                .foregroundColor(isEmpty ? .red : .white)
-                .clipShape(Capsule())
-                .overlay(
-                    Group {
-                        if isEmpty {
-                            Capsule().stroke(Color.red, lineWidth: 1.5)
+                        if colorScheme == .dark {
+                            Circle().fill(.ultraThinMaterial)
+                        } else {
+                            Circle().fill(Color.white)
                         }
+                    } else {
+                        Circle().fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
                     }
+                    
+                    Image(systemName: isEmpty ? "xmark" : "flag.checkered")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(isEmpty ? .red : .white)
+                }
+                .frame(width: 56, height: 56)
+                .overlay(
+                    Circle()
+                        .stroke(isEmpty ? Color.red.opacity(0.4) : Color.white.opacity(0.2), lineWidth: 1)
                 )
-                .shadow(color: isEmpty ? Color.clear : .blue.opacity(0.4), radius: 15, x: 0, y: 8)
+                .shadow(color: isEmpty ? Color.black.opacity(0.15) : Color.blue.opacity(0.4), radius: 12, x: 0, y: 6)
             }
-            .padding(.horizontal, 24)
-            .padding(.bottom, timerManager.isRestTimerActive ? 180 : 16)
+            .padding(.bottom, timerManager.isRestTimerActive ? 180 : 24)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: timerManager.isRestTimerActive)
             .disabled(viewModel.isShowingSnackbar)
         }
-        .background(
-            VStack(spacing: 0) {
-                Spacer()
-                LinearGradient(colors: [themeManager.current.background.opacity(0), themeManager.current.background], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 50)
-                themeManager.current.background
-                    .frame(height: timerManager.isRestTimerActive ? 230 : 50)
-            }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-        )
     }
 
     private var snackbarOverlay: some View {

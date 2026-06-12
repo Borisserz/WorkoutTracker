@@ -549,36 +549,68 @@ struct WorkoutHubView: View {
                     }
                 }
 
-                CarouselSectionView(
-                title: "My Programs", folderName: nil, items: myRoutines.map { .preset($0) },
-                onItemTapped: handleItemStart, onEdit: { presetToEdit = $0; showPresetEditor = true },
-                onDuplicate: duplicatePreset, onDelete: promptDelete
-            )
-
-            if !savedSingleRoutines.isEmpty {
-                CarouselSectionView(
-                    title: "Saved Workouts", folderName: PresetService.savedRoutinesFolderName, items: savedSingleRoutines.map { .preset($0) },
-                    onItemTapped: handleItemStart, onEdit: { presetToEdit = $0; showPresetEditor = true },
-                    onDuplicate: duplicatePreset, onDelete: promptDelete
-                )
-            }
-
-            ForEach(programFolders.keys.sorted(), id: \.self) { folderName in
-                if let programRoutines = programFolders[folderName] {
-                    CarouselSectionView(
-                        title: LocalizedStringKey(folderName), folderName: folderName, items: programRoutines.map { .preset($0) },
-                        onItemTapped: handleItemStart, onEdit: { presetToEdit = $0; showPresetEditor = true },
-                        onDuplicate: duplicatePreset, onDelete: promptDelete
+                NavigationLink(destination: MyLibraryView(
+                    onItemTapped: handleItemStart,
+                    onEdit: { presetToEdit = $0; showPresetEditor = true },
+                    onDuplicate: duplicatePreset,
+                    onDelete: promptDelete
+                )) {
+                    HStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(colors: [.cyan.opacity(0.15), .blue.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .frame(width: 50, height: 50)
+                            Image(systemName: "books.vertical.fill")
+                                .font(.title2)
+                                .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(LocalizedStringKey("My Library"))
+                                .font(.system(size: 20, weight: .bold, design: .rounded))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            Text(LocalizedStringKey("Saved workouts, custom programs & folders"))
+                                .font(.system(size: 13, weight: .medium, design: .rounded))
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundColor(.gray)
+                            .font(.headline)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
+                    .background(
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(themeManager.current.surface)
+                            
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(
+                                    LinearGradient(
+                                        colors: [.cyan, .blue],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    )
+                                )
+                                .opacity(0.08)
+                        }
                     )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .stroke(
+                                LinearGradient(
+                                    colors: [.cyan.opacity(0.4), .blue.opacity(0.2)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    )
+                    .shadow(color: .blue.opacity(colorScheme == .dark ? 0.15 : 0.05), radius: 15, x: 0, y: 6)
+                    .padding(.horizontal, 20)
                 }
-            }
-
-            if !favoriteWorkouts.isEmpty {
-                CarouselSectionView(
-                    title: "Favorites", folderName: nil, items: favoriteWorkouts.map { .favorite($0) },
-                    onItemTapped: handleItemStart, onEdit: nil, onDuplicate: nil, onDelete: promptDelete
-                )
-            }
+                .buttonStyle(.plain)
         }
     }
 

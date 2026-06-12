@@ -110,6 +110,8 @@ struct ExerciseCardView: View {
                 headerSection
 
                 if isExpanded {
+                    quickStatsSection
+                        .padding(.bottom, 8)
                     columnHeadersSection
                     if isActiveExercise {
                         Text("💡 Tip: Swipe set row right to log")
@@ -310,7 +312,18 @@ struct ExerciseCardView: View {
                 .padding(.leading, 28)
             }
             
-            // Quick Stats
+        }
+        .padding(.bottom, 12)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                isExpanded.toggle()
+            }
+        }
+    }
+
+    private var quickStatsSection: some View {
+        Group {
             let completedSets = exercise.setsList.filter { $0.isCompleted }
             if !completedSets.isEmpty {
                 HStack(spacing: 12) {
@@ -345,21 +358,13 @@ struct ExerciseCardView: View {
                     }
                 }
                 .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.vertical, 6)
                 .background(Color.white.opacity(0.05))
-                .cornerRadius(6)
+                .cornerRadius(8)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 8)
                         .stroke(Color.white.opacity(0.05), lineWidth: 1)
                 )
-                .padding(.leading, 28)
-            }
-        }
-        .padding(.bottom, 12)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                isExpanded.toggle()
             }
         }
     }
