@@ -110,17 +110,14 @@ struct RestTimerView: View {
                 .onEnded { value in
                     let screenWidth = UIScreen.main.bounds.width
                     let screenHeight = UIScreen.main.bounds.height
-                    let padding: CGFloat = 52 // safety margin: 32px radius + 20px padding
+                    let radius: CGFloat = 32
+                    let padding: CGFloat = 16
                     
                     var newX = currentPosition.x + value.translation.width
                     var newY = currentPosition.y + value.translation.height
                     
-                    if newX < screenWidth / 2 {
-                        newX = padding
-                    } else {
-                        newX = screenWidth - padding
-                    }
-                    
+                    // Allow free positioning, keeping it within safe boundaries
+                    newX = max(radius + padding, min(screenWidth - radius - padding, newX))
                     newY = max(100, min(screenHeight - 150, newY))
                     
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -262,17 +259,14 @@ struct RestTimerView: View {
                 .onEnded { value in
                     let screenWidth = UIScreen.main.bounds.width
                     let screenHeight = UIScreen.main.bounds.height
-                    let padding: CGFloat = 110 // larger margin for expanded view to stay fully in bounds
+                    let halfWidth: CGFloat = 100 // half width of expanded controls
+                    let padding: CGFloat = 16
                     
                     var newX = currentPosition.x + value.translation.width
                     var newY = currentPosition.y + value.translation.height
                     
-                    if newX < screenWidth / 2 {
-                        newX = padding
-                    } else {
-                        newX = screenWidth - padding
-                    }
-                    
+                    // Allow free positioning, keeping it within safe boundaries
+                    newX = max(halfWidth + padding, min(screenWidth - halfWidth - padding, newX))
                     newY = max(100, min(screenHeight - 150, newY))
                     
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {

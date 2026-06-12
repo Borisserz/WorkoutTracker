@@ -253,32 +253,79 @@ struct WorkoutDetailContentView: View {
                 timerManager.stopRestTimer()
                 viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
             } label: {
-                ZStack {
+                HStack(spacing: 10) {
                     if isEmpty {
-                        if colorScheme == .dark {
-                            Circle().fill(.ultraThinMaterial)
-                        } else {
-                            Circle().fill(Color.white)
-                        }
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 18, weight: .bold))
+                        Text(LocalizedStringKey("Cancel Workout"))
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
                     } else {
-                        Circle().fill(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        Image(systemName: "flag.checkered.circle.fill")
+                            .font(.system(size: 18, weight: .bold))
+                        Text(LocalizedStringKey("Finish Workout"))
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
                     }
-                    
-                    Image(systemName: isEmpty ? "xmark" : "flag.checkered")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(isEmpty ? .red : .white)
                 }
-                .frame(width: 56, height: 56)
-                .overlay(
-                    Circle()
-                        .stroke(isEmpty ? Color.red.opacity(0.4) : Color.white.opacity(0.2), lineWidth: 1)
+                .foregroundColor(isEmpty ? .red : .white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+                .background(
+                    ZStack {
+                        if isEmpty {
+                            colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04)
+                        } else {
+                            LinearGradient(
+                                colors: [.cyan, .blue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        }
+                    }
                 )
-                .shadow(color: isEmpty ? Color.black.opacity(0.15) : Color.blue.opacity(0.4), radius: 12, x: 0, y: 6)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            isEmpty 
+                            ? Color.red.opacity(0.5) 
+                            : Color.white.opacity(0.2), 
+                            lineWidth: 1.5
+                        )
+                )
+                .shadow(
+                    color: isEmpty 
+                    ? Color.red.opacity(0.1) 
+                    : Color.blue.opacity(0.4), 
+                    radius: 12, 
+                    x: 0, 
+                    y: 6
+                )
             }
-            .padding(.bottom, timerManager.isRestTimerActive ? 180 : 24)
+            .padding(.horizontal, 24)
+            .padding(.bottom, timerManager.isRestTimerActive ? 180 : 16)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: timerManager.isRestTimerActive)
             .disabled(viewModel.isShowingSnackbar)
         }
+        .background(
+            VStack(spacing: 0) {
+                Spacer()
+                LinearGradient(
+                    colors: [
+                        themeManager.current.background.opacity(0),
+                        themeManager.current.background.opacity(0.85),
+                        themeManager.current.background
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 60)
+                
+                themeManager.current.background
+                    .frame(height: timerManager.isRestTimerActive ? 230 : 50)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
+        )
     }
 
     private var snackbarOverlay: some View {
