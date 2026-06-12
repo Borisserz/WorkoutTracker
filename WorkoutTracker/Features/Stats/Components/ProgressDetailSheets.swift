@@ -38,19 +38,45 @@ struct CurrentStreakDetailSheet: View {
 
 fileprivate struct StreakFireHeader: View {
     let streak: Int
+    @State private var isPulsing = false
+    @State private var glowIntensity: CGFloat = 0.5
 
     var body: some View {
         VStack(spacing: 40) {
-            // Big Fire Icon
+            // Big Fire Icon with pulsing animation
             ZStack {
+                // Outer glow ring (animates)
                 Circle()
-                    .fill(LinearGradient(colors: [.orange.opacity(0.3), .red.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 160, height: 160)
-                    .shadow(color: .orange.opacity(0.5), radius: 30, x: 0, y: 10)
+                    .fill(RadialGradient(
+                        colors: [.orange.opacity(glowIntensity), .red.opacity(glowIntensity * 0.4), .clear],
+                        center: .center,
+                        startRadius: 40,
+                        endRadius: 100
+                    ))
+                    .frame(width: 200, height: 200)
+                    .scaleEffect(isPulsing ? 1.12 : 0.92)
+                    .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: isPulsing)
 
+                // Inner circle background
+                Circle()
+                    .fill(LinearGradient(colors: [.orange.opacity(0.3), .red.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 160, height: 160)
+                    .shadow(color: .orange.opacity(glowIntensity), radius: isPulsing ? 40 : 20, x: 0, y: 10)
+                    .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: isPulsing)
+
+                // Flame icon
                 Image(systemName: "flame.fill")
                     .font(.system(size: 80))
                     .foregroundStyle(LinearGradient(colors: [.yellow, .orange, .red], startPoint: .top, endPoint: .bottom))
+                    .scaleEffect(isPulsing ? 1.08 : 0.96)
+                    .shadow(color: .orange.opacity(0.9), radius: isPulsing ? 18 : 6, x: 0, y: 0)
+                    .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isPulsing)
+            }
+            .onAppear {
+                isPulsing = true
+                withAnimation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true)) {
+                    glowIntensity = 0.85
+                }
             }
             
             // Main Text
@@ -72,6 +98,7 @@ fileprivate struct StreakFireHeader: View {
 fileprivate struct StreakVisualizer: View {
     let streak: Int
     @Environment(\.colorScheme) private var colorScheme
+    @State private var appeared = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -82,7 +109,7 @@ fileprivate struct StreakVisualizer: View {
             HStack(spacing: 12) {
                 ForEach(0..<7) { index in
                     let isActive = streak > (6 - index)
-                    StreakVisualizerCircle(isActive: isActive)
+                    StreakVisualizerCircle(isActive: isActive, index: index, appeared: appeared)
                 }
             }
             .padding()
@@ -96,34 +123,69 @@ fileprivate struct StreakVisualizer: View {
             )
         }
         .padding(.horizontal, 24)
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.1)) {
+                appeared = true
+            }
+        }
     }
 }
 
 fileprivate struct StreakVisualizerCircle: View {
     let isActive: Bool
-    
+    let index: Int
+    let appeared: Bool
+
+    // Red (index 0) → orange → yellow → green → teal → blue (index 6)
+    private var gradientColors: [Color] {
+        let palette: [[Color]] = [
+            [Color(red: 1.0, green: 0.2, blue: 0.1), Color(red: 0.9, green: 0.1, blue: 0.0)],  // 0: deep red
+            [Color(red: 1.0, green: 0.45, blue: 0.0), Color(red: 0.95, green: 0.25, blue: 0.0)], // 1: orange-red
+            [Color(red: 1.0, green: 0.65, blue: 0.0), Color(red: 1.0, green: 0.45, blue: 0.0)],  // 2: orange
+            [Color(red: 0.95, green: 0.85, blue: 0.0), Color(red: 1.0, green: 0.6, blue: 0.0)],  // 3: yellow
+            [Color(red: 0.2, green: 0.85, blue: 0.4), Color(red: 0.0, green: 0.65, blue: 0.3)],  // 4: green
+            [Color(red: 0.0, green: 0.75, blue: 0.85), Color(red: 0.0, green: 0.55, blue: 0.75)], // 5: teal
+            [Color(red: 0.15, green: 0.45, blue: 1.0), Color(red: 0.05, green: 0.2, blue: 0.9)],  // 6: blue
+        ]
+        return palette[min(index, palette.count - 1)]
+    }
+
+    private var glowColor: Color {
+        gradientColors.first ?? .orange
+    }
+
+    private var strokeColor: Color {
+        gradientColors.first?.opacity(0.6) ?? .orange.opacity(0.6)
+    }
+
     var body: some View {
-        if isActive {
-            Circle()
-                .fill(LinearGradient(colors: [.orange, .red], startPoint: .top, endPoint: .bottom))
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: .infinity)
-                .overlay(
-                    Circle()
-                        .stroke(Color.orange.opacity(0.5), lineWidth: 2)
-                )
-                .shadow(color: .orange.opacity(0.4), radius: 8, x: 0, y: 0)
-        } else {
-            Circle()
-                .fill(Color.gray.opacity(0.2))
-                .aspectRatio(1, contentMode: .fit)
-                .frame(maxWidth: .infinity)
-                .overlay(
-                    Circle()
-                        .stroke(Color.clear, lineWidth: 2)
-                )
-                .shadow(color: .clear, radius: 8, x: 0, y: 0)
+        Group {
+            if isActive {
+                Circle()
+                    .fill(LinearGradient(colors: gradientColors, startPoint: .top, endPoint: .bottom))
+                    .overlay(
+                        Circle()
+                            .stroke(strokeColor, lineWidth: 2)
+                    )
+                    .shadow(color: glowColor.opacity(0.55), radius: 10, x: 0, y: 0)
+            } else {
+                Circle()
+                    .fill(Color.gray.opacity(0.2))
+                    .overlay(
+                        Circle()
+                            .stroke(Color.clear, lineWidth: 2)
+                    )
+            }
         }
+        .aspectRatio(1, contentMode: .fit)
+        .frame(maxWidth: .infinity)
+        .scaleEffect(appeared ? 1.0 : 0.3)
+        .opacity(appeared ? 1.0 : 0.0)
+        .animation(
+            .spring(response: 0.45, dampingFraction: 0.65)
+                .delay(Double(index) * 0.06),
+            value: appeared
+        )
     }
 }
 
