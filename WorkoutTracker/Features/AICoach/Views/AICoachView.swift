@@ -367,13 +367,11 @@ struct AICoachView: View {
             .sheet(isPresented: $showAIBuilder) {
                 AIProgramBuilderSheet(aiLogicService: di.aiLogicService)
             }
-            .actionSheet(isPresented: $showAICameraSelector) {
-                ActionSheet(title: Text("Select Exercise for AI Camera"), buttons: [
-                    .default(Text("Squats")) { selectedAIExercise = "Squats"; showGlobalAICamera = true },
-                    .default(Text("Pushups")) { selectedAIExercise = "Pushups"; showGlobalAICamera = true },
-                    .default(Text("Pullups")) { selectedAIExercise = "Pullups"; showGlobalAICamera = true },
-                    .cancel()
-                ])
+            .sheet(isPresented: $showAICameraSelector) {
+                AICameraExerciseSelectorSheet { selected in
+                    selectedAIExercise = selected
+                    showGlobalAICamera = true
+                }
             }
             .fullScreenCover(isPresented: $showGlobalAICamera) {
                 AITrackerView(exerciseName: selectedAIExercise) { _ in

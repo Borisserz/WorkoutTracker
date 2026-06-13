@@ -108,7 +108,7 @@ fileprivate struct StreakVisualizer: View {
 
             HStack(spacing: 12) {
                 ForEach(0..<7) { index in
-                    let isActive = streak > (6 - index)
+                    let isActive = streak > index
                     StreakVisualizerCircle(isActive: isActive, index: index, appeared: appeared)
                 }
             }

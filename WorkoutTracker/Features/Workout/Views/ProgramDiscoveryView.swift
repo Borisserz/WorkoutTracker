@@ -9,6 +9,7 @@ struct ProgramDiscoveryView: View {
     @State private var selectedLegendaryRoutine: LegendaryRoutine?
     @State private var showActiveWorkoutAlert = false
     @State private var isProcessing = false
+    @State private var selectedFilter: CatalogFilter = .all
     
     private var fallbackLegendaryRoutines: [LegendaryRoutine] {
         [
@@ -72,44 +73,88 @@ struct ProgramDiscoveryView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         Text(LocalizedStringKey("Legendary Programs"))
                             .font(.title2).bold()
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-                            .padding(.horizontal, 20)
+                        let legendColumns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
                         
-                        VStack(spacing: 16) {
+                        LazyVGrid(columns: legendColumns, spacing: 16) {
                             ForEach(legendaryPrograms) { routine in
                                 Button {
                                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                     selectedLegendaryRoutine = routine
                                 } label: {
-                                    LegendaryHubCardView(routine: routine)
-                                }
-                                .buttonStyle(PremiumScaleButtonStyle())
-                                .padding(.horizontal, 20)
-                            }
-                        }
-                    }
-                    .padding(.top, 24)
-                }
-                
-                // Featured Section (4-column Grid)
-                if !featuredPrograms.isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text(LocalizedStringKey("Featured Catalog"))
-                            .font(.title2).bold()
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-                            .padding(.horizontal, 20)
-                        
-                        let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
-                        
-                        LazyVGrid(columns: columns, spacing: 16) {
-                            ForEach(featuredPrograms) { program in
-                                NavigationLink(destination: ProgramDetailView(program: program)) {
-                                    CompactProgramCardView(program: program)
+                                    LegendaryGridCardView(routine: routine)
                                 }
                                 .buttonStyle(PremiumScaleButtonStyle())
                             }
                         }
                         .padding(.horizontal, 20)
+                    }
+                    .padding(.top, 24)
+                }
+                
+                // All Catalog Section
+                if !featuredPrograms.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(LocalizedStringKey("All Catalog"))
+                            .font(.title2).bold()
+                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .padding(.horizontal, 20)
+                        
+                        FilterBarView(selectedFilter: $selectedFilter)
+                            .padding(.bottom, 8)
+                        
+                        let filteredFeatured = featuredPrograms.filter { program in
+                            switch selectedFilter {
+                            case .all: return true
+                            case .beginner: return program.level == .beginner
+                            case .intermediate: return program.level == .intermediate
+                            case .advanced: return program.level == .advanced
+                            case .buildMuscle: return program.goal == .buildMuscle
+                            case .getStronger: return program.goal == .getStronger
+                            case .loseWeight: return program.goal == .loseWeight
+                            case .fullGym: return program.equipment == .fullGym
+                            case .dumbbells: return program.equipment == .dumbbells
+                            case .bodyweight: return program.equipment == .bodyweight
+                            }
+                        }
+                        
+                        let programs = filteredFeatured.filter { !$0.isSingleRoutine }
+                        let soloWorkouts = filteredFeatured.filter { $0.isSingleRoutine }
+                        let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 4)
+                        
+                        if !programs.isEmpty {
+                            Text(LocalizedStringKey("Programs"))
+                                .font(.title3).bold()
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                            
+                            LazyVGrid(columns: columns, spacing: 16) {
+                                ForEach(programs) { program in
+                                    NavigationLink(destination: ProgramDetailView(program: program)) {
+                                        CompactProgramCardView(program: program)
+                                    }
+                                    .buttonStyle(PremiumScaleButtonStyle())
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
+                        
+                        if !soloWorkouts.isEmpty {
+                            Text(LocalizedStringKey("Solo Workouts"))
+                                .font(.title3).bold()
+                                .foregroundColor(.secondary)
+                                .padding(.horizontal, 20)
+                                .padding(.top, 16)
+                            
+                            LazyVGrid(columns: columns, spacing: 16) {
+                                ForEach(soloWorkouts) { program in
+                                    NavigationLink(destination: ProgramDetailView(program: program)) {
+                                        CompactProgramCardView(program: program)
+                                    }
+                                    .buttonStyle(PremiumScaleButtonStyle())
+                                }
+                            }
+                            .padding(.horizontal, 20)
+                        }
                     }
                 }
                 
@@ -192,6 +237,94 @@ struct CompactProgramCardView: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .minimumScaleFactor(0.8)
+        }
+    }
+}
+
+// A compact square card for Legendary Programs in a 2-column grid
+struct LegendaryGridCardView: View {
+    let routine: LegendaryRoutine
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                HStack(spacing: 4) {
+                    Image(systemName: "crown.fill").foregroundColor(.orange).font(.system(size: 10))
+                    Text(LocalizedStringKey(routine.eraTitle))
+                        .font(.system(size: 8, weight: .bold))
+                        .tracking(1.0)
+                        .foregroundColor(.orange)
+                }
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .background(Color.orange.opacity(0.15))
+                .cornerRadius(4)
+                
+                Spacer()
+            }
+            
+            Spacer()
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(LocalizedStringKey(routine.title))
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                
+                HStack(spacing: 4) {
+                    Image(systemName: "stopwatch").font(.system(size: 10))
+                    Text(LocalizedStringKey("\(routine.estimatedMinutes) min"))
+                        .font(.system(size: 10, weight: .bold))
+                }
+                .foregroundColor(.white.opacity(0.7))
+                .padding(.top, 4)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity)
+        .aspectRatio(1, contentMode: .fill)
+        .background(
+            ZStack {
+                LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
+                LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(LinearGradient(colors: [.white.opacity(0.3), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
+            }
+        )
+        .cornerRadius(16)
+        .shadow(color: routine.gradientColors[0].opacity(0.3), radius: 8, x: 0, y: 4)
+    }
+}
+
+struct FilterBarView: View {
+    @Binding var selectedFilter: CatalogFilter
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeManager.self) private var themeManager
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(CatalogFilter.allCases, id: \.self) { filter in
+                    Button(action: {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            selectedFilter = filter
+                        }
+                    }) {
+                        Text(LocalizedStringKey(filter.rawValue))
+                            .font(.system(size: 14, weight: .semibold))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(
+                                Capsule()
+                                    .fill(selectedFilter == filter ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05)))
+                            )
+                            .foregroundColor(selectedFilter == filter ? .white : (colorScheme == .dark ? .white : .black))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 20)
         }
     }
 }

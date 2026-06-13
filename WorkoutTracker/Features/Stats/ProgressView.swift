@@ -507,9 +507,11 @@ struct GoalsSectionView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             viewModel.activeGoals.removeAll { $0.id == goal.id }
         }
-        Task {
-            context.delete(goal)
-            try? context.save()
+        context.delete(goal)
+        do {
+            try context.save()
+        } catch {
+            print("Error deleting goal: \(error)")
         }
     }
 }

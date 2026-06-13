@@ -114,7 +114,7 @@ struct ExerciseCardView: View {
                         .padding(.bottom, 8)
                     columnHeadersSection
                     if isActiveExercise {
-                        Text("💡 Tip: Swipe set row right to log")
+                        Text("💡 Tip: Swipe set row left or right to log")
                             .font(.system(size: 10, weight: .medium, design: .rounded))
                             .foregroundColor(.secondary)
                             .opacity(0.7)
@@ -191,41 +191,8 @@ struct ExerciseCardView: View {
                 prevTime: prevSet?.time,
                 autoFocus: set.id == detailViewModel.newlyAddedSetId
             )
-            .swipeActions(edge: .trailing) {
-                if !exercise.isCompleted && !isWorkoutCompleted {
-                    Button(role: .destructive) {
-                        withAnimation { detailViewModel.removeSet(set, from: exercise, context: context) }
-                    } label: { Label(LocalizedStringKey("Delete"), systemImage: "trash") }
-                }
-            }
-            .swipeActions(edge: .leading) {
-                if !set.isCompleted && !exercise.isCompleted && !isWorkoutCompleted {
-                    Button {
-                        if set.weight == nil && prevSet?.weight != nil { set.weight = prevSet?.weight }
-                        if set.reps == nil && prevSet?.reps != nil { set.reps = prevSet?.reps }
-                        if set.distance == nil && prevSet?.distance != nil { set.distance = prevSet?.distance }
-                        if set.time == nil && prevSet?.time != nil { set.time = prevSet?.time }
-                        
-                        detailViewModel.updateWorkoutAnalytics(for: workout)
-                        withAnimation { set.isCompleted = true }
-                        
-                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                        
-                        var suggestedDuration: Int? = nil
-                        if exercise.type == .strength {
-                            if exercise.effort >= 8 { suggestedDuration = 180 } else if exercise.effort >= 6 { suggestedDuration = 120 } else { suggestedDuration = 90 }
-                        }
-                        
-                        let autoStartTimer = UserDefaults.standard.bool(forKey: "autoStartTimer")
-                        detailViewModel.startTimerIfNeeded(shouldStartTimer: autoStartTimer && !isLast, suggestedDuration: autoStartTimer && !isLast ? suggestedDuration : nil, exerciseName: exercise.name, upcomingWeight: upcomingWeightStr)
-                        detailViewModel.handleSetCompleted(set: set, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
-                    } label: { Label(LocalizedStringKey("Log Set"), systemImage: "checkmark.circle.fill") }
-                    .tint(.green)
-                }
-            }
         }
     }
-
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 12) {

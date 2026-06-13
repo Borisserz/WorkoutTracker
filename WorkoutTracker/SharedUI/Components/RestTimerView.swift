@@ -10,7 +10,7 @@ struct RestTimerView: View {
         x: UIScreen.main.bounds.width - 52, // snapped to right by default (64px wide/2 + 20px padding)
         y: UIScreen.main.bounds.height - 250
     )
-    @State private var dragOffset: CGSize = .zero
+    @GestureState private var dragOffset: CGSize = .zero
     @State private var isExpanded: Bool = false
     @State private var isPulsing = false
 
@@ -23,10 +23,8 @@ struct RestTimerView: View {
                     collapsedCircleView
                 }
             }
-            .position(
-                x: currentPosition.x + dragOffset.width,
-                y: currentPosition.y + dragOffset.height
-            )
+            .position(x: currentPosition.x, y: currentPosition.y)
+            .offset(x: dragOffset.width, y: dragOffset.height)
             .transition(.scale(scale: 0.85).combined(with: .opacity))
             .animation(.spring(response: 0.35, dampingFraction: 0.8), value: isExpanded)
             .onChange(of: timerManager.restTimerFinished) { _, finished in
@@ -103,9 +101,9 @@ struct RestTimerView: View {
         }
         .buttonStyle(.plain)
         .gesture(
-            DragGesture()
-                .onChanged { value in
-                    dragOffset = value.translation
+            DragGesture(coordinateSpace: .global)
+                .updating($dragOffset) { value, state, _ in
+                    state = value.translation
                 }
                 .onEnded { value in
                     let screenWidth = UIScreen.main.bounds.width
@@ -122,7 +120,6 @@ struct RestTimerView: View {
                     
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                         currentPosition = CGPoint(x: newX, y: newY)
-                        dragOffset = .zero
                     }
                 }
         )
@@ -252,9 +249,9 @@ struct RestTimerView: View {
             y: 4
         )
         .gesture(
-            DragGesture()
-                .onChanged { value in
-                    dragOffset = value.translation
+            DragGesture(coordinateSpace: .global)
+                .updating($dragOffset) { value, state, _ in
+                    state = value.translation
                 }
                 .onEnded { value in
                     let screenWidth = UIScreen.main.bounds.width
@@ -271,7 +268,6 @@ struct RestTimerView: View {
                     
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
                         currentPosition = CGPoint(x: newX, y: newY)
-                        dragOffset = .zero
                     }
                 }
         )

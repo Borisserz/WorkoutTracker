@@ -201,7 +201,7 @@ struct WorkoutHubView: View {
                     VStack(alignment: .leading, spacing: 32) {
                         headerSection
                         topActionsSection
-                        searchAndFilterSection
+                        myLibraryActionSection
                         carouselsSection
                         Spacer(minLength: 120)
                     }
@@ -226,7 +226,7 @@ struct WorkoutHubView: View {
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
             .navigationDestination(isPresented: $navigateToExplore) {
-                ExploreRoutinesView()
+                ProgramDiscoveryView()
             }
             .sheet(isPresented: $showPresetEditor) {
                 PresetEditorView(preset: presetToEdit)
@@ -261,10 +261,30 @@ struct WorkoutHubView: View {
             .sheet(isPresented: $showWorkoutLauncher) {
                 SmartWorkoutLauncherSheet(
                     onStartEmptySession: { startEmptyWorkout() },
-                    onSmartWorkoutTap: { showSmartBuilder = true },
-                    onPresetTap: { preset in startWorkoutFromPreview(item: .preset(preset)) },
-                    onExploreTap: { navigateToExplore = true },
-                    onNewProgramTap: { presetToEdit = nil; showPresetEditor = true }
+                    onSmartWorkoutTap: { 
+                        showWorkoutLauncher = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            showSmartBuilder = true
+                        }
+                    },
+                    onPresetTap: { preset in 
+                        showWorkoutLauncher = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            startWorkoutFromPreview(item: .preset(preset))
+                        }
+                    },
+                    onExploreTap: { 
+                        showWorkoutLauncher = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            navigateToExplore = true
+                        }
+                    },
+                    onNewProgramTap: { 
+                        showWorkoutLauncher = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            presetToEdit = nil; showPresetEditor = true
+                        }
+                    }
                 )
                 .presentationDetents([.fraction(0.85), .large])
                 .presentationDragIndicator(.visible)
@@ -481,10 +501,14 @@ struct WorkoutHubView: View {
                 
                 if !featuredPrograms.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Featured Programs")
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(colorScheme == .dark ? .white : .black)
-                            .padding(.horizontal, 20)
+                        HStack(spacing: 8) {
+                            Image(systemName: "sparkles")
+                                .foregroundStyle(LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            Text(LocalizedStringKey("New Programs"))
+                        }
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(colorScheme == .dark ? .white : .black)
+                        .padding(.horizontal, 20)
                         
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 16) {
@@ -549,69 +573,75 @@ struct WorkoutHubView: View {
                     }
                 }
 
-                NavigationLink(destination: MyLibraryView(
-                    onItemTapped: handleItemStart,
-                    onEdit: { presetToEdit = $0; showPresetEditor = true },
-                    onDuplicate: duplicatePreset,
-                    onDelete: promptDelete
-                )) {
-                    HStack(spacing: 16) {
-                        ZStack {
-                            Circle()
-                                .fill(LinearGradient(colors: [.cyan.opacity(0.15), .blue.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                .frame(width: 50, height: 50)
-                            Image(systemName: "books.vertical.fill")
-                                .font(.title2)
-                                .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(LocalizedStringKey("My Library"))
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
-                            Text(LocalizedStringKey("Saved workouts, custom programs & folders"))
-                                .font(.system(size: 13, weight: .medium, design: .rounded))
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        Image(systemName: "chevron.right")
-                            .foregroundColor(.gray)
-                            .font(.headline)
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 16)
-                    .background(
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .fill(themeManager.current.surface)
-                            
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .fill(
-                                    LinearGradient(
-                                        colors: [.cyan, .blue],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .opacity(0.08)
-                        }
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(
-                                LinearGradient(
-                                    colors: [.cyan.opacity(0.4), .blue.opacity(0.2)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                    )
-                    .shadow(color: .blue.opacity(colorScheme == .dark ? 0.15 : 0.05), radius: 15, x: 0, y: 6)
-                    .padding(.horizontal, 20)
-                }
-                .buttonStyle(.plain)
         }
+    }
+
+    private var myLibraryActionSection: some View {
+        NavigationLink(destination: MyLibraryView(
+            onItemTapped: handleItemStart,
+            onEdit: { presetToEdit = $0; showPresetEditor = true },
+            onDuplicate: duplicatePreset,
+            onDelete: promptDelete,
+            onLegendaryTapped: { routine in
+                selectedLegendaryRoutine = routine
+            }
+        )) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(LinearGradient(colors: [.cyan.opacity(0.15), .blue.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 50, height: 50)
+                    Image(systemName: "books.vertical.fill")
+                        .font(.title2)
+                        .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(LocalizedStringKey("My Library"))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    Text(LocalizedStringKey("Saved workouts, custom programs & folders"))
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.gray)
+                    .font(.headline)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(themeManager.current.surface)
+                    
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [.cyan, .blue],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .opacity(0.08)
+                }
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [.cyan.opacity(0.4), .blue.opacity(0.2)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.5
+                    )
+            )
+            .shadow(color: .blue.opacity(colorScheme == .dark ? 0.15 : 0.05), radius: 15, x: 0, y: 6)
+            .padding(.horizontal, 20)
+        }
+        .buttonStyle(.plain)
     }
 
     private func startEmptyWorkout() {
@@ -754,7 +784,7 @@ struct CarouselSectionView: View {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .bottom) {
                     Text(title)
-                        .font(.title3).bold()
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? .white : .black) 
                         .lineLimit(2)
                         .minimumScaleFactor(0.9)
@@ -816,14 +846,14 @@ struct PremiumCarouselCardView: View {
 
                 HStack(alignment: .top) {
                     ZStack {
-                        Circle()
-                            .fill(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.black.opacity(0.05)))
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .fill(LinearGradient(colors: cardGradients, startPoint: .topLeading, endPoint: .bottomTrailing).opacity(0.2))
                             .frame(width: 44, height: 44)
 
                         if isSystemIcon {
                             Image(systemName: iconName)
-                                .font(.title3)
-                                .foregroundColor(accentColor)
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(LinearGradient(colors: cardGradients, startPoint: .topLeading, endPoint: .bottomTrailing))
                         } else if UIImage(named: iconName) != nil {
                             Image(iconName)
                                 .resizable()
@@ -831,8 +861,8 @@ struct PremiumCarouselCardView: View {
                                 .frame(width: 24, height: 24)
                         } else {
                             Image(systemName: "dumbbell.fill")
-                                .font(.title3)
-                                .foregroundColor(accentColor)
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(LinearGradient(colors: cardGradients, startPoint: .topLeading, endPoint: .bottomTrailing))
                         }
                     }
 
@@ -884,23 +914,16 @@ struct PremiumCarouselCardView: View {
 
             .background(
                 ZStack {
-                    if colorScheme == .dark {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(.ultraThinMaterial)
-
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(Color.white.opacity(0.05))
-                    } else {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(Color.white)
-                    }
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(LinearGradient(colors: cardGradients, startPoint: .topLeading, endPoint: .bottomTrailing).opacity(0.15))
 
                     GeometryReader { geo in
                         Circle()
-                            .fill(accentColor.opacity(colorScheme == .dark ? 0.25 : 0.15))
-                            .blur(radius: 30)
-                            .frame(width: geo.size.width * 1.5)
+                            .fill(cardGradients[0])
+                            .blur(radius: 50)
+                            .frame(width: geo.size.width)
                             .offset(x: -geo.size.width * 0.2, y: -geo.size.height * 0.2)
+                            .opacity(0.3)
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
@@ -909,11 +932,11 @@ struct PremiumCarouselCardView: View {
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
                     .stroke(
-                        colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.06),
-                        lineWidth: 0.7
+                        LinearGradient(colors: cardGradients, startPoint: .topLeading, endPoint: .bottomTrailing).opacity(colorScheme == .dark ? 0.4 : 0.2),
+                        lineWidth: 1
                     )
             )
-            .shadow(color: colorScheme == .dark ? .black.opacity(0.15) : .black.opacity(0.04), radius: 10, x: 0, y: 6)
+            .shadow(color: cardGradients[0].opacity(0.15), radius: 15, x: 0, y: 8)
         }
         .buttonStyle(.plain)
     }
@@ -946,11 +969,19 @@ struct PremiumCarouselCardView: View {
         }
     }
 
-    private var accentColor: Color {
-        switch item {
-        case .preset(let p): return p.isSystem ? .purple : .blue
-        case .favorite: return .orange
+    private var cardGradients: [Color] {
+        var hash = 0
+        for char in title.utf8 {
+            hash = (hash &<< 5) &+ hash &+ Int(char)
         }
+        let hashAbs = abs(hash)
+        
+        let hue1 = Double(hashAbs % 360) / 360.0
+        let hue2 = Double((hashAbs + 45) % 360) / 360.0
+        
+        let c1 = Color(hue: hue1, saturation: 0.8, brightness: colorScheme == .dark ? 0.7 : 0.9)
+        let c2 = Color(hue: hue2, saturation: 0.9, brightness: colorScheme == .dark ? 0.4 : 0.8)
+        return [c1, c2]
     }
 
     private func extractPreset() -> WorkoutPreset? {

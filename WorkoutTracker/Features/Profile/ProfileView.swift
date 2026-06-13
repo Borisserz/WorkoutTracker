@@ -55,7 +55,7 @@ struct ProfileView: View {
                         }
 
                         trackingNavigationSection
-
+                        
                         if !profileVM.cachedAchievements.isEmpty {
                             AchievementsCarousel(achievements: profileVM.cachedAchievements)
                         }

@@ -12,6 +12,7 @@ struct SetRowView: View {
     @State private var showSetTypeSheet: Bool = false
     @State private var showAITracker: Bool = false
     @State private var isAISupported: Bool = false
+    @State private var swipeOffset: CGFloat = 0
 
     let exerciseName: String
     let cached1RM: Double
@@ -90,7 +91,11 @@ struct SetRowView: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
+        let isSetCompleted = set.isCompleted
+        let bgColor = isSetCompleted ? Color.green.opacity(colorScheme == .dark ? 0.15 : 0.08) : themeManager.current.surfaceVariant.opacity(0.3)
+        let strokeColor = isSetCompleted ? Color.green.opacity(0.3) : Color.white.opacity(0.05)
+
+        return HStack(alignment: .center, spacing: 8) {
             indexLabel
             previousColumn
             inputsSection
@@ -101,15 +106,47 @@ struct SetRowView: View {
         .padding(.horizontal, 10)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(set.isCompleted ? Color.green.opacity(colorScheme == .dark ? 0.15 : 0.08) : themeManager.current.surfaceVariant.opacity(0.3))
+                .fill(bgColor)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(set.isCompleted ? Color.green.opacity(0.3) : Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(strokeColor, lineWidth: 1)
         )
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: set.isCompleted)
+        .offset(x: swipeOffset)
+        .gesture(
+            DragGesture(minimumDistance: 30)
+                .onChanged { value in
+                    guard !set.isCompleted && !isExerciseCompleted && !isWorkoutCompleted else { return }
+                    if abs(value.translation.width) > abs(value.translation.height) {
+                        swipeOffset = value.translation.width / 3
+                    }
+                }
+                .onEnded { value in
+                    guard !set.isCompleted && !isExerciseCompleted && !isWorkoutCompleted else { return }
+                    if abs(value.translation.width) > 60 {
+                        let swipeDirection: CGFloat = value.translation.width > 0 ? 1 : -1
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            swipeOffset = swipeDirection * 200
+                        }
+                        
+                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            swipeToLog()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                swipeOffset = 0
+                            }
+                        }
+                    } else {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            swipeOffset = 0
+                        }
+                    }
+                }
+        )
         .compositingGroup()
-        .disabled(set.isCompleted || isExerciseCompleted || isWorkoutCompleted)
+        .disabled(isExerciseCompleted || isWorkoutCompleted)
         .onAppear {
             if autoFocus && !hasAutoFocused {
                 hasAutoFocused = true
@@ -122,6 +159,15 @@ struct SetRowView: View {
             let pattern = await ExerciseDatabaseService.shared.getPattern(for: exerciseName)
             isAISupported = pattern != .unsupported
         }
+    }
+
+    private func swipeToLog() {
+        if set.weight == nil && prevWeight != nil { set.weight = prevWeight }
+        if set.reps == nil && prevReps != nil { set.reps = prevReps }
+        if set.distance == nil && prevDist != nil { set.distance = prevDist }
+        if set.time == nil && prevTime != nil { set.time = prevTime }
+        onDataChange?()
+        toggleComplete()
     }
 
     private var indexLabel: some View {
@@ -251,8 +297,8 @@ struct SetRowView: View {
                     if countedReps > 0 {
                         set.reps = countedReps
                         onDataChange?()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { if !set.isCompleted { toggleComplete() } }
                     }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { if !set.isCompleted { toggleComplete() } }
                 }
             }
         }

@@ -200,7 +200,7 @@ struct WorkoutDetailContentView: View {
                                 }
                             }
 
-                            Spacer(minLength: timerManager.isRestTimerActive ? 280 : 120)
+                            Spacer(minLength: 120)
                         }
                         .padding()
                     }
@@ -304,7 +304,7 @@ struct WorkoutDetailContentView: View {
                 )
             }
             .padding(.horizontal, 24)
-            .padding(.bottom, timerManager.isRestTimerActive ? 180 : 16)
+            .padding(.bottom, 16)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: timerManager.isRestTimerActive)
             .disabled(viewModel.isShowingSnackbar)
         }
@@ -323,7 +323,7 @@ struct WorkoutDetailContentView: View {
                 .frame(height: 60)
                 
                 themeManager.current.background
-                    .frame(height: timerManager.isRestTimerActive ? 230 : 50)
+                    .frame(height: 50)
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)
@@ -347,7 +347,7 @@ struct WorkoutDetailContentView: View {
         .cornerRadius(10)
         .shadow(radius: 5)
         .padding(.horizontal)
-        .padding(.bottom, timerManager.isRestTimerActive ? 160 : 80)
+        .padding(.bottom, 80)
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .zIndex(100)
     }

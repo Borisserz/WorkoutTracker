@@ -72,6 +72,7 @@ struct ExerciseListView: View {
                                 Text(LocalizedStringKey("Add Exercise"))
                                     .font(.system(size: 18, weight: .bold, design: .rounded))
                                     .foregroundColor(themeManager.current.primaryAccent)
+                                    .multilineTextAlignment(.center)
                                 
                                 Text(LocalizedStringKey("Log single exercises with sets and weight"))
                                     .font(.system(size: 12, weight: .regular, design: .rounded))
@@ -118,6 +119,7 @@ struct ExerciseListView: View {
                                 Text(LocalizedStringKey("Build Superset"))
                                     .font(.system(size: 18, weight: .bold, design: .rounded))
                                     .foregroundColor(themeManager.current.secondaryMidTone)
+                                    .multilineTextAlignment(.center)
                                 
                                 Text(LocalizedStringKey("Group exercises to perform back-to-back"))
                                     .font(.system(size: 12, weight: .regular, design: .rounded))

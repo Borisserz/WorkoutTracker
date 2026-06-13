@@ -180,7 +180,13 @@ final class WorkoutDetailViewModel {
             workout.exercises.remove(at: index)
         }
         
-        Task { await workoutService.removeExercise(exercise, from: workout) }
+        self.updateWorkoutAnalytics(for: workout)
+        
+        Task { 
+            // Small delay gives SwiftUI time to unmount the ExerciseCardView before SwiftData deletes it
+            try? await Task.sleep(for: .seconds(0.2))
+            await workoutService.removeExercise(exercise, from: workout) 
+        }
     }
 
     func performSwap(old: Exercise, new: Exercise, workout: Workout) {

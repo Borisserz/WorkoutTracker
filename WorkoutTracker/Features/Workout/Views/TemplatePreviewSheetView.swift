@@ -60,6 +60,29 @@ struct TemplatePreviewSheetView: View {
         let allMuscles = item.exercises.map { $0.muscleGroup }
         return Array(Set(allMuscles)).sorted()
     }
+    
+    private var gradientColors: [Color] {
+        var hash = 5381
+        for char in item.title.utf8 {
+            hash = (hash &<< 5) &+ hash &+ Int(char)
+        }
+        let hashAbs = abs(hash)
+        let hue1 = Double(hashAbs % 360) / 360.0
+        let hue2 = Double((hashAbs + 45) % 360) / 360.0
+        let c1 = Color(hue: hue1, saturation: 0.8, brightness: colorScheme == .dark ? 0.7 : 0.9)
+        let c2 = Color(hue: hue2, saturation: 0.9, brightness: colorScheme == .dark ? 0.4 : 0.8)
+        return [c1, c2]
+    }
+    
+    private var totalSets: Int {
+        item.exercises.reduce(0) { $0 + $1.setsCount }
+    }
+    
+    private var estimatedMinutes: Int {
+        // Assume roughly 2 minutes per set (including rest)
+        let sets = totalSets
+        return sets > 0 ? sets * 2 : 5
+    }
 
     var body: some View {
         NavigationStack {
@@ -67,9 +90,23 @@ struct TemplatePreviewSheetView: View {
 
                 (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
 
+                // Dynamic Ambient Background
+                GeometryReader { geo in
+                    Circle()
+                        .fill(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .opacity(colorScheme == .dark ? 0.15 : 0.08)
+                        .blur(radius: 60)
+                        .frame(width: geo.size.width * 1.5, height: geo.size.width * 1.5)
+                        .offset(x: -geo.size.width * 0.25, y: -geo.size.width * 0.5)
+                }
+                .ignoresSafeArea()
+
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 24) {
                         headerSection
+                        
+                        statsRowSection
+                        
                         tagsSection
 
                         Divider()
@@ -133,51 +170,96 @@ struct TemplatePreviewSheetView: View {
         VStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 80, height: 80)
-                    .blur(radius: 25)
-                    .opacity(0.5)
+                    .blur(radius: 20)
+                    .opacity(0.6)
 
                 ZStack {
                     Circle()
-                        .fill(colorScheme == .dark ? themeManager.current.surface : Color.white) 
+                        .fill(colorScheme == .dark ? Color.white.opacity(0.1) : Color.white)
                         .frame(width: 88, height: 88)
-                        .overlay(Circle().stroke(Color.gray.opacity(0.15), lineWidth: 1))
-                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.1 : 0.05), radius: 10, x: 0, y: 5)
+                        .background(
+                            Circle()
+                                .fill(.ultraThinMaterial)
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(LinearGradient(colors: [.white.opacity(0.5), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
+                        )
+                        .shadow(color: gradientColors[0].opacity(0.3), radius: 15, x: 0, y: 8)
 
                     if item.isSystemIcon {
                         Image(systemName: item.icon)
-                            .font(.system(size: 36, weight: .semibold))
-                            .foregroundStyle(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                     } else if UIImage(named: item.icon) != nil {
                         Image(item.icon)
                             .renderingMode(.template)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 44, height: 44)
+                            .foregroundStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                     } else {
                         Image(systemName: "dumbbell.fill")
-                            .font(.system(size: 36, weight: .semibold))
-                            .foregroundColor(themeManager.current.primaryAccent)
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                     }
                 }
             }
             .padding(.top, 24)
 
             VStack(spacing: 6) {
-
                 Text(LocalizedStringKey(item.title))
-                    .font(.system(size: 28, weight: .heavy, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                    .font(.system(size: 32, weight: .heavy, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? .white : .black)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
-
-                Text(LocalizedStringKey("\(item.exercises.count) exercises"))
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
             }
         }
+    }
+    
+    private var statsRowSection: some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 6) {
+                Image(systemName: "stopwatch.fill")
+                Text(LocalizedStringKey("~\(estimatedMinutes) min"))
+            }
+            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.2))
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
+            
+            HStack(spacing: 6) {
+                Image(systemName: "list.number")
+                Text(LocalizedStringKey("\(item.exercises.count) exercises"))
+            }
+            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color.white.opacity(0.2))
+            .background(.ultraThinMaterial)
+            .clipShape(Capsule())
+            
+            if totalSets > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "repeat")
+                    Text(LocalizedStringKey("\(totalSets) sets"))
+                }
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.2))
+                .background(.ultraThinMaterial)
+                .clipShape(Capsule())
+            }
+        }
+        .padding(.horizontal)
     }
 
     @ViewBuilder
@@ -189,13 +271,13 @@ struct TemplatePreviewSheetView: View {
 
                     ForEach(targetMuscles, id: \.self) { muscle in
                         Text(LocalizedStringKey(muscle))
-                            .font(.caption)
-                            .fontWeight(.bold)
+                            .font(.system(size: 11, weight: .black, design: .rounded))
                             .textCase(.uppercase)
-                            .foregroundColor(themeManager.current.primaryAccent)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(themeManager.current.primaryAccent.opacity(0.15))
+                            .foregroundColor(gradientColors[0])
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 6)
+                            .background(gradientColors[0].opacity(0.15))
+                            .overlay(Capsule().stroke(gradientColors[0].opacity(0.3), lineWidth: 1))
                             .clipShape(Capsule())
                     }
 
@@ -219,50 +301,53 @@ struct TemplatePreviewSheetView: View {
                     } label: {
                         HStack(spacing: 16) {
                             ZStack {
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(themeManager.current.primaryAccent.opacity(0.1))
-                                    .frame(width: 50, height: 50)
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing).opacity(0.15))
+                                    .frame(width: 54, height: 54)
 
                                 Image(systemName: exercise.type == .cardio ? "figure.run" : "dumbbell.fill")
-                                    .foregroundColor(themeManager.current.primaryAccent)
-                                    .font(.title3)
+                                    .font(.title2)
+                                    .foregroundStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                             }
 
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 6) {
 
                                 Text(LocalizationHelper.shared.translateName(exercise.name))
-                                    .font(.headline)
-                                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundColor(colorScheme == .dark ? .white : .black)
                                     .lineLimit(1)
 
-                                HStack(spacing: 6) {
-                                    Text(LocalizedStringKey("\(exercise.setsCount) sets"))
-                                    Text("×")
-                                    Text(LocalizedStringKey("\(exercise.firstSetReps) reps"))
+                                HStack(spacing: 8) {
+                                    HStack(spacing: 2) {
+                                        Text(LocalizedStringKey("\(exercise.setsCount) sets"))
+                                        Text("×")
+                                        Text(LocalizedStringKey("\(exercise.firstSetReps) reps"))
+                                    }
+                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                    .foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .gray)
 
                                     if exercise.type == .strength && exercise.firstSetWeight > 0 {
                                         Text("•")
+                                            .foregroundColor(.gray.opacity(0.5))
                                         let weight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
                                         Text("\(LocalizationHelper.shared.formatFlexible(weight)) \(unitsManager.weightUnitString())")
-                                            .foregroundColor(themeManager.current.primaryAccent)
-                                            .bold()
+                                            .font(.system(size: 13, weight: .black, design: .rounded))
+                                            .foregroundStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
                                     }
                                 }
-                                .font(.subheadline)
-                                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                             }
 
                             Spacer()
                         }
                         .padding(12)
-
-                        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
-                        .cornerRadius(16)
+                        .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(20)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.black.opacity(0.05), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05), lineWidth: 1)
                         )
-                        .shadow(color: .black.opacity(0.04), radius: 5, x: 0, y: 2)
+                        .shadow(color: gradientColors[0].opacity(colorScheme == .dark ? 0.1 : 0.05), radius: 8, x: 0, y: 4)
                         .padding(.horizontal)
                     }
                     .buttonStyle(.plain)
@@ -283,17 +368,18 @@ struct TemplatePreviewSheetView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "bolt.fill")
-                    .font(.title3)
+                    .font(.title2)
                 Text(LocalizedStringKey("Start Workout"))
-                    .font(.title3)
-                    .fontWeight(.bold)
+                    .font(.system(size: 20, weight: .black, design: .rounded))
             }
             .foregroundColor(.white) 
             .frame(maxWidth: .infinity)
             .padding(.vertical, 18)
-            .background(themeManager.current.primaryAccent) 
+            .background(
+                LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
+            ) 
             .cornerRadius(20)
-            .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 15, x: 0, y: 8)
+            .shadow(color: gradientColors[0].opacity(0.4), radius: 15, x: 0, y: 8)
         }
         .padding(.horizontal, 20)
         .padding(.top, 16)

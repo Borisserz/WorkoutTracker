@@ -16,9 +16,12 @@ final class PresetService {
         self.appState = appState
     }
 
-    func savePreset(preset: WorkoutPreset?, name: String, icon: String, folderName: String? = nil, exercises: [Exercise]) async {
+      func savePreset(preset: WorkoutPreset?, name: String, icon: String, folderName: String? = nil, exercises: [Exercise]) async {
           let exerciseDTOs = exercises.map { $0.toDTO() }
+          await savePresetDTO(preset: preset, name: name, icon: icon, folderName: folderName, exercises: exerciseDTOs)
+      }
 
+      func savePresetDTO(preset: WorkoutPreset?, name: String, icon: String, folderName: String? = nil, exercises: [ExerciseDTO]) async {
           do {
               if let existingPreset = preset {
                   try await presetRepository.updatePreset(
@@ -26,14 +29,14 @@ final class PresetService {
                       name: name,
                       icon: icon,
                       folderName: folderName ?? existingPreset.folderName,
-                      exercises: exerciseDTOs
+                      exercises: exercises
                   )
               } else {
                   try await presetRepository.createPreset(
                       name: name,
                       icon: icon,
                       folderName: folderName,
-                      exercises: exerciseDTOs
+                      exercises: exercises
                   )
               }
           } catch {

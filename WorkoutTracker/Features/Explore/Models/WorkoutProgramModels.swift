@@ -35,6 +35,19 @@ enum ProgramEquipment: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+enum CatalogFilter: String, CaseIterable, Hashable, Sendable {
+    case all = "All"
+    case beginner = "Beginner"
+    case intermediate = "Intermediate"
+    case advanced = "Advanced"
+    case buildMuscle = "Build Muscle"
+    case getStronger = "Get Stronger"
+    case loseWeight = "Lose Weight"
+    case fullGym = "Full Gym"
+    case dumbbells = "Dumbbells Only"
+    case bodyweight = "Bodyweight"
+}
+
 struct WorkoutProgramDefinition: Identifiable, Sendable {
     let id = UUID()
     let title: String
