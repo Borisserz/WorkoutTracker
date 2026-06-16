@@ -6,6 +6,7 @@ struct ContentView: View {
     @Environment(DashboardViewModel.self) var dashboardViewModel
     @Environment(TutorialManager.self) var tutorialManager
     @Environment(DIContainer.self) private var di
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var appState = di.appState
@@ -67,6 +68,11 @@ struct ContentView: View {
         .onAppear {
             dashboardViewModel.refreshAllCaches()
             NotificationManager.shared.requestPermission()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                dashboardViewModel.refreshAllCaches()
+            }
         }
         .alert(item: $appState.currentError) { error in
             Alert(

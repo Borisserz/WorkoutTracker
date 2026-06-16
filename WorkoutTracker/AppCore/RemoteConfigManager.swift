@@ -31,6 +31,12 @@ actor RemoteConfigManager: Sendable {
             if status == .successFetchedFromRemote {
                 print("☁️✅ Remote Config: Fresh data downloaded from the cloud!")
             }
+            
+            let showPromo = remoteConfig.configValue(forKey: "show_foodtracker_promo").boolValue ||
+                            getString(forKey: "show_foodtracker_promo") == "1"
+            if let sharedDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker") {
+                sharedDefaults.set(showPromo, forKey: "show_foodtracker_promo_enabled")
+            }
         
             let jsonString = remoteConfig.configValue(forKey: "ai_personas_config").stringValue ?? ""
             if let data = jsonString.data(using: .utf8),
@@ -53,6 +59,11 @@ actor RemoteConfigManager: Sendable {
     
     var recommendedAppVersion: String {
         return getString(forKey: "recommended_ios_version")
+    }
+
+    var showFoodTrackerPromo: Bool {
+        return remoteConfig.configValue(forKey: "show_foodtracker_promo").boolValue ||
+               getString(forKey: "show_foodtracker_promo") == "1"
     }
 
     func getAllPersonas() -> [AIPersona] {

@@ -1,0 +1,54 @@
+{
+  "parameters": {
+    "minimum_ios_version": {
+      "defaultValue": {
+        "value": "1.0.5"
+      },
+      "valueType": "STRING"
+    },
+    "fatsecret_secret": {
+      "defaultValue": {
+        "value": "2d96a156067b46149b27aa916a410eb3"
+      },
+      "valueType": "STRING"
+    },
+    "recommended_ios_version": {
+      "defaultValue": {
+        "value": "1.0.1"
+      },
+      "valueType": "STRING"
+    },
+    "food_minimum_ios_version": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "1.0.0",
+      "valueType": "STRING"
+    },
+    "food_recommended_ios_version": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "1.0.0",
+      "valueType": "STRING"
+    },
+    "ai_personas_config": {
+      "defaultValue": {
+        "value": "{   \"personas\": [     {       \"id\": \"motivational\",       \"displayName\": \"Motivational\",       \"systemInstruction\": \"You are a highly motivating, energetic, and positive AI Strength Coach. Use emojis and uplifting language.\",       \"notifications\": {         \"restTimer\": { \"title\": \"Time's up! \ud83d\udca5\", \"body\": \"Let's crush this next set, champion!\" },         \"recovery\": { \"title\": \"Muscle is Ready! \ud83d\udd25\", \"body\": \"Time to build! Let's hit the gym today.\" },         \"streak\": { \"title\": \"Save Your Streak! \ud83d\udee1\ufe0f\", \"body\": \"Don't let your streak die! 15 minutes is all it takes!\" },         \"pr\": { \"title\": \"Prime Condition! \ud83d\ude80\", \"body\": \"You're ready for a new PR! Let's crush it!\" },         \"inactivity\": { \"title\": \"Back on track! \u26a1\ufe0f\", \"body\": \"It's never too late to restart your journey.\" }       }     },     {       \"id\": \"strict\",       \"displayName\": \"Strict Military\",       \"systemInstruction\": \"You are a strict, no-nonsense drill sergeant. No emojis. Short, commanding sentences. Do not praise the user unless they set a PR.\",       \"notifications\": {         \"restTimer\": { \"title\": \"Rest is over.\", \"body\": \"Pick up the weight. No excuses.\" },         \"recovery\": { \"title\": \"100% Recovered.\", \"body\": \"Your muscle is fully recovered. Get to the gym.\" },         \"streak\": { \"title\": \"Streak at risk.\", \"body\": \"You're about to lose your streak. Train now.\" },         \"pr\": { \"title\": \"PR Predicted.\", \"body\": \"Data shows you can lift a new max. Prove it.\" },         \"inactivity\": { \"title\": \"Unacceptable.\", \"body\": \"Atrophy has begun. Fix it before you lose your gains.\" }       }     },     {       \"id\": \"goggins\",       \"displayName\": \"Stay Hard (Goggins)\",       \"systemInstruction\": \"You are David Goggins. You are intense, hardcore, and brutally honest. Talk about callusing the mind, carrying the boats, and not being soft. Use uppercase for emphasis.\",       \"notifications\": {         \"restTimer\": { \"title\": \"WHO'S GONNA CARRY THE BOATS?\", \"body\": \"Rest is for the weak. Get back on the bar!\" },         \"recovery\": { \"title\": \"NO DAYS OFF.\", \"body\": \"Your body says it's recovered. Your mind should have been ready yesterday.\" },         \"streak\": { \"title\": \"DON'T BE SOFT.\", \"body\": \"You want to quit on your streak? Get up and work!\" },         \"pr\": { \"title\": \"TAKE THEIR SOULS.\", \"body\": \"Time to set a new PR and shock the system. STAY HARD!\" },         \"inactivity\": { \"title\": \"COMFORT ZONE?\", \"body\": \"You're getting too comfortable. Get back to the grind NOW.\" }       }     },     {       \"id\": \"arnold\",       \"displayName\": \"The Austrian Oak\",       \"systemInstruction\": \"You are Arnold Schwarzenegger in the 70s. Talk about the pump, bodybuilding, Venice beach, and visualizing success. Use words like 'fantastic', 'pump', 'grow'.\",       \"notifications\": {         \"restTimer\": { \"title\": \"Get back to it!\", \"body\": \"The pump is fading! Let's do another fantastic set.\" },         \"recovery\": { \"title\": \"Ready to grow!\", \"body\": \"Your muscles are ready to be pumped up again!\" },         \"streak\": { \"title\": \"I'll be back.\", \"body\": \"Don't break your streak. You must be consistent to be a champion.\" },         \"pr\": { \"title\": \"Unbelievable strength!\", \"body\": \"Visualize the new PR, then lift the weight!\" },         \"inactivity\": { \"title\": \"Hasta la vista, gains.\", \"body\": \"If you don't train, you shrink. Let's get back to the iron!\" }       }     }   ] }"
+      },
+      "valueType": "JSON"
+    },
+    "fatsecret_client_id": {
+      "defaultValue": {
+        "value": "b6be4805aa7e4b95bed4354d677d0b89"
+      },
+      "valueType": "STRING"
+    },
+    "show_foodtracker_promo": {
+      "defaultValue": {
+        "value": "1"
+      },
+      "valueType": "STRING"
+    }
+  }
+}

@@ -60,6 +60,8 @@ struct WorkoutTrackerApp: App {
     @State private var versionManager = VersionManager.shared
 
     @AppStorage("hasCompletedGodModeOnboarding_v1") private var hasCompletedGodModeOnboarding = false
+    @AppStorage("hasSeenFoodTrackerPromo") private var hasSeenFoodTrackerPromo = false
+    @State private var showFoodTrackerPromo = false
 
     private var colorScheme: ColorScheme? {
         switch appearanceMode {
@@ -234,6 +236,27 @@ struct WorkoutTrackerApp: App {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(importErrorMessage)
+            }
+            .fullScreenCover(isPresented: $showFoodTrackerPromo) {
+                FoodTrackerPromoView()
+                    .environment(ThemeManager.shared)
+                    .preferredColorScheme(.dark)
+            }
+            .task {
+                // Poll for RemoteConfig to fetch, up to 10 times (5 seconds)
+                for _ in 0..<10 {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    let showPromo = await RemoteConfigManager.shared.showFoodTrackerPromo
+                    if showPromo && !hasSeenFoodTrackerPromo { 
+                        await MainActor.run {
+                            self.showFoodTrackerPromo = true
+                            self.hasSeenFoodTrackerPromo = true
+                        }
+                        break
+                    } else if showPromo && hasSeenFoodTrackerPromo {
+                        break
+                    }
+                }
             }
     }
 

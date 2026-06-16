@@ -753,15 +753,17 @@ struct OverviewView: View {
         @Environment(\.dismiss) private var dismiss
         @Environment(\.colorScheme) private var colorScheme
         @Environment(ThemeManager.self) private var themeManager
+        
+        @AppStorage("show_foodtracker_promo_enabled", store: UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")) private var showFoodTrackerPromo = false
 
-        var config: (title: String, value: String, unit: String, icon: String, color: Color, description: String, canOpenFoodTracker: Bool) {
+        var config: (title: String, value: String, unit: String, icon: String, color: Color, gradient: [Color], description: String, canOpenFoodTracker: Bool) {
             switch type {
             case .calories:
-                return ("Burned Today", "\(rawCals)", "kcal", "flame.fill", Color(red: 1.0, green: 0.15, blue: 0.3), "Calories burned exclusively during strength and cardio workouts in WorkoutTracker.", false)
+                return ("Burned Today", "\(rawCals)", "kcal", "flame.fill", Color(red: 1.0, green: 0.15, blue: 0.3), [Color.pink, Color.orange], "Calories burned exclusively during strength and cardio workouts in WorkoutTracker.", true)
             case .steps:
-                return ("Steps Today", "\(rawSteps)", "steps", "figure.walk", Color(red: 0.2, green: 0.9, blue: 0.2), "Your daily activity. Data is automatically synced with Apple Health and FoodTracker.", true)
+                return ("Steps Today", "\(rawSteps)", "steps", "figure.walk", Color(red: 0.2, green: 0.9, blue: 0.2), [Color.green, Color.mint], "Your daily activity. Data is automatically synced with Apple Health and FoodTracker.", true)
             case .water:
-                return ("Water Balance", String(format: "%.1f", rawWater), "liters", "drop.fill", .cyan, "Water intake. Staying hydrated is critical for muscle growth.", true)
+                return ("Water Balance", String(format: "%.1f", rawWater), "liters", "drop.fill", .cyan, [Color.cyan, Color.blue], "Water intake. Staying hydrated is critical for muscle growth.", true)
             }
         }
 
@@ -813,6 +815,33 @@ struct OverviewView: View {
                             .fixedSize(horizontal: false, vertical: true) 
                             .padding(.horizontal, 30)
                             .padding(.top, 8)
+                            
+                        if showFoodTrackerPromo && config.canOpenFoodTracker {
+                            Button(action: {
+                                dismiss()
+                                if let url = URL(string: "foodtracker://"), UIApplication.shared.canOpenURL(url) {
+                                    UIApplication.shared.open(url, options: [:], completionHandler: nil)
+                                } else if let storeUrl = URL(string: "https://apps.apple.com/app/id6778506345") {
+                                    UIApplication.shared.open(storeUrl, options: [:], completionHandler: nil)
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "fork.knife.circle.fill")
+                                        .font(.title3)
+                                    Text("Track in Food Tracker")
+                                        .font(.headline)
+                                        .fontWeight(.bold)
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(LinearGradient(colors: config.gradient, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .cornerRadius(20)
+                                .shadow(color: config.gradient.first?.opacity(0.4) ?? .clear, radius: 10, y: 5)
+                            }
+                            .padding(.horizontal, 40)
+                            .padding(.top, 20)
+                        }
                     }
 
                     Spacer()

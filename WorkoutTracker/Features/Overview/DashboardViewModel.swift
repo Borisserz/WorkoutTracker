@@ -57,9 +57,15 @@ final class DashboardViewModel {
                     catalog: currentCatalog
                 )
 
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd"
+                let dateString = formatter.string(from: Date())
+                let dateKey = "water_liters_\(dateString)"
+                let appGroupWater = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")?.double(forKey: dateKey) ?? 0.0
+
                 await MainActor.run {
                     self.todaySteps = fetchedSteps
-                    self.todayWaterLiters = fetchedWater
+                    self.todayWaterLiters = max(fetchedWater, appGroupWater)
 
                     self.proactiveProposal = proposal
                     if let prop = proposal {
