@@ -599,10 +599,10 @@ struct WorkoutHubView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("My Library"))
                         .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .foregroundColor(.white)
                     Text(LocalizedStringKey("Saved workouts, custom programs & folders"))
                         .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(.white)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")

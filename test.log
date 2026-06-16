@@ -1,0 +1,24 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -scheme WorkoutTracker -destination "platform=iOS Simulator,id=A57B1CB0-6C16-4A70-905C-2B457D7125F7"
+
+Resolve Package Graph
+
+
+Resolved source packages:
+  InteropForGoogle: https://github.com/google/interop-ios-for-google-sdks.git @ 101.0.0
+  GoogleDataTransport: https://github.com/google/GoogleDataTransport.git @ 10.1.0
+  GoogleAdsOnDeviceConversion: https://github.com/googleads/google-ads-on-device-conversion-ios-sdk @ 3.5.0
+  Promises: https://github.com/google/promises.git @ 2.4.0
+  GoogleAppMeasurement: https://github.com/google/GoogleAppMeasurement.git @ 12.12.1
+  Firebase: https://github.com/firebase/firebase-ios-sdk.git @ 12.12.1
+  GoogleUtilities: https://github.com/google/GoogleUtilities.git @ 8.1.0
+  GoogleSignIn: https://github.com/google/GoogleSignIn-iOS @ 9.1.0
+  AppAuth: https://github.com/openid/AppAuth-iOS.git @ 2.0.0
+  nanopb: https://github.com/firebase/nanopb.git @ 2.30910.0
+  leveldb: https://github.com/firebase/leveldb.git @ 1.22.5
+  gRPC: https://github.com/google/grpc-binary.git @ 1.69.1
+  AppCheck: https://github.com/google/app-check.git @ 11.2.0
+  GTMAppAuth: https://github.com/google/GTMAppAuth.git @ 5.0.0
+  abseil: https://github.com/google/abseil-cpp-binary.git @ 1.2024072200.0
+  GTMSessionFetcher: https://github.com/google/gtm-session-fetcher.git @ 3.5.0
+

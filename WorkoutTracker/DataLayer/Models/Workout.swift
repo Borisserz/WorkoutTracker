@@ -164,6 +164,7 @@ class WorkoutPreset: Identifiable {
     var icon: String = ""
     var isSystem: Bool = false
     var folderName: String? = nil
+    var createdAt: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \Exercise.preset)
     private var exercisesStore: [Exercise]? = []
@@ -172,12 +173,13 @@ class WorkoutPreset: Identifiable {
         set { exercisesStore = newValue }
     }
 
-    init(id: UUID = UUID(), name: String = "", icon: String = "", isSystem: Bool = false, folderName: String? = nil, exercises: [Exercise] = []) {
+    init(id: UUID = UUID(), name: String = "", icon: String = "", isSystem: Bool = false, folderName: String? = nil, createdAt: Date = Date(), exercises: [Exercise] = []) {
         self.id = id
         self.name = name
         self.icon = icon
         self.isSystem = isSystem
         self.folderName = folderName
+        self.createdAt = createdAt
         self.exercises = exercises
 
         for exercise in self.exercises {

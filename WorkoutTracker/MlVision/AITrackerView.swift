@@ -3,6 +3,8 @@
 internal import SwiftUI
 import AVFoundation
 import Vision
+import Combine
+
 struct AITrackerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(ThemeManager.self) private var themeManager
@@ -22,14 +24,12 @@ struct AITrackerView: View {
 
     let exerciseName: String
 
-        private var isBackExercise: Bool {
-            MuscleMapping.isBackFacing(exerciseName: exerciseName)
-        }
+    private var isBackExercise: Bool {
+        MuscleMapping.isBackFacing(exerciseName: exerciseName)
+    }
 
     init(exerciseName: String, onFinish: ((Int) -> Void)? = nil) {
-
         self.exerciseName = exerciseName
-
         _engine = StateObject(wrappedValue: AITrackerEngine(exerciseName: exerciseName))
         self.onFinish = onFinish
     }
@@ -41,7 +41,7 @@ struct AITrackerView: View {
 
             PoseOverlayView(joints: cameraManager.joints)
                 .ignoresSafeArea()
-                
+
             Rectangle()
                 .stroke(feedbackColor(for: engine.feedbackMessage), lineWidth: 4)
                 .shadow(color: feedbackColor(for: engine.feedbackMessage).opacity(0.8), radius: 10)
@@ -77,7 +77,7 @@ struct AITrackerView: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 16)
-                
+
                 if showPlusOne {
                     Text("+1")
                         .font(.system(size: 60, weight: .heavy, design: .rounded))
@@ -98,90 +98,102 @@ struct AITrackerView: View {
         }
         .navigationBarHidden(true)
 
-               .task {
+        // MARK: - Lifecycle
 
-                   await engine.setup()
+        .task {
+            await engine.setup()
+            cameraManager.checkPermission()
+            coach.speak("Ready. Let's go!")
+        }
+        .onDisappear {
+            cameraManager.stopSession()
+        }
 
-                   cameraManager.checkPermission()
-                   coach.speak("Ready. Let's go!")
-               }
-               .onDisappear {
-                   cameraManager.stopSession()
-               }
-               .onChange(of: cameraManager.bodyPose) { newPose in
-                   if let pose = newPose {
-                       engine.processFrame(observation: pose)
-                   }
-               }
-        .onChange(of: cameraManager.handPose) { newHandPose in
+        // MARK: - Body Pose → Engine
+
+        .onChange(of: cameraManager.bodyPose) { _, newPose in
+            if let pose = newPose {
+                engine.processFrame(observation: pose)
+            }
+        }
+
+        // MARK: - Hand Pose → Gesture Controller
+
+        .onChange(of: cameraManager.handPose) { _, newHandPose in
             if let pose = newHandPose {
                 gestureCtrl.processHandPose(observation: pose)
             }
         }
-        .onChange(of: engine.repsCount) { _ in
+
+        // MARK: - Rep Animation
+
+        .onChange(of: engine.repsCount) { _, _ in
             triggerRepAnimation()
             coach.speak("\(engine.repsCount)")
         }
-        .onChange(of: gestureCtrl.didConfirmSet) { confirmed in
-                    if confirmed {
-                        coach.speak("Set completed! Great job.")
-                        onFinish?(engine.repsCount)
 
-                        Task { @MainActor in
+        // MARK: - ✅ ФИКС: Gesture Events через PassthroughSubject (работает каждый раз)
 
-                            try? await Task.sleep(for: .seconds(1.5))
-                            guard !Task.isCancelled else { return }
-                            dismiss()
-                        }
-                    }
+        .onReceive(gestureCtrl.gestureAction) { action in
+            print("📩 AITrackerView: Получено событие жеста — \(action)")
+            switch action {
+            case .confirmSet:
+                coach.speak("Set completed! Great job.")
+                onFinish?(engine.repsCount)
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(1.5))
+                    guard !Task.isCancelled else { return }
+                    dismiss()
                 }
-                .onChange(of: gestureCtrl.didCancelSet) { canceled in
-                    if canceled {
-                        coach.speak("Tracker canceled.")
 
-                        Task { @MainActor in
-                            try? await Task.sleep(for: .seconds(1.0))
-                            guard !Task.isCancelled else { return }
-                            dismiss()
-                        }
-                    }
+            case .cancelSet:
+                coach.speak("Tracker canceled.")
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(1.0))
+                    guard !Task.isCancelled else { return }
+                    dismiss()
                 }
-                .onChange(of: engine.vbtWarningTriggered) { triggered in
-                           if triggered {
+            }
+        }
 
-                               coach.speak("Bar speed dropping! Last two reps, push!")
+        // MARK: - VBT Warning
 
-                               let generator = UINotificationFeedbackGenerator()
-                               generator.notificationOccurred(.warning)
-                           }
-                       }
+        .onChange(of: engine.vbtWarningTriggered) { _, triggered in
+            if triggered {
+                coach.speak("Bar speed dropping! Last two reps, push!")
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.warning)
+            }
+        }
     }
-    
+
+    // MARK: - Permission Denied
+
     @ViewBuilder
     private var permissionDeniedView: some View {
         VStack(spacing: 24) {
             Spacer()
-            
+
             Image(systemName: "camera.slash.fill")
                 .font(.system(size: 60))
                 .foregroundColor(.red)
                 .padding()
                 .background(Color.red.opacity(0.1))
                 .clipShape(Circle())
-            
+
             VStack(spacing: 8) {
                 Text("Camera Access Required")
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(.white)
-                
+
                 Text("AI Tracking needs camera access to analyze your form and count reps. Please enable it in Settings.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.gray)
                     .padding(.horizontal, 32)
             }
-            
+
             Button(action: {
                 if let url = URL(string: UIApplication.openSettingsURLString) {
                     UIApplication.shared.open(url)
@@ -196,41 +208,7 @@ struct AITrackerView: View {
                     .clipShape(Capsule())
             }
             .padding(.top, 16)
-            
-            Spacer()
-            finishButton
-        }
-        .padding(.horizontal, 24)
-        .padding(.vertical, 16)
-        .background(Color.black.opacity(0.8))
-        .ignoresSafeArea()
-    }
-    
-    @ViewBuilder
-    private var cameraNotSupportedView: some View {
-        VStack(spacing: 24) {
-            Spacer()
-            
-            Image(systemName: "apple.terminal.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.orange)
-                .padding()
-                .background(Color.orange.opacity(0.1))
-                .clipShape(Circle())
-            
-            VStack(spacing: 8) {
-                Text("Simulator Not Supported")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                Text("The iOS Simulator does not support the camera. Please run the app on a physical device to use AI Tracking.")
-                    .font(.body)
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.gray)
-                    .padding(.horizontal, 32)
-            }
-            
+
             Spacer()
             finishButton
         }
@@ -240,7 +218,45 @@ struct AITrackerView: View {
         .ignoresSafeArea()
     }
 
-        @ViewBuilder
+    // MARK: - Simulator Not Supported
+
+    @ViewBuilder
+    private var cameraNotSupportedView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "apple.terminal.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.orange)
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .clipShape(Circle())
+
+            VStack(spacing: 8) {
+                Text("Simulator Not Supported")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+
+                Text("The iOS Simulator does not support the camera. Please run the app on a physical device to use AI Tracking.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 32)
+            }
+
+            Spacer()
+            finishButton
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+        .background(Color.black.opacity(0.8))
+        .ignoresSafeArea()
+    }
+
+    // MARK: - Live Muscle PiP
+
+    @ViewBuilder
     private var liveMusclePiP: some View {
         BodyHeatmapView(
             muscleIntensities: engine.liveMuscleTension,
@@ -250,17 +266,24 @@ struct AITrackerView: View {
             userGender: userGender,
             showLabels: false
         )
-            .frame(width: 100, height: 220)
-            .cornerRadius(16)
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(engine.isTrackingAction ? themeManager.current.primaryAccent.opacity(0.8) : Color.gray.opacity(0.5),
-                            lineWidth: engine.isTrackingAction ? 3 : 2)
-            )
-            .shadow(color: engine.isTrackingAction ? themeManager.current.primaryAccent.opacity(0.4) : .clear, radius: 10, x: 0, y: 5)
-            .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
-            .animation(.easeInOut(duration: 0.1), value: engine.liveMuscleTension)
-        }
+        .frame(width: 100, height: 220)
+        .cornerRadius(16)
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(engine.isTrackingAction
+                        ? themeManager.current.primaryAccent.opacity(0.8)
+                        : Color.gray.opacity(0.5),
+                        lineWidth: engine.isTrackingAction ? 3 : 2)
+        )
+        .shadow(color: engine.isTrackingAction
+                ? themeManager.current.primaryAccent.opacity(0.4)
+                : .clear,
+                radius: 10, x: 0, y: 5)
+        .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
+        .animation(.easeInOut(duration: 0.1), value: engine.liveMuscleTension)
+    }
+
+    // MARK: - Gesture HUD
 
     @ViewBuilder
     private var gestureHUD: some View {
@@ -272,10 +295,13 @@ struct AITrackerView: View {
 
                 Circle()
                     .trim(from: 0.0, to: CGFloat(gestureCtrl.gestureProgress))
-                    .stroke(gestureCtrl.activeGesture == .victory ? Color.green : Color.red, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .stroke(
+                        gestureCtrl.activeGesture == .victory ? Color.green : Color.red,
+                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                    )
                     .frame(width: 80, height: 80)
                     .rotationEffect(.degrees(-90))
-                    .animation(.linear(duration: 0.1), value: gestureCtrl.gestureProgress)
+                    .animation(.linear(duration: 0.08), value: gestureCtrl.gestureProgress)
 
                 if gestureCtrl.activeGesture == .victory {
                     Text("✌️")
@@ -293,6 +319,8 @@ struct AITrackerView: View {
         }
     }
 
+    // MARK: - Gesture Pill (hint)
+
     private var gesturePill: some View {
         HStack(spacing: 8) {
             Text("✌️")
@@ -308,9 +336,12 @@ struct AITrackerView: View {
         .padding(.bottom, 8)
     }
 
+    // MARK: - Top HUD
+
     private var topHUD: some View {
         VStack(spacing: 8) {
             gesturePill
+
             Text("\(engine.repsCount)")
                 .font(.system(size: 80, weight: .heavy, design: .rounded))
                 .foregroundColor(.white)
@@ -320,16 +351,18 @@ struct AITrackerView: View {
 
             HStack(spacing: 8) {
                 Circle()
-                    .fill(engine.isTrackingAction ? themeManager.current.primaryAccent : Color.white.opacity(0.5))
+                    .fill(engine.isTrackingAction
+                          ? themeManager.current.primaryAccent
+                          : Color.white.opacity(0.5))
                     .frame(width: 10, height: 10)
                     .animation(.easeInOut(duration: 0.2), value: engine.isTrackingAction)
 
                 Text(LocalizedStringKey(engine.feedbackMessage))
-                                    .font(.title3)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(feedbackColor(for: engine.feedbackMessage))
-                                    .animation(.easeInOut(duration: 0.2), value: engine.feedbackMessage)
-                            }
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .foregroundColor(feedbackColor(for: engine.feedbackMessage))
+                    .animation(.easeInOut(duration: 0.2), value: engine.feedbackMessage)
+            }
             .padding(.horizontal, 20)
             .padding(.vertical, 10)
             .background(Color.black.opacity(0.4))
@@ -347,6 +380,8 @@ struct AITrackerView: View {
         .shadow(color: .black.opacity(0.2), radius: 20, x: 0, y: 10)
         .padding(.top, 10)
     }
+
+    // MARK: - Finish Button
 
     private var finishButton: some View {
         Button(action: {
@@ -372,40 +407,42 @@ struct AITrackerView: View {
         .padding(.bottom, 20)
     }
 
+    // MARK: - Helpers
+
     private func feedbackColor(for message: String) -> Color {
-            let lowercased = message.lowercased()
-            if lowercased.contains("occluded") || lowercased.contains("adjust") {
-                return .orange
-            } else if lowercased.contains("tracking") {
-                return .green
-            } else {
-                return .white
-            }
+        let lowercased = message.lowercased()
+        if lowercased.contains("occluded") || lowercased.contains("adjust") {
+            return .orange
+        } else if lowercased.contains("tracking") {
+            return .green
+        } else {
+            return .white
         }
+    }
 
     private func triggerRepAnimation() {
         let generator = UIImpactFeedbackGenerator(style: .heavy)
         generator.impactOccurred()
-        
+
         withAnimation(.spring(response: 0.2, dampingFraction: 0.4, blendDuration: 0)) {
             repScale = 1.3
         }
-        
+
         plusOneOffset = 0
         plusOneOpacity = 1
         showPlusOne = true
-        
+
         withAnimation(.easeOut(duration: 0.8)) {
             plusOneOffset = -100
             plusOneOpacity = 0
         }
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6, blendDuration: 0)) {
                 repScale = 1.0
             }
         }
-        
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
             showPlusOne = false
         }

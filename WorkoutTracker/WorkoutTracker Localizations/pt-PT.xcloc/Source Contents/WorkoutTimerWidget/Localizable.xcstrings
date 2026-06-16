@@ -1,0 +1,36 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Configuration" : {
+
+    },
+    "Favorite Emoji" : {
+
+    },
+    "Live Workout" : {
+
+    },
+    "Next" : {
+
+    },
+    "Next: %@" : {
+
+    },
+    "Resting" : {
+
+    },
+    "Target: %@" : {
+
+    },
+    "This is an example widget." : {
+
+    },
+    "Weight: %@" : {
+
+    },
+    "Workout" : {
+
+    }
+  },
+  "version" : "1.1"
+}

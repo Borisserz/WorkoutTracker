@@ -507,11 +507,16 @@ struct GoalsSectionView: View {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
             viewModel.activeGoals.removeAll { $0.id == goal.id }
         }
-        context.delete(goal)
-        do {
-            try context.save()
-        } catch {
-            print("Error deleting goal: \(error)")
+        
+        let goalId = goal.id
+        let descriptor = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.id == goalId })
+        if let goalToDelete = try? context.fetch(descriptor).first {
+            context.delete(goalToDelete)
+            do {
+                try context.save()
+            } catch {
+                print("Error deleting goal: \(error)")
+            }
         }
     }
 }

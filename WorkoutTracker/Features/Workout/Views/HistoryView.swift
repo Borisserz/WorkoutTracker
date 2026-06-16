@@ -3,12 +3,7 @@
 internal import SwiftUI
 import SwiftData
 
-struct SearchedWorkout: Identifiable, Equatable {
-    let id = UUID()
-    let name: String
-    let description: String
-    var isFavorite: Bool = false
-}
+
 
 struct HistoryView: View {
     @Environment(DIContainer.self) private var di
@@ -22,8 +17,7 @@ struct HistoryView: View {
     @State private var isSearching = false
     @State private var showSparks = false
 
-    @State private var showDetailSheet = false
-    @State private var detailWorkoutId: UUID? = nil
+
 
     @State private var selectedFilter: WorkoutView.FilterPeriod = .all
     @State private var sortOption: WorkoutView.SortOption = .dateDescending
@@ -32,14 +26,7 @@ struct HistoryView: View {
 
     @State private var isEditingList = false
 
-    @State private var searchDatabase: [SearchedWorkout] = [
-        SearchedWorkout(name: "Arnold Workout", description: "Classic Golden Era program: chest and back supersets for maximum pumping and chest expansion."),
-                SearchedWorkout(name: "Fullbody Base", description: "Powerful foundation. Squats, bench press and deadlift in one session. Perfect for releasing testosterone."),
-                SearchedWorkout(name: "Split Breast/Triceps", description: "Killer bench press session. Includes heavy barbell bench press, spread bars, and French bench press."),
-                SearchedWorkout(name: "Foot Killer 3000", description: "Only for the brave. Heavy squats, leg presses, and lunges. It's going to be hard to walk the next day!"),
-                SearchedWorkout(name: "Delta Guns", description: "Focus on shoulders. The army bench press, side swings and chin pull will make your shoulders round like balls."),
-                SearchedWorkout(name: "Cardio Intensive", description: "Interval (HIIT) training. Pulse 160+, sweat in a stream, fat burning at maximum.")
-    ]
+
 
     var body: some View {
         NavigationStack {
@@ -59,18 +46,6 @@ struct HistoryView: View {
 
                         VStack(spacing: 12) {
                             HistorySearchBar(text: $searchText, isSearching: $isSearching)
-
-                            if isSearching && !searchText.isEmpty {
-                                SearchResultsDropdown(
-                                    results: $searchDatabase,
-                                    searchText: searchText,
-                                    onSelect: { workout in
-                                        hideKeyboard()
-                                        detailWorkoutId = workout.id
-                                        showDetailSheet = true
-                                    }
-                                )
-                            }
                         }
                         .zIndex(20)
 
@@ -87,7 +62,7 @@ struct HistoryView: View {
                                 .padding(.horizontal, 20)
 
                             DynamicWorkoutListView(
-                                searchText: "",
+                                searchText: searchText,
                                 filter: selectedFilter,
                                 sort: sortOption,
                                 favoritesOnly: showFavoritesOnly,
@@ -111,22 +86,7 @@ struct HistoryView: View {
             }
             .navigationBarHidden(true)
 
-            .sheet(isPresented: $showDetailSheet) {
-                if let id = detailWorkoutId, let index = searchDatabase.firstIndex(where: { $0.id == id }) {
-                    QuickWorkoutDetailSheet(
-                        workout: $searchDatabase[index],
-                        onAddWorkout: {
-                            Task {
-                                _ = await workoutService.createWorkout(title: searchDatabase[index].name, presetID: nil, isAIGenerated: true)
-                            }
-                            showDetailSheet = false
-                            triggerSparks()
-                        }
-                    )
-                    .presentationDetents([.fraction(0.65)])
-                    .presentationDragIndicator(.visible)
-                }
-            }
+
         }
     }
 
@@ -344,7 +304,7 @@ struct HistorySearchBar: View {
                     .font(.system(size: 18, weight: .bold))
             }
 
-            TextField("Find or add (e.g. Arnold's Workout)", text: $text)
+            TextField("Search workout history...", text: $text)
                 .foregroundColor(colorScheme == .dark ? .white : .black)
                 .onTapGesture { withAnimation { isSearching = true } }
                 .onChange(of: text) { _ in withAnimation { isSearching = true } }
@@ -361,55 +321,7 @@ struct HistorySearchBar: View {
     }
 }
 
-struct SearchResultsDropdown: View {
-    @Binding var results: [SearchedWorkout]
-    var searchText: String
-    var onSelect: (SearchedWorkout) -> Void
-    @Environment(\.colorScheme) private var colorScheme
 
-    var filtered: [SearchedWorkout] {
-        if searchText.isEmpty { return results }
-        let query = searchText.lowercased()
-        let f = results.filter { $0.name.lowercased().contains(query) || $0.description.lowercased().contains(query) }
-        return f.isEmpty ? [SearchedWorkout(name: searchText, description: "Generate a new workout")] : f
-    }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            ForEach(filtered.indices, id: \.self) { index in
-                HStack(spacing: 12) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(filtered[index].name).font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
-                        Text(filtered[index].description).font(.system(size: 12)).foregroundColor(.gray).lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .onTapGesture { onSelect(filtered[index]) }
-
-                    Button(action: {
-                        withAnimation { results[index].isFavorite.toggle() }
-                        HapticManager.shared.impact(.light)
-                    }) {
-                        Image(systemName: filtered[index].isFavorite ? "star.fill" : "star")
-                            .font(.system(size: 20))
-                            .foregroundColor(filtered[index].isFavorite ? .yellow : .gray.opacity(0.5))
-                            .padding(12)
-                            .background(Color.primary.opacity(0.05))
-                            .clipShape(Circle())
-                    }
-                }
-                .padding(.vertical, 12).padding(.horizontal, 16).background(Color.primary.opacity(0.01))
-
-                if index < filtered.count - 1 {
-                    Divider().background(Color.primary.opacity(0.1)).padding(.horizontal, 16)
-                }
-            }
-        }
-        .background(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.12) : Color.white).clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.05), lineWidth: 1)).padding(.horizontal, 20)
-        .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
-    }
-}
 
 struct PremiumCategoriesIslands: View {
     @Binding var selectedFilter: WorkoutView.FilterPeriod
@@ -490,72 +402,7 @@ struct PremiumCategoryCard: View {
     }
 }
 
-struct QuickWorkoutDetailSheet: View {
-    @Binding var workout: SearchedWorkout
-    var onAddWorkout: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
 
-    var body: some View {
-        ZStack {
-            (colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.12) : Color.white).edgesIgnoringSafeArea(.all)
-
-            VStack(spacing: 24) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(workout.name)
-                            .font(.system(size: 26, weight: .heavy, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-
-                        Text("Training Information")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                    }
-                    Spacer()
-
-                    Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { workout.isFavorite.toggle() }
-                        HapticManager.shared.impact(.medium)
-                    }) {
-                        Image(systemName: workout.isFavorite ? "star.fill" : "star")
-                            .font(.system(size: 24))
-                            .foregroundColor(workout.isFavorite ? .yellow : .gray.opacity(0.5))
-                            .padding(14)
-                            .background(Color.primary.opacity(0.05))
-                            .clipShape(Circle())
-                            .scaleEffect(workout.isFavorite ? 1.1 : 1.0)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Image(systemName: "doc.text.fill").foregroundColor(.cyan)
-                        Text("description").font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
-                    }
-                    Text(workout.description)
-                        .font(.system(size: 15, weight: .regular))
-                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8))
-                        .lineSpacing(6)
-                }
-                .padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Color.primary.opacity(0.03)).cornerRadius(20).overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.primary.opacity(0.05), lineWidth: 1))
-
-                Spacer()
-
-                Button(action: onAddWorkout) {
-                    HStack {
-                        Image(systemName: "plus.circle.fill").font(.title3)
-                        Text("Save to My Database").font(.system(size: 18, weight: .bold))
-                    }
-                    .frame(maxWidth: .infinity).padding(.vertical, 18)
-                    .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))
-                    .foregroundColor(.white).clipShape(RoundedRectangle(cornerRadius: 20))
-                    .shadow(color: .cyan.opacity(0.4), radius: 15, y: 5)
-                }
-                .padding(.bottom, 20)
-            }
-            .padding(.horizontal, 24).padding(.top, 40)
-        }
-    }
-}
 
 #if canImport(UIKit)
 import UIKit

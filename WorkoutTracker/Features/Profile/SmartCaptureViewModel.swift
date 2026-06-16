@@ -5,6 +5,7 @@ internal import SwiftUI
 import AVFoundation
 import Vision
 import Observation
+import Combine
 
 @MainActor
 @Observable
@@ -26,10 +27,24 @@ final class SmartCaptureViewModel: NSObject {
     @ObservationIgnored private let visionProcessor = VisionProcessor()
     @ObservationIgnored private var frameCounter = 0
     @ObservationIgnored nonisolated(unsafe) private var countdownTask: Task<Void, Never>?
+    @ObservationIgnored private var cancellables = Set<AnyCancellable>()
 
     override init() {
         super.init()
         checkPermission()
+        setupGestureSubscription()
+    }
+
+    private func setupGestureSubscription() {
+        gestureController.gestureAction
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] action in
+                guard let self else { return }
+                if action == .confirmSet, self.isBodyAligned {
+                    self.startCountdown()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     deinit {
@@ -184,13 +199,6 @@ extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, A
 
                 if let hand = result.handPose {
                     gestureController.processHandPose(observation: hand)
-
-                    if gestureController.didConfirmSet {
-                        gestureController.didConfirmSet = false
-                        if self.isBodyAligned {
-                            startCountdown()
-                        }
-                    }
                 }
             } catch {
                 print("Vision error: \(error)")
