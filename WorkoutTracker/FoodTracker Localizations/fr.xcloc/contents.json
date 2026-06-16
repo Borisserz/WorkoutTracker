@@ -1,0 +1,12 @@
+{
+  "developmentRegion" : "en",
+  "project" : "FoodTracker.xcodeproj",
+  "targetLocale" : "fr",
+  "toolInfo" : {
+    "toolBuildNumber" : "17C529",
+    "toolID" : "com.apple.dt.xcode",
+    "toolName" : "Xcode",
+    "toolVersion" : "26.3"
+  },
+  "version" : "1.0"
+}
