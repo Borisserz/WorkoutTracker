@@ -26,23 +26,20 @@ Pods/
 .DS_Store
 
 Secrets.swift
+vertex_credentials.json
+sa.json
 
-Secrets.swift
-
+# Local scratch / one-off tooling
 copy.sh
-
 copy-swift.sh
-
 main.sh
-
 q.py
 script.py
 names.json
-
-# Google Cloud Vertex AI Credentials
-vertex_credentials.json
-
 *.sh
+*.log
+*.tmp
+.agents/
 
 # === Firebase ===
 functions/node_modules/
@@ -53,6 +50,3 @@ functions/.runtimeconfig.json
 firebase-debug.log
 firebase-debug.*.log
 ui-debug.log
-.agents/
-
-.agents/
