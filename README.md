@@ -3,6 +3,12 @@
 </p>
 
 <p align="center">
+  <a href="https://apps.apple.com/us/app/ai-workout-coach-gym-tracker/id6774895106">
+    <img src="assets/readme/badges.svg" alt="App Store, iOS 17+, watchOS 10+, SwiftUI, SwiftData, CoreML, EN/RU" width="100%">
+  </a>
+</p>
+
+<p align="center">
   <a href="https://apps.apple.com/us/app/ai-workout-coach-gym-tracker/id6774895106"><strong>App Store</strong></a>
   ·
   <a href="https://github.com/Borisserz/FoodTracker">FoodTracker</a>
