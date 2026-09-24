@@ -308,20 +308,85 @@ struct OverviewAnatomyCard: View {
                 .transition(.scale(scale: 0.95).combined(with: .opacity))
             }
 
-            // MARK: - Subtle Pastel Legend Bar
-            HStack(spacing: 16) {
-                HStack(spacing: 5) {
-                    Circle().fill(PastelTheme.pastelSage).frame(width: 6, height: 6)
-                    Text("Ready 80-100%").font(.system(size: 11)).foregroundStyle(PastelTheme.textTertiary)
+            // MARK: - Prominent Recovery Color Legend Bar
+            HStack(spacing: 8) {
+                // Sage: 80-100% Ready
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(PastelTheme.pastelSage)
+                        .frame(width: 8, height: 8)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("80–100%")
+                            .font(.caption.bold())
+                            .foregroundStyle(PastelTheme.pastelSage)
+
+                        Text("Готовы")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
                 }
-                HStack(spacing: 5) {
-                    Circle().fill(PastelTheme.pastelAmber).frame(width: 6, height: 6)
-                    Text("55-79%").font(.system(size: 11)).foregroundStyle(PastelTheme.textTertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(PastelTheme.pastelSage.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(PastelTheme.pastelSage.opacity(0.2), lineWidth: 1)
+                )
+
+                // Amber: 55-79% Recovering
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(PastelTheme.pastelAmber)
+                        .frame(width: 8, height: 8)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("55–79%")
+                            .font(.caption.bold())
+                            .foregroundStyle(PastelTheme.pastelAmber)
+
+                        Text("В норме")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
                 }
-                HStack(spacing: 5) {
-                    Circle().fill(PastelTheme.pastelPeach).frame(width: 6, height: 6)
-                    Text("<55% Fatigued").font(.system(size: 11)).foregroundStyle(PastelTheme.textTertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(PastelTheme.pastelAmber.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(PastelTheme.pastelAmber.opacity(0.2), lineWidth: 1)
+                )
+
+                // Peach: <55% Fatigued
+                HStack(spacing: 7) {
+                    Circle()
+                        .fill(PastelTheme.pastelPeach)
+                        .frame(width: 8, height: 8)
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("<55%")
+                            .font(.caption.bold())
+                            .foregroundStyle(PastelTheme.pastelPeach)
+
+                        Text("Отдых")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(PastelTheme.pastelPeach.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(PastelTheme.pastelPeach.opacity(0.2), lineWidth: 1)
+                )
             }
             .padding(.top, 2)
 
