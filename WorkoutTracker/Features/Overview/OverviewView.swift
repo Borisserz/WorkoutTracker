@@ -62,6 +62,7 @@ struct OverviewView: View {
     @State private var isFrontView = true
     @State private var vitals = VitalsMonitor()
     @State private var showCommitmentSheet = false
+    @State private var showCNSSheet = false
 
     var body: some View {
         NavigationStack(path: $router.path) {
@@ -85,6 +86,7 @@ struct OverviewView: View {
                             recoveryDict: recoveryDict,
                             userGender: userGender,
                             isLocked: recentWorkouts.isEmpty,
+                            recentWorkouts: recentWorkouts,
                             onBodyAnalysisTap: {
                                 let report = BodyAnalysisEngine.generateReport(
                                     cnsScore: cnsScore,
@@ -103,7 +105,10 @@ struct OverviewView: View {
                         OverviewVitalsRowView(
                             cnsScore: cnsScore,
                             heartRate: vitals.currentBPM,
-                            waterLiters: dashboardViewModel.todayWaterLiters
+                            waterLiters: dashboardViewModel.todayWaterLiters,
+                            onCNSTap: {
+                                showCNSSheet = true
+                            }
                         )
 
                         // 4. Top Exercises Shelf
@@ -163,6 +168,11 @@ struct OverviewView: View {
                 }
                 .presentationDetents([.fraction(0.55)])
                 .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showCNSSheet) {
+                CNSExplanationSheet(cnsScore: cnsScore)
+                    .presentationDetents([.height(340)])
+                    .presentationDragIndicator(.visible)
             }
             .onAppear {
                 vitals.startMonitoring()
@@ -298,6 +308,80 @@ struct CommitmentButton: View {
             )
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - CNS Explanation Sheet (Calm & Sports Science)
+struct CNSExplanationSheet: View {
+    let cnsScore: Double
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                PastelTheme.canvas.ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Central Nervous System")
+                                .font(.headline)
+                                .foregroundStyle(PastelTheme.textPrimary)
+                            Text("Autonomic readiness evaluation")
+                                .font(.caption)
+                                .foregroundStyle(PastelTheme.textSecondary)
+                        }
+
+                        Spacer()
+
+                        Text("\(Int(cnsScore))%")
+                            .font(.title2.bold())
+                            .foregroundStyle(PastelTheme.pastelLavender)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(PastelTheme.cardSurface)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    }
+
+                    Text("The CNS Index reflects the balance between sympathetic (fight-or-flight) and parasympathetic (recovery) nervous pathways. It is calculated using Heart Rate Variability (HRV), resting heart rate, and sleep duration.")
+                        .font(.subheadline)
+                        .lineSpacing(4)
+                        .foregroundStyle(PastelTheme.textSecondary)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(cnsScore >= 80 ? "Readiness: Prime" : (cnsScore >= 60 ? "Readiness: Moderate" : "Readiness: Strained"))
+                            .font(.footnote.bold())
+                            .foregroundStyle(cnsScore >= 80 ? PastelTheme.pastelSage : (cnsScore >= 60 ? PastelTheme.pastelAmber : PastelTheme.pastelPeach))
+
+                        Text(cnsScore >= 80 
+                            ? "Neural pathways are fully restored. Safe to attempt maximal lifts, progressive overload, and explosive movements."
+                            : "Accumulated fatigue present. Focus on moderate hypertrophy or active recovery, sparing excessive spinal loading.")
+                            .font(.caption)
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+                    .padding(14)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                    Spacer()
+                }
+                .padding(20)
+            }
+            .navigationTitle("CNS Readiness")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(PastelTheme.pastelOat)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }
 

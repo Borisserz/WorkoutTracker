@@ -6,40 +6,59 @@ struct OverviewVitalsRowView: View {
     let cnsScore: Double
     let heartRate: Double
     let waterLiters: Double
+    let onCNSTap: (() -> Void)?
 
-    init(cnsScore: Double, heartRate: Double, waterLiters: Double) {
+    init(
+        cnsScore: Double,
+        heartRate: Double,
+        waterLiters: Double,
+        onCNSTap: (() -> Void)? = nil
+    ) {
         self.cnsScore = cnsScore
         self.heartRate = heartRate
         self.waterLiters = waterLiters
+        self.onCNSTap = onCNSTap
     }
 
     var body: some View {
         HStack(spacing: 10) {
-            // CNS Autonomic Readiness Chip
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(PastelTheme.pastelLavender)
-                    .frame(width: 8, height: 8)
+            // CNS Autonomic Readiness Chip (Interactive with soft haptics)
+            Button {
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                onCNSTap?()
+            } label: {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(PastelTheme.pastelLavender)
+                        .frame(width: 8, height: 8)
 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("CNS")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(PastelTheme.textSecondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 4) {
+                            Text("CNS")
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(PastelTheme.textSecondary)
 
-                    Text("\(Int(cnsScore))%")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(PastelTheme.textPrimary)
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 9))
+                                .foregroundStyle(PastelTheme.textTertiary)
+                        }
+
+                        Text("\(Int(cnsScore))%")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(PastelTheme.textPrimary)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(PastelTheme.cardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.chipRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: PastelTheme.chipRadius, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 14)
-            .padding(.vertical, 12)
-            .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: PastelTheme.chipRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: PastelTheme.chipRadius, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-            )
+            .buttonStyle(.plain)
 
             // Heart Rate / Resting BPM Chip
             HStack(spacing: 8) {
