@@ -37,6 +37,9 @@ struct OverviewAnatomyCard: View {
         self.onSettingsTap = onSettingsTap
     }
 
+    private let frontMuscleSlugs = ["chest", "deltoids", "biceps", "abs", "quadriceps"]
+    private let backMuscleSlugs = ["upper-back", "deltoids", "triceps", "lower-back", "gluteal", "hamstring", "calves"]
+
     private var averageReadiness: Int {
         guard !recoveryDict.isEmpty else { return 100 }
         let sum = recoveryDict.values.reduce(0, +)
@@ -155,19 +158,24 @@ struct OverviewAnatomyCard: View {
                     isCompactMode: true,
                     defaultToBack: !isFrontView,
                     userGender: userGender,
-                    showLabels: false,
+                    showLabels: true,
+                    selectedMuscleSlug: selectedMuscleSlug,
                     onMuscleTapped: { muscle, pct in
                         UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                            selectedMuscleSlug = muscle.slug
-                            selectedMuscleName = MuscleDisplayHelper.getDisplayName(for: muscle.slug)
-                            selectedMusclePct = pct
+                            if selectedMuscleSlug == muscle.slug {
+                                selectedMuscleSlug = nil
+                                selectedMuscleName = nil
+                            } else {
+                                selectedMuscleSlug = muscle.slug
+                                selectedMuscleName = MuscleDisplayHelper.getDisplayName(for: muscle.slug)
+                                selectedMusclePct = pct
+                            }
                         }
                     }
                 )
-                .frame(height: 370)
+                .frame(height: 380)
                 .scaleEffect(1.02)
-                .clipped()
                 .blur(radius: isLocked ? 10 : 0)
                 .disabled(isLocked)
 
@@ -195,7 +203,59 @@ struct OverviewAnatomyCard: View {
                     .padding(.horizontal, 20)
                 }
             }
-            .frame(height: 370)
+            .frame(height: 380)
+
+            // MARK: - Muscle Readiness Quick Chips (Directly Visible Readiness Percentages)
+            if !isLocked {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        let slugs = isFrontView ? frontMuscleSlugs : backMuscleSlugs
+                        ForEach(slugs, id: \.self) { slug in
+                            let pct = recoveryDict[slug] ?? 100
+                            let name = MuscleDisplayHelper.getDisplayName(for: slug)
+                            let isCurrentSelected = selectedMuscleSlug == slug
+                            let dotColor = muscleColor(for: pct)
+
+                            Button {
+                                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                    if selectedMuscleSlug == slug {
+                                        selectedMuscleSlug = nil
+                                        selectedMuscleName = nil
+                                    } else {
+                                        selectedMuscleSlug = slug
+                                        selectedMuscleName = name
+                                        selectedMusclePct = pct
+                                    }
+                                }
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(dotColor)
+                                        .frame(width: 6, height: 6)
+
+                                    Text(name)
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(isCurrentSelected ? PastelTheme.textOnOat : PastelTheme.textPrimary)
+
+                                    Text("\(pct)%")
+                                        .font(.caption.bold())
+                                        .foregroundStyle(isCurrentSelected ? PastelTheme.textOnOat : dotColor)
+                                }
+                                .padding(.horizontal, 11)
+                                .padding(.vertical, 7)
+                                .background(isCurrentSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule().stroke(isCurrentSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 2)
+                }
+            }
 
             // MARK: - Inline Muscle Detail Card (When Muscle is Tapped)
             if let name = selectedMuscleName, !isLocked {

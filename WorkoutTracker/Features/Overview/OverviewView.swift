@@ -111,11 +111,22 @@ struct OverviewView: View {
                             }
                         )
 
-                        // 4. Top Exercises Shelf
-                        OverviewTopExercisesCard(
-                            topExercises: dashboardViewModel.dashboardTopExercises,
-                            onSeeAllTap: { router.push(.exercises) },
-                            onExerciseTap: { name in router.push(.exerciseDetail(name)) }
+                        // 4. Today's Training Focus & Recommendation (Derived from live body readiness)
+                        let dailyReport = BodyAnalysisEngine.generateReport(
+                            cnsScore: cnsScore,
+                            recoveryDict: recoveryDict,
+                            recentWorkouts: recentWorkouts,
+                            fullRecoveryHours: storedRecoveryHours
+                        )
+
+                        OverviewDailyFocusCard(
+                            report: dailyReport,
+                            onGoToWorkout: {
+                                di.appState.selectedTab = 2
+                            },
+                            onOpenCatalog: {
+                                router.push(.exercises)
+                            }
                         )
 
                         Spacer(minLength: 100)

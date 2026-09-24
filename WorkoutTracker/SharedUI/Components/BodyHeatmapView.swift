@@ -11,6 +11,7 @@ struct BodyHeatmapView: View {
     let userGender: String
     let countLabel: String
     let showLabels: Bool
+    var selectedMuscleSlug: String? = nil
     var onMuscleTapped: ((MuscleGroup, Int) -> Void)? = nil
 
     @State private var isFrontViewLocal = true
@@ -37,6 +38,7 @@ struct BodyHeatmapView: View {
         userGender: String = "male",
         countLabel: String = "ex.",
         showLabels: Bool = true,
+        selectedMuscleSlug: String? = nil,
         onMuscleTapped: ((MuscleGroup, Int) -> Void)? = nil
     ) {
         self.muscleIntensities = muscleIntensities
@@ -47,6 +49,7 @@ struct BodyHeatmapView: View {
         self.userGender = userGender
         self.countLabel = countLabel
         self.showLabels = showLabels
+        self.selectedMuscleSlug = selectedMuscleSlug
         self.onMuscleTapped = onMuscleTapped
     }
 
@@ -74,13 +77,12 @@ struct BodyHeatmapView: View {
                 let tagsToShow = activeIsFront ? frontTags : backTags
 
                 ZStack {
-
+                    // Silhouette vector paths with direct path-level hit-testing
                     ZStack {
                         ForEach(currentMuscles) { muscle in
                             drawGhostMuscle(muscle, centeringOffset: centeringOffset)
                         }
                     }
-                    .drawingGroup()
 
                     if showLabels {
                         ForEach(currentMuscles.filter { tagsToShow.contains($0.slug) }) { muscle in
@@ -146,7 +148,7 @@ struct BodyHeatmapView: View {
         let finalXOffset = (activeIsFront == false && muscle.slug == "head") ? xOffset + 37.0 : xOffset
         let finalPath = rawPath.offsetBy(dx: finalXOffset, dy: 0)
 
-        let isSelected = selectedMuscle?.id == muscle.id
+        let isSelected = (selectedMuscle?.id == muscle.id) || (selectedMuscleSlug == muscle.slug)
         let themeColor = activeIsFront ? Color.blue : Color.red
 
         let intensity = animatedIntensities[muscle.slug]
@@ -174,16 +176,16 @@ struct BodyHeatmapView: View {
             fillColor = isRecoveryMode ? PastelTheme.pastelOat.opacity(0.9) : themeColor.opacity(0.6)
         }
 
-        return Button {
-            selectMuscle(muscle)
-        } label: {
-            ZStack {
-                finalPath.fill(fillColor)
-                let strokeColor = colorScheme == .dark ? Color(red: 0.13, green: 0.13, blue: 0.15) : Color.gray.opacity(0.3)
-                finalPath.stroke(isSelected ? .white : strokeColor, lineWidth: isSelected ? 2 : 1.5)
-            }
+        let strokeColor = colorScheme == .dark ? Color(red: 0.16, green: 0.17, blue: 0.20) : Color.gray.opacity(0.3)
+
+        return ZStack {
+            finalPath.fill(fillColor)
+            finalPath.stroke(isSelected ? PastelTheme.pastelOat : strokeColor, lineWidth: isSelected ? 2.5 : 1.2)
         }
-        .buttonStyle(.plain)
+        .contentShape(finalPath)
+        .onTapGesture {
+            selectMuscle(muscle)
+        }
     }
 
     func drawMuscleTag(_ muscle: MuscleGroup, centeringOffset: CGFloat, scale: CGFloat) -> some View {
@@ -198,21 +200,21 @@ struct BodyHeatmapView: View {
         var centerY = bounds.midY
 
         if activeIsFront {
-            if muscle.slug == "chest" { centerX -= 220; centerY -= 20 }
-            if muscle.slug == "deltoids" { centerX += 220; centerY -= 50 }
-            if muscle.slug == "biceps" { centerX += 300; centerY += 60 }
-            if muscle.slug == "abs" { centerX -= 180; centerY += 90 }
-            if muscle.slug == "quadriceps" { centerX += 190; centerY += 190 }
+            if muscle.slug == "chest" { centerX -= 140; centerY -= 10 }
+            if muscle.slug == "deltoids" { centerX += 145; centerY -= 30 }
+            if muscle.slug == "biceps" { centerX += 150; centerY += 40 }
+            if muscle.slug == "abs" { centerX -= 130; centerY += 60 }
+            if muscle.slug == "quadriceps" { centerX += 135; centerY += 120 }
         } else {
-            if muscle.slug == "upper-back" { centerX -= 240; centerY -= 20 }
-            if muscle.slug == "deltoids" { centerX += 220; centerY -= 50 }
-            if muscle.slug == "triceps" { centerX += 230; centerY += 130 }
-            if muscle.slug == "lower-back" { centerX -= 200; centerY += 100 }
-            if muscle.slug == "hamstring" { centerX += 230; centerY += 180 }
-            if muscle.slug == "calves" { centerX -= 200; centerY += 190 }
+            if muscle.slug == "upper-back" { centerX -= 140; centerY -= 10 }
+            if muscle.slug == "deltoids" { centerX += 145; centerY -= 30 }
+            if muscle.slug == "triceps" { centerX += 150; centerY += 50 }
+            if muscle.slug == "lower-back" { centerX -= 130; centerY += 70 }
+            if muscle.slug == "hamstring" { centerX += 135; centerY += 130 }
+            if muscle.slug == "calves" { centerX -= 130; centerY += 150 }
         }
 
-        let isSelected = selectedMuscle?.id == muscle.id
+        let isSelected = (selectedMuscle?.id == muscle.id) || (selectedMuscleSlug == muscle.slug)
         let themeColor = activeIsFront ? Color.blue : Color.red
         let percent = isRecoveryMode ? (animatedIntensities[muscle.slug] ?? 100) : nil
 
@@ -233,20 +235,14 @@ struct BodyHeatmapView: View {
         let generator = UISelectionFeedbackGenerator()
         generator.selectionChanged()
 
-        let isSelected = selectedMuscle?.id == muscle.id
+        let isCurrentlySelected = (selectedMuscle?.id == muscle.id) || (selectedMuscleSlug == muscle.slug)
 
         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            selectedMuscle = isSelected ? nil : muscle
+            selectedMuscle = isCurrentlySelected ? nil : muscle
         }
 
         let currentVal = animatedIntensities[muscle.slug] ?? 100
         onMuscleTapped?(muscle, currentVal)
-
-        if !isSelected {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                withAnimation { if selectedMuscle?.id == muscle.id { selectedMuscle = nil } }
-            }
-        }
     }
 
     private func getMuscles(isFront: Bool) -> [MuscleGroup] {
@@ -301,33 +297,38 @@ struct InteractiveMuscleTag: View {
     let themeColor: Color
     let action: () -> Void
 
-    @State private var isFloating = false
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        let floatOffset = isFloating ? CGFloat(-5) : CGFloat(5)
-        let delay = Double(name.count) * 0.15
+        let pct = percentage ?? 100
+        let indicatorColor: Color = pct >= 80 ? PastelTheme.pastelSage : (pct >= 55 ? PastelTheme.pastelAmber : PastelTheme.pastelPeach)
 
-        HStack(spacing: 4) {
-            Text(LocalizedStringKey(name))
+        Button {
+            action()
+        } label: {
+            HStack(spacing: 4 / scale) {
+                Circle()
+                    .fill(indicatorColor)
+                    .frame(width: 5 / scale, height: 5 / scale)
 
-            if let pct = percentage, isSelected {
+                Text(LocalizedStringKey(name))
+                    .font(.system(size: 11 / scale, weight: .medium, design: .rounded))
+                    .foregroundStyle(isSelected ? PastelTheme.textOnOat : (colorScheme == .dark ? Color.white.opacity(0.85) : Color.black.opacity(0.85)))
+
                 Text("\(pct)%")
-                    .foregroundColor(.white.opacity(0.8))
+                    .font(.system(size: 11 / scale, weight: .bold, design: .rounded))
+                    .foregroundStyle(isSelected ? PastelTheme.textOnOat : indicatorColor)
             }
+            .padding(.horizontal, 9 / scale)
+            .padding(.vertical, 5 / scale)
+            .background(isSelected ? PastelTheme.pastelOat : (colorScheme == .dark ? Color(red: 0.11, green: 0.12, blue: 0.14).opacity(0.92) : Color.white.opacity(0.92)))
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().stroke(isSelected ? PastelTheme.pastelOat : (colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.1)), lineWidth: 1 / scale)
+            )
+            .shadow(color: Color.black.opacity(0.2), radius: 3 / scale, y: 2 / scale)
         }
-        .font(.system(size: 15 / scale, weight: .bold, design: .rounded))
-        .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black.opacity(0.8)))
-        .padding(.horizontal, 16 / scale)
-        .padding(.vertical, 8 / scale)
-        .background(isSelected ? themeColor : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.15)))
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(isSelected ? Color.clear : (colorScheme == .dark ? Color.white.opacity(0.3) : Color.black.opacity(0.4)), lineWidth: 2 / scale))
-        .shadow(color: isSelected ? themeColor.opacity(0.8) : .black.opacity(0.1), radius: isSelected ? 15 / scale : 5 / scale, x: 0, y: 5 / scale)
+        .buttonStyle(.plain)
         .position(x: centerX, y: centerY)
-        .offset(y: floatOffset)
-        .animation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true).delay(delay), value: isFloating)
-        .onTapGesture { action() }
-        .onAppear { isFloating = true }
     }
 }
