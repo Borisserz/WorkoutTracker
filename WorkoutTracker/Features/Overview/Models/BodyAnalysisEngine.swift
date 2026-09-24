@@ -162,10 +162,10 @@ enum BodyAnalysisEngine {
         if recentWorkouts.isEmpty {
             return BodyAnalysisReport(
                 overallReadiness: 100,
-                cnsStatusTitle: "Baseline Homeostasis",
-                executiveAssessment: "Muscular tissue is fully rested with zero residual neuromuscular fatigue. All kinetic chains are primed for maximum volume and progressive overload.",
-                recommendedTargetTitle: "Full Body Foundation or Upper Split",
-                recommendedRestrictions: "None. Systemic capacity is at peak readiness.",
+                cnsStatusTitle: "Базовый гомеостаз",
+                executiveAssessment: "Мышечные волокна полностью отдохнули от нагрузок. Нервно-мышечные синапсы готовы к максимальному тренировочному объёму и силовой прогрессии.",
+                recommendedTargetTitle: "Базовая силовая тренировка / Full Body",
+                recommendedRestrictions: "Ограничений нет. Мышечный аппарат в состоянии пиковой готовности.",
                 primeMuscles: prime,
                 recoveringMuscles: [],
                 nextWorkoutAdvice: advice,
@@ -176,20 +176,20 @@ enum BodyAnalysisEngine {
         // Executive assessment synthesis
         let cnsNarrative: String
         if cnsScore >= 85 {
-            cnsNarrative = "Autonomic nervous system shows high vagal tone and optimal central recovery."
+            cnsNarrative = "Вегетативная нервная система демонстрирует высокий парасимпатический тонус и оптимальное центральное восстановление."
         } else if cnsScore >= 70 {
-            cnsNarrative = "Central nervous system indicates moderate cumulative strain from recent training bouts."
+            cnsNarrative = "Центральная нервная система испытывает умеренную кумулятивную нагрузку от недавних тренировочных сессий."
         } else {
-            cnsNarrative = "Elevated sympathetic activation and accumulated neural fatigue detected."
+            cnsNarrative = "Зафиксирована выраженная симпатическая активация и накопленное нервно-мышечное утомление."
         }
         
         let muscularNarrative: String
         if lowBackPct < 70 || hamsPct < 70 {
-            muscularNarrative = "The posterior chain is actively repairing micro-trauma from prior pulling volume. Meanwhile, the anterior chain shows high glycogen replenishment."
+            muscularNarrative = "Задняя мышечная цепь активно регенерирует микроструктуры волокон после тяговой работы. Передняя цепь полностью восстановила запасы гликогена."
         } else if chestPct < 70 {
-            muscularNarrative = "Pectoral and anterior deltoid fibers are undergoing active supercompensation. Back and lower-body structures are fully recovered."
+            muscularNarrative = "Грудные мышцы и передние пучки дельт проходят фазу белкового синтеза и суперкомпенсации. Спина и ноги полностью готовы к нагрузке."
         } else {
-            muscularNarrative = "Primary stabilizers and major muscle groups maintain high cellular recovery across all kinetic planes."
+            muscularNarrative = "Основные мышечные группы и стабилизаторы сохраняют высокую клеточную готовность во всех плоскостях движения."
         }
         
         let assessment = "\(cnsNarrative) \(muscularNarrative)"
@@ -199,30 +199,30 @@ enum BodyAnalysisEngine {
         let restrictions: String
         
         if chestPct >= 85 && (recoveryDict["triceps"] ?? 100) >= 80 {
-            targetTitle = "Push Protocol (Chest, Deltoids, Triceps)"
+            targetTitle = "Жимовой комплекс (Грудные, Дельты, Трицепс)"
             if lowBackPct < 75 {
-                restrictions = "Avoid direct axial loading or unsupported spinal bending for 18h."
+                restrictions = "Исключить осевую нагрузку на позвоночник и наклоны с весом ещё ~18 ч."
             } else {
-                restrictions = "Standard volume tolerated. Focus on controlled eccentric tempo."
+                restrictions = "Стандартный тренировочный объём. Фокус на подконтрольной эксцентрической фазе."
             }
         } else if backPct >= 85 && (recoveryDict["biceps"] ?? 100) >= 80 {
-            targetTitle = "Pull Protocol (Lats, Upper Back, Biceps)"
-            restrictions = "Maintain neutral lumbar position; avoid compounding lower-back fatigue."
+            targetTitle = "Тяговый комплекс (Широчайшие, Спина, Бицепс)"
+            restrictions = "Сохранять нейтральное положение поясницы; избегать утомления разгибателей спины."
         } else if quadsPct >= 85 {
-            targetTitle = "Lower Body Hypertrophy (Quad-Dominant)"
-            restrictions = "Prioritize machine stability (Leg Press, Hack Squat) to spare systemic energy."
+            targetTitle = "Нижняя часть тела (Квадрицепс, Бицепс бедра)"
+            restrictions = "Отдавать приоритет тренажёрам со стабильной траекторией (жим ногами, гакк-присед)."
         } else {
-            targetTitle = "Active Recovery & Core Stabilization"
-            restrictions = "Limit intensity to RPE 6; focus on tissue mobility and hydration replenishment."
+            targetTitle = "Активное восстановление и мобильность"
+            restrictions = "Ограничить интенсивность до RPE 6; уделить внимание миофасциальному релизу и питьевому режиму."
         }
         
         let cnsTitle: String
         if cnsScore >= 85 {
-            cnsTitle = "Optimal Autonomic Balance"
+            cnsTitle = "Оптимальный баланс"
         } else if cnsScore >= 70 {
-            cnsTitle = "Moderate Neural Recovery"
+            cnsTitle = "Умеренная нагрузка"
         } else {
-            cnsTitle = "High Fatigue State"
+            cnsTitle = "Утомление ЦНС"
         }
         
         return BodyAnalysisReport(

@@ -157,7 +157,10 @@ struct OverviewView: View {
                 case .profile:
                     ProfileView().environment(userStatsViewModel.progressManager)
                 case .bodyAnalysis(let report):
-                    BodyAnalysisReportView(report: report)
+                    BodyAnalysisReportView(report: report, onGoToWorkout: {
+                        router.dismissSheet()
+                        di.appState.selectedTab = 2
+                    })
                 case .addWorkout:
                     AddWorkoutView(onWorkoutCreated: {
                         Task { @MainActor in

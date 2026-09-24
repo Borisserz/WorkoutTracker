@@ -4,10 +4,43 @@ internal import SwiftUI
 /// Sports-science editorial design with calm pastel tones and zero emojis.
 struct BodyAnalysisReportView: View {
     let report: BodyAnalysisReport
-    @Environment(\.dismiss) private var dismiss
+    var onGoToWorkout: (() -> Void)? = nil
 
-    init(report: BodyAnalysisReport) {
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedMuscleTab: MuscleTab = .prime
+
+    enum MuscleTab: String, CaseIterable, Identifiable {
+        case prime = "Готовы к нагрузке"
+        case recovering = "Восстановление"
+
+        var id: String { rawValue }
+    }
+
+    init(report: BodyAnalysisReport, onGoToWorkout: (() -> Void)? = nil) {
         self.report = report
+        self.onGoToWorkout = onGoToWorkout
+    }
+
+    private var readinessColor: Color {
+        if report.overallReadiness >= 80 {
+            return PastelTheme.pastelSage
+        } else if report.overallReadiness >= 55 {
+            return PastelTheme.pastelAmber
+        } else {
+            return PastelTheme.pastelPeach
+        }
+    }
+
+    private var readinessSummaryText: String {
+        if report.overallReadiness >= 85 {
+            return "Пиковая готовность к нагрузке"
+        } else if report.overallReadiness >= 70 {
+            return "Оптимальная рабочая форма"
+        } else if report.overallReadiness >= 55 {
+            return "Умеренное накопленное утомление"
+        } else {
+            return "Требуется активный отдых"
+        }
     }
 
     var body: some View {
@@ -15,64 +48,119 @@ struct BodyAnalysisReportView: View {
             ZStack {
                 PastelTheme.canvas.ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
                         
-                        // MARK: - Executive Assessment
-                        VStack(alignment: .leading, spacing: 10) {
-                            HStack {
-                                Text("Executive Assessment")
-                                    .font(.headline)
-                                    .foregroundStyle(PastelTheme.textPrimary)
-                                Spacer()
-                                Text("\(report.overallReadiness)% Ready")
+                        // MARK: - 1. Hero Readiness Score Card
+                        HStack(alignment: .center, spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .stroke(PastelTheme.cardSurfaceSubtle, lineWidth: 8)
+                                    .frame(width: 82, height: 82)
+
+                                Circle()
+                                    .trim(from: 0, to: CGFloat(report.overallReadiness) / 100.0)
+                                    .stroke(
+                                        readinessColor,
+                                        style: StrokeStyle(lineWidth: 8, lineCap: .round)
+                                    )
+                                    .frame(width: 82, height: 82)
+                                    .rotationEffect(.degrees(-90))
+
+                                VStack(spacing: 0) {
+                                    Text("\(report.overallReadiness)%")
+                                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                                        .foregroundStyle(PastelTheme.textPrimary)
+                                }
+                            }
+
+                            VStack(alignment: .leading, spacing: 5) {
+                                Text("Системная готовность")
+                                    .font(.caption)
+                                    .foregroundStyle(PastelTheme.textSecondary)
+
+                                Text(readinessSummaryText)
                                     .font(.subheadline.bold())
+                                    .foregroundStyle(readinessColor)
+
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(PastelTheme.pastelLavender)
+                                        .frame(width: 5, height: 5)
+
+                                    Text("ЦНС: \(report.cnsStatusTitle)")
+                                        .font(.caption2.weight(.medium))
+                                        .foregroundStyle(PastelTheme.pastelLavender)
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(PastelTheme.cardSurfaceSubtle)
+                                .clipShape(Capsule())
+                            }
+
+                            Spacer()
+                        }
+                        .pastelCard(padding: 16)
+
+                        // MARK: - 2. Executive Assessment
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: 7) {
+                                Image(systemName: "waveform.path.ecg")
+                                    .font(.system(size: 14, weight: .semibold))
                                     .foregroundStyle(PastelTheme.pastelSage)
+
+                                Text("Физиологическое резюме")
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(PastelTheme.textPrimary)
                             }
 
                             Text(report.executiveAssessment)
                                 .font(.subheadline)
-                                .lineSpacing(5)
+                                .lineSpacing(4)
                                 .foregroundStyle(PastelTheme.textSecondary)
                         }
-                        .pastelCard()
+                        .pastelCard(padding: 16)
 
-                        // MARK: - Recommended Focus Today
+                        // MARK: - 3. Recommended Protocol & Restrictions
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Recommended Focus Today")
-                                .font(.headline)
+                            Text("Рекомендованный протокол")
+                                .font(.subheadline.bold())
                                 .foregroundStyle(PastelTheme.textPrimary)
 
-                            VStack(alignment: .leading, spacing: 8) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                // Target split
                                 HStack(alignment: .top, spacing: 10) {
                                     Circle()
                                         .fill(PastelTheme.pastelSage)
-                                        .frame(width: 8, height: 8)
+                                        .frame(width: 7, height: 7)
                                         .padding(.top, 5)
 
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Target Protocol")
-                                            .font(.caption)
+                                        Text("Целевой фокус")
+                                            .font(.caption2)
                                             .foregroundStyle(PastelTheme.textTertiary)
+
                                         Text(report.recommendedTargetTitle)
-                                            .font(.subheadline.bold())
+                                            .font(.subheadline.weight(.semibold))
                                             .foregroundStyle(PastelTheme.textPrimary)
                                     }
                                 }
 
                                 Divider()
-                                    .background(PastelTheme.separator)
+                                    .background(PastelTheme.cardBorder)
 
+                                // Sparing / restriction
                                 HStack(alignment: .top, spacing: 10) {
                                     Circle()
-                                        .fill(PastelTheme.pastelPeach)
-                                        .frame(width: 8, height: 8)
+                                        .fill(PastelTheme.pastelAmber)
+                                        .frame(width: 7, height: 7)
                                         .padding(.top, 5)
 
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Prescribed Restrictions")
-                                            .font(.caption)
+                                        Text("Меры предосторожности")
+                                            .font(.caption2)
                                             .foregroundStyle(PastelTheme.textTertiary)
+
                                         Text(report.recommendedRestrictions)
                                             .font(.subheadline)
                                             .foregroundStyle(PastelTheme.textSecondary)
@@ -80,129 +168,126 @@ struct BodyAnalysisReportView: View {
                                 }
                             }
                         }
-                        .padding(18)
-                        .background(PastelTheme.cardSurface)
-                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                                .stroke(PastelTheme.pastelOat.opacity(0.25), lineWidth: 1.2)
-                        )
+                        .pastelCard(padding: 16)
 
-                        // MARK: - Two-Column Muscle Split (Prime vs Recovery)
-                        HStack(alignment: .top, spacing: 14) {
-                            // Prime for Strain
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Prime for Strain")
-                                    .font(.footnote.bold())
-                                    .foregroundStyle(PastelTheme.textPrimary)
+                        // MARK: - 4. Muscle Breakdown Tabs (Full-width, clean list)
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Состояние мышечных групп")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(PastelTheme.textPrimary)
 
-                                if report.primeMuscles.isEmpty {
-                                    Text("All muscle groups currently undergoing rest.")
-                                        .font(.caption)
-                                        .foregroundStyle(PastelTheme.textTertiary)
-                                } else {
-                                    ForEach(report.primeMuscles) { item in
-                                        HStack {
-                                            Text(item.name)
-                                                .font(.caption.weight(.medium))
-                                                .foregroundStyle(PastelTheme.textPrimary)
+                            // Segmented Picker
+                            Picker("Мышцы", selection: $selectedMuscleTab) {
+                                Text("Готовы (\(report.primeMuscles.count))").tag(MuscleTab.prime)
+                                Text("Восстановление (\(report.recoveringMuscles.count))").tag(MuscleTab.recovering)
+                            }
+                            .pickerStyle(.segmented)
+
+                            // List of muscles
+                            let currentList = (selectedMuscleTab == .prime) ? report.primeMuscles : report.recoveringMuscles
+
+                            if currentList.isEmpty {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "checkmark.seal")
+                                        .font(.title3)
+                                        .foregroundStyle(PastelTheme.pastelSage)
+
+                                    Text(selectedMuscleTab == .prime ? "Все мышцы на восстановлении" : "Все мышцы полностью отдохнули")
+                                        .font(.subheadline)
+                                        .foregroundStyle(PastelTheme.textSecondary)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.vertical, 8)
+                            } else {
+                                VStack(spacing: 8) {
+                                    ForEach(currentList) { item in
+                                        HStack(alignment: .center, spacing: 12) {
+                                            Circle()
+                                                .fill(item.percentage >= 80 ? PastelTheme.pastelSage : (item.percentage >= 55 ? PastelTheme.pastelAmber : PastelTheme.pastelPeach))
+                                                .frame(width: 7, height: 7)
+
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(item.name)
+                                                    .font(.subheadline.weight(.semibold))
+                                                    .foregroundStyle(PastelTheme.textPrimary)
+
+                                                Text(item.percentage >= 80 ? "Полностью восстановлены" : "~\(item.hoursRemaining) ч до суперкомпенсации")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(PastelTheme.textSecondary)
+                                            }
+
                                             Spacer()
+
                                             Text("\(item.percentage)%")
                                                 .font(.caption.bold())
-                                                .foregroundStyle(PastelTheme.textOnOat)
-                                                .padding(.horizontal, 6)
-                                                .padding(.vertical, 3)
-                                                .background(PastelTheme.pastelSage)
+                                                .foregroundStyle(item.percentage >= 80 ? PastelTheme.textOnOat : PastelTheme.textPrimary)
+                                                .padding(.horizontal, 9)
+                                                .padding(.vertical, 4)
+                                                .background(item.percentage >= 80 ? PastelTheme.pastelSage : PastelTheme.cardSurfaceSubtle)
                                                 .clipShape(Capsule())
+                                                .overlay(
+                                                    Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1)
+                                                )
                                         }
-                                        .padding(10)
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 10)
                                         .background(PastelTheme.cardSurfaceSubtle)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                                        )
                                     }
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .pastelCard(padding: 14)
+                        }
+                        .pastelCard(padding: 16)
 
-                            // Recovery Required
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Recovery Required")
-                                    .font(.footnote.bold())
-                                    .foregroundStyle(PastelTheme.textPrimary)
-
-                                if report.recoveringMuscles.isEmpty {
-                                    Text("Zero accumulated fatigue across tracked groups.")
-                                        .font(.caption)
-                                        .foregroundStyle(PastelTheme.textTertiary)
-                                } else {
-                                    ForEach(report.recoveringMuscles) { item in
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            HStack {
-                                                Text(item.name)
-                                                    .font(.caption.weight(.medium))
-                                                    .foregroundStyle(PastelTheme.textPrimary)
-                                                Spacer()
-                                                Text("\(item.percentage)%")
-                                                    .font(.caption.bold())
-                                                    .foregroundStyle(PastelTheme.textOnOat)
-                                                    .padding(.horizontal, 6)
-                                                    .padding(.vertical, 2)
-                                                    .background(PastelTheme.pastelPeach)
-                                                    .clipShape(Capsule())
-                                            }
-                                            Text("\(item.hoursRemaining)h remaining")
-                                                .font(.caption2)
-                                                .foregroundStyle(PastelTheme.textTertiary)
-                                        }
-                                        .padding(10)
-                                        .background(PastelTheme.cardSurfaceSubtle)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                    }
+                        // MARK: - 5. Primary Action
+                        Button {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            dismiss()
+                            onGoToWorkout?()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(onGoToWorkout != nil ? "Перейти к тренировкам" : "Закрыть отчёт")
+                                    .font(.subheadline.bold())
+                                if onGoToWorkout != nil {
+                                    Image(systemName: "arrow.right")
+                                        .font(.caption.bold())
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .pastelCard(padding: 14)
+                            .foregroundStyle(PastelTheme.textOnOat)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(PastelTheme.pastelOat)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         }
+                        .buttonStyle(.plain)
+                        .padding(.top, 4)
 
-                        // MARK: - Autonomic Status Footer
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Autonomic Evaluation")
-                                .font(.footnote.bold())
-                                .foregroundStyle(PastelTheme.textSecondary)
-
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Neurological State")
-                                        .font(.caption2)
-                                        .foregroundStyle(PastelTheme.textTertiary)
-                                    Text(report.cnsStatusTitle)
-                                        .font(.subheadline.weight(.semibold))
-                                        .foregroundStyle(PastelTheme.pastelLavender)
-                                }
-                                Spacer()
-                                Text("Updated \(report.date.formatted(date: .omitted, time: .shortened))")
-                                    .font(.caption2)
-                                    .foregroundStyle(PastelTheme.textTertiary)
-                            }
-                        }
-                        .pastelCard(padding: 14)
-
+                        Spacer(minLength: 20)
                     }
-                    .padding(20)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 16)
                 }
             }
-            .navigationTitle("Body Analysis")
+            .navigationTitle("Анализ тела")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") {
+                    Button {
                         dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(PastelTheme.textSecondary)
                     }
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(PastelTheme.pastelOat)
+                    .buttonStyle(.plain)
                 }
             }
         }
         .preferredColorScheme(.dark)
+        .presentationDragIndicator(.visible)
     }
 }
