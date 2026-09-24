@@ -1,6 +1,23 @@
 import Foundation
 import SwiftData
 
+struct MuscleReadinessItem: Identifiable, Sendable {
+    var id: String { name }
+    let name: String
+    let percentage: Int
+    let hoursRemaining: Int
+}
+
+/// Personalized coach advice for the next training session based on previous muscle strain.
+struct NextWorkoutAdvice: Sendable {
+    let recentStrainSummary: String
+    let recommendedSplitTitle: String
+    let physiologicalRationale: String
+    let actionableTips: [String]
+    let cautionNotes: String
+    let recommendedExercises: [String]
+}
+
 /// Physiological analysis model representing deep readiness evaluation.
 struct BodyAnalysisReport: Sendable {
     let overallReadiness: Int
@@ -10,14 +27,8 @@ struct BodyAnalysisReport: Sendable {
     let recommendedRestrictions: String
     let primeMuscles: [MuscleReadinessItem]
     let recoveringMuscles: [MuscleReadinessItem]
+    let nextWorkoutAdvice: NextWorkoutAdvice
     let date: Date
-}
-
-struct MuscleReadinessItem: Identifiable, Sendable {
-    var id: String { name }
-    let name: String
-    let percentage: Int
-    let hoursRemaining: Int
 }
 
 enum BodyAnalysisEngine {
@@ -53,6 +64,100 @@ enum BodyAnalysisEngine {
             }
         }
         
+        let chestPct = recoveryDict["chest"] ?? 100
+        let backPct = recoveryDict["upper-back"] ?? 100
+        let quadsPct = recoveryDict["quadriceps"] ?? 100
+        let hamsPct = recoveryDict["hamstring"] ?? 100
+        let lowBackPct = recoveryDict["lower-back"] ?? 100
+        let tricepsPct = recoveryDict["triceps"] ?? 100
+        let bicepsPct = recoveryDict["biceps"] ?? 100
+
+        // Determine Next Workout Advice based on recent muscle strain
+        let advice: NextWorkoutAdvice
+        if recentWorkouts.isEmpty {
+            advice = NextWorkoutAdvice(
+                recentStrainSummary: "Накопленное утомление отсутствует. Все мышечные группы и центральная нервная система полностью восстановлены (100%).",
+                recommendedSplitTitle: "Совет на следующую сессию: Прогрессивная силовая тренировка",
+                physiologicalRationale: "Мышечные волокна и синапсы находятся в фазе максимальной готовности. Рекомендуется базовый силовой тренинг.",
+                actionableTips: [
+                    "Идеальный момент для плавного увеличения рабочих весов",
+                    "Выполните 3–4 рабочих подхода в базовых многосуставных движениях",
+                    "Интенсивность: RPE 8.0–8.5 с контролем амплитуды"
+                ],
+                cautionNotes: "Уделите 7–10 минут качественной суставной разминке перед первыми рабочими подходами.",
+                recommendedExercises: ["Приседания со штангой", "Жим лёжа", "Подтягивания", "Жим стоя"]
+            )
+        } else if avgReadiness < 60 || cnsScore < 70 {
+            advice = NextWorkoutAdvice(
+                recentStrainSummary: "Обнаружено выраженное системное утомление мышц и ЦНС (средняя готовность \(avgReadiness)%).",
+                recommendedSplitTitle: "Совет на следующую сессию: Активное восстановление или Делоад",
+                physiologicalRationale: "Тканям требуется время на регенерацию гликогена и стабилизацию вегетативного тонуса.",
+                actionableTips: [
+                    "Замените тяжёлые силовые подходы на лёгкую кардио-сессию (пульс 110–125 уд/мин)",
+                    "Выполните миофасциальный релиз (МФР) и стретчинг основных групп",
+                    "Интенсивность: RPE не выше 5.0"
+                ],
+                cautionNotes: "Категорически исключите работу до отказа и форсированные повторения.",
+                recommendedExercises: ["Ходьба с наклоном", "МФР на массажном валике", "Мобильность суставов", "Растяжка грудных мышц"]
+            )
+        } else if chestPct < 75 || tricepsPct < 75 {
+            // Push was strained recently -> recommend Pull
+            advice = NextWorkoutAdvice(
+                recentStrainSummary: "В недавней сессии активно нагружены: Грудные мышцы и Трицепс (восстановление ~\(chestPct)%). Мышечные волокна находятся в фазе активной регенерации.",
+                recommendedSplitTitle: "Совет на следующую сессию: Тяговый сплит (Спина и Бицепс)",
+                physiologicalRationale: "Широчайшие мышцы и сгибатели плеча восстановились на \(backPct)% и обладают максимальной сократительной способностью.",
+                actionableTips: [
+                    "Сделайте акцент на тягу к поясу и подтягивания разным хватом",
+                    "Целевой объём: 12–15 качественных рабочих подходов на спину и бицепс",
+                    "Интенсивность: RPE 7.5–8.0 без закисления в первых сетах"
+                ],
+                cautionNotes: "Исключите жимовые движения под углом и глубокие отжимания ещё ~24 ч для защиты плечевых суставов.",
+                recommendedExercises: ["Подтягивания", "Тяга штанги в наклоне", "Тяга верхнего блока", "Подъём гантелей на бицепс"]
+            )
+        } else if backPct < 75 || bicepsPct < 75 {
+            // Pull was strained recently -> recommend Push or Legs
+            advice = NextWorkoutAdvice(
+                recentStrainSummary: "В недавней сессии задействованы: Спина, Широчайшие и Бицепс (восстановление ~\(backPct)%).",
+                recommendedSplitTitle: "Совет на следующую сессию: Жимовой день (Грудь и Дельты)",
+                physiologicalRationale: "Грудные мышцы и передние дельты полностью восполнили запасы гликогена (\(chestPct)%) и готовы к объёму.",
+                actionableTips: [
+                    "Приоритет: базовый жим лёжа и жим гантелей под углом",
+                    "Сохраняйте нейтральное положение лопаток и контроль темпа",
+                    "Интенсивность: RPE 7.5–8.0 с акцентом на растяжение грудных волокон"
+                ],
+                cautionNotes: "Избегайте становой тяги и тяги в наклоне, чтобы дать длинным мышцам спины восстановиться.",
+                recommendedExercises: ["Жим штанги лёжа", "Жим гантелей сидя", "Разведения в стороны", "Французский жим"]
+            )
+        } else if quadsPct < 75 || hamsPct < 75 {
+            // Legs strained -> recommend Upper
+            advice = NextWorkoutAdvice(
+                recentStrainSummary: "В недавней сессии нагружены: Квадрицепсы и Бицепс бедра (восстановление ~\(quadsPct)%).",
+                recommendedSplitTitle: "Совет на следующую сессию: Верхняя часть тела (Upper Body)",
+                physiologicalRationale: "Плечевой пояс, грудь и мышцы спины полностью отдохнули и готовы принять основной объём нагрузки.",
+                actionableTips: [
+                    "Сбалансируйте жимовые и тяговые упражнения в равной пропорции",
+                    "Используйте суперсеты для экономии времени и плотности тренировки",
+                    "Интенсивность: RPE 7.0–8.0"
+                ],
+                cautionNotes: "Полностью исключите осевую нагрузку на ноги: откажитесь от приседаний и выпадов.",
+                recommendedExercises: ["Жим лёжа", "Тяга гантели к поясу", "Армейский жим стоя", "Молотковые сгибания"]
+            )
+        } else {
+            // Balanced
+            advice = NextWorkoutAdvice(
+                recentStrainSummary: "Все основные мышечные группы восстановились выше 85%. Мышечная ткань адаптировалась к предыдущим тренировкам.",
+                recommendedSplitTitle: "Совет на следующую сессию: Целевая силовая нагрузка",
+                physiologicalRationale: "Скелетная мускулатура и вегетативная нервная система готовы к интенсивной работе без риска перегрузки.",
+                actionableTips: [
+                    "Выберите целевой сплит в зависимости от ваших недельных приоритетов",
+                    "Сфокусируйтесь на технике в диапазоне 6–10 повторений",
+                    "Интенсивность: RPE 8.0"
+                ],
+                cautionNotes: "Соблюдайте питьевой режим и паузы между подходами не менее 90–120 секунд.",
+                recommendedExercises: ["Жим штанги лёжа", "Подтягивания с весом", "Приседания", "Жим над головой"]
+            )
+        }
+
         // Fallback if no workouts logged yet
         if recentWorkouts.isEmpty {
             return BodyAnalysisReport(
@@ -63,16 +168,10 @@ enum BodyAnalysisEngine {
                 recommendedRestrictions: "None. Systemic capacity is at peak readiness.",
                 primeMuscles: prime,
                 recoveringMuscles: [],
+                nextWorkoutAdvice: advice,
                 date: Date()
             )
         }
-        
-        // Assess anterior vs posterior chains
-        let chestPct = recoveryDict["chest"] ?? 100
-        let backPct = recoveryDict["upper-back"] ?? 100
-        let quadsPct = recoveryDict["quadriceps"] ?? 100
-        let hamsPct = recoveryDict["hamstring"] ?? 100
-        let lowBackPct = recoveryDict["lower-back"] ?? 100
         
         // Executive assessment synthesis
         let cnsNarrative: String
@@ -134,6 +233,7 @@ enum BodyAnalysisEngine {
             recommendedRestrictions: restrictions,
             primeMuscles: prime,
             recoveringMuscles: recovering,
+            nextWorkoutAdvice: advice,
             date: Date()
         )
     }

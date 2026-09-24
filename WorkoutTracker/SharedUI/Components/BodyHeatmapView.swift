@@ -85,8 +85,9 @@ struct BodyHeatmapView: View {
                     }
 
                     if showLabels {
-                        ForEach(currentMuscles.filter { tagsToShow.contains($0.slug) }) { muscle in
-                            drawMuscleTag(muscle, centeringOffset: centeringOffset, scale: scale)
+                        if let sel = selectedMuscle ?? (selectedMuscleSlug != nil ? currentMuscles.first(where: { $0.slug == selectedMuscleSlug }) : nil) {
+                            drawMuscleTag(sel, centeringOffset: centeringOffset, scale: scale)
+                                .transition(.scale(scale: 0.85).combined(with: .opacity))
                         }
                     }
                 }
@@ -200,18 +201,27 @@ struct BodyHeatmapView: View {
         var centerY = bounds.midY
 
         if activeIsFront {
-            if muscle.slug == "chest" { centerX -= 140; centerY -= 10 }
-            if muscle.slug == "deltoids" { centerX += 145; centerY -= 30 }
-            if muscle.slug == "biceps" { centerX += 150; centerY += 40 }
-            if muscle.slug == "abs" { centerX -= 130; centerY += 60 }
-            if muscle.slug == "quadriceps" { centerX += 135; centerY += 120 }
+            switch muscle.slug {
+            case "chest": centerX -= 115; centerY -= 10
+            case "deltoids": centerX += 120; centerY -= 25
+            case "biceps": centerX += 125; centerY += 30
+            case "abs": centerX -= 105; centerY += 40
+            case "quadriceps": centerX += 110; centerY += 85
+            default:
+                centerX += (centerX > canvasWidth / 2 ? 100 : -100)
+            }
         } else {
-            if muscle.slug == "upper-back" { centerX -= 140; centerY -= 10 }
-            if muscle.slug == "deltoids" { centerX += 145; centerY -= 30 }
-            if muscle.slug == "triceps" { centerX += 150; centerY += 50 }
-            if muscle.slug == "lower-back" { centerX -= 130; centerY += 70 }
-            if muscle.slug == "hamstring" { centerX += 135; centerY += 130 }
-            if muscle.slug == "calves" { centerX -= 130; centerY += 150 }
+            switch muscle.slug {
+            case "upper-back": centerX -= 115; centerY -= 10
+            case "deltoids": centerX += 120; centerY -= 25
+            case "triceps": centerX += 125; centerY += 35
+            case "lower-back": centerX -= 105; centerY += 50
+            case "gluteal": centerX += 110; centerY += 70
+            case "hamstring": centerX += 110; centerY += 95
+            case "calves": centerX -= 105; centerY += 115
+            default:
+                centerX += (centerX > canvasWidth / 2 ? 100 : -100)
+            }
         }
 
         let isSelected = (selectedMuscle?.id == muscle.id) || (selectedMuscleSlug == muscle.slug)
@@ -306,27 +316,27 @@ struct InteractiveMuscleTag: View {
         Button {
             action()
         } label: {
-            HStack(spacing: 4 / scale) {
+            HStack(spacing: 3 / scale) {
                 Circle()
                     .fill(indicatorColor)
-                    .frame(width: 5 / scale, height: 5 / scale)
+                    .frame(width: 4 / scale, height: 4 / scale)
 
                 Text(LocalizedStringKey(name))
-                    .font(.system(size: 11 / scale, weight: .medium, design: .rounded))
-                    .foregroundStyle(isSelected ? PastelTheme.textOnOat : (colorScheme == .dark ? Color.white.opacity(0.85) : Color.black.opacity(0.85)))
+                    .font(.system(size: 9 / scale, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textOnOat)
 
                 Text("\(pct)%")
-                    .font(.system(size: 11 / scale, weight: .bold, design: .rounded))
-                    .foregroundStyle(isSelected ? PastelTheme.textOnOat : indicatorColor)
+                    .font(.system(size: 9 / scale, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textOnOat)
             }
-            .padding(.horizontal, 9 / scale)
-            .padding(.vertical, 5 / scale)
-            .background(isSelected ? PastelTheme.pastelOat : (colorScheme == .dark ? Color(red: 0.11, green: 0.12, blue: 0.14).opacity(0.92) : Color.white.opacity(0.92)))
+            .padding(.horizontal, 7 / scale)
+            .padding(.vertical, 3.5 / scale)
+            .background(PastelTheme.pastelOat)
             .clipShape(Capsule())
             .overlay(
-                Capsule().stroke(isSelected ? PastelTheme.pastelOat : (colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.1)), lineWidth: 1 / scale)
+                Capsule().stroke(Color.white.opacity(0.2), lineWidth: 0.8 / scale)
             )
-            .shadow(color: Color.black.opacity(0.2), radius: 3 / scale, y: 2 / scale)
+            .shadow(color: Color.black.opacity(0.25), radius: 3 / scale, y: 1.5 / scale)
         }
         .buttonStyle(.plain)
         .position(x: centerX, y: centerY)

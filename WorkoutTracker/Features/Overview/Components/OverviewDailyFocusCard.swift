@@ -1,7 +1,7 @@
 internal import SwiftUI
 
-/// Editorial daily training recommendation card derived from physiological readiness.
-/// Replaces static 'top exercises' with an actionable, intelligent training focus for the day.
+/// Sports-science coach advisory card for the upcoming workout session.
+/// Formed through physiological analysis of recently fatigued muscles vs restored kinetic chains.
 struct OverviewDailyFocusCard: View {
     let report: BodyAnalysisReport
     let onGoToWorkout: () -> Void
@@ -17,17 +17,21 @@ struct OverviewDailyFocusCard: View {
         self.onOpenCatalog = onOpenCatalog
     }
 
+    private var advice: NextWorkoutAdvice {
+        report.nextWorkoutAdvice
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             
             // MARK: - Section Header
-            HStack {
+            HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Today's Focus")
+                    Text("Совет на следующую тренировку")
                         .font(.headline)
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("Optimal split based on recovery")
+                    Text("Анализ предыдущих нагрузок и готовности")
                         .font(.caption)
                         .foregroundStyle(PastelTheme.textSecondary)
                 }
@@ -39,90 +43,118 @@ struct OverviewDailyFocusCard: View {
                         .fill(PastelTheme.pastelSage)
                         .frame(width: 6, height: 6)
 
-                    Text("Live Split")
+                    Text("Физиология")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(PastelTheme.pastelSage)
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
                 .background(PastelTheme.pastelSage.opacity(0.12))
                 .clipShape(Capsule())
             }
 
-            // MARK: - Main Recommendation Card
+            // MARK: - Main Advisory Card
             VStack(alignment: .leading, spacing: 14) {
                 
-                // Target Title & Icon
-                HStack(alignment: .top, spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(PastelTheme.cardSurfaceSubtle)
-                            .frame(width: 42, height: 42)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                            )
+                // 1. Fatigue Context / Previous Muscle Strain Analysis
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(PastelTheme.pastelSlate)
 
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.system(size: 20))
-                            .foregroundStyle(PastelTheme.pastelOat)
+                        Text("Анализ задействованных мышц")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(PastelTheme.pastelSlate)
                     }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(report.recommendedTargetTitle)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(PastelTheme.textPrimary)
+                    Text(advice.recentStrainSummary)
+                        .font(.subheadline)
+                        .lineSpacing(4)
+                        .foregroundStyle(PastelTheme.textPrimary)
+                }
+                .padding(12)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
 
-                        Text("Primed muscle tissue with low residual fatigue")
-                            .font(.caption)
-                            .foregroundStyle(PastelTheme.textSecondary)
+                // 2. Prescribed Target Split
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(advice.recommendedSplitTitle)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(PastelTheme.pastelOat)
+
+                    Text(advice.physiologicalRationale)
+                        .font(.caption)
+                        .lineSpacing(3)
+                        .foregroundStyle(PastelTheme.textSecondary)
+                }
+
+                // 3. Actionable Tactical Tips
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(advice.actionableTips, id: \.self) { tip in
+                        HStack(alignment: .top, spacing: 8) {
+                            Circle()
+                                .fill(PastelTheme.pastelSage)
+                                .frame(width: 4, height: 4)
+                                .padding(.top, 6)
+
+                            Text(tip)
+                                .font(.caption)
+                                .foregroundStyle(PastelTheme.textSecondary)
+                        }
                     }
                 }
 
-                // Prime Muscle Chips
-                if !report.primeMuscles.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 6) {
-                            ForEach(report.primeMuscles.prefix(4)) { item in
-                                HStack(spacing: 5) {
-                                    Circle()
-                                        .fill(PastelTheme.pastelSage)
-                                        .frame(width: 5, height: 5)
+                // 4. Suggested Exercises Chips
+                if !advice.recommendedExercises.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Рекомендуемые движения:")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(PastelTheme.textTertiary)
 
-                                    Text(item.name)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 6) {
+                                ForEach(advice.recommendedExercises, id: \.self) { ex in
+                                    Text(ex)
                                         .font(.caption2.weight(.medium))
                                         .foregroundStyle(PastelTheme.textPrimary)
-
-                                    Text("\(item.percentage)%")
-                                        .font(.caption2.bold())
-                                        .foregroundStyle(PastelTheme.pastelSage)
+                                        .padding(.horizontal, 9)
+                                        .padding(.vertical, 5)
+                                        .background(PastelTheme.cardSurfaceSubtle)
+                                        .clipShape(Capsule())
+                                        .overlay(
+                                            Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1)
+                                        )
                                 }
-                                .padding(.horizontal, 9)
-                                .padding(.vertical, 5)
-                                .background(PastelTheme.cardSurfaceSubtle)
-                                .clipShape(Capsule())
-                                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                             }
                         }
                     }
                 }
 
-                // Restriction / Caution Note
-                if !report.recommendedRestrictions.isEmpty {
+                // 5. Caution / Sparing Notes
+                if !advice.cautionNotes.isEmpty {
                     HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "info.circle")
+                        Image(systemName: "shield.lefthalf.filled")
                             .font(.system(size: 13))
                             .foregroundStyle(PastelTheme.pastelAmber)
                             .padding(.top, 1)
 
-                        Text(report.recommendedRestrictions)
+                        Text(advice.cautionNotes)
                             .font(.caption)
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(2)
                     }
                     .padding(10)
-                    .background(PastelTheme.cardSurfaceSubtle.opacity(0.6))
+                    .background(PastelTheme.pastelAmber.opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(PastelTheme.pastelAmber.opacity(0.2), lineWidth: 1)
+                    )
                 }
 
                 // Divider line
@@ -138,7 +170,7 @@ struct OverviewDailyFocusCard: View {
                         onGoToWorkout()
                     } label: {
                         HStack(spacing: 8) {
-                            Text("Open Workout Plan")
+                            Text("Перейти к тренировкам")
                                 .font(.subheadline.bold())
                             Image(systemName: "arrow.right")
                                 .font(.caption.bold())
