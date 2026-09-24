@@ -11,6 +11,7 @@ struct BodyHeatmapView: View {
     let userGender: String
     let countLabel: String
     let showLabels: Bool
+    var onMuscleTapped: ((MuscleGroup, Int) -> Void)? = nil
 
     @State private var isFrontViewLocal = true
     @State private var selectedMuscle: MuscleGroup? = nil
@@ -35,7 +36,8 @@ struct BodyHeatmapView: View {
         defaultToBack: Bool = false,
         userGender: String = "male",
         countLabel: String = "ex.",
-        showLabels: Bool = true
+        showLabels: Bool = true,
+        onMuscleTapped: ((MuscleGroup, Int) -> Void)? = nil
     ) {
         self.muscleIntensities = muscleIntensities
         self.rawMuscleCounts = rawMuscleCounts
@@ -45,6 +47,7 @@ struct BodyHeatmapView: View {
         self.userGender = userGender
         self.countLabel = countLabel
         self.showLabels = showLabels
+        self.onMuscleTapped = onMuscleTapped
     }
 
     private var activeIsFront: Bool {
@@ -152,12 +155,12 @@ struct BodyHeatmapView: View {
 
         if let val = intensity {
             if isRecoveryMode {
-                if val >= 95 {
-                    fillColor = colorScheme == .dark ? Color.white.opacity(0.12) : Color.gray.opacity(0.15)
+                if val >= 80 {
+                    fillColor = PastelTheme.pastelSage.opacity(0.85)
+                } else if val >= 55 {
+                    fillColor = PastelTheme.pastelAmber.opacity(0.85)
                 } else {
-                    let fatigue = 100.0 - Double(val)
-                    let redOpacity = colorScheme == .dark ? (0.2 + (0.7 * (fatigue / 100.0))) : (0.1 + (0.5 * (fatigue / 100.0)))
-                    fillColor = Color.red.opacity(redOpacity)
+                    fillColor = PastelTheme.pastelPeach.opacity(0.85)
                 }
             } else {
                 if val > 0 {
@@ -168,7 +171,7 @@ struct BodyHeatmapView: View {
         }
 
         if isSelected {
-            fillColor = themeColor.opacity(0.6)
+            fillColor = isRecoveryMode ? PastelTheme.pastelOat.opacity(0.9) : themeColor.opacity(0.6)
         }
 
         return Button {
@@ -236,8 +239,11 @@ struct BodyHeatmapView: View {
             selectedMuscle = isSelected ? nil : muscle
         }
 
+        let currentVal = animatedIntensities[muscle.slug] ?? 100
+        onMuscleTapped?(muscle, currentVal)
+
         if !isSelected {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
                 withAnimation { if selectedMuscle?.id == muscle.id { selectedMuscle = nil } }
             }
         }
