@@ -137,9 +137,8 @@ struct HistoryView: View {
             ZStack {
                 PastelTheme.canvas.ignoresSafeArea()
 
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
-                        
+                List {
+                    Group {
                         // 1. Header with Edit Button
                         HistoryHeaderView(
                             isEditing: $isEditingList,
@@ -162,99 +161,128 @@ struct HistoryView: View {
                         HistoryFilterBarView(
                             selectedFilter: $selectedFilter
                         )
+                    }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
 
-                        // 5. Timeline Grouped Workouts List
-                        if filteredWorkouts.isEmpty {
-                            PastelHistoryEmptyState(
-                                isSearching: !searchText.isEmpty || selectedFilter != .all,
-                                onResetFilters: {
-                                    searchText = ""
-                                    selectedFilter = .all
-                                },
-                                onStartWorkout: {
-                                    di.appState.selectedTab = 2
-                                }
-                            )
-                            .padding(.top, 20)
-                        } else {
-                            VStack(alignment: .leading, spacing: 24) {
-                                ForEach(timelineGroups) { group in
-                                    VStack(alignment: .leading, spacing: 12) {
-                                        // Section Header
-                                        HStack(alignment: .center, spacing: 8) {
-                                            Circle()
-                                                .fill(PastelTheme.pastelSage)
-                                                .frame(width: 7, height: 7)
-
-                                            Text(group.title)
-                                                .font(.headline)
-                                                .foregroundStyle(PastelTheme.textPrimary)
-
-                                            Spacer()
-
-                                            let tons = group.totalVolume / 1000.0
-                                            HStack(spacing: 5) {
-                                                Text("\(group.workouts.count) сес.")
-                                                    .font(.caption2.bold())
-                                                    .foregroundStyle(PastelTheme.pastelSage)
-
-                                                Text("·")
-                                                    .font(.caption2)
-                                                    .foregroundStyle(PastelTheme.textTertiary)
-
-                                                Text("\(String(format: "%.1f", tons)) т")
-                                                    .font(.caption2.bold())
-                                                    .foregroundStyle(PastelTheme.pastelOat)
+                    // 5. Timeline Grouped Workouts List
+                    if filteredWorkouts.isEmpty {
+                        PastelHistoryEmptyState(
+                            isSearching: !searchText.isEmpty || selectedFilter != .all,
+                            onResetFilters: {
+                                searchText = ""
+                                selectedFilter = .all
+                            },
+                            onStartWorkout: {
+                                di.appState.selectedTab = 2
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 20, leading: 16, bottom: 20, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    } else {
+                        ForEach(timelineGroups) { group in
+                            Section {
+                                ForEach(group.workouts) { workout in
+                                    HStack(spacing: 12) {
+                                        if isEditingList {
+                                            Button {
+                                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                                Task {
+                                                    await workoutService.deleteWorkout(workout)
+                                                }
+                                            } label: {
+                                                Image(systemName: "minus.circle.fill")
+                                                    .font(.title3)
+                                                    .foregroundStyle(PastelTheme.pastelPeach)
                                             }
-                                            .padding(.horizontal, 9)
-                                            .padding(.vertical, 4)
-                                            .background(PastelTheme.cardSurface)
-                                            .clipShape(Capsule())
-                                            .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                                            .transition(.move(edge: .leading).combined(with: .opacity))
                                         }
-                                        .padding(.horizontal, 2)
 
-                                        // Workout Cards in Section (Swipeable to Delete)
-                                        ForEach(group.workouts) { workout in
-                                            HStack(spacing: 12) {
-                                                if isEditingList {
-                                                    Button {
-                                                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                                        Task {
-                                                            await workoutService.deleteWorkout(workout)
-                                                        }
-                                                    } label: {
-                                                        Image(systemName: "minus.circle.fill")
-                                                            .font(.title3)
-                                                            .foregroundStyle(PastelTheme.pastelPeach)
-                                                    }
-                                                    .transition(.move(edge: .leading).combined(with: .opacity))
-                                                }
-
-                                                SwipeableWorkoutRow(
-                                                    onDelete: {
-                                                        Task {
-                                                            await workoutService.deleteWorkout(workout)
-                                                        }
-                                                    }
-                                                ) {
-                                                    NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
-                                                        PastelWorkoutCard(workout: workout, unitsManager: unitsManager)
-                                                    }
-                                                    .buttonStyle(.plain)
-                                                }
+                                        ZStack {
+                                            NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
+                                                EmptyView()
                                             }
+                                            .opacity(0)
+
+                                            PastelWorkoutCard(workout: workout, unitsManager: unitsManager)
                                         }
                                     }
+                                    .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                            Task {
+                                                await workoutService.deleteWorkout(workout)
+                                            }
+                                        } label: {
+                                            Label("Удалить", systemImage: "trash.fill")
+                                        }
+                                        .tint(PastelTheme.pastelPeach)
+                                    }
+                                    .swipeActions(edge: .leading) {
+                                        Button {
+                                            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                                            workout.isFavorite.toggle()
+                                            try? context.save()
+                                        } label: {
+                                            Label(workout.isFavorite ? "Убрать из избранного" : "В избранное", systemImage: workout.isFavorite ? "star.slash.fill" : "star.fill")
+                                        }
+                                        .tint(PastelTheme.pastelAmber)
+                                    }
                                 }
+                            } header: {
+                                HStack(alignment: .center, spacing: 8) {
+                                    Circle()
+                                        .fill(PastelTheme.pastelSage)
+                                        .frame(width: 7, height: 7)
+
+                                    Text(group.title)
+                                        .font(.headline)
+                                        .foregroundStyle(PastelTheme.textPrimary)
+
+                                    Spacer()
+
+                                    let tons = group.totalVolume / 1000.0
+                                    HStack(spacing: 5) {
+                                        Text("\(group.workouts.count) сес.")
+                                            .font(.caption2.bold())
+                                            .foregroundStyle(PastelTheme.pastelSage)
+
+                                        Text("·")
+                                            .font(.caption2)
+                                            .foregroundStyle(PastelTheme.textTertiary)
+
+                                        Text("\(String(format: "%.1f", tons)) т")
+                                            .font(.caption2.bold())
+                                            .foregroundStyle(PastelTheme.pastelOat)
+                                    }
+                                    .padding(.horizontal, 9)
+                                    .padding(.vertical, 4)
+                                    .background(PastelTheme.cardSurface)
+                                    .clipShape(Capsule())
+                                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                                }
+                                .textCase(nil)
+                                .listRowInsets(EdgeInsets(top: 14, leading: 16, bottom: 6, trailing: 16))
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
                             }
                         }
-
-                        Spacer(minLength: 120)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 14)
+
+                    Color.clear
+                        .frame(height: 100)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                 }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(PastelTheme.canvas.ignoresSafeArea())
                 .onTapGesture {
                     hideKeyboard()
                     withAnimation { isSearching = false }
@@ -680,99 +708,7 @@ private struct PastelWorkoutCard: View {
     }
 }
 
-// MARK: - 6. Swipeable Workout Row (Interactive Swipe-to-Delete)
-private struct SwipeableWorkoutRow<Content: View>: View {
-    let onDelete: () -> Void
-    @ViewBuilder let content: () -> Content
 
-    @State private var offset: CGFloat = 0
-    @State private var isSwiped = false
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            // Delete action button revealed behind the card
-            if offset < 0 {
-                HStack {
-                    Spacer()
-
-                    Button(role: .destructive) {
-                        performDelete()
-                    } label: {
-                        VStack(spacing: 5) {
-                            Image(systemName: "trash.fill")
-                                .font(.system(size: 18, weight: .semibold))
-                            Text("Удалить")
-                                .font(.system(size: 11, weight: .bold))
-                        }
-                        .foregroundStyle(.white)
-                        .frame(width: 80)
-                        .frame(maxHeight: .infinity)
-                        .background(PastelTheme.pastelPeach)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            // Foreground Card
-            content()
-                .offset(x: offset)
-                .overlay {
-                    if isSwiped {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                                    offset = 0
-                                    isSwiped = false
-                                }
-                            }
-                    }
-                }
-                .gesture(
-                    DragGesture(minimumDistance: 15)
-                        .onChanged { gesture in
-                            let xDist = abs(gesture.translation.width)
-                            let yDist = abs(gesture.translation.height)
-                            // Prevent intercepting vertical scroll gestures
-                            guard xDist > yDist else { return }
-
-                            let translation = gesture.translation.width
-                            if isSwiped {
-                                let newOffset = -88 + translation
-                                offset = min(0, max(-200, newOffset))
-                            } else if translation < 0 {
-                                offset = max(-200, translation)
-                            }
-                        }
-                        .onEnded { gesture in
-                            withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
-                                if gesture.translation.width < -140 {
-                                    performDelete()
-                                } else if gesture.translation.width < -40 || (isSwiped && gesture.translation.width < 30) {
-                                    offset = -88
-                                    isSwiped = true
-                                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                } else {
-                                    offset = 0
-                                    isSwiped = false
-                                }
-                            }
-                        }
-                )
-        }
-    }
-
-    private func performDelete() {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        withAnimation(.easeInOut(duration: 0.22)) {
-            offset = -400
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
-            onDelete()
-        }
-    }
-}
 
 // MARK: - 6. Empty State View
 private struct PastelHistoryEmptyState: View {

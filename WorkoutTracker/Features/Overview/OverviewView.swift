@@ -207,7 +207,7 @@ struct OverviewView: View {
             }
             .sheet(isPresented: $showCNSSheet) {
                 CNSExplanationSheet(cnsScore: cnsScore)
-                    .presentationDetents([.height(340)])
+                    .presentationDetents([.height(390), .medium])
                     .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showPulseSheet) {
@@ -215,7 +215,7 @@ struct OverviewView: View {
                     heartRate: vitals.currentBPM,
                     timeAgoText: vitals.timeAgoText
                 )
-                .presentationDetents([.height(420)])
+                .presentationDetents([.height(390), .medium])
                 .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $showWaterSheet) {
@@ -228,7 +228,7 @@ struct OverviewView: View {
                         dashboardViewModel.resetWater()
                     }
                 )
-                .presentationDetents([.height(460)])
+                .presentationDetents([.height(390), .medium])
                 .presentationDragIndicator(.visible)
             }
             .onAppear {
