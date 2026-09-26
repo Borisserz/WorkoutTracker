@@ -137,6 +137,25 @@ struct HistoryView: View {
             ZStack {
                 PastelTheme.canvas.ignoresSafeArea()
 
+                // Ambient athletic glow (Emerald & Warm Beige)
+                GeometryReader { _ in
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.pastelSage.opacity(0.12))
+                            .blur(radius: 70)
+                            .frame(width: 240, height: 240)
+                            .offset(x: -80, y: -40)
+
+                        Circle()
+                            .fill(PastelTheme.pastelOat.opacity(0.10))
+                            .blur(radius: 80)
+                            .frame(width: 260, height: 260)
+                            .offset(x: 120, y: -10)
+                    }
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
                 List {
                     Group {
                         // 1. Header with Edit Button
@@ -145,8 +164,8 @@ struct HistoryView: View {
                             totalCount: filteredWorkouts.count
                         )
 
-                        // 2. High-Level Stats Ribbon (Volume, Sessions, Avg Duration)
-                        HistoryStatsRibbonView(
+                        // 2. High-Level Hero Bento Card (Volume, Sessions, Avg Duration)
+                        HistoryHeroBentoCard(
                             workouts: filteredWorkouts,
                             unitsManager: unitsManager
                         )
@@ -355,8 +374,8 @@ private struct HistoryHeaderView: View {
     }
 }
 
-// MARK: - 2. Stats Ribbon
-private struct HistoryStatsRibbonView: View {
+// MARK: - 2. Athletic Hero Bento Card
+private struct HistoryHeroBentoCard: View {
     let workouts: [Workout]
     let unitsManager: UnitsManager
 
@@ -372,98 +391,103 @@ private struct HistoryStatsRibbonView: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            
-            // 1. Total Volume (Warm Beige Accent & Pure White)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(PastelTheme.pastelOat)
-                        .frame(width: 6, height: 6)
-
-                    Text("Объем")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(PastelTheme.textSecondary)
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
+        VStack(alignment: .leading, spacing: 14) {
+            // Top Row: Big Volume + Status Badge
+            HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
                     Text(String(format: "%.1f", totalVolumeTons))
-                        .font(.subheadline.bold())
-                        .foregroundStyle(PastelTheme.textPrimary)
-
-                    Text("т")
-                        .font(.caption.bold())
+                        .font(.system(size: 38, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelOat)
+
+                    Text("Т")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(PastelTheme.pastelOat)
+
+                    Text("поднято")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                        .padding(.leading, 2)
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
-            // Divider
-            Rectangle()
-                .fill(PastelTheme.separator)
-                .frame(width: 1, height: 28)
+                Spacer()
 
-            // 2. Completed Sessions (Athletic Emerald Green)
-            VStack(alignment: .leading, spacing: 3) {
+                // Athletic status badge
                 HStack(spacing: 5) {
                     Circle()
                         .fill(PastelTheme.pastelSage)
                         .frame(width: 6, height: 6)
 
-                    Text("Сессии")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(PastelTheme.textSecondary)
-                }
-
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text("\(workouts.count)")
-                        .font(.subheadline.bold())
+                    Text(workouts.isEmpty ? "Отдых" : "Активный прогресс")
+                        .font(.caption2.bold())
                         .foregroundStyle(PastelTheme.pastelSage)
-
-                    Text("трен.")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(PastelTheme.textSecondary)
                 }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(PastelTheme.pastelSage.opacity(0.12))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.3), lineWidth: 1))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 14)
 
-            // Divider
-            Rectangle()
-                .fill(PastelTheme.separator)
-                .frame(width: 1, height: 28)
+            // Bottom Dual Stat Pods
+            HStack(spacing: 10) {
+                // Sessions Pod
+                HStack(spacing: 8) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(PastelTheme.pastelSage)
+                        .frame(width: 3, height: 26)
 
-            // 3. Average Duration (Crisp Pure White & Light Cream)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    Circle()
-                        .fill(PastelTheme.warmBeige)
-                        .frame(width: 6, height: 6)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("\(workouts.count) сессий")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("Ср. время")
-                        .font(.caption2.weight(.medium))
-                        .foregroundStyle(PastelTheme.textSecondary)
+                        Text("завершено")
+                            .font(.caption2)
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
 
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text("\(avgDurationMinutes)")
-                        .font(.subheadline.bold())
-                        .foregroundStyle(PastelTheme.textPrimary)
+                // Average Duration Pod
+                HStack(spacing: 8) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(PastelTheme.pastelOat)
+                        .frame(width: 3, height: 26)
 
-                    Text("мин")
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(PastelTheme.pastelOat)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("\(avgDurationMinutes) мин")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(PastelTheme.textPrimary)
+
+                        Text("в среднем")
+                            .font(.caption2)
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 14)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.chipRadius + 2, style: .continuous))
+        .padding(16)
+        .background(
+            LinearGradient(
+                colors: [PastelTheme.cardSurface, PastelTheme.cardSurfaceSubtle],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: PastelTheme.chipRadius + 2, style: .continuous)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }
@@ -542,7 +566,7 @@ private struct HistoryFilterBarView: View {
     }
 }
 
-// MARK: - 5. Pastel Workout Card
+// MARK: - 5. Pastel Workout Card (Athletic Bento Style)
 private struct PastelWorkoutCard: View {
     let workout: Workout
     let unitsManager: UnitsManager
@@ -553,6 +577,15 @@ private struct PastelWorkoutCard: View {
             return ex.muscleGroup.lowercased()
         }
         return Array(Set(slugs)).prefix(3).map { MuscleDisplayHelper.getDisplayName(for: $0) }
+    }
+
+    private var exercisePreviews: [String] {
+        let names = workout.exercises.map(\.name)
+        return Array(names.prefix(3))
+    }
+
+    private var extraExercisesCount: Int {
+        max(0, workout.exercises.count - 3)
     }
 
     private var accentColor: Color {
@@ -566,144 +599,168 @@ private struct PastelWorkoutCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Elegant Left Accent Strip (Green for active, Amber for favorite, Warm Beige for finished)
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(accentColor)
-                .frame(width: 4)
-                .padding(.vertical, 10)
-                .padding(.leading, 6)
+        VStack(alignment: .leading, spacing: 14) {
+            
+            // Header: Accent Tag, Title, Date/Relative, Chevron
+            HStack(alignment: .top, spacing: 12) {
+                // Workout Type Icon
+                ZStack {
+                    Circle()
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 40, height: 40)
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
 
-            VStack(alignment: .leading, spacing: 12) {
-                
-                // Header Row: Icon, Title, Date, Badges, Chevron
-                HStack(alignment: .center, spacing: 12) {
-                    // Workout Icon in circle
-                    ZStack {
-                        Circle()
-                            .fill(PastelTheme.cardSurfaceSubtle)
-                            .frame(width: 38, height: 38)
-                            .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(accentColor)
+                }
 
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(workout.isActive ? PastelTheme.pastelSage : PastelTheme.pastelOat)
-                    }
-
-                    // Title and Date
-                    VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
                         Text(workout.title.isEmpty ? "Тренировка" : workout.title)
                             .font(.headline.weight(.bold))
                             .foregroundStyle(PastelTheme.textPrimary)
                             .lineLimit(1)
 
-                        Text(workout.date.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption2)
-                            .foregroundStyle(PastelTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    // Active badge if currently ongoing
-                    if workout.isActive {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(PastelTheme.pastelSage)
-                                .frame(width: 6, height: 6)
-
-                            Text("В процессе")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundStyle(PastelTheme.pastelSage)
+                        if workout.isFavorite {
+                            Image(systemName: "star.fill")
+                                .font(.system(size: 12))
+                                .foregroundStyle(PastelTheme.pastelAmber)
                         }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(PastelTheme.pastelSage.opacity(0.12))
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.3), lineWidth: 1))
                     }
 
-                    // Favorite Star
-                    if workout.isFavorite {
-                        Image(systemName: "star.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(PastelTheme.pastelAmber)
-                    }
+                    Text(workout.date.formatted(date: .abbreviated, time: .shortened))
+                        .font(.caption2)
+                        .foregroundStyle(PastelTheme.textSecondary)
+                }
 
+                Spacer()
+
+                if workout.isActive {
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(PastelTheme.pastelSage)
+                            .frame(width: 6, height: 6)
+
+                        Text("В процессе")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.pastelSage.opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.3), lineWidth: 1))
+                } else {
                     Image(systemName: "chevron.right")
-                        .font(.caption2.bold())
+                        .font(.caption.bold())
                         .foregroundStyle(PastelTheme.textTertiary)
+                        .padding(.top, 4)
                 }
+            }
 
-                // Divider
-                Rectangle()
-                    .fill(PastelTheme.separator)
-                    .frame(height: 1)
-
-                // Metrics Row: Volume, Exercises, Duration
-                HStack(spacing: 14) {
-                    // Volume (Warm beige & pure white)
-                    HStack(spacing: 5) {
-                        Image(systemName: "scalemass.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(PastelTheme.pastelOat)
-
-                        Text("\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume)))")
-                            .font(.caption.bold())
-                            .foregroundStyle(PastelTheme.textPrimary)
-                        +
-                        Text(" \(unitsManager.weightUnitString())")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(PastelTheme.pastelOat)
-                    }
-
-                    // Exercises count (White & cream)
-                    HStack(spacing: 5) {
-                        Image(systemName: "dumbbell.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(PastelTheme.textPrimary)
-
-                        Text("\(workout.exercises.count) упр.")
-                            .font(.caption.weight(.semibold))
+            // Real Exercise Preview Chips (Brings workout to life)
+            if !exercisePreviews.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(exercisePreviews, id: \.self) { exName in
+                        Text(exName)
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
+                            .lineLimit(1)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 4)
+                            .background(PastelTheme.cardSurfaceSubtle)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
                     }
 
-                    // Duration (Athletic Emerald Green)
-                    HStack(spacing: 5) {
-                        Image(systemName: "clock.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(PastelTheme.pastelSage)
-
-                        Text("\(workout.durationSeconds / 60) мин")
-                            .font(.caption.bold())
-                            .foregroundStyle(PastelTheme.pastelSage)
-                    }
-
-                    Spacer()
-                }
-
-                // Targeted Muscles Chips (if any)
-                if !targetedMuscles.isEmpty {
-                    HStack(spacing: 6) {
-                        ForEach(targetedMuscles, id: \.self) { muscle in
-                            Text(muscle)
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(PastelTheme.textSecondary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(PastelTheme.cardSurfaceSubtle)
-                                .clipShape(Capsule())
-                                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-                        }
+                    if extraExercisesCount > 0 {
+                        Text("+\(extraExercisesCount)")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelOat)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 4)
+                            .background(PastelTheme.cardSurfaceSubtle)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                 }
             }
-            .padding(14)
+
+            // Dual Bottom Pods: Volume & Duration (Athletic Dashboard Pods)
+            HStack(spacing: 8) {
+                // Volume Pod
+                HStack(spacing: 6) {
+                    Image(systemName: "scalemass.fill")
+                        .font(.caption2)
+                        .foregroundStyle(PastelTheme.pastelOat)
+
+                    Text("\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume))) \(unitsManager.weightUnitString())")
+                        .font(.caption.bold())
+                        .foregroundStyle(PastelTheme.pastelOat)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+
+                // Duration Pod
+                HStack(spacing: 6) {
+                    Image(systemName: "clock.fill")
+                        .font(.caption2)
+                        .foregroundStyle(PastelTheme.pastelSage)
+
+                    Text("\(workout.durationSeconds / 60) мин")
+                        .font(.caption.bold())
+                        .foregroundStyle(PastelTheme.pastelSage)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+
+                // Exercises count pod
+                HStack(spacing: 5) {
+                    Image(systemName: "dumbbell.fill")
+                        .font(.caption2)
+                        .foregroundStyle(PastelTheme.textPrimary)
+
+                    Text("\(workout.exercises.count) упр.")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+            }
         }
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(16)
+        .background(
+            LinearGradient(
+                colors: [PastelTheme.cardSurface, PastelTheme.cardSurfaceSubtle],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(workout.isActive ? PastelTheme.pastelSage.opacity(0.4) : PastelTheme.cardBorder, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(workout.isActive ? PastelTheme.pastelSage.opacity(0.5) : PastelTheme.cardBorder, lineWidth: 1)
         )
     }
 }
