@@ -101,4 +101,26 @@ final class DashboardViewModel {
             }
         }
     }
+
+    func addWater(liters: Double) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dateString = formatter.string(from: Date())
+        let dateKey = "water_liters_\(dateString)"
+        let appGroupDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
+        let current = appGroupDefaults?.double(forKey: dateKey) ?? todayWaterLiters
+        let updated = max(0.0, current + liters)
+        appGroupDefaults?.set(updated, forKey: dateKey)
+        todayWaterLiters = updated
+    }
+
+    func resetWater() {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let dateString = formatter.string(from: Date())
+        let dateKey = "water_liters_\(dateString)"
+        let appGroupDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
+        appGroupDefaults?.set(0.0, forKey: dateKey)
+        todayWaterLiters = 0.0
+    }
 }

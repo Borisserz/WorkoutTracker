@@ -65,6 +65,8 @@ struct OverviewView: View {
     @State private var vitals = VitalsMonitor()
     @State private var showCommitmentSheet = false
     @State private var showCNSSheet = false
+    @State private var showPulseSheet = false
+    @State private var showWaterSheet = false
 
     var body: some View {
         NavigationStack(path: $router.path) {
@@ -110,6 +112,12 @@ struct OverviewView: View {
                             waterLiters: dashboardViewModel.todayWaterLiters,
                             onCNSTap: {
                                 showCNSSheet = true
+                            },
+                            onPulseTap: {
+                                showPulseSheet = true
+                            },
+                            onWaterTap: {
+                                showWaterSheet = true
                             }
                         )
 
@@ -201,6 +209,27 @@ struct OverviewView: View {
                 CNSExplanationSheet(cnsScore: cnsScore)
                     .presentationDetents([.height(340)])
                     .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showPulseSheet) {
+                PulseExplanationSheet(
+                    heartRate: vitals.currentBPM,
+                    timeAgoText: vitals.timeAgoText
+                )
+                .presentationDetents([.height(420)])
+                .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showWaterSheet) {
+                HydrationSheet(
+                    waterLiters: dashboardViewModel.todayWaterLiters,
+                    onAddWater: { liters in
+                        dashboardViewModel.addWater(liters: liters)
+                    },
+                    onResetWater: {
+                        dashboardViewModel.resetWater()
+                    }
+                )
+                .presentationDetents([.height(460)])
+                .presentationDragIndicator(.visible)
             }
             .onAppear {
                 vitals.startMonitoring()
