@@ -16,6 +16,7 @@ final class OverviewRouter {
         case muscleColor
         case profile
         case bodyAnalysis(BodyAnalysisReport)
+        case dailyFocus(BodyAnalysisReport)
 
         var id: String {
             switch self {
@@ -24,6 +25,7 @@ final class OverviewRouter {
             case .muscleColor: return "muscleColor"
             case .profile: return "profile"
             case .bodyAnalysis: return "bodyAnalysis"
+            case .dailyFocus: return "dailyFocus"
             }
         }
     }
@@ -121,11 +123,11 @@ struct OverviewView: View {
 
                         OverviewDailyFocusCard(
                             report: dailyReport,
+                            onTapDetail: {
+                                router.present(.dailyFocus(dailyReport))
+                            },
                             onGoToWorkout: {
                                 di.appState.selectedTab = 2
-                            },
-                            onOpenCatalog: {
-                                router.push(.exercises)
                             }
                         )
 
@@ -161,6 +163,18 @@ struct OverviewView: View {
                         router.dismissSheet()
                         di.appState.selectedTab = 2
                     })
+                case .dailyFocus(let report):
+                    DailyFocusDetailSheet(
+                        report: report,
+                        onGoToWorkout: {
+                            router.dismissSheet()
+                            di.appState.selectedTab = 2
+                        },
+                        onOpenCatalog: {
+                            router.dismissSheet()
+                            router.push(.exercises)
+                        }
+                    )
                 case .addWorkout:
                     AddWorkoutView(onWorkoutCreated: {
                         Task { @MainActor in

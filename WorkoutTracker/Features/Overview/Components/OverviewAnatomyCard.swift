@@ -174,7 +174,7 @@ struct OverviewAnatomyCard: View {
                         }
                     }
                 )
-                .frame(height: 380)
+                .frame(height: 340)
                 .scaleEffect(1.02)
                 .blur(radius: isLocked ? 10 : 0)
                 .disabled(isLocked)
@@ -203,7 +203,7 @@ struct OverviewAnatomyCard: View {
                     .padding(.horizontal, 20)
                 }
             }
-            .frame(height: 380)
+            .frame(height: 340)
 
             // MARK: - Muscle Readiness Quick Chips (Directly Visible Readiness Percentages)
             if !isLocked {
