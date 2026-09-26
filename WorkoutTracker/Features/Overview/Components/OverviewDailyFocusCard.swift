@@ -137,11 +137,11 @@ struct OverviewDailyFocusCard: View {
                     .padding(.trailing, 4)
                 }
                 .padding(14)
-                .background(PastelTheme.cardSurfaceSubtle)
+                .background(PastelTheme.warmBeige.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                        .stroke(PastelTheme.warmBeige.opacity(0.35), lineWidth: 1.2)
                 )
             }
             .buttonStyle(.plain)
@@ -188,8 +188,8 @@ struct OverviewDailyFocusCard: View {
         .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: PastelTheme.pastelSage.opacity(0.04), radius: 10, y: 3)
+        .shadow(color: PastelTheme.warmBeige.opacity(0.05), radius: 12, y: 3)
     }
 }

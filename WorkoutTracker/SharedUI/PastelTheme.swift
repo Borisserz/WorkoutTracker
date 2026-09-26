@@ -1,25 +1,27 @@
 internal import SwiftUI
 
-/// High-Performance Athletic Contrast Design System for WorkoutTracker.
-/// Features deep OLED blacks, pure white typography, and vibrant athletic emerald green accents.
+/// Luxury Athletic Design System for WorkoutTracker.
+/// Harmonizes deep warm charcoal, pure white typography, rich visible premium beige, and athletic emerald green.
 enum PastelTheme {
-    // MARK: - Canvas & Surfaces
-    static let canvas = Color(hex: "08090B")
-    static let cardSurface = Color(hex: "121418")
-    static let cardSurfaceSubtle = Color(hex: "0D0E12")
-    static let anatomyBackground = Color(hex: "0B0C0F")
+    // MARK: - Canvas & Surfaces (Warm Cashmere Charcoal)
+    static let canvas = Color(hex: "0E0F12")
+    static let cardSurface = Color(hex: "17181D")
+    static let cardSurfaceSubtle = Color(hex: "121317")
+    static let anatomyBackground = Color(hex: "101114")
     
-    // MARK: - Borders & Dividers
-    static let cardBorder = Color(hex: "FFFFFF").opacity(0.10)
-    static let cardBorderFocused = Color(hex: "10B981").opacity(0.40)
-    static let separator = Color(hex: "FFFFFF").opacity(0.08)
+    // MARK: - Rich Visible Warm Beige Borders & Dividers
+    /// Visible premium warm beige border for all cards and interactive containers.
+    static let cardBorder = Color(hex: "EFE3D3").opacity(0.18)
+    /// Highlighted focused border with glowing warm beige outline.
+    static let cardBorderFocused = Color(hex: "EFE3D3").opacity(0.42)
+    static let separator = Color(hex: "EFE3D3").opacity(0.12)
 
     // MARK: - Harmonious Warm & Motivational Accents
-    /// Luminous warm oat/ivory cream for primary actions, badges, and high-contrast highlights.
-    static let pastelOat = Color(hex: "FAF5EE")
+    /// Rich visible premium warm beige / oat cream for primary action buttons, active tabs, and highlights.
+    static let pastelOat = Color(hex: "EFE3D3")
     
-    /// Rich warm beige for frames, highlights, and secondary accents.
-    static let warmBeige = Color(hex: "F4ECE2")
+    /// Deep warm beige for borders, accent frames, and secondary badges.
+    static let warmBeige = Color(hex: "E5D5C0")
 
     /// Athletic vivid emerald green for recovered muscles (80-100%), readiness, and PR achievements.
     static let pastelSage = Color(hex: "10B981")
@@ -41,13 +43,13 @@ enum PastelTheme {
     static let textPrimary = Color(hex: "FFFFFF")
     
     /// Warm light beige / cream for high-contrast subtitles, descriptions, and values.
-    static let textSecondary = Color(hex: "E6E1D8")
+    static let textSecondary = Color(hex: "EAE3D8")
     
     /// Soft warm ivory-gray for clear micro-labels, icons, and captions.
-    static let textTertiary = Color(hex: "A8A29E")
+    static let textTertiary = Color(hex: "BDB5A9")
     
     /// Deep charcoal for text displayed on bright oat / beige buttons and chips.
-    static let textOnOat = Color(hex: "08090B")
+    static let textOnOat = Color(hex: "0E0F12")
 
     // MARK: - Corner Radii
     static let cardRadius: CGFloat = 20
