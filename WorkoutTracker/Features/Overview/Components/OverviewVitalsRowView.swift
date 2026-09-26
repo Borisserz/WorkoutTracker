@@ -35,16 +35,16 @@ struct OverviewVitalsRowView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 4) {
                             Text("CNS")
-                                .font(.caption2.weight(.medium))
+                                .font(.caption.weight(.semibold))
                                 .foregroundStyle(PastelTheme.textSecondary)
 
                             Image(systemName: "info.circle")
-                                .font(.system(size: 9))
+                                .font(.system(size: 10))
                                 .foregroundStyle(PastelTheme.textTertiary)
                         }
 
                         Text("\(Int(cnsScore))%")
-                            .font(.subheadline.bold())
+                            .font(.headline.bold())
                             .foregroundStyle(PastelTheme.textPrimary)
                     }
                 }
@@ -68,11 +68,11 @@ struct OverviewVitalsRowView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Pulse")
-                        .font(.caption2.weight(.medium))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(PastelTheme.textSecondary)
 
                     Text(heartRate > 0 ? "\(Int(heartRate)) bpm" : "62 bpm")
-                        .font(.subheadline.bold())
+                        .font(.headline.bold())
                         .foregroundStyle(PastelTheme.textPrimary)
                 }
             }
@@ -94,11 +94,11 @@ struct OverviewVitalsRowView: View {
 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Hydration")
-                        .font(.caption2.weight(.medium))
+                        .font(.caption.weight(.semibold))
                         .foregroundStyle(PastelTheme.textSecondary)
 
                     Text(waterLiters > 0 ? String(format: "%.1fL", waterLiters) : "2.1L")
-                        .font(.subheadline.bold())
+                        .font(.headline.bold())
                         .foregroundStyle(PastelTheme.textPrimary)
                 }
             }
