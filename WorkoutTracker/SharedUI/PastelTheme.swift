@@ -1,18 +1,18 @@
 internal import SwiftUI
 
-/// Unified Warm Oat & High-Contrast Pastel Design System for WorkoutTracker.
-/// Features luminous warm beiges, crystal-clear white typography, and motivating workout tones.
+/// High-Performance Athletic Contrast Design System for WorkoutTracker.
+/// Features deep OLED blacks, pure white typography, and vibrant athletic emerald green accents.
 enum PastelTheme {
     // MARK: - Canvas & Surfaces
-    static let canvas = Color(hex: "121316")
-    static let cardSurface = Color(hex: "1B1D22")
-    static let cardSurfaceSubtle = Color(hex: "16171B")
-    static let anatomyBackground = Color(hex: "15161A")
+    static let canvas = Color(hex: "08090B")
+    static let cardSurface = Color(hex: "121418")
+    static let cardSurfaceSubtle = Color(hex: "0D0E12")
+    static let anatomyBackground = Color(hex: "0B0C0F")
     
     // MARK: - Borders & Dividers
-    static let cardBorder = Color(hex: "FAF5EE").opacity(0.12)
-    static let cardBorderFocused = Color(hex: "FAF5EE").opacity(0.28)
-    static let separator = Color(hex: "FAF5EE").opacity(0.10)
+    static let cardBorder = Color(hex: "FFFFFF").opacity(0.10)
+    static let cardBorderFocused = Color(hex: "10B981").opacity(0.40)
+    static let separator = Color(hex: "FFFFFF").opacity(0.08)
 
     // MARK: - Harmonious Warm & Motivational Accents
     /// Luminous warm oat/ivory cream for primary actions, badges, and high-contrast highlights.
@@ -21,33 +21,33 @@ enum PastelTheme {
     /// Rich warm beige for frames, highlights, and secondary accents.
     static let warmBeige = Color(hex: "F4ECE2")
 
-    /// Fresh energetic sage green for recovered muscles (80-100%), readiness, and PR achievements.
-    static let pastelSage = Color(hex: "9DD6AF")
+    /// Athletic vivid emerald green for recovered muscles (80-100%), readiness, and PR achievements.
+    static let pastelSage = Color(hex: "10B981")
     
-    /// Gentle dusty peach / terracotta for fatigued muscles (<50%) and workout streak fire.
-    static let pastelPeach = Color(hex: "E4A891")
+    /// Gentle energetic peach / coral for fatigued muscles (<50%) and workout streak fire.
+    static let pastelPeach = Color(hex: "F87171")
     
     /// Warm golden amber for active workouts, favorites, and transition recovery (50-79%).
-    static let pastelAmber = Color(hex: "F2CB7E")
+    static let pastelAmber = Color(hex: "FBBF24")
     
     /// Muted powder blue / slate for toggles, time metrics, and hydration sync.
-    static let pastelSlate = Color(hex: "A3BCD6")
+    static let pastelSlate = Color(hex: "60A5FA")
     
     /// Dusty lavender for CNS autonomic readiness and HRV metrics.
-    static let pastelLavender = Color(hex: "C6B8D8")
+    static let pastelLavender = Color(hex: "A78BFA")
 
     // MARK: - Crystal-Clear High-Contrast Typography
     /// Pure crisp white for primary headers, titles, and main figures.
     static let textPrimary = Color(hex: "FFFFFF")
     
     /// Warm light beige / cream for high-contrast subtitles, descriptions, and values.
-    static let textSecondary = Color(hex: "E8E2D8")
+    static let textSecondary = Color(hex: "E6E1D8")
     
     /// Soft warm ivory-gray for clear micro-labels, icons, and captions.
-    static let textTertiary = Color(hex: "C4BCB2")
+    static let textTertiary = Color(hex: "A8A29E")
     
     /// Deep charcoal for text displayed on bright oat / beige buttons and chips.
-    static let textOnOat = Color(hex: "121316")
+    static let textOnOat = Color(hex: "08090B")
 
     // MARK: - Corner Radii
     static let cardRadius: CGFloat = 20
