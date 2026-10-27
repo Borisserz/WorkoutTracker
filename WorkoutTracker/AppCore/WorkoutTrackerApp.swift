@@ -288,20 +288,24 @@ struct WorkoutTrackerApp: App {
                 dbURL = paths[0].appendingPathComponent("WorkoutDatabase.sqlite")
             }
 
-            let cloudConfig = ModelConfiguration(
-                schema: schema,
-                url: dbURL,
-                cloudKitDatabase: .private("iCloud.com.borisdev.WorkoutTracker")
-            )
-
             let container: ModelContainer
+            #if targetEnvironment(simulator)
+            let localConfig = ModelConfiguration(schema: schema, url: dbURL, cloudKitDatabase: .none)
+            container = try ModelContainer(for: schema, configurations: [localConfig])
+            #else
             do {
+                let cloudConfig = ModelConfiguration(
+                    schema: schema,
+                    url: dbURL,
+                    cloudKitDatabase: .private("iCloud.com.borisdev.WorkoutTracker")
+                )
                 container = try ModelContainer(for: schema, configurations: [cloudConfig])
             } catch {
                 print("⚠️ CloudKit didn't open, local rollback: \(error)")
                 let localConfig = ModelConfiguration(schema: schema, url: dbURL, cloudKitDatabase: .none)
                 container = try ModelContainer(for: schema, configurations: [localConfig])
             }
+            #endif
 
             let di = DIContainer(modelContainer: container)
 
