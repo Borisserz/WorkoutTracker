@@ -64,7 +64,7 @@ struct ConfigureExerciseView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                themeManager.current.background.ignoresSafeArea()
+                PastelTheme.canvas.ignoresSafeArea()
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
@@ -73,14 +73,14 @@ struct ConfigureExerciseView: View {
                         HStack(alignment: .center, spacing: 16) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(LocalizationHelper.shared.translateName(viewModel.exerciseName))
-                                    .font(.system(size: 32, weight: .heavy, design: .rounded))
-                                    .foregroundColor(.white)
+                                    .font(.system(size: 30, weight: .heavy, design: .rounded))
+                                    .foregroundColor(PastelTheme.textPrimary)
                                     .minimumScaleFactor(0.8)
                                 
                                 if let prevText = viewModel.previousPerformanceText {
                                     Text(prevText)
                                         .font(.system(size: 13, weight: .medium, design: .rounded))
-                                        .foregroundColor(themeManager.current.secondaryText)
+                                        .foregroundColor(PastelTheme.textSecondary)
                                 }
                             }
                             
@@ -129,20 +129,23 @@ struct ConfigureExerciseView: View {
             handleSave()
         } label: {
             Text(LocalizedStringKey("Add Exercise"))
-                .font(.headline)
-                .fontWeight(.bold)
-                .foregroundColor(.white) 
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .foregroundColor(PastelTheme.textOnOat) 
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(themeManager.current.primaryAccent) 
-                .cornerRadius(14)
-                .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 10, x: 0, y: 5)
+                .background(PastelTheme.pastelOat) 
+                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 10)
         .background(
             LinearGradient(
-                colors: [themeManager.current.background, themeManager.current.background.opacity(0)],
+                colors: [PastelTheme.canvas, PastelTheme.canvas.opacity(0)],
                 startPoint: .bottom,
                 endPoint: .top
             )
@@ -211,12 +214,12 @@ struct ConfigureExerciseView: View {
         // Sets Card
         VStack(spacing: 8) {
             Text(LocalizedStringKey("Sets"))
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(themeManager.current.secondaryText)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(PastelTheme.textSecondary)
             
             Text("\(viewModel.form.sets)")
                 .font(.system(size: 38, weight: .black, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(PastelTheme.textPrimary)
             
             PremiumSliderPicker(
                 value: setsBinding,
@@ -225,22 +228,22 @@ struct ConfigureExerciseView: View {
             )
         }
         .padding(.vertical, 14)
-        .background(themeManager.current.surface)
-        .cornerRadius(16)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(18)
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
 
         // Reps Card
         VStack(spacing: 8) {
             Text(LocalizedStringKey("Reps"))
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(themeManager.current.secondaryText)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(PastelTheme.textSecondary)
             
             Text("\(viewModel.form.reps)")
                 .font(.system(size: 38, weight: .black, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(PastelTheme.textPrimary)
             
             PremiumSliderPicker(
                 value: repsBinding,
@@ -249,23 +252,23 @@ struct ConfigureExerciseView: View {
             )
         }
         .padding(.vertical, 14)
-        .background(themeManager.current.surface)
-        .cornerRadius(16)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(18)
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
 
         // Weight Card
         VStack(spacing: 8) {
             Text(LocalizedStringKey("Weight (\(unitsManager.weightUnitString()))"))
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundColor(themeManager.current.secondaryText)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(PastelTheme.textSecondary)
             
             let wVal = unitsManager.convertFromKilograms(viewModel.form.weight ?? 0.0)
             Text(String(format: "%.1f", wVal))
                 .font(.system(size: 38, weight: .black, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(PastelTheme.pastelAmber)
             
             PremiumSliderPicker(
                 value: weightValueBinding,
@@ -274,7 +277,7 @@ struct ConfigureExerciseView: View {
             )
             
             // Quick Plate Increments
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 ForEach([1.25, 2.5, 5.0], id: \.self) { val in
                     Button {
                         let cur = unitsManager.convertFromKilograms(viewModel.form.weight ?? 0.0)
@@ -285,14 +288,14 @@ struct ConfigureExerciseView: View {
                     } label: {
                         Text("+\(LocalizationHelper.shared.formatFlexible(val))")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundColor(themeManager.current.primaryAccent)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(themeManager.current.primaryAccent.opacity(0.12))
-                            .cornerRadius(8)
+                            .foregroundColor(PastelTheme.pastelOat)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(PastelTheme.cardSurfaceSubtle)
+                            .cornerRadius(10)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(themeManager.current.primaryAccent.opacity(0.25), lineWidth: 1)
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
                             )
                     }
                 }
@@ -300,11 +303,11 @@ struct ConfigureExerciseView: View {
             .padding(.top, 4)
         }
         .padding(.vertical, 14)
-        .background(themeManager.current.surface)
-        .cornerRadius(16)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(18)
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }
 

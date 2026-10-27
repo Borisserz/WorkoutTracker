@@ -89,34 +89,45 @@ struct AICoachView: View {
         }
     }
     var body: some View {
-        let isListening = speechRecognizer.isRecording
-        let spherePrimary: Color = isListening ? .cyberGreen : (cnsScore > 50 ? .cyberPurple : .cyberOrange)
-        let sphereSecondary: Color = isListening ? .cyberCyan : (cnsScore > 50 ? .cyberBlue : .cyberRed)
-
         NavigationStack(path: $path) {
             ZStack {
-                // Cyberpunk base background
-                Color(red: 0.05, green: 0.05, blue: 0.07).ignoresSafeArea()
-                
-                // Add dot grid and breathing glow behind cards for subtle depth
-                DotGridBackground()
-                    .opacity(0.15)
-                
-                FloatingParticles()
-                    .opacity(0.1)
+                PastelTheme.canvas.ignoresSafeArea()
+
+                // Ambient Athletic Glow
+                GeometryReader { _ in
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.pastelLavender.opacity(0.08))
+                            .blur(radius: 80)
+                            .frame(width: 250, height: 250)
+                            .offset(x: -80, y: -40)
+
+                        Circle()
+                            .fill(PastelTheme.pastelSage.opacity(0.07))
+                            .blur(radius: 90)
+                            .frame(width: 260, height: 260)
+                            .offset(x: 120, y: -20)
+                    }
+                }
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
 
                 VStack {
                     if showSyncToast {
-                        HStack(spacing: 12) {
-                            Image(systemName: "waveform.path.ecg").foregroundColor(.cyberCyan).symbolEffect(.pulse, options: .repeating)
-                            Text("Biometrics Synced").font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                        HStack(spacing: 8) {
+                            Image(systemName: "waveform.path.ecg")
+                                .foregroundStyle(PastelTheme.pastelSage)
+                                .symbolEffect(.pulse, options: .repeating)
+                            Text("Биометрия синхронизирована")
+                                .font(.caption.bold())
+                                .foregroundStyle(PastelTheme.textPrimary)
                         }
-                        .padding(.horizontal, 16).padding(.vertical, 10)
-                        .background(Color(red: 0.09, green: 0.09, blue: 0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.cyberCyan.opacity(0.6), lineWidth: 1))
-                        .shadow(color: Color.cyberCyan.opacity(0.3), radius: 0, x: 3, y: 3)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(PastelTheme.cardSurface)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(PastelTheme.cardBorderFocused, lineWidth: 1))
+                        .shadow(color: Color.black.opacity(0.2), radius: 8, y: 4)
                         .transition(.move(edge: .top).combined(with: .opacity).combined(with: .scale))
                         .zIndex(2)
                     }
@@ -127,67 +138,57 @@ struct AICoachView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 20) {
                         
-                        // Header Section
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(greeting)
-                                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                                    .foregroundColor(.gray)
-                                Text("AI Smart Hub")
-                                    .font(.system(size: 32, weight: .black, design: .rounded))
-                                    .foregroundColor(.white)
-                                Text(userStatsViewModel.progressManager.currentTitle)
-                                    .font(.subheadline)
-                                    .fontWeight(.bold)
-                                    .foregroundColor(.cyberOrange)
+                        // 1. Header Section
+                        HStack(alignment: .center) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("AI Коуч")
+                                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                                    .foregroundStyle(PastelTheme.textPrimary)
+
+                                Text("Персональный научный ассистент")
+                                    .font(.caption)
+                                    .foregroundStyle(PastelTheme.textSecondary)
                             }
+
                             Spacer()
-                            
-                            Button(action: {
+
+                            Button {
                                 HapticManager.shared.impact(.light)
                                 showAISettings = true
-                            }) {
+                            } label: {
                                 ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(red: 0.09, green: 0.09, blue: 0.12))
-                                        .frame(width: 44, height: 44)
-                                        .overlay(
-                                            RoundedRectangle(cornerRadius: 12)
-                                                .stroke(Color.cyberPurple.opacity(0.6), lineWidth: 1.5)
-                                        )
+                                    Circle()
+                                        .fill(PastelTheme.cardSurfaceSubtle)
+                                        .frame(width: 40, height: 40)
+                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
                                     Image(systemName: "slider.horizontal.3")
-                                        .font(.system(size: 18))
-                                        .foregroundColor(.white)
+                                        .font(.system(size: 15))
+                                        .foregroundStyle(PastelTheme.textPrimary)
                                 }
-                                .shadow(color: Color.cyberPurple.opacity(0.3), radius: 0, x: 3, y: 3)
                             }
                             .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
                         .padding(.top, 10)
-                        
-                        // CNS Readiness
-                        CyberReadinessCard(
+
+                        // 2. Apple Watch-Style Readiness & Vitals Hero
+                        PastelReadinessCard(
                             score: cnsScore,
                             hrv: actualHRV,
                             rhr: actualRHR,
                             sleep: sleepHours,
                             hasSleep: hasSleepData
                         )
-                        .padding(.horizontal, 20)
-                        
-                        // AI Assistant Card
-                        CyberAssistantCard(
+                        .padding(.horizontal, 16)
+
+                        // 3. Apple Intelligence Assistant Card (Dictation & Text Input)
+                        PastelAssistantCard(
                             isListening: Binding(get: { speechRecognizer.isRecording }, set: { _ in }),
                             textTranscript: $speechRecognizer.transcript,
                             userQuery: $userQuery,
-                            spherePrimary: spherePrimary,
-                            sphereSecondary: sphereSecondary,
-                            isBreathing: isBreathing,
-                            isLevitating: isLevitating,
-                            sphereDragOffset: sphereDragOffset,
-                            onSphereTap: {
-                                HapticManager.shared.impact(.rigid)
+                            onMicTap: {
+                                HapticManager.shared.impact(.medium)
                                 if speechRecognizer.isRecording {
                                     speechRecognizer.stopTranscribing()
                                     if !speechRecognizer.transcript.isEmpty {
@@ -202,16 +203,6 @@ struct AICoachView: View {
                                     speechRecognizer.startTranscribing()
                                 }
                             },
-                            onSphereDrag: { value in
-                                withAnimation(.interactiveSpring()) { sphereDragOffset = value.translation }
-                                if abs(value.translation.width) > 50 || abs(value.translation.height) > 50 { HapticManager.shared.selection() }
-                            },
-                            onSphereDragEnded: {
-                                withAnimation(.spring(response: 0.6, dampingFraction: 0.4)) {
-                                    sphereDragOffset = .zero
-                                    HapticManager.shared.impact(.soft)
-                                }
-                            },
                             onSubmitQuery: {
                                 if !userQuery.isEmpty {
                                     let text = userQuery
@@ -223,113 +214,143 @@ struct AICoachView: View {
                                 }
                             }
                         )
-                        .padding(.horizontal, 20)
-                        
-                        // Quick Prompts list (if query is empty and not listening)
+                        .padding(.horizontal, 16)
+
+                        // 4. Quick Prompt Pills (1-Tap Prompts)
                         if !speechRecognizer.isRecording {
                             ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 10) {
-                                    Spacer().frame(width: 10)
+                                HStack(spacing: 8) {
                                     ForEach(quickPrompts, id: \.self) { prompt in
-                                        Button(action: {
+                                        Button {
                                             HapticManager.shared.selection()
                                             requireAIConsent {
                                                 viewModel.inputText = prompt
                                                 showChatView = true
                                             }
-                                        }) {
+                                        } label: {
                                             Text(prompt)
-                                                .font(.system(size: 12, weight: .bold, design: .rounded))
-                                                .padding(.horizontal, 14)
-                                                .padding(.vertical, 8)
-                                                .background(Color(red: 0.09, green: 0.09, blue: 0.12))
-                                                .foregroundColor(.white)
-                                                .cornerRadius(12)
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(PastelTheme.textSecondary)
+                                                .padding(.horizontal, 13)
+                                                .padding(.vertical, 7)
+                                                .background(PastelTheme.cardSurfaceSubtle)
+                                                .clipShape(Capsule())
                                                 .overlay(
-                                                    RoundedRectangle(cornerRadius: 12)
-                                                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                                                    Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1)
                                                 )
                                         }
+                                        .buttonStyle(.plain)
                                     }
-                                    Spacer().frame(width: 10)
                                 }
+                                .padding(.horizontal, 16)
                             }
                         }
-                        
-                        // Bento Grid of tools
+
+                        // 5. 1-Tap Action Bento Grid (2x2)
                         LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                             
-                            // AI Camera / Form Tracking
-                            Button(action: {
+                            // Tile 1: AI Camera
+                            Button {
                                 HapticManager.shared.impact(.medium)
                                 showAICameraSelector = true
-                            }) {
-                                CyberBentoCard(
-                                    title: "AI Camera",
-                                    subtitle: "Track form & reps with camera intelligence",
-                                    iconName: "sparkles.tv",
-                                    accentColor: .cyberPurple
+                            } label: {
+                                PastelBentoCard(
+                                    title: "AI Камера",
+                                    subtitle: "Трекинг суставов и амплитуды",
+                                    iconName: "camera.viewfinder",
+                                    accentColor: PastelTheme.pastelLavender
                                 )
                             }
                             .buttonStyle(.plain)
-                            
-                            // AI Architect
-                            Button(action: {
+
+                            // Tile 2: Program Architect
+                            Button {
                                 HapticManager.shared.impact(.medium)
                                 showAIBuilder = true
-                            }) {
-                                CyberBentoCard(
-                                    title: "Program Architect",
-                                    subtitle: "Generate long-term personalized splits",
+                            } label: {
+                                PastelBentoCard(
+                                    title: "План на сезон",
+                                    subtitle: "Персональный недельный сплит",
                                     iconName: "calendar.badge.plus",
-                                    accentColor: .cyberOrange
+                                    accentColor: PastelTheme.pastelAmber
                                 )
                             }
                             .buttonStyle(.plain)
-                            
-                            // Smart Builder
-                            Button(action: {
+
+                            // Tile 3: Smart Workout
+                            Button {
                                 HapticManager.shared.impact(.medium)
                                 showSmartBuilder = true
-                            }) {
-                                CyberBentoCard(
-                                    title: "Smart Workout",
-                                    subtitle: "Design custom daily training protocols",
+                            } label: {
+                                PastelBentoCard(
+                                    title: "Сессия дня",
+                                    subtitle: "Сборка сессии под готовность",
                                     iconName: "wand.and.stars",
-                                    accentColor: .cyberBlue
+                                    accentColor: PastelTheme.pastelSage
                                 )
                             }
                             .buttonStyle(.plain)
-                            
-                            // Progress Analyst
-                            Button(action: {
-                                HapticManager.shared.impact(.medium)
-                                showProgressSheet = true
-                            }) {
-                                CyberBentoCard(
-                                    title: "Progress Coach",
-                                    subtitle: "Biometric weekly performance analyzer",
-                                    iconName: "chart.xyaxis.line",
-                                    accentColor: .cyberCyan
-                                )
-                            }
-                            .buttonStyle(.plain)
-                            
-                            // Recovery Coach
-                            Button(action: {
+
+                            // Tile 4: Recovery Coach
+                            Button {
                                 HapticManager.shared.impact(.medium)
                                 showRestSheet = true
-                            }) {
-                                CyberBentoCard(
-                                    title: "Recovery Analyst",
-                                    subtitle: "Analyze sleep, fatigue & hydration state",
+                            } label: {
+                                PastelBentoCard(
+                                    title: "Восстановление",
+                                    subtitle: "Оценка утомления и сна",
                                     iconName: "moon.stars.fill",
-                                    accentColor: .cyberGreen
+                                    accentColor: PastelTheme.pastelOat
                                 )
                             }
                             .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 20)
+                        .padding(.horizontal, 16)
+
+                        // 6. Progress Analytics Full-Width Banner
+                        Button {
+                            HapticManager.shared.impact(.medium)
+                            showProgressSheet = true
+                        } label: {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .fill(PastelTheme.cardSurfaceSubtle)
+                                        .frame(width: 42, height: 42)
+                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                                    Image(systemName: "chart.xyaxis.line")
+                                        .font(.system(size: 16))
+                                        .foregroundStyle(PastelTheme.pastelSage)
+                                }
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Аналитика прогресса")
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(PastelTheme.textPrimary)
+
+                                    Text("Биометрический анализ результатов недели")
+                                        .font(.caption2)
+                                        .foregroundStyle(PastelTheme.textSecondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(PastelTheme.textTertiary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(PastelTheme.cardSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
                         .padding(.bottom, 30)
                     }
                 }
@@ -408,296 +429,279 @@ struct AICoachView: View {
     }
 }
 
-// MARK: - Cyberpunk Tech-Minimalism UI Components
+// MARK: - Apple HIG & PastelTheme UI Components
 
-struct CyberBentoCard<Content: View>: View {
+struct PastelBentoCard: View {
     let title: String
     let subtitle: String?
     let iconName: String
     let accentColor: Color
-    let content: Content
-    
-    init(title: String, subtitle: String? = nil, iconName: String, accentColor: Color, @ViewBuilder content: () -> Content = { EmptyView() }) {
-        self.title = title
-        self.subtitle = subtitle
-        self.iconName = iconName
-        self.accentColor = accentColor
-        self.content = content()
-    }
-    
-    @Environment(\.colorScheme) private var colorScheme
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(accentColor.opacity(0.15))
+                    Circle()
+                        .fill(accentColor.opacity(0.14))
                         .frame(width: 40, height: 40)
+                        .overlay(Circle().stroke(accentColor.opacity(0.35), lineWidth: 1))
+
                     Image(systemName: iconName)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(accentColor)
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(accentColor)
                 }
                 Spacer()
             }
-            
-            VStack(alignment: .leading, spacing: 4) {
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.system(size: 15, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
                 if let sub = subtitle {
                     Text(sub)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(.gray)
-                        .lineLimit(3)
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                        .lineLimit(2)
                         .multilineTextAlignment(.leading)
-                        .minimumScaleFactor(0.85)
                 }
             }
-            
-            content
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 140, alignment: .leading)
-        .background(Color(red: 0.09, green: 0.09, blue: 0.12))
-        .cornerRadius(20)
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 120, alignment: .leading)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(accentColor.opacity(0.6), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: accentColor.opacity(0.3), radius: 0, x: 4, y: 4)
     }
 }
 
-struct CyberReadinessCard: View {
+typealias CyberBentoCard = PastelBentoCard
+
+struct PastelReadinessCard: View {
     let score: Double
     let hrv: Double?
     let rhr: Double?
     let sleep: Double
     let hasSleep: Bool
-    
-    @Environment(\.colorScheme) private var colorScheme
-    
-    private func getReadinessAdvice(for score: Double) -> (pillText: String, recommendation: String, color: Color) {
+
+    private var scoreColor: Color {
+        if score >= 80 { return PastelTheme.pastelSage }
+        if score >= 50 { return PastelTheme.pastelAmber }
+        return PastelTheme.pastelPeach
+    }
+
+    private var adviceText: String {
         if score >= 80 {
-            return ("Ready for PRs", "CNS is fully recovered. Great day for heavy compound lifts (Squat, Deadlift, Bench Press)!", .cyberGreen)
-        } else if score >= 60 {
-            return ("Optimal Load", "Moderate fatigue. Work with 70-80% of your max and focus on technique.", .cyberOrange)
+            return "ЦНС полностью восстановилась. Отличный день для базовых силовых нагрузок высокой интенсивности."
+        } else if score >= 50 {
+            return "Умеренная нагрузка. Рекомендуется работа с 70-80% от максимума и фокус на чистой технике."
         } else {
-            return ("Deload / Rest", "High CNS fatigue. Deload or focus on active recovery and stretching.", .cyberRed)
+            return "Высокая усталость ЦНС. Рекомендуется день разгрузки, легкое кардио или растяжка."
         }
     }
-    
+
     var body: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 16) {
+        VStack(spacing: 14) {
+            HStack(spacing: 14) {
+                // Circular Ring in Apple Watch Activity style
                 ZStack {
                     Circle()
-                        .stroke(Color.white.opacity(0.08), lineWidth: 4)
-                        .frame(width: 50, height: 50)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 5)
+                        .frame(width: 58, height: 58)
+
                     Circle()
                         .trim(from: 0, to: CGFloat(min(max(score / 100.0, 0.0), 1.0)))
-                        .stroke(
-                            LinearGradient(colors: [.cyberPurple, .cyberCyan], startPoint: .topLeading, endPoint: .bottomTrailing),
-                            style: StrokeStyle(lineWidth: 4, lineCap: .round)
-                        )
-                        .frame(width: 50, height: 50)
+                        .stroke(scoreColor, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .frame(width: 58, height: 58)
                         .rotationEffect(.degrees(-90))
+
                     Text("\(Int(score))")
-                        .font(.system(size: 16, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
                 }
-                
-                VStack(alignment: .leading, spacing: 4) {
+
+                VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
-                        Text("READINESS INDEX")
-                            .font(.system(size: 10, weight: .black))
-                            .foregroundColor(.gray)
                         Circle()
-                            .fill(CNSCalculator.getStatus(for: score).color)
+                            .fill(scoreColor)
                             .frame(width: 6, height: 6)
+
+                        Text("ГОТОВНОСТЬ ЦНС")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundStyle(PastelTheme.textSecondary)
                     }
+
                     Text(CNSCalculator.getStatus(for: score).text)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .foregroundStyle(PastelTheme.textPrimary)
                 }
+
                 Spacer()
             }
-            
-            Divider().background(Color.white.opacity(0.1))
-            
+
+            Divider()
+                .background(PastelTheme.separator)
+
+            // Micro-metrics row
             HStack {
-                CyberMetric(title: "HRV", value: hrv != nil ? "\(Int(hrv!))" : "--", unit: "ms", color: .cyberCyan)
+                PastelMetricItem(title: "HRV", value: hrv != nil ? "\(Int(hrv!))" : "--", unit: "мс", color: PastelTheme.pastelSlate)
                 Spacer()
-                CyberMetric(title: "RHR", value: rhr != nil ? "\(Int(rhr!))" : "--", unit: "bpm", color: .cyberPurple)
+                PastelMetricItem(title: "ЧСС покоя", value: rhr != nil ? "\(Int(rhr!))" : "--", unit: "уд/м", color: PastelTheme.pastelLavender)
                 Spacer()
-                CyberMetric(title: "Sleep", value: hasSleep ? String(format: "%.1f", sleep) : "--", unit: "hrs", color: .cyberOrange)
+                PastelMetricItem(title: "Сон", value: hasSleep ? String(format: "%.1f", sleep) : "--", unit: "ч", color: PastelTheme.pastelAmber)
             }
-            
-            Divider().background(Color.white.opacity(0.1))
-            
-            let advice = getReadinessAdvice(for: score)
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(advice.color)
-                        .frame(width: 8, height: 8)
-                    Text(advice.pillText)
-                        .font(.system(size: 11, weight: .black))
-                        .foregroundColor(advice.color)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(advice.color.opacity(0.15))
-                .cornerRadius(8)
-                
-                Text(advice.recommendation)
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.8))
+
+            // Actionable 1-sentence verdict
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.caption)
+                    .foregroundStyle(scoreColor)
+                    .padding(.top, 1)
+
+                Text(adviceText)
+                    .font(.caption)
+                    .foregroundStyle(PastelTheme.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(12)
-            .background(advice.color.opacity(0.05))
-            .cornerRadius(12)
+            .padding(10)
+            .background(PastelTheme.cardSurfaceSubtle)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(advice.color.opacity(0.3), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
         }
         .padding(16)
-        .background(Color(red: 0.09, green: 0.09, blue: 0.12))
-        .cornerRadius(20)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.cyberCyan.opacity(0.6), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: Color.cyberCyan.opacity(0.3), radius: 0, x: 4, y: 4)
     }
 }
 
-struct CyberMetric: View {
+typealias CyberReadinessCard = PastelReadinessCard
+
+struct PastelMetricItem: View {
     let title: String
     let value: String
     let unit: String
     let color: Color
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(title.uppercased())
-                .font(.system(size: 10, weight: .black))
-                .foregroundColor(.gray)
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(PastelTheme.textTertiary)
+
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(value)
-                    .font(.system(size: 18, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
                 Text(unit)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(color)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(color)
             }
         }
     }
 }
 
-struct CyberAssistantCard: View {
+typealias CyberMetric = PastelMetricItem
+
+struct PastelAssistantCard: View {
     @Binding var isListening: Bool
     @Binding var textTranscript: String
     @Binding var userQuery: String
-    let spherePrimary: Color
-    let sphereSecondary: Color
-    let isBreathing: Bool
-    let isLevitating: Bool
-    let sphereDragOffset: CGSize
-    let onSphereTap: () -> Void
-    let onSphereDrag: (DragGesture.Value) -> Void
-    let onSphereDragEnded: () -> Void
+    let onMicTap: () -> Void
     let onSubmitQuery: () -> Void
-    
+
     var body: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 16) {
-                // Breathing sphere on the left
-                Button(action: onSphereTap) {
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                // Microphone Dictation Button
+                Button(action: onMicTap) {
                     ZStack {
                         Circle()
-                            .fill(spherePrimary.opacity(0.2))
-                            .frame(width: 70, height: 70)
-                            .blur(radius: isBreathing ? 8 : 4)
-                            .scaleEffect(isBreathing ? 1.1 : 0.9)
-                        
-                        Circle()
-                            .fill(LinearGradient(colors: [spherePrimary, sphereSecondary], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 54, height: 54)
-                            .scaleEffect(isBreathing ? 1.05 : 0.95)
-                        
-                        Circle()
-                            .fill(.ultraThinMaterial)
+                            .fill(isListening ? PastelTheme.pastelPeach : PastelTheme.pastelOat)
                             .frame(width: 44, height: 44)
-                            .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 0.5))
-                        
-                        Image(systemName: isListening ? "mic.fill" : "aqi.high")
-                            .font(.system(size: 20, weight: .light))
-                            .foregroundColor(isListening ? .cyberGreen : .white)
+                            .overlay(
+                                Circle().stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                            )
+
+                        Image(systemName: isListening ? "stop.fill" : "mic.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(PastelTheme.textOnOat)
                     }
                 }
                 .buttonStyle(.plain)
-                .offset(y: isLevitating ? -4 : 4)
-                .gesture(
-                    DragGesture()
-                        .onChanged(onSphereDrag)
-                        .onEnded { _ in onSphereDragEnded() }
-                )
-                
-                VStack(alignment: .leading, spacing: 4) {
+
+                VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 8) {
-                        Text(isListening ? "Listening..." : "Voice Coach Active")
-                            .font(.system(size: 16, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
+                        Text(isListening ? "Слушаю вас..." : "Спросить AI Тренера")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(PastelTheme.textPrimary)
+
                         if isListening {
                             SiriWaveformView()
                         }
                     }
-                    Text(isListening ? (textTranscript.isEmpty ? "Speak now..." : textTranscript) : "Tap the sphere to talk to AI")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(isListening ? .cyberGreen : .gray)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
+
+                    Text(isListening ? (textTranscript.isEmpty ? "Говорите..." : textTranscript) : "Техника, подбор упражнений, диета")
+                        .font(.caption2)
+                        .foregroundStyle(isListening ? PastelTheme.pastelSage : PastelTheme.textSecondary)
+                        .lineLimit(1)
                 }
+
                 Spacer()
             }
-            
-            // Text input field
-            HStack {
-                Image(systemName: "sparkle.magnifyingglass").foregroundColor(.cyberCyan)
-                TextField("Ask about diet, form, or workouts...", text: $userQuery)
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundColor(.white)
+
+            // Text input row
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 13))
+                    .foregroundStyle(PastelTheme.textTertiary)
+
+                TextField("Задайте вопрос тренеру...", text: $userQuery)
+                    .font(.subheadline)
+                    .foregroundStyle(PastelTheme.textPrimary)
                     .submitLabel(.send)
                     .onSubmit(onSubmitQuery)
+
                 if !userQuery.isEmpty {
-                    Button(action: { userQuery = "" }) {
-                        Image(systemName: "xmark.circle.fill").foregroundColor(.gray)
+                    Button(action: onSubmitQuery) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 22))
+                            .foregroundStyle(PastelTheme.pastelOat)
                     }
+                    .buttonStyle(.plain)
                 }
             }
-            .padding(12)
-            .background(Color(red: 0.13, green: 0.13, blue: 0.16))
-            .cornerRadius(12)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(PastelTheme.cardSurfaceSubtle)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
         }
-        .padding(16)
-        .background(Color(red: 0.09, green: 0.09, blue: 0.12))
-        .cornerRadius(20)
+        .padding(14)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(Color.cyberPurple.opacity(0.6), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: Color.cyberPurple.opacity(0.3), radius: 0, x: 4, y: 4)
     }
 }
+
+typealias CyberAssistantCard = PastelAssistantCard
 
 struct SiriWaveformView: View {
     @State private var phase: CGFloat = 0.0
@@ -1980,10 +1984,10 @@ struct IdentifiableGeneratedEx: Identifiable {
 }
 
 extension Color {
-    static let cyberPurple = Color(red: 0.62, green: 0.35, blue: 0.88)
-    static let cyberOrange = Color(red: 0.94, green: 0.47, blue: 0.18)
-    static let cyberBlue = Color(red: 0.18, green: 0.52, blue: 0.88)
-    static let cyberCyan = Color(red: 0.0, green: 0.65, blue: 0.78)
-    static let cyberGreen = Color(red: 0.05, green: 0.68, blue: 0.45)
-    static let cyberRed = Color(red: 0.90, green: 0.22, blue: 0.27)
+    static let cyberPurple = PastelTheme.pastelLavender
+    static let cyberOrange = PastelTheme.pastelAmber
+    static let cyberBlue = PastelTheme.pastelSlate
+    static let cyberCyan = PastelTheme.pastelSlate
+    static let cyberGreen = PastelTheme.pastelSage
+    static let cyberRed = PastelTheme.pastelPeach
 }

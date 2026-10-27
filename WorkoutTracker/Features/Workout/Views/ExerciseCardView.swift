@@ -113,14 +113,6 @@ struct ExerciseCardView: View {
                     quickStatsSection
                         .padding(.bottom, 8)
                     columnHeadersSection
-                    if isActiveExercise {
-                        Text("💡 Tip: Swipe set row left or right to log")
-                            .font(.system(size: 10, weight: .medium, design: .rounded))
-                            .foregroundColor(.secondary)
-                            .opacity(0.7)
-                            .padding(.horizontal, 10)
-                            .padding(.bottom, 6)
-                    }
                     setsSection
                     actionButtonsSection
                 } else {
@@ -128,13 +120,13 @@ struct ExerciseCardView: View {
                 }
             }
             .padding()
-            .background(colorScheme == .dark ? Color(white: 0.1) : Color.white)
+            .background(PastelTheme.cardSurface)
             .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .stroke(isActiveExercise ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.05)), lineWidth: isActiveExercise ? 2 : 1)
+                    .stroke(isActiveExercise ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
             )
-            .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+            .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 4)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: isActiveExercise)
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: showEffortSheet)
         }
@@ -230,11 +222,15 @@ struct ExerciseCardView: View {
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .lineLimit(1)
                     }
-                    .foregroundColor(colorScheme == .dark ? .white : .primary)
+                    .foregroundColor(PastelTheme.textSecondary)
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.2 : 0.1))
-                    .cornerRadius(8)
+                    .padding(.vertical, 5)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    )
                 }
                 .buttonStyle(BorderlessButtonStyle())
                 .fixedSize(horizontal: true, vertical: false)

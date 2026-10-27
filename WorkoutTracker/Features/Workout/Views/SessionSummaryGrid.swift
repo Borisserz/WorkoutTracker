@@ -1,5 +1,3 @@
-
-
 internal import SwiftUI
 
 struct SessionSummaryGrid: View {
@@ -8,47 +6,47 @@ struct SessionSummaryGrid: View {
     @Environment(UnitsManager.self) var unitsManager
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
 
             let volume = unitsManager.convertFromKilograms(viewModel.workoutAnalytics.volume)
-            SummaryGlassCard(
+            SummaryMetricCard(
                 title: "Total Volume",
                 value: "\(LocalizationHelper.shared.formatInteger(volume))",
                 unit: unitsManager.weightUnitString(),
                 icon: "scalemass.fill",
-                colors: [.cyan, .blue]
+                accentColor: PastelTheme.pastelOat
             )
 
-            SummaryGlassCard(
+            SummaryMetricCard(
                 title: "Sets Done",
                 value: "\(viewModel.workoutAnalytics.completedSetsCount)",
                 unit: "sets",
                 icon: "checkmark.circle.fill",
-                colors: [.green, .mint]
+                accentColor: PastelTheme.pastelEmerald
             )
 
-            SummaryGlassCard(
+            SummaryMetricCard(
                 title: "Avg Effort",
                 value: "\(workout.effortPercentage)",
                 unit: "%",
                 icon: "flame.fill",
-                colors: [.orange, .red]
+                accentColor: PastelTheme.pastelAmber
             )
 
             if workout.isActive {
-                SummaryTimerGlassCard(
+                SummaryTimerMetricCard(
                     title: "Duration",
                     startDate: workout.date,
                     icon: "stopwatch.fill",
-                    colors: [.purple, .indigo]
+                    accentColor: PastelTheme.pastelLavender
                 )
             } else {
-                SummaryGlassCard(
+                SummaryMetricCard(
                     title: "Duration",
                     value: "\(workout.durationSeconds / 60)",
                     unit: "min",
                     icon: "stopwatch.fill",
-                    colors: [.purple, .indigo]
+                    accentColor: PastelTheme.pastelLavender
                 )
             }
         }
@@ -58,79 +56,76 @@ struct SessionSummaryGrid: View {
     }
 }
 
-struct SummaryGlassCard: View {
+struct SummaryMetricCard: View {
     let title: LocalizedStringKey
     let value: String
     let unit: String
     let icon: String
-    let colors: [Color]
+    let accentColor: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 32, height: 32)
-                        .opacity(0.2)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 36, height: 36)
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(accentColor)
                 }
                 Spacer()
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(alignment: .firstTextBaseline, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(value)
                         .font(.system(size: 26, weight: .heavy, design: .rounded))
-                        .foregroundColor(.primary)
+                        .foregroundColor(PastelTheme.textPrimary)
                         .contentTransition(.numericText())
                     Text(unit)
-                        .font(.caption)
-                        .fontWeight(.bold)
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(PastelTheme.textSecondary)
                 }
                 Text(title)
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(PastelTheme.textSecondary)
                     .textCase(.uppercase)
+                    .tracking(0.5)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(20)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
     }
 }
 
-struct SummaryTimerGlassCard: View {
+struct SummaryTimerMetricCard: View {
     let title: LocalizedStringKey
     let startDate: Date
     let icon: String
-    let colors: [Color]
+    let accentColor: Color
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 32, height: 32)
-                        .opacity(0.2)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 36, height: 36)
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(accentColor)
                 }
                 Spacer()
                 Circle()
-                    .fill(Color.red)
+                    .fill(PastelTheme.pastelEmerald)
                     .frame(width: 8, height: 8)
                     .symbolEffect(.pulse)
             }
@@ -138,24 +133,24 @@ struct SummaryTimerGlassCard: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(startDate, style: .timer)
                     .font(.system(size: 26, weight: .heavy, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(PastelTheme.textPrimary)
                     .monospacedDigit()
 
                 Text(title)
-                    .font(.caption2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.secondary)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(PastelTheme.textSecondary)
                     .textCase(.uppercase)
+                    .tracking(0.5)
             }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(20)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: 4)
+        .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
     }
 }

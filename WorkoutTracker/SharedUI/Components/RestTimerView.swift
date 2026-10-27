@@ -49,21 +49,19 @@ struct RestTimerView: View {
             ZStack {
                 // Glass background
                 Circle()
-                    .fill(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white.opacity(0.9)))
+                    .fill(PastelTheme.cardSurface)
                     .frame(width: 64, height: 64)
                 
-                // Neon glow outline
+                // Track outline
+                Circle()
+                    .stroke(Color.white.opacity(0.08), lineWidth: 3)
+                    .frame(width: 54, height: 54)
+                
+                // Hairline border
                 Circle()
                     .stroke(
-                        LinearGradient(
-                            colors: [
-                                timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent,
-                                timerManager.restTimerFinished ? Color.green.opacity(0.5) : .purple
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 1.5
+                        timerManager.restTimerFinished ? PastelTheme.pastelAmber.opacity(0.6) : PastelTheme.cardBorder,
+                        lineWidth: 1
                     )
                     .frame(width: 64, height: 64)
                 
@@ -71,10 +69,10 @@ struct RestTimerView: View {
                 Circle()
                     .trim(from: 0, to: CGFloat(timerManager.progress))
                     .stroke(
-                        timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent,
-                        style: StrokeStyle(lineWidth: 3, lineCap: .round)
+                        timerManager.restTimerFinished ? PastelTheme.pastelAmber : PastelTheme.pastelSage,
+                        style: StrokeStyle(lineWidth: 3.5, lineCap: .round)
                     )
-                    .frame(width: 58, height: 58)
+                    .frame(width: 54, height: 54)
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 1.0), value: timerManager.progress)
                 
@@ -82,21 +80,21 @@ struct RestTimerView: View {
                 if timerManager.restTimerFinished {
                     Image(systemName: "checkmark")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.green)
+                        .foregroundColor(PastelTheme.pastelAmber)
                         .symbolEffect(.bounce, value: timerManager.restTimerFinished)
                 } else {
                     Text(timeStringShort(time: timerManager.restTimeRemaining))
                         .font(.system(size: 14, weight: .bold, design: .monospaced))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .foregroundColor(PastelTheme.textPrimary)
                         .contentTransition(.numericText())
                 }
             }
             .shadow(
-                color: (timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent)
-                    .opacity(isPulsing ? 0.6 : 0.3),
-                radius: isPulsing ? 12 : 6
+                color: Color.black.opacity(0.35),
+                radius: 10,
+                y: 4
             )
-            .scaleEffect(isPulsing ? 1.08 : 1.0)
+            .scaleEffect(isPulsing ? 1.06 : 1.0)
             .scaleEffect(isExpanded ? 0.9 : 1.0)
         }
         .buttonStyle(.plain)
@@ -140,12 +138,13 @@ struct RestTimerView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     timerManager.subtractRestTime(15)
                 } label: {
-                    Image(systemName: "minus")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    Text("-15")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(PastelTheme.textSecondary)
                         .frame(width: 36, height: 36)
-                        .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                        .background(PastelTheme.cardSurfaceSubtle)
                         .clipShape(Circle())
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
             }
@@ -159,14 +158,14 @@ struct RestTimerView: View {
                 HStack(spacing: 8) {
                     ZStack {
                         Circle()
-                            .stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.08), lineWidth: 1.5)
+                            .stroke(Color.white.opacity(0.08), lineWidth: 1.5)
                             .frame(width: 32, height: 32)
                         
                         Circle()
                             .trim(from: 0, to: CGFloat(timerManager.progress))
                             .stroke(
-                                timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent,
-                                style: StrokeStyle(lineWidth: 2.0, lineCap: .round)
+                                timerManager.restTimerFinished ? PastelTheme.pastelAmber : PastelTheme.pastelSage,
+                                style: StrokeStyle(lineWidth: 2.5, lineCap: .round)
                             )
                             .frame(width: 32, height: 32)
                             .rotationEffect(.degrees(-90))
@@ -174,22 +173,22 @@ struct RestTimerView: View {
                         
                         if timerManager.restTimerFinished {
                             Image(systemName: "checkmark")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.green)
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(PastelTheme.pastelAmber)
                         } else {
                             Image(systemName: "timer")
-                                .font(.system(size: 10))
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .font(.system(size: 11))
+                                .foregroundColor(PastelTheme.textPrimary)
                         }
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(timerManager.restTimerFinished ? "Done" : timeStringLong(time: timerManager.restTimeRemaining))
+                        Text(timerManager.restTimerFinished ? "Готово" : timeStringLong(time: timerManager.restTimeRemaining))
                             .font(.system(size: 14, weight: .bold, design: .monospaced))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
-                        Text(timerManager.restTimerFinished ? "Tap to close" : "Resting")
-                            .font(.system(size: 9, weight: .medium))
-                            .foregroundColor(.gray)
+                            .foregroundColor(PastelTheme.textPrimary)
+                        Text(timerManager.restTimerFinished ? "Нажмите для закрытия" : "Отдых")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(PastelTheme.textTertiary)
                     }
                 }
             }
@@ -200,12 +199,13 @@ struct RestTimerView: View {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     timerManager.addRestTime(15)
                 } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                    Text("+15")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(PastelTheme.textSecondary)
                         .frame(width: 36, height: 36)
-                        .background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05))
+                        .background(PastelTheme.cardSurfaceSubtle)
                         .clipShape(Circle())
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
             }
@@ -217,36 +217,31 @@ struct RestTimerView: View {
                 }
             } label: {
                 Image(systemName: timerManager.restTimerFinished ? "xmark" : "forward.fill")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(timerManager.restTimerFinished ? .white : themeManager.current.background)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(timerManager.restTimerFinished ? .white : PastelTheme.canvas)
                     .frame(width: 36, height: 36)
-                    .background(timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent)
+                    .background(timerManager.restTimerFinished ? PastelTheme.pastelAmber : PastelTheme.pastelSage)
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white.opacity(0.95)))
-        .cornerRadius(32)
+        .background(
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(PastelTheme.cardSurface)
+        )
         .overlay(
-            RoundedRectangle(cornerRadius: 32)
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
                 .stroke(
-                    LinearGradient(
-                        colors: [
-                            timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent,
-                            .purple.opacity(0.3)
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.5
+                    timerManager.restTimerFinished ? PastelTheme.pastelAmber.opacity(0.5) : PastelTheme.cardBorder,
+                    lineWidth: 1
                 )
         )
         .shadow(
-            color: (timerManager.restTimerFinished ? Color.green : themeManager.current.primaryAccent).opacity(0.35),
-            radius: 8,
-            y: 4
+            color: Color.black.opacity(0.35),
+            radius: 12,
+            y: 5
         )
         .gesture(
             DragGesture(coordinateSpace: .global)

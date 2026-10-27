@@ -43,8 +43,19 @@ struct ExerciseHistoryView: View {
     @ViewBuilder
     private func mainContent(vm: ExerciseHistoryViewModel) -> some View {
         ZStack {
-            Color(UIColor.systemGroupedBackground)
+            PastelTheme.canvas
                 .ignoresSafeArea()
+
+            // Subtle ambient athletic glow
+            VStack {
+                Circle()
+                    .fill(PastelTheme.pastelSage.opacity(0.06))
+                    .frame(width: 340, height: 340)
+                    .blur(radius: 80)
+                    .offset(y: -120)
+                Spacer()
+            }
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 customTabBar(vm: vm)
@@ -53,11 +64,12 @@ struct ExerciseHistoryView: View {
                     Spacer()
                     ProgressView(LocalizedStringKey("Loading data..."))
                         .controlSize(.large)
+                        .tint(PastelTheme.pastelOat)
                     Spacer()
                 } else {
                     ScrollViewReader { proxy in
                         ScrollView(.vertical, showsIndicators: false) {
-                            VStack(spacing: 24) {
+                            VStack(spacing: 20) {
                                 switch vm.selectedTab {
                                 case .summary: summaryContent(vm: vm)
                                 case .technique: techniqueContent(vm: vm)
@@ -66,7 +78,7 @@ struct ExerciseHistoryView: View {
                                 }
                             }
                             .padding(.horizontal, 16)
-                            .padding(.vertical, 20)
+                            .padding(.vertical, 16)
                             .padding(.bottom, 60)
                         }
                         .onChange(of: isInputActive) { _, newValue in
@@ -85,9 +97,8 @@ struct ExerciseHistoryView: View {
     }
 
     private func customTabBar(vm: ExerciseHistoryViewModel) -> some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
             ForEach(ExerciseHistoryViewModel.Tab.allCases, id: \.self) { tab in
-
                 if tab == .oneRepMax && vm.exerciseType != .strength {
                     EmptyView()
                 } else {
@@ -95,23 +106,20 @@ struct ExerciseHistoryView: View {
 
                     Button {
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             vm.selectedTab = tab
                         }
                     } label: {
                         Text(tab.localizedName)
-                            .font(.subheadline)
-                            .fontWeight(isSelected ? .bold : .medium)
-
-                            .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium, design: .rounded))
+                            .foregroundColor(isSelected ? PastelTheme.textOnOat : PastelTheme.textTertiary)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, 8)
                             .background {
                                 if isSelected {
                                     Capsule()
-                                        .fill(vm.chartColor)
+                                        .fill(PastelTheme.pastelOat)
                                         .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
-                                        .shadow(color: vm.chartColor.opacity(0.3), radius: 5, x: 0, y: 2)
                                 }
                             }
                     }
@@ -119,18 +127,17 @@ struct ExerciseHistoryView: View {
                 }
             }
         }
-        .padding(4)
-
-        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+        .padding(3)
+        .background(PastelTheme.cardSurfaceSubtle)
         .clipShape(Capsule())
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 8, x: 0, y: 4)
+        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
         .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 8)
+        .padding(.top, 10)
+        .padding(.bottom, 6)
     }
 
     private func summaryContent(vm: ExerciseHistoryViewModel) -> some View {
-        VStack(spacing: 24) {
+        VStack(spacing: 20) {
             proChartContainerView(vm: vm)
 
             if let trend = vm.exerciseTrend {
@@ -151,117 +158,152 @@ struct ExerciseHistoryView: View {
     }
 
     private func techniqueContent(vm: ExerciseHistoryViewModel) -> some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 18) {
             Text(LocalizedStringKey("Exercise Technique"))
-                .font(.title2)
-                .bold()
-                .padding(.bottom, 4)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundColor(PastelTheme.textPrimary)
+                .padding(.bottom, 2)
 
             ExerciseVideoView(urlString: vm.gifUrl)
-                .padding(.bottom, 8)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+                .padding(.bottom, 4)
 
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 8) {
                     Image(systemName: "book.pages.fill")
-                        .foregroundColor(vm.chartColor)
+                        .foregroundColor(PastelTheme.pastelSage)
                     Text(LocalizedStringKey("How to Perform"))
-                        .font(.headline)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        .font(.system(.headline, design: .rounded, weight: .semibold))
+                        .foregroundColor(PastelTheme.textPrimary)
                 }
                 Text(TechniqueHelper.getDescription(for: vm.exerciseCategory))
                     .font(.body)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
-                    .lineSpacing(6)
+                    .foregroundColor(PastelTheme.textSecondary)
+                    .lineSpacing(5)
             }
-            .padding(20)
-            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+            .padding(18)
+            .background(PastelTheme.cardSurface)
             .cornerRadius(20)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
 
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 14) {
                 HStack(spacing: 8) {
                     Image(systemName: "lightbulb.fill")
-                        .foregroundColor(.yellow)
+                        .foregroundColor(PastelTheme.pastelAmber)
                     Text(LocalizedStringKey("Key Tips"))
-                        .font(.headline)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        .font(.system(.headline, design: .rounded, weight: .semibold))
+                        .foregroundColor(PastelTheme.textPrimary)
                 }
 
                 ForEach(TechniqueHelper.getTips(for: vm.exerciseCategory), id: \.self) { tip in
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(vm.chartColor)
+                            .foregroundColor(PastelTheme.pastelSage)
                             .font(.body)
                             .padding(.top, 2)
                         Text(tip)
                             .font(.subheadline)
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                            .foregroundColor(PastelTheme.textSecondary)
                             .lineSpacing(4)
                     }
                 }
             }
-            .padding(20)
-            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+            .padding(18)
+            .background(PastelTheme.cardSurface)
             .cornerRadius(20)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
 
             let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: vm.exerciseName, muscleGroup: vm.muscleGroup)
             if !vm.primaryMuscles.isEmpty {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 8) {
-                        Image(systemName: "figure.strengthtraining.traditional").foregroundColor(vm.chartColor)
-                        Text(LocalizedStringKey("Target (Primary) Muscles")).font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .foregroundColor(PastelTheme.pastelSage)
+                        Text(LocalizedStringKey("Target (Primary) Muscles"))
+                            .font(.system(.headline, design: .rounded, weight: .semibold))
+                            .foregroundColor(PastelTheme.textPrimary)
                     }
 
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
                             ForEach(vm.primaryMuscles, id: \.self) { muscle in
                                 HStack(spacing: 6) {
-                                    Circle().fill(vm.chartColor).frame(width: 8, height: 8)
+                                    Circle().fill(PastelTheme.pastelSage).frame(width: 7, height: 7)
                                     Text(LocalizedStringKey(muscle.capitalized))
-                                        .font(.subheadline).fontWeight(.semibold)
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
                                 }
-                                .padding(.horizontal, 14).padding(.vertical, 10)
-                                .background(vm.chartColor.opacity(0.15))
-                                .foregroundColor(vm.chartColor)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(PastelTheme.cardSurfaceSubtle)
+                                .foregroundColor(PastelTheme.textPrimary)
                                 .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                                )
                             }
                         }
                     }
                 }
-                .padding(20)
-                .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+                .padding(18)
+                .background(PastelTheme.cardSurface)
                 .cornerRadius(20)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
             }
 
             if !vm.secondaryMuscles.isEmpty {
-                VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 8) {
-                        Image(systemName: "figure.mixed.cardio").foregroundColor(themeManager.current.secondaryMidTone)
-                        Text(LocalizedStringKey("Synergist (Secondary) Muscles")).font(.headline).foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        Image(systemName: "figure.mixed.cardio")
+                            .foregroundColor(PastelTheme.pastelSlate)
+                        Text(LocalizedStringKey("Synergist (Secondary) Muscles"))
+                            .font(.system(.headline, design: .rounded, weight: .semibold))
+                            .foregroundColor(PastelTheme.textPrimary)
                     }
 
                     ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
                             ForEach(vm.secondaryMuscles, id: \.self) { muscle in
                                 HStack(spacing: 6) {
-                                    Circle().fill(themeManager.current.secondaryMidTone).frame(width: 6, height: 6)
+                                    Circle().fill(PastelTheme.pastelSlate).frame(width: 6, height: 6)
                                     Text(LocalizedStringKey(muscle.capitalized))
-                                        .font(.subheadline).fontWeight(.medium)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
                                 }
-                                .padding(.horizontal, 14).padding(.vertical, 10)
-                                .background(themeManager.current.secondaryMidTone.opacity(0.1))
-                                .foregroundColor(themeManager.current.secondaryMidTone)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .background(PastelTheme.cardSurfaceSubtle)
+                                .foregroundColor(PastelTheme.textSecondary)
                                 .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                                )
                             }
                         }
                     }
                 }
-                .padding(20)
-                .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
+                .padding(18)
+                .background(PastelTheme.cardSurface)
                 .cornerRadius(20)
-                .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
             }
         }
     }
@@ -269,16 +311,16 @@ struct ExerciseHistoryView: View {
     private func historyContent(vm: ExerciseHistoryViewModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(LocalizedStringKey("History"))
-                .font(.title2)
-                .bold()
-                .padding(.bottom, 4)
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundColor(PastelTheme.textPrimary)
+                .padding(.bottom, 2)
 
             if vm.displayedGraphData.isEmpty {
                 EmptyStateView(
                     icon: "clock.fill",
                     title: LocalizedStringKey("No history yet"),
                     message: LocalizedStringKey("This exercise hasn't been performed in any workouts yet. Add it to a workout to start tracking your progress!"),
-                    iconColor: vm.chartColor.opacity(0.5)
+                    iconColor: PastelTheme.textTertiary
                 )
                 .padding(.top, 40)
             } else {
@@ -296,8 +338,8 @@ struct ExerciseHistoryView: View {
 
             HStack {
                 Text(vm.chartTitle)
-                    .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                    .font(.system(.headline, design: .rounded, weight: .semibold))
+                    .foregroundColor(PastelTheme.textPrimary)
 
                 Spacer()
 
@@ -318,31 +360,32 @@ struct ExerciseHistoryView: View {
                         .fontWeight(.semibold)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
-                        .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : Color(UIColor.systemGray6))
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .foregroundColor(PastelTheme.textPrimary)
                         .clipShape(Capsule())
+                        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 20)
+            .padding(.horizontal, 18)
+            .padding(.top, 18)
 
             if vm.displayedGraphData.isEmpty {
                 Text(LocalizedStringKey("Not enough data"))
                     .font(.subheadline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    .foregroundColor(PastelTheme.textSecondary)
                     .frame(maxWidth: .infinity, minHeight: 200)
-                    .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill).opacity(0.5) : Color(UIColor.systemGray6))
-                    .cornerRadius(12)
-                    .padding(.horizontal, 20)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .cornerRadius(14)
+                    .padding(.horizontal, 18)
             } else {
                 proChartView(vm: vm)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, 18)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    Spacer().frame(width: 10)
+                HStack(spacing: 8) {
+                    Spacer().frame(width: 8)
                     ForEach(ExerciseHistoryViewModel.TimeRange.allCases, id: \.self) { range in
                         let isSelected = vm.selectedTimeRange == range
                         Button {
@@ -350,24 +393,27 @@ struct ExerciseHistoryView: View {
                             vm.selectedTimeRange = range
                         } label: {
                             Text(LocalizedStringKey(range.rawValue))
-                                .font(.caption)
-                                .fontWeight(isSelected ? .bold : .medium)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(isSelected ? vm.chartColor : (colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : Color(UIColor.systemGray6)))
-                                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white : .black))
+                                .font(.system(size: 12, weight: isSelected ? .bold : .medium, design: .rounded))
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
+                                .foregroundColor(isSelected ? PastelTheme.textOnOat : PastelTheme.textTertiary)
                                 .clipShape(Capsule())
+                                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                         }
                         .buttonStyle(PlainButtonStyle())
                     }
-                    Spacer().frame(width: 10)
+                    Spacer().frame(width: 8)
                 }
             }
-            .padding(.bottom, 20)
+            .padding(.bottom, 16)
         }
-        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
-        .cornerRadius(24)
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.04 : 0.08), radius: 15, x: 0, y: 5)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
     }
 
     private func proChartView(vm: ExerciseHistoryViewModel) -> some View {
@@ -385,9 +431,9 @@ struct ExerciseHistoryView: View {
                         x: .value("Date", dataPoint.date),
                         y: .value("Value", dataPoint.value)
                     )
-                    .foregroundStyle(vm.chartColor)
+                    .foregroundStyle(PastelTheme.pastelSage)
                     .interpolationMethod(.catmullRom)
-                    .lineStyle(StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
+                    .lineStyle(StrokeStyle(lineWidth: 3.0, lineCap: .round, lineJoin: .round))
                 }
 
                 if vm.displayedGraphData.count < 20 {
@@ -397,12 +443,11 @@ struct ExerciseHistoryView: View {
                     )
                     .symbol {
                         Circle()
-                            .fill(colorScheme == .dark ? themeManager.current.background : Color.white)
-                            .frame(width: vm.displayedGraphData.count == 1 ? 16 : 10, height: vm.displayedGraphData.count == 1 ? 16 : 10)
+                            .fill(PastelTheme.cardSurface)
+                            .frame(width: vm.displayedGraphData.count == 1 ? 14 : 9, height: vm.displayedGraphData.count == 1 ? 14 : 9)
                             .overlay(
-                                Circle().stroke(vm.chartColor, lineWidth: 3)
+                                Circle().stroke(PastelTheme.pastelSage, lineWidth: 2.5)
                             )
-                            .shadow(color: vm.chartColor.opacity(0.4), radius: 4, x: 0, y: 2)
                     }
                 }
             }
@@ -410,41 +455,40 @@ struct ExerciseHistoryView: View {
             if let val = vm.currentMetricValue, vm.displayedGraphData.count > 1, vm.selectedMetric != .none {
                 RuleMark(y: .value("Metric", val))
                     .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-                    .foregroundStyle(Color.primary.opacity(0.3))
+                    .foregroundStyle(Color.white.opacity(0.15))
                     .annotation(position: .top, alignment: .leading) {
                         Text("\(val, format: .number.precision(.fractionLength(1))) \(vm.unitLabel)")
                             .font(.caption)
                             .bold()
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                            .foregroundColor(PastelTheme.textPrimary)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(colorScheme == .dark ? themeManager.current.background.opacity(0.95) : Color.white.opacity(0.95))
+                            .background(PastelTheme.cardSurfaceSubtle)
                             .cornerRadius(6)
-                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.15), lineWidth: 1))
+                            .overlay(RoundedRectangle(cornerRadius: 6).stroke(PastelTheme.cardBorder, lineWidth: 1))
                     }
             }
 
             if let selectedDate = selectedX {
                 if let closestPoint = vm.displayedGraphData.min(by: { abs($0.date.timeIntervalSince(selectedDate)) < abs($1.date.timeIntervalSince(selectedDate)) }) {
                     RuleMark(x: .value("Selected", closestPoint.date))
-                        .foregroundStyle(Color.primary.opacity(0.3))
+                        .foregroundStyle(Color.white.opacity(0.2))
                         .lineStyle(StrokeStyle(lineWidth: 1.5, dash: [4]))
                         .annotation(position: .top) {
                             VStack(alignment: .center, spacing: 2) {
                                 Text("\(LocalizationHelper.shared.formatDecimal(closestPoint.value)) \(vm.unitLabel)")
                                     .font(.headline)
                                     .bold()
-                                    .foregroundColor(colorScheme == .dark ? themeManager.current.background : .white)
+                                    .foregroundColor(PastelTheme.textPrimary)
                                 Text(closestPoint.date, format: .dateTime.month(.abbreviated).day())
                                     .font(.caption)
-                                    .foregroundColor(colorScheme == .dark ? themeManager.current.background.opacity(0.8) : Color.white.opacity(0.8))
+                                    .foregroundColor(PastelTheme.textTertiary)
                             }
                             .padding(.horizontal, 10)
                             .padding(.vertical, 6)
-
-                            .background(Color(UIColor.label).opacity(0.9))
+                            .background(PastelTheme.cardSurfaceSubtle)
                             .cornerRadius(8)
-                            .shadow(color: .black.opacity(0.2), radius: 6, x: 0, y: 3)
+                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(PastelTheme.cardBorder, lineWidth: 1))
                         }
                 }
             }
@@ -456,22 +500,22 @@ struct ExerciseHistoryView: View {
         .chartXAxis {
             AxisMarks(values: .automatic) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    .foregroundStyle(Color.gray.opacity(0.3))
+                    .foregroundStyle(Color.white.opacity(0.06))
                 AxisTick()
-                    .foregroundStyle(Color.gray.opacity(0.5))
+                    .foregroundStyle(Color.white.opacity(0.2))
                 AxisValueLabel(format: .dateTime.month(.abbreviated).day(), centered: true)
-                    .foregroundStyle(Color.primary.opacity(0.7))
+                    .foregroundStyle(PastelTheme.textTertiary)
                     .font(.caption2.bold())
             }
         }
         .chartYAxis {
             AxisMarks(position: .leading) { _ in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [4, 4]))
-                    .foregroundStyle(Color.gray.opacity(0.3))
+                    .foregroundStyle(Color.white.opacity(0.06))
                 AxisTick()
-                    .foregroundStyle(Color.gray.opacity(0.5))
+                    .foregroundStyle(Color.white.opacity(0.2))
                 AxisValueLabel()
-                    .foregroundStyle(Color.primary.opacity(0.7))
+                    .foregroundStyle(PastelTheme.textTertiary)
                     .font(.caption2.bold())
             }
         }
@@ -481,13 +525,13 @@ struct ExerciseHistoryView: View {
     private func proExerciseTrendSection(trend: ExerciseTrend) -> some View {
         let isGrowing = trend.trend == .growing
         let isDeclining = trend.trend == .declining
-        let glowColor = isGrowing ? Color.green : (isDeclining ? Color.red : Color.orange)
+        let trendColor = isGrowing ? PastelTheme.pastelSage : (isDeclining ? PastelTheme.pastelPeach : PastelTheme.pastelAmber)
 
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(LocalizedStringKey("Exercise Trend"))
-                    .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    .font(.system(.headline, design: .rounded, weight: .semibold))
+                    .foregroundColor(PastelTheme.textSecondary)
                 Spacer()
                 HStack(spacing: 4) {
                     Image(systemName: trend.trend.icon)
@@ -496,10 +540,10 @@ struct ExerciseHistoryView: View {
                         .font(.caption)
                         .fontWeight(.bold)
                 }
-                .foregroundColor(glowColor)
+                .foregroundColor(trendColor)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(glowColor.opacity(0.15))
+                .padding(.vertical, 5)
+                .background(trendColor.opacity(0.12))
                 .clipShape(Capsule())
             }
 
@@ -507,19 +551,19 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Previous"))
                         .font(.caption2)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .foregroundColor(PastelTheme.textTertiary)
                         .textCase(.uppercase)
                     let prev = unitsManager.convertFromKilograms(trend.previousValue)
                     Text("\(LocalizationHelper.shared.formatInteger(prev))")
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .foregroundColor(PastelTheme.textSecondary)
                 }
 
                 Spacer()
 
                 Image(systemName: "arrow.right")
-                    .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
+                    .foregroundColor(PastelTheme.textTertiary)
                     .font(.title3)
 
                 Spacer()
@@ -527,40 +571,39 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(LocalizedStringKey("Current"))
                         .font(.caption2)
-                        .foregroundColor(glowColor)
+                        .foregroundColor(trendColor)
                         .textCase(.uppercase)
                     let curr = unitsManager.convertFromKilograms(trend.currentValue)
                     HStack(alignment: .firstTextBaseline, spacing: 2) {
                         Text("\(LocalizationHelper.shared.formatInteger(curr))")
-                            .font(.system(size: 32, weight: .heavy, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                            .font(.system(size: 30, weight: .heavy, design: .rounded))
+                            .foregroundColor(PastelTheme.textPrimary)
                         Text(unitsManager.weightUnitString())
                             .font(.subheadline)
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                            .foregroundColor(PastelTheme.textSecondary)
                     }
                 }
             }
 
-            Divider().opacity(0.5)
+            Divider().overlay(PastelTheme.separator)
 
             HStack {
                 Text(LocalizedStringKey("Overall Progress"))
                     .font(.subheadline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    .foregroundColor(PastelTheme.textSecondary)
                 Spacer()
                 Text("\(trend.changePercentage > 0 ? "+" : "")\(trend.changePercentage, specifier: "%.1f")%")
                     .font(.headline)
                     .fontWeight(.heavy)
-                    .foregroundColor(glowColor)
+                    .foregroundColor(trendColor)
             }
         }
-        .padding(20)
-        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
-        .cornerRadius(24)
-        .shadow(color: glowColor.opacity(colorScheme == .dark ? 0.15 : 0.2), radius: 15, x: 0, y: 5)
+        .padding(18)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(20)
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(glowColor.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }
 
@@ -569,8 +612,8 @@ struct ExerciseHistoryView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text(LocalizedStringKey("AI Forecast"))
-                    .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    .font(.system(.headline, design: .rounded, weight: .semibold))
+                    .foregroundColor(PastelTheme.textSecondary)
                 Spacer()
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
@@ -579,10 +622,10 @@ struct ExerciseHistoryView: View {
                         .font(.caption)
                         .fontWeight(.bold)
                 }
-                .foregroundColor(themeManager.current.deepPremiumAccent)
+                .foregroundColor(PastelTheme.pastelAmber)
                 .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(themeManager.current.deepPremiumAccent.opacity(0.15))
+                .padding(.vertical, 5)
+                .background(PastelTheme.pastelAmber.opacity(0.12))
                 .clipShape(Capsule())
             }
 
@@ -590,30 +633,31 @@ struct ExerciseHistoryView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("Current 1RM"))
                         .font(.caption2)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .foregroundColor(PastelTheme.textTertiary)
                         .textCase(.uppercase)
                     let cur = unitsManager.convertFromKilograms(forecast.currentMax)
                     Text("\(LocalizationHelper.shared.formatInteger(cur)) \(unitsManager.weightUnitString())")
                         .font(.title3)
                         .bold()
+                        .foregroundColor(PastelTheme.textSecondary)
                 }
 
                 Spacer()
                 Image(systemName: "arrow.right.circle.fill")
-                    .foregroundColor(themeManager.current.deepPremiumAccent)
+                    .foregroundColor(PastelTheme.pastelAmber)
                     .font(.title2)
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(LocalizedStringKey("Predicted 1RM"))
                         .font(.caption2)
-                        .foregroundColor(themeManager.current.deepPremiumAccent)
+                        .foregroundColor(PastelTheme.pastelAmber)
                         .textCase(.uppercase)
                     let pred = unitsManager.convertFromKilograms(forecast.predictedMax)
                     Text("\(LocalizationHelper.shared.formatInteger(pred)) \(unitsManager.weightUnitString())")
                         .font(.title2)
                         .bold()
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        .foregroundColor(PastelTheme.textPrimary)
                 }
             }
 
@@ -621,21 +665,20 @@ struct ExerciseHistoryView: View {
             HStack {
                 Text(LocalizedStringKey("Expected gains in \(forecast.timeframe)"))
                     .font(.caption)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                    .foregroundColor(PastelTheme.textSecondary)
                 Spacer()
                 Text("+\(LocalizationHelper.shared.formatDecimal(diff)) \(unitsManager.weightUnitString())")
                     .font(.subheadline)
                     .bold()
-                    .foregroundColor(.green)
+                    .foregroundColor(PastelTheme.pastelSage)
             }
         }
-        .padding(20)
-        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
-        .cornerRadius(24)
-        .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.1), radius: 15, x: 0, y: 5)
+        .padding(18)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(20)
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(themeManager.current.deepPremiumAccent.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }
 
@@ -644,38 +687,42 @@ struct ExerciseHistoryView: View {
         NavigationLink {
             WorkoutDetailWrapperView(workoutID: dataPoint.rawWorkoutID)
         } label: {
-            HStack(spacing: 16) {
+            HStack(spacing: 14) {
 
-                VStack(spacing: 0) {
+                VStack(spacing: 1) {
                     Text(dataPoint.date, format: .dateTime.month(.abbreviated))
                         .font(.caption2)
                         .fontWeight(.bold)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .foregroundColor(PastelTheme.textTertiary)
                         .textCase(.uppercase)
                     Text(dataPoint.date, format: .dateTime.day())
-                        .font(.title2)
+                        .font(.title3)
                         .fontWeight(.heavy)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        .foregroundColor(PastelTheme.textPrimary)
                 }
-                .frame(width: 50)
+                .frame(width: 48)
                 .padding(.vertical, 8)
-                .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : Color(UIColor.systemGray6))
+                .background(PastelTheme.cardSurfaceSubtle)
                 .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(LocalizedStringKey("Session Max"))
                         .font(.caption)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .foregroundColor(PastelTheme.textTertiary)
                         .textCase(.uppercase)
 
-                    HStack(alignment: .firstTextBaseline, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: 3) {
                         Text(LocalizationHelper.shared.formatFlexible(dataPoint.value))
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundColor(vm.chartColor)
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(PastelTheme.pastelSage)
                         Text(vm.unitLabel)
                             .font(.caption)
                             .fontWeight(.bold)
-                            .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                            .foregroundColor(PastelTheme.textSecondary)
                     }
                 }
 
@@ -684,12 +731,15 @@ struct ExerciseHistoryView: View {
                 Image(systemName: "chevron.right")
                     .font(.subheadline)
                     .fontWeight(.bold)
-                    .foregroundColor(Color(UIColor.tertiaryLabel))
+                    .foregroundColor(PastelTheme.textTertiary)
             }
-            .padding(16)
-            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
-            .cornerRadius(20)
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.02 : 0.06), radius: 5, x: 0, y: 2)
+            .padding(14)
+            .background(PastelTheme.cardSurface)
+            .cornerRadius(18)
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -698,8 +748,6 @@ struct ExerciseHistoryView: View {
 struct ExerciseNoteEditor: View {
     let exerciseName: String
     var isInputActive: FocusState<Bool>.Binding
-    @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme 
     @Environment(\.modelContext) private var context
     @Query private var notes: [ExerciseNote]
     @Environment(UserStatsViewModel.self) var userStatsViewModel
@@ -718,20 +766,25 @@ struct ExerciseNoteEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
                 Image(systemName: "pencil.and.outline")
-                    .foregroundColor(themeManager.current.primaryAccent)
+                    .foregroundColor(PastelTheme.pastelOat)
                 Text(LocalizedStringKey("My Notes"))
-                    .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                    .font(.system(.headline, design: .rounded, weight: .semibold))
+                    .foregroundColor(PastelTheme.textPrimary)
             }
 
             ZStack(alignment: .topLeading) {
                 TextEditor(text: $exerciseNote)
                     .font(.body)
-                    .frame(minHeight: 120, maxHeight: 200)
+                    .frame(minHeight: 110, maxHeight: 180)
                     .padding(12)
                     .scrollContentBackground(.hidden)
-                    .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill).opacity(0.5) : Color(UIColor.systemGray6))
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .foregroundColor(PastelTheme.textPrimary)
                     .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    )
                     .focused(isInputActive)
                     .onChange(of: exerciseNote) { _, newValue in
                         saveTask?.cancel()
@@ -743,18 +796,21 @@ struct ExerciseNoteEditor: View {
 
                 if exerciseNote.isEmpty {
                     Text(LocalizedStringKey("Write notes..."))
-                        .foregroundColor(Color(UIColor.placeholderText))
+                        .foregroundColor(PastelTheme.textTertiary)
                         .font(.body)
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 20)
+                        .padding(.vertical, 16)
                         .allowsHitTesting(false)
                 }
             }
         }
-        .padding(20)
-        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
-        .cornerRadius(24)
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+        .padding(18)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -764,6 +820,7 @@ struct ExerciseNoteEditor: View {
                     isInputActive.wrappedValue = false
                 }
                 .fontWeight(.bold)
+                .foregroundColor(PastelTheme.pastelOat)
             }
         }
         .onAppear {
@@ -782,52 +839,56 @@ struct ExerciseNoteEditor: View {
 struct PersonalRecordsCardView: View {
     let records: ExerciseRecordsDTO
     @Environment(UnitsManager.self) var unitsManager
-    @Environment(ThemeManager.self) private var themeManager
-    @Environment(\.colorScheme) private var colorScheme 
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Personal Records"))
-                .font(.title2)
-                .bold()
-                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
-                .padding(.bottom, 4)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: "trophy.fill")
+                    .foregroundColor(PastelTheme.pastelAmber)
+                Text(LocalizedStringKey("Personal Records"))
+                    .font(.system(.headline, design: .rounded, weight: .semibold))
+                    .foregroundColor(PastelTheme.textPrimary)
+            }
+            .padding(.bottom, 2)
 
             recordRow(title: "Max Set Reps", value: records.maxSetReps > 0 ? "\(records.maxSetReps)" : "--")
 
-            Divider().opacity(0.5)
+            Divider().overlay(PastelTheme.separator)
 
             recordRow(title: "Max Workout Reps", value: records.maxWorkoutReps > 0 ? "\(records.maxWorkoutReps)" : "--")
 
-            Divider().opacity(0.5)
+            Divider().overlay(PastelTheme.separator)
 
             let setVol = unitsManager.convertFromKilograms(records.maxSetVolume)
             let setVolStr = records.maxSetVolume > 0 ? "\(LocalizationHelper.shared.formatInteger(setVol)) \(unitsManager.weightUnitString())" : "--"
             recordRow(title: "Max Set Volume", value: setVolStr)
 
-            Divider().opacity(0.5)
+            Divider().overlay(PastelTheme.separator)
 
             let woVol = unitsManager.convertFromKilograms(records.maxWorkoutVolume)
             let woVolStr = records.maxWorkoutVolume > 0 ? "\(LocalizationHelper.shared.formatInteger(woVol)) \(unitsManager.weightUnitString())" : "--"
             recordRow(title: "Max Workout Volume", value: woVolStr)
         }
-        .padding(20)
-        .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
-        .cornerRadius(24)
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
+        .padding(18)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(20)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
     }
 
     private func recordRow(title: LocalizedStringKey, value: String) -> some View {
         HStack {
             Text(title)
-                .font(.body)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                .font(.subheadline)
+                .foregroundColor(PastelTheme.textSecondary)
 
             Spacer()
 
             Text(value)
-                .font(.headline)
-                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                .font(.system(.headline, design: .rounded, weight: .bold))
+                .foregroundColor(PastelTheme.textPrimary)
         }
     }
 }

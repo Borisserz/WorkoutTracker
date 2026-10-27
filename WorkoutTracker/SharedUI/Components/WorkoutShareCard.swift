@@ -68,7 +68,7 @@ struct MilestoneShareCard: View {
 
                 Text(subtitle)
                     .font(.system(size: 60, weight: .heavy, design: .rounded))
-                    .foregroundColor(themeManager.current.background)
+                    .foregroundColor(PastelTheme.textPrimary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
                     .padding(.top, 20)

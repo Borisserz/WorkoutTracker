@@ -69,37 +69,36 @@ struct WorkoutDetailContentView: View {
     @Namespace private var tabNamespace
     
     private var tabPicker: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
             ForEach(Tab.allCases, id: \.self) { tab in
                 Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         selectedTab = tab
                         UISelectionFeedbackGenerator().selectionChanged()
                     }
                 } label: {
                     Text(tab.localizedName)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundColor(selectedTab == tab ? .white : .secondary)
-                        .padding(.vertical, 10)
+                        .font(.system(size: 13, weight: selectedTab == tab ? .bold : .medium, design: .rounded))
+                        .foregroundColor(selectedTab == tab ? PastelTheme.textOnOat : PastelTheme.textTertiary)
+                        .padding(.vertical, 8)
                         .frame(maxWidth: .infinity)
                         .background {
                             if selectedTab == tab {
                                 Capsule()
-                                    .fill(LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.secondaryAccent], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .fill(PastelTheme.pastelOat)
                                     .matchedGeometryEffect(id: "activeTab", in: tabNamespace)
-                                    .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 6, x: 0, y: 3)
                             }
                         }
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(4)
-        .background(colorScheme == .dark ? Color.white.opacity(0.06) : Color.black.opacity(0.04))
+        .padding(3)
+        .background(PastelTheme.cardSurfaceSubtle)
         .clipShape(Capsule())
         .overlay(
             Capsule()
-                .stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.06), lineWidth: 1)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }
 
@@ -257,8 +256,10 @@ struct WorkoutDetailContentView: View {
                     if isEmpty {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 18, weight: .bold))
+                            .foregroundColor(.red.opacity(0.9))
                         Text(LocalizedStringKey("Cancel Workout"))
                             .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(PastelTheme.textPrimary)
                     } else {
                         Image(systemName: "flag.checkered.circle.fill")
                             .font(.system(size: 18, weight: .bold))
@@ -266,44 +267,30 @@ struct WorkoutDetailContentView: View {
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                     }
                 }
-                .foregroundColor(.white)
+                .foregroundColor(isEmpty ? PastelTheme.textPrimary : PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(
-                    ZStack {
-                        if isEmpty {
-                            LinearGradient(
-                                colors: [Color.red, Color(red: 0.8, green: 0.1, blue: 0.1)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        } else {
-                            LinearGradient(
-                                colors: [.cyan, .blue],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        }
-                    }
+                    isEmpty 
+                    ? PastelTheme.cardSurfaceSubtle 
+                    : PastelTheme.pastelOat
                 )
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
                         .stroke(
-                            Color.white.opacity(0.2),
-                            lineWidth: 1.5
+                            isEmpty ? Color.red.opacity(0.3) : PastelTheme.cardBorderFocused,
+                            lineWidth: 1
                         )
                 )
                 .shadow(
-                    color: isEmpty 
-                    ? Color.red.opacity(0.4) 
-                    : Color.blue.opacity(0.4), 
-                    radius: 12, 
-                    x: 0, 
+                    color: Color.black.opacity(0.35),
+                    radius: 12,
+                    x: 0,
                     y: 6
                 )
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, 20)
             .padding(.bottom, 16)
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: timerManager.isRestTimerActive)
             .disabled(viewModel.isShowingSnackbar)

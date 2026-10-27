@@ -237,16 +237,31 @@ struct StatsContentView: View {
     @State private var isFetchingReviewData = false
     @State private var reviewData: StatsDataResultDTO?
 
-    let bgDark = Color(red: 0.05, green: 0.05, blue: 0.07)
-
     var body: some View {
         ZStack {
+            PastelTheme.canvas.ignoresSafeArea()
 
-            (colorScheme == .dark ? bgDark : Color(UIColor.systemGroupedBackground))
-                .edgesIgnoringSafeArea(.all)
+            // Ambient Athletic Glow
+            GeometryReader { _ in
+                ZStack {
+                    Circle()
+                        .fill(PastelTheme.pastelSage.opacity(0.08))
+                        .blur(radius: 80)
+                        .frame(width: 250, height: 250)
+                        .offset(x: -80, y: -40)
+
+                    Circle()
+                        .fill(PastelTheme.pastelOat.opacity(0.07))
+                        .blur(radius: 90)
+                        .frame(width: 260, height: 260)
+                        .offset(x: 120, y: -20)
+                }
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
 
             ScrollView(showsIndicators: false) {
-                LazyVStack(spacing: 24) {
+                LazyVStack(spacing: 20) {
                     HeaderView(showProfile: $showProfile)
 
                     PersonalRecordsShowcaseView(viewModel: viewModel)
@@ -386,24 +401,35 @@ struct HeaderView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack {
-            Text("Progress")
-                .font(.system(size: 34, weight: .black, design: .rounded))
-                .foregroundColor(colorScheme == .dark ? .white : .black)
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Прогресс")
+                    .font(.system(size: 32, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
+                Text("Тренды и спортивная аналитика")
+                    .font(.caption)
+                    .foregroundStyle(PastelTheme.textSecondary)
+            }
+
             Spacer()
 
-            Button(action: {
+            Button {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 showProfile = true
-            }) {
-                Image(systemName: "person.circle.fill")
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 44, height: 44)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 1))
-                    .foregroundStyle(colorScheme == .dark ? .purple : .blue, colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.1))
+            } label: {
+                ZStack {
+                    Circle()
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 40, height: 40)
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                }
             }
+            .buttonStyle(.plain)
         }
         .padding(.top, 10)
     }
@@ -462,33 +488,35 @@ struct GoalsSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .bottom) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Your Goals")
-                        .font(.title2).bold()
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
-                    Text("Challenge Yourself")
-                        .font(.subheadline)
-                        .foregroundColor(colorScheme == .dark ? .gray : .secondary)
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Цели")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                    Text("Недельные нормативы и задачи")
+                        .font(.caption2)
+                        .foregroundStyle(PastelTheme.textSecondary)
                 }
                 Spacer()
 
-                Button(action: {
+                Button {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     showingAddGoal = true
-                }) {
-                    HStack {
+                } label: {
+                    HStack(spacing: 4) {
                         Image(systemName: "plus")
-                        Text("Add")
+                            .font(.system(size: 11, weight: .bold))
+                        Text("Добавить")
+                            .font(.caption.weight(.bold))
                     }
-                    .font(.system(size: 14, weight: .bold))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(colorScheme == .dark ? Color.white : themeManager.current.primaryAccent)
-                    .foregroundColor(colorScheme == .dark ? .black : .white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(PastelTheme.pastelOat)
+                    .foregroundStyle(PastelTheme.textOnOat)
                     .clipShape(Capsule())
-                    .shadow(color: colorScheme == .dark ? .clear : themeManager.current.primaryAccent.opacity(0.3), radius: 5, y: 2)
+                    .overlay(Capsule().stroke(PastelTheme.cardBorderFocused, lineWidth: 1))
                 }
+                .buttonStyle(.plain)
             }
 
             if viewModel.activeGoals.isEmpty {
@@ -895,13 +923,12 @@ struct BodyTransformSquareCard: View {
 
     var body: some View {
         let isDark = colorScheme == .dark
-        let cardBg = isDark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white
-        let shimmerBg = Color.white.opacity(0.04)
-        let strokeColors = isDark ? [Color.purple, Color.blue] : [Color.purple.opacity(0.5), Color.blue.opacity(0.4)]
-        let strokeGradient = LinearGradient(colors: strokeColors, startPoint: .leading, endPoint: .trailing)
-        let shadowColor = isDark ? Color.purple.opacity(0.2) : Color.purple.opacity(0.06)
-        let titleColor = isDark ? Color.white : Color.black
-        let subtitleColor = isDark ? Color.white.opacity(0.55) : Color.black.opacity(0.5)
+        let cardBg = PastelTheme.cardSurface
+        let shimmerBg = Color.white.opacity(0.02)
+        let strokeGradient = PastelTheme.cardBorder
+        let shadowColor = Color.black.opacity(0.15)
+        let titleColor = PastelTheme.textPrimary
+        let subtitleColor = PastelTheme.textSecondary
 
         Button(action: {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -1018,12 +1045,11 @@ struct AIIslandSquareView: View {
 
     var body: some View {
         let isDark = colorScheme == .dark
-        let cardBg = isDark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white
-        let strokeColors = isDark ? [Color.blue.opacity(0.4), Color.purple] : [Color.blue.opacity(0.3), Color.purple.opacity(0.5)]
-        let strokeGradient = LinearGradient(colors: strokeColors, startPoint: .leading, endPoint: .trailing)
-        let shadowColor = isDark ? Color.purple.opacity(0.2) : Color.purple.opacity(0.06)
-        let titleColor = isDark ? Color.white : Color.black
-        let subtitleColor = isDark ? Color.white.opacity(0.55) : Color.black.opacity(0.5)
+        let cardBg = PastelTheme.cardSurface
+        let strokeGradient = PastelTheme.cardBorder
+        let shadowColor = Color.black.opacity(0.15)
+        let titleColor = PastelTheme.textPrimary
+        let subtitleColor = PastelTheme.textSecondary
 
         Button(action: {
             UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
@@ -1104,9 +1130,9 @@ struct CurrentStreakSquareCard: View {
 
     var body: some View {
         let isDark = colorScheme == .dark
-        let cardBg = isDark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white
-        let strokeColor = isDark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)
-        let titleColor = isDark ? Color.white : Color.black
+        let cardBg = PastelTheme.cardSurface
+        let strokeColor = PastelTheme.cardBorder
+        let titleColor = PastelTheme.textPrimary
 
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -1179,9 +1205,9 @@ struct ActivityThisWeekSquareCard: View {
 
     var body: some View {
         let isDark = colorScheme == .dark
-        let cardBg = isDark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white
-        let strokeColor = isDark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)
-        let titleColor = isDark ? Color.white : Color.black
+        let cardBg = PastelTheme.cardSurface
+        let strokeColor = PastelTheme.cardBorder
+        let titleColor = PastelTheme.textPrimary
 
         Button(action: {
             UISelectionFeedbackGenerator().selectionChanged()
@@ -1253,34 +1279,37 @@ struct PeriodPicker: View {
     @Environment(ThemeManager.self) private var themeManager
 
     var body: some View {
-        HStack {
+        HStack(spacing: 6) {
             ForEach(StatsView.Period.allCases) { period in
+                let isSelected = selectedPeriod == period
                 Button(action: {
                     UISelectionFeedbackGenerator().selectionChanged()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                         selectedPeriod = period
                     }
                 }) {
                     Text(period.localizedName)
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(selectedPeriod == period ? (colorScheme == .dark ? .black : .white) : .gray)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                         .padding(.vertical, 8)
                         .frame(maxWidth: .infinity)
                         .background(
                             ZStack {
-                                if selectedPeriod == period {
+                                if isSelected {
                                     Capsule()
-                                        .fill(colorScheme == .dark ? Color.white : themeManager.current.primaryAccent)
+                                        .fill(PastelTheme.pastelOat)
                                         .matchedGeometryEffect(id: "ACTIVETAB", in: animation)
                                 }
                             }
                         )
                 }
+                .buttonStyle(.plain)
             }
         }
         .padding(4)
-        .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05))
+        .background(PastelTheme.cardSurfaceSubtle)
         .clipShape(Capsule())
+        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
     }
 }
 
@@ -4146,14 +4175,24 @@ struct PersonalRecordsShowcaseView: View {
     var body: some View {
         let prs = displayPRs
         if !prs.isEmpty {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("Trophy Case")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                    .padding(.horizontal, 20)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 6) {
+                    Text("Личные рекорды")
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                    
+                    Text("PR")
+                        .font(.system(size: 9, weight: .black))
+                        .foregroundStyle(PastelTheme.pastelAmber)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(PastelTheme.pastelAmber.opacity(0.14))
+                        .clipShape(Capsule())
+                }
+                .padding(.horizontal, 20)
                 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 16) {
+                    HStack(spacing: 12) {
                         ForEach(prs) { pr in
                             NavigationLink(destination: ExerciseHistoryView(exerciseName: pr.exerciseName)) {
                                 trophyCard(for: pr)
@@ -4162,7 +4201,7 @@ struct PersonalRecordsShowcaseView: View {
                         }
                     }
                     .padding(.horizontal, 20)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 4)
                 }
             }
         }
@@ -4170,51 +4209,38 @@ struct PersonalRecordsShowcaseView: View {
 
     @ViewBuilder
     private func trophyCard(for pr: PersonalRecord) -> some View {
-        let glowColor = getGlowColor(for: pr.exerciseName)
         let convertedWeight = unitsManager.convertFromKilograms(pr.weight)
         
-        VStack(alignment: .center, spacing: 10) {
+        VStack(alignment: .center, spacing: 8) {
             ZStack {
                 Circle()
-                    .fill(glowColor.opacity(0.15))
+                    .fill(PastelTheme.cardSurfaceSubtle)
                     .frame(width: 38, height: 38)
+                    .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 
                 Image(systemName: "trophy.fill")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(glowColor)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(PastelTheme.pastelAmber)
             }
             
             VStack(spacing: 2) {
                 Text(LocalizationHelper.shared.translateName(pr.exerciseName))
                     .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .foregroundStyle(PastelTheme.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
                 
                 Text("\(LocalizationHelper.shared.formatFlexible(convertedWeight)) \(unitsManager.weightUnitString())")
-                    .font(.system(size: 16, weight: .black, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .font(.system(size: 15, weight: .heavy, design: .rounded))
+                    .foregroundStyle(PastelTheme.pastelOat)
             }
         }
-        .frame(width: 140, height: 110)
-        .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
-        .cornerRadius(18)
+        .frame(width: 135, height: 105)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 18)
-                .stroke(
-                    LinearGradient(
-                        colors: [glowColor, glowColor.opacity(0.3)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1.5
-                )
-        )
-        .shadow(
-            color: glowColor.opacity(colorScheme == .dark ? 0.35 : 0.15),
-            radius: 6,
-            x: 0,
-            y: 3
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }
 }

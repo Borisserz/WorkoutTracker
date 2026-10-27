@@ -29,8 +29,7 @@ struct ExerciseView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-
-            (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
+            PastelTheme.canvas.ignoresSafeArea()
 
             VStack(spacing: 0) {
 
@@ -40,7 +39,7 @@ struct ExerciseView: View {
 
                 muscleGroupFilter
 
-                Divider().opacity(0.5)
+                Divider().overlay(PastelTheme.separator)
 
                 let filteredItems = filterState.filter(exercises: allItems).sorted(by: { $0.name < $1.name })
 
@@ -108,7 +107,7 @@ struct ExerciseView: View {
 
     private var muscleGroupFilter: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
                 Spacer().frame(width: 8)
 
                 filterButton(title: "All", isSelected: filterState.selectedMuscles.isEmpty) {
@@ -127,7 +126,7 @@ struct ExerciseView: View {
 
                 Spacer().frame(width: 8)
             }
-            .padding(.vertical, 12)
+            .padding(.vertical, 10)
         }
     }
 
@@ -138,18 +137,16 @@ struct ExerciseView: View {
             action()
         } label: {
             Text(LocalizedStringKey(title))
-                .font(.subheadline)
-                .fontWeight(isSelected ? .bold : .medium)
-                .foregroundColor(isSelected ? .white : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)))
-                .padding(.horizontal, 18)
-                .padding(.vertical, 10)
-                .background(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? themeManager.current.surface : Color.white))
+                .font(.system(size: 13, weight: isSelected ? .bold : .medium, design: .rounded))
+                .foregroundColor(isSelected ? PastelTheme.textOnOat : PastelTheme.textTertiary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
                 .cornerRadius(20)
                 .overlay(
                     RoundedRectangle(cornerRadius: 20)
-                        .stroke(isSelected ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1)), lineWidth: 1)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
                 )
-                .shadow(color: isSelected ? themeManager.current.primaryAccent.opacity(0.2) : .clear, radius: 5, x: 0, y: 2)
         }
         .buttonStyle(.plain)
     }

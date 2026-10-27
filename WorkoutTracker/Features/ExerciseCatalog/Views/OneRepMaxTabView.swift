@@ -15,12 +15,11 @@ struct OneRepMaxTabView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(LocalizedStringKey("1RM Tables"))
-                        .font(.title2)
-                        .fontWeight(.heavy)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(PastelTheme.textPrimary)
                     Text(LocalizedStringKey("Estimate your max weight for any rep level"))
                         .font(.subheadline)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .foregroundColor(PastelTheme.textTertiary)
                 }
                 Spacer()
                 Button {
@@ -29,37 +28,41 @@ struct OneRepMaxTabView: View {
                     showSettingsSheet = true
                 } label: {
                     Image(systemName: "slider.horizontal.3")
-                        .font(.title2)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
-                        .padding(12)
-                        .background(colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : Color(UIColor.systemGray6))
+                        .font(.headline)
+                        .foregroundColor(PastelTheme.pastelOat)
+                        .frame(width: 40, height: 40)
+                        .background(PastelTheme.cardSurfaceSubtle)
                         .clipShape(Circle())
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
             }
-            .padding(.bottom, 8)
+            .padding(.bottom, 4)
 
             VStack(spacing: 0) {
 
                 HStack {
                     Text(LocalizedStringKey("Reps"))
                         .font(.caption)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .fontWeight(.semibold)
+                        .foregroundColor(PastelTheme.textTertiary)
                         .frame(width: 60, alignment: .leading)
 
                     Text(LocalizedStringKey("Max Estimate"))
                         .font(.caption)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .fontWeight(.semibold)
+                        .foregroundColor(PastelTheme.textTertiary)
                         .frame(maxWidth: .infinity, alignment: .center)
 
                     Text(LocalizedStringKey("% of 1RM"))
                         .font(.caption)
-                        .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                        .fontWeight(.semibold)
+                        .foregroundColor(PastelTheme.textTertiary)
                         .frame(width: 80, alignment: .trailing)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, 18)
                 .padding(.vertical, 12)
 
-                Divider()
+                Divider().overlay(PastelTheme.separator)
 
                 let current1RM = vm.effective1RM
 
@@ -72,24 +75,23 @@ struct OneRepMaxTabView: View {
 
                         HStack {
                             Text("\(reps)")
-                                .font(.headline)
-                                .foregroundColor(colorScheme == .dark ? themeManager.current.primaryText : .black)
+                                .font(.system(.headline, design: .rounded, weight: .bold))
+                                .foregroundColor(PastelTheme.textSecondary)
                                 .frame(width: 60, alignment: .leading)
 
                             Text("\(LocalizationHelper.shared.formatFlexible(displayWeight)) \(unitsManager.weightUnitString())")
-                                .font(.headline)
-                                .foregroundColor(vm.chartColor)
+                                .font(.system(.headline, design: .rounded, weight: .bold))
+                                .foregroundColor(PastelTheme.pastelAmber)
                                 .frame(maxWidth: .infinity, alignment: .center)
 
                             Text("\(Int(percentage))%")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
+                                .font(.system(.subheadline, design: .rounded, weight: .medium))
+                                .foregroundColor(PastelTheme.textTertiary)
                                 .frame(width: 80, alignment: .trailing)
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
-                        .background(reps % 2 == 0 ? Color.clear : Color.primary.opacity(0.03))
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 14)
+                        .background(reps % 2 == 0 ? Color.clear : PastelTheme.cardSurfaceSubtle.opacity(0.4))
                     }
                 } else {
                     EmptyStateView(
@@ -100,13 +102,12 @@ struct OneRepMaxTabView: View {
                     .padding(.vertical, 40)
                 }
             }
-            .background(colorScheme == .dark ? themeManager.current.surfaceVariant : Color.white)
-            .cornerRadius(24)
+            .background(PastelTheme.cardSurface)
+            .cornerRadius(20)
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.03 : 0.08), radius: 10, x: 0, y: 5)
         }
         .sheet(isPresented: $showSettingsSheet) {
             OneRepMaxSettingsSheet(vm: vm)

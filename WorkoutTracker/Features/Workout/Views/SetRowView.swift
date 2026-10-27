@@ -92,8 +92,8 @@ struct SetRowView: View {
 
     var body: some View {
         let isSetCompleted = set.isCompleted
-        let bgColor = isSetCompleted ? Color.green.opacity(colorScheme == .dark ? 0.15 : 0.08) : themeManager.current.surfaceVariant.opacity(0.3)
-        let strokeColor = isSetCompleted ? Color.green.opacity(0.3) : Color.white.opacity(0.05)
+        let bgColor = isSetCompleted ? PastelTheme.pastelEmerald.opacity(0.12) : PastelTheme.cardSurfaceSubtle
+        let strokeColor = isSetCompleted ? PastelTheme.pastelEmerald.opacity(0.3) : PastelTheme.cardBorder
 
         return HStack(alignment: .center, spacing: 8) {
             indexLabel
@@ -240,11 +240,11 @@ struct SetRowView: View {
                 .focused($focusedField, equals: type)
                 .frame(maxWidth: .infinity)
                 .frame(height: 40)
-                .background(colorScheme == .dark ? Color.white.opacity(0.06) : Color(UIColor.systemGray6))
+                .background(PastelTheme.cardSurfaceSubtle)
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(focusedField == type ? themeManager.current.primaryAccent : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.08)), lineWidth: focusedField == type ? 2 : 1)
+                        .stroke(focusedField == type ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
                 )
         }
     }
@@ -254,18 +254,21 @@ struct SetRowView: View {
             ZStack {
                 if set.isCompleted {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(themeManager.current.successColor)
+                        .fill(PastelTheme.pastelEmerald)
                         .frame(width: 44, height: 44)
-                        .shadow(color: themeManager.current.successColor.opacity(0.3), radius: 6, x: 0, y: 3)
+                        .shadow(color: PastelTheme.pastelEmerald.opacity(0.35), radius: 6, x: 0, y: 3)
                     
                     Image(systemName: "checkmark")
                         .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.black)
+                        .foregroundColor(PastelTheme.textOnOat)
                         .symbolEffect(.bounce, value: set.isCompleted)
                 } else {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.2), lineWidth: 2)
-                        .background(Color.white.opacity(0.03))
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1.5)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(PastelTheme.cardSurfaceSubtle)
+                        )
                         .frame(width: 44, height: 44)
                 }
             }
@@ -282,12 +285,16 @@ struct SetRowView: View {
             } label: {
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(LinearGradient(colors: [.purple.opacity(0.15), .indigo.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .fill(PastelTheme.cardSurfaceSubtle)
                         .frame(width: 44, height: 44)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                        )
 
                     Image(systemName: "brain.head.profile")
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .foregroundColor(PastelTheme.pastelLavender)
                 }
             }
             .buttonStyle(.plain)

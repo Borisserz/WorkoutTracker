@@ -10,7 +10,6 @@ struct ActiveWorkoutBannerContainer: View {
     private var activeWorkouts: [Workout]
 
     var body: some View {
-
         if let activeWorkout = activeWorkouts.first, !di.appState.isInsideActiveWorkout {
             ActiveWorkoutBanner(workout: activeWorkout)
                 .padding(.horizontal, 16)
@@ -23,7 +22,6 @@ struct ActiveWorkoutBannerContainer: View {
 struct ActiveWorkoutBanner: View {
     @Environment(DIContainer.self) private var di
     @Environment(WorkoutService.self) private var workoutService
-    @Environment(ThemeManager.self) private var themeManager
     @Environment(RestTimerManager.self) private var timerManager
     let workout: Workout
 
@@ -31,92 +29,98 @@ struct ActiveWorkoutBanner: View {
     @State private var isBlinking = false
 
     private var currentExerciseName: String {
-           if workout.exercises.isEmpty {
-               return String(localized: "In progress...") 
-           }
-           if let activeEx = workout.exercises.first(where: { !$0.isCompleted }) {
-               return activeEx.name
-           }
-           return String(localized: "Finishing up...")
-       }
+        if workout.exercises.isEmpty {
+            return String(localized: "In progress...")
+        }
+        if let activeEx = workout.exercises.first(where: { !$0.isCompleted }) {
+            return activeEx.name
+        }
+        return String(localized: "Finishing up...")
+    }
 
     var body: some View {
-        HStack(spacing: 16) {
-
+        HStack(spacing: 14) {
+            // Left Action / Expand Indicator
             Button {
                 returnToWorkout()
             } label: {
-                Image(systemName: "chevron.up")
-                    .font(.title3)
-                    .foregroundColor(themeManager.current.primaryText)
-                    .frame(width: 40, height: 40)
-                    .background(themeManager.current.secondaryAccent.opacity(0.1))
-                    .clipShape(Circle())
+                ZStack {
+                    Circle()
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 40, height: 40)
+                    
+                    Image(systemName: "chevron.up")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(PastelTheme.pastelOat)
+                }
             }
+            .buttonStyle(.plain)
 
+            // Center details (tap anywhere to return)
             Button {
                 returnToWorkout()
             } label: {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Circle()
-                            .fill(Color.green)
+                            .fill(PastelTheme.pastelSage)
                             .frame(width: 8, height: 8)
-                            .opacity(isBlinking ? 0.3 : 1.0)
-                            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isBlinking)
+                            .opacity(isBlinking ? 0.35 : 1.0)
+                            .animation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true), value: isBlinking)
 
                         Text(LocalizedStringKey("Workout"))
-                            .font(.headline)
-                            .foregroundColor(themeManager.current.primaryText)
+                            .font(.system(.subheadline, design: .rounded, weight: .semibold))
+                            .foregroundColor(PastelTheme.textSecondary)
 
                         Text(workout.date, style: .timer)
-                            .font(.headline)
+                            .font(.system(.subheadline, design: .rounded, weight: .bold))
                             .monospacedDigit()
-                            .foregroundColor(themeManager.current.primaryText)
+                            .foregroundColor(PastelTheme.textPrimary)
                     }
 
                     Text(LocalizationHelper.shared.translateName(currentExerciseName))
-                        .font(.subheadline)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(PastelTheme.textTertiary)
                         .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(PlainButtonStyle())
+            .buttonStyle(.plain)
 
-            Spacer()
-
+            // Right Close / Delete Button
             Button {
                 showDeleteAlert = true
             } label: {
-                Image(systemName: "trash")
-                    .font(.title3)
-                    .foregroundColor(.red)
-                    .frame(width: 40, height: 40)
-                    .background(Color.red.opacity(0.1))
-                    .clipShape(Circle())
+                ZStack {
+                    Circle()
+                        .fill(Color.red.opacity(0.12))
+                        .frame(width: 36, height: 36)
+                    
+                    Image(systemName: "xmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.red.opacity(0.9))
+                }
             }
+            .buttonStyle(.plain)
         }
-        .padding(12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(PastelTheme.cardSurface)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(themeManager.current.secondaryAccent.opacity(0.2), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
+        .shadow(color: Color.black.opacity(0.35), radius: 14, x: 0, y: 6)
         .onAppear {
             isBlinking = true
         }
         .alert(LocalizedStringKey("Cancel Workout?"), isPresented: $showDeleteAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
-                
                 timerManager.stopRestTimer()
-
-                if di.appState.selectedTab == 2 {
-
-                }
 
                 Task {
                     await workoutService.deleteWorkout(workout)
@@ -130,7 +134,6 @@ struct ActiveWorkoutBanner: View {
         generator.impactOccurred()
 
         di.appState.selectedTab = 2
-
         di.appState.returnToActiveWorkoutId = workout.persistentModelID
     }
 }
