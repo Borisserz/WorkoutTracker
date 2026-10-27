@@ -104,6 +104,8 @@ struct WorkoutDetailContentView: View {
 
     var body: some View {
         ZStack {
+            PastelTheme.canvas.ignoresSafeArea()
+
             ScrollViewReader { proxy in
                 mainLayout(proxy: proxy)
                     .onChange(of: scrollToExerciseId) { _, newId in handleScrollTo(newId: newId, proxy: proxy) }

@@ -34,6 +34,39 @@ protocol AppTheme: Sendable {
     var overlayGradient: LinearGradient { get }
 }
 
+struct LuxuryPastelTheme: AppTheme {
+    var background: Color { PastelTheme.canvas }
+    var surface: Color { PastelTheme.cardSurface }
+    var surfaceVariant: Color { PastelTheme.cardSurfaceSubtle }
+
+    var primaryText: Color { PastelTheme.textPrimary }
+    var secondaryText: Color { PastelTheme.textSecondary }
+    var tertiaryText: Color { PastelTheme.textTertiary }
+    var onAccentText: Color { PastelTheme.textOnOat }
+
+    var primaryAccent: Color { PastelTheme.pastelOat }
+    var secondaryAccent: Color { PastelTheme.warmBeige }
+    var secondaryMidTone: Color { PastelTheme.pastelAmber }
+    var deepPremiumAccent: Color { PastelTheme.cardSurface }
+    var lightHighlight: Color { PastelTheme.cardBorder }
+
+    var successColor: Color { PastelTheme.pastelEmerald }
+    var warningColor: Color { PastelTheme.pastelAmber }
+    var errorColor: Color { PastelTheme.pastelPeach }
+
+    var premiumGradient: LinearGradient {
+        LinearGradient(colors: [PastelTheme.cardSurface, PastelTheme.cardSurfaceSubtle], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    var primaryGradient: LinearGradient {
+        LinearGradient(colors: [PastelTheme.cardSurfaceSubtle, PastelTheme.canvas], startPoint: .topLeading, endPoint: .bottomTrailing)
+    }
+
+    var overlayGradient: LinearGradient {
+        LinearGradient(colors: [PastelTheme.canvas.opacity(0), PastelTheme.canvas.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+    }
+}
+
 struct CyberNeonTheme: AppTheme {
     var background: Color { .premiumBackground }
     var surface: Color { Color(red: 0.10, green: 0.10, blue: 0.14) }
@@ -45,8 +78,6 @@ struct CyberNeonTheme: AppTheme {
     var onAccentText: Color { .white }
 
     var primaryAccent: Color {
-        // We'll use ThemeManager.shared.accentColor when needed, but to avoid circularity, 
-        // ThemeManager will just expose an accentColor property directly that overrides this in views.
         return .neonBlue
     }
     var secondaryAccent: Color { .neonPurple }
@@ -76,8 +107,8 @@ struct CyberNeonTheme: AppTheme {
 final class ThemeManager {
     static let shared = ThemeManager()
 
-    var current: AppTheme = CyberNeonTheme()
-    var accentColor: Color = .neonBlue
+    var current: AppTheme = LuxuryPastelTheme()
+    var accentColor: Color = PastelTheme.pastelOat
 
     private init() {}
     
