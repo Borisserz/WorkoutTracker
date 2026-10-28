@@ -346,12 +346,12 @@ struct WorkoutHubView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Быстрый старт")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                        Text("Старт")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textPrimary)
                             .lineLimit(1)
 
-                        Text("Пустая сессия")
+                        Text("Без шаблона")
                             .font(.caption2)
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
@@ -359,7 +359,7 @@ struct WorkoutHubView: View {
 
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity)
                 .frame(height: 72)
                 .background(PastelTheme.cardSurface)
@@ -389,13 +389,12 @@ struct WorkoutHubView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("AI Сборка")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                        Text("AI План")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textPrimary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.85)
 
-                        Text("Умный план")
+                        Text("Умная сборка")
                             .font(.caption2)
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
