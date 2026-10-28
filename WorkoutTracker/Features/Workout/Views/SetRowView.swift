@@ -253,23 +253,26 @@ struct SetRowView: View {
         Button(action: toggleComplete) {
             ZStack {
                 if set.isCompleted {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(PastelTheme.pastelEmerald)
-                        .frame(width: 44, height: 44)
-                        .shadow(color: PastelTheme.pastelEmerald.opacity(0.35), radius: 6, x: 0, y: 3)
-                    
+                        .frame(width: 40, height: 40)
+
                     Image(systemName: "checkmark")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(PastelTheme.textOnOat)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
                         .symbolEffect(.bounce, value: set.isCompleted)
                 } else {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(PastelTheme.cardBorder, lineWidth: 1.5)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(PastelTheme.cardSurfaceSubtle)
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 40, height: 40)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
                         )
-                        .frame(width: 44, height: 44)
+
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(PastelTheme.textTertiary.opacity(0.4))
                 }
             }
         }

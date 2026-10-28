@@ -358,11 +358,11 @@ struct ExerciseCardView: View {
             }
 
             if isAISupported {
-                Image(systemName: "brain").font(.system(size: 11, weight: .bold)).frame(width: 44).foregroundColor(.secondary)
+                Image(systemName: "brain").font(.system(size: 11, weight: .bold)).frame(width: 40).foregroundColor(.secondary)
             }
             Text(LocalizedStringKey("Check"))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                .frame(width: 44)
+                .frame(width: 40)
                 .foregroundColor(.secondary)
         }
         .padding(.horizontal, 10)
@@ -375,22 +375,26 @@ struct ExerciseCardView: View {
 
     private var actionButtonsSection: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 if !isEmbeddedInSuperset {
                     Button(action: { finishExerciseAction() }) {
                         HStack(spacing: 6) {
                             Image(systemName: exercise.isCompleted ? "arrow.uturn.backward" : "checkmark.circle.fill")
-                                .font(.system(size: 14, weight: .bold))
+                                .font(.system(size: 13, weight: .bold))
                             Text(exercise.isCompleted ? LocalizedStringKey("Resume") : LocalizedStringKey("Finish Exercise"))
                                 .lineLimit(1)
-                                .minimumScaleFactor(0.8)
+                                .minimumScaleFactor(0.85)
                         }
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(exercise.isCompleted ? themeManager.current.surfaceVariant : themeManager.current.successColor.opacity(0.15))
-                        .foregroundColor(exercise.isCompleted ? .secondary : themeManager.current.successColor)
-                        .cornerRadius(12)
+                        .frame(height: 44)
+                        .background(exercise.isCompleted ? PastelTheme.cardSurfaceSubtle : PastelTheme.pastelEmerald.opacity(0.18))
+                        .foregroundColor(exercise.isCompleted ? PastelTheme.textSecondary : PastelTheme.pastelEmerald)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(exercise.isCompleted ? PastelTheme.cardBorder : PastelTheme.pastelEmerald.opacity(0.3), lineWidth: 1)
+                        )
                     }
                     .buttonStyle(BorderlessButtonStyle())
                     .disabled(isWorkoutCompleted)
@@ -399,17 +403,21 @@ struct ExerciseCardView: View {
                 Button(action: { withAnimation { detailViewModel.addSet(to: exercise, context: context) } }) {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: 13, weight: .bold))
                         Text(LocalizedStringKey("Add Set"))
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .minimumScaleFactor(0.85)
                     }
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(themeManager.current.primaryAccent)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
+                    .frame(height: 44)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .foregroundColor(PastelTheme.textPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    )
                 }
                 .buttonStyle(BorderlessButtonStyle())
                 .disabled(exercise.isCompleted || isWorkoutCompleted)

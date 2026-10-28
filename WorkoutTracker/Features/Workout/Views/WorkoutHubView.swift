@@ -267,17 +267,12 @@ struct WorkoutHubView: View {
     }
 
     // MARK: - 1. Header Section
+    // MARK: - 1. Header Section
     private var headerSection: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Тренировка")
-                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
-
-                Text("Пульт быстрого старта и программы")
-                    .font(.caption)
-                    .foregroundStyle(PastelTheme.textSecondary)
-            }
+            Text("Тренировка")
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .foregroundStyle(PastelTheme.textPrimary)
 
             Spacer()
 
@@ -299,7 +294,7 @@ struct WorkoutHubView: View {
                             .foregroundStyle(PastelTheme.textPrimary)
                     }
                     .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .frame(height: 34)
                     .background(PastelTheme.cardSurfaceSubtle)
                     .clipShape(Capsule())
                     .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
@@ -320,10 +315,9 @@ struct WorkoutHubView: View {
                     }
                     .foregroundStyle(PastelTheme.textOnOat)
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .frame(height: 34)
                     .background(PastelTheme.pastelOat)
                     .clipShape(Capsule())
-                    .overlay(Capsule().stroke(PastelTheme.cardBorderFocused, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
             }
@@ -331,7 +325,7 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 2. Quick Launch Hero Bento Section
+    // MARK: - 2. Quick Launch Hero Section (Symmetric American Grid)
     private var quickLaunchHeroSection: some View {
         HStack(spacing: 12) {
             // Main Button: "Пустая тренировка" (1-Tap Direct Execution)
@@ -339,64 +333,54 @@ struct WorkoutHubView: View {
                 UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                 startEmptyWorkout()
             } label: {
-                HStack(spacing: 14) {
+                HStack(spacing: 12) {
                     ZStack {
                         Circle()
                             .fill(PastelTheme.pastelOat)
-                            .frame(width: 44, height: 44)
+                            .frame(width: 38, height: 38)
 
                         Image(systemName: "plus")
-                            .font(.system(size: 20, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundStyle(PastelTheme.textOnOat)
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text("Пустая тренировка")
-                                .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundStyle(PastelTheme.textPrimary)
+                        Text("Пустая тренировка")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
 
-                            Text("1-ТАП")
-                                .font(.system(size: 9, weight: .black))
-                                .foregroundStyle(PastelTheme.pastelSage)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
-                                .background(PastelTheme.pastelSage.opacity(0.15))
-                                .clipShape(Capsule())
-                        }
-
-                        Text("Свободная запись подходов")
+                        Text("Быстрый старт")
                             .font(.caption2)
                             .foregroundStyle(PastelTheme.textSecondary)
+                            .lineLimit(1)
                     }
 
-                    Spacer()
-
-                    Image(systemName: "play.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundStyle(PastelTheme.pastelOat)
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity)
+                .frame(height: 72)
                 .background(PastelTheme.cardSurface)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
                 )
             }
             .buttonStyle(.plain)
 
-            // Secondary Tile: "AI Подбор"
+            // Secondary Tile: "AI Сборка"
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showSmartBuilder = true
             } label: {
-                VStack(spacing: 6) {
+                HStack(spacing: 12) {
                     ZStack {
                         Circle()
                             .fill(PastelTheme.cardSurfaceSubtle)
-                            .frame(width: 36, height: 36)
+                            .frame(width: 38, height: 38)
                             .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
 
                         Image(systemName: "sparkles")
@@ -404,16 +388,28 @@ struct WorkoutHubView: View {
                             .foregroundStyle(PastelTheme.pastelSage)
                     }
 
-                    Text("AI Сборка")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("AI Сборка")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+
+                        Text("Умный план")
+                            .font(.caption2)
+                            .foregroundStyle(PastelTheme.textSecondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 0)
                 }
-                .frame(width: 84)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 12)
+                .frame(maxWidth: .infinity)
+                .frame(height: 72)
                 .background(PastelTheme.cardSurface)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .stroke(PastelTheme.cardBorder, lineWidth: 1)
                 )
             }
@@ -422,7 +418,7 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 3. Muscle Filter Section
+    // MARK: - 3. Muscle Filter Section (Strict 34pt Height Pills)
     private var muscleFilterSection: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -432,10 +428,10 @@ struct WorkoutHubView: View {
                     selectedMuscleGroup = nil
                 } label: {
                     Text("Все мышцы")
-                        .font(.caption.weight(.semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(isAllSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
-                        .padding(.horizontal, 13)
-                        .padding(.vertical, 7)
+                        .padding(.horizontal, 14)
+                        .frame(height: 34)
                         .background(isAllSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
                         .clipShape(Capsule())
                         .overlay(
@@ -453,10 +449,10 @@ struct WorkoutHubView: View {
                         selectedMuscleGroup = isSelected ? nil : group
                     } label: {
                         Text(localizedGroupName)
-                            .font(.caption.weight(.semibold))
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
-                            .padding(.horizontal, 13)
-                            .padding(.vertical, 7)
+                            .padding(.horizontal, 14)
+                            .frame(height: 34)
                             .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
                             .clipShape(Capsule())
                             .overlay(
@@ -889,7 +885,7 @@ private struct ActiveWorkoutResumeCard: View {
     }
 }
 
-/// Minimalist Bento Routine Card with 1-Tap Play button
+/// Minimalist Bento Routine Card with 1-Tap Play button (Exact American Grid)
 private struct PastelRoutineCard: View {
     let preset: WorkoutPreset
     let onPlay: () -> Void
@@ -908,12 +904,15 @@ private struct PastelRoutineCard: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Icon
+            // Icon Rounded Square (40x40)
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(PastelTheme.cardSurfaceSubtle)
                     .frame(width: 40, height: 40)
-                    .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    )
 
                 Image(systemName: preset.icon.isEmpty ? "figure.strengthtraining.traditional" : preset.icon)
                     .font(.system(size: 16, weight: .semibold))
@@ -923,13 +922,13 @@ private struct PastelRoutineCard: View {
             // Routine Details
             VStack(alignment: .leading, spacing: 3) {
                 Text(preset.name)
-                    .font(.subheadline.weight(.bold))
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
                     .lineLimit(1)
 
                 HStack(spacing: 5) {
                     Text("\(preset.exercises.count) упр.")
-                        .font(.caption2.bold())
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelSage)
 
                     if !targetedMuscles.isEmpty {
@@ -948,29 +947,28 @@ private struct PastelRoutineCard: View {
 
             Spacer()
 
-            // 1-Tap Direct Play Button
+            // 1-Tap Direct Play Button (Strict 32pt Height)
             Button(action: onPlay) {
                 HStack(spacing: 5) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 10, weight: .bold))
                     Text("Старт")
-                        .font(.caption2.weight(.bold))
+                        .font(.system(size: 12, weight: .bold))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 14)
+                .frame(height: 32)
                 .background(PastelTheme.pastelOat)
                 .clipShape(Capsule())
-                .overlay(Capsule().stroke(PastelTheme.cardBorderFocused, lineWidth: 1))
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .frame(height: 64)
         .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
         .contentShape(Rectangle())
@@ -1005,20 +1003,20 @@ private struct PastelRoutineCard: View {
     }
 }
 
-/// Editorial Luxury Card for Legendary Routines (No harsh neon/cyberpunk)
+/// Editorial Luxury Card for Legendary Routines (Uniform 220x130pt Grid)
 private struct PastelLegendaryCard: View {
     let routine: LegendaryRoutine
     let onSelect: () -> Void
 
     var body: some View {
         Button(action: onSelect) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Text(routine.eraTitle.uppercased())
                         .font(.system(size: 9, weight: .black))
                         .foregroundStyle(PastelTheme.pastelAmber)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, 8)
+                        .frame(height: 22)
                         .background(PastelTheme.pastelAmber.opacity(0.14))
                         .clipShape(Capsule())
 
@@ -1028,19 +1026,18 @@ private struct PastelLegendaryCard: View {
                         Image(systemName: "clock")
                             .font(.system(size: 10))
                         Text("\(routine.estimatedMinutes) мин")
-                            .font(.caption2.bold())
+                            .font(.system(size: 11, weight: .bold))
                     }
                     .foregroundStyle(PastelTheme.textSecondary)
                 }
 
                 Spacer()
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(routine.title)
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.leading)
+                        .lineLimit(1)
 
                     Text(routine.shortVibe)
                         .font(.caption2)
@@ -1055,7 +1052,7 @@ private struct PastelLegendaryCard: View {
                                 .font(.system(size: 9, weight: .medium))
                                 .foregroundStyle(PastelTheme.textTertiary)
                                 .padding(.horizontal, 6)
-                                .padding(.vertical, 2)
+                                .frame(height: 18)
                                 .background(PastelTheme.cardSurfaceSubtle)
                                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                         }
@@ -1063,17 +1060,17 @@ private struct PastelLegendaryCard: View {
 
                     Spacer()
 
-                    Image(systemName: "chevron.right.circle.fill")
-                        .font(.system(size: 18))
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 20))
                         .foregroundStyle(PastelTheme.pastelOat)
                 }
             }
             .padding(14)
-            .frame(width: 240, height: 160)
+            .frame(width: 220, height: 130)
             .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
         }
@@ -1081,43 +1078,36 @@ private struct PastelLegendaryCard: View {
     }
 }
 
-/// Empty state for WorkoutHub matching PastelTheme
+/// Empty state for WorkoutHub with minimal text and clean breathing space
 struct WorkoutHubEmptyStateView: View {
     var isFiltering: Bool = false
     var onReset: (() -> Void)? = nil
     var onCreate: (() -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 12) {
             ZStack {
                 Circle()
                     .fill(PastelTheme.cardSurfaceSubtle)
-                    .frame(width: 54, height: 54)
+                    .frame(width: 48, height: 48)
                     .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
 
-                Image(systemName: isFiltering ? "magnifyingglass" : "square.stack.3d.up.badge.automatic")
-                    .font(.system(size: 20))
+                Image(systemName: isFiltering ? "magnifyingglass" : "plus.rectangle.on.rectangle")
+                    .font(.system(size: 18))
                     .foregroundStyle(PastelTheme.pastelOat)
             }
 
-            VStack(spacing: 4) {
-                Text(isFiltering ? "Ничего не найдено" : "Нет сохраненных шаблонов")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(PastelTheme.textPrimary)
-
-                Text(isFiltering ? "Попробуйте изменить поисковый запрос или фильтр по мышцам" : "Создайте свой первый сплит или запустите пустую тренировку")
-                    .font(.caption2)
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-            }
+            Text(isFiltering ? "Ничего не найдено" : "Нет сохраненных шаблонов")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(PastelTheme.textPrimary)
 
             if isFiltering, let onReset = onReset {
                 Button(action: onReset) {
-                    Text("Сбросить фильтры")
-                        .font(.caption.weight(.semibold))
+                    Text("Сбросить")
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(PastelTheme.pastelOat)
                         .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
+                        .frame(height: 32)
                         .background(PastelTheme.cardSurfaceSubtle)
                         .clipShape(Capsule())
                         .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
@@ -1126,10 +1116,10 @@ struct WorkoutHubEmptyStateView: View {
             } else if let onCreate = onCreate {
                 Button(action: onCreate) {
                     Text("Создать шаблон")
-                        .font(.caption.weight(.bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(PastelTheme.textOnOat)
                         .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
+                        .frame(height: 36)
                         .background(PastelTheme.pastelOat)
                         .clipShape(Capsule())
                 }
@@ -1137,12 +1127,11 @@ struct WorkoutHubEmptyStateView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
-        .padding(.horizontal, 20)
+        .padding(.vertical, 22)
         .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }

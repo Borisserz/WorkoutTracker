@@ -107,33 +107,30 @@ struct TechniqueSheetView: View {
 
                                     VStack(alignment: .leading, spacing: 16) {
                                         ForEach(Array(stepsToDisplay.enumerated()), id: \.offset) { index, step in
-                                            HStack(alignment: .top, spacing: 16) {
+                                            HStack(alignment: .top, spacing: 14) {
                                                 Text("\(index + 1)")
-                                                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                                                    .foregroundColor(.white)
-                                                    .frame(width: 28, height: 28)
-                                                    .background(
-                                                        LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                                    )
+                                                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                                                    .foregroundColor(PastelTheme.textPrimary)
+                                                    .frame(width: 26, height: 26)
+                                                    .background(PastelTheme.cardSurfaceSubtle)
                                                     .clipShape(Circle())
-                                                    .shadow(color: themeManager.current.primaryAccent.opacity(0.3), radius: 4, y: 2)
+                                                    .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
 
                                                 Text(step)
                                                     .font(.subheadline)
-                                                    .lineSpacing(6)
-                                                    .foregroundColor(Color.primary.opacity(0.8))
+                                                    .lineSpacing(5)
+                                                    .foregroundColor(PastelTheme.textSecondary)
                                             }
                                         }
                                     }
                                 }
-                                .padding(20)
+                                .padding(18)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(themeManager.current.surface)
-                                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                .shadow(color: Color.black.opacity(0.05), radius: 15, y: 5)
+                                .background(PastelTheme.cardSurface)
+                                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                        .stroke(Color.gray.opacity(0.1), lineWidth: 1)
+                                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
                                 )
                             } else {
                                 fallbackView
