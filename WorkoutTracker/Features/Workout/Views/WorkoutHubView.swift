@@ -645,33 +645,41 @@ struct WorkoutHubView: View {
     // MARK: - 6. Floating Dynamic Thumb HUD Cockpit (Paradigm 1)
     private func floatingThumbCockpit(proxy: ScrollViewProxy) -> some View {
         VStack(spacing: 8) {
-            // Main Button: "Пустая тренировка" (1-Tap Direct Execution)
+            // Main Button: "Быстрый старт" (1-Tap Direct Execution)
             Button {
                 UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                 startEmptyWorkout()
             } label: {
-                HStack {
-                    Spacer()
-
-                    Text("Пустая тренировка")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textOnOat)
-
-                    Spacer()
-
+                HStack(spacing: 12) {
                     ZStack {
                         Circle()
-                            .fill(PastelTheme.textOnOat.opacity(0.14))
-                            .frame(width: 28, height: 28)
+                            .fill(PastelTheme.textOnOat.opacity(0.12))
+                            .frame(width: 32, height: 32)
 
-                        Image(systemName: "plus")
-                            .font(.system(size: 13, weight: .bold))
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(PastelTheme.textOnOat)
                     }
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Быстрый старт")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textOnOat)
+
+                        Text("Свободная сессия без шаблона")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(PastelTheme.textOnOat.opacity(0.75))
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(PastelTheme.textOnOat.opacity(0.7))
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity)
-                .frame(height: 50)
+                .frame(height: 48)
                 .background(PastelTheme.pastelOat)
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
@@ -1256,28 +1264,29 @@ private struct PastelRoutineCard: View {
 
             Spacer()
 
-            // 1-Tap Direct Play Button (Strict 32pt Height)
+            // 1-Tap Direct Play Button (High-Contrast Athletic Emerald Action)
             Button(action: onPlay) {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: "play.fill")
-                        .font(.system(size: 10, weight: .bold))
-                    Text("Старт")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 11, weight: .bold))
+                    Text("СТАРТ")
+                        .font(.system(size: 12, weight: .heavy, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
                 .padding(.horizontal, 14)
-                .frame(height: 32)
-                .background(PastelTheme.pastelOat)
+                .frame(height: 36)
+                .background(PastelTheme.pastelSage)
                 .clipShape(Capsule())
+                .shadow(color: PastelTheme.pastelSage.opacity(0.25), radius: 6, y: 2)
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
-        .frame(height: 64)
+        .frame(height: 68)
         .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
         .contentShape(Rectangle())
@@ -1424,13 +1433,17 @@ struct WorkoutHubEmptyStateView: View {
                 .buttonStyle(.plain)
             } else if let onCreate = onCreate {
                 Button(action: onCreate) {
-                    Text("Создать шаблон")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(PastelTheme.textOnOat)
-                        .padding(.horizontal, 16)
-                        .frame(height: 36)
-                        .background(PastelTheme.pastelOat)
-                        .clipShape(Capsule())
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 13, weight: .bold))
+                        Text("Создать первый шаблон")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(PastelTheme.textOnOat)
+                    .padding(.horizontal, 18)
+                    .frame(height: 38)
+                    .background(PastelTheme.pastelOat)
+                    .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
             }
