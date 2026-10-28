@@ -177,9 +177,10 @@ struct WorkoutHubView: View {
                         // 8. "Моя библиотека" Navigational Banner
                         myLibraryBannerSection
 
-                        Spacer(minLength: 120)
+                        Spacer(minLength: 140)
                     }
                     .padding(.top, 10)
+                    .padding(.bottom, 60)
                 }
 
                 // Streak mascot popup overlay
@@ -345,13 +346,12 @@ struct WorkoutHubView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Пустая тренировка")
+                        Text("Быстрый старт")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textPrimary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.85)
 
-                        Text("Быстрый старт")
+                        Text("Пустая сессия")
                             .font(.caption2)
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
