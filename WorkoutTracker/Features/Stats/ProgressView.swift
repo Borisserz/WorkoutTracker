@@ -750,32 +750,16 @@ struct BodyTransformBannerCard: View {
 
                 // Content
                 HStack(spacing: 16) {
-                    // Left Side: Glowing camera viewfinder icon container
+                    // Left Side: Camera icon container
                     ZStack {
                         Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color.purple.opacity(0.3), Color.blue.opacity(0.2)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 56, height: 56)
-                        
-                        Circle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [Color(red: 0.45, green: 0.3, blue: 1.0), Color(red: 0.2, green: 0.5, blue: 1.0)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            )
-                            .frame(width: 48, height: 48)
-                            .shadow(color: Color.purple.opacity(0.3), radius: 5, y: 3)
+                            .fill(PastelTheme.cardSurfaceSubtle)
+                            .frame(width: 50, height: 50)
+                            .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
 
                         Image(systemName: "camera.viewfinder")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.white)
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(PastelTheme.pastelOat)
                     }
 
                     // Text block
@@ -783,22 +767,23 @@ struct BodyTransformBannerCard: View {
                         HStack(spacing: 6) {
                             Text("Body Transform")
                                 .font(.system(size: 16, weight: .bold, design: .rounded))
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .foregroundColor(PastelTheme.textPrimary)
 
                             if photoCount >= 2 {
                                 Text("\(photoCount) photos")
                                     .font(.system(size: 11, weight: .bold))
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 3)
-                                    .background(Color.purple.opacity(0.18))
-                                    .foregroundColor(.purple)
+                                    .background(PastelTheme.cardSurfaceSubtle)
+                                    .foregroundColor(PastelTheme.pastelEmerald)
                                     .clipShape(Capsule())
+                                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                             }
                         }
 
                         Text("Before & after slider · Track your progress")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.55) : .black.opacity(0.5))
+                            .foregroundColor(PastelTheme.textSecondary)
                             .lineLimit(1)
                     }
 
@@ -807,27 +792,18 @@ struct BodyTransformBannerCard: View {
                     // Chevron
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.4) : .black.opacity(0.3))
+                        .foregroundColor(PastelTheme.textTertiary)
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 16)
             }
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: colorScheme == .dark 
-                                ? [Color.purple, Color.blue] 
-                                : [Color.purple.opacity(0.5), Color.blue.opacity(0.4)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        lineWidth: 2
-                    )
+                    .fill(PastelTheme.cardSurface)
             )
-            .shadow(
-                color: colorScheme == .dark ? Color.purple.opacity(0.3) : Color.purple.opacity(0.08),
-                radius: 12, x: 0, y: 6
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
             .scaleEffect(isPressed ? 0.97 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
@@ -857,46 +833,38 @@ struct AIIslandView: View {
                     .fill(colorScheme == .dark ? Color(red: 0.08, green: 0.08, blue: 0.10) : Color.white)
 
                 HStack(spacing: 16) {
-                    // Custom sparkles layout (float styled)
+                    // AI sparkles icon
                     ZStack {
+                        Circle()
+                            .fill(PastelTheme.cardSurfaceSubtle)
+                            .frame(width: 44, height: 44)
+                            .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
                         Image(systemName: "sparkles")
-                            .font(.system(size: 26))
-                            .foregroundStyle(
-                                LinearGradient(colors: [.purple, .cyan], startPoint: .top, endPoint: .bottom)
-                            )
-                            .shadow(color: .purple.opacity(0.3), radius: 4)
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(PastelTheme.pastelLavender)
                     }
-                    .frame(width: 44, height: 44)
 
                     Text("AI Efficiency Overview")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .foregroundColor(PastelTheme.textPrimary)
                     
                     Spacer()
                     
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.4) : .black.opacity(0.3))
+                        .foregroundColor(PastelTheme.textTertiary)
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 22)
+                .padding(.vertical, 20)
             }
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: colorScheme == .dark 
-                                ? [Color.blue.opacity(0.4), Color.purple] 
-                                : [Color.blue.opacity(0.3), Color.purple.opacity(0.5)],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        lineWidth: 2
-                    )
+                    .fill(PastelTheme.cardSurface)
             )
-            .shadow(
-                color: colorScheme == .dark ? Color.purple.opacity(0.25) : Color.purple.opacity(0.06),
-                radius: 10, x: 0, y: 5
+            .overlay(
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
             .scaleEffect(isPressed ? 0.97 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
@@ -4082,29 +4050,28 @@ struct PremiumStatsEmptyState: View {
         VStack(spacing: 24) {
             ZStack {
                 Circle()
-                    .fill(Color.purple.opacity(0.15))
-                    .frame(width: 100, height: 100)
-                    .blur(radius: 20)
-                
+                    .fill(PastelTheme.cardSurfaceSubtle)
+                    .frame(width: 80, height: 80)
+                    .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
                 Image(systemName: "lock.shield.fill")
-                    .font(.system(size: 48))
-                    .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .shadow(color: .purple.opacity(0.4), radius: 15, y: 5)
+                    .font(.system(size: 38))
+                    .foregroundColor(PastelTheme.pastelOat)
             }
             .scaleEffect(appear ? 1.0 : 0.5)
             .opacity(appear ? 1.0 : 0)
 
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 Text("Analytics Locked")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .font(.system(size: 24, weight: .heavy, design: .rounded))
+                    .foregroundColor(PastelTheme.textPrimary)
 
                 Text("Your journey starts here. Complete your first workout to unlock deep muscle analytics, AI insights, and progress charts.")
-                    .font(.system(size: 15))
-                    .foregroundColor(.gray)
+                    .font(.system(size: 14))
+                    .foregroundColor(PastelTheme.textSecondary)
                     .multilineTextAlignment(.center)
-                    .lineSpacing(6)
-                    .padding(.horizontal, 20)
+                    .lineSpacing(4)
+                    .padding(.horizontal, 16)
             }
             .offset(y: appear ? 0 : 20)
             .opacity(appear ? 1.0 : 0)
@@ -4113,24 +4080,33 @@ struct PremiumStatsEmptyState: View {
                 UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
                 onStartWorkout()
             }) {
-                Text("Start First Workout")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 16)
-                    .background(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing))
-                    .clipShape(Capsule())
-                    .shadow(color: .purple.opacity(0.4), radius: 10, y: 5)
+                HStack(spacing: 8) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 14, weight: .bold))
+                    Text("Start First Workout")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                .background(PastelTheme.pastelOat)
+                .foregroundColor(PastelTheme.textOnOat)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
+                        .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                )
             }
             .padding(.top, 10)
             .offset(y: appear ? 0 : 20)
             .opacity(appear ? 1.0 : 0)
         }
-        .padding(32)
-        .background(colorScheme == .dark ? Color.black.opacity(0.6) : Color.white.opacity(0.8))
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 32))
-        .overlay(RoundedRectangle(cornerRadius: 32).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+        .padding(28)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
         .shadow(color: .black.opacity(0.15), radius: 30, y: 15)
         .padding(.horizontal, 20)
         .onAppear {
