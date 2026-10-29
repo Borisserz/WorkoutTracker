@@ -55,6 +55,7 @@ struct WorkoutHubView: View {
     @State private var isProcessing = false
     @State private var selectedPreview: PreviewItem? = nil
     @State private var selectedLegendaryRoutine: LegendaryRoutine? = nil
+    @State private var isMuscleGridExpanded: Bool = false
 
     // MARK: - Filter Logic
     private func filterPreset(_ preset: WorkoutPreset) -> Bool {
@@ -148,7 +149,7 @@ struct WorkoutHubView: View {
                     .allowsHitTesting(false)
 
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 18) {
+                        VStack(alignment: .leading, spacing: 16) {
                             
                             // 1. Header with Streak and "+ Создать"
                             headerSection
@@ -164,35 +165,33 @@ struct WorkoutHubView: View {
                             // 3. Telemetry HUD Card (Streak, Weekly Volume, Workouts Count)
                             telemetryStatsCard
 
-                            // 4. Muscle Recovery & Readiness Rings (Apple Fitness+ HUD)
-                            muscleRecoveryGridCard
+                            // 4. Hero Focus & Kinetic Recovery Card (Centerpiece)
+                            heroFocusCard
 
-                            // 5. Compact Muscle Filter Capsule Bar
-                            muscleFilterSection
+                            // 5. Quick Actions Row (50/50 Split 42pt)
+                            quickActionsSplitRow
 
-                            // 6. Minimalist Search Bar
+                            // 6. Compact Muscle Recovery Strip (Expandable)
+                            compactMuscleRecoverySection
+
+                            // 7. Minimalist Search Bar
                             searchBarSection
                                 .id("searchBarAnchor")
 
-                            // 7. "Мои шаблоны" (My Routines with 1-Tap Play)
+                            // 8. "Мои шаблоны" (My Routines with 1-Tap Play)
                             myRoutinesSection
 
-                            // 8. "Легендарные программы" (Curated Scientific Splits)
+                            // 9. "Легендарные программы" (Curated Scientific Splits)
                             legendaryProgramsSection
 
-                            // 9. "Моя библиотека" Navigational Banner
+                            // 10. "Моя библиотека" Navigational Banner
                             myLibraryBannerSection
 
-                            Spacer(minLength: 160)
+                            Spacer(minLength: 40)
                         }
                         .padding(.top, 10)
-                        .padding(.bottom, 140)
+                        .padding(.bottom, 24)
                     }
-
-                    // 10. Floating Dynamic Thumb HUD Cockpit (Anchored in Thumb Reach)
-                    floatingThumbCockpit(proxy: proxy)
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 18)
 
                     // Streak mascot popup overlay
                     if showStreakPopup {
@@ -499,116 +498,371 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 3. Muscle Recovery & Readiness Rings (Apple Fitness+ HUD)
-    private var muscleRecoveryGridCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
+    // MARK: - 3. Recommended Hero Routine Data
+    private var recommendedHeroRoutine: (title: String, subtitle: String, duration: String, muscles: [String], onStart: () -> Void) {
+        if let firstPreset = myRoutines.first {
+            let muscleList = Array(Set(firstPreset.exercises.map { $0.muscleGroup })).prefix(3).map { localizedMuscleTitle(for: $0) }
+            let durationStr = "\(max(35, firstPreset.exercises.count * 8)) мин"
+            let exercisesStr = "\(firstPreset.exercises.count) упр"
+            return (
+                title: firstPreset.name,
+                subtitle: "\(durationStr) • \(exercisesStr)",
+                duration: durationStr,
+                muscles: muscleList.isEmpty ? ["Грудь", "Спина"] : muscleList,
+                onStart: {
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    startWorkoutFromPreview(item: .preset(firstPreset))
+                }
+            )
+        } else if let legendary = legendaryPrograms.first {
+            let durationStr = "\(legendary.estimatedMinutes) мин"
+            let exercisesStr = "\(legendary.exercises.count) упр"
+            return (
+                title: legendary.title,
+                subtitle: "\(durationStr) • \(exercisesStr)",
+                duration: durationStr,
+                muscles: legendary.benefits,
+                onStart: {
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    startLegendaryRoutine(legendary)
+                }
+            )
+        } else {
+            return (
+                title: "Свободная сессия",
+                subtitle: "Тренировка без шаблона",
+                duration: "45 мин",
+                muscles: ["Все мышцы"],
+                onStart: {
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    startEmptyWorkout()
+                }
+            )
+        }
+    }
+
+    // MARK: - 4. Hero Focus & Kinetic Body Card (Decluttered Centerpiece)
+    private var heroFocusCard: some View {
+        let hero = recommendedHeroRoutine
+        return VStack(alignment: .leading, spacing: 14) {
+            // Header Row: Recommended Tag + Systemic Readiness
+            HStack(alignment: .center) {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(PastelTheme.pastelSage)
                         .frame(width: 7, height: 7)
-
-                    Text("ГОТОВНОСТЬ МЫШЦ")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(PastelTheme.textSecondary)
+                    Text("СЕГОДНЯ • РЕКОМЕНДОВАНО")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(PastelTheme.pastelSage)
                         .tracking(0.6)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(PastelTheme.pastelSage.opacity(0.12))
+                .clipShape(Capsule())
+
+                Spacer()
+
+                HStack(spacing: 5) {
+                    Image(systemName: "bolt.heart.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                    Text("92% Готовность")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+            }
+
+            // Center Content: Title, Metrics & Kinetic Silhouette Badge
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(hero.title)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.85)
+
+                    Text(hero.subtitle)
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
+
+                    // Target Muscle Capsules
+                    HStack(spacing: 6) {
+                        ForEach(hero.muscles.prefix(3), id: \.self) { muscle in
+                            Text(muscle)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(PastelTheme.textTertiary)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(PastelTheme.cardSurfaceSubtle)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    .padding(.top, 2)
                 }
 
                 Spacer()
 
-                Text("Apple Fitness+ HUD")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(PastelTheme.textTertiary)
-            }
+                // Kinetic Silhouette Indicator
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 66, height: 74)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                        )
 
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 14) {
-                ForEach(muscleGroups, id: \.self) { group in
-                    let percentage = recoveryPercentage(for: group)
-                    let localizedName = localizedMuscleTitle(for: group)
-                    let subtitle = recoverySubtitle(for: group, percentage: percentage)
-                    let color = recoveryColor(for: percentage)
-                    let isSelected = selectedMuscleGroup == group
+                    VStack(spacing: 4) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(PastelTheme.pastelSage)
 
-                    MuscleRecoveryRingView(
-                        group: group,
-                        displayName: localizedName,
-                        percentage: percentage,
-                        subtitle: subtitle,
-                        ringColor: color,
-                        isSelected: isSelected
-                    ) {
-                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                            selectedMuscleGroup = isSelected ? nil : group
-                        }
+                        Text("ГОТОВ")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                            .tracking(0.5)
                     }
                 }
             }
+
+            // Bottom Hero Action Button (48pt, Tier 1)
+            Button(action: hero.onStart) {
+                HStack(spacing: 8) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 13, weight: .bold))
+                    Text("НАЧАТЬ ТРЕНИРОВКУ")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(PastelTheme.textOnOat)
+                .frame(maxWidth: .infinity)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                .background(PastelTheme.pastelOat)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(16)
         .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
         )
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 4. Muscle Filter Section (Strict 34pt Height Pills)
-    private var muscleFilterSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                let isAllSelected = selectedMuscleGroup == nil
-                Button {
-                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                        selectedMuscleGroup = nil
-                    }
-                } label: {
-                    Text("Все мышцы")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(isAllSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
-                        .padding(.horizontal, 14)
-                        .frame(height: 34)
-                        .background(isAllSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule().stroke(isAllSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
+    // MARK: - 5. Quick Actions Row (50/50 Split 42pt, Tier 2)
+    private var quickActionsSplitRow: some View {
+        HStack(spacing: 10) {
+            // Button 1: "⚡ Свободный старт"
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                startEmptyWorkout()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "bolt.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(PastelTheme.pastelAmber)
 
-                ForEach(muscleGroups, id: \.self) { group in
-                    let isSelected = selectedMuscleGroup == group
-                    let localizedGroupName = localizedMuscleTitle(for: group)
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                            selectedMuscleGroup = isSelected ? nil : group
-                        }
-                    } label: {
-                        Text(localizedGroupName)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
-                            .padding(.horizontal, 14)
-                            .frame(height: 34)
-                            .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule().stroke(isSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
+                    Text("Свободный старт")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
             }
-            .padding(.horizontal, 16)
+            .buttonStyle(.plain)
+
+            // Button 2: "✨ AI Сборка"
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                showSmartBuilder = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(PastelTheme.pastelSage)
+
+                    Text("AI Сборка")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 16)
     }
 
-    // MARK: - 5. Minimalist Search Bar
+    // MARK: - 6. Compact Muscle Recovery Drawer (Expandable)
+    private var compactMuscleRecoverySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header Strip (Always visible, 1-tap toggle)
+            Button {
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                    isMuscleGridExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.pastelSage.opacity(0.15))
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                    }
+
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Готовность мышц")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+
+                        Text("3 группы полностью восстановлены")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+
+                    Spacer()
+
+                    // Quick preview badges
+                    HStack(spacing: 4) {
+                        Text("Ноги 92%")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(PastelTheme.pastelSage.opacity(0.12))
+                            .clipShape(Capsule())
+
+                        Image(systemName: isMuscleGridExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.textTertiary)
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(PastelTheme.cardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            // Expanded 6-Ring Grid (Only visible when toggled)
+            if isMuscleGridExpanded {
+                VStack(spacing: 12) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 12) {
+                        ForEach(muscleGroups, id: \.self) { group in
+                            let percentage = recoveryPercentage(for: group)
+                            let localizedName = localizedMuscleTitle(for: group)
+                            let subtitle = recoverySubtitle(for: group, percentage: percentage)
+                            let color = recoveryColor(for: percentage)
+                            let isSelected = selectedMuscleGroup == group
+
+                            MuscleRecoveryRingView(
+                                group: group,
+                                displayName: localizedName,
+                                percentage: percentage,
+                                subtitle: subtitle,
+                                ringColor: color,
+                                isSelected: isSelected
+                            ) {
+                                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                    selectedMuscleGroup = isSelected ? nil : group
+                                }
+                            }
+                        }
+                    }
+
+                    // Muscle Filter Pills
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            let isAllSelected = selectedMuscleGroup == nil
+                            Button {
+                                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                    selectedMuscleGroup = nil
+                                }
+                            } label: {
+                                Text("Все мышцы")
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundStyle(isAllSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
+                                    .padding(.horizontal, 14)
+                                    .frame(height: 34)
+                                    .background(isAllSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
+                                    .clipShape(Capsule())
+                                    .overlay(
+                                        Capsule().stroke(isAllSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
+                                    )
+                            }
+                            .buttonStyle(.plain)
+
+                            ForEach(muscleGroups, id: \.self) { group in
+                                let isSelected = selectedMuscleGroup == group
+                                let localizedGroupName = localizedMuscleTitle(for: group)
+
+                                Button {
+                                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                        selectedMuscleGroup = isSelected ? nil : group
+                                    }
+                                } label: {
+                                    Text(localizedGroupName)
+                                        .font(.system(size: 13, weight: .semibold))
+                                        .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
+                                        .padding(.horizontal, 14)
+                                        .frame(height: 34)
+                                        .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
+                                        .clipShape(Capsule())
+                                        .overlay(
+                                            Capsule().stroke(isSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .padding(.top, 4)
+                }
+                .padding(14)
+                .background(PastelTheme.cardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - 7. Minimalist Search Bar
     private var searchBarSection: some View {
         HStack(spacing: 10) {
             Image(systemName: "magnifyingglass")
@@ -642,118 +896,7 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 6. Floating Dynamic Thumb HUD Cockpit (Paradigm 1)
-    private func floatingThumbCockpit(proxy: ScrollViewProxy) -> some View {
-        VStack(spacing: 8) {
-            // Main Button: "Быстрый старт" (1-Tap Direct Execution)
-            Button {
-                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                startEmptyWorkout()
-            } label: {
-                HStack(spacing: 12) {
-                    ZStack {
-                        Circle()
-                            .fill(PastelTheme.textOnOat.opacity(0.12))
-                            .frame(width: 32, height: 32)
-
-                        Image(systemName: "bolt.fill")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(PastelTheme.textOnOat)
-                    }
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Быстрый старт")
-                            .font(.system(size: 15, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textOnOat)
-
-                        Text("Свободная сессия без шаблона")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundStyle(PastelTheme.textOnOat.opacity(0.75))
-                    }
-
-                    Spacer()
-
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(PastelTheme.textOnOat.opacity(0.7))
-                }
-                .padding(.horizontal, 14)
-                .frame(maxWidth: .infinity)
-                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
-                .background(PastelTheme.pastelOat)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
-            }
-            .buttonStyle(.plain)
-
-            // Secondary Row: Equal 50/50 Split ("AI Сборка" & "Поиск")
-            HStack(spacing: 8) {
-                // Button 1: "AI Сборка"
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    showSmartBuilder = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundStyle(PastelTheme.pastelSage)
-
-                        Text("AI Сборка")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: PastelTheme.ButtonMetrics.splitHeight)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
-                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-
-                // Button 2: "Поиск"
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                        isSearchFieldFocused.toggle()
-                        proxy.scrollTo("searchBarAnchor", anchor: .center)
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "magnifyingglass")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(PastelTheme.textSecondary)
-
-                        Text("Поиск")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .frame(height: PastelTheme.ButtonMetrics.splitHeight)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
-                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(PastelTheme.cardSurface.opacity(0.96))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(PastelTheme.cardBorderFocused.opacity(0.4), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.55), radius: 20, y: 8)
-    }
-
-    // MARK: - 5. "Мои шаблоны" Section
+    // MARK: - 8. "Мои шаблоны" Section
     private var myRoutinesSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
