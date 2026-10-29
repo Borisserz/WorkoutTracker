@@ -1,5 +1,3 @@
-
-
 internal import SwiftUI
 internal import UniformTypeIdentifiers
 
@@ -8,6 +6,62 @@ struct SharedImageWrapper: Identifiable {
     let image: UIImage
 }
 
+// MARK: - Receipt Zig-Zag Perforation Shape
+struct ReceiptZigZagShape: Shape {
+    var toothWidth: CGFloat = 10
+    var toothHeight: CGFloat = 5
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let topTeeth = max(1, Int(rect.width / toothWidth))
+        let actualToothWidth = rect.width / CGFloat(topTeeth)
+
+        // Top-left start
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY + toothHeight))
+
+        // Top teeth
+        for i in 0..<topTeeth {
+            let startX = rect.minX + CGFloat(i) * actualToothWidth
+            let midX = startX + actualToothWidth / 2
+            let endX = startX + actualToothWidth
+            path.addLine(to: CGPoint(x: midX, y: rect.minY))
+            path.addLine(to: CGPoint(x: endX, y: rect.minY + toothHeight))
+        }
+
+        // Right side
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - toothHeight))
+
+        // Bottom teeth (reversed)
+        for i in (0..<topTeeth).reversed() {
+            let startX = rect.minX + CGFloat(i) * actualToothWidth
+            let midX = startX + actualToothWidth / 2
+            let endX = startX + actualToothWidth
+            path.addLine(to: CGPoint(x: midX, y: rect.maxY))
+            path.addLine(to: CGPoint(x: startX, y: rect.maxY - toothHeight))
+        }
+
+        // Left side back to start
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.minY + toothHeight))
+        path.closeSubpath()
+        return path
+    }
+}
+
+// MARK: - Receipt Barcode Graphic
+struct ReceiptBarcodeView: View {
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 3) {
+            ForEach(0..<38, id: \.self) { i in
+                let width: CGFloat = (i % 7 == 0 || i % 5 == 0) ? 3.5 : ((i % 3 == 0) ? 2 : 1)
+                Rectangle()
+                    .fill(PastelTheme.pastelOat.opacity(0.85))
+                    .frame(width: width, height: (i % 8 == 0) ? 32 : 24)
+            }
+        }
+    }
+}
+
+// MARK: - Milestone Share Card (Trophy / Level-Up)
 struct MilestoneShareCard: View {
     let title: LocalizedStringKey
     let subtitle: LocalizedStringKey
@@ -74,14 +128,14 @@ struct MilestoneShareCard: View {
                     .padding(.top, 20)
 
                 if let desc = descriptionText {
-                                   Text(desc)
-                                       .font(.title2)
-                                       .fontWeight(.medium)
-                                       .foregroundColor(.white.opacity(0.8))
-                                       .multilineTextAlignment(.center)
-                                       .padding(.horizontal, 50)
-                                       .padding(.top, 10)
-                               }
+                    Text(desc)
+                        .font(.title2)
+                        .fontWeight(.medium)
+                        .foregroundColor(.white.opacity(0.8))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 50)
+                        .padding(.top, 10)
+                }
 
                 Spacer()
 
@@ -98,13 +152,19 @@ struct MilestoneShareCard: View {
     }
 }
 
+// MARK: - Viral 9:16 Instagram Stories Athletic Receipt
 struct WorkoutShareCard: View {
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(UnitsManager.self) private var unitsManager
 
     let workout: Workout
 
     private var totalVolume: Int {
         Int(workout.totalStrengthVolume)
+    }
+
+    private var totalSetsCount: Int {
+        workout.exercises.reduce(0) { $0 + $1.sortedSets.filter { $0.isCompleted }.count }
     }
 
     private var topMuscles: [String] {
@@ -116,175 +176,311 @@ struct WorkoutShareCard: View {
         return counts.sorted { $0.value > $1.value }.prefix(3).map { $0.key }
     }
 
+    private var emotionalComparison: (title: String, subtitle: String, emoji: String) {
+        let kg = workout.totalStrengthVolume
+        if kg >= 14000 {
+            let count = String(format: "%.1f", kg / 6000.0)
+            return ("\(count) Африканских слона", "ТЯЖЕЛОВЕСНЫЙ ЗВЕРЬ", "🐘")
+        } else if kg >= 8000 {
+            let count = String(format: "%.1f", kg / 1850.0)
+            return ("\(count) Tesla Model 3", "ЭЛЕКТРИЧЕСКАЯ МОЩЬ", "⚡️")
+        } else if kg >= 4000 {
+            let count = String(format: "%.1f", kg / 1400.0)
+            return ("\(count) Ferrari F40", "СВЕРХСКОРОСТНОЙ ТОННАЖ", "🏎️")
+        } else if kg >= 2000 {
+            let count = String(format: "%.1f", kg / 800.0)
+            return ("\(count) Белых медведя", "НЕУКРОТИМАЯ СИЛА", "🐻")
+        } else if kg >= 800 {
+            let count = String(format: "%.1f", kg / 300.0)
+            return ("\(count) Рояля Steinway", "МОНУМЕНТАЛЬНЫЙ ОБЪЕМ", "🎹")
+        } else if kg > 0 {
+            let count = max(1, Int(kg / 50.0))
+            return ("\(count) Мешков цемента", "КАЖДЫЙ ПОВТОР В ЦЕЛЬ", "🏋️")
+        } else {
+            return ("Готов к свершениям", "ПЕРВЫЙ СЕТ ВПЕРЕДИ", "🔥")
+        }
+    }
+
+    private var completedExercises: [Exercise] {
+        workout.exercises.filter { ex in
+            ex.sortedSets.contains { $0.isCompleted }
+        }
+    }
+
     var body: some View {
         ZStack {
-            backgroundLayer
-
-            VStack(spacing: 20) {
-                headerSection
-
-                titleSection
-                
-                statsGridSection
-
-                tagsSection
-
-                Spacer()
-
-                footerSection
-            }
-            .padding(.top, 40)
-        }
-        .frame(width: 440, height: 720)
-        .background(Color.black)
-    }
-
-    private var backgroundLayer: some View {
-        ZStack {
+            // Background Canvas (OLED Cashmere Charcoal)
             PastelTheme.canvas.ignoresSafeArea()
 
+            // Subtle Ambient Halos
             Circle()
-                .fill(PastelTheme.pastelEmerald.opacity(0.08))
+                .fill(PastelTheme.pastelEmerald.opacity(0.12))
                 .frame(width: 320)
                 .blur(radius: 90)
-                .offset(y: -100)
+                .offset(x: -80, y: -160)
 
             Circle()
-                .fill(PastelTheme.pastelOat.opacity(0.05))
+                .fill(PastelTheme.pastelOat.opacity(0.08))
                 .frame(width: 280)
                 .blur(radius: 80)
-                .offset(y: 200)
+                .offset(x: 100, y: 220)
+
+            // Physical Thermal Receipt Ticket
+            VStack(spacing: 0) {
+                receiptContent
+            }
+            .clipShape(ReceiptZigZagShape(toothWidth: 12, toothHeight: 6))
+            .overlay(
+                ReceiptZigZagShape(toothWidth: 12, toothHeight: 6)
+                    .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.55), radius: 24, x: 0, y: 12)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
+        // Strict 9:16 Aspect Ratio (1080x1920 stories equivalent when rendered @ 3x)
+        .frame(width: 400, height: 711)
+        .background(PastelTheme.canvas)
     }
 
-    private var headerSection: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "trophy.fill")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(PastelTheme.pastelEmerald)
-
-            Text(LocalizedStringKey("WORKOUT COMPLETE"))
-                .font(.system(size: 12, weight: .black, design: .rounded))
-                .tracking(2)
-                .foregroundColor(PastelTheme.textPrimary)
-        }
-        .padding(.horizontal, 16)
-        .frame(height: 36)
-        .background(PastelTheme.cardSurfaceSubtle)
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-    }
-
-    private var titleSection: some View {
-        VStack(spacing: 6) {
-            Text(workout.title)
-                .font(.system(size: 32, weight: .heavy, design: .rounded))
-                .foregroundColor(PastelTheme.textPrimary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .minimumScaleFactor(0.75)
-                .padding(.horizontal, 20)
-
-            Text(workout.date.formatted(date: .long, time: .shortened).uppercased())
-                .font(.system(size: 11, weight: .bold))
-                .tracking(1)
-                .foregroundColor(PastelTheme.textSecondary)
-        }
-        .padding(.top, 10)
-    }
-
-    private var statsGridSection: some View {
+    // MARK: - Receipt Ticket Body
+    private var receiptContent: some View {
         VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                statGlassCard(title: "DURATION", value: "\(workout.durationSeconds / 60)m", icon: "stopwatch.fill", color: PastelTheme.pastelAmber)
-                statGlassCard(title: "VOLUME", value: "\(totalVolume) kg", icon: "scalemass.fill", color: PastelTheme.pastelEmerald)
+            // Receipt Header & Metadata
+            receiptHeaderSection
+
+            dashedSeparator
+
+            // Workout Title & Date
+            workoutTitleSection
+
+            // Big Volume Hero Block with Emotional Comparison
+            volumeHeroSection
+
+            // 4-Quadrant HUD Telemetry Grid
+            telemetryGridSection
+
+            // Itemized Exercise Summary
+            if !completedExercises.isEmpty {
+                dashedSeparator
+                exercisesLineItemsSection
             }
-            HStack(spacing: 12) {
-                statGlassCard(title: "EXERCISES", value: "\(workout.exercises.count)", icon: "bolt.heart.fill", color: PastelTheme.pastelSlate)
-                statGlassCard(title: "EFFORT", value: "\(workout.effortPercentage)%", icon: "chart.bar.fill", color: PastelTheme.pastelSage)
+
+            // Target Muscles Pills
+            if !topMuscles.isEmpty {
+                musclesPillsSection
             }
+
+            dashedSeparator
+
+            // Barcode & Certified Slip Footer
+            receiptFooterSection
         }
         .padding(.horizontal, 20)
-        .padding(.top, 16)
-    }
-
-    @ViewBuilder
-    private var tagsSection: some View {
-        if !topMuscles.isEmpty {
-            VStack(spacing: 10) {
-                Text(LocalizedStringKey("TARGET MUSCLES"))
-                    .font(.system(size: 10, weight: .black))
-                    .tracking(2)
-                    .foregroundColor(PastelTheme.textSecondary)
-
-                HStack(spacing: 8) {
-                    ForEach(topMuscles, id: \.self) { muscle in
-                        Text(muscle.uppercased())
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .padding(.horizontal, 12)
-                            .frame(height: 30)
-                            .background(PastelTheme.cardSurfaceSubtle)
-                            .foregroundColor(PastelTheme.pastelEmerald)
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-                    }
-                }
-            }
-            .padding(.top, 16)
-        }
-    }
-
-    private var footerSection: some View {
-        VStack(spacing: 4) {
-            Image(systemName: "applewatch")
-                .font(.system(size: 20))
-                .foregroundStyle(PastelTheme.pastelOat)
-            
-            Text(LocalizedStringKey("TRACKED WITH WORKOUTTRACKER"))
-                .font(.system(size: 10, weight: .black))
-                .tracking(2)
-                .foregroundColor(PastelTheme.textTertiary)
-        }
-        .padding(.bottom, 30)
-    }
-
-    private func statGlassCard(title: String, value: String, icon: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                ZStack {
-                    Circle()
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 30, height: 30)
-                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
-                    Image(systemName: icon)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(color)
-                }
-                Spacer()
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(value)
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                    .foregroundColor(PastelTheme.textPrimary)
-
-                Text(title)
-                    .font(.system(size: 9, weight: .bold))
-                    .tracking(1)
-                    .foregroundColor(PastelTheme.textSecondary)
-            }
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 22)
         .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    // MARK: - Subsections
+    private var receiptHeaderSection: some View {
+        VStack(spacing: 4) {
+            HStack {
+                Text("WORKOUTTRACKER /// CERTIFIED RECEIPT")
+                    .font(.system(size: 10, weight: .black, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundColor(PastelTheme.pastelOat)
+                Spacer()
+                Text("SLIP #\(abs(workout.id.hashValue) % 9000 + 1000)")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(PastelTheme.textTertiary)
+            }
+
+            HStack {
+                Text(workout.date.formatted(date: .abbreviated, time: .shortened).uppercased())
+                    .font(.system(size: 9, weight: .bold, design: .monospaced))
+                    .foregroundColor(PastelTheme.textSecondary)
+                Spacer()
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(PastelTheme.pastelEmerald)
+                        .frame(width: 6, height: 6)
+                    Text("VERIFIED RECORD")
+                        .font(.system(size: 9, weight: .black, design: .monospaced))
+                        .foregroundColor(PastelTheme.pastelEmerald)
+                }
+            }
+        }
+    }
+
+    private var workoutTitleSection: some View {
+        VStack(spacing: 4) {
+            Text(workout.title.uppercased())
+                .font(.system(size: 22, weight: .heavy, design: .rounded))
+                .foregroundColor(PastelTheme.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+    }
+
+    private var volumeHeroSection: some View {
+        VStack(spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("\(totalVolume)")
+                    .font(.system(size: 38, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(PastelTheme.textPrimary)
+                Text("КГ ТОННАЖА")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .tracking(1)
+                    .foregroundColor(PastelTheme.pastelOat)
+            }
+
+            // Emotional Comparison Badge (Elephant, Tesla, Ferrari)
+            HStack(spacing: 6) {
+                Text(emotionalComparison.emoji)
+                    .font(.system(size: 16))
+                Text("≈ \(emotionalComparison.title.uppercased())")
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .tracking(0.5)
+                    .foregroundColor(PastelTheme.textOnOat)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 6)
+            .background(PastelTheme.pastelOat)
+            .clipShape(Capsule())
+            .shadow(color: PastelTheme.pastelOat.opacity(0.3), radius: 8, x: 0, y: 2)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var telemetryGridSection: some View {
+        HStack(spacing: 8) {
+            receiptMiniStat(
+                label: "ВРЕМЯ",
+                value: "\(max(1, workout.durationSeconds / 60))м",
+                color: PastelTheme.pastelAmber
+            )
+            receiptMiniStat(
+                label: "СЕТЫ",
+                value: "\(totalSetsCount)",
+                color: PastelTheme.pastelEmerald
+            )
+            receiptMiniStat(
+                label: "УПРАЖН.",
+                value: "\(workout.exercises.count)",
+                color: PastelTheme.pastelSlate
+            )
+            receiptMiniStat(
+                label: "RPE",
+                value: "\(workout.effortPercentage)%",
+                color: PastelTheme.pastelSage
+            )
+        }
+    }
+
+    private func receiptMiniStat(label: String, value: String, color: Color) -> some View {
+        VStack(spacing: 3) {
+            Text(value)
+                .font(.system(size: 17, weight: .heavy, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(color)
+            Text(label)
+                .font(.system(size: 8, weight: .black, design: .monospaced))
+                .tracking(0.5)
+                .foregroundColor(PastelTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(PastelTheme.cardSurfaceSubtle)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }
+
+    private var exercisesLineItemsSection: some View {
+        VStack(spacing: 6) {
+            ForEach(Array(completedExercises.prefix(3).enumerated()), id: \.element.id) { idx, ex in
+                let completedCount = ex.sortedSets.filter { $0.isCompleted }.count
+                let maxWeight = ex.sortedSets.filter { $0.isCompleted }.compactMap { $0.weight }.max() ?? 0
+
+                HStack {
+                    Text(String(format: "%02d.", idx + 1))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
+                        .foregroundColor(PastelTheme.textTertiary)
+
+                    Text(ex.name)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(PastelTheme.textPrimary)
+                        .lineLimit(1)
+
+                    Spacer()
+
+                    Text("\(completedCount) сетов • \(Int(maxWeight)) кг")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundColor(PastelTheme.textSecondary)
+                }
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    private var musclesPillsSection: some View {
+        HStack(spacing: 6) {
+            ForEach(topMuscles, id: \.self) { muscle in
+                Text(muscle.uppercased())
+                    .font(.system(size: 9, weight: .black, design: .rounded))
+                    .tracking(0.5)
+                    .foregroundColor(PastelTheme.pastelEmerald)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+            }
+        }
+    }
+
+    private var receiptFooterSection: some View {
+        VStack(spacing: 8) {
+            ReceiptBarcodeView()
+
+            HStack {
+                Text("AUTHENTIC ATHLETIC HUD SLIP")
+                    .font(.system(size: 8, weight: .bold, design: .monospaced))
+                    .tracking(1)
+                    .foregroundColor(PastelTheme.textTertiary)
+                Spacer()
+                Text("WORKOUTTRACKER")
+                    .font(.system(size: 8, weight: .black, design: .monospaced))
+                    .tracking(1.5)
+                    .foregroundColor(PastelTheme.pastelOat)
+            }
+        }
+    }
+
+    private var dashedSeparator: some View {
+        LineDashed()
+            .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+            .foregroundColor(PastelTheme.cardBorderFocused)
+            .frame(height: 1)
+            .padding(.vertical, 2)
+    }
 }
 
+// MARK: - Dashed Line Shape
+struct LineDashed: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.midY))
+        return path
+    }
+}
+
+// MARK: - Transferable Representation
 struct ShareableImage: Transferable {
     let uiImage: UIImage
 
@@ -302,4 +498,5 @@ struct ShareableImage: Transferable {
 #Preview {
     WorkoutShareCard(workout: Workout.examples[0])
         .environment(ThemeManager.shared)
+        .environment(UnitsManager.shared)
 }
