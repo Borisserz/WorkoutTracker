@@ -194,16 +194,13 @@ struct WorkoutHubView: View {
                                 }
                             }
 
-                            // 4. Two 50/50 Dual Launch Cards: "Старт (Пустая сессия)" & "AI План (Умная сборка)"
+                            // 4. Dual Launch Pads: "Быстрый старт" & "AI Тренировка"
                             dualLaunchCardsRow
 
-                            // 5. Category Filter Capsules: "Все мышцы", "Грудь", "Спина", "Ноги", "Плечи"
-                            filterPillsSection
-
-                            // 6. "Мои шаблоны" with "Силовой День А" (and "▶ Старт") & "Full Body Тренировка"
+                            // 5. "Мои шаблоны" with prominent 50pt primary action buttons
                             myTemplatesSection
 
-                            // 7. "Легендарные Программы" with ATHLEAN-X horizontal cards
+                            // 6. "Легендарные Программы" with horizontal cards
                             legendarySection
 
                             Spacer(minLength: 40)
@@ -289,9 +286,6 @@ struct WorkoutHubView: View {
                 }
             }
             .task {
-                if CommandLine.arguments.contains("-autoStartWorkout") {
-                    startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises)
-                }
                 if FirestoreProgramService.shared.explorePrograms.isEmpty || FirestoreProgramService.shared.legendaryRoutines.isEmpty {
                     await FirestoreProgramService.shared.fetchAllPrograms()
                 }
@@ -368,9 +362,10 @@ struct WorkoutHubView: View {
     }
 
     // MARK: - 3. Dual Launch 50/50 Cards (Exact Mockup Match)
+    // MARK: - 3. Dual Launch Pads (High Contrast, Clear Action)
     private var dualLaunchCardsRow: some View {
         HStack(spacing: 12) {
-            // Card 1: "Старт (Пустая сессия)"
+            // Card 1: "Быстрый старт"
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 startEmptyWorkout()
@@ -385,12 +380,12 @@ struct WorkoutHubView: View {
                             .foregroundStyle(PastelTheme.textOnOat)
                     }
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Старт")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Быстрый старт")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textPrimary)
 
-                        Text("(Пустая сессия)")
+                        Text("Свободная сессия")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -409,7 +404,7 @@ struct WorkoutHubView: View {
             }
             .buttonStyle(.plain)
 
-            // Card 2: "AI План (Умная сборка)"
+            // Card 2: "AI Тренировка"
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showSmartBuilder = true
@@ -424,12 +419,12 @@ struct WorkoutHubView: View {
                             .foregroundStyle(PastelTheme.textOnOat)
                     }
 
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(alignment: .leading, spacing: 3) {
                         Text("AI План")
-                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textPrimary)
 
-                        Text("(Умная сборка)")
+                        Text("Умный подбор")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -568,7 +563,7 @@ struct WorkoutHubView: View {
         }
     }
 
-    // MARK: - 6. "Мои шаблоны" Section (Exact Mockup Match)
+    // MARK: - 5. "Мои шаблоны" Section (Uncluttered, Prominent 50pt Primary Action)
     private var myTemplatesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Header Row
@@ -613,136 +608,125 @@ struct WorkoutHubView: View {
             }
             .padding(.horizontal, 16)
 
-            // Template Card 1: Силовой День А (Hero Template)
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Силовой День А")
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
+            // Template Card 1: Силовой День А (Clean, 50pt Hero Action Button)
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Силовой День А")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
 
-                        Text("4 Упражнения • Сила и масса")
+                    HStack(spacing: 6) {
+                        Text("4 Упражнения")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(PastelTheme.pastelSage.opacity(0.12))
+                            .clipShape(Capsule())
+
+                        Text("•")
+                            .foregroundStyle(PastelTheme.textTertiary)
+
+                        Text("Грудь, Спина, Плечи")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
+
+                        Text("•")
+                            .foregroundStyle(PastelTheme.textTertiary)
+
+                        Text("~45 мин")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
+                }
 
-                    Spacer()
-
-                    // Start Button (Tier 2/3 Warm Oat Action Capsule)
-                    Button {
-                        startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 11, weight: .bold))
-                            Text("Старт")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                        }
-                        .foregroundStyle(PastelTheme.textOnOat)
-                        .padding(.horizontal, 18)
-                        .frame(height: 38)
-                        .background(PastelTheme.pastelOat)
-                        .clipShape(Capsule())
-                        .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 8, y: 3)
+                // Prominent Primary Action Button (50pt Warm Oat)
+                Button {
+                    startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 15, weight: .bold))
+                        Text("НАЧАТЬ ТРЕНИРОВКУ")
+                            .font(.system(size: 15, weight: .heavy, design: .rounded))
                     }
-                    .buttonStyle(.plain)
+                    .foregroundStyle(PastelTheme.textOnOat)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(PastelTheme.pastelOat)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: PastelTheme.pastelOat.opacity(0.22), radius: 8, y: 3)
                 }
-
-                // Divider line
-                Rectangle()
-                    .fill(PastelTheme.cardBorder)
-                    .frame(height: 1)
-
-                // Exercises Bullet Preview (Exact Mockup Match)
-                VStack(alignment: .leading, spacing: 6) {
-                    exerciseRowPreview(index: 1, name: "Жим штанги лежа", detail: "Грудь • 3×8 (90 кг)")
-                    exerciseRowPreview(index: 2, name: "Подтягивания с весом", detail: "Спина • 3×8")
-                    exerciseRowPreview(index: 3, name: "Армейский жим стоя", detail: "Плечи • 3×8 (50 кг)")
-                    exerciseRowPreview(index: 4, name: "Тяга штанги в наклоне", detail: "Спина • 3×8 (70 кг)")
-                }
+                .buttonStyle(.plain)
             }
-            .padding(16)
+            .padding(18)
             .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
             .padding(.horizontal, 16)
 
-            // Template Card 2: Full Body Тренировка
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .center) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Full Body Тренировка")
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
+            // Template Card 2: Full Body Тренировка (Clean, 50pt Hero Action Button)
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Full Body Тренировка")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
 
-                        Text("6 Упражнений • Комплексная база")
+                    HStack(spacing: 6) {
+                        Text("6 Упражнений")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(PastelTheme.pastelSage.opacity(0.12))
+                            .clipShape(Capsule())
+
+                        Text("•")
+                            .foregroundStyle(PastelTheme.textTertiary)
+
+                        Text("Комплексная база")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
+
+                        Text("•")
+                            .foregroundStyle(PastelTheme.textTertiary)
+
+                        Text("~60 мин")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
+                }
 
-                    Spacer()
-
-                    Button {
-                        startPresetOrTemplate(name: "Full Body Тренировка", exercises: defaultFullBodyExercises)
-                    } label: {
-                        HStack(spacing: 6) {
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 11, weight: .bold))
-                            Text("Старт")
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                        }
-                        .foregroundStyle(PastelTheme.textOnOat)
-                        .padding(.horizontal, 18)
-                        .frame(height: 38)
-                        .background(PastelTheme.pastelOat)
-                        .clipShape(Capsule())
-                        .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 8, y: 3)
+                // Prominent Primary Action Button (50pt Warm Oat)
+                Button {
+                    startPresetOrTemplate(name: "Full Body Тренировка", exercises: defaultFullBodyExercises)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 15, weight: .bold))
+                        Text("НАЧАТЬ ТРЕНИРОВКУ")
+                            .font(.system(size: 15, weight: .heavy, design: .rounded))
                     }
-                    .buttonStyle(.plain)
+                    .foregroundStyle(PastelTheme.textOnOat)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(PastelTheme.pastelOat)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: PastelTheme.pastelOat.opacity(0.22), radius: 8, y: 3)
                 }
-
-                // Divider line
-                Rectangle()
-                    .fill(PastelTheme.cardBorder)
-                    .frame(height: 1)
-
-                // Exercises Bullet Preview
-                VStack(alignment: .leading, spacing: 6) {
-                    exerciseRowPreview(index: 1, name: "Приседания со штангой", detail: "Ноги • 3×8 (100 кг)")
-                    exerciseRowPreview(index: 2, name: "Жим штанги лежа", detail: "Грудь • 3×8 (90 кг)")
-                    exerciseRowPreview(index: 3, name: "Тяга штанги в наклоне", detail: "Спина • 3×8 (70 кг)")
-                }
+                .buttonStyle(.plain)
             }
-            .padding(16)
+            .padding(18)
             .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
             .padding(.horizontal, 16)
-        }
-    }
-
-    private func exerciseRowPreview(index: Int, name: String, detail: String) -> some View {
-        HStack(spacing: 8) {
-            Text("\(index).")
-                .font(.system(size: 12, weight: .bold, design: .monospaced))
-                .foregroundStyle(PastelTheme.pastelSage)
-                .frame(width: 18, alignment: .leading)
-
-            Text(name)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(PastelTheme.textPrimary)
-
-            Spacer()
-
-            Text(detail)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundStyle(PastelTheme.textTertiary)
         }
     }
 
