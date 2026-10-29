@@ -304,17 +304,18 @@ struct WorkoutHubView: View {
 
     private var topHeaderRow: some View {
         HStack(alignment: .center) {
-            // Streak Button (Left)
+            // Streak Button (Left - Tactile Amber Flame)
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
                     showStreakPopup = true
                 }
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Image(systemName: "flame.fill")
-                        .font(.system(size: 13))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelAmber)
+                        .shadow(color: PastelTheme.pastelAmber.opacity(0.45), radius: 3)
 
                     Text("\(displayStreakCount)")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -324,13 +325,23 @@ struct WorkoutHubView: View {
                 .frame(height: PastelTheme.ButtonMetrics.pillHeight)
                 .background(PastelTheme.cardSurfaceSubtle)
                 .clipShape(Capsule())
-                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                .overlay(
+                    Capsule()
+                        .stroke(
+                            LinearGradient(
+                                colors: [PastelTheme.pastelAmber.opacity(0.35), PastelTheme.cardBorder],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
+                )
             }
             .buttonStyle(ScaleButtonStyle())
 
             Spacer()
 
-            // "+ Создать" Button (Right, Oat Capsule)
+            // "+ Создать" Button (Right - Refined Glass Capsule)
             Button {
                 UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                 presetToEdit = nil
@@ -342,38 +353,61 @@ struct WorkoutHubView: View {
                     Text("Создать")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                 }
-                .foregroundStyle(PastelTheme.textOnOat)
+                .foregroundStyle(PastelTheme.pastelOat)
                 .padding(.horizontal, 14)
                 .frame(height: PastelTheme.ButtonMetrics.pillHeight)
-                .background(PastelTheme.pastelOat)
+                .background(PastelTheme.cardSurfaceSubtle)
                 .clipShape(Capsule())
-                .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 6, y: 2)
+                .overlay(
+                    Capsule()
+                        .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                )
             }
             .buttonStyle(ScaleButtonStyle())
         }
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 2. Title Section (Exact Mockup Match)
-    private var titleSection: some View {
-        Text("Тренировка")
-            .font(.system(size: 34, weight: .heavy, design: .rounded))
-            .foregroundStyle(PastelTheme.textPrimary)
-            .padding(.horizontal, 16)
+    // MARK: - 2. Title Section with Editorial Date Eyebrow (Apple Fitness+ HUD)
+    private var currentDateEyebrow: String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.dateFormat = "EEEE, d MMMM"
+        return formatter.string(from: Date()).uppercased()
     }
 
-    // MARK: - 3. Dual Launch 50/50 Cards (Exact Mockup Match)
+    private var titleSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(PastelTheme.pastelSage)
+                    .frame(width: 6, height: 6)
+                    .shadow(color: PastelTheme.pastelSage.opacity(0.6), radius: 3)
+
+                Text(currentDateEyebrow)
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
+                    .tracking(0.6)
+            }
+
+            Text("Тренировка")
+                .font(.system(size: 34, weight: .heavy, design: .rounded))
+                .foregroundStyle(PastelTheme.textPrimary)
+        }
+        .padding(.horizontal, 16)
+    }
+
     // MARK: - 3. Dual Launch Action Buttons (Apple HIG Tier 1 Matrix)
     private var dualLaunchCardsRow: some View {
         HStack(spacing: 12) {
-            // Button 1: "Быстрый старт" (Primary Action - 48pt Warm Oat)
+            // Button 1: "Быстрый старт" (Primary Hero Action - 48pt Champagne Oat with Specular Highlight)
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 startEmptyWorkout()
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .bold))
+                        .font(.system(size: 15, weight: .heavy))
                     Text("Быстрый старт")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .lineLimit(1)
@@ -382,13 +416,30 @@ struct WorkoutHubView: View {
                 .foregroundStyle(PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
                 .frame(height: PastelTheme.ButtonMetrics.heroHeight)
-                .background(PastelTheme.pastelOat)
+                .background(
+                    LinearGradient(
+                        colors: [Color(hex: "F7EFE5"), PastelTheme.pastelOat, Color(hex: "E5D5C1")],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
                 .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
-                .shadow(color: PastelTheme.pastelOat.opacity(0.22), radius: 8, y: 3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
+                        .stroke(
+                            LinearGradient(
+                                colors: [Color.white.opacity(0.4), Color.clear],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            ),
+                            lineWidth: 1
+                        )
+                )
+                .shadow(color: PastelTheme.pastelOat.opacity(0.24), radius: 10, y: 3)
             }
             .buttonStyle(ScaleButtonStyle())
 
-            // Button 2: "AI План" (Secondary Action - 48pt Surface)
+            // Button 2: "AI План" (Secondary Action - 48pt Surface with Lavender Accent)
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showSmartBuilder = true
@@ -396,7 +447,9 @@ struct WorkoutHubView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(PastelTheme.pastelSage)
+                        .foregroundStyle(PastelTheme.pastelLavender)
+                        .shadow(color: PastelTheme.pastelLavender.opacity(0.5), radius: 4)
+
                     Text("AI План")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
@@ -409,7 +462,14 @@ struct WorkoutHubView: View {
                 .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
-                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                        .stroke(
+                            LinearGradient(
+                                colors: [PastelTheme.pastelLavender.opacity(0.45), PastelTheme.cardBorder],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1
+                        )
                 )
             }
             .buttonStyle(ScaleButtonStyle())
@@ -534,7 +594,11 @@ struct WorkoutHubView: View {
         }
     }
 
-    // MARK: - 5. "Мои шаблоны" Section (Uncluttered, Prominent 50pt Primary Action)
+    // MARK: - 5. "Мои шаблоны" Section (Apple HIG Luxury Athletic)
+    private var totalTemplateCount: Int {
+        myRoutines.isEmpty ? 2 : myRoutines.count
+    }
+
     private var myTemplatesSection: some View {
         VStack(alignment: .leading, spacing: 14) {
             // Header Row
@@ -544,7 +608,7 @@ struct WorkoutHubView: View {
                         .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("2")
+                    Text("\(totalTemplateCount)")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
                         .padding(.horizontal, 7)
@@ -566,14 +630,19 @@ struct WorkoutHubView: View {
                     }
                 )) {
                     HStack(spacing: 4) {
-                        Text("Все (2)")
-                            .font(.system(size: 13, weight: .semibold))
+                        Text("Все (\(totalTemplateCount))")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelOat)
 
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(PastelTheme.pastelOat)
                     }
+                    .padding(.horizontal, 10)
+                    .frame(height: 28)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
             }
@@ -582,6 +651,7 @@ struct WorkoutHubView: View {
             // Template Card 1: Силовой День А
             templateCard(
                 name: "Силовой День А",
+                iconName: "dumbbell.fill",
                 exerciseCount: 4,
                 muscles: "Грудь, Спина, Плечи",
                 duration: "~45 мин",
@@ -591,6 +661,7 @@ struct WorkoutHubView: View {
             // Template Card 2: Full Body Тренировка
             templateCard(
                 name: "Full Body Тренировка",
+                iconName: "figure.strengthtraining.traditional",
                 exerciseCount: 6,
                 muscles: "Комплексная база",
                 duration: "~60 мин",
@@ -601,6 +672,7 @@ struct WorkoutHubView: View {
 
     private func templateCard(
         name: String,
+        iconName: String,
         exerciseCount: Int,
         muscles: String,
         duration: String,
@@ -610,14 +682,30 @@ struct WorkoutHubView: View {
             startPresetOrTemplate(name: name, exercises: exercises)
         } label: {
             VStack(alignment: .leading, spacing: 10) {
-                // Top Row: Title + Dedicated Tier 3 Capsule Start Button
-                HStack(alignment: .center) {
+                // Top Row: Squircle Icon + Title + Dedicated Tier 3 Capsule Start Button
+                HStack(alignment: .center, spacing: 10) {
+                    // Tactile Squircle Icon
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(PastelTheme.cardSurfaceSubtle)
+                            .frame(width: 36, height: 36)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
+
+                        Image(systemName: iconName)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(PastelTheme.pastelOat)
+                    }
+
                     Text(name)
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
-                    Spacer()
+                    Spacer(minLength: 6)
 
                     // Tier 3 In-Card CTA: Capsule [ ▶ Старт ]
                     HStack(spacing: 5) {
@@ -652,6 +740,7 @@ struct WorkoutHubView: View {
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(PastelTheme.textSecondary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
                     Text("•")
                         .foregroundStyle(PastelTheme.textTertiary)
@@ -667,10 +756,17 @@ struct WorkoutHubView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [PastelTheme.cardBorderFocused.opacity(0.5), PastelTheme.cardBorder],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
         }
         .buttonStyle(ScaleButtonStyle())
@@ -692,27 +788,38 @@ struct WorkoutHubView: View {
         return "\(count) упражнений"
     }
 
-    // MARK: - 7. "Легендарные Программы" Discovery Row (Uncluttered)
+    // MARK: - 6. "Легендарные Программы" Discovery Row (Apple HIG Luxury Athletic)
     private var legendarySection: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             navigateToExplore = true
         } label: {
-            HStack(spacing: 14) {
+            HStack(spacing: 12) {
                 ZStack {
-                    Circle()
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 44, height: 44)
-                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                        .frame(width: 42, height: 42)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [PastelTheme.pastelAmber.opacity(0.4), PastelTheme.cardBorder],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 1
+                                )
+                        )
 
-                    Image(systemName: "flame.circle.fill")
-                        .font(.system(size: 22))
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 20))
                         .foregroundStyle(PastelTheme.pastelAmber)
+                        .shadow(color: PastelTheme.pastelAmber.opacity(0.45), radius: 4)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Легендарные Программы")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
@@ -721,37 +828,47 @@ struct WorkoutHubView: View {
                         Text("ЭТАЛОН")
                             .font(.system(size: 9, weight: .black))
                             .foregroundStyle(PastelTheme.pastelAmber)
-                            .padding(.horizontal, 5)
+                            .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(PastelTheme.pastelAmber.opacity(0.12))
+                            .background(PastelTheme.pastelAmber.opacity(0.14))
                             .clipShape(Capsule())
 
-                        Text("Golden Era, HIT, Athlean-X")
+                        Text("Золотая эра и HIT")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                HStack(spacing: 4) {
-                    Text("Все (4)")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(PastelTheme.pastelOat)
+                // Refined 32pt Circular Glass Chevron
+                ZStack {
+                    Circle()
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 32, height: 32)
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
 
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelOat)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
             .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [PastelTheme.cardBorderFocused.opacity(0.5), PastelTheme.cardBorder],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
             )
             .padding(.horizontal, 16)
         }
@@ -913,47 +1030,56 @@ private struct ActiveWorkoutResumeCard: View {
                     Circle()
                         .fill(PastelTheme.pastelSage)
                         .frame(width: 8, height: 8)
+                        .shadow(color: PastelTheme.pastelSage.opacity(0.8), radius: 4)
 
                     Text("ТРЕНИРОВКА ИДЕТ")
                         .font(.system(size: 10, weight: .black))
                         .foregroundStyle(PastelTheme.pastelSage)
+                        .tracking(0.5)
                 }
 
                 Text(workout.title.isEmpty ? "Текущая сессия" : workout.title)
-                    .font(.headline.weight(.bold))
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
                     .lineLimit(1)
 
                 Text("\(workout.exercises.count) упр. в процессе")
-                    .font(.caption2)
+                    .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(PastelTheme.textSecondary)
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
             Button(action: onResume) {
                 HStack(spacing: 6) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 11, weight: .bold))
                     Text("Продолжить")
-                        .font(.caption.weight(.bold))
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
                 .background(PastelTheme.pastelSage)
                 .clipShape(Capsule())
-                .overlay(Capsule().stroke(PastelTheme.pastelSage, lineWidth: 1))
+                .shadow(color: PastelTheme.pastelSage.opacity(0.3), radius: 6, y: 2)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScaleButtonStyle())
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(PastelTheme.pastelSage.opacity(0.35), lineWidth: 1)
+            RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [PastelTheme.pastelSage.opacity(0.5), PastelTheme.cardBorder],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
         )
         .padding(.horizontal, 16)
     }
