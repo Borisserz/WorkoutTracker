@@ -172,9 +172,10 @@ struct WorkoutDetailContentView: View {
                     }
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 20) {
-                            WorkoutDetailHeaderView(workout: workout, viewModel: viewModel)
-                            actionButtonSection
+                        VStack(alignment: .leading, spacing: 16) {
+                            WorkoutDetailHeaderView(workout: workout, viewModel: viewModel, onFinish: {
+                                finishCurrentWorkout()
+                            })
                             if !workout.isActive { Divider().padding(.vertical, 5) }
                             tabPicker.padding(.bottom, 8)
 
@@ -209,7 +210,7 @@ struct WorkoutDetailContentView: View {
             }
 
             if workout.isActive && selectedTab != .aiCoach {
-                finishWorkoutButton
+                activeWorkoutThumbCockpit
             }
 
             if viewModel.isShowingSnackbar && activeFullScreen == nil { snackbarOverlay }
@@ -243,76 +244,138 @@ struct WorkoutDetailContentView: View {
         viewModel.activeEvent = nil
     }
 
-    private var finishWorkoutButton: some View {
-        VStack {
+    // MARK: - Active Workout 1-Tap Thumb HUD Cockpit (Exact Mockup Match)
+    private var nextPendingSetInfo: (exercise: Exercise, setIndex: Int, set: WorkoutSet)? {
+        for exercise in workout.exercises {
+            let sortedSets = exercise.sortedSets
+            for (idx, set) in sortedSets.enumerated() {
+                if !set.isCompleted {
+                    return (exercise, idx + 1, set)
+                }
+            }
+        }
+        return nil
+    }
+
+    private func formatSetWeightReps(_ set: WorkoutSet) -> String {
+        let weight = set.weight ?? 90
+        let reps = set.reps ?? 8
+        return "\(Int(weight)) кг × \(reps)"
+    }
+
+    private func completeNextPendingSet(_ pending: (exercise: Exercise, setIndex: Int, set: WorkoutSet)) {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+            pending.set.isCompleted = true
+            viewModel.updateWorkoutAnalytics(for: workout)
+            timerManager.startRestTimer(duration: 105, exerciseName: pending.exercise.name)
+        }
+    }
+
+    private func toggleOrSkipRestTimer() {
+        let generator = UIImpactFeedbackGenerator(style: .light)
+        generator.impactOccurred()
+        if timerManager.isRestTimerActive {
+            timerManager.stopRestTimer()
+        } else {
+            timerManager.startRestTimer(duration: 105)
+        }
+    }
+
+    private func finishCurrentWorkout() {
+        let isEmpty = workout.exercises.isEmpty
+        let generator = UIImpactFeedbackGenerator(style: isEmpty ? .medium : .heavy)
+        generator.impactOccurred()
+        timerManager.stopRestTimer()
+        viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
+    }
+
+    private var activeWorkoutThumbCockpit: some View {
+        VStack(spacing: 10) {
             Spacer()
-            
-            let isEmpty = workout.exercises.isEmpty
-            Button {
-                let generator = UIImpactFeedbackGenerator(style: isEmpty ? .medium : .heavy)
-                generator.impactOccurred()
-                timerManager.stopRestTimer()
-                viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
-            } label: {
-                HStack(spacing: 10) {
-                    if isEmpty {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(.red.opacity(0.9))
-                        Text(LocalizedStringKey("Cancel Workout"))
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(PastelTheme.textPrimary)
-                    } else {
+
+            // 1. Primary Action Button: 1-Tap Set Completion (Hero 48pt Warm Oat)
+            if let pending = nextPendingSetInfo {
+                Button {
+                    completeNextPendingSet(pending)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("ЗАКРЫТЬ СЕТ \(pending.setIndex) (\(formatSetWeightReps(pending.set))) • 1-ТАП")
+                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    }
+                    .foregroundStyle(PastelTheme.textOnOat)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                    .background(PastelTheme.pastelOat)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Button {
+                    finishCurrentWorkout()
+                } label: {
+                    HStack(spacing: 8) {
                         Image(systemName: "flag.checkered.circle.fill")
-                            .font(.system(size: 18, weight: .bold))
-                        Text(LocalizedStringKey("Finish Workout"))
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .font(.system(size: 16, weight: .bold))
+                        Text("ВСЕ СЕТЫ ЗАВЕРШЕНЫ • ФИНИШ")
+                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    }
+                    .foregroundStyle(PastelTheme.textOnOat)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                    .background(PastelTheme.pastelEmerald)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
+                }
+                .buttonStyle(.plain)
+            }
+
+            // 2. Secondary Action Button: Rest Timer Control (Hero 48pt Warm Amber)
+            Button {
+                toggleOrSkipRestTimer()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: timerManager.isRestTimerActive ? "stopwatch.fill" : "timer")
+                        .font(.system(size: 16, weight: .bold))
+
+                    if timerManager.isRestTimerActive {
+                        let mins = timerManager.restTimeRemaining / 60
+                        let secs = timerManager.restTimeRemaining % 60
+                        Text(String(format: "%02d:%02d Отдых • Пропустить", mins, secs))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                    } else {
+                        Text("01:45 Отдых • Пропустить")
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
                     }
                 }
-                .foregroundColor(isEmpty ? PastelTheme.textPrimary : PastelTheme.textOnOat)
+                .foregroundStyle(Color(red: 0.08, green: 0.08, blue: 0.1))
                 .frame(maxWidth: .infinity)
                 .frame(height: PastelTheme.ButtonMetrics.heroHeight)
-                .background(
-                    isEmpty 
-                    ? PastelTheme.cardSurfaceSubtle 
-                    : PastelTheme.pastelOat
-                )
+                .background(PastelTheme.pastelAmber)
                 .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
-                        .stroke(
-                            isEmpty ? Color.red.opacity(0.3) : PastelTheme.cardBorderFocused,
-                            lineWidth: 1
-                        )
-                )
-                .shadow(
-                    color: Color.black.opacity(0.35),
-                    radius: 12,
-                    x: 0,
-                    y: 6
-                )
+                .shadow(color: PastelTheme.pastelAmber.opacity(0.25), radius: 8, y: 4)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 16)
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: timerManager.isRestTimerActive)
-            .disabled(viewModel.isShowingSnackbar)
+            .buttonStyle(.plain)
         }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 16)
         .background(
             VStack(spacing: 0) {
                 Spacer()
                 LinearGradient(
                     colors: [
-                        themeManager.current.background.opacity(0),
-                        themeManager.current.background.opacity(0.85),
-                        themeManager.current.background
+                        PastelTheme.canvas.opacity(0),
+                        PastelTheme.canvas.opacity(0.85),
+                        PastelTheme.canvas
                     ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
-                .frame(height: 60)
-                
-                themeManager.current.background
-                    .frame(height: 50)
+                .frame(height: 150)
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)
@@ -406,61 +469,46 @@ struct WorkoutDetailContentView: View {
     }
 
     private var exercisesToolbarSection: some View {
-        HStack {
-            Text(LocalizedStringKey("Exercises"))
-                .font(.title2)
-                .bold()
-                .lineLimit(2).minimumScaleFactor(0.8).allowsTightening(true)
-                .minimumScaleFactor(0.5)
-
-            Spacer(minLength: 5)
-
-            if workout.isActive {
-                Button { showTimerSetup = true } label: {
-                    Image(systemName: "timer")
-                        .font(.system(size: 15, weight: .bold))
-                        .frame(width: PastelTheme.ButtonMetrics.inCardHeight, height: PastelTheme.ButtonMetrics.inCardHeight)
-                        .background(PastelTheme.cardSurfaceSubtle)
-                        .foregroundColor(PastelTheme.pastelOat)
-                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                        )
+        HStack(spacing: 12) {
+            Button {
+                activeSheet = .exerciseSelection
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 13, weight: .bold))
+                    Text("Упражнение")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                 }
+                .foregroundStyle(PastelTheme.textPrimary)
+                .padding(.horizontal, 16)
+                .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
             }
+            .buttonStyle(.plain)
 
-            Button { activeSheet = .supersetBuilder(nil) } label: {
-                Label(LocalizedStringKey("Superset"), systemImage: "plus")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 12)
-                    .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .foregroundColor(PastelTheme.textPrimary)
-                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous)
-                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                    )
+            Button {
+                activeSheet = .supersetBuilder(nil)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "circle.grid.2x2")
+                        .font(.system(size: 13, weight: .bold))
+                    Text("Калькулятор блинов")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                }
+                .foregroundStyle(PastelTheme.textPrimary)
+                .padding(.horizontal, 16)
+                .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
             }
-            .disabled(!workout.isActive)
+            .buttonStyle(.plain)
 
-            Button { activeSheet = .exerciseSelection } label: {
-                Label(LocalizedStringKey("Exercise"), systemImage: "plus")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 12)
-                    .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
-                    .background(PastelTheme.pastelOat)
-                    .foregroundColor(PastelTheme.textOnOat)
-                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous)
-                            .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
-                    )
-            }
-            .disabled(!workout.isActive)
-            .spotlight(step: .addExercise, manager: tutorialManager, text: "Tap here to add an exercise.", alignment: .top, xOffset: -50, yOffset: 10)
+            Spacer()
         }
+        .padding(.horizontal, 4)
         .zIndex(15)
     }
 

@@ -187,10 +187,10 @@ struct ExerciseCardView: View {
     }
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                // Reorder handle or icon
+            HStack(spacing: 10) {
+                // Reorder handle
                 Image(systemName: "line.3.horizontal")
-                    .foregroundColor(.gray)
+                    .foregroundColor(PastelTheme.textTertiary)
                     .font(.caption)
                     .frame(width: 16)
                 
@@ -204,36 +204,13 @@ struct ExerciseCardView: View {
                             .font(.system(size: 14, weight: .bold))
                         
                         Text(LocalizationHelper.shared.translateName(exercise.name))
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundColor(PastelTheme.textPrimary)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.8)
                     }
                 }
                 .buttonStyle(.plain)
-                // Technique pill
-                Button {
-                    showTechniqueSheet = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "info.circle.fill")
-                            .font(.system(size: 11, weight: .bold))
-                        Text(LocalizedStringKey("Technique"))
-                            .font(.system(size: 11, weight: .bold, design: .rounded))
-                            .lineLimit(1)
-                    }
-                    .foregroundColor(PastelTheme.textSecondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule()
-                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                    )
-                }
-                .buttonStyle(BorderlessButtonStyle())
-                .fixedSize(horizontal: true, vertical: false)
+
                 Spacer()
                 
                 // Completed Sets pill/text
@@ -241,7 +218,7 @@ struct ExerciseCardView: View {
                 let totalCount = exercise.setsList.count
                 Text("\(completedCount)/\(totalCount) Completed")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(.secondary)
+                    .foregroundColor(PastelTheme.textSecondary)
                 
                 // Menu dots
                 Menu {
@@ -252,29 +229,53 @@ struct ExerciseCardView: View {
                     Button(role: .destructive) { detailViewModel.removeExercise(exercise, from: workout) } label: { Label(LocalizedStringKey("Remove Exercise"), systemImage: "trash") }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .foregroundColor(.gray)
+                        .foregroundColor(PastelTheme.textSecondary)
                         .padding(6)
                 }
                 .highPriorityGesture(TapGesture().onEnded { })
             }
             
-            // Muscle category badge
-            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exercise.name, muscleGroup: exercise.muscleGroup)
-            if !targetMuscles.isEmpty {
-                HStack(spacing: 4) {
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.system(size: 10))
-                    Text(targetMuscles.joined(separator: ", "))
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
+            // Second row: Muscle category badge + Technique pill
+            HStack(spacing: 8) {
+                let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: exercise.name, muscleGroup: exercise.muscleGroup)
+                if !targetMuscles.isEmpty {
+                    HStack(spacing: 4) {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.system(size: 10))
+                        Text(targetMuscles.joined(separator: ", "))
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(PastelTheme.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
-                .foregroundColor(themeManager.current.secondaryText)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.white.opacity(0.06))
-                .cornerRadius(6)
-                .padding(.leading, 28)
+
+                // Technique pill
+                Button {
+                    showTechniqueSheet = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.system(size: 10, weight: .bold))
+                        Text(LocalizedStringKey("Technique"))
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(PastelTheme.textSecondary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
             }
-            
+            .padding(.leading, 26)
+            .padding(.top, 4)
         }
         .padding(.bottom, 12)
         .contentShape(Rectangle())
@@ -334,36 +335,36 @@ struct ExerciseCardView: View {
 
     private var columnHeadersSection: some View {
         HStack(spacing: 8) {
-            Text(LocalizedStringKey("Set"))
+            Text("СЕТ")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .frame(width: 32)
-                .foregroundColor(.secondary)
+                .foregroundColor(PastelTheme.textSecondary)
 
-            Text(LocalizedStringKey("Previous"))
+            Text("ПРЕД.")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .frame(width: 70, alignment: .leading)
-                .foregroundColor(.secondary)
+                .foregroundColor(PastelTheme.textSecondary)
 
             HStack(spacing: 8) {
                 switch exercise.type {
                 case .strength:
-                    Text(LocalizedStringKey("Weight")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
-                    Text(LocalizedStringKey("Reps")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text("КГ").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
+                    Text("ПОВТ.").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
                 case .cardio:
-                    Text(LocalizedStringKey("Distance")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
-                    Text(LocalizedStringKey("Time")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text("ДИСТ.").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
+                    Text("ВРЕМЯ").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
                 case .duration:
-                    Text(LocalizedStringKey("Time")).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(.secondary)
+                    Text("ВРЕМЯ").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
                 }
             }
 
             if isAISupported {
-                Image(systemName: "brain").font(.system(size: 11, weight: .bold)).frame(width: 40).foregroundColor(.secondary)
+                Image(systemName: "brain").font(.system(size: 11, weight: .bold)).frame(width: 40).foregroundColor(PastelTheme.textSecondary)
             }
-            Text(LocalizedStringKey("Check"))
-                .font(.system(size: 11, weight: .bold, design: .rounded))
+            Text("✓")
+                .font(.system(size: 13, weight: .black, design: .rounded))
                 .frame(width: 40)
-                .foregroundColor(.secondary)
+                .foregroundColor(PastelTheme.pastelEmerald)
         }
         .padding(.horizontal, 10)
         .padding(.bottom, 6)

@@ -83,6 +83,36 @@ struct WorkoutHubView: View {
     private var fallbackLegendaryRoutines: [LegendaryRoutine] {
         [
             LegendaryRoutine(
+                title: "ATHLEAN-X: XERO",
+                eraTitle: "8 Недель, Программа 1",
+                shortVibe: "Без оборудования, максимальная рельефность",
+                loreDescription: "Научно разработанная программа Джеффа Кавальера с собственным весом тела.",
+                gradientColors: [.blue, .cyan],
+                difficulty: .intermediate,
+                estimatedMinutes: 45,
+                benefits: ["Рельеф", "Выносливость", "Кор"],
+                exercises: [
+                    GeneratedExerciseDTO(name: "Жим штанги лежа", muscleGroup: "Chest", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: 90, restSeconds: 90),
+                    GeneratedExerciseDTO(name: "Подтягивания", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
+                    GeneratedExerciseDTO(name: "Отжимания на брусьях", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 12, recommendedWeightKg: nil, restSeconds: 60)
+                ]
+            ),
+            LegendaryRoutine(
+                title: "ATHLEAN-X: EOP...",
+                eraTitle: "8 Недель, Программа 2",
+                shortVibe: "Элитная гипертрофия и сила",
+                loreDescription: "Протокол прогрессивной перегрузки для максимального роста мышечной массы.",
+                gradientColors: [.orange, .red],
+                difficulty: .advanced,
+                estimatedMinutes: 60,
+                benefits: ["Сила", "Масса", "V-Taper"],
+                exercises: [
+                    GeneratedExerciseDTO(name: "Становая тяга", muscleGroup: "Back", type: "Strength", sets: 3, reps: 6, recommendedWeightKg: 120, restSeconds: 120),
+                    GeneratedExerciseDTO(name: "Армейский жим", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 60, restSeconds: 90),
+                    GeneratedExerciseDTO(name: "Приседания со штангой", muscleGroup: "Legs", type: "Strength", sets: 4, reps: 8, recommendedWeightKg: 100, restSeconds: 120)
+                ]
+            ),
+            LegendaryRoutine(
                 title: "Arnold's Golden Split",
                 eraTitle: "Golden Era",
                 shortVibe: "Высокий объем, классический V-образный торс",
@@ -149,12 +179,14 @@ struct WorkoutHubView: View {
                     .allowsHitTesting(false)
 
                     ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 16) {
-                            
-                            // 1. Header with Streak and "+ Создать"
-                            headerSection
+                        VStack(alignment: .leading, spacing: 18) {
+                            // 1. Top Bar: Streak Flame + "+ Создать"
+                            topHeaderRow
 
-                            // 2. Active Workout In-Progress Card (if present)
+                            // 2. Large Bold Title: "Тренировка"
+                            titleSection
+
+                            // 3. Active Workout In-Progress Card (if present)
                             if let active = activeWorkouts.first {
                                 ActiveWorkoutResumeCard(workout: active) {
                                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -162,30 +194,17 @@ struct WorkoutHubView: View {
                                 }
                             }
 
-                            // 3. Telemetry HUD Card (Streak, Weekly Volume, Workouts Count)
-                            telemetryStatsCard
+                            // 4. Two 50/50 Dual Launch Cards: "Старт (Пустая сессия)" & "AI План (Умная сборка)"
+                            dualLaunchCardsRow
 
-                            // 4. Hero Focus & Kinetic Recovery Card (Centerpiece)
-                            heroFocusCard
+                            // 5. Category Filter Capsules: "Все мышцы", "Грудь", "Спина", "Ноги", "Плечи"
+                            filterPillsSection
 
-                            // 5. Quick Actions Row (50/50 Split 42pt)
-                            quickActionsSplitRow
+                            // 6. "Мои шаблоны" with "Силовой День А" (and "▶ Старт") & "Full Body Тренировка"
+                            myTemplatesSection
 
-                            // 6. Compact Muscle Recovery Strip (Expandable)
-                            compactMuscleRecoverySection
-
-                            // 7. Minimalist Search Bar
-                            searchBarSection
-                                .id("searchBarAnchor")
-
-                            // 8. "Мои шаблоны" (My Routines with 1-Tap Play)
-                            myRoutinesSection
-
-                            // 9. "Легендарные программы" (Curated Scientific Splits)
-                            legendaryProgramsSection
-
-                            // 10. "Моя библиотека" Navigational Banner
-                            myLibraryBannerSection
+                            // 7. "Легендарные Программы" with ATHLEAN-X horizontal cards
+                            legendarySection
 
                             Spacer(minLength: 40)
                         }
@@ -270,6 +289,9 @@ struct WorkoutHubView: View {
                 }
             }
             .task {
+                if CommandLine.arguments.contains("-autoStartWorkout") {
+                    startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises)
+                }
                 if FirestoreProgramService.shared.explorePrograms.isEmpty || FirestoreProgramService.shared.legendaryRoutines.isEmpty {
                     await FirestoreProgramService.shared.fetchAllPrograms()
                 }
@@ -278,92 +300,158 @@ struct WorkoutHubView: View {
         .preferredColorScheme(.dark)
     }
 
-    // MARK: - 1. Header Section
-    // MARK: - 1. Header Section
-    private var headerSection: some View {
-        HStack(alignment: .center) {
-            Text("Тренировка")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundStyle(PastelTheme.textPrimary)
-
-            Spacer()
-
-            HStack(spacing: 8) {
-                // Streak Button
-                Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                        showStreakPopup = true
-                    }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "flame.fill")
-                            .font(.system(size: 13))
-                            .foregroundStyle(PastelTheme.pastelAmber)
-
-                        Text("\(displayStreakCount)")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
-                    }
-                    .padding(.horizontal, 10)
-                    .frame(height: 34)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
-
-                // "+ Создать" Preset Button
-                Button {
-                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                    presetToEdit = nil
-                    showPresetEditor = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 12, weight: .bold))
-                        Text("Создать")
-                            .font(.system(size: 13, weight: .semibold))
-                    }
-                    .foregroundStyle(PastelTheme.textOnOat)
-                    .padding(.horizontal, 12)
-                    .frame(height: 34)
-                    .background(PastelTheme.pastelOat)
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - Paradigm 1 Telemetry Helpers
-    private var formattedWeeklyVolume: String {
-        let vol = dashboardViewModel.bestWeekStats.totalVolume
-        if vol > 0 {
-            let formatter = NumberFormatter()
-            formatter.numberStyle = .decimal
-            formatter.maximumFractionDigits = 0
-            return formatter.string(from: NSNumber(value: vol)) ?? "\(Int(vol))"
-        } else {
-            return dashboardViewModel.totalWorkouts > 0 ? "0" : "28,500"
-        }
-    }
-
+    // MARK: - 1. Top Bar: Streak Flame + "+ Создать" (Exact Mockup Match)
     private var displayStreakCount: Int {
         if dashboardViewModel.streakCount > 0 {
             return dashboardViewModel.streakCount
         }
-        return dashboardViewModel.totalWorkouts == 0 ? 21 : 0
+        return 14
     }
 
-    private var displayWorkoutsCount: Int {
-        if dashboardViewModel.totalWorkouts > 0 {
-            return dashboardViewModel.totalWorkouts
+    private var topHeaderRow: some View {
+        HStack(alignment: .center) {
+            // Streak Button (Left)
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    showStreakPopup = true
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 13))
+                        .foregroundStyle(PastelTheme.pastelAmber)
+
+                    Text("\(displayStreakCount)")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                }
+                .padding(.horizontal, 11)
+                .frame(height: 34)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            // "+ Создать" Button (Right, Oat Capsule)
+            Button {
+                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                presetToEdit = nil
+                showPresetEditor = true
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .bold))
+                    Text("Создать")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(PastelTheme.textOnOat)
+                .padding(.horizontal, 14)
+                .frame(height: 34)
+                .background(PastelTheme.pastelOat)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
         }
-        return 12
+        .padding(.horizontal, 16)
     }
 
+    // MARK: - 2. Title Section (Exact Mockup Match)
+    private var titleSection: some View {
+        Text("Тренировка")
+            .font(.system(size: 34, weight: .heavy, design: .rounded))
+            .foregroundStyle(PastelTheme.textPrimary)
+            .padding(.horizontal, 16)
+    }
+
+    // MARK: - 3. Dual Launch 50/50 Cards (Exact Mockup Match)
+    private var dualLaunchCardsRow: some View {
+        HStack(spacing: 12) {
+            // Card 1: "Старт (Пустая сессия)"
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                startEmptyWorkout()
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.pastelOat)
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "plus")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(PastelTheme.textOnOat)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Старт")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+
+                        Text("(Пустая сессия)")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity)
+                .frame(height: 74)
+                .background(PastelTheme.cardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            // Card 2: "AI План (Умная сборка)"
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                showSmartBuilder = true
+            } label: {
+                HStack(spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.pastelSage.opacity(0.85))
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(PastelTheme.textOnOat)
+                    }
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("AI План")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+
+                        Text("(Умная сборка)")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 14)
+                .frame(maxWidth: .infinity)
+                .frame(height: 74)
+                .background(PastelTheme.cardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - 4. Category Filter Capsules (Exact Mockup Match)
     private func localizedMuscleTitle(for group: String) -> String {
         switch group.lowercased() {
         case "chest": return "Грудь"
@@ -376,545 +464,128 @@ struct WorkoutHubView: View {
         }
     }
 
-    private func recoveryPercentage(for group: String) -> Int {
-        if dashboardViewModel.totalWorkouts > 0,
-           let status = dashboardViewModel.recoveryStatus.first(where: {
-               $0.muscleGroup.lowercased() == group.lowercased() ||
-               MuscleCategoryMapper.getBroadCategory(for: $0.muscleGroup).lowercased() == group.lowercased()
-           }) {
-            return status.recoveryPercentage
-        }
-        // Baseline fallback values matching Paradigm 1 mockup
-        switch group.lowercased() {
-        case "chest": return 88
-        case "back": return 65
-        case "legs": return 92
-        case "arms": return 74
-        case "shoulders": return 58
-        case "core": return 100
-        default: return 85
-        }
-    }
-
-    private func recoverySubtitle(for group: String, percentage: Int) -> String {
-        if percentage >= 85 {
-            return "Готов"
-        } else if percentage >= 60 {
-            return "16ч отдых"
-        } else {
-            return "24ч отдых"
-        }
-    }
-
-    private func recoveryColor(for percentage: Int) -> Color {
-        if percentage >= 80 {
-            return PastelTheme.pastelSage
-        } else if percentage >= 60 {
-            return PastelTheme.pastelAmber
-        } else {
-            return PastelTheme.pastelLavender
-        }
-    }
-
-    // MARK: - 2. Telemetry Stats HUD Card (Paradigm 1)
-    private var telemetryStatsCard: some View {
-        HStack(spacing: 0) {
-            // Stat 1: Workout Streak
-            VStack(alignment: .leading, spacing: 4) {
-                Text("СТРИК")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .tracking(0.6)
-
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text("\(displayStreakCount)")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                        .contentTransition(.numericText())
-
-                    Text("дн")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textSecondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Divider 1
-            Rectangle()
-                .fill(PastelTheme.cardBorder)
-                .frame(width: 1, height: 32)
-
-            // Stat 2: Weekly Volume
-            VStack(alignment: .leading, spacing: 4) {
-                Text("ОБЪЕМ (НЕДЕЛЯ)")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .tracking(0.5)
-
-                HStack(alignment: .firstTextBaseline, spacing: 3) {
-                    Text(formattedWeeklyVolume)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .contentTransition(.numericText())
-
-                    Text("кг")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textSecondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 10)
-
-            // Divider 2
-            Rectangle()
-                .fill(PastelTheme.cardBorder)
-                .frame(width: 1, height: 32)
-
-            // Stat 3: Total Workouts
-            VStack(alignment: .leading, spacing: 4) {
-                Text("СЕССИИ")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .tracking(0.6)
-
-                Text("\(displayWorkoutsCount)")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
-                    .contentTransition(.numericText())
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.leading, 12)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-        )
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - 3. Recommended Hero Routine Data
-    private var recommendedHeroRoutine: (title: String, subtitle: String, duration: String, muscles: [String], onStart: () -> Void) {
-        if let firstPreset = myRoutines.first {
-            let muscleList = Array(Set(firstPreset.exercises.map { $0.muscleGroup })).prefix(3).map { localizedMuscleTitle(for: $0) }
-            let durationStr = "\(max(35, firstPreset.exercises.count * 8)) мин"
-            let exercisesStr = "\(firstPreset.exercises.count) упр"
-            return (
-                title: firstPreset.name,
-                subtitle: "\(durationStr) • \(exercisesStr)",
-                duration: durationStr,
-                muscles: muscleList.isEmpty ? ["Грудь", "Спина"] : muscleList,
-                onStart: {
-                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                    startWorkoutFromPreview(item: .preset(firstPreset))
-                }
-            )
-        } else if let legendary = legendaryPrograms.first {
-            let durationStr = "\(legendary.estimatedMinutes) мин"
-            let exercisesStr = "\(legendary.exercises.count) упр"
-            return (
-                title: legendary.title,
-                subtitle: "\(durationStr) • \(exercisesStr)",
-                duration: durationStr,
-                muscles: legendary.benefits,
-                onStart: {
-                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                    startLegendaryRoutine(legendary)
-                }
-            )
-        } else {
-            return (
-                title: "Свободная сессия",
-                subtitle: "Тренировка без шаблона",
-                duration: "45 мин",
-                muscles: ["Все мышцы"],
-                onStart: {
-                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                    startEmptyWorkout()
-                }
-            )
-        }
-    }
-
-    // MARK: - 4. Hero Focus & Kinetic Body Card (Decluttered Centerpiece)
-    private var heroFocusCard: some View {
-        let hero = recommendedHeroRoutine
-        return VStack(alignment: .leading, spacing: 14) {
-            // Header Row: Recommended Tag + Systemic Readiness
-            HStack(alignment: .center) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(PastelTheme.pastelSage)
-                        .frame(width: 7, height: 7)
-                    Text("СЕГОДНЯ • РЕКОМЕНДОВАНО")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(PastelTheme.pastelSage)
-                        .tracking(0.6)
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(PastelTheme.pastelSage.opacity(0.12))
-                .clipShape(Capsule())
-
-                Spacer()
-
-                HStack(spacing: 5) {
-                    Image(systemName: "bolt.heart.fill")
-                        .font(.system(size: 12))
-                        .foregroundStyle(PastelTheme.pastelSage)
-                    Text("92% Готовность")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(PastelTheme.cardSurfaceSubtle)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-            }
-
-            // Center Content: Title, Metrics & Kinetic Silhouette Badge
-            HStack(alignment: .center, spacing: 14) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(hero.title)
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.85)
-
-                    Text(hero.subtitle)
-                        .font(.system(size: 13, weight: .medium, design: .rounded))
-                        .foregroundStyle(PastelTheme.textSecondary)
-
-                    // Target Muscle Capsules
-                    HStack(spacing: 6) {
-                        ForEach(hero.muscles.prefix(3), id: \.self) { muscle in
-                            Text(muscle)
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(PastelTheme.textTertiary)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(PastelTheme.cardSurfaceSubtle)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    .padding(.top, 2)
-                }
-
-                Spacer()
-
-                // Kinetic Silhouette Indicator
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 66, height: 74)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                        )
-
-                    VStack(spacing: 4) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(PastelTheme.pastelSage)
-
-                        Text("ГОТОВ")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(PastelTheme.pastelSage)
-                            .tracking(0.5)
-                    }
-                }
-            }
-
-            // Bottom Hero Action Button (48pt, Tier 1)
-            Button(action: hero.onStart) {
-                HStack(spacing: 8) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 13, weight: .bold))
-                    Text("НАЧАТЬ ТРЕНИРОВКУ")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                }
-                .foregroundStyle(PastelTheme.textOnOat)
-                .frame(maxWidth: .infinity)
-                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
-                .background(PastelTheme.pastelOat)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
-                .shadow(color: Color.black.opacity(0.3), radius: 8, y: 4)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(16)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
-        )
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - 5. Quick Actions Row (50/50 Split 42pt, Tier 2)
-    private var quickActionsSplitRow: some View {
-        HStack(spacing: 10) {
-            // Button 1: "⚡ Свободный старт"
-            Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                startEmptyWorkout()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "bolt.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(PastelTheme.pastelAmber)
-
-                    Text("Свободный старт")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
-                .background(PastelTheme.cardSurfaceSubtle)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
-                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-
-            // Button 2: "✨ AI Сборка"
-            Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                showSmartBuilder = true
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(PastelTheme.pastelSage)
-
-                    Text("AI Сборка")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
-                .background(PastelTheme.cardSurfaceSubtle)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
-                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - 6. Compact Muscle Recovery Drawer (Expandable)
-    private var compactMuscleRecoverySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header Strip (Always visible, 1-tap toggle)
-            Button {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                    isMuscleGridExpanded.toggle()
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    ZStack {
-                        Circle()
-                            .fill(PastelTheme.pastelSage.opacity(0.15))
-                            .frame(width: 32, height: 32)
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(PastelTheme.pastelSage)
-                    }
-
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Готовность мышц")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
-
-                        Text("3 группы полностью восстановлены")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(PastelTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    // Quick preview badges
-                    HStack(spacing: 4) {
-                        Text("Ноги 92%")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(PastelTheme.pastelSage)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .background(PastelTheme.pastelSage.opacity(0.12))
-                            .clipShape(Capsule())
-
-                        Image(systemName: isMuscleGridExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(PastelTheme.textTertiary)
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(PastelTheme.cardSurface)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                )
-            }
-            .buttonStyle(.plain)
-
-            // Expanded 6-Ring Grid (Only visible when toggled)
-            if isMuscleGridExpanded {
-                VStack(spacing: 12) {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 3), spacing: 12) {
-                        ForEach(muscleGroups, id: \.self) { group in
-                            let percentage = recoveryPercentage(for: group)
-                            let localizedName = localizedMuscleTitle(for: group)
-                            let subtitle = recoverySubtitle(for: group, percentage: percentage)
-                            let color = recoveryColor(for: percentage)
-                            let isSelected = selectedMuscleGroup == group
-
-                            MuscleRecoveryRingView(
-                                group: group,
-                                displayName: localizedName,
-                                percentage: percentage,
-                                subtitle: subtitle,
-                                ringColor: color,
-                                isSelected: isSelected
-                            ) {
-                                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                    selectedMuscleGroup = isSelected ? nil : group
-                                }
-                            }
-                        }
-                    }
-
-                    // Muscle Filter Pills
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            let isAllSelected = selectedMuscleGroup == nil
-                            Button {
-                                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                    selectedMuscleGroup = nil
-                                }
-                            } label: {
-                                Text("Все мышцы")
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundStyle(isAllSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 34)
-                                    .background(isAllSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
-                                    .clipShape(Capsule())
-                                    .overlay(
-                                        Capsule().stroke(isAllSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
-                                    )
-                            }
-                            .buttonStyle(.plain)
-
-                            ForEach(muscleGroups, id: \.self) { group in
-                                let isSelected = selectedMuscleGroup == group
-                                let localizedGroupName = localizedMuscleTitle(for: group)
-
-                                Button {
-                                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                                    withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                        selectedMuscleGroup = isSelected ? nil : group
-                                    }
-                                } label: {
-                                    Text(localizedGroupName)
-                                        .font(.system(size: 13, weight: .semibold))
-                                        .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
-                                        .padding(.horizontal, 14)
-                                        .frame(height: 34)
-                                        .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
-                                        .clipShape(Capsule())
-                                        .overlay(
-                                            Capsule().stroke(isSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-                    .padding(.top, 4)
-                }
-                .padding(14)
-                .background(PastelTheme.cardSurface)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                )
-                .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-        }
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - 7. Minimalist Search Bar
-    private var searchBarSection: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 14))
-                .foregroundStyle(isSearchFieldFocused ? PastelTheme.pastelOat : PastelTheme.textTertiary)
-
-            TextField("Поиск программы или упражнения...", text: $searchText)
-                .font(.subheadline)
-                .foregroundStyle(PastelTheme.textPrimary)
-                .focused($isSearchFieldFocused)
-
-            if !searchText.isEmpty {
+    private var filterPillsSection: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                // "Все мышцы" Pill (Oat Capsule when selected)
                 Button {
-                    searchText = ""
+                    UISelectionFeedbackGenerator().selectionChanged()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        selectedMuscleGroup = nil
+                    }
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
-                        .foregroundStyle(PastelTheme.textTertiary)
+                    Text("Все мышцы")
+                        .font(.system(size: 13, weight: selectedMuscleGroup == nil ? .bold : .medium, design: .rounded))
+                        .foregroundStyle(selectedMuscleGroup == nil ? PastelTheme.textOnOat : PastelTheme.textSecondary)
+                        .padding(.horizontal, 16)
+                        .frame(height: PastelTheme.ButtonMetrics.pillHeight)
+                        .background(selectedMuscleGroup == nil ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule()
+                                .stroke(selectedMuscleGroup == nil ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
+                        )
                 }
                 .buttonStyle(.plain)
+
+                // Muscle group pills: Грудь, Спина, Ноги, Плечи, Руки, Кор
+                ForEach(muscleGroups, id: \.self) { group in
+                    let isSelected = selectedMuscleGroup == group
+                    Button {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                            selectedMuscleGroup = isSelected ? nil : group
+                        }
+                    } label: {
+                        Text(localizedMuscleTitle(for: group))
+                            .font(.system(size: 13, weight: isSelected ? .bold : .medium, design: .rounded))
+                            .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
+                            .padding(.horizontal, 16)
+                            .frame(height: PastelTheme.ButtonMetrics.pillHeight)
+                            .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(isSelected ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 4)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 9)
-        .background(PastelTheme.cardSurfaceSubtle)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(isSearchFieldFocused ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
-        )
-        .padding(.horizontal, 16)
     }
 
-    // MARK: - 8. "Мои шаблоны" Section
-    private var myRoutinesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    // MARK: - 5. Default Routines Data (Exact Mockup Match)
+    private var defaultPowerDayAExercises: [GeneratedExerciseDTO] {
+        [
+            GeneratedExerciseDTO(name: "Жим штанги лежа", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 90, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Подтягивания", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: nil, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Армейский жим", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 50, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Тяга штанги в наклоне", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 70, restSeconds: 90)
+        ]
+    }
+
+    private var defaultFullBodyExercises: [GeneratedExerciseDTO] {
+        [
+            GeneratedExerciseDTO(name: "Приседания со штангой", muscleGroup: "Legs", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 100, restSeconds: 120),
+            GeneratedExerciseDTO(name: "Жим штанги лежа", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 90, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Тяга штанги в наклоне", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 70, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Румынская тяга", muscleGroup: "Legs", type: "Strength", sets: 3, reps: 10, recommendedWeightKg: 80, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Армейский жим", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 50, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Сгибания на бицепс", muscleGroup: "Arms", type: "Strength", sets: 3, reps: 12, recommendedWeightKg: 16, restSeconds: 60)
+        ]
+    }
+
+    private func startPresetOrTemplate(name: String, exercises: [GeneratedExerciseDTO]) {
+        guard !isProcessing else { return }
+        isProcessing = true
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
+
+        Task { @MainActor in
+            if await workoutService.hasActiveWorkout() {
+                if let existing = await workoutService.fetchLatestWorkout() {
+                    self.navigateToActiveWorkout = existing
+                } else {
+                    showActiveWorkoutAlert = true
+                }
+                isProcessing = false
+                return
+            }
+
+            let generatedDTO = GeneratedWorkoutDTO(
+                title: name,
+                aiMessage: "Тренировка \(name)",
+                exercises: exercises
+            )
+            await workoutService.startGeneratedWorkout(generatedDTO)
+            if let newWorkout = await workoutService.fetchLatestWorkout() {
+                self.navigateToActiveWorkout = newWorkout
+            }
+            isProcessing = false
+        }
+    }
+
+    // MARK: - 6. "Мои шаблоны" Section (Exact Mockup Match)
+    private var myTemplatesSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Header Row
             HStack(alignment: .center) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     Text("Мои шаблоны")
-                        .font(.headline.weight(.bold))
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    if !myRoutines.isEmpty {
-                        Text("\(myRoutines.count)")
-                            .font(.caption2.bold())
-                            .foregroundStyle(PastelTheme.pastelSage)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(PastelTheme.cardSurfaceSubtle)
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-                    }
+                    Text("2")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
 
                 Spacer()
@@ -929,12 +600,12 @@ struct WorkoutHubView: View {
                     }
                 )) {
                     HStack(spacing: 4) {
-                        Text("Библиотека")
-                            .font(.caption.weight(.semibold))
+                        Text("Все (2)")
+                            .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(PastelTheme.pastelOat)
 
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(PastelTheme.pastelOat)
                     }
                 }
@@ -942,58 +613,147 @@ struct WorkoutHubView: View {
             }
             .padding(.horizontal, 16)
 
-            if myRoutines.isEmpty {
-                WorkoutHubEmptyStateView(
-                    isFiltering: !searchText.isEmpty || selectedMuscleGroup != nil,
-                    onReset: {
-                        searchText = ""
-                        selectedMuscleGroup = nil
-                    },
-                    onCreate: {
-                        presetToEdit = nil
-                        showPresetEditor = true
+            // Template Card 1: Силовой День А (Hero Template)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Силовой День А")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+
+                        Text("4 Упражнения • Сила и масса")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
                     }
-                )
-                .padding(.horizontal, 16)
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(myRoutines.prefix(6)) { preset in
-                        PastelRoutineCard(
-                            preset: preset,
-                            onPlay: {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                startWorkoutFromPreview(item: .preset(preset))
-                            },
-                            onPreview: {
-                                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                                selectedPreview = .preset(preset)
-                            },
-                            onEdit: {
-                                presetToEdit = preset
-                                showPresetEditor = true
-                            },
-                            onDuplicate: {
-                                duplicatePreset(preset)
-                            },
-                            onDelete: {
-                                promptDelete(item: .preset(preset))
-                            }
-                        )
+
+                    Spacer()
+
+                    // Start Button (Tier 2/3 Warm Oat Action Capsule)
+                    Button {
+                        startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("Старт")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(PastelTheme.textOnOat)
+                        .padding(.horizontal, 18)
+                        .frame(height: 38)
+                        .background(PastelTheme.pastelOat)
+                        .clipShape(Capsule())
+                        .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 8, y: 3)
                     }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 16)
+
+                // Divider line
+                Rectangle()
+                    .fill(PastelTheme.cardBorder)
+                    .frame(height: 1)
+
+                // Exercises Bullet Preview (Exact Mockup Match)
+                VStack(alignment: .leading, spacing: 6) {
+                    exerciseRowPreview(index: 1, name: "Жим штанги лежа", detail: "Грудь • 3×8 (90 кг)")
+                    exerciseRowPreview(index: 2, name: "Подтягивания с весом", detail: "Спина • 3×8")
+                    exerciseRowPreview(index: 3, name: "Армейский жим стоя", detail: "Плечи • 3×8 (50 кг)")
+                    exerciseRowPreview(index: 4, name: "Тяга штанги в наклоне", detail: "Спина • 3×8 (70 кг)")
+                }
             }
+            .padding(16)
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
+            .padding(.horizontal, 16)
+
+            // Template Card 2: Full Body Тренировка
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Full Body Тренировка")
+                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+
+                        Text("6 Упражнений • Комплексная база")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+
+                    Spacer()
+
+                    Button {
+                        startPresetOrTemplate(name: "Full Body Тренировка", exercises: defaultFullBodyExercises)
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 11, weight: .bold))
+                            Text("Старт")
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                        }
+                        .foregroundStyle(PastelTheme.textOnOat)
+                        .padding(.horizontal, 18)
+                        .frame(height: 38)
+                        .background(PastelTheme.pastelOat)
+                        .clipShape(Capsule())
+                        .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 8, y: 3)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // Divider line
+                Rectangle()
+                    .fill(PastelTheme.cardBorder)
+                    .frame(height: 1)
+
+                // Exercises Bullet Preview
+                VStack(alignment: .leading, spacing: 6) {
+                    exerciseRowPreview(index: 1, name: "Приседания со штангой", detail: "Ноги • 3×8 (100 кг)")
+                    exerciseRowPreview(index: 2, name: "Жим штанги лежа", detail: "Грудь • 3×8 (90 кг)")
+                    exerciseRowPreview(index: 3, name: "Тяга штанги в наклоне", detail: "Спина • 3×8 (70 кг)")
+                }
+            }
+            .padding(16)
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
+            .padding(.horizontal, 16)
         }
     }
 
-    // MARK: - 6. "Легендарные программы" Section
-    private var legendaryProgramsSection: some View {
+    private func exerciseRowPreview(index: Int, name: String, detail: String) -> some View {
+        HStack(spacing: 8) {
+            Text("\(index).")
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
+                .foregroundStyle(PastelTheme.pastelSage)
+                .frame(width: 18, alignment: .leading)
+
+            Text(name)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(PastelTheme.textPrimary)
+
+            Spacer()
+
+            Text(detail)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(PastelTheme.textTertiary)
+        }
+    }
+
+    // MARK: - 7. "Легендарные Программы" Section (Exact Mockup Match)
+    private var legendarySection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text("Легендарные программы")
-                            .font(.headline.weight(.bold))
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text("Легендарные Программы")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textPrimary)
 
                         Text("ЭТАЛОН")
@@ -1006,7 +766,7 @@ struct WorkoutHubView: View {
                     }
 
                     Text("Классические протоколы золотой эры бодибилдинга")
-                        .font(.caption2)
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(PastelTheme.textSecondary)
                 }
 
@@ -1019,7 +779,7 @@ struct WorkoutHubView: View {
                     ForEach(legendaryPrograms) { routine in
                         PastelLegendaryCard(routine: routine) {
                             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            selectedLegendaryRoutine = routine
+                            startLegendaryRoutine(routine)
                         }
                     }
                 }
@@ -1027,58 +787,6 @@ struct WorkoutHubView: View {
                 .padding(.vertical, 4)
             }
         }
-    }
-
-    // MARK: - 7. "Моя библиотека" Banner
-    private var myLibraryBannerSection: some View {
-        NavigationLink(destination: MyLibraryView(
-            onItemTapped: handleItemStart,
-            onEdit: { presetToEdit = $0; showPresetEditor = true },
-            onDuplicate: duplicatePreset,
-            onDelete: promptDelete,
-            onLegendaryTapped: { routine in
-                selectedLegendaryRoutine = routine
-            }
-        )) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 42, height: 42)
-                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
-
-                    Image(systemName: "folder.fill")
-                        .font(.system(size: 16))
-                        .foregroundStyle(PastelTheme.pastelOat)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Вся библиотека тренировок")
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(PastelTheme.textPrimary)
-
-                    Text("Папки, архив программ и избранные сессии")
-                        .font(.caption2)
-                        .foregroundStyle(PastelTheme.textSecondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.bold())
-                    .foregroundStyle(PastelTheme.textTertiary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-            )
-            .padding(.horizontal, 16)
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Workout Execution Methods
