@@ -129,14 +129,14 @@ struct ConfigureExerciseView: View {
             handleSave()
         } label: {
             Text(LocalizedStringKey("Add Exercise"))
-                .font(.system(.headline, design: .rounded, weight: .bold))
+                .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundColor(PastelTheme.textOnOat) 
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
                 .background(PastelTheme.pastelOat) 
-                .cornerRadius(16)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
                         .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
@@ -157,19 +157,19 @@ struct ConfigureExerciseView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Image(systemName: "sparkles")
-                    .foregroundColor(themeManager.current.successColor)
+                    .foregroundColor(PastelTheme.pastelEmerald)
                     .font(.headline)
                 Text(LocalizedStringKey("Progressive Overload"))
-                    .font(.headline)
-                    .foregroundColor(themeManager.current.successColor)
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(PastelTheme.pastelEmerald)
             }
 
             let convertedWeight = unitsManager.convertFromKilograms(viewModel.recommendedWeight)
             let weightStr = LocalizationHelper.shared.formatFlexible((convertedWeight * 10).rounded() / 10)
 
             Text(LocalizedStringKey("Recommended weight increase to **\(weightStr) \(unitsManager.weightUnitString())** for this workout."))
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.8))
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundColor(PastelTheme.textSecondary)
 
             HStack(spacing: 12) {
                 Button {
@@ -178,12 +178,16 @@ struct ConfigureExerciseView: View {
                     withAnimation(.spring()) { viewModel.showOverloadBanner = false }
                 } label: {
                     Text(LocalizedStringKey("Dismiss"))
-                        .font(.subheadline).bold()
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(Color.white.opacity(0.1))
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .foregroundColor(PastelTheme.textPrimary)
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                        )
                 }
 
                 Button {
@@ -192,21 +196,21 @@ struct ConfigureExerciseView: View {
                     withAnimation(.spring()) { viewModel.applyOverload() }
                 } label: {
                     Text(LocalizedStringKey("Apply"))
-                        .font(.subheadline).bold()
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(themeManager.current.successColor)
-                        .foregroundColor(.black)
-                        .cornerRadius(10)
+                        .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
+                        .background(PastelTheme.pastelEmerald)
+                        .foregroundColor(PastelTheme.textOnOat)
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous))
                 }
             }
         }
         .padding(16)
-        .background(themeManager.current.surface)
-        .cornerRadius(16)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(themeManager.current.successColor.opacity(0.3), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.pastelEmerald.opacity(0.3), lineWidth: 1)
         )
     }
 

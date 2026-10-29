@@ -24,78 +24,68 @@ struct ExerciseListView: View {
             VStack(spacing: 24) {
                 ZStack {
                     Circle()
-                        .fill(themeManager.current.primaryAccent.opacity(0.12))
-                        .frame(width: 100, height: 100)
-                        .blur(radius: 6)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 80, height: 80)
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
                     
                     Image(systemName: "dumbbell.fill")
-                        .font(.system(size: 40))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.6)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .font(.system(size: 32, weight: .semibold))
+                        .foregroundColor(PastelTheme.pastelOat)
                 }
-                .padding(.bottom, 4)
+                .padding(.bottom, 2)
                 
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     Text(LocalizedStringKey("Ready to Sweat?"))
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(PastelTheme.textPrimary)
                     
                     Text(LocalizedStringKey("Start by adding an exercise or build a superset to target multiple muscles."))
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(PastelTheme.textSecondary)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 24)
                 }
                 
-                HStack(spacing: 20) {
+                HStack(spacing: 14) {
                     // Add Exercise Square Button
                     Button(action: {
                         HapticManager.shared.impact(.medium)
                         onAddExerciseTap()
                     }) {
-                        VStack(spacing: 16) {
+                        VStack(spacing: 14) {
                             ZStack {
                                 Circle()
-                                    .fill(themeManager.current.primaryAccent.opacity(0.12))
-                                    .frame(width: 56, height: 56)
+                                    .fill(PastelTheme.cardSurface)
+                                    .frame(width: 48, height: 48)
+                                    .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
                                 Image(systemName: "dumbbell.fill")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(themeManager.current.primaryAccent)
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(PastelTheme.pastelOat)
                             }
                             
-                            VStack(spacing: 6) {
+                            VStack(spacing: 4) {
                                 Text(LocalizedStringKey("Add Exercise"))
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .foregroundColor(themeManager.current.primaryAccent)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundColor(PastelTheme.textPrimary)
                                     .multilineTextAlignment(.center)
                                 
                                 Text(LocalizedStringKey("Log single exercises with sets and weight"))
-                                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                                    .foregroundColor(themeManager.current.secondaryText)
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundColor(PastelTheme.textTertiary)
                                     .multilineTextAlignment(.center)
-                                    .lineLimit(3)
+                                    .lineLimit(2)
                                     .minimumScaleFactor(0.8)
                             }
                         }
-                        .padding(.vertical, 20)
-                        .padding(.horizontal, 16)
-                        .frame(maxWidth: .infinity, minHeight: 185)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(themeManager.current.surfaceVariant.opacity(0.4))
-                        )
+                        .padding(.vertical, 18)
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, minHeight: 160)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(
-                                    LinearGradient(colors: [themeManager.current.primaryAccent, themeManager.current.primaryAccent.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                    lineWidth: 1.5
-                                )
-                                .shadow(color: themeManager.current.primaryAccent.opacity(0.35), radius: 10, x: 0, y: 4)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
@@ -105,62 +95,57 @@ struct ExerciseListView: View {
                         HapticManager.shared.impact(.medium)
                         onAddSupersetTap()
                     }) {
-                        VStack(spacing: 16) {
+                        VStack(spacing: 14) {
                             ZStack {
                                 Circle()
-                                    .fill(themeManager.current.secondaryMidTone.opacity(0.12))
-                                    .frame(width: 56, height: 56)
+                                    .fill(PastelTheme.cardSurface)
+                                    .frame(width: 48, height: 48)
+                                    .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
                                 Image(systemName: "rectangle.stack.badge.plus")
-                                    .font(.system(size: 24))
-                                    .foregroundColor(themeManager.current.secondaryMidTone)
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(PastelTheme.pastelAmber)
                             }
                             
-                            VStack(spacing: 6) {
+                            VStack(spacing: 4) {
                                 Text(LocalizedStringKey("Build Superset"))
-                                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                                    .foregroundColor(themeManager.current.secondaryMidTone)
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundColor(PastelTheme.textPrimary)
                                     .multilineTextAlignment(.center)
                                 
                                 Text(LocalizedStringKey("Group exercises to perform back-to-back"))
-                                    .font(.system(size: 12, weight: .regular, design: .rounded))
-                                    .foregroundColor(themeManager.current.secondaryText)
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundColor(PastelTheme.textTertiary)
                                     .multilineTextAlignment(.center)
-                                    .lineLimit(3)
+                                    .lineLimit(2)
                                     .minimumScaleFactor(0.8)
                             }
                         }
-                        .padding(.vertical, 20)
-                        .padding(.horizontal, 16)
-                        .frame(maxWidth: .infinity, minHeight: 185)
-                        .background(
-                            RoundedRectangle(cornerRadius: 20)
-                                .fill(themeManager.current.surfaceVariant.opacity(0.4))
-                        )
+                        .padding(.vertical, 18)
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, minHeight: 160)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(
-                                    LinearGradient(colors: [themeManager.current.secondaryMidTone, themeManager.current.secondaryMidTone.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                                    lineWidth: 1.5
-                                )
-                                .shadow(color: themeManager.current.secondaryMidTone.opacity(0.35), radius: 10, x: 0, y: 4)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
                         )
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
+                .padding(.horizontal, 8)
+                .padding(.top, 6)
             }
-            .padding(.vertical, 32)
+            .padding(.vertical, 28)
             .padding(.horizontal, 16)
-            .background(themeManager.current.surface)
-            .clipShape(RoundedRectangle(cornerRadius: 24))
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 24)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(0.15), radius: 15, y: 5)
-            .padding(.horizontal, 20)
-            .padding(.vertical, 30)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 20)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
                    VStack(spacing: 16) {

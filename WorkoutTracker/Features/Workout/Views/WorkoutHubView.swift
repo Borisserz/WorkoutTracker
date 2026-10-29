@@ -679,9 +679,9 @@ struct WorkoutHubView: View {
                 }
                 .padding(.horizontal, 14)
                 .frame(maxWidth: .infinity)
-                .frame(height: 48)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
                 .background(PastelTheme.pastelOat)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -702,11 +702,11 @@ struct WorkoutHubView: View {
                             .foregroundStyle(PastelTheme.textPrimary)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 40)
+                    .frame(height: PastelTheme.ButtonMetrics.splitHeight)
                     .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
                             .stroke(PastelTheme.cardBorder, lineWidth: 1)
                     )
                 }
@@ -730,11 +730,11 @@ struct WorkoutHubView: View {
                             .foregroundStyle(PastelTheme.textPrimary)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 40)
+                    .frame(height: PastelTheme.ButtonMetrics.splitHeight)
                     .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
                             .stroke(PastelTheme.cardBorder, lineWidth: 1)
                     )
                 }

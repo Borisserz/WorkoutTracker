@@ -56,6 +56,28 @@ enum PastelTheme {
     static let cardRadius: CGFloat = 20
     static let buttonRadius: CGFloat = 14
     static let chipRadius: CGFloat = 10
+
+    // MARK: - Universal Button Metrics (5-Tier Geometric Matrix)
+    enum ButtonMetrics {
+        /// Tier 1: Hero Action & Floating Dock Launchers (48pt)
+        static let heroHeight: CGFloat = 48
+        static let heroRadius: CGFloat = 14
+        
+        /// Tier 2: Split Action & Dual Utilities (42pt)
+        static let splitHeight: CGFloat = 42
+        static let splitRadius: CGFloat = 12
+        
+        /// Tier 3: In-Card Contextual Triggers (36pt)
+        static let inCardHeight: CGFloat = 36
+        static let inCardRadius: CGFloat = 10
+        
+        /// Tier 4: Filter Pills & Category Capsules (34pt)
+        static let pillHeight: CGFloat = 34
+        
+        /// Tier 5: Square Controls & Steppers (40x40pt)
+        static let squareSize: CGFloat = 40
+        static let squareRadius: CGFloat = 10
+    }
 }
 
 // MARK: - View Modifiers

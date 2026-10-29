@@ -271,15 +271,15 @@ struct WorkoutDetailContentView: View {
                 }
                 .foregroundColor(isEmpty ? PastelTheme.textPrimary : PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
                 .background(
                     isEmpty 
                     ? PastelTheme.cardSurfaceSubtle 
                     : PastelTheme.pastelOat
                 )
-                .clipShape(Capsule())
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                 .overlay(
-                    Capsule()
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
                         .stroke(
                             isEmpty ? Color.red.opacity(0.3) : PastelTheme.cardBorderFocused,
                             lineWidth: 1
@@ -381,17 +381,22 @@ struct WorkoutDetailContentView: View {
                 Button {
                     viewModel.generateAndShare(workout: workout)
                 } label: {
-                    HStack {
+                    HStack(spacing: 8) {
                         Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 15, weight: .bold))
                         Text(LocalizedStringKey("Share Result"))
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
                     }
-                    .font(.headline)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.accentColor)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .shadow(radius: 5)
+                    .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                    .background(PastelTheme.pastelOat)
+                    .foregroundColor(PastelTheme.textOnOat)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
+                            .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.25), radius: 8, y: 4)
                 }
                 .opacity(viewModel.isShowingSnackbar ? 0.5 : 1.0)
                 .disabled(viewModel.isShowingSnackbar)
@@ -413,14 +418,14 @@ struct WorkoutDetailContentView: View {
             if workout.isActive {
                 Button { showTimerSetup = true } label: {
                     Image(systemName: "timer")
-                        .font(.system(size: 16, weight: .bold))
-                        .frame(width: 36, height: 36)
-                        .background(themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.18 : 0.12))
-                        .foregroundColor(themeManager.current.primaryAccent)
-                        .cornerRadius(10)
+                        .font(.system(size: 15, weight: .bold))
+                        .frame(width: PastelTheme.ButtonMetrics.inCardHeight, height: PastelTheme.ButtonMetrics.inCardHeight)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .foregroundColor(PastelTheme.pastelOat)
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(themeManager.current.primaryAccent.opacity(0.3), lineWidth: 1)
+                            RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
                         )
                 }
             }
@@ -429,13 +434,13 @@ struct WorkoutDetailContentView: View {
                 Label(LocalizedStringKey("Superset"), systemImage: "plus")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .padding(.horizontal, 12)
-                    .frame(height: 36)
-                    .background(themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.18 : 0.12))
-                    .foregroundColor(themeManager.current.primaryAccent)
-                    .cornerRadius(10)
+                    .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .foregroundColor(PastelTheme.textPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(themeManager.current.primaryAccent.opacity(0.3), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous)
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
                     )
             }
             .disabled(!workout.isActive)
@@ -444,13 +449,13 @@ struct WorkoutDetailContentView: View {
                 Label(LocalizedStringKey("Exercise"), systemImage: "plus")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .padding(.horizontal, 12)
-                    .frame(height: 36)
-                    .background(themeManager.current.primaryAccent.opacity(colorScheme == .dark ? 0.18 : 0.12))
-                    .foregroundColor(themeManager.current.primaryAccent)
-                    .cornerRadius(10)
+                    .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
+                    .background(PastelTheme.pastelOat)
+                    .foregroundColor(PastelTheme.textOnOat)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(themeManager.current.primaryAccent.opacity(0.3), lineWidth: 1)
+                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.inCardRadius, style: .continuous)
+                            .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
                     )
             }
             .disabled(!workout.isActive)

@@ -253,20 +253,20 @@ struct SetRowView: View {
         Button(action: toggleComplete) {
             ZStack {
                 if set.isCompleted {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.squareRadius, style: .continuous)
                         .fill(PastelTheme.pastelEmerald)
-                        .frame(width: 40, height: 40)
+                        .frame(width: PastelTheme.ButtonMetrics.squareSize, height: PastelTheme.ButtonMetrics.squareSize)
 
                     Image(systemName: "checkmark")
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .symbolEffect(.bounce, value: set.isCompleted)
                 } else {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.squareRadius, style: .continuous)
                         .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 40, height: 40)
+                        .frame(width: PastelTheme.ButtonMetrics.squareSize, height: PastelTheme.ButtonMetrics.squareSize)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.squareRadius, style: .continuous)
                                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
                         )
 
@@ -287,16 +287,16 @@ struct SetRowView: View {
                 showAITracker = true
             } label: {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.squareRadius, style: .continuous)
                         .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 44, height: 44)
+                        .frame(width: PastelTheme.ButtonMetrics.squareSize, height: PastelTheme.ButtonMetrics.squareSize)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.squareRadius, style: .continuous)
                                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
                         )
 
                     Image(systemName: "brain.head.profile")
-                        .font(.system(size: 20, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundColor(PastelTheme.pastelLavender)
                 }
             }

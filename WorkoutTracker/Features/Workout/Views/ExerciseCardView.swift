@@ -387,12 +387,12 @@ struct ExerciseCardView: View {
                         }
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .frame(maxWidth: .infinity)
-                        .frame(height: 44)
+                        .frame(height: PastelTheme.ButtonMetrics.splitHeight)
                         .background(exercise.isCompleted ? PastelTheme.cardSurfaceSubtle : PastelTheme.pastelEmerald.opacity(0.18))
                         .foregroundColor(exercise.isCompleted ? PastelTheme.textSecondary : PastelTheme.pastelEmerald)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
                                 .stroke(exercise.isCompleted ? PastelTheme.cardBorder : PastelTheme.pastelEmerald.opacity(0.3), lineWidth: 1)
                         )
                     }
@@ -410,12 +410,12 @@ struct ExerciseCardView: View {
                     }
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .frame(maxWidth: .infinity)
-                    .frame(height: 44)
+                    .frame(height: PastelTheme.ButtonMetrics.splitHeight)
                     .background(PastelTheme.cardSurfaceSubtle)
                     .foregroundColor(PastelTheme.textPrimary)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous)
                             .stroke(PastelTheme.cardBorder, lineWidth: 1)
                     )
                 }
