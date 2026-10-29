@@ -305,6 +305,8 @@ struct WorkoutDetailContentView: View {
                             .font(.system(size: 16, weight: .bold))
                         Text("ЗАКРЫТЬ СЕТ \(pending.setIndex) (\(formatSetWeightReps(pending.set))) • 1-ТАП")
                             .font(.system(size: 14, weight: .heavy, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                     .foregroundStyle(PastelTheme.textOnOat)
                     .frame(maxWidth: .infinity)
@@ -313,7 +315,7 @@ struct WorkoutDetailContentView: View {
                     .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                     .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ScaleButtonStyle())
             } else {
                 Button {
                     finishCurrentWorkout()
@@ -323,6 +325,8 @@ struct WorkoutDetailContentView: View {
                             .font(.system(size: 16, weight: .bold))
                         Text("ВСЕ СЕТЫ ЗАВЕРШЕНЫ • ФИНИШ")
                             .font(.system(size: 14, weight: .heavy, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                     }
                     .foregroundStyle(PastelTheme.textOnOat)
                     .frame(maxWidth: .infinity)
@@ -331,7 +335,7 @@ struct WorkoutDetailContentView: View {
                     .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                     .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(ScaleButtonStyle())
             }
 
             // 2. Secondary Action Button: Rest Timer Control (Hero 48pt Warm Amber)
@@ -347,9 +351,13 @@ struct WorkoutDetailContentView: View {
                         let secs = timerManager.restTimeRemaining % 60
                         Text(String(format: "%02d:%02d Отдых • Пропустить", mins, secs))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                     } else {
                         Text("01:45 Отдых • Пропустить")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
                     }
                 }
                 .foregroundStyle(Color(red: 0.08, green: 0.08, blue: 0.1))
@@ -359,7 +367,7 @@ struct WorkoutDetailContentView: View {
                 .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                 .shadow(color: PastelTheme.pastelAmber.opacity(0.25), radius: 8, y: 4)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(ScaleButtonStyle())
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 16)

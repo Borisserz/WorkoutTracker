@@ -90,14 +90,16 @@ struct ContentView: View {
             .preferredColorScheme(.dark)
             .zIndex(1)
 
-            VStack {
-                Spacer() 
+            if appState.selectedTab != 2 {
+                VStack {
+                    Spacer() 
 
-                ActiveWorkoutBannerContainer()
+                    ActiveWorkoutBannerContainer()
+                }
+                .padding(.bottom, 56) 
+                .ignoresSafeArea(.keyboard, edges: .bottom) 
+                .zIndex(100)
             }
-            .padding(.bottom, 56) 
-            .ignoresSafeArea(.keyboard, edges: .bottom) 
-            .zIndex(100)
 
             TimerOverlayContainer()
                 .zIndex(200) 
