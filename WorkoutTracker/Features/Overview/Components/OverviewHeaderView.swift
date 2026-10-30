@@ -19,38 +19,56 @@ struct OverviewHeaderView: View {
 
     private var formattedDate: String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEE, MMM d"
+        formatter.dateFormat = "EEEE, d MMMM"
+        formatter.locale = Locale(identifier: "ru_RU")
         return formatter.string(from: Date()).capitalized
     }
 
+    private func streakText(for days: Int) -> String {
+        let remainder10 = days % 10
+        let remainder100 = days % 100
+        let word: String
+        if remainder100 >= 11 && remainder100 <= 19 {
+            word = "дней"
+        } else if remainder10 == 1 {
+            word = "день"
+        } else if remainder10 >= 2 && remainder10 <= 4 {
+            word = "дня"
+        } else {
+            word = "дней"
+        }
+        return "\(days) \(word) подряд"
+    }
+
     var body: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(formattedDate)
-                    .font(.subheadline.weight(.medium))
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
 
-                Text("Overview")
-                    .font(.system(size: 34, weight: .bold, design: .default))
+                Text("Обзор")
+                    .font(.system(size: 32, weight: .heavy, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
             }
 
             Spacer()
 
-            HStack(spacing: 10) {
-                // Subtle Streak Badge
+            HStack(spacing: 8) {
+                // Subtle Streak Badge (Guaranteed single line, pixel-aligned)
                 if streakDays > 0 {
                     HStack(spacing: 6) {
                         Image(systemName: "flame.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(PastelTheme.pastelPeach)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelAmber)
 
-                        Text("\(streakDays) \(streakDays == 1 ? "day" : "days")")
-                            .font(.subheadline.weight(.semibold))
+                        Text(streakText(for: streakDays))
+                            .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
                             .foregroundStyle(PastelTheme.textPrimary)
+                            .lineLimit(1)
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, 11)
+                    .frame(height: 38)
                     .background(PastelTheme.cardSurface)
                     .clipShape(Capsule())
                     .overlay(
@@ -64,9 +82,9 @@ struct OverviewHeaderView: View {
                     onCalendarTap()
                 } label: {
                     Image(systemName: "calendar")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(PastelTheme.textPrimary)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 38, height: 38)
                         .background(PastelTheme.cardSurface)
                         .clipShape(Circle())
                         .overlay(
@@ -81,9 +99,9 @@ struct OverviewHeaderView: View {
                     onProfileTap()
                 } label: {
                     Image(systemName: "person.crop.circle")
-                        .font(.system(size: 20, weight: .medium))
+                        .font(.system(size: 18, weight: .semibold))
                         .foregroundStyle(PastelTheme.textPrimary)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 38, height: 38)
                         .background(PastelTheme.cardSurface)
                         .clipShape(Circle())
                         .overlay(

@@ -22,6 +22,7 @@ struct ExerciseCardView: View {
     @State private var showEffortSheet = false
     @State private var showTechniqueSheet = false
     @State private var isAISupported: Bool = false
+    @State private var showAICameraTracker = false
 
     private var isActiveExercise: Bool { isCurrentExercise && !exercise.isCompleted && workout.isActive }
     private var isWorkoutCompleted: Bool { !workout.isActive }
@@ -271,6 +272,39 @@ struct ExerciseCardView: View {
                     .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
                 .buttonStyle(.plain)
+
+                // AI Camera Tracker pill (Real-time Vision Form & Reps)
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    showAICameraTracker = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "camera.viewfinder")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("AI Камера")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(PastelTheme.pastelLavender)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.pastelLavender.opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.pastelLavender.opacity(0.3), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+                .fullScreenCover(isPresented: $showAICameraTracker) {
+                    AITrackerView(exerciseName: exercise.name) { countedReps in
+                        if countedReps > 0 {
+                            if let targetSet = exercise.setsList.first(where: { !$0.isCompleted }) {
+                                targetSet.reps = countedReps
+                                targetSet.isCompleted = true
+                                let isLast = targetSet.id == exercise.setsList.last?.id
+                                detailViewModel.handleSetCompleted(set: targetSet, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
+                                detailViewModel.updateWorkoutAnalytics(for: workout)
+                            }
+                        }
+                    }
+                }
 
                 Spacer()
             }

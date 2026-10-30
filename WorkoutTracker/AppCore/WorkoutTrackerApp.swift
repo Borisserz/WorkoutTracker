@@ -165,6 +165,24 @@ struct WorkoutTrackerApp: App {
                 Text("A new version of the app is available. Update now to get the latest features and fixes.")
             }
             .onOpenURL { url in
+                if url.scheme == "workouttracker" {
+                    if url.host == "tab", let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+                       let indexStr = components.queryItems?.first(where: { $0.name == "index" })?.value,
+                       let index = Int(indexStr) {
+                        di.appState.selectedTab = index
+                        return
+                    }
+                    if url.host == "discovery" {
+                        di.appState.selectedTab = 2
+                        di.appState.showWorkoutModeDiscovery = true
+                        return
+                    }
+                    if url.host == "profile" {
+                        di.appState.selectedTab = 4
+                        di.appState.showProfileSheet = true
+                        return
+                    }
+                }
                 if url.scheme == "workouttracker" && url.host == "shared" {
                     guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
                           let id = components.queryItems?.first(where: { $0.name == "id" })?.value else { return }

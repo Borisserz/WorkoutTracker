@@ -190,8 +190,8 @@ struct WorkoutHubView: View {
                             // 3. 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
                             weeklyConsistencyBar
 
-                            // 4. Active Workout In-Progress Card (if present)
-                            if let active = activeWorkouts.first {
+                            // 4. Active Workout In-Progress Card (ONLY if a workout is actually running right now)
+                            if let active = activeWorkouts.first, active.isActive, active.endTime == nil, !di.appState.isInsideActiveWorkout, abs(active.date.timeIntervalSinceNow) < 12 * 3600 {
                                 ActiveWorkoutResumeCard(workout: active) {
                                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                                     self.navigateToActiveWorkout = active
@@ -204,21 +204,16 @@ struct WorkoutHubView: View {
                             // 6. Лучшая тренировка на сегодня (Merged Target Focus + Muscle Readiness)
                             todayPlanHeroCard
 
-                            // 7. Category Filter Capsules (Все, Грудь, Спина, Ноги, Плечи, Руки)
-                            filterPillsSection
-
-                            // 8. Компактный горизонтальный свайп-дек шаблонов
-                            myTemplatesHorizontalSection
-                                .id("myTemplatesSection")
-
-                            // 9. "Легендарные Программы" Discovery Row
+                            // 7. "Легендарные Программы" Discovery Row
                             legendarySection
 
                             Spacer(minLength: 40)
                         }
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.top, 10)
                         .padding(.bottom, 24)
                     }
+                    .frame(maxWidth: .infinity)
 
                     // Streak mascot popup overlay
                     if showStreakPopup {
@@ -244,9 +239,8 @@ struct WorkoutHubView: View {
                                 showSmartBuilder = true
                             },
                             onSelectTemplates: {
-                                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                                    proxy.scrollTo("myTemplatesSection", anchor: .top)
-                                }
+                                // Navigate directly to History tab where best workouts and templates live
+                                di.appState.selectedTab = 1
                             }
                         )
                         .transition(.opacity)
@@ -314,6 +308,14 @@ struct WorkoutHubView: View {
                         self.navigateToActiveWorkout = active
                     }
                     di.appState.returnToActiveWorkoutId = nil
+                }
+            }
+            .onChange(of: di.appState.showWorkoutModeDiscovery) { _, newVal in
+                if newVal {
+                    withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+                        showWorkoutModeDiscovery = true
+                    }
+                    di.appState.showWorkoutModeDiscovery = false
                 }
             }
             .task {
@@ -635,25 +637,19 @@ struct WorkoutHubView: View {
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
 
-                        Text("CNS в норме")
+                        Text("Свежие: \(freshMusclesListText)")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.pastelLavender)
+                            .foregroundStyle(PastelTheme.pastelSage)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
-                            .background(PastelTheme.pastelLavender.opacity(0.12))
+                            .background(PastelTheme.pastelSage.opacity(0.12))
                             .clipShape(Capsule())
                     }
 
-                    HStack(spacing: 5) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(PastelTheme.pastelSage)
-
-                        Text("Идеально под восстановление")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(PastelTheme.pastelSage)
-                    }
-                    .padding(.top, 2)
+                    Text("Целевая силовая нагрузка")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                        .padding(.top, 2)
                 }
 
                 Spacer(minLength: 4)
@@ -690,34 +686,17 @@ struct WorkoutHubView: View {
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
 
-            // Compact exercise preview capsules on ONE line
-            HStack(spacing: 6) {
-                Text("Жим 90 кг")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-
-                Text("Подтягивания")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
-
-                Text("Тяга 70 кг")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 4)
-                    .background(PastelTheme.cardSurfaceSubtle)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+            // Compact exercise preview capsules on ONE line (responsive, guaranteed no overflow)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 6) {
+                    exercisePreviewCapsule(title: "Жим 90 кг")
+                    exercisePreviewCapsule(title: "Подтягивания")
+                    exercisePreviewCapsule(title: "Тяга 70 кг")
+                }
+                HStack(spacing: 6) {
+                    exercisePreviewCapsule(title: "Жим 90 кг")
+                    exercisePreviewCapsule(title: "Подтягивания")
+                }
             }
 
             // Direct 1-tap Start Today's Plan Button
@@ -772,57 +751,15 @@ struct WorkoutHubView: View {
         }
     }
 
-    private var filterPillsSection: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                // "Все мышцы" Pill (Oat Capsule when selected)
-                Button {
-                    UISelectionFeedbackGenerator().selectionChanged()
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                        selectedMuscleGroup = nil
-                    }
-                } label: {
-                    Text("Все мышцы")
-                        .font(.system(size: 13, weight: selectedMuscleGroup == nil ? .bold : .medium, design: .rounded))
-                        .foregroundStyle(selectedMuscleGroup == nil ? PastelTheme.textOnOat : PastelTheme.textSecondary)
-                        .padding(.horizontal, 16)
-                        .frame(height: PastelTheme.ButtonMetrics.pillHeight)
-                        .background(selectedMuscleGroup == nil ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule()
-                                .stroke(selectedMuscleGroup == nil ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-
-                // Muscle group pills: Грудь, Спина, Ноги, Плечи, Руки, Кор
-                ForEach(muscleGroups, id: \.self) { group in
-                    let isSelected = selectedMuscleGroup == group
-                    Button {
-                        UISelectionFeedbackGenerator().selectionChanged()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                            selectedMuscleGroup = isSelected ? nil : group
-                        }
-                    } label: {
-                        Text(localizedMuscleTitle(for: group))
-                            .font(.system(size: 13, weight: isSelected ? .bold : .medium, design: .rounded))
-                            .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
-                            .padding(.horizontal, 16)
-                            .frame(height: PastelTheme.ButtonMetrics.pillHeight)
-                            .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
-                            .clipShape(Capsule())
-                            .overlay(
-                                Capsule()
-                                    .stroke(isSelected ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 16)
+    private func exercisePreviewCapsule(title: String) -> some View {
+        Text(title)
+            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .foregroundStyle(PastelTheme.textPrimary)
+            .padding(.horizontal, 9)
             .padding(.vertical, 4)
-        }
+            .background(PastelTheme.cardSurfaceSubtle)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
     }
 
     // MARK: - 5. Default Routines Data (Exact Mockup Match)
@@ -1594,7 +1531,6 @@ struct FloatingSparklesIcon: View {
     }
 }
 
-/// Card showing the in-progress session with direct 1-tap resume (Human Designer Craft, Zero Slop)
 private struct ActiveWorkoutResumeCard: View {
     let workout: Workout
     let onResume: () -> Void
@@ -1602,13 +1538,12 @@ private struct ActiveWorkoutResumeCard: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
-                // Designer status row: clean sentence case + stopwatch timer pill (guaranteed single line)
+                // Designer status row: clean sentence case + stopwatch timer pill
                 HStack(alignment: .center, spacing: 8) {
                     Text("Идет тренировка")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
                         .lineLimit(1)
-                        .fixedSize()
 
                     // Minimal stopwatch timer capsule strictly on ONE line
                     HStack(spacing: 4) {
@@ -1617,7 +1552,6 @@ private struct ActiveWorkoutResumeCard: View {
                         Text(workout.date, style: .timer)
                             .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
                             .lineLimit(1)
-                            .fixedSize()
                     }
                     .foregroundStyle(PastelTheme.textPrimary)
                     .padding(.horizontal, 7)
@@ -1640,8 +1574,7 @@ private struct ActiveWorkoutResumeCard: View {
                     .foregroundStyle(PastelTheme.textSecondary)
                     .lineLimit(1)
             }
-
-            Spacer(minLength: 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Button(action: onResume) {
                 HStack(spacing: 5) {
@@ -1650,7 +1583,6 @@ private struct ActiveWorkoutResumeCard: View {
                     Text("Продолжить")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .lineLimit(1)
-                        .fixedSize()
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
                 .padding(.horizontal, 14)

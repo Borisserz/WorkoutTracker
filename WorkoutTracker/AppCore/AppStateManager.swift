@@ -16,6 +16,8 @@ final class AppStateManager {
     var showGuestSignUpPrompt: Bool = false
 
     var requestedWidgetAction: String? = nil
+    var showWorkoutModeDiscovery: Bool = false
+    var showProfileSheet: Bool = false
 
     func showError(title: String, message: String) {
         self.currentError = AppError(title: title, message: message)

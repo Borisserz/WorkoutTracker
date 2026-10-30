@@ -31,6 +31,7 @@ struct ProfileView: View {
 
     @State private var isAppeared = false
     @State private var showEditMetrics = false
+    @State private var showAchievementsFolder = false
 
     var body: some View {
         NavigationStack {
@@ -59,7 +60,13 @@ struct ProfileView: View {
                         trackingNavigationSection
                         
                         if !profileVM.cachedAchievements.isEmpty {
-                            AchievementsCarousel(achievements: profileVM.cachedAchievements)
+                            AchievementsFolderButton(
+                                achievements: profileVM.cachedAchievements,
+                                onOpenFolder: {
+                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    showAchievementsFolder = true
+                                }
+                            )
                         }
 
                         if !profileVM.cachedPersonalRecords.isEmpty {
@@ -101,6 +108,12 @@ struct ProfileView: View {
             EditMetricsSheet()
                 .presentationDetents([.height(450)])
                 .presentationCornerRadius(35)
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showAchievementsFolder) {
+            AchievementsFolderSheet(achievements: profileVM.cachedAchievements)
+                .presentationDetents([.fraction(0.88), .large])
+                .presentationCornerRadius(28)
                 .presentationDragIndicator(.visible)
         }
     }
@@ -346,44 +359,81 @@ struct ProfileHeader: View {
 
 struct LevelProgressBar: View {
     let progressManager: ProgressManager
-    @Environment(\.colorScheme) private var colorScheme 
 
     var body: some View {
         let progress = CGFloat(progressManager.progressPercentage)
 
-        VStack(spacing: 12) {
-            HStack {
-                Text("Level \(progressManager.level)")
-                    .font(.caption).bold()
-                    .foregroundColor(progress > 0 ? .orange : .gray)
+        VStack(spacing: 10) {
+            // Top row: Level Badge + Title + XP numbers
+            HStack(alignment: .center) {
+                HStack(spacing: 8) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "bolt.shield.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelAmber)
+
+                        Text("Уровень \(progressManager.level)")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelAmber)
+                    }
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                    Text(progressManager.currentTitle)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                }
+
                 Spacer()
-                Text("\(progressManager.currentXPInLevel) XP")
-                    .font(.subheadline).bold()
-                    .foregroundColor(.red)
-                Spacer()
-                Text("Level \(progressManager.level + 1)")
-                    .font(.caption).bold()
-                    .foregroundColor(.gray)
+
+                HStack(spacing: 4) {
+                    Text("\(progressManager.currentXPInLevel)")
+                        .font(.system(size: 13, weight: .heavy, design: .rounded).monospacedDigit())
+                        .foregroundStyle(PastelTheme.pastelOat)
+
+                    Text("XP")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textTertiary)
+                }
             }
 
+            // Recessed High-Contrast Athletic Progress Bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05)) 
-                        .frame(height: 12)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(height: 10)
+
                     Capsule()
-                        .fill(LinearGradient(colors: [.orange, .red, .purple], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: geo.size.width * progress, height: 12)
-                        .shadow(color: .red.opacity(0.5), radius: 8, x: 0, y: 0)
+                        .fill(PastelTheme.pastelAmber)
+                        .frame(width: max(10, geo.size.width * progress), height: 10)
                 }
             }
-            .frame(height: 12)
+            .frame(height: 10)
+
+            // Bottom Progress status
+            HStack {
+                Text("\(Int(progress * 100))% до уровня \(progressManager.level + 1)")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
+
+                Spacer()
+
+                Text("Цель: \(progressManager.xpToNextLevel) XP")
+                    .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(PastelTheme.textTertiary)
+            }
         }
-        .padding()
-        .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white) 
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05), lineWidth: 1)) 
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2) 
+        .padding(14)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
         .padding(.horizontal, 20)
     }
 }
@@ -427,78 +477,350 @@ struct YearlyTransformationView: View {
     }
 }
 
-struct AchievementsCarousel: View {
+/// Tactile folder / dossier button representing the achievements archive
+struct AchievementsFolderButton: View {
     let achievements: [Achievement]
-    @Environment(\.colorScheme) private var colorScheme 
+    let onOpenFolder: () -> Void
 
-    @State private var currentIndex: CGFloat = 0
-    @GestureState private var dragOffset: CGFloat = 0
+    private var unlockedCount: Int {
+        achievements.filter { $0.isUnlocked }.count
+    }
 
     var body: some View {
-        let total = CGFloat(achievements.count)
-        let current = currentIndex - (dragOffset / 250)
+        Button(action: onOpenFolder) {
+            HStack(spacing: 14) {
+                // Folder tab emblem with layered stacked papers aesthetic
+                ZStack {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 46, height: 46)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                        )
+                        .rotationEffect(.degrees(-4))
 
-        VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .bottom) {
-                Text("Your trophies (Swipe)")
-                    .font(.title3).bold()
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(PastelTheme.cardSurface)
+                        .frame(width: 46, height: 46)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                        )
+
+                    Image(systemName: "folder.badge.gearshape")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(PastelTheme.pastelAmber)
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Папка наград и достижений")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+
+                    HStack(spacing: 6) {
+                        Text("\(unlockedCount) из \(achievements.count) получено")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelSage)
+
+                        Text("·")
+                            .foregroundStyle(PastelTheme.textTertiary)
+
+                        Text("Удерживайте для деталей")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+                }
+
                 Spacer()
-                NavigationLink(destination: AllAchievementsView(achievements: achievements)) {
-                    Text("All")
-                        .font(.subheadline).bold()
-                        .foregroundColor(.blue)
-                }
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(PastelTheme.textSecondary)
             }
-            .padding(.horizontal, 20)
-
-            ZStack {
-                ForEach(0..<achievements.count, id: \.self) { i in
-                    let distance = shortestDistance(from: current, to: CGFloat(i), total: total)
-                    let angle = distance * (360.0 / total)
-                    let angleRad = angle * .pi / 180
-
-                    let x = sin(angleRad) * 280
-                    let z = cos(angleRad)
-
-                    let scale = 0.75 + 0.25 * z
-                    let opacity = max(0, 0.1 + 0.9 * z)
-
-                    AchievementDesignerCard(
-                        achievement: achievements[i]
-                    )
-                    .offset(x: x)
-                    .scaleEffect(scale)
-                    .opacity(z > -0.3 ? opacity : 0)
-                    .zIndex(z)
-                    .rotation3DEffect(.degrees(angle * 0.7), axis: (x: 0, y: 1, z: 0))
-                }
-            }
-            .frame(height: 240)
-            .frame(maxWidth: .infinity)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture()
-                    .updating($dragOffset) { val, state, _ in
-                        state = val.translation.width
-                    }
-                    .onEnded { val in
-                        let moved = val.translation.width / 250
-                        let target = round(currentIndex - moved)
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                            currentIndex = target
-                        }
-                    }
+            .padding(14)
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
+    }
+}
+
+/// Luxury modal sheet presenting the achievements showcase in elegant tiles.
+/// Supports tapping or long-pressing any achievement to inspect details and meaning.
+struct AchievementsFolderSheet: View {
+    let achievements: [Achievement]
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var inspectedAchievement: Achievement? = nil
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                PastelTheme.canvas.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Header description
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Коллекция наград")
+                                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                                    .foregroundStyle(PastelTheme.textPrimary)
+
+                                Text("Зажмите любую плитку для проверки условий")
+                                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                                    .foregroundStyle(PastelTheme.textSecondary)
+                            }
+
+                            Spacer()
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 10)
+
+                        // 2-Column Luxury Achievement Tiles Grid
+                        LazyVGrid(columns: columns, spacing: 12) {
+                            ForEach(achievements) { achievement in
+                                AchievementTileCard(
+                                    achievement: achievement,
+                                    isSelected: inspectedAchievement?.id == achievement.id,
+                                    onTap: {
+                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                            if inspectedAchievement?.id == achievement.id {
+                                                inspectedAchievement = nil
+                                            } else {
+                                                inspectedAchievement = achievement
+                                            }
+                                        }
+                                    },
+                                    onLongPress: {
+                                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                            inspectedAchievement = achievement
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 16)
+
+                        Spacer(minLength: 40)
+                    }
+                }
+
+                // Inspection HUD Overlay at the bottom if an achievement is selected
+                if let inspected = inspectedAchievement {
+                    VStack {
+                        Spacer()
+
+                        AchievementInspectionCard(
+                            achievement: inspected,
+                            onClose: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                    inspectedAchievement = nil
+                                }
+                            }
+                        )
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    }
+                }
+            }
+            .navigationTitle("Архив наград")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Готово") {
+                        dismiss()
+                    }
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.pastelOat)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
+private struct AchievementTileCard: View {
+    let achievement: Achievement
+    let isSelected: Bool
+    let onTap: () -> Void
+    let onLongPress: () -> Void
+
+    private var tierColor: Color {
+        guard achievement.isUnlocked else { return PastelTheme.cardBorder }
+        switch achievement.tier {
+        case .none: return PastelTheme.cardBorder
+        case .bronze: return PastelTheme.pastelPeach
+        case .silver: return PastelTheme.pastelOat
+        case .gold: return PastelTheme.pastelAmber
+        case .diamond: return PastelTheme.pastelLavender
         }
     }
 
-    func shortestDistance(from current: CGFloat, to target: CGFloat, total: CGFloat) -> CGFloat {
-        let diff = target - current
-        var wrapped = diff.truncatingRemainder(dividingBy: total)
-        if wrapped < 0 { wrapped += total }
-        if wrapped > total / 2.0 { wrapped -= total }
-        return wrapped
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 8) {
+                HStack {
+                    Text(achievement.tier.name)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(tierColor)
+
+                    Spacer()
+
+                    if achievement.isUnlocked {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                    } else {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(PastelTheme.textTertiary)
+                    }
+                }
+
+                ZStack {
+                    Circle()
+                        .fill(achievement.isUnlocked ? tierColor.opacity(0.15) : PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 44, height: 44)
+
+                    Image(systemName: achievement.icon)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(achievement.isUnlocked ? tierColor : PastelTheme.textTertiary)
+                }
+                .padding(.vertical, 4)
+
+                Text(achievement.title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(achievement.isUnlocked ? PastelTheme.textPrimary : PastelTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .frame(height: 34)
+
+                Text(achievement.progress.isEmpty ? (achievement.isUnlocked ? "Получено" : "В процессе") : achievement.progress)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textTertiary)
+                    .lineLimit(1)
+            }
+            .padding(12)
+            .background(isSelected ? PastelTheme.cardSurfaceSubtle : PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(isSelected ? tierColor : (achievement.isUnlocked ? tierColor.opacity(0.3) : PastelTheme.cardBorder), lineWidth: isSelected ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .simultaneousGesture(
+            LongPressGesture(minimumDuration: 0.35)
+                .onEnded { _ in onLongPress() }
+        )
+    }
+}
+
+private struct AchievementInspectionCard: View {
+    let achievement: Achievement
+    let onClose: () -> Void
+
+    private var tierColor: Color {
+        guard achievement.isUnlocked else { return PastelTheme.cardBorder }
+        switch achievement.tier {
+        case .none: return PastelTheme.cardBorder
+        case .bronze: return PastelTheme.pastelPeach
+        case .silver: return PastelTheme.pastelOat
+        case .gold: return PastelTheme.pastelAmber
+        case .diamond: return PastelTheme.pastelLavender
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(tierColor.opacity(0.18))
+                        .frame(width: 46, height: 46)
+
+                    Image(systemName: achievement.icon)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(tierColor)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(achievement.tier.name)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(tierColor)
+
+                        Text("·")
+                            .foregroundStyle(PastelTheme.textTertiary)
+
+                        Text(achievement.isUnlocked ? "Награда получена" : "Условие не выполнено")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(achievement.isUnlocked ? PastelTheme.pastelSage : PastelTheme.textSecondary)
+                    }
+
+                    Text(achievement.title)
+                        .font(.system(size: 16, weight: .heavy, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                }
+
+                Spacer()
+
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                        .frame(width: 28, height: 28)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+            }
+
+            Text(achievement.description)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(PastelTheme.textSecondary)
+                .lineSpacing(3)
+
+            if !achievement.progress.isEmpty {
+                HStack(spacing: 6) {
+                    Image(systemName: "chart.bar.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(PastelTheme.pastelAmber)
+
+                    Text("Текущий прогресс: \(achievement.progress)")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelAmber)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(Capsule())
+            }
+        }
+        .padding(16)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(tierColor.opacity(0.4), lineWidth: 1.5)
+        )
+        .shadow(color: Color.black.opacity(0.5), radius: 24, y: 8)
     }
 }
 

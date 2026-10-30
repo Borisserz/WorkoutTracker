@@ -19,16 +19,16 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
     var fullTitle: String {
         switch self {
         case .empty: return "Пустая тренировка"
-        case .aiBuilder: return "AI Смарт-Билдер"
-        case .templates: return "Мои шаблоны"
+        case .aiBuilder: return "Смарт-тренировка"
+        case .templates: return "История и шаблоны"
         }
     }
 
     var categoryTitle: String {
         switch self {
         case .empty: return "Свободный выбор"
-        case .aiBuilder: return "Адаптивный алгоритм"
-        case .templates: return "Готовая программа"
+        case .aiBuilder: return "Адаптивный подбор"
+        case .templates: return "Золотые сплиты"
         }
     }
 
@@ -44,14 +44,14 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
         switch self {
         case .empty: return "plus"
         case .aiBuilder: return "sparkles"
-        case .templates: return "square.stack.3d.up.fill"
+        case .templates: return "trophy.fill"
         }
     }
 
     var accentColor: Color {
         switch self {
         case .empty: return PastelTheme.pastelSage       // Athletic Emerald
-        case .aiBuilder: return PastelTheme.pastelLavender // Neural Violet
+        case .aiBuilder: return PastelTheme.pastelLavender // Soft Violet
         case .templates: return PastelTheme.pastelAmber     // Warm Amber
         }
     }
@@ -59,8 +59,8 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
     var badgeText: String {
         switch self {
         case .empty: return "Свободный сет"
-        case .aiBuilder: return "Умный подбор"
-        case .templates: return "Из каталога"
+        case .aiBuilder: return "Умный план"
+        case .templates: return "Из истории"
         }
     }
 
@@ -69,9 +69,9 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
         case .empty:
             return "Чистый лист для опытных атлетов. Записывайте любые упражнения, меняйте веса и подходы прямо на ходу без жестких рамок."
         case .aiBuilder:
-            return "Интеллектуальный расчет нагрузки под статус восстановления мышечных групп и вашу текущую выносливость с прогрессией."
+            return "Интеллектуальный расчет нагрузки под статус восстановления мышц и вашу текущую выносливость с прогрессией."
         case .templates:
-            return "Проверенные тренировочные протоколы. Мгновенный запуск сохраненных тренировочных планов и золотых сплитов с историей весов."
+            return "Проверенные протоколы и золотые сплиты из вкладки История. Мгновенный повтор вашей лучшей тренировки в 1 тап."
         }
     }
 
@@ -80,9 +80,9 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
         case .empty:
             return ["0 ограничений", "Быстрый старт", "Свой порядок"]
         case .aiBuilder:
-            return ["Анализ мышц", "Смарт-объем", "CNS Прогрессия"]
+            return ["Анализ мышц", "Смарт-объем", "Прогрессия"]
         case .templates:
-            return ["История весов", "Готовые сеты", "Таймер отдыха"]
+            return ["Лучший тоннаж", "История весов", "В 1 тап"]
         }
     }
 }

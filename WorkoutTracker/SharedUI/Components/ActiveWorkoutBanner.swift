@@ -10,7 +10,9 @@ struct ActiveWorkoutBannerContainer: View {
     private var activeWorkouts: [Workout]
 
     var body: some View {
-        if let activeWorkout = activeWorkouts.first, !di.appState.isInsideActiveWorkout {
+        if let activeWorkout = activeWorkouts.first,
+           abs(activeWorkout.date.timeIntervalSinceNow) < 12 * 3600,
+           !di.appState.isInsideActiveWorkout {
             ActiveWorkoutBanner(workout: activeWorkout)
                 .padding(.horizontal, 16)
                 .transition(.move(edge: .bottom).combined(with: .opacity))

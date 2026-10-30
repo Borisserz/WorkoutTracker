@@ -31,11 +31,55 @@ struct HistoryView: View {
     @Environment(UnitsManager.self) var unitsManager
 
     @Query(sort: \Workout.date, order: .reverse) private var allWorkouts: [Workout]
+    @Query(sort: \WorkoutPreset.name) private var allPresets: [WorkoutPreset]
 
     @State private var searchText = ""
     @State private var isSearching = false
     @State private var selectedFilter: HistoryFilter = .all
     @State private var isEditingList = false
+    @State private var navigateToActiveWorkout: Workout? = nil
+
+    private var displayTemplates: [WorkoutPreset] {
+        if !allPresets.isEmpty {
+            return allPresets
+        }
+        return [
+            WorkoutPreset(
+                name: "Силовой День А",
+                icon: "dumbbell.fill",
+                folderName: "Золотые сплиты",
+                exercises: [
+                    Exercise(name: "Жим штанги лежа", muscleGroup: "Chest", setsList: [WorkoutSet(weight: 90, reps: 8)]),
+                    Exercise(name: "Подтягивания", muscleGroup: "Back", setsList: [WorkoutSet(weight: 0, reps: 8)]),
+                    Exercise(name: "Армейский жим", muscleGroup: "Shoulders", setsList: [WorkoutSet(weight: 50, reps: 8)])
+                ]
+            ),
+            WorkoutPreset(
+                name: "Arnold's Golden Split",
+                icon: "flame.fill",
+                folderName: "Золотая эра",
+                exercises: [
+                    Exercise(name: "Жим на наклонной", muscleGroup: "Chest", setsList: [WorkoutSet(weight: 80, reps: 10)]),
+                    Exercise(name: "Тяга верхнего блока", muscleGroup: "Back", setsList: [WorkoutSet(weight: 70, reps: 10)])
+                ]
+            ),
+            WorkoutPreset(
+                name: "Mike Mentzer HIT",
+                icon: "bolt.fill",
+                folderName: "HIT Протокол",
+                exercises: [
+                    Exercise(name: "Жим гантелей лежа", muscleGroup: "Chest", setsList: [WorkoutSet(weight: 36, reps: 8)]),
+                    Exercise(name: "Становая тяга", muscleGroup: "Back", setsList: [WorkoutSet(weight: 120, reps: 6)])
+                ]
+            )
+        ]
+    }
+
+    // MARK: - Computed Best Workouts for Top Hall of Fame
+    private var bestHistoricalWorkouts: [Workout] {
+        let completed = allWorkouts.filter { $0.endTime != nil }
+        return Array(completed.sorted(by: { $0.totalStrengthVolume > $1.totalStrengthVolume }).prefix(6))
+    }
 
     // MARK: - Computed Filtered Workouts
     private var filteredWorkouts: [Workout] {
@@ -132,6 +176,39 @@ struct HistoryView: View {
         return groups
     }
 
+    private func replayWorkout(_ workout: Workout) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Task { @MainActor in
+            let title = workout.title.isEmpty ? "Повтор тренировки" : workout.title
+            if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
+                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+                descriptor.fetchLimit = 1
+                if let newWorkout = try? context.fetch(descriptor).first {
+                    for ex in workout.exercises {
+                        let newEx = Exercise(name: ex.name, muscleGroup: ex.muscleGroup, type: ex.type, sets: max(1, ex.setsList.count), reps: ex.setsList.first?.reps ?? 10, weight: ex.setsList.first?.weight ?? 0)
+                        context.insert(newEx)
+                        newWorkout.exercises.append(newEx)
+                    }
+                    try? context.save()
+                    self.navigateToActiveWorkout = newWorkout
+                }
+            }
+        }
+    }
+
+    private func startPreset(_ preset: WorkoutPreset) {
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        Task { @MainActor in
+            if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
+                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+                descriptor.fetchLimit = 1
+                if let newWorkout = try? context.fetch(descriptor).first {
+                    self.navigateToActiveWorkout = newWorkout
+                }
+            }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -180,6 +257,17 @@ struct HistoryView: View {
                         HistoryFilterBarView(
                             selectedFilter: $selectedFilter
                         )
+
+                        // 4.5. Золотые сплиты и история лучших тренировок (Шаблоны)
+                        if (!bestHistoricalWorkouts.isEmpty || !displayTemplates.isEmpty) && searchText.isEmpty && selectedFilter == .all {
+                            BestWorkoutsAndTemplatesShelf(
+                                bestWorkouts: bestHistoricalWorkouts,
+                                presets: displayTemplates,
+                                unitsManager: unitsManager,
+                                onReplayWorkout: replayWorkout,
+                                onStartPreset: startPreset
+                            )
+                        }
                     }
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                     .listRowSeparator(.hidden)
@@ -306,6 +394,9 @@ struct HistoryView: View {
                     hideKeyboard()
                     withAnimation { isSearching = false }
                 }
+            }
+            .navigationDestination(item: $navigateToActiveWorkout) { workout in
+                WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
             .navigationBarHidden(true)
         }
@@ -847,4 +938,188 @@ extension View {
     }
 }
 #endif
+
+// MARK: - Best Workouts & Templates Shelf
+struct BestWorkoutsAndTemplatesShelf: View {
+    let bestWorkouts: [Workout]
+    let presets: [WorkoutPreset]
+    let unitsManager: UnitsManager
+    let onReplayWorkout: (Workout) -> Void
+    let onStartPreset: (WorkoutPreset) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 8) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(PastelTheme.pastelAmber)
+
+                Text("История лучших тренировок и шаблоны")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
+                Spacer()
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    // Best Historical Workouts
+                    ForEach(bestWorkouts) { workout in
+                        BestWorkoutReplayCard(
+                            workout: workout,
+                            unitsManager: unitsManager,
+                            onReplay: { onReplayWorkout(workout) }
+                        )
+                    }
+
+                    // User Routine Templates
+                    ForEach(presets) { preset in
+                        PresetReplayCard(
+                            preset: preset,
+                            onStart: { onStartPreset(preset) }
+                        )
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+        }
+        .padding(14)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+    }
+}
+
+private struct BestWorkoutReplayCard: View {
+    let workout: Workout
+    let unitsManager: UnitsManager
+    let onReplay: () -> Void
+
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d MMM"
+        formatter.locale = Locale(identifier: "ru_RU")
+        return formatter.string(from: workout.date)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Рекорд")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelAmber)
+
+                    Text(workout.title.isEmpty ? "Тренировка" : workout.title)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Text(formattedDate)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textTertiary)
+            }
+
+            let tons = workout.totalStrengthVolume / 1000.0
+            HStack(spacing: 6) {
+                Text(String(format: "%.1f т", tons))
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.pastelSage)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+
+                Text("\(workout.exercises.count) упр.")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
+            }
+
+            Button(action: onReplay) {
+                HStack(spacing: 5) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("Повторить")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(PastelTheme.textOnOat)
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .background(PastelTheme.pastelOat)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .frame(width: 170)
+        .background(PastelTheme.cardSurfaceSubtle)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+    }
+}
+
+private struct PresetReplayCard: View {
+    let preset: WorkoutPreset
+    let onStart: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Шаблон")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelLavender)
+
+                    Text(preset.name)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+            }
+
+            Text("\(preset.exercises.count) упр.")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundStyle(PastelTheme.textSecondary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(Capsule())
+
+            Button(action: onStart) {
+                HStack(spacing: 5) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 10, weight: .bold))
+                    Text("Запустить")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(PastelTheme.textOnOat)
+                .frame(maxWidth: .infinity)
+                .frame(height: 32)
+                .background(PastelTheme.pastelSage)
+                .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .frame(width: 170)
+        .background(PastelTheme.cardSurfaceSubtle)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+    }
+}
+
 

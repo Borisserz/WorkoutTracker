@@ -351,6 +351,12 @@ struct StatsContentView: View {
                     .presentationDetents([.medium])
             }
         }
+        .onChange(of: di.appState.showProfileSheet) { _, newVal in
+            if newVal {
+                showProfile = true
+                di.appState.showProfileSheet = false
+            }
+        }
         .onAppear {
             if UserDefaults.standard.bool(forKey: "hasSeenFeatureDiscovery") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -443,9 +449,9 @@ struct MascotStreakView: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(PastelTheme.pastelAmber.opacity(0.18))
                     .frame(width: 60, height: 60)
-                    .shadow(color: .orange.opacity(0.5), radius: 10, x: 0, y: 5)
+                    .overlay(Circle().stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1.5))
 
                 if UIImage(named: "fire_mascot") != nil {
                     Image("fire_mascot")
@@ -1033,26 +1039,19 @@ struct AIIslandSquareView: View {
                     HStack {
                         ZStack {
                             Circle()
-                                .fill(
-                                    LinearGradient(
-                                        colors: [Color.blue.opacity(0.25), Color.purple.opacity(0.15)],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
+                                .fill(PastelTheme.pastelLavender.opacity(0.15))
                                 .frame(width: 40, height: 40)
+                                .overlay(Circle().stroke(PastelTheme.pastelLavender.opacity(0.3), lineWidth: 1))
+
                             Image(systemName: "sparkles")
-                                .font(.system(size: 18))
-                                .foregroundStyle(
-                                    LinearGradient(colors: [.purple, .cyan], startPoint: .top, endPoint: .bottom)
-                                )
-                                .shadow(color: .purple.opacity(0.3), radius: 3)
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(PastelTheme.pastelLavender)
                         }
                         Spacer()
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("AI Efficiency")
+                        Text("Анализ формы")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .minimumScaleFactor(0.9)
@@ -3525,11 +3524,9 @@ struct HeatmapDetailView: View {
                             .foregroundColor(.white.opacity(0.9))
 
                         Text(LocalizedStringKey(data.topMuscle))
-                            .font(.system(size: 60, weight: .black, design: .rounded))
+                            .font(.system(size: 48, weight: .heavy, design: .rounded))
                             .textCase(.uppercase)
-
-                            .foregroundStyle(LinearGradient(colors: [.green, .cyan], startPoint: .leading, endPoint: .trailing))
-                            .shadow(color: .green.opacity(0.8), radius: 25, x: 0, y: 0)
+                            .foregroundStyle(PastelTheme.pastelSage)
                     }
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 20)
@@ -3538,17 +3535,16 @@ struct HeatmapDetailView: View {
                         currentData: data.radarCurrent,
                         previousData: nil,
                         highlightedAxis: data.topMuscle,
-                        color: .cyan
+                        color: PastelTheme.pastelSage
                     )
                     .frame(height: 350)
                     .padding(30)
-                    .background(Color(white: 0.05))
-                    .cornerRadius(40)
+                    .background(PastelTheme.cardSurface)
+                    .cornerRadius(28)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 40)
-                            .stroke(LinearGradient(colors: [.cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+                        RoundedRectangle(cornerRadius: 28)
+                            .stroke(PastelTheme.cardBorderFocused, lineWidth: 1.5)
                     )
-                    .shadow(color: .cyan.opacity(0.2), radius: 30, x: 0, y: 15)
                     .padding(.horizontal, 24)
 
                     Spacer()
@@ -3581,20 +3577,16 @@ struct StorySlideOutro: View {
 
                     ZStack {
                         RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .fill(Color(white: 0.08))
+                            .fill(PastelTheme.cardSurface)
 
                         RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .fill(.ultraThinMaterial)
-                            .environment(\.colorScheme, ColorScheme.dark)
-
-                        RoundedRectangle(cornerRadius: 32, style: .continuous)
-                            .stroke(LinearGradient(colors: [.purple, .cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1.5)
 
                         VStack(spacing: 30) {
-                            Text("DISCIPLINE")
-                                .font(.system(size: 24, weight: .black, design: .rounded))
-                                .tracking(4)
-                                .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .leading, endPoint: .trailing))
+                            Text("ДИСЦИПЛИНА")
+                                .font(.system(size: 24, weight: .heavy, design: .rounded))
+                                .tracking(3)
+                                .foregroundStyle(PastelTheme.pastelOat)
 
                             HStack(spacing: 20) {
                                 holoStat(value: "\(data.streakDays)", title: "Max Streak", color: .orange)
