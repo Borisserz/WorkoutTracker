@@ -195,17 +195,23 @@ struct WorkoutHubView: View {
                                 }
                             }
 
-                            // 4. Hero Action: Unified "Начать тренировку" CTA (Triggers Hearthstone 3-Card Discovery)
+                            // 4. Боевой Кокпит Готовности: Muscle Readiness Cockpit (Concept 1)
+                            muscleReadinessCockpitCard
+
+                            // 5. Hero Action: Unified "Начать тренировку" CTA (Triggers Hearthstone 3-Card Discovery)
                             startWorkoutHeroSection
 
-                            // 5. Category Filter Capsules (Все, Грудь, Спина, Ноги, Плечи, Руки)
+                            // 6. Сегодня по плану: Today's Target Focus Card
+                            todayPlanHeroCard
+
+                            // 7. Category Filter Capsules (Все, Грудь, Спина, Ноги, Плечи, Руки)
                             filterPillsSection
 
-                            // 6. Hevy-style "Шаблоны тренировок" with exercise breakdown list & 1-tap start
-                            myTemplatesSection
+                            // 8. Компактный горизонтальный свайп-дек шаблонов
+                            myTemplatesHorizontalSection
                                 .id("myTemplatesSection")
 
-                            // 7. "Легендарные Программы" with horizontal cards
+                            // 9. "Легендарные Программы" Discovery Row
                             legendarySection
 
                             Spacer(minLength: 40)
@@ -464,16 +470,212 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
+    // MARK: - 4. Muscle Readiness Cockpit Card (Concept 1: Боевой Кокпит Готовности)
+    private var averageReadinessPercentage: Int {
+        if dashboardViewModel.recoveryStatus.isEmpty {
+            return 88
+        }
+        let total = dashboardViewModel.recoveryStatus.map(\.recoveryPercentage).reduce(0, +)
+        return max(40, min(100, total / max(1, dashboardViewModel.recoveryStatus.count)))
+    }
+
+    private var freshMusclesListText: String {
+        let fresh = dashboardViewModel.recoveryStatus
+            .filter { $0.recoveryPercentage >= 75 }
+            .prefix(3)
+            .map { localizedMuscleTitle(for: $0.muscleGroup) }
+        if fresh.isEmpty {
+            return "Грудь, Спина"
+        }
+        return fresh.joined(separator: ", ")
+    }
+
+    private var muscleReadinessCockpitCard: some View {
+        HStack(spacing: 14) {
+            // Circular Readiness Gauge Ring
+            ZStack {
+                Circle()
+                    .stroke(PastelTheme.cardSurfaceSubtle, lineWidth: 5)
+                    .frame(width: 52, height: 52)
+
+                Circle()
+                    .trim(from: 0, to: CGFloat(averageReadinessPercentage) / 100.0)
+                    .stroke(PastelTheme.pastelSage, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .frame(width: 52, height: 52)
+                    .rotationEffect(.degrees(-90))
+
+                VStack(spacing: 0) {
+                    Text("\(averageReadinessPercentage)%")
+                        .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+
+                    Text("готов")
+                        .font(.system(size: 8, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text("Готовность мышц к нагрузке")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+
+                    Spacer()
+
+                    Text("\(averageReadinessPercentage)% пик")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(PastelTheme.pastelSage.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+
+                Text("Готовы к работе: \(freshMusclesListText)")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(PastelTheme.textSecondary)
+                    .lineLimit(1)
+
+                HStack(spacing: 6) {
+                    Text("Восстановление +36ч")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textTertiary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .clipShape(Capsule())
+
+                    Text("CNS в норме")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelLavender)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(PastelTheme.pastelLavender.opacity(0.1))
+                        .clipShape(Capsule())
+                }
+            }
+        }
+        .padding(14)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - 5. Today's Plan Hero Card (One Clear Target, Zero Wall of Text)
+    private var todayPlanHeroCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                HStack(spacing: 6) {
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(PastelTheme.pastelAmber)
+
+                    Text("Цель на сегодня")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelAmber)
+                }
+
+                Spacer()
+
+                Text("~45 мин")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(myRoutines.first?.name ?? "Силовой День А")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
+                Text("Грудь, Спина, Плечи — 4 упражнения")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(PastelTheme.textSecondary)
+            }
+
+            // Compact exercise preview capsules on ONE line
+            HStack(spacing: 6) {
+                Text("Жим 90 кг")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                Text("Подтягивания")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                Text("Тяга 70 кг")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+            }
+
+            // Direct 1-tap Start Today's Plan Button
+            Button {
+                HapticManager.playMediumImpact()
+                if let first = myRoutines.first {
+                    startWorkoutFromPreset(first)
+                } else {
+                    startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises)
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 13, weight: .bold))
+
+                    Text("Начать: \(myRoutines.first?.name ?? "Силовой День А")")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                }
+                .foregroundStyle(PastelTheme.textOnOat)
+                .frame(maxWidth: .infinity)
+                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
+                .background(PastelTheme.pastelOat)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.splitRadius, style: .continuous))
+                .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 6, y: 2)
+            }
+            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.0))
+        }
+        .padding(16)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+    }
+
     // MARK: - 4. Category Filter Capsules (Exact Mockup Match)
     private func localizedMuscleTitle(for group: String) -> String {
         switch group.lowercased() {
         case "chest": return "Грудь"
-        case "back": return "Спина"
-        case "legs": return "Ноги"
-        case "shoulders": return "Плечи"
-        case "arms": return "Руки"
-        case "core": return "Кор"
-        default: return MuscleDisplayHelper.getDisplayName(for: group)
+        case "back", "upper-back", "lats", "lower-back": return "Спина"
+        case "legs", "quadriceps", "hamstring", "gluteal", "quads", "glutes": return "Ноги"
+        case "shoulders", "deltoids": return "Плечи"
+        case "arms", "forearm", "forearms": return "Руки"
+        case "biceps": return "Бицепс"
+        case "triceps": return "Трицепс"
+        case "calves": return "Икры"
+        case "core", "abs", "obliques": return "Кор"
+        case "trapezius": return "Трапеции"
+        default: return LocalizationHelper.shared.translateName(group)
         }
     }
 
@@ -581,18 +783,18 @@ struct WorkoutHubView: View {
         }
     }
 
-    // MARK: - 5. "Мои шаблоны" Section (Hevy Standard: Rich Routine Cards with Exercise Breakdown)
+    // MARK: - 6. "Шаблоны тренировок" Compact Horizontal Swipe-Deck (Concept 1: Zero Walls of Text)
     private var totalTemplateCount: Int {
-        myRoutines.isEmpty ? 2 : myRoutines.count
+        myRoutines.isEmpty ? 3 : myRoutines.count
     }
 
-    private var myTemplatesSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
+    private var myTemplatesHorizontalSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
             // Header Row
             HStack(alignment: .center) {
                 HStack(spacing: 8) {
                     Text("Шаблоны тренировок")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
                     Text("\(totalTemplateCount)")
@@ -635,35 +837,133 @@ struct WorkoutHubView: View {
             }
             .padding(.horizontal, 16)
 
-            // Render Custom User Presets if available
-            if !myRoutines.isEmpty {
-                ForEach(myRoutines) { preset in
-                    userPresetHevyCard(preset: preset)
+            // Horizontal Swipe Deck of Templates (Compact & Clean)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 12) {
+                    if !myRoutines.isEmpty {
+                        ForEach(myRoutines) { preset in
+                            compactRoutineDeckCard(
+                                name: preset.name,
+                                icon: preset.icon.isEmpty ? "dumbbell.fill" : preset.icon,
+                                count: preset.exercises.count,
+                                subtitle: "\(preset.exercises.count) упражнений",
+                                onStart: { startWorkoutFromPreset(preset) },
+                                onInspect: { selectedPreview = .preset(preset) }
+                            )
+                        }
+                    } else {
+                        compactRoutineDeckCard(
+                            name: "Силовой День А",
+                            icon: "dumbbell.fill",
+                            count: 4,
+                            subtitle: "Грудь, Спина, Плечи",
+                            onStart: { startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises) },
+                            onInspect: { }
+                        )
+
+                        compactRoutineDeckCard(
+                            name: "Full Body База",
+                            icon: "figure.strengthtraining.traditional",
+                            count: 6,
+                            subtitle: "Комплексная база",
+                            onStart: { startPresetOrTemplate(name: "Full Body Тренировка", exercises: defaultFullBodyExercises) },
+                            onInspect: { }
+                        )
+
+                        compactRoutineDeckCard(
+                            name: "Mike Mentzer HIT",
+                            icon: "bolt.fill",
+                            count: 4,
+                            subtitle: "Отказные подходы",
+                            onStart: {
+                                if let mm = fallbackLegendaryRoutines.first(where: { $0.title.contains("Mentzer") }) {
+                                    startLegendaryRoutine(mm)
+                                }
+                            },
+                            onInspect: { }
+                        )
+                    }
                 }
-            } else {
-                // Hevy-Style Polished Routine Cards with Exercise Breakdown List
-                if selectedMuscleGroup == nil || selectedMuscleGroup?.lowercased() == "chest" || selectedMuscleGroup?.lowercased() == "back" || selectedMuscleGroup?.lowercased() == "shoulders" {
-                    templateCard(
-                        name: "Силовой День А",
-                        iconName: "dumbbell.fill",
-                        exerciseCount: 4,
-                        muscles: "Грудь, Спина, Плечи",
-                        duration: "~45 мин",
-                        exercises: defaultPowerDayAExercises
-                    )
+                .padding(.horizontal, 16)
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    private func compactRoutineDeckCard(
+        name: String,
+        icon: String,
+        count: Int,
+        subtitle: String,
+        onStart: @escaping () -> Void,
+        onInspect: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 36, height: 36)
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                    Image(systemName: icon)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundStyle(PastelTheme.pastelOat)
                 }
 
-                if selectedMuscleGroup == nil || selectedMuscleGroup?.lowercased() == "legs" || selectedMuscleGroup?.lowercased() == "core" || selectedMuscleGroup?.lowercased() == "arms" {
-                    templateCard(
-                        name: "Full Body Тренировка",
-                        iconName: "figure.strengthtraining.traditional",
-                        exerciseCount: 6,
-                        muscles: "Комплексная база",
-                        duration: "~60 мин",
-                        exercises: defaultFullBodyExercises
-                    )
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(name)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                        .lineLimit(1)
+
+                    Text(subtitle)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                        .lineLimit(1)
                 }
+
+                Spacer(minLength: 4)
             }
+
+            Spacer(minLength: 0)
+
+            HStack {
+                Text("\(count) упр.")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
+
+                Spacer()
+
+                Button {
+                    HapticManager.playMediumImpact()
+                    onStart()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("Старт")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                    }
+                    .foregroundStyle(PastelTheme.textOnOat)
+                    .padding(.horizontal, 12)
+                    .frame(height: 32)
+                    .background(PastelTheme.pastelSage)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(Tactile3DCardButtonStyle(scale: 0.97, maxTilt: 2.0))
+            }
+        }
+        .padding(14)
+        .frame(width: 230, height: 125)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+        .onTapGesture {
+            onInspect()
         }
     }
 
