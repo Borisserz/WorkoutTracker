@@ -195,13 +195,10 @@ struct WorkoutHubView: View {
                                 }
                             }
 
-                            // 4. Боевой Кокпит Готовности: Muscle Readiness Cockpit (Concept 1)
-                            muscleReadinessCockpitCard
-
-                            // 5. Hero Action: Unified "Начать тренировку" CTA (Triggers Hearthstone 3-Card Discovery)
+                            // 4. Hero Action: Unified "Начать тренировку" CTA (Triggers Hearthstone 3-Card Discovery)
                             startWorkoutHeroSection
 
-                            // 6. Сегодня по плану: Today's Target Focus Card
+                            // 5. Лучшая тренировка на сегодня (Merged Target Focus + Muscle Readiness)
                             todayPlanHeroCard
 
                             // 7. Category Filter Capsules (Все, Грудь, Спина, Ноги, Плечи, Руки)
@@ -415,6 +412,7 @@ struct WorkoutHubView: View {
     }
 
     // MARK: - 3. Hero Action Button: "Начать тренировку" (Hearthstone 3-Card Discovery Trigger)
+    // MARK: - 3. Hero Action Button: "Начать тренировку" (Primary High-Contrast CTA)
     private var startWorkoutHeroSection: some View {
         Button {
             HapticManager.playMediumImpact()
@@ -422,55 +420,64 @@ struct WorkoutHubView: View {
                 showWorkoutModeDiscovery = true
             }
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
+                // High-Affordance Tactile Play Disc
                 ZStack {
-                    Circle()
-                        .fill(PastelTheme.textOnOat.opacity(0.12))
-                        .frame(width: 34, height: 34)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(PastelTheme.textOnOat)
+                        .frame(width: 44, height: 44)
+                        .shadow(color: PastelTheme.textOnOat.opacity(0.18), radius: 4, y: 2)
 
                     Image(systemName: "play.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(PastelTheme.textOnOat)
+                        .font(.system(size: 17, weight: .black))
+                        .foregroundStyle(PastelTheme.pastelOat)
+                        .offset(x: 1.5)
                 }
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text("Начать тренировку")
-                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textOnOat)
                         .lineLimit(1)
 
-                    Text("Свободная, по шаблону или с AI")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(PastelTheme.textOnOat.opacity(0.75))
+                    Text("Свободная, с AI или по плану")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textOnOat.opacity(0.8))
                         .lineLimit(1)
                 }
 
                 Spacer(minLength: 8)
 
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     FloatingSparklesIcon()
                         .foregroundStyle(PastelTheme.textOnOat)
 
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(PastelTheme.textOnOat.opacity(0.75))
+                    ZStack {
+                        Circle()
+                            .fill(PastelTheme.textOnOat.opacity(0.12))
+                            .frame(width: 32, height: 32)
+
+                        Image(systemName: "arrow.right")
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundStyle(PastelTheme.textOnOat)
+                    }
                 }
             }
             .padding(.horizontal, 16)
-            .frame(height: 56)
+            .frame(height: 64)
             .background(PastelTheme.pastelOat)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
             )
-            .shadow(color: PastelTheme.pastelOat.opacity(0.22), radius: 10, y: 4)
+            .shadow(color: PastelTheme.pastelOat.opacity(0.28), radius: 12, y: 4)
         }
-        .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.2))
+        .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 2.0))
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 4. Muscle Readiness Cockpit Card (Concept 1: Боевой Кокпит Готовности)
+    // MARK: - 4. Best Workout Today Hero Card (Merged Target Focus + Muscle Readiness Intelligence)
     private var averageReadinessPercentage: Int {
         if dashboardViewModel.recoveryStatus.isEmpty {
             return 88
@@ -480,9 +487,10 @@ struct WorkoutHubView: View {
     }
 
     private var freshMusclesListText: String {
+        let ignoredParts: Set<String> = ["hair", "head", "hands", "feet", "ankles", "knees"]
         let fresh = dashboardViewModel.recoveryStatus
-            .filter { $0.recoveryPercentage >= 75 }
-            .prefix(3)
+            .filter { !ignoredParts.contains($0.muscleGroup.lowercased()) && $0.recoveryPercentage >= 75 }
+            .prefix(2)
             .map { localizedMuscleTitle(for: $0.muscleGroup) }
         if fresh.isEmpty {
             return "Грудь, Спина"
@@ -490,112 +498,108 @@ struct WorkoutHubView: View {
         return fresh.joined(separator: ", ")
     }
 
-    private var muscleReadinessCockpitCard: some View {
-        HStack(spacing: 14) {
-            // Circular Readiness Gauge Ring
-            ZStack {
-                Circle()
-                    .stroke(PastelTheme.cardSurfaceSubtle, lineWidth: 5)
-                    .frame(width: 52, height: 52)
-
-                Circle()
-                    .trim(from: 0, to: CGFloat(averageReadinessPercentage) / 100.0)
-                    .stroke(PastelTheme.pastelSage, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                    .frame(width: 52, height: 52)
-                    .rotationEffect(.degrees(-90))
-
-                VStack(spacing: 0) {
-                    Text("\(averageReadinessPercentage)%")
-                        .font(.system(size: 14, weight: .heavy, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-
-                    Text("готов")
-                        .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textSecondary)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text("Готовность мышц к нагрузке")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-
-                    Spacer()
-
-                    Text("\(averageReadinessPercentage)% пик")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelSage)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2)
-                        .background(PastelTheme.pastelSage.opacity(0.12))
-                        .clipShape(Capsule())
-                }
-
-                Text("Готовы к работе: \(freshMusclesListText)")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .lineLimit(1)
-
-                HStack(spacing: 6) {
-                    Text("Восстановление +36ч")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textTertiary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(PastelTheme.cardSurfaceSubtle)
-                        .clipShape(Capsule())
-
-                    Text("CNS в норме")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelLavender)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(PastelTheme.pastelLavender.opacity(0.1))
-                        .clipShape(Capsule())
-                }
-            }
-        }
-        .padding(14)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-        )
-        .padding(.horizontal, 16)
-    }
-
-    // MARK: - 5. Today's Plan Hero Card (One Clear Target, Zero Wall of Text)
     private var todayPlanHeroCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
+        VStack(alignment: .leading, spacing: 14) {
+            // Header Row: Category Eyebrow + Muscle Readiness Ring Pill
+            HStack(alignment: .center) {
                 HStack(spacing: 6) {
                     Image(systemName: "flame.fill")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelAmber)
 
-                    Text("Цель на сегодня")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                    Text("Лучшая тренировка на сегодня")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelAmber)
                 }
 
                 Spacer()
 
+                // Integrated Readiness Gauge Pill
+                HStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .stroke(PastelTheme.cardSurfaceSubtle, lineWidth: 3)
+                            .frame(width: 20, height: 20)
+
+                        Circle()
+                            .trim(from: 0, to: CGFloat(averageReadinessPercentage) / 100.0)
+                            .stroke(PastelTheme.pastelSage, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .frame(width: 20, height: 20)
+                            .rotationEffect(.degrees(-90))
+                    }
+
+                    Text("\(averageReadinessPercentage)% готовность")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(PastelTheme.pastelSage.opacity(0.12))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.25), lineWidth: 1))
+            }
+
+            // Routine Title & Duration
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(myRoutines.first?.name ?? "Силовой День А")
+                        .font(.system(size: 21, weight: .heavy, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+
+                    Text("Грудь, Спина, Плечи — 4 упражнения")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                }
+
+                Spacer()
+
                 Text("~45 мин")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
             }
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(myRoutines.first?.name ?? "Силовой День А")
-                    .font(.system(size: 20, weight: .heavy, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
+            // AI Recovery Callout (Why this is the best workout)
+            HStack(alignment: .center, spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(PastelTheme.pastelSage.opacity(0.14))
+                        .frame(width: 34, height: 34)
 
-                Text("Грудь, Спина, Плечи — 4 упражнения")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(PastelTheme.textSecondary)
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Идеально под восстановление")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+
+                    Text("Готовы к нагрузке: \(freshMusclesListText)")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                HStack(spacing: 5) {
+                    Text("CNS в норме")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelLavender)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 3)
+                        .background(PastelTheme.pastelLavender.opacity(0.12))
+                        .clipShape(Capsule())
+                }
             }
+            .padding(10)
+            .background(PastelTheme.cardSurfaceSubtle)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
 
             // Compact exercise preview capsules on ONE line
             HStack(spacing: 6) {
