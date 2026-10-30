@@ -98,7 +98,8 @@ struct WorkoutModeDiscoveryPopup: View {
 
     @State private var selectedMode: WorkoutLaunchMode = .empty
     @State private var cardsAppeared: Bool = false
-    @State private var isHoldingCard: Bool = false
+    @State private var showConfirmationAlert: Bool = false
+    @State private var pendingLaunchMode: WorkoutLaunchMode? = nil
 
     var body: some View {
         ZStack {
@@ -127,7 +128,7 @@ struct WorkoutModeDiscoveryPopup: View {
                 HStack(spacing: 6) {
                     Image(systemName: "hand.tap.fill")
                         .font(.system(size: 11, weight: .medium))
-                    Text("Коснитесь для выбора или удерживайте для описания")
+                    Text("Наведите или выберите режим • Запуск по нажатию")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textTertiary)
@@ -148,11 +149,57 @@ struct WorkoutModeDiscoveryPopup: View {
             .scaleEffect(cardsAppeared ? 1.0 : 0.88)
             .opacity(cardsAppeared ? 1.0 : 0.0)
         }
+        .alert(confirmationTitle, isPresented: $showConfirmationAlert) {
+            Button(confirmationButtonText, role: .none) {
+                let mode = pendingLaunchMode ?? selectedMode
+                executeAction(for: mode)
+            }
+            Button("Отмена", role: .cancel) {
+                pendingLaunchMode = nil
+            }
+        } message: {
+            Text(confirmationMessage)
+        }
         .onAppear {
             HapticManager.playMediumImpact()
             withAnimation(.spring(response: 0.44, dampingFraction: 0.74)) {
                 cardsAppeared = true
             }
+        }
+    }
+
+    // MARK: - Confirmation Copy
+    private var confirmationTitle: String {
+        let mode = pendingLaunchMode ?? selectedMode
+        switch mode {
+        case .empty:
+            return "Начать пустую тренировку?"
+        case .aiBuilder:
+            return "Открыть AI Билдер?"
+        case .templates:
+            return "Открыть шаблоны?"
+        }
+    }
+
+    private var confirmationMessage: String {
+        let mode = pendingLaunchMode ?? selectedMode
+        switch mode {
+        case .empty:
+            return "Будет создана свободная тренировка без шаблона. Вы сможете записывать подходы прямо на ходу."
+        case .aiBuilder:
+            return "Перейти к генерации адаптивного плана тренировки под текущую готовность мышц?"
+        case .templates:
+            return "Перейти во вкладку «История» для запуска одного из ваших сохраненных сплитов?"
+        }
+    }
+
+    private var confirmationButtonText: String {
+        let mode = pendingLaunchMode ?? selectedMode
+        switch mode {
+        case .empty:
+            return "Начать"
+        case .aiBuilder, .templates:
+            return "Перейти"
         }
     }
 
@@ -237,10 +284,30 @@ struct WorkoutModeDiscoveryPopup: View {
 
     // MARK: - The 3 Hearthstone Cards in a Row
     private var cardsDiscoveryRow: some View {
-        HStack(spacing: 12) {
-            ForEach(WorkoutLaunchMode.allCases) { mode in
-                hearthstoneCard(for: mode)
+        GeometryReader { geo in
+            let rowWidth = geo.size.width
+            let step = max(1.0, rowWidth / 3.0)
+
+            HStack(spacing: 12) {
+                ForEach(WorkoutLaunchMode.allCases) { mode in
+                    hearthstoneCard(for: mode)
+                }
             }
+            .contentShape(Rectangle())
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 12)
+                    .onChanged { value in
+                        let locationX = value.location.x
+                        let index = Int(locationX / step)
+                        let clampedIndex = max(0, min(2, index))
+                        if let mode = WorkoutLaunchMode(rawValue: clampedIndex), selectedMode != mode {
+                            HapticManager.playSelection()
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                                selectedMode = mode
+                            }
+                        }
+                    }
+            )
         }
         .frame(height: 184)
     }
@@ -271,8 +338,8 @@ struct WorkoutModeDiscoveryPopup: View {
 
         Button {
             if selectedMode == mode {
-                // Tapped again -> execute
-                executeAction(for: mode)
+                // Tapped on already focused card -> request launch with confirmation!
+                requestLaunch(for: mode)
             } else {
                 // Switch focus to this card
                 HapticManager.playSelection()
@@ -337,29 +404,26 @@ struct WorkoutModeDiscoveryPopup: View {
             .animation(.spring(response: 0.32, dampingFraction: 0.72), value: isSelected)
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    if selectedMode != mode {
-                        HapticManager.playSelection()
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                            selectedMode = mode
-                        }
-                    }
+        .onHover { isHovered in
+            if isHovered && selectedMode != mode {
+                HapticManager.playSelection()
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                    selectedMode = mode
                 }
-        )
+            }
+        }
     }
 
     // MARK: - Launch Primary Button
     private var launchPrimaryButton: some View {
         Button {
-            executeAction(for: selectedMode)
+            requestLaunch(for: selectedMode)
         } label: {
             HStack(spacing: 8) {
-                Image(systemName: "play.fill")
+                Image(systemName: primaryButtonIcon(for: selectedMode))
                     .font(.system(size: 14, weight: .bold))
 
-                Text("Запустить: \(selectedMode.fullTitle)")
+                Text(primaryButtonText(for: selectedMode))
                     .font(.system(size: 15, weight: .bold, design: .rounded))
             }
             .foregroundStyle(PastelTheme.textOnOat)
@@ -372,6 +436,22 @@ struct WorkoutModeDiscoveryPopup: View {
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.0))
     }
 
+    private func primaryButtonIcon(for mode: WorkoutLaunchMode) -> String {
+        switch mode {
+        case .empty: return "play.fill"
+        case .aiBuilder: return "sparkles"
+        case .templates: return "arrow.right"
+        }
+    }
+
+    private func primaryButtonText(for mode: WorkoutLaunchMode) -> String {
+        switch mode {
+        case .empty: return "Запустить: Пустая тренировка"
+        case .aiBuilder: return "Перейти в AI Билдер"
+        case .templates: return "Открыть шаблоны в Истории"
+        }
+    }
+
     // MARK: - Actions
     private func dismissPopup() {
         HapticManager.playLightImpact()
@@ -381,6 +461,12 @@ struct WorkoutModeDiscoveryPopup: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
             isPresented = false
         }
+    }
+
+    private func requestLaunch(for mode: WorkoutLaunchMode) {
+        HapticManager.playMediumImpact()
+        pendingLaunchMode = mode
+        showConfirmationAlert = true
     }
 
     private func executeAction(for mode: WorkoutLaunchMode) {
