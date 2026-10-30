@@ -818,7 +818,7 @@ struct WorkoutHubView: View {
             )
             .padding(.horizontal, 16)
         }
-        .buttonStyle(ScaleButtonStyle())
+        .buttonStyle(Tactile3DCardButtonStyle(scale: 0.982, maxTilt: 2.8))
     }
 
     // MARK: - Workout Execution Methods
@@ -1164,7 +1164,7 @@ private struct PastelRoutineCard: View {
                 .clipShape(Capsule())
                 .shadow(color: PastelTheme.pastelSage.opacity(0.25), radius: 6, y: 2)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.96, maxTilt: 2.0))
         }
         .padding(.horizontal, 14)
         .frame(height: 68)

@@ -432,12 +432,12 @@ struct OverviewAnatomyCard: View {
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
                 .background(PastelTheme.pastelOat)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.buttonRadius, style: .continuous))
-                .shadow(color: PastelTheme.pastelOat.opacity(0.12), radius: 10, y: 3)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                .shadow(color: PastelTheme.pastelOat.opacity(0.14), radius: 8, y: 2)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 2.8))
         }
         .pastelCard(padding: 16)
     }
