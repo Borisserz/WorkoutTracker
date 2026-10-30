@@ -16,6 +16,7 @@ struct OverviewAnatomyCard: View {
     @State private var selectedMuscleSlug: String? = nil
     @State private var selectedMuscleName: String? = nil
     @State private var selectedMusclePct: Int = 100
+    @State private var dragRotationY: Double = 0
 
     init(
         isFrontView: Binding<Bool>,
@@ -178,6 +179,34 @@ struct OverviewAnatomyCard: View {
                 .scaleEffect(1.02)
                 .blur(radius: isLocked ? 10 : 0)
                 .disabled(isLocked)
+                .rotation3DEffect(
+                    .degrees(dragRotationY),
+                    axis: (x: 0, y: 1, z: 0),
+                    perspective: 0.35
+                )
+                .gesture(
+                    DragGesture(minimumDistance: 14)
+                        .onChanged { val in
+                            withAnimation(.interactiveSpring(response: 0.22, dampingFraction: 0.8)) {
+                                dragRotationY = Double(val.translation.width / 3.2)
+                            }
+                        }
+                        .onEnded { val in
+                            if abs(val.translation.width) > 55 {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+                                    isFrontView.toggle()
+                                    selectedMuscleSlug = nil
+                                    selectedMuscleName = nil
+                                    dragRotationY = 0
+                                }
+                            } else {
+                                withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+                                    dragRotationY = 0
+                                }
+                            }
+                        }
+                )
 
                 // Locked State Overlay for Beginners
                 if isLocked {

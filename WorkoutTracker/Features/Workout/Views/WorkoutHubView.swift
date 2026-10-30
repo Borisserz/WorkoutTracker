@@ -318,6 +318,8 @@ struct WorkoutHubView: View {
 
                     Text("\(displayStreakCount)")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
                         .foregroundStyle(PastelTheme.textPrimary)
                 }
                 .padding(.horizontal, 12)
@@ -329,7 +331,7 @@ struct WorkoutHubView: View {
                         .stroke(PastelTheme.cardBorder, lineWidth: 1)
                 )
             }
-            .buttonStyle(ScaleButtonStyle())
+            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.97, maxTilt: 2.0))
 
             Spacer()
 
@@ -411,7 +413,7 @@ struct WorkoutHubView: View {
                 .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                 .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 8, y: 3)
             }
-            .buttonStyle(ScaleButtonStyle())
+            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 3.0))
 
             // Button 2: "AI План" (Secondary Action - Solid Card Surface)
             Button {
@@ -438,7 +440,7 @@ struct WorkoutHubView: View {
                         .stroke(PastelTheme.cardBorder, lineWidth: 1)
                 )
             }
-            .buttonStyle(ScaleButtonStyle())
+            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 3.0))
         }
         .padding(.horizontal, 16)
     }
@@ -728,7 +730,7 @@ struct WorkoutHubView: View {
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
         }
-        .buttonStyle(ScaleButtonStyle())
+        .buttonStyle(Tactile3DCardButtonStyle(scale: 0.982, maxTilt: 2.8))
         .padding(.horizontal, 16)
     }
 
@@ -1008,7 +1010,7 @@ private struct ActiveWorkoutResumeCard: View {
                 .clipShape(Capsule())
                 .shadow(color: PastelTheme.pastelSage.opacity(0.3), radius: 6, y: 2)
             }
-            .buttonStyle(ScaleButtonStyle())
+            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 2.5))
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
@@ -1016,14 +1018,7 @@ private struct ActiveWorkoutResumeCard: View {
         .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: [PastelTheme.pastelSage.opacity(0.5), PastelTheme.cardBorder],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 1
-                )
+                .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
         )
         .padding(.horizontal, 16)
     }

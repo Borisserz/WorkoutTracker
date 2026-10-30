@@ -55,6 +55,24 @@ struct ParallaxButtonStyle: ButtonStyle {
     }
 }
 
+/// Luxury Apple HIG 3D Tactile Card Press Style (Subtle scale + perspective X-tilt + spring damping)
+struct Tactile3DCardButtonStyle: ButtonStyle {
+    var scale: CGFloat = 0.982
+    var maxTilt: Double = 3.2
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scale : 1.0)
+            .rotation3DEffect(
+                .degrees(configuration.isPressed ? maxTilt : 0),
+                axis: (x: 1, y: 0, z: 0),
+                perspective: 0.35
+            )
+            .opacity(configuration.isPressed ? 0.93 : 1.0)
+            .animation(.spring(response: 0.28, dampingFraction: 0.72), value: configuration.isPressed)
+    }
+}
+
 struct PulseEffect: ViewModifier {
     @State private var isPulsing = false
     func body(content: Content) -> some View {
