@@ -7,6 +7,12 @@
       "skillPath": "skills/activitykit/SKILL.md",
       "computedHash": "05e07a71d4d86aca23d9d07b4e300d5109c9de8e45cd1f588ca1caf908396e3f"
     },
+    "antislop": {
+      "source": "despoth/antislop-meter",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "cce4894a904898a8ca4ef5716a57431bbf2c6ed497183a59b666f766fccf097d"
+    },
     "app-store-review": {
       "source": "dpearson2699/swift-ios-skills",
       "sourceType": "github",
@@ -61,6 +67,12 @@
       "skillPath": "skills/firebase-security-rules-auditor/SKILL.md",
       "computedHash": "5a90e991bb9acfd3e43bfb570498dee60b9cef94cbb80cfb99257c7e4f61c1a0"
     },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "89496d5dd00f4810205f351759594fc2742bf8eea85a2f2b2d1de59f4bd91576"
+    },
     "healthkit": {
       "source": "dpearson2699/swift-ios-skills",
       "sourceType": "github",
@@ -72,6 +84,12 @@
       "sourceType": "github",
       "skillPath": "plugins/ui-design/skills/mobile-ios-design/SKILL.md",
       "computedHash": "3902f919488d8ddc983e157bbcd5f16b739b84eeaab57002bf52b7f9601ed6ad"
+    },
+    "pishi-normalno": {
+      "source": "fsbtactic-code/pishi-normalno",
+      "sourceType": "github",
+      "skillPath": "skills/pishi-normalno/SKILL.md",
+      "computedHash": "1ec1716fc2d6067bc231da5ae6409c5dded823c7802b2d65e69441aad90770cb"
     },
     "speech-recognition": {
       "source": "dpearson2699/swift-ios-skills",

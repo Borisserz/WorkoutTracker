@@ -24,11 +24,11 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
         }
     }
 
-    var eyebrow: String {
+    var categoryTitle: String {
         switch self {
-        case .empty: return "РЕЖИМ 01 • СВОБОДНЫЙ"
-        case .aiBuilder: return "РЕЖИМ 02 • НЕЙРОСЕТЬ"
-        case .templates: return "РЕЖИМ 03 • БИБЛИОТЕКА"
+        case .empty: return "Свободный выбор"
+        case .aiBuilder: return "Адаптивный алгоритм"
+        case .templates: return "Готовая программа"
         }
     }
 
@@ -164,10 +164,9 @@ struct WorkoutModeDiscoveryPopup: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(PastelTheme.pastelLavender)
 
-                Text("ВЫБОР РЕЖИМА ТРЕНИРОВКИ")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .tracking(0.8)
+                Text("Формат тренировки")
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
             }
 
             Spacer()
@@ -191,17 +190,10 @@ struct WorkoutModeDiscoveryPopup: View {
     // MARK: - Editorial Inspection HUD (Above the 3 Cards)
     private var editorialInspectionHUD: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Eyebrow with Mode Accent Dot
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(selectedMode.accentColor)
-                    .frame(width: 7, height: 7)
-
-                Text(selectedMode.eyebrow)
-                    .font(.system(size: 11, weight: .heavy, design: .rounded))
-                    .foregroundStyle(selectedMode.accentColor)
-                    .tracking(0.6)
-            }
+            // Clean category label without decorative dots
+            Text(selectedMode.categoryTitle)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundStyle(selectedMode.accentColor)
 
             // Big Confident Mode Title
             Text(selectedMode.fullTitle)
@@ -290,17 +282,13 @@ struct WorkoutModeDiscoveryPopup: View {
             }
         } label: {
             VStack(spacing: 10) {
-                // Top Roman Numeral Eyebrow
+                // Top Roman Numeral
                 HStack {
                     Text(mode.romanNumeral)
-                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(isSelected ? mode.accentColor : PastelTheme.textTertiary)
 
                     Spacer()
-
-                    Circle()
-                        .fill(isSelected ? mode.accentColor : PastelTheme.cardBorder)
-                        .frame(width: 5, height: 5)
                 }
 
                 Spacer(minLength: 4)

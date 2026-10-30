@@ -387,26 +387,19 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 2. Title Section with Editorial Date Eyebrow (Apple Fitness+ HUD)
+    // MARK: - 2. Title Section with Natural Russian Date
     private var currentDateEyebrow: String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ru_RU")
         formatter.dateFormat = "EEEE, d MMMM"
-        return formatter.string(from: Date()).uppercased()
+        return formatter.string(from: Date()).capitalized
     }
 
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(PastelTheme.pastelSage)
-                    .frame(width: 6, height: 6)
-
-                Text(currentDateEyebrow)
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .tracking(0.6)
-            }
+        VStack(alignment: .leading, spacing: 3) {
+            Text(currentDateEyebrow)
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(PastelTheme.textSecondary)
 
             Text("Тренировка")
                 .font(.system(size: 34, weight: .heavy, design: .rounded))
@@ -439,7 +432,7 @@ struct WorkoutHubView: View {
                         .font(.system(size: 17, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textOnOat)
 
-                    Text("Выбор из 3 режимов • Пустая, AI или шаблоны")
+                    Text("Пустая, по шаблону или с AI-наставником")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(PastelTheme.textOnOat.opacity(0.75))
                 }
@@ -1189,32 +1182,36 @@ struct WorkoutHubView: View {
 
 // MARK: - Subcomponents
 
-/// Card showing the in-progress session with direct 1-tap resume
+/// Card showing the in-progress session with direct 1-tap resume (Human Designer Craft, Zero Slop)
 private struct ActiveWorkoutResumeCard: View {
     let workout: Workout
     let onResume: () -> Void
 
     var body: some View {
         HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(PastelTheme.pastelSage)
-                        .frame(width: 8, height: 8)
-                        .shadow(color: PastelTheme.pastelSage.opacity(0.8), radius: 4)
-
-                    Text("ТРЕНИРОВКА ИДЕТ")
-                        .font(.system(size: 10, weight: .black))
+            VStack(alignment: .leading, spacing: 6) {
+                // Designer status row: clean sentence case + stopwatch timer pill
+                HStack(spacing: 8) {
+                    Text("Идет тренировка")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
-                        .tracking(0.5)
 
-                    Text("•")
-                        .font(.caption2)
-                        .foregroundStyle(PastelTheme.textTertiary)
-
-                    Text(workout.date, style: .timer)
-                        .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(PastelTheme.pastelAmber)
+                    // Minimal stopwatch timer capsule
+                    HStack(spacing: 4) {
+                        Image(systemName: "stopwatch")
+                            .font(.system(size: 10, weight: .bold))
+                        Text(workout.date, style: .timer)
+                            .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
+                    }
+                    .foregroundStyle(PastelTheme.textPrimary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(PastelTheme.cardSurfaceSubtle)
+                    .clipShape(Capsule())
+                    .overlay(
+                        Capsule()
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    )
                 }
 
                 Text(workout.title.isEmpty ? "Текущая сессия" : workout.title)
@@ -1222,7 +1219,7 @@ private struct ActiveWorkoutResumeCard: View {
                     .foregroundStyle(PastelTheme.textPrimary)
                     .lineLimit(1)
 
-                Text("\(workout.exercises.count) упр. в процессе")
+                Text(exerciseCountDescription(workout.exercises.count))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(PastelTheme.textSecondary)
             }
@@ -1241,7 +1238,6 @@ private struct ActiveWorkoutResumeCard: View {
                 .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
                 .background(PastelTheme.pastelSage)
                 .clipShape(Capsule())
-                .shadow(color: PastelTheme.pastelSage.opacity(0.3), radius: 6, y: 2)
             }
             .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 2.5))
         }
@@ -1254,6 +1250,21 @@ private struct ActiveWorkoutResumeCard: View {
                 .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
         )
         .padding(.horizontal, 16)
+    }
+
+    private func exerciseCountDescription(_ count: Int) -> String {
+        let remainder10 = count % 10
+        let remainder100 = count % 100
+        if remainder100 >= 11 && remainder100 <= 19 {
+            return "\(count) упражнений в процессе"
+        }
+        if remainder10 == 1 {
+            return "\(count) упражнение в процессе"
+        }
+        if remainder10 >= 2 && remainder10 <= 4 {
+            return "\(count) упражнения в процессе"
+        }
+        return "\(count) упражнений в процессе"
     }
 }
 
