@@ -187,7 +187,10 @@ struct WorkoutHubView: View {
                             // 2. Large Bold Title: "Тренировка"
                             titleSection
 
-                            // 3. Active Workout In-Progress Card (if present)
+                            // 3. 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
+                            weeklyConsistencyBar
+
+                            // 4. Active Workout In-Progress Card (if present)
                             if let active = activeWorkouts.first {
                                 ActiveWorkoutResumeCard(workout: active) {
                                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
@@ -195,10 +198,10 @@ struct WorkoutHubView: View {
                                 }
                             }
 
-                            // 4. Hero Action: Unified "Начать тренировку" CTA (Triggers Hearthstone 3-Card Discovery)
+                            // 5. Hero Action: Unified "Начать тренировку" CTA (Triggers Hearthstone 3-Card Discovery)
                             startWorkoutHeroSection
 
-                            // 5. Лучшая тренировка на сегодня (Merged Target Focus + Muscle Readiness)
+                            // 6. Лучшая тренировка на сегодня (Merged Target Focus + Muscle Readiness)
                             todayPlanHeroCard
 
                             // 7. Category Filter Capsules (Все, Грудь, Спина, Ноги, Плечи, Руки)
@@ -411,6 +414,83 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
+    // MARK: - 2.5 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
+    private var weeklyConsistencyBar: some View {
+        HStack(spacing: 0) {
+            let days = [
+                ("ПН", true, "done"),
+                ("ВТ", true, "done"),
+                ("СР", false, "rest"),
+                ("ЧТ", true, "done"),
+                ("ПТ", false, "today"),
+                ("СБ", false, "future"),
+                ("ВС", false, "future")
+            ]
+            ForEach(0..<days.count, id: \.self) { index in
+                let (name, isDone, type) = days[index]
+                let isToday = (name == "ПТ")
+
+                VStack(spacing: 6) {
+                    Text(name)
+                        .font(.system(size: 10, weight: isToday ? .heavy : .semibold, design: .rounded))
+                        .foregroundStyle(isToday ? PastelTheme.pastelAmber : PastelTheme.textTertiary)
+
+                    ZStack {
+                        if isDone {
+                            Circle()
+                                .fill(PastelTheme.pastelSage.opacity(0.18))
+                                .frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(PastelTheme.pastelSage, lineWidth: 1.5))
+
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundStyle(PastelTheme.pastelSage)
+                        } else if isToday {
+                            Circle()
+                                .fill(PastelTheme.pastelAmber.opacity(0.16))
+                                .frame(width: 32, height: 32)
+                                .overlay(Circle().stroke(PastelTheme.pastelAmber, lineWidth: 2))
+
+                            Image(systemName: "flame.fill")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundStyle(PastelTheme.pastelAmber)
+                        } else if type == "rest" {
+                            Circle()
+                                .fill(PastelTheme.cardSurfaceSubtle)
+                                .frame(width: 28, height: 28)
+                                .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                            Text("—")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(PastelTheme.textTertiary)
+                        } else {
+                            Circle()
+                                .fill(PastelTheme.cardSurfaceSubtle.opacity(0.4))
+                                .frame(width: 28, height: 28)
+                                .overlay(Circle().stroke(PastelTheme.cardBorder.opacity(0.5), lineWidth: 1))
+                        }
+                    }
+
+                    if isToday {
+                        Text("СЕГОДНЯ")
+                            .font(.system(size: 8, weight: .black, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelAmber)
+                    } else {
+                        Text(" ")
+                            .font(.system(size: 8))
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 8)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+        .padding(.horizontal, 16)
+    }
+
     // MARK: - 3. Hero Action Button: "Начать тренировку" (Hearthstone 3-Card Discovery Trigger)
     // MARK: - 3. Hero Action Button: "Начать тренировку" (Primary High-Contrast CTA)
     private var startWorkoutHeroSection: some View {
@@ -539,65 +619,74 @@ struct WorkoutHubView: View {
                 .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.25), lineWidth: 1))
             }
 
-            // Routine Title & Duration
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
+            // Recessed Focus Panel: Workout Info + Compact Anatomical Silhouette
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 6) {
                     Text(myRoutines.first?.name ?? "Силовой День А")
                         .font(.system(size: 21, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("Грудь, Спина, Плечи — 4 упражнения")
+                    Text("Грудь, Спина, Плечи — 4 упр.")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(PastelTheme.textSecondary)
+
+                    HStack(spacing: 6) {
+                        Text("~45 мин")
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textSecondary)
+
+                        Text("CNS в норме")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelLavender)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(PastelTheme.pastelLavender.opacity(0.12))
+                            .clipShape(Capsule())
+                    }
+
+                    HStack(spacing: 5) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+
+                        Text("Идеально под восстановление")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                    }
+                    .padding(.top, 2)
                 }
 
-                Spacer()
+                Spacer(minLength: 4)
 
-                Text("~45 мин")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textSecondary)
-            }
-
-            // AI Recovery Callout (Why this is the best workout)
-            HStack(alignment: .center, spacing: 10) {
+                // High-End Compact Vector Silhouette Heatmap (Apple HIG Athletic HUD)
                 ZStack {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(PastelTheme.pastelSage.opacity(0.14))
-                        .frame(width: 34, height: 34)
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 82, height: 116)
+                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
 
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(PastelTheme.pastelSage)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Идеально под восстановление")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-
-                    Text("Готовы к нагрузке: \(freshMusclesListText)")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(PastelTheme.textSecondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                HStack(spacing: 5) {
-                    Text("CNS в норме")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelLavender)
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 3)
-                        .background(PastelTheme.pastelLavender.opacity(0.12))
-                        .clipShape(Capsule())
+                    BodyHeatmapView(
+                        muscleIntensities: [
+                            "chest": 100,
+                            "upper-back": 100,
+                            "lats": 90,
+                            "deltoids": 80
+                        ],
+                        isRecoveryMode: true,
+                        isCompactMode: true,
+                        defaultToBack: false,
+                        userGender: "male",
+                        showLabels: false
+                    )
+                    .frame(width: 76, height: 110)
+                    .allowsHitTesting(false)
                 }
             }
-            .padding(10)
-            .background(PastelTheme.cardSurfaceSubtle)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(12)
+            .background(PastelTheme.cardSurfaceSubtle.opacity(0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
 
