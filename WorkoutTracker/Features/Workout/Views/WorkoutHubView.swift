@@ -431,22 +431,24 @@ struct WorkoutHubView: View {
                     Text("Начать тренировку")
                         .font(.system(size: 17, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textOnOat)
+                        .lineLimit(1)
 
-                    Text("Пустая, по шаблону или с AI-наставником")
+                    Text("Свободная, по шаблону или с AI")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(PastelTheme.textOnOat.opacity(0.75))
+                        .lineLimit(1)
                 }
 
-                Spacer()
+                Spacer(minLength: 8)
 
-                HStack(spacing: 4) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 15, weight: .bold))
+                HStack(spacing: 6) {
+                    FloatingSparklesIcon()
+                        .foregroundStyle(PastelTheme.textOnOat)
+
                     Image(systemName: "chevron.right")
                         .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(PastelTheme.textOnOat.opacity(0.75))
                 }
-                .foregroundStyle(PastelTheme.textOnOat.opacity(0.8))
-                .padding(.trailing, 2)
             }
             .padding(.horizontal, 16)
             .frame(height: 56)
@@ -1182,29 +1184,50 @@ struct WorkoutHubView: View {
 
 // MARK: - Subcomponents
 
+/// Micro-animated floating, oscillating sparkles icon for Hero Action button
+struct FloatingSparklesIcon: View {
+    @State private var isFloating = false
+
+    var body: some View {
+        Image(systemName: "sparkles")
+            .font(.system(size: 15, weight: .bold))
+            .offset(y: isFloating ? -2.0 : 2.0)
+            .rotationEffect(.degrees(isFloating ? 6.0 : -6.0))
+            .scaleEffect(isFloating ? 1.08 : 0.94)
+            .animation(.easeInOut(duration: 1.7).repeatForever(autoreverses: true), value: isFloating)
+            .onAppear {
+                isFloating = true
+            }
+    }
+}
+
 /// Card showing the in-progress session with direct 1-tap resume (Human Designer Craft, Zero Slop)
 private struct ActiveWorkoutResumeCard: View {
     let workout: Workout
     let onResume: () -> Void
 
     var body: some View {
-        HStack(spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                // Designer status row: clean sentence case + stopwatch timer pill
-                HStack(spacing: 8) {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                // Designer status row: clean sentence case + stopwatch timer pill (guaranteed single line)
+                HStack(alignment: .center, spacing: 8) {
                     Text("Идет тренировка")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
+                        .lineLimit(1)
+                        .fixedSize()
 
-                    // Minimal stopwatch timer capsule
+                    // Minimal stopwatch timer capsule strictly on ONE line
                     HStack(spacing: 4) {
                         Image(systemName: "stopwatch")
                             .font(.system(size: 10, weight: .bold))
                         Text(workout.date, style: .timer)
                             .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
+                            .lineLimit(1)
+                            .fixedSize()
                     }
                     .foregroundStyle(PastelTheme.textPrimary)
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, 7)
                     .padding(.vertical, 3)
                     .background(PastelTheme.cardSurfaceSubtle)
                     .clipShape(Capsule())
@@ -1215,26 +1238,29 @@ private struct ActiveWorkoutResumeCard: View {
                 }
 
                 Text(workout.title.isEmpty ? "Текущая сессия" : workout.title)
-                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
                     .lineLimit(1)
 
                 Text(exerciseCountDescription(workout.exercises.count))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(PastelTheme.textSecondary)
+                    .lineLimit(1)
             }
 
-            Spacer(minLength: 8)
+            Spacer(minLength: 6)
 
             Button(action: onResume) {
-                HStack(spacing: 6) {
+                HStack(spacing: 5) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 11, weight: .bold))
                     Text("Продолжить")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .lineLimit(1)
+                        .fixedSize()
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, 14)
                 .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
                 .background(PastelTheme.pastelSage)
                 .clipShape(Capsule())
