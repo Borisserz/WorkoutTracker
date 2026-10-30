@@ -48,6 +48,7 @@ struct WorkoutHubView: View {
     @State private var showPresetEditor = false
     @State private var presetToEdit: WorkoutPreset? = nil
     @State private var showStreakPopup = false
+    @State private var showWorkoutModeDiscovery = false
 
     @State private var itemToDelete: CarouselItemType? = nil
     @State private var showDeleteAlert = false
@@ -194,14 +195,15 @@ struct WorkoutHubView: View {
                                 }
                             }
 
-                            // 4. Hero Quick Start Card ("Начать пустую тренировку" + AI Смарт-Генератор)
-                            quickStartHeroSection
+                            // 4. Hero Action: Unified "Начать тренировку" CTA (Triggers Hearthstone 3-Card Discovery)
+                            startWorkoutHeroSection
 
                             // 5. Category Filter Capsules (Все, Грудь, Спина, Ноги, Плечи, Руки)
                             filterPillsSection
 
                             // 6. Hevy-style "Шаблоны тренировок" with exercise breakdown list & 1-tap start
                             myTemplatesSection
+                                .id("myTemplatesSection")
 
                             // 7. "Легендарные Программы" with horizontal cards
                             legendarySection
@@ -223,6 +225,26 @@ struct WorkoutHubView: View {
                             removal: .scale(scale: 0.95).combined(with: .opacity)
                         ))
                         .zIndex(100)
+                    }
+
+                    // Hearthstone 3-Card Discovery Popup Overlay
+                    if showWorkoutModeDiscovery {
+                        WorkoutModeDiscoveryPopup(
+                            isPresented: $showWorkoutModeDiscovery,
+                            onSelectEmpty: {
+                                startEmptyWorkout()
+                            },
+                            onSelectAI: {
+                                showSmartBuilder = true
+                            },
+                            onSelectTemplates: {
+                                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                                    proxy.scrollTo("myTemplatesSection", anchor: .top)
+                                }
+                            }
+                        )
+                        .transition(.opacity)
+                        .zIndex(200)
                     }
                 }
             }
@@ -393,105 +415,57 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 3. Quick Start Hero Section (Hevy Standard: Start an Empty Workout & AI Generator)
-    private var quickStartHeroSection: some View {
-        VStack(spacing: 10) {
-            // Hero Card: Начать пустую тренировку (1-tap direct launch)
-            Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                startEmptyWorkout()
-            } label: {
-                HStack(spacing: 14) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(PastelTheme.pastelOat)
-                            .frame(width: 44, height: 44)
-
-                        Image(systemName: "plus")
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(PastelTheme.textOnOat)
-                    }
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Начать пустую тренировку")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
-
-                        Text("Записывайте упражнения на ходу")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(PastelTheme.textSecondary)
-                    }
-
-                    Spacer()
-
-                    HStack(spacing: 5) {
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 11, weight: .bold))
-                        Text("Старт")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                    }
-                    .foregroundStyle(PastelTheme.textOnOat)
-                    .padding(.horizontal, 14)
-                    .frame(height: PastelTheme.ButtonMetrics.inCardHeight)
-                    .background(PastelTheme.pastelOat)
-                    .clipShape(Capsule())
-                    .shadow(color: PastelTheme.pastelOat.opacity(0.2), radius: 6, y: 2)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 14)
-                .background(PastelTheme.cardSurface)
-                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                )
+    // MARK: - 3. Hero Action Button: "Начать тренировку" (Hearthstone 3-Card Discovery Trigger)
+    private var startWorkoutHeroSection: some View {
+        Button {
+            HapticManager.playMediumImpact()
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
+                showWorkoutModeDiscovery = true
             }
-            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.2))
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(PastelTheme.textOnOat.opacity(0.12))
+                        .frame(width: 34, height: 34)
 
-            // Secondary Strip: AI Смарт-Генератор
-            Button {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
-                showSmartBuilder = true
-            } label: {
-                HStack(spacing: 12) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(PastelTheme.cardSurfaceSubtle)
-                            .frame(width: 36, height: 36)
-                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(PastelTheme.textOnOat)
+                }
 
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(PastelTheme.pastelLavender)
-                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Начать тренировку")
+                        .font(.system(size: 17, weight: .heavy, design: .rounded))
+                        .foregroundStyle(PastelTheme.textOnOat)
 
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("AI Генератор Тренировки")
-                            .font(.system(size: 14, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
+                    Text("Выбор из 3 режимов • Пустая, AI или шаблоны")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(PastelTheme.textOnOat.opacity(0.75))
+                }
 
-                        Text("Умный подбор под восстановление мышц")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundStyle(PastelTheme.textSecondary)
-                    }
+                Spacer()
 
-                    Spacer()
-
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 15, weight: .bold))
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(PastelTheme.textTertiary)
+                        .font(.system(size: 13, weight: .bold))
                 }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 10)
-                .background(PastelTheme.cardSurfaceSubtle)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                )
+                .foregroundStyle(PastelTheme.textOnOat.opacity(0.8))
+                .padding(.trailing, 2)
             }
-            .buttonStyle(Tactile3DCardButtonStyle(scale: 0.988, maxTilt: 2.0))
+            .padding(.horizontal, 16)
+            .frame(height: 56)
+            .background(PastelTheme.pastelOat)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+            )
+            .shadow(color: PastelTheme.pastelOat.opacity(0.22), radius: 10, y: 4)
         }
+        .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.2))
         .padding(.horizontal, 16)
     }
 
