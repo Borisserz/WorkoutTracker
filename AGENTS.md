@@ -88,6 +88,19 @@
 
 ---
 
+### 8. 📱 Нативный iOS-Архитектор и Хранитель Системного Опыта Apple (Native iOS Platform Specialist)
+- **Файл навыка:** [.agents/skills/native-ios-specialist/SKILL.md](file:///Users/ilakazdan/WorkoutTracker/.agents/skills/native-ios-specialist/SKILL.md)
+- **Триггеры активации:**
+  - `«нативный»` / `«native ios»` / `«apple hig native»`
+  - `«системный опыт»` / `«ios 18»` / `«виджеты»` / `«live activity»` / `«dynamic island»`
+- **Обязанности:**
+  - Архитектурный контроль глубинной интеграции с iOS 18+: SwiftData (`@Model`, `ModelContext`), Observation Framework (`@Observable`), Swift Charts, Symbol Effects.
+  - Проектирование системных расширений: ActivityKit Live Activities в Dynamic Island, Lock Screen Interactive Widgets, Control Center Widgets.
+  - Реализация бесшовного Thumb Cockpit взаимодействия: Safe Area, `.contentMargins`, нативные `UIContextMenu`, `swipeActions` и физика прокрутки.
+  - Абсолютный запрет на веб-обёртки, чуждые Android-паттерны и визуальные эмуляции, нарушающие философию Apple Fitness+.
+
+---
+
 ## 🎨 Сводная палитра `PastelTheme` (Strict Dark Mode)
 - **Canvas / Background:** `#0E0F12` (OLED Cashmere Charcoal).
 - **Card Surface:** `#17181D` (глубокий матовый графит).
