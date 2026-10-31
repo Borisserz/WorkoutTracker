@@ -23,9 +23,11 @@ enum PastelTheme {
     /// Deep warm beige for borders, accent frames, and secondary badges.
     static let warmBeige = Color(hex: "E5D5C0")
 
-    /// Athletic vivid emerald green for recovered muscles (80-100%), readiness, and PR achievements.
-    static let pastelSage = Color(hex: "10B981")
-    static let pastelEmerald = Color(hex: "10B981")
+    /// Authentic Apple Luxury Athletic Sage (Nordic Pine / Cashmere Jade).
+    /// Soft, organic, calibrated for OLED dark mode without synthetic AI neon glare.
+    static let pastelSage = Color(hex: "34C759")
+    static let pastelEmerald = Color(hex: "34C759")
+    static let pastelSageSoft = Color(hex: "34C759").opacity(0.16)
     
     /// Gentle energetic peach / coral for fatigued muscles (<50%) and workout streak fire.
     static let pastelPeach = Color(hex: "F87171")

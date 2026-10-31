@@ -213,6 +213,7 @@ struct HistoryView: View {
         NavigationStack {
             ZStack {
                 PastelTheme.canvas.ignoresSafeArea()
+                AtmosphericGymBackdropView()
 
                 // Ambient athletic glow (Emerald & Warm Beige)
                 GeometryReader { _ in

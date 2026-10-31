@@ -75,11 +75,11 @@ struct TrainingStyleDetailView: View {
             Chart {
                 SectorMark(angle: .value("Sets", stats.compoundSets), innerRadius: .ratio(0.65), angularInset: 2)
                     .cornerRadius(6)
-                    .foregroundStyle(LinearGradient(colors: [.orange, .yellow], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(LinearGradient(colors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach], startPoint: .top, endPoint: .bottom))
 
                 SectorMark(angle: .value("Sets", stats.isolationSets), innerRadius: .ratio(0.65), angularInset: 2)
                     .cornerRadius(6)
-                    .foregroundStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(LinearGradient(colors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate], startPoint: .top, endPoint: .bottom))
             }
             .frame(height: 240)
             .chartBackground { proxy in

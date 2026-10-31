@@ -242,6 +242,7 @@ struct StatsContentView: View {
     var body: some View {
         ZStack {
             PastelTheme.canvas.ignoresSafeArea()
+            AtmosphericGymBackdropView()
 
             // Ambient Athletic Glow
             GeometryReader { _ in
@@ -1149,29 +1150,32 @@ struct CurrentStreakSquareCard: View {
                     HStack {
                         ZStack {
                             Circle()
-                                .fill(LinearGradient(colors: [.orange.opacity(0.25), .red.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .fill(PastelTheme.pastelAmber.opacity(0.18))
                                 .frame(width: 40, height: 40)
+                                .overlay(
+                                    Circle().stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
+                                )
                             Image(systemName: "flame.fill")
-                                .font(.system(size: 18))
-                                .foregroundColor(.orange)
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(PastelTheme.pastelAmber)
                         }
                         Spacer()
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Current Streak")
+                        Text("Серия тренировок")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .lineLimit(1)
                         
-                        Text("\(streak) Days")
-                            .font(.system(size: 20, weight: .black, design: .rounded))
-                            .foregroundColor(.orange)
+                        Text("\(streak) дн.")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundColor(PastelTheme.pastelAmber)
                             .contentTransition(.numericText())
                         
-                        Text(streak > 0 ? "You're on fire! 🔥" : "Start your streak today!")
+                        Text(streak > 0 ? "Ударный ритм активен" : "Начните серию сегодня")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.gray)
+                            .foregroundColor(PastelTheme.textTertiary)
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
@@ -1224,29 +1228,32 @@ struct ActivityThisWeekSquareCard: View {
                     HStack {
                         ZStack {
                             Circle()
-                                .fill(LinearGradient(colors: [Color.cyan.opacity(0.25), Color.blue.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .fill(PastelTheme.pastelSlate.opacity(0.16))
                                 .frame(width: 40, height: 40)
-                            Image(systemName: "chart.xyaxis.line")
-                                .font(.system(size: 16))
-                                .foregroundColor(.cyan)
+                                .overlay(
+                                    Circle().stroke(PastelTheme.pastelSlate.opacity(0.3), lineWidth: 1)
+                                )
+                            Image(systemName: "calendar")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(PastelTheme.pastelSlate)
                         }
                         Spacer()
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Weekly Activity")
+                        Text("Активность недели")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .lineLimit(1)
                         
-                        Text("\(stats.workoutCount) Workouts")
-                            .font(.system(size: 20, weight: .black, design: .rounded))
-                            .foregroundColor(.cyan)
+                        Text("\(stats.workoutCount) тренировок")
+                            .font(.system(size: 18, weight: .heavy, design: .rounded))
+                            .foregroundColor(PastelTheme.pastelSlate)
                             .lineLimit(1)
                         
-                        Text("\(stats.totalDuration) Min · \(stats.totalReps) Reps")
+                        Text("\(stats.totalDuration) мин · \(stats.totalReps) повт.")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundColor(.gray)
+                            .foregroundColor(PastelTheme.textTertiary)
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
@@ -1269,7 +1276,9 @@ struct ActivityThisWeekSquareCard: View {
                 .onEnded { _ in isPressed = false }
         )
         .sheet(isPresented: $showSheet) {
-            WeeklyActivityDetailSheet(stats: stats, chartData: chartData)
+            NavigationStack {
+                WorkoutCalendarView()
+            }
         }
     }
 }

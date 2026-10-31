@@ -31,7 +31,7 @@ struct GlassCardModifier: ViewModifier {
 }
 
 extension View {
-    func glassCard(cornerRadius: CGFloat = 24, strokeColors: [Color] = [.white.opacity(0.4), .clear, .cyan.opacity(0.3)]) -> some View {
+    func glassCard(cornerRadius: CGFloat = 24, strokeColors: [Color] = [.white.opacity(0.4), .clear, PastelTheme.pastelOat.opacity(0.25)]) -> some View {
         self.modifier(GlassCardModifier(cornerRadius: cornerRadius, strokeColors: strokeColors))
     }
 }

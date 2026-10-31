@@ -50,6 +50,9 @@ struct ContentView: View {
         @Bindable var appState = di.appState
 
         ZStack {
+            AtmosphericGymBackdropView()
+                .zIndex(0)
+
             TabView(selection: $appState.selectedTab) {
                 OverviewView()
                     .tabItem {
@@ -124,6 +127,11 @@ struct ContentView: View {
         }
         .sheet(isPresented: $appState.showGuestSignUpPrompt) {
             GuestSignUpPromptView()
+        }
+        .sheet(isPresented: $appState.showCalendarSheet) {
+            NavigationStack {
+                WorkoutCalendarView()
+            }
         }
     }
 

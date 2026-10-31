@@ -19,6 +19,7 @@ final class AppStateManager {
     var showWorkoutModeDiscovery: Bool = false
     var showProfileSheet: Bool = false
     var showAchievementsSheet: Bool = false
+    var showCalendarSheet: Bool = false
 
     func showError(title: String, message: String) {
         self.currentError = AppError(title: title, message: message)

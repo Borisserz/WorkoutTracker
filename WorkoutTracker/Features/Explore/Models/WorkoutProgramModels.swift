@@ -97,7 +97,7 @@ struct MockProgramCatalog {
                 title: "Arnold's Golden 6",
                 description: "The classic full-body routine that built the Austrian Oak. Simple, effective, and brutal. Focus on progressive overload and ample rest.",
                 level: .intermediate, goal: .buildMuscle, equipment: .fullGym,
-                gradientColors: [.orange, .red], isSingleRoutine: true,
+                gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach], isSingleRoutine: true,
                 routines: [
                     routine("Full Body Day", icon: "figure.strengthtraining.traditional", exercises: [
                         ex("Barbell Squat", "Legs", 4, 10),
@@ -113,7 +113,7 @@ struct MockProgramCatalog {
                 title: "Push Pull Legs (PPL)",
                 description: "The ultimate 3-day split for maximizing muscle growth and recovery. Hits every muscle group optimally.",
                 level: .advanced, goal: .buildMuscle, equipment: .fullGym,
-                gradientColors: [.purple, .blue], isSingleRoutine: false,
+                gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate], isSingleRoutine: false,
                 routines: [
                     routine("Push Day", icon: "arrow.up.right", exercises: [
                         ex("Barbell Bench Press", "Chest", 4, 8),
@@ -142,7 +142,7 @@ struct MockProgramCatalog {
                 title: "Home HIIT Shred",
                 description: "No equipment? No problem. High-intensity intervals to burn fat fast and build cardiovascular endurance.",
                 level: .beginner, goal: .loseWeight, equipment: .bodyweight,
-                gradientColors: [.cyan, .green], isSingleRoutine: false,
+                gradientColors: [PastelTheme.pastelSage, PastelTheme.pastelSlate], isSingleRoutine: false,
                 routines: [
                     routine("Core Crusher", icon: "flame.fill", exercises: [
                         ex("Plank", "Core", 3, 60),
@@ -162,7 +162,7 @@ struct MockProgramCatalog {
                 title: "Powerlifting Basics",
                 description: "Focus on the big three: Squat, Bench, and Deadlift to build raw, uncompromising strength.",
                 level: .intermediate, goal: .getStronger, equipment: .fullGym,
-                gradientColors: [.gray, .black], isSingleRoutine: false,
+                gradientColors: [PastelTheme.pastelOat, PastelTheme.cardBorder], isSingleRoutine: false,
                 routines: [
                     routine("Squat Day", icon: "arrow.up.circle.fill", exercises: [
                         ex("Barbell Squat", "Legs", 5, 5),

@@ -92,6 +92,7 @@ struct AICoachView: View {
         NavigationStack(path: $path) {
             ZStack {
                 PastelTheme.canvas.ignoresSafeArea()
+                AtmosphericGymBackdropView()
 
                 // Ambient Athletic Glow
                 GeometryReader { _ in

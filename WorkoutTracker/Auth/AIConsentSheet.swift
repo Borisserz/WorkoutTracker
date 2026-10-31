@@ -23,7 +23,7 @@ struct AIConsentSheet: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 44))
-                        .foregroundStyle(LinearGradient(colors: [.purple, .cyan],
+                        .foregroundStyle(LinearGradient(colors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
                                                         startPoint: .topLeading,
                                                         endPoint: .bottomTrailing))
                         .frame(maxWidth: .infinity)
