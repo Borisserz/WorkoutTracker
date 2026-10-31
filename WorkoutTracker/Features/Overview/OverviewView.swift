@@ -72,6 +72,7 @@ struct OverviewView: View {
         NavigationStack(path: $router.path) {
             ZStack {
                 PastelTheme.canvas.ignoresSafeArea()
+                AtmosphericGymBackdropView()
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {

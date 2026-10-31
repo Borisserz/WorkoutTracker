@@ -584,7 +584,7 @@ struct PromoIntelligentAnalyticsIllustration: View {
             Circle()
                 .trim(from: 0, to: ringTrim1)
                 .stroke(
-                    LinearGradient(colors: [Color.cyan, Color.blue], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    LinearGradient(colors: [PastelTheme.pastelSlate, PastelTheme.pastelLavender], startPoint: .topLeading, endPoint: .bottomTrailing),
                     style: StrokeStyle(lineWidth: 5, lineCap: .round)
                 )
                 .frame(width: 100, height: 100)
@@ -597,7 +597,7 @@ struct PromoIntelligentAnalyticsIllustration: View {
             Circle()
                 .trim(from: 0, to: ringTrim2)
                 .stroke(
-                    LinearGradient(colors: [Color.purple, Color.cyan], startPoint: .topLeading, endPoint: .bottomTrailing),
+                    LinearGradient(colors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate], startPoint: .topLeading, endPoint: .bottomTrailing),
                     style: StrokeStyle(lineWidth: 5, lineCap: .round)
                 )
                 .frame(width: 82, height: 82)
@@ -609,7 +609,7 @@ struct PromoIntelligentAnalyticsIllustration: View {
                     .frame(width: 54, height: 54)
                     .overlay(
                         Circle()
-                            .stroke(Color.cyan.opacity(0.3), lineWidth: 1)
+                            .stroke(PastelTheme.pastelSlate.opacity(0.3), lineWidth: 1)
                     )
                 
                 Image(systemName: "drop.fill")

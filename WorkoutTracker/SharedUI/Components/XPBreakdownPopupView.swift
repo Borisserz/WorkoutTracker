@@ -29,9 +29,9 @@ struct XPBreakdownPopupView: View {
                     Text("LEVEL UP!")
                         .font(.system(size: 36, weight: .black, design: .rounded))
                         .foregroundStyle(
-                            LinearGradient(colors: [.yellow, .orange], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            LinearGradient(colors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach], startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
-                        .shadow(color: .orange.opacity(0.8), radius: 10, y: 5)
+                        .shadow(color: PastelTheme.pastelAmber.opacity(0.6), radius: 10, y: 5)
                         .scaleEffect(showContent ? 1.0 : 0.5)
                         .opacity(showContent ? 1 : 0)
                         .animation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.2), value: showContent)
@@ -41,7 +41,7 @@ struct XPBreakdownPopupView: View {
                             .font(.title2.bold())
                         Text(newTitle)
                             .font(.title3.weight(.medium))
-                            .foregroundColor(.cyan)
+                            .foregroundColor(PastelTheme.pastelOat)
                     }
                     .opacity(showContent ? 1 : 0)
                     .animation(.easeIn.delay(0.4), value: showContent)

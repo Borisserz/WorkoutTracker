@@ -74,18 +74,18 @@ struct MilestoneShareCard: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color(hex: "1a1a1a"), Color(hex: "000000")],
+                colors: [PastelTheme.cardSurface, PastelTheme.canvas],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
             Circle()
-                .fill(colors.first?.opacity(0.2) ?? themeManager.current.primaryAccent.opacity(0.2))
+                .fill(colors.first?.opacity(0.2) ?? PastelTheme.pastelAmber.opacity(0.2))
                 .frame(width: 400)
                 .offset(x: -200, y: -300)
 
             Circle()
-                .fill(colors.last?.opacity(0.2) ?? Color.purple.opacity(0.2))
+                .fill(colors.last?.opacity(0.2) ?? PastelTheme.pastelLavender.opacity(0.2))
                 .frame(width: 300)
                 .offset(x: 200, y: 300)
 
@@ -93,11 +93,11 @@ struct MilestoneShareCard: View {
                 HStack {
                     Image(systemName: "star.fill")
                         .font(.title)
-                        .foregroundColor(.yellow)
+                        .foregroundColor(PastelTheme.pastelAmber)
                     Text(title)
                         .font(.headline)
                         .tracking(2)
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(PastelTheme.textSecondary)
                 }
                 .padding(.top, 80)
 

@@ -182,6 +182,10 @@ struct WorkoutTrackerApp: App {
                         di.appState.showProfileSheet = true
                         return
                     }
+                    if url.host == "calendar" {
+                        di.appState.showCalendarSheet = true
+                        return
+                    }
                     if url.host == "achievements" {
                         di.appState.selectedTab = 4
                         di.appState.showAchievementsSheet = false

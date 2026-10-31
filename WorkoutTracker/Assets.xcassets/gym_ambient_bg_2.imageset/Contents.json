@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "gym_ambient_bg_2.jpg",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

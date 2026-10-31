@@ -88,7 +88,7 @@ struct WorkoutHubView: View {
                 eraTitle: "8 Недель, Программа 1",
                 shortVibe: "Без оборудования, максимальная рельефность",
                 loreDescription: "Научно разработанная программа Джеффа Кавальера с собственным весом тела.",
-                gradientColors: [.blue, .cyan],
+                gradientColors: [PastelTheme.pastelSlate, PastelTheme.pastelOat],
                 difficulty: .intermediate,
                 estimatedMinutes: 45,
                 benefits: ["Рельеф", "Выносливость", "Кор"],
@@ -103,7 +103,7 @@ struct WorkoutHubView: View {
                 eraTitle: "8 Недель, Программа 2",
                 shortVibe: "Элитная гипертрофия и сила",
                 loreDescription: "Протокол прогрессивной перегрузки для максимального роста мышечной массы.",
-                gradientColors: [.orange, .red],
+                gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach],
                 difficulty: .advanced,
                 estimatedMinutes: 60,
                 benefits: ["Сила", "Масса", "V-Taper"],
@@ -118,7 +118,7 @@ struct WorkoutHubView: View {
                 eraTitle: "Golden Era",
                 shortVibe: "Высокий объем, классический V-образный торс",
                 loreDescription: "Легендарный сплит Арнольда для максимальной гипертрофии мышц груди, спины и рук.",
-                gradientColors: [.orange, .red],
+                gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelOat],
                 difficulty: .advanced,
                 estimatedMinutes: 75,
                 benefits: ["V-Taper", "Объем", "Масса"],
@@ -135,7 +135,7 @@ struct WorkoutHubView: View {
                 eraTitle: "High Intensity Era",
                 shortVibe: "Предельная интенсивность, отказные сеты",
                 loreDescription: "Система высокоинтенсивного тренинга HIT: работа до абсолютного мышечного отказа в одном ключевом подходе.",
-                gradientColors: [.purple, .indigo],
+                gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
                 difficulty: .advanced,
                 estimatedMinutes: 45,
                 benefits: ["HIT", "Интенсивность", "Сила"],
@@ -159,6 +159,7 @@ struct WorkoutHubView: View {
             ScrollViewReader { proxy in
                 ZStack(alignment: .bottom) {
                     PastelTheme.canvas.ignoresSafeArea()
+                    AtmosphericGymBackdropView()
 
                     // Ambient Athletic Glow
                     GeometryReader { _ in

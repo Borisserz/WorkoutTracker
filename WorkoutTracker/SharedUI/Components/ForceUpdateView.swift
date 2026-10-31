@@ -20,13 +20,13 @@ struct ForceUpdateView: View {
                 let height = proxy.size.height
                 
                 Circle()
-                    .fill(LinearGradient(colors: [.blue.opacity(0.3), .purple.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(LinearGradient(colors: [PastelTheme.pastelSlate.opacity(0.25), PastelTheme.pastelLavender.opacity(0.25)], startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: width * 0.8, height: width * 0.8)
                     .blur(radius: 60)
                     .offset(x: appear ? width * 0.1 : -width * 0.1, y: appear ? -height * 0.1 : -height * 0.2)
                 
                 Circle()
-                    .fill(LinearGradient(colors: [.cyan.opacity(0.2), .indigo.opacity(0.3)], startPoint: .bottomLeading, endPoint: .topTrailing))
+                    .fill(LinearGradient(colors: [PastelTheme.pastelLavender.opacity(0.2), PastelTheme.pastelOat.opacity(0.2)], startPoint: .bottomLeading, endPoint: .topTrailing))
                     .frame(width: width * 0.6, height: width * 0.6)
                     .blur(radius: 50)
                     .offset(x: appear ? -width * 0.2 : width * 0.2, y: appear ? height * 0.1 : height * 0.3)
@@ -41,7 +41,7 @@ struct ForceUpdateView: View {
                     Circle()
                         .fill(
                             LinearGradient(
-                                colors: [themeManager.current.primaryAccent.opacity(0.2), .cyan.opacity(0.2)],
+                                colors: [PastelTheme.pastelOat.opacity(0.2), PastelTheme.pastelSlate.opacity(0.15)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )

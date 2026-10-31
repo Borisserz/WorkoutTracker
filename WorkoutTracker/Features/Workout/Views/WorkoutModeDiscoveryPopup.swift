@@ -307,6 +307,7 @@ struct WorkoutModeDiscoveryPopup: View {
                 .resizable()
                 .scaledToFill()
                 .frame(width: 58, height: 86)
+                .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -393,23 +394,26 @@ struct WorkoutModeDiscoveryPopup: View {
             }
         } label: {
             ZStack {
-                // 1. Cinematic Background Image
-                Image(mode.imageName)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(height: 162)
-                    .clipped()
-                    .overlay(
-                        LinearGradient(
-                            colors: [
-                                Color.black.opacity(isSelected ? 0.35 : 0.65),
-                                PastelTheme.cardSurface.opacity(isSelected ? 0.82 : 0.92),
-                                PastelTheme.cardSurface
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
+                // 1. Cinematic Background Image (Exact Fit Geometry)
+                GeometryReader { cardGeo in
+                    Image(mode.imageName)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: cardGeo.size.width, height: cardGeo.size.height)
+                        .clipped()
+                }
+                .overlay(
+                    LinearGradient(
+                        stops: [
+                            .init(color: Color.clear, location: 0.0),
+                            .init(color: Color.black.opacity(isSelected ? 0.04 : 0.14), location: 0.35),
+                            .init(color: PastelTheme.cardSurface.opacity(isSelected ? 0.70 : 0.82), location: 0.68),
+                            .init(color: PastelTheme.cardSurface, location: 1.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
+                )
 
                 // 2. Card Foreground Content
                 VStack(spacing: 6) {
@@ -463,7 +467,7 @@ struct WorkoutModeDiscoveryPopup: View {
             .shadow(color: isSelected ? mode.accentColor.opacity(0.35) : Color.black.opacity(0.2), radius: isSelected ? 10 : 4, y: isSelected ? 5 : 2)
             .offset(y: isSelected ? -7 : 0)
             .scaleEffect(x: isSelected ? 1.01 : 0.98, y: isSelected ? 1.02 : 0.98)
-            .opacity(isSelected ? 1.0 : 0.72)
+            .opacity(isSelected ? 1.0 : 0.88)
             .rotationEffect(.degrees(fanAngle))
             .rotation3DEffect(.degrees(fanYAxisTilt), axis: (x: 0, y: 1, z: 0), perspective: 0.3)
             .animation(.spring(response: 0.3, dampingFraction: 0.75), value: isSelected)
