@@ -10,7 +10,7 @@ struct AICameraExerciseSelectorSheet: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground))
+                (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.systemGroupedBackground))
                     .ignoresSafeArea()
                 
                 ScrollView {
@@ -18,44 +18,44 @@ struct AICameraExerciseSelectorSheet: View {
                         
                         VStack(spacing: 8) {
                             Image(systemName: "sparkles.tv")
-                                .font(.system(size: 48, weight: .thin))
-                                .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                .font(.system(size: 44, weight: .light))
+                                .foregroundStyle(PastelTheme.pastelLavender)
                             
-                            Text("AI Form Tracker")
-                                .font(.system(size: 28, weight: .bold, design: .rounded))
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                            Text("ИИ-контроль формы")
+                                .font(.system(size: 26, weight: .bold, design: .rounded))
+                                .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                             
-                            Text("Select an exercise to analyze your form in real-time.")
+                            Text("Выберите упражнение для анализа техники и подсчета повторений в реальном времени.")
                                 .font(.subheadline)
-                                .foregroundColor(.gray)
+                                .foregroundColor(PastelTheme.textSecondary)
                                 .multilineTextAlignment(.center)
-                                .padding(.horizontal, 40)
+                                .padding(.horizontal, 32)
                         }
                         .padding(.top, 20)
                         .padding(.bottom, 10)
                         
                         VStack(spacing: 16) {
                             AICameraExerciseCard(
-                                title: "Squats",
-                                subtitle: "Track depth and knee alignment",
+                                title: "Приседания",
+                                subtitle: "Контроль глубины седа и положения коленей",
                                 icon: "figure.strengthtraining.traditional",
-                                colors: [.blue, .cyan],
+                                colors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)],
                                 action: { handleSelection("Squats") }
                             )
                             
                             AICameraExerciseCard(
-                                title: "Pushups",
-                                subtitle: "Track chest-to-floor and back posture",
+                                title: "Отжимания",
+                                subtitle: "Контроль касания пола и ровной линии корпуса",
                                 icon: "figure.core.training",
-                                colors: [.orange, .red],
+                                colors: [PastelTheme.pastelAmber, PastelTheme.pastelAmber.opacity(0.7)],
                                 action: { handleSelection("Pushups") }
                             )
                             
                             AICameraExerciseCard(
-                                title: "Pullups",
-                                subtitle: "Track chin over bar and extension",
+                                title: "Подтягивания",
+                                subtitle: "Контроль подбородка над турником и выпрямления рук",
                                 icon: "figure.climbing",
-                                colors: [.purple, .pink],
+                                colors: [PastelTheme.pastelLavender, PastelTheme.pastelLavender.opacity(0.7)],
                                 action: { handleSelection("Pullups") }
                             )
                         }
@@ -73,7 +73,7 @@ struct AICameraExerciseSelectorSheet: View {
                     } label: {
                         Image(systemName: "xmark.circle.fill")
                             .font(.title3)
-                            .foregroundColor(.gray.opacity(0.5))
+                            .foregroundColor(PastelTheme.textMuted)
                     }
                 }
             }
@@ -99,26 +99,25 @@ struct AICameraExerciseCard: View {
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 20) {
+            HStack(spacing: 16) {
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 60, height: 60)
-                        .shadow(color: colors[0].opacity(0.4), radius: 10, y: 5)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 52, height: 52)
                     
                     Image(systemName: icon)
-                        .font(.system(size: 24, weight: .medium))
-                        .foregroundColor(.white)
+                        .font(.system(size: 22, weight: .medium))
+                        .foregroundColor(colors[0])
                 }
                 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(title)
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                     
                     Text(subtitle)
                         .font(.subheadline)
-                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.6) : .gray)
+                        .foregroundColor(PastelTheme.textSecondary)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                 }
@@ -126,20 +125,16 @@ struct AICameraExerciseCard: View {
                 Spacer()
                 
                 Image(systemName: "chevron.right")
-                    .font(.headline)
-                    .foregroundColor(colors[0].opacity(0.8))
+                    .font(.footnote)
+                    .foregroundColor(PastelTheme.textMuted)
             }
-            .padding(20)
-            .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+            .padding(18)
+            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(
-                        LinearGradient(colors: [colors[0].opacity(0.3), .clear], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        lineWidth: 1
-                    )
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 15, y: 8)
         }
         .buttonStyle(.plain)
     }

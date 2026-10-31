@@ -1473,9 +1473,9 @@ struct ComparisonSectionView: View {
                 if viewModel.chartData.isEmpty {
                     EmptyStateView(
                         icon: "chart.xyaxis.line",
-                        title: "Awaiting Data",
-                        message: "Complete your first tracked workout to unlock advanced analytics and charts.",
-                        iconColor: .cyan
+                        title: "Ожидание данных",
+                        message: "Завершите первую тренировку, чтобы открыть детальную аналитику и графики.",
+                        iconColor: PastelTheme.pastelSlate
                     )
                 } else {
                     Chart {
@@ -1727,14 +1727,14 @@ struct AdvancedStatsSectionView: View {
                 }
 
                 PremiumDisclosureCard(
-                    title: "30-Day Report",
-                    subtitle: "The results of your training sessions in the Stories format.",
+                    title: "Отчет за 30 дней",
+                    subtitle: "Итоги ваших тренировочных сессий в формате Stories.",
                     icon: "doc.text.fill",
-                    iconColor: .cyan,
+                    iconColor: PastelTheme.pastelSlate,
                     isExpanded: Binding(get: { openTab == 4 }, set: { openTab = $0 ? 4 : nil })
                 ) {
                     VStack(alignment: .leading) {
-                        InnerCardNavigationButton(title: "View Stories", icon: "play.rectangle.fill", color: .cyan) {
+                        InnerCardNavigationButton(title: "Смотреть Stories", icon: "play.rectangle.fill", color: PastelTheme.pastelSlate) {
                             MonthlyReportStoryView()
                         }
                     }
@@ -3380,42 +3380,41 @@ struct HeatmapDetailView: View {
 
                 ZStack {
                     Circle()
-                        .fill(Color.purple.opacity(0.6))
-                        .frame(width: 400, height: 400)
-                        .blur(radius: 120)
-                        .offset(x: isAnimatingBg ? 150 : -200, y: isAnimatingBg ? -200 : 200)
+                        .fill(PastelTheme.pastelLavender.opacity(0.12))
+                        .frame(width: 350, height: 350)
+                        .blur(radius: 100)
+                        .offset(x: isAnimatingBg ? 120 : -160, y: isAnimatingBg ? -160 : 160)
 
                     Circle()
-                        .fill(Color.cyan.opacity(0.6))
-                        .frame(width: 350, height: 350)
-                        .blur(radius: 120)
-                        .offset(x: isAnimatingBg ? -150 : 200, y: isAnimatingBg ? 200 : -150)
+                        .fill(PastelTheme.pastelSlate.opacity(0.12))
+                        .frame(width: 320, height: 320)
+                        .blur(radius: 100)
+                        .offset(x: isAnimatingBg ? -120 : 160, y: isAnimatingBg ? 160 : -120)
                 }
 
                 VStack(spacing: 40) {
                     Spacer()
 
-                    Text("Your Month\nin Review")
-                        .font(.system(size: 50, weight: .black, design: .rounded))
-                        .foregroundColor(.white)
+                    Text("Итоги вашего\nмесяца")
+                        .font(.system(size: 46, weight: .black, design: .rounded))
+                        .foregroundColor(PastelTheme.textPrimary)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
-                        .shadow(color: .purple.opacity(0.8), radius: 20, x: 0, y: 10)
 
-                    VStack(spacing: 20) {
-                        neoGlassCard(title: "Workouts", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: .cyan)
-                            .offset(y: floatAnim1 ? -8 : 8)
+                    VStack(spacing: 16) {
+                        neoGlassCard(title: "Тренировки", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: PastelTheme.pastelSlate)
+                            .offset(y: floatAnim1 ? -6 : 6)
                             .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: floatAnim1)
 
-                        neoGlassCard(title: "Minutes", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: .purple)
-                            .offset(y: floatAnim2 ? 8 : -8)
+                        neoGlassCard(title: "Минуты", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: PastelTheme.pastelAmber)
+                            .offset(y: floatAnim2 ? 6 : -6)
                             .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true).delay(0.5), value: floatAnim2)
 
                         neoGlassCard(
-                            title: "Favorite Day",
+                            title: "Любимый день",
                             value: data.favoriteDay.capitalized, 
                             icon: "star.fill",                   
-                            color: .green
+                            color: PastelTheme.pastelSage
                         )
                         .offset(y: floatAnim3 ? -6 : 6)
                         .animation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true).delay(1.0), value: floatAnim3)
@@ -3483,24 +3482,23 @@ struct HeatmapDetailView: View {
                     Spacer()
 
                     VStack(spacing: 8) {
-                        Text(LocalizedStringKey("You moved\nmountains."))
+                        Text("Колоссальный\nобъем")
                             .font(.system(size: 40, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
+                            .foregroundColor(PastelTheme.textPrimary)
                             .multilineTextAlignment(.center)
 
                         let volStr = LocalizationHelper.shared.formatTwoDecimals(data.totalVolumeTons)
 
-                        Text("\(volStr) tons")
+                        Text("\(volStr) т")
                             .font(.system(size: 65, weight: .black, design: .rounded))
-                            .foregroundColor(.cyan)
-                            .shadow(color: .cyan.opacity(0.8), radius: 25, x: 0, y: 0)
+                            .foregroundColor(PastelTheme.pastelSage)
+                            .shadow(color: PastelTheme.pastelSage.opacity(0.35), radius: 15, x: 0, y: 0)
                             .contentTransition(.numericText())
 
-                        Text("Daily lifting volume over the last 30 days")
+                        Text("Поднятый тоннаж за последние 30 дней")
                             .font(.caption)
-                            .fontWeight(.bold)
-                            .foregroundColor(.white.opacity(0.5))
-                            .textCase(.uppercase)
+                            .fontWeight(.medium)
+                            .foregroundColor(PastelTheme.textSecondary)
                             .padding(.bottom, 10) 
                     }
                     .padding(.horizontal, 24)
@@ -3514,9 +3512,9 @@ struct HeatmapDetailView: View {
                             y: .value("Vol", animateChart ? val : 0)
                         )
                         .interpolationMethod(.catmullRom)
-                        .foregroundStyle(.cyan)
-                        .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round, lineJoin: .round))
-                        .shadow(color: .cyan.opacity(0.6), radius: 10, y: 5)
+                        .foregroundStyle(PastelTheme.pastelSage)
+                        .lineStyle(StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
+                        .shadow(color: PastelTheme.pastelSage.opacity(0.3), radius: 8, y: 3)
 
                         AreaMark(
                             x: .value("Day", point.date),
@@ -3525,7 +3523,7 @@ struct HeatmapDetailView: View {
                         .interpolationMethod(.catmullRom)
                         .foregroundStyle(
                             LinearGradient(
-                                colors: [.cyan.opacity(0.5), .black.opacity(0.0)],
+                                colors: [PastelTheme.pastelSage.opacity(0.3), Color.clear],
                                 startPoint: .top,
                                 endPoint: .bottom
                             )
@@ -3634,27 +3632,27 @@ struct StorySlideOutro: View {
                                 .foregroundStyle(PastelTheme.pastelOat)
 
                             HStack(spacing: 20) {
-                                holoStat(value: "\(data.streakDays)", title: "Max Streak", color: .orange)
-                                holoStat(value: "\(data.activeDays.count)", title: "Gym Days", color: .cyan)
-                                holoStat(value: "\(data.summary.currentSets)", title: "Sets Done", color: .green)
+                                holoStat(value: "\(data.streakDays)", title: "Макс. стрик", color: PastelTheme.pastelAmber)
+                                holoStat(value: "\(data.activeDays.count)", title: "Тренировки", color: PastelTheme.pastelSlate)
+                                holoStat(value: "\(data.summary.currentSets)", title: "Подходы", color: PastelTheme.pastelSage)
                             }
 
                             Divider().background(Color.white.opacity(0.2))
 
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("ACTIVITY HEATMAP (LAST 28 DAYS)")
+                                Text("Активность за 28 дней")
                                     .font(.caption)
                                     .fontWeight(.bold)
-                                    .foregroundColor(.white.opacity(0.5))
+                                    .foregroundColor(PastelTheme.textSecondary)
 
                                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
                                     ForEach(last28Days, id: \.self) { date in
                                         let isActive = data.activeDays.contains(where: { Calendar.current.isDate($0, inSameDayAs: date) })
 
                                         RoundedRectangle(cornerRadius: 6)
-                                            .fill(isActive ? Color.cyan : Color.white.opacity(0.1))
+                                            .fill(isActive ? PastelTheme.pastelSage : Color.white.opacity(0.1))
                                             .aspectRatio(1, contentMode: .fit)
-                                            .shadow(color: isActive ? Color.cyan.opacity(0.6) : .clear, radius: 4)
+                                            .shadow(color: isActive ? PastelTheme.pastelSage.opacity(0.4) : .clear, radius: 4)
                                     }
                                 }
                             }
@@ -3664,7 +3662,7 @@ struct StorySlideOutro: View {
                     .frame(width: 340, height: 460)
                     .rotation3DEffect(.degrees(Double(dragOffset.width / 10)), axis: (x: 0, y: 1, z: 0))
                     .rotation3DEffect(.degrees(Double(-dragOffset.height / 10)), axis: (x: 1, y: 0, z: 0))
-                    .shadow(color: .cyan.opacity(0.3), radius: 40, x: dragOffset.width/3, y: dragOffset.height/3)
+                    .shadow(color: Color.black.opacity(0.4), radius: 30, x: dragOffset.width/3, y: dragOffset.height/3)
                     .gesture(
                         DragGesture()
                             .onChanged { val in withAnimation(.interactiveSpring()) { dragOffset = val.translation } }
@@ -3690,18 +3688,17 @@ struct StorySlideOutro: View {
                     } label: {
                         HStack(spacing: 12) {
                             Image(systemName: "square.and.arrow.up")
-                                .font(.title2.bold())
-                            Text(LocalizedStringKey("SHARE STATS"))
-                                .font(.title2.bold())
-                                .tracking(2)
+                                .font(.headline.weight(.bold))
+                            Text("Поделиться статистикой")
+                                .font(.headline.weight(.bold))
                         }
-                        .foregroundColor(.black)
+                        .foregroundColor(PastelTheme.textOnOat)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 22)
-                        .background(LinearGradient(colors: [.cyan, .green], startPoint: .leading, endPoint: .trailing))
-                        .clipShape(Capsule())
-                        .scaleEffect(isPulsing ? 1.05 : 1.0)
-                        .shadow(color: .green.opacity(isPulsing ? 0.8 : 0.4), radius: isPulsing ? 25 : 10, y: 5)
+                        .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                        .background(PastelTheme.pastelOat)
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                        .scaleEffect(isPulsing ? 1.03 : 1.0)
+                        .shadow(color: PastelTheme.pastelOat.opacity(0.2), radius: 10, y: 4)
                     }
                     .padding(.horizontal, 30)
                     .padding(.bottom, 40)
@@ -4006,30 +4003,30 @@ struct StorySlideOutro: View {
                 
                 ZStack {
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .fill(Color(white: 0.08))
+                        .fill(PastelTheme.cardSurface)
                     
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(LinearGradient(colors: [.purple, .cyan, .green], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1.5)
                     
                     VStack(spacing: 30) {
-                        Text("DISCIPLINE")
+                        Text("ДИСЦИПЛИНА")
                             .font(.system(size: 24, weight: .black, design: .rounded))
                             .tracking(4)
-                            .foregroundStyle(LinearGradient(colors: [.purple, .cyan], startPoint: .leading, endPoint: .trailing))
+                            .foregroundStyle(PastelTheme.pastelOat)
                         
                         HStack(spacing: 20) {
-                            holoStat(value: "\(data.streakDays)", title: "Max Streak", color: .orange)
-                            holoStat(value: "\(data.activeDays.count)", title: "Gym Days", color: .cyan)
-                            holoStat(value: "\(data.summary.currentSets)", title: "Sets Done", color: .green)
+                            holoStat(value: "\(data.streakDays)", title: "Макс. стрик", color: PastelTheme.pastelAmber)
+                            holoStat(value: "\(data.activeDays.count)", title: "Тренировки", color: PastelTheme.pastelSlate)
+                            holoStat(value: "\(data.summary.currentSets)", title: "Подходы", color: PastelTheme.pastelSage)
                         }
                         
-                        Divider().background(Color.white.opacity(0.2))
+                        Divider().background(Color.white.opacity(0.15))
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("ACTIVITY HEATMAP (LAST 28 DAYS)")
+                            Text("Активность за 28 дней")
                                 .font(.caption)
                                 .fontWeight(.bold)
-                                .foregroundColor(.white.opacity(0.5))
+                                .foregroundColor(PastelTheme.textSecondary)
                             
                             let cal = Calendar.current
                             let today = cal.startOfDay(for: Date())
@@ -4040,7 +4037,7 @@ struct StorySlideOutro: View {
                                     let isActive = data.activeDays.contains(where: { Calendar.current.isDate($0, inSameDayAs: date) })
                                     
                                     RoundedRectangle(cornerRadius: 6)
-                                        .fill(isActive ? Color.cyan : Color.white.opacity(0.1))
+                                        .fill(isActive ? PastelTheme.pastelSage : Color.white.opacity(0.1))
                                         .aspectRatio(1, contentMode: .fit)
                                 }
                             }
@@ -4048,10 +4045,10 @@ struct StorySlideOutro: View {
                         
                         HStack {
                             Image(systemName: "applewatch")
-                            Text("Tracked with WorkoutTracker")
+                            Text("Зафиксировано в WorkoutTracker")
                         }
                         .font(.caption)
-                        .foregroundColor(themeManager.current.secondaryAccent.opacity(0.5))
+                        .foregroundColor(PastelTheme.textMuted)
                         .padding(.top, 10)
                     }
                     .padding(30)
@@ -4174,14 +4171,14 @@ struct PersonalRecordsShowcaseView: View {
     private func getGlowColor(for exerciseName: String) -> Color {
         let category = ExerciseCategory.determine(from: exerciseName)
         switch category {
-        case .squat: return .green
-        case .press: return .red
-        case .deadlift: return .orange
-        case .pull: return .blue
-        case .curl: return .purple
-        case .core: return .cyan
-        case .cardio: return .pink
-        case .other: return .yellow
+        case .squat: return PastelTheme.pastelSage
+        case .press: return PastelTheme.pastelAmber
+        case .deadlift: return PastelTheme.pastelAmber
+        case .pull: return PastelTheme.pastelSlate
+        case .curl: return PastelTheme.pastelLavender
+        case .core: return PastelTheme.pastelSlate
+        case .cardio: return PastelTheme.pastelAmber
+        case .other: return PastelTheme.pastelOat
         }
     }
 

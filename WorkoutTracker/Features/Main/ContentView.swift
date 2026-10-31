@@ -57,35 +57,35 @@ struct ContentView: View {
                 OverviewView()
                     .tabItem {
                         Image(systemName: "chart.pie.fill")
-                        Text(LocalizedStringKey("Overview"))
+                        Text("Обзор")
                     }
                     .tag(0)
 
                 HistoryView()
                     .tabItem {
                         Image(systemName: "clock.arrow.circlepath")
-                        Text(LocalizedStringKey("History"))
+                        Text("История")
                     }
                     .tag(1)
 
                 WorkoutHubView()
                     .tabItem {
                         Image(systemName: "plus.circle.fill")
-                        Text(LocalizedStringKey("Workout"))
+                        Text("Тренировка")
                     }
                     .tag(2)
 
                 AICoachView()
                     .tabItem {
                         Image(systemName: "sparkles")
-                        Text(LocalizedStringKey("AI Hub"))
+                        Text("ИИ-Хаб")
                     }
                     .tag(3)
 
                 StatsView()
                     .tabItem {
                         Image(systemName: "trophy.fill")
-                        Text(LocalizedStringKey("Progress"))
+                        Text("Прогресс")
                     }
                     .tag(4)
             }

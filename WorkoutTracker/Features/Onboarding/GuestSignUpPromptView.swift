@@ -129,7 +129,7 @@ private struct FeatureRow: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(.cyan)
+                .foregroundStyle(PastelTheme.pastelSlate)
                 .frame(width: 24)
             Text(text)
                 .font(.system(size: 15, weight: .semibold, design: .rounded))
@@ -170,13 +170,13 @@ private struct AuroraPromptBackground: View {
                 startPoint: .top, endPoint: .bottom
             )
             Circle()
-                .fill(Color.green.opacity(0.35))
+                .fill(PastelTheme.pastelSage.opacity(0.12))
                 .frame(width: 320, height: 320)
                 .blur(radius: 90)
                 .offset(x: animate ? -60 : -120, y: animate ? -200 : -260)
             
             Circle()
-                .fill(Color.cyan.opacity(0.25))
+                .fill(PastelTheme.pastelSlate.opacity(0.10))
                 .frame(width: 280, height: 280)
                 .blur(radius: 90)
                 .offset(x: animate ? 90 : 140, y: animate ? 100 : 50)

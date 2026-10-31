@@ -24,11 +24,11 @@ struct CurrentStreakDetailSheet: View {
                     }
                 }
             }
-            .navigationTitle("Current Streak")
+            .navigationTitle("Текущий стрик")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button("Готово") { dismiss() }
                         .fontWeight(.bold)
                 }
             }
@@ -48,7 +48,7 @@ fileprivate struct StreakFireHeader: View {
                 // Outer glow ring (animates)
                 Circle()
                     .fill(RadialGradient(
-                        colors: [.orange.opacity(glowIntensity), .red.opacity(glowIntensity * 0.4), .clear],
+                        colors: [PastelTheme.pastelAmber.opacity(glowIntensity * 0.5), .clear],
                         center: .center,
                         startRadius: 40,
                         endRadius: 100
@@ -59,17 +59,19 @@ fileprivate struct StreakFireHeader: View {
 
                 // Inner circle background
                 Circle()
-                    .fill(LinearGradient(colors: [.orange.opacity(0.3), .red.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(PastelTheme.cardSurfaceSubtle)
                     .frame(width: 160, height: 160)
-                    .shadow(color: .orange.opacity(glowIntensity), radius: isPulsing ? 40 : 20, x: 0, y: 10)
+                    .overlay(
+                        Circle().stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    )
                     .animation(.easeInOut(duration: 1.4).repeatForever(autoreverses: true), value: isPulsing)
 
                 // Flame icon
                 Image(systemName: "flame.fill")
                     .font(.system(size: 80))
-                    .foregroundStyle(LinearGradient(colors: [.yellow, .orange, .red], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(PastelTheme.pastelAmber)
                     .scaleEffect(isPulsing ? 1.08 : 0.96)
-                    .shadow(color: .orange.opacity(0.9), radius: isPulsing ? 18 : 6, x: 0, y: 0)
+                    .shadow(color: PastelTheme.pastelAmber.opacity(0.4), radius: isPulsing ? 16 : 6, x: 0, y: 0)
                     .animation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true), value: isPulsing)
             }
             .onAppear {
@@ -81,13 +83,13 @@ fileprivate struct StreakFireHeader: View {
             
             // Main Text
             VStack(spacing: 8) {
-                Text("\(streak) Day Streak")
+                Text("\(streak) дн. стрик")
                     .font(.system(size: 40, weight: .heavy, design: .rounded))
-                    .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .leading, endPoint: .trailing))
+                    .foregroundStyle(PastelTheme.pastelAmber)
                 
-                Text(streak > 0 ? "You're on fire! Keep the momentum going." : "Start your journey today by completing a workout.")
+                Text(streak > 0 ? "Отличный темп! Продолжайте в том же духе." : "Начните серию сегодня, завершив тренировку.")
                     .font(.body)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(PastelTheme.textSecondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
             }
@@ -102,9 +104,9 @@ fileprivate struct StreakVisualizer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Last 7 Days"))
+            Text("Последние 7 дней")
                 .font(.headline)
-                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
 
             HStack(spacing: 12) {
                 ForEach(0..<7) { index in
@@ -271,7 +273,7 @@ fileprivate struct WeeklyActivityChartSection: View {
                         x: .value("Day", item.label),
                         y: .value("Volume", displayVal)
                     )
-                    .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .bottom, endPoint: .top))
+                    .foregroundStyle(LinearGradient(colors: [PastelTheme.pastelSage, PastelTheme.pastelSage.opacity(0.6)], startPoint: .top, endPoint: .bottom))
                     .cornerRadius(8)
                     .annotation(position: .top) {
                         if displayVal > 0 {
@@ -299,11 +301,11 @@ fileprivate struct WeeklyActivityChartSection: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.1) : Color.white)
+                .fill(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
         .padding(.horizontal, 24)
     }
@@ -315,25 +317,25 @@ fileprivate struct WeeklyActivityBentoGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(LocalizedStringKey("Weekly Summary"))
+            Text("Итоги недели")
                 .font(.headline)
-                .foregroundColor(colorScheme == .dark ? .white : .black)
+                .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 .padding(.horizontal, 24)
 
             HStack(spacing: 16) {
                 // Left column: Workouts & Time
                 VStack(spacing: 16) {
                     BentoCard(
-                        title: "Workouts",
+                        title: "Тренировки",
                         value: "\(stats.workoutCount)",
                         icon: "figure.run",
-                        colors: [.purple, .indigo]
+                        colors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)]
                     )
                     BentoCard(
-                        title: "Time",
-                        value: "\(stats.totalDuration)m",
+                        title: "Время",
+                        value: "\(stats.totalDuration) мин",
                         icon: "timer",
-                        colors: [.green, .mint]
+                        colors: [PastelTheme.pastelAmber, PastelTheme.pastelAmber.opacity(0.7)]
                     )
                 }
                 
@@ -341,28 +343,28 @@ fileprivate struct WeeklyActivityBentoGrid: View {
                 VStack(spacing: 16) {
                     ZStack {
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.1) : Color.white)
+                            .fill(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
                         
                         VStack(alignment: .leading, spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .fill(LinearGradient(colors: [.cyan.opacity(0.2), .blue.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .fill(PastelTheme.cardSurfaceSubtle)
                                     .frame(width: 48, height: 48)
                                 Image(systemName: "dumbbell.fill")
                                     .font(.system(size: 20))
-                                    .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                                    .foregroundStyle(PastelTheme.pastelLavender)
                             }
                             
                             Spacer()
                             
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(LocalizedStringKey("Total Reps"))
+                                Text("Всего повторений")
                                     .font(.subheadline)
-                                    .foregroundColor(.gray)
+                                    .foregroundColor(PastelTheme.textSecondary)
                                 
                                 Text("\(stats.totalReps)")
                                     .font(.system(size: 32, weight: .black, design: .rounded))
-                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                             }
                         }
                         .padding(20)
@@ -370,7 +372,7 @@ fileprivate struct WeeklyActivityBentoGrid: View {
                     }
                     .overlay(
                         RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
                     )
                 }
             }
@@ -389,29 +391,29 @@ fileprivate struct BentoCard: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.1) : Color.white)
+                .fill(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
             
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     ZStack {
                         Circle()
-                            .fill(LinearGradient(colors: [colors[0].opacity(0.2), colors[1].opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .fill(PastelTheme.cardSurfaceSubtle)
                             .frame(width: 36, height: 36)
                         Image(systemName: icon)
                             .font(.system(size: 16))
-                            .foregroundStyle(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .foregroundStyle(colors[0])
                     }
                     Spacer()
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(LocalizedStringKey(title))
+                    Text(title)
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(PastelTheme.textSecondary)
                     
                     Text(value)
                         .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 }
             }
             .padding(16)
@@ -419,7 +421,7 @@ fileprivate struct BentoCard: View {
         }
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.white.opacity(0.05), lineWidth: 1)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
     }
 }

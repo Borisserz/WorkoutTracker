@@ -15,7 +15,7 @@ class HapticManager {
 
 struct GlassCardModifier: ViewModifier {
     var cornerRadius: CGFloat = 24
-    var strokeColors: [Color] = [.white.opacity(0.4), .clear, .cyan.opacity(0.3)]
+    var strokeColors: [Color] = [PastelTheme.cardBorder, PastelTheme.cardBorder.opacity(0.5)]
 
     func body(content: Content) -> some View {
         content
@@ -96,10 +96,10 @@ struct HistoryBreathingBackground: View {
         ZStack {
             (colorScheme == .dark ? Color.black : Color(UIColor.systemGroupedBackground)).ignoresSafeArea()
 
-            Circle().fill(Color.purple.opacity(colorScheme == .dark ? 0.15 : 0.08)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? -100 : 100, y: phase ? -150 : 50)
-            Circle().fill(Color.cyan.opacity(colorScheme == .dark ? 0.12 : 0.05)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? 100 : -100, y: phase ? 150 : -50)
-            Circle().fill(color3.opacity(colorScheme == .dark ? 0.1 : 0.05)).frame(width: 300, height: 300).blur(radius: 80).offset(x: phase ? 0 : 50, y: phase ? 50 : -100)
-            Circle().fill(color4.opacity(colorScheme == .dark ? 0.08 : 0.04)).frame(width: 250, height: 250).blur(radius: 100).offset(x: phase ? 50 : -150, y: phase ? -50 : 150)
+            Circle().fill(PastelTheme.pastelLavender.opacity(colorScheme == .dark ? 0.08 : 0.04)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? -100 : 100, y: phase ? -150 : 50)
+            Circle().fill(PastelTheme.pastelSlate.opacity(colorScheme == .dark ? 0.08 : 0.04)).frame(width: 350, height: 350).blur(radius: 90).offset(x: phase ? 100 : -100, y: phase ? 150 : -50)
+            Circle().fill(color3.opacity(colorScheme == .dark ? 0.06 : 0.03)).frame(width: 300, height: 300).blur(radius: 80).offset(x: phase ? 0 : 50, y: phase ? 50 : -100)
+            Circle().fill(color4.opacity(colorScheme == .dark ? 0.05 : 0.02)).frame(width: 250, height: 250).blur(radius: 100).offset(x: phase ? 50 : -150, y: phase ? -50 : 150)
         }
         .rotationEffect(.degrees(phase ? 15 : -15)).scaleEffect(phase ? 1.05 : 0.95).drawingGroup()
         .onAppear { withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) { phase.toggle() } }
@@ -354,10 +354,10 @@ struct AchievementPopupView: View {
                     } else if !currentAchievement.progress.isEmpty {
                         Text(currentAchievement.progress)
                             .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(.cyan)
+                            .foregroundColor(PastelTheme.pastelSlate)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
-                            .background(Color.cyan.opacity(0.15))
+                            .background(PastelTheme.pastelSlate.opacity(0.15))
                             .clipShape(Capsule())
                     }
                 }
@@ -367,7 +367,7 @@ struct AchievementPopupView: View {
                 // Button
                 Button(action: handleClose) {
                     HStack {
-                        Text(currentIndex < achievements.count - 1 ? LocalizedStringKey("Next") : LocalizedStringKey("Awesome"))
+                        Text(currentIndex < achievements.count - 1 ? "Далее" : "Отлично")
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                         if currentIndex < achievements.count - 1 {
                             Image(systemName: "arrow.right")
@@ -481,10 +481,10 @@ struct AchievementPopupView: View {
     private func tierColor(_ tier: AchievementTier) -> Color {
         switch tier {
         case .none: return .clear
-        case .bronze: return .orange.opacity(0.8)
-        case .silver: return .gray
-        case .gold: return .yellow
-        case .diamond: return .cyan
+        case .bronze: return PastelTheme.pastelAmber
+        case .silver: return PastelTheme.pastelOat
+        case .gold: return PastelTheme.pastelAmber
+        case .diamond: return PastelTheme.pastelLavender
         }
     }
 }

@@ -51,13 +51,13 @@ struct SmartWorkoutLauncherSheet: View {
                         VStack(spacing: 20) {
                             // Header
                             VStack(spacing: 6) {
-                                Text(LocalizedStringKey("Start Session"))
+                                Text("Начать тренировку")
                                     .font(.system(size: 28, weight: .black, design: .rounded))
-                                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                                 
-                                Text(LocalizedStringKey("Select how you want to train today"))
+                                Text("Выберите формат сегодняшней сессии")
                                     .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(PastelTheme.textSecondary)
                             }
                             .padding(.bottom, 12)
 
@@ -80,11 +80,11 @@ struct SmartWorkoutLauncherSheet: View {
                                     onStartEmptySession()
                                 } label: {
                                     squareBentoCard(
-                                        title: "Quick Session",
-                                        subtitle: "Freestyle Mode",
+                                        title: "Быстрый старт",
+                                        subtitle: "Свободный режим",
                                         icon: "play.circle.fill",
-                                        colors: [.blue, .cyan],
-                                        accentColor: .blue
+                                        colors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)],
+                                        accentColor: PastelTheme.pastelSlate
                                     )
                                 }
                                 .buttonStyle(PremiumScaleButtonStyle())
@@ -98,11 +98,11 @@ struct SmartWorkoutLauncherSheet: View {
                                     )
                                 } label: {
                                     squareBentoCard(
-                                        title: "My Routines",
-                                        subtitle: "Saved Templates",
+                                        title: "Мои шаблоны",
+                                        subtitle: "Сохраненные программы",
                                         icon: "list.bullet.clipboard.fill",
-                                        colors: [.green, .mint],
-                                        accentColor: .green
+                                        colors: [PastelTheme.pastelSage, PastelTheme.pastelSage.opacity(0.7)],
+                                        accentColor: PastelTheme.pastelSage
                                     )
                                 }
                                 .buttonStyle(PremiumScaleButtonStyle())
@@ -131,51 +131,47 @@ struct SmartWorkoutLauncherSheet: View {
         HStack(spacing: 20) {
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [.purple.opacity(0.3), .indigo.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 64, height: 64)
+                    .fill(PastelTheme.cardSurfaceSubtle)
+                    .frame(width: 60, height: 60)
                 
                 Image(systemName: "wand.and.stars")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(LinearGradient(colors: [.purple, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(PastelTheme.pastelLavender)
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text(LocalizedStringKey("AI Smart Generator"))
+                    Text("ИИ-генератор")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black)
+                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                     
-                    Text("NEW")
+                    Text("ИИ")
                         .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(PastelTheme.textOnOat)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Color.purple)
+                        .background(PastelTheme.pastelLavender)
                         .cornerRadius(6)
                 }
                 
-                Text(LocalizedStringKey("Generate custom personalized routine tailored for you instantly"))
+                Text("Персональная программа тренировки за пару секунд")
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(PastelTheme.textSecondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .foregroundColor(.secondary)
+                .foregroundColor(PastelTheme.textMuted)
                 .font(.footnote)
         }
         .padding(20)
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(
-                    LinearGradient(colors: [.purple.opacity(0.4), .indigo.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    lineWidth: 1.5
-                )
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: .purple.opacity(colorScheme == .dark ? 0.12 : 0.04), radius: 12, x: 0, y: 6)
     }
 
     @ViewBuilder
@@ -189,85 +185,69 @@ struct SmartWorkoutLauncherSheet: View {
         VStack(alignment: .leading, spacing: 14) {
             ZStack(alignment: .center) {
                 Circle()
-                    .fill(LinearGradient(colors: [colors[0].opacity(0.2), colors[1].opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(PastelTheme.cardSurfaceSubtle)
                     .frame(width: 48, height: 48)
                 
                 Image(systemName: icon)
                     .font(.title3)
-                    .foregroundStyle(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .foregroundStyle(accentColor)
             }
             
             VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey(title))
+                Text(title)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 
-                Text(LocalizedStringKey(subtitle))
+                Text(subtitle)
                     .font(.caption2)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(PastelTheme.textSecondary)
             }
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(
-                    LinearGradient(colors: [colors[0].opacity(0.4), colors[1].opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    lineWidth: 1.2
-                )
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: accentColor.opacity(colorScheme == .dark ? 0.08 : 0.02), radius: 10, x: 0, y: 5)
     }
 
     private var legendaryBentoBanner: some View {
         HStack(spacing: 20) {
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [.orange.opacity(0.3), .red.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(PastelTheme.cardSurfaceSubtle)
                     .frame(width: 56, height: 56)
                 
                 Image(systemName: "crown.fill")
                     .font(.system(size: 24))
-                    .foregroundStyle(LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .foregroundStyle(PastelTheme.pastelAmber)
             }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(LocalizedStringKey("Legendary Programs"))
+                Text("Золотая эра")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 
-                Text(LocalizedStringKey("Train with protocols from bodybuilding icons of Golden Era"))
+                Text("Классические программы легенд бодибилдинга")
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(PastelTheme.textSecondary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
             Spacer()
             Image(systemName: "chevron.right")
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(PastelTheme.textMuted)
                 .font(.footnote)
         }
         .padding(20)
-        .background(
-            ZStack {
-                LinearGradient(colors: [Color(hex: "1f1c2c"), Color(hex: "928dab").opacity(0.9)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                
-                // Tech glowing grid lines overlay
-                RoundedRectangle(cornerRadius: 24)
-                    .fill(Color.orange.opacity(0.05))
-            }
-        )
+        .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(
-                    LinearGradient(colors: [.orange.opacity(0.5), .red.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                    lineWidth: 1.5
-                )
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(color: .orange.opacity(0.2), radius: 12, x: 0, y: 6)
     }
 }
 
@@ -278,23 +258,23 @@ struct BentoBackgroundGlowView: View {
 
     var body: some View {
         ZStack {
-            (colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
+            (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.systemGroupedBackground))
 
             if colorScheme == .dark {
-                // Radial soft glows for dark mode
+                // Subtle warm ambient breathing for dark mode
                 Circle()
-                    .fill(Color.purple.opacity(0.08))
-                    .frame(width: 280, height: 280)
-                    .blur(radius: 60)
-                    .offset(x: animateGlow ? -90 : -130, y: animateGlow ? -200 : -160)
-                    .scaleEffect(animateGlow ? 1.15 : 0.9)
+                    .fill(PastelTheme.pastelAmber.opacity(0.03))
+                    .frame(width: 320, height: 320)
+                    .blur(radius: 80)
+                    .offset(x: animateGlow ? -60 : -100, y: animateGlow ? -160 : -120)
+                    .scaleEffect(animateGlow ? 1.1 : 0.95)
 
                 Circle()
-                    .fill(Color.blue.opacity(0.08))
-                    .frame(width: 250, height: 250)
-                    .blur(radius: 60)
-                    .offset(x: animateGlow ? 140 : 100, y: animateGlow ? 60 : 100)
-                    .scaleEffect(animateGlow ? 0.9 : 1.1)
+                    .fill(PastelTheme.pastelOat.opacity(0.02))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: 80)
+                    .offset(x: animateGlow ? 100 : 70, y: animateGlow ? 40 : 80)
+                    .scaleEffect(animateGlow ? 0.95 : 1.1)
             }
         }
         .onAppear {

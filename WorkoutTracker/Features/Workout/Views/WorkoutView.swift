@@ -353,58 +353,67 @@ struct PremiumRealWorkoutCard: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
     @State private var isBreathing = false
-    @State private var rotation: Double = 0
 
     var body: some View {
         HStack(spacing: 16) {
-
             ZStack {
-                Circle().fill(themeManager.current.primaryAccent.opacity(0.15)).frame(width: 50, height: 50)
+                Circle()
+                    .fill(workout.isActive ? PastelTheme.pastelAmber.opacity(0.18) : PastelTheme.cardSurfaceSubtle)
+                    .frame(width: 50, height: 50)
 
-                if UIImage(named: workout.icon) != nil {
-                    Image(workout.icon)
-                        .resizable()
-                        .renderingMode(.template)
-                        .scaledToFit()
-                        .frame(width: 24, height: 24)
-                        .foregroundColor(themeManager.current.primaryAccent)
-                } else {
-                    Image(systemName: UIImage(systemName: workout.icon) != nil ? workout.icon : "dumbbell.fill")
-                        .font(.title2)
-                        .foregroundColor(themeManager.current.primaryAccent)
-                }
+                Image(systemName: UIImage(systemName: workout.icon) != nil ? workout.icon : "dumbbell.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(workout.isActive ? PastelTheme.pastelAmber : PastelTheme.pastelSage)
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(workout.title).font(.headline).foregroundColor(colorScheme == .dark ? .white : .black)
+                Text(workout.title.isEmpty ? "Тренировка" : workout.title)
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
                 HStack(spacing: 8) {
-                    Text(workout.date.formatted(date: .abbreviated, time: .omitted)).font(.caption).foregroundColor(.gray)
-                    Text("•").foregroundColor(.gray)
-                    Text("\(workout.exercises.count) ex.").font(.caption).foregroundColor(.gray)
-                    Text("•").foregroundColor(.gray)
-                    Text("\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume))) kg").font(.caption).bold().foregroundColor(themeManager.current.primaryAccent)
+                    Text(workout.date.formatted(date: .abbreviated, time: .omitted))
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
+
+                    Rectangle()
+                        .fill(PastelTheme.cardBorder)
+                        .frame(width: 1, height: 10)
+
+                    Text("\(workout.exercises.count) упр.")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
+
+                    Rectangle()
+                        .fill(PastelTheme.cardBorder)
+                        .frame(width: 1, height: 10)
+
+                    Text("\(Int(unitsManager.convertFromKilograms(workout.totalStrengthVolume))) \(unitsManager.weightUnitString())")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelSage)
                 }
             }
             Spacer()
-            Image(systemName: "chevron.right").foregroundColor(Color.gray.opacity(0.5))
+            Image(systemName: "chevron.right")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(PastelTheme.textTertiary)
         }
-        .padding()
-
-        .background(colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.13) : Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        .padding(14)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 20).stroke(
-                AngularGradient(gradient: Gradient(colors: [.cyan, .blue, .clear, .clear, .cyan]), center: .center, startAngle: .degrees(rotation), endAngle: .degrees(rotation + 360)), lineWidth: workout.isActive ? 2 : (colorScheme == .dark ? 0 : 1)
-            )
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(
+                    workout.isActive ? PastelTheme.pastelAmber.opacity(0.65) : PastelTheme.cardBorder,
+                    lineWidth: workout.isActive ? 1.5 : 1
+                )
         )
-        .shadow(color: workout.isActive ? .cyan.opacity(0.3) : .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, x: 0, y: 3)
+        .shadow(
+            color: workout.isActive ? PastelTheme.pastelAmber.opacity(0.25) : Color.black.opacity(0.15),
+            radius: workout.isActive ? 10 : 4,
+            y: 2
+        )
         .padding(.horizontal, 20)
-        .onAppear {
-            if workout.isActive {
-                withAnimation(.easeInOut(duration: 2.0).repeatForever(autoreverses: true)) { isBreathing = true }
-                withAnimation(.linear(duration: 4.0).repeatForever(autoreverses: false)) { rotation = 360 }
-            }
-        }
     }
 }
 
@@ -646,56 +655,58 @@ struct PremiumHistoryEmptyState: View {
         ZStack {
             // Blurred Mock Background
             VStack(spacing: 12) {
-                MockWorkoutRow(title: "Leg Day Destroyer", duration: "1h 15m", volume: "12 t", isBlinking: true)
-                MockWorkoutRow(title: "Upper Body Power", duration: "45m", volume: "8.5 t", isBlinking: false)
-                MockWorkoutRow(title: "Core & Cardio", duration: "30m", volume: "0 t", isBlinking: false)
+                MockWorkoutRow(title: "Силовая тренировка ног", duration: "1 ч 15 мин", volume: "12 т", isBlinking: true)
+                MockWorkoutRow(title: "Торс и руки", duration: "45 мин", volume: "8.5 т", isBlinking: false)
+                MockWorkoutRow(title: "Пресс и восстановление", duration: "30 мин", volume: "0 кг", isBlinking: false)
             }
-            .opacity(0.4)
+            .opacity(0.3)
             .blur(radius: 8)
 
             // Foreground CTA
             VStack(spacing: 16) {
                 Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 48, weight: .light))
-                    .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .shadow(color: .cyan.opacity(0.5), radius: 10, y: 5)
+                    .font(.system(size: 44, weight: .semibold))
+                    .foregroundStyle(PastelTheme.pastelSage)
+                    .shadow(color: PastelTheme.pastelSage.opacity(0.4), radius: 10, y: 4)
 
-                Text("A Blank Slate")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                Text("Чистый лист")
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
 
-                Text("Every legend starts from zero.\nComplete your first workout to start building your history.")
-                    .font(.system(size: 15))
-                    .foregroundColor(.gray)
+                Text("Каждая серия побед начинается с нуля.\nЗавершите первую тренировку, чтобы наполнить историю прогрессом.")
+                    .font(.system(size: 14, weight: .medium, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 32)
-                    .lineSpacing(4)
+                    .padding(.horizontal, 24)
+                    .lineSpacing(3)
 
-                Button(action: {
-                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                Button {
+                    HapticManager.playMediumImpact()
                     onStartWorkout()
-                }) {
-                    Text("Start First Session")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 14)
-                        .background(LinearGradient(colors: [.cyan, .blue], startPoint: .leading, endPoint: .trailing))
-                        .clipShape(Capsule())
-                        .shadow(color: .cyan.opacity(0.4), radius: 10, y: 5)
+                } label: {
+                    Text("Начать первую тренировку")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textOnOat)
+                        .padding(.horizontal, 24)
+                        .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                        .background(PastelTheme.pastelOat)
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                 }
-                .padding(.top, 8)
+                .buttonStyle(.plain)
+                .padding(.top, 6)
             }
-            .padding(30)
-            .background(colorScheme == .dark ? Color.black.opacity(0.5) : Color.white.opacity(0.8))
-            .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 30))
-            .overlay(RoundedRectangle(cornerRadius: 30).stroke(Color.primary.opacity(0.05), lineWidth: 1))
-            .shadow(color: .black.opacity(0.1), radius: 20, y: 10)
+            .padding(26)
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.35), radius: 24, y: 10)
             .padding(.horizontal, 20)
         }
         .frame(maxWidth: .infinity)
-        .padding(.top, 40)
+        .padding(.top, 30)
     }
 }
 
@@ -704,30 +715,46 @@ struct MockWorkoutRow: View {
     let duration: String
     let volume: String
     let isBlinking: Bool
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             Circle()
-                .fill(Color.cyan.opacity(0.2))
-                .frame(width: 40, height: 40)
-            
-            VStack(alignment: .leading, spacing: 4) {
+                .fill(PastelTheme.cardSurfaceSubtle)
+                .frame(width: 38, height: 38)
+                .overlay(
+                    Image(systemName: "figure.strengthtraining.traditional")
+                        .font(.system(size: 16))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
                 Text(title)
-                    .font(.headline)
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
-                HStack {
-                    Text(duration).font(.caption).foregroundColor(.gray)
-                    Text("•").foregroundColor(.gray)
-                    Text(volume).font(.caption).foregroundColor(.gray)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
+                HStack(spacing: 6) {
+                    Text(duration)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
+
+                    Rectangle()
+                        .fill(PastelTheme.cardBorder)
+                        .frame(width: 1, height: 10)
+
+                    Text(volume)
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
                 }
             }
             Spacer()
         }
-        .padding()
-        .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(isBlinking ? Color.cyan.opacity(0.5) : Color.clear, lineWidth: 2))
+        .padding(12)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(isBlinking ? PastelTheme.pastelSage.opacity(0.5) : PastelTheme.cardBorder, lineWidth: 1)
+        )
         .padding(.horizontal, 20)
     }
 }

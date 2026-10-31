@@ -46,7 +46,7 @@ struct FoodTrackerPromoView: View {
             iconName: "sparkles",
             title: "AI Nutrition Coach",
             description: "Chat with your personal AI coach. Get macro advice, daily verdicts, and personalized health guidance.",
-            color: .pink,
+            color: PastelTheme.pastelLavender,
             leftIcon: "message.fill",
             leftLabel: "24/7 AI Chat",
             rightIcon: "brain.head.profile",
@@ -56,7 +56,7 @@ struct FoodTrackerPromoView: View {
             iconName: "camera.viewfinder",
             title: "Smart Food Vision",
             description: "Simply snap a photo of your meal or scan a barcode. Our AI instantly calculates your calories, protein, fats, and carbs.",
-            color: .orange,
+            color: PastelTheme.pastelAmber,
             leftIcon: "camera.viewfinder",
             leftLabel: "Photo Scan",
             rightIcon: "barcode.viewfinder",
@@ -66,7 +66,7 @@ struct FoodTrackerPromoView: View {
             iconName: "frying.pan.fill",
             title: "AI Chef Studio",
             description: "Input ingredients from your fridge and get diet-matched recipes. Plus, use your camera so the AI can monitor and guide your cooking process!",
-            color: .yellow,
+            color: PastelTheme.pastelPeach,
             leftIcon: "frying.pan.fill",
             leftLabel: "Diet Recipes",
             rightIcon: "camera.fill",
@@ -76,7 +76,7 @@ struct FoodTrackerPromoView: View {
             iconName: "person.crop.circle.badge.clock",
             title: "Visual Progress",
             description: "Upload Before & After photos to visually compare your transformation and let AI analyze your physical progress.",
-            color: .green,
+            color: PastelTheme.pastelSage,
             leftIcon: "photo.stack.fill",
             leftLabel: "Before & After",
             rightIcon: "chart.line.uptrend.xyaxis",
@@ -86,7 +86,7 @@ struct FoodTrackerPromoView: View {
             iconName: "chart.bar.xaxis",
             title: "Intelligent Analytics",
             description: "Deep insights into your consistency and habits, featuring an AI Hydration Coach that optimizes your water and pH balance.",
-            color: .cyan,
+            color: PastelTheme.pastelSlate,
             leftIcon: "drop.fill",
             leftLabel: "Hydration Coach",
             rightIcon: "chart.bar.xaxis",
@@ -573,7 +573,7 @@ struct PromoIntelligentAnalyticsIllustration: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.cyan.opacity(0.12))
+                .fill(PastelTheme.pastelSlate.opacity(0.12))
                 .frame(width: 120, height: 120)
                 .blur(radius: 12)
             
@@ -614,8 +614,8 @@ struct PromoIntelligentAnalyticsIllustration: View {
                 
                 Image(systemName: "drop.fill")
                     .font(.system(size: 24))
-                    .foregroundColor(Color.cyan)
-                    .shadow(color: Color.cyan, radius: 6)
+                    .foregroundColor(PastelTheme.pastelSlate)
+                    .shadow(color: PastelTheme.pastelSlate.opacity(0.4), radius: 6)
                     .offset(y: dropletOffset)
             }
         }
@@ -912,41 +912,17 @@ struct PromoCosmicContinueButton: View {
     
     var body: some View {
         Button(action: {
-            HapticManager.shared.impact(.medium)
+            HapticManager.shared.impact(.light)
             action()
         }) {
-            Text(title.uppercased())
-                .font(.system(size: 16, weight: .black, design: .rounded))
-                .tracking(2)
-                .foregroundColor(.white)
+            Text(title)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundColor(PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color(red: 0.1, green: 0.7, blue: 1.0),
-                                    Color(red: 0.6, green: 0.3, blue: 1.0)
-                                ],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                )
-                .overlay(
-                    Capsule()
-                        .stroke(
-                            LinearGradient(
-                                colors: [.white.opacity(0.4), .clear],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            ),
-                            lineWidth: 1.2
-                        )
-                )
-                .shadow(color: Color(red: 0.1, green: 0.7, blue: 1.0).opacity(0.4), radius: 15, x: 0, y: 8)
-                .shadow(color: Color(red: 0.6, green: 0.3, blue: 1.0).opacity(0.3), radius: 15, x: 0, y: 8)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                .background(PastelTheme.pastelOat)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 10, y: 3)
         }
         .buttonStyle(BouncyButtonStyle())
     }
