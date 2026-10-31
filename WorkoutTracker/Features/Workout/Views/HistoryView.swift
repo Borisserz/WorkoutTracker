@@ -213,26 +213,7 @@ struct HistoryView: View {
         NavigationStack {
             ZStack {
                 PastelTheme.canvas.ignoresSafeArea()
-                AtmosphericGymBackdropView()
-
-                // Ambient athletic glow (Emerald & Warm Beige)
-                GeometryReader { _ in
-                    ZStack {
-                        Circle()
-                            .fill(PastelTheme.pastelSage.opacity(0.12))
-                            .blur(radius: 70)
-                            .frame(width: 240, height: 240)
-                            .offset(x: -80, y: -40)
-
-                        Circle()
-                            .fill(PastelTheme.pastelOat.opacity(0.10))
-                            .blur(radius: 80)
-                            .frame(width: 260, height: 260)
-                            .offset(x: 120, y: -10)
-                    }
-                }
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+                AtmosphericGymBackdropView(style: .history)
 
                 List {
                     Group {

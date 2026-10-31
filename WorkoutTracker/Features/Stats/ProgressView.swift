@@ -242,26 +242,7 @@ struct StatsContentView: View {
     var body: some View {
         ZStack {
             PastelTheme.canvas.ignoresSafeArea()
-            AtmosphericGymBackdropView()
-
-            // Ambient Athletic Glow
-            GeometryReader { _ in
-                ZStack {
-                    Circle()
-                        .fill(PastelTheme.pastelSage.opacity(0.08))
-                        .blur(radius: 80)
-                        .frame(width: 250, height: 250)
-                        .offset(x: -80, y: -40)
-
-                    Circle()
-                        .fill(PastelTheme.pastelOat.opacity(0.07))
-                        .blur(radius: 90)
-                        .frame(width: 260, height: 260)
-                        .offset(x: 120, y: -20)
-                }
-            }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
+            AtmosphericGymBackdropView(style: .progress)
 
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 20) {
