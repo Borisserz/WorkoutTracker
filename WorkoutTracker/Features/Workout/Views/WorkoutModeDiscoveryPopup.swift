@@ -48,6 +48,14 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
         }
     }
 
+    var imageName: String {
+        switch self {
+        case .empty: return "workout_free_cover"
+        case .aiBuilder: return "workout_ai_cover"
+        case .templates: return "workout_templates_cover"
+        }
+    }
+
     var accentColor: Color {
         switch self {
         case .empty: return PastelTheme.pastelSage       // Athletic Emerald
@@ -78,11 +86,11 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
     var tags: [String] {
         switch self {
         case .empty:
-            return ["0 ограничений", "Быстрый старт", "Свой порядок"]
+            return ["Свобода", "Быстрый старт", "Без рамок"]
         case .aiBuilder:
             return ["Анализ мышц", "Смарт-объем", "Прогрессия"]
         case .templates:
-            return ["Лучший тоннаж", "История весов", "В 1 тап"]
+            return ["Из истории", "Тоннаж", "В 1 тап"]
         }
     }
 }
@@ -236,43 +244,61 @@ struct WorkoutModeDiscoveryPopup: View {
 
     // MARK: - Editorial Inspection HUD (Above the 3 Cards)
     private var editorialInspectionHUD: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Clean category label without decorative dots
-            Text(selectedMode.categoryTitle)
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .foregroundStyle(selectedMode.accentColor)
+        HStack(alignment: .top, spacing: 14) {
+            VStack(alignment: .leading, spacing: 7) {
+                // Clean category label without decorative dots
+                Text(selectedMode.categoryTitle)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(selectedMode.accentColor)
 
-            // Big Confident Mode Title
-            Text(selectedMode.fullTitle)
-                .font(.system(size: 22, weight: .heavy, design: .rounded))
-                .foregroundStyle(PastelTheme.textPrimary)
-                .contentTransition(.numericText())
+                // Big Confident Mode Title
+                Text(selectedMode.fullTitle)
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+                    .contentTransition(.numericText())
 
-            // Editorial Phrased Description
-            Text(selectedMode.editorialDescription)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(PastelTheme.textSecondary)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(minHeight: 48, alignment: .topLeading)
+                // Editorial Phrased Description
+                Text(selectedMode.editorialDescription)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(PastelTheme.textSecondary)
+                    .lineSpacing(2.5)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: 44, alignment: .topLeading)
 
-            // Dynamic Tag Pills
-            HStack(spacing: 6) {
-                ForEach(selectedMode.tags, id: \.self) { tag in
-                    Text(tag)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(selectedMode.accentColor)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 4)
-                        .background(selectedMode.accentColor.opacity(0.12))
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(selectedMode.accentColor.opacity(0.28), lineWidth: 1))
+                // Dynamic Tag Pills
+                HStack(spacing: 6) {
+                    ForEach(selectedMode.tags, id: \.self) { tag in
+                        Text(tag)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(selectedMode.accentColor)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(selectedMode.accentColor.opacity(0.12))
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(selectedMode.accentColor.opacity(0.28), lineWidth: 1))
+                    }
                 }
+                .padding(.top, 2)
             }
-            .padding(.top, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // Right: Atmospheric Artwork Portrait Thumbnail
+            Image(selectedMode.imageName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 64, height: 96)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(selectedMode.accentColor.opacity(0.6), lineWidth: 1.5)
+                )
+                .shadow(color: selectedMode.accentColor.opacity(0.3), radius: 8, y: 3)
+                .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                .id(selectedMode.imageName)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
+        .padding(14)
         .background(PastelTheme.cardSurfaceSubtle)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
@@ -348,57 +374,78 @@ struct WorkoutModeDiscoveryPopup: View {
                 }
             }
         } label: {
-            VStack(spacing: 10) {
-                // Top Roman Numeral
-                HStack {
-                    Text(mode.romanNumeral)
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(isSelected ? mode.accentColor : PastelTheme.textTertiary)
+            ZStack {
+                // 1. Cinematic Background Image
+                Image(mode.imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(height: 172)
+                    .clipped()
+                    .overlay(
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(isSelected ? 0.35 : 0.65),
+                                PastelTheme.cardSurface.opacity(isSelected ? 0.82 : 0.92),
+                                PastelTheme.cardSurface
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
 
-                    Spacer()
+                // 2. Card Foreground Content
+                VStack(spacing: 8) {
+                    // Top Bar: Roman Numeral + Icon Chip
+                    HStack {
+                        Text(mode.romanNumeral)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(isSelected ? mode.accentColor : PastelTheme.textTertiary)
+
+                        Spacer()
+
+                        Image(systemName: mode.icon)
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(isSelected ? mode.accentColor : PastelTheme.textSecondary)
+                            .frame(width: 22, height: 22)
+                            .background(PastelTheme.cardSurfaceSubtle.opacity(0.85))
+                            .clipShape(Circle())
+                    }
+
+                    Spacer(minLength: 4)
+
+                    // Card Title & Badge at the bottom
+                    VStack(spacing: 3) {
+                        Text(mode.title)
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundStyle(isSelected ? PastelTheme.textPrimary : PastelTheme.textSecondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+
+                        Text(mode.badgeText)
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(isSelected ? mode.accentColor : PastelTheme.textTertiary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2.5)
+                            .background(PastelTheme.cardSurfaceSubtle.opacity(0.9))
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(isSelected ? mode.accentColor.opacity(0.4) : PastelTheme.cardBorder, lineWidth: 1))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
                 }
-
-                Spacer(minLength: 4)
-
-                // Central Icon Emblem
-                ZStack {
-                    Circle()
-                        .fill(isSelected ? mode.accentColor.opacity(0.18) : PastelTheme.cardSurface)
-                        .frame(width: 48, height: 48)
-
-                    Image(systemName: mode.icon)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(isSelected ? mode.accentColor : PastelTheme.textSecondary)
-                }
-
-                Spacer(minLength: 4)
-
-                // Card Title
-                VStack(spacing: 2) {
-                    Text(mode.title)
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(isSelected ? PastelTheme.textPrimary : PastelTheme.textSecondary)
-                        .lineLimit(1)
-
-                    Text(mode.badgeText)
-                        .font(.system(size: 10, weight: .medium, design: .rounded))
-                        .foregroundStyle(isSelected ? mode.accentColor : PastelTheme.textTertiary)
-                        .lineLimit(1)
-                }
+                .padding(8)
             }
-            .padding(12)
             .frame(maxWidth: .infinity)
-            .frame(height: 168)
-            .background(isSelected ? PastelTheme.cardSurfaceSubtle : PastelTheme.cardSurface)
+            .frame(height: 172)
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
                     .stroke(isSelected ? mode.accentColor : PastelTheme.cardBorder, lineWidth: isSelected ? 2 : 1)
             )
-            .shadow(color: isSelected ? mode.accentColor.opacity(0.3) : Color.black.opacity(0.2), radius: isSelected ? 12 : 6, y: isSelected ? 6 : 2)
+            .shadow(color: isSelected ? mode.accentColor.opacity(0.35) : Color.black.opacity(0.2), radius: isSelected ? 12 : 6, y: isSelected ? 6 : 2)
             .offset(y: isSelected ? -10 : 0)
             .scaleEffect(isSelected ? 1.06 : 0.95)
-            .opacity(isSelected ? 1.0 : 0.7)
+            .opacity(isSelected ? 1.0 : 0.72)
             .rotationEffect(.degrees(fanAngle))
             .rotation3DEffect(.degrees(fanYAxisTilt), axis: (x: 0, y: 1, z: 0), perspective: 0.3)
             .animation(.spring(response: 0.32, dampingFraction: 0.72), value: isSelected)
