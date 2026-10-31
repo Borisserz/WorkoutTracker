@@ -92,61 +92,38 @@ struct AICoachView: View {
         NavigationStack(path: $path) {
             ZStack {
                 PastelTheme.canvas.ignoresSafeArea()
-                AtmosphericGymBackdropView()
-
-                // Ambient Athletic Glow
-                GeometryReader { _ in
-                    ZStack {
-                        Circle()
-                            .fill(PastelTheme.pastelLavender.opacity(0.08))
-                            .blur(radius: 80)
-                            .frame(width: 250, height: 250)
-                            .offset(x: -80, y: -40)
-
-                        Circle()
-                            .fill(PastelTheme.pastelSage.opacity(0.07))
-                            .blur(radius: 90)
-                            .frame(width: 260, height: 260)
-                            .offset(x: 120, y: -20)
-                    }
-                }
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
-
-                VStack {
-                    if showSyncToast {
-                        HStack(spacing: 8) {
-                            Image(systemName: "waveform.path.ecg")
-                                .foregroundStyle(PastelTheme.pastelSage)
-                                .symbolEffect(.pulse, options: .repeating)
-                            Text("Биометрия синхронизирована")
-                                .font(.caption.bold())
-                                .foregroundStyle(PastelTheme.textPrimary)
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(PastelTheme.cardSurface)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(PastelTheme.cardBorderFocused, lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.2), radius: 8, y: 4)
-                        .transition(.move(edge: .top).combined(with: .opacity).combined(with: .scale))
-                        .zIndex(2)
-                    }
-                    Spacer()
-                }
-                .padding(.top, 10)
+                AtmosphericGymBackdropView(style: .aiHub)
 
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: 18) {
                         
                         // 1. Header Section
                         HStack(alignment: .center) {
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("AI Коуч")
-                                    .font(.system(size: 32, weight: .bold, design: .rounded))
-                                    .foregroundStyle(PastelTheme.textPrimary)
+                                HStack(spacing: 8) {
+                                    Text("ИИ-Хаб")
+                                        .font(.system(size: 32, weight: .bold, design: .rounded))
+                                        .foregroundStyle(PastelTheme.textPrimary)
 
-                                Text("Персональный научный ассистент")
+                                    if showSyncToast {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "waveform.path.ecg")
+                                                .font(.caption2)
+                                                .foregroundStyle(PastelTheme.pastelSage)
+                                                .symbolEffect(.pulse, options: .repeating)
+                                            Text("Синхронизировано")
+                                                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                                .foregroundStyle(PastelTheme.pastelSage)
+                                        }
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(PastelTheme.pastelSage.opacity(0.12))
+                                        .clipShape(Capsule())
+                                        .transition(.opacity.combined(with: .scale))
+                                    }
+                                }
+
+                                Text("Биомеханика и готовность ЦНС")
                                     .font(.caption)
                                     .foregroundStyle(PastelTheme.textSecondary)
                             }
@@ -183,116 +160,120 @@ struct AICoachView: View {
                         )
                         .padding(.horizontal, 16)
 
-                        // 3. Apple Intelligence Assistant Card (Dictation & Text Input)
-                        PastelAssistantCard(
-                            isListening: Binding(get: { speechRecognizer.isRecording }, set: { _ in }),
-                            textTranscript: $speechRecognizer.transcript,
-                            userQuery: $userQuery,
-                            onMicTap: {
-                                HapticManager.shared.impact(.medium)
-                                if speechRecognizer.isRecording {
-                                    speechRecognizer.stopTranscribing()
-                                    if !speechRecognizer.transcript.isEmpty {
-                                        let text = speechRecognizer.transcript
-                                        speechRecognizer.transcript = ""
-                                        requireAIConsent {
-                                            viewModel.inputText = text
-                                            showChatView = true
-                                        }
-                                    }
-                                } else {
-                                    speechRecognizer.startTranscribing()
-                                }
-                            },
-                            onSubmitQuery: {
-                                if !userQuery.isEmpty {
-                                    let text = userQuery
-                                    userQuery = ""
-                                    requireAIConsent {
-                                        viewModel.inputText = text
-                                        showChatView = true
-                                    }
-                                }
+                        // 3. AI Predictive Recommendation Banner
+                        HStack(alignment: .top, spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(PastelTheme.pastelAmber.opacity(0.15))
+                                    .frame(width: 38, height: 38)
+                                    .overlay(Circle().stroke(PastelTheme.pastelAmber.opacity(0.3), lineWidth: 1))
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(PastelTheme.pastelAmber)
                             }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Рекомендация на сегодня")
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .foregroundStyle(PastelTheme.textPrimary)
+                                    Spacer()
+                                    Text("\(Int(cnsScore))% готовность")
+                                        .font(.system(size: 11, weight: .heavy, design: .rounded))
+                                        .monospacedDigit()
+                                        .foregroundStyle(PastelTheme.pastelSage)
+                                        .padding(.horizontal, 7)
+                                        .padding(.vertical, 3)
+                                        .background(PastelTheme.pastelSage.opacity(0.12))
+                                        .clipShape(Capsule())
+                                }
+
+                                Text("ЦНС полностью восстановилась. Свежие мышечные группы: грудь и плечи. Идеальное окно для интенсивной силовой нагрузки.")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(PastelTheme.textSecondary)
+                                    .lineSpacing(2)
+                            }
+                        }
+                        .padding(14)
+                        .background(PastelTheme.cardSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
                         )
                         .padding(.horizontal, 16)
 
-                        // 4. Quick Prompt Pills (1-Tap Prompts)
-                        if !speechRecognizer.isRecording {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(quickPrompts, id: \.self) { prompt in
-                                        Button {
-                                            HapticManager.shared.selection()
-                                            requireAIConsent {
-                                                viewModel.inputText = prompt
-                                                showChatView = true
-                                            }
-                                        } label: {
-                                            Text(prompt)
-                                                .font(.caption.weight(.semibold))
-                                                .foregroundStyle(PastelTheme.textSecondary)
-                                                .padding(.horizontal, 13)
-                                                .padding(.vertical, 7)
-                                                .background(PastelTheme.cardSurfaceSubtle)
-                                                .clipShape(Capsule())
-                                                .overlay(
-                                                    Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1)
-                                                )
-                                        }
-                                        .buttonStyle(.plain)
+                        // 4. Asymmetrical Bento Grid: Hero Tile (AI Vision Camera)
+                        Button {
+                            HapticManager.shared.impact(.medium)
+                            showAICameraSelector = true
+                        } label: {
+                            HStack(spacing: 14) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(PastelTheme.pastelLavender)
+                                            .frame(width: 6, height: 6)
+                                        Text("Компьютерное зрение")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundStyle(PastelTheme.pastelLavender)
                                     }
+
+                                    Text("AI-Камера и трекинг техники")
+                                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                                        .foregroundStyle(PastelTheme.textPrimary)
+
+                                    Text("Анализ углов в суставах, траектории штанги и амплитуды в реальном времени")
+                                        .font(.system(size: 12, weight: .medium))
+                                        .foregroundStyle(PastelTheme.textSecondary)
+                                        .lineLimit(2)
+                                        .multilineTextAlignment(.leading)
                                 }
-                                .padding(.horizontal, 16)
+
+                                Spacer(minLength: 8)
+
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(PastelTheme.cardSurfaceSubtle)
+                                        .frame(width: 54, height: 54)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .stroke(PastelTheme.pastelLavender.opacity(0.3), lineWidth: 1)
+                                        )
+
+                                    Image(systemName: "camera.viewfinder")
+                                        .font(.system(size: 26, weight: .medium))
+                                        .foregroundStyle(PastelTheme.pastelLavender)
+                                }
                             }
+                            .padding(16)
+                            .background(PastelTheme.cardSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
                         }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
 
-                        // 5. 1-Tap Action Bento Grid (2x2)
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                            
-                            // Tile 1: AI Camera
-                            Button {
-                                HapticManager.shared.impact(.medium)
-                                showAICameraSelector = true
-                            } label: {
-                                PastelBentoCard(
-                                    title: "AI Камера",
-                                    subtitle: "Трекинг суставов и амплитуды",
-                                    iconName: "camera.viewfinder",
-                                    accentColor: PastelTheme.pastelLavender
-                                )
-                            }
-                            .buttonStyle(.plain)
-
-                            // Tile 2: Program Architect
-                            Button {
-                                HapticManager.shared.impact(.medium)
-                                showAIBuilder = true
-                            } label: {
-                                PastelBentoCard(
-                                    title: "План на сезон",
-                                    subtitle: "Персональный недельный сплит",
-                                    iconName: "calendar.badge.plus",
-                                    accentColor: PastelTheme.pastelAmber
-                                )
-                            }
-                            .buttonStyle(.plain)
-
-                            // Tile 3: Smart Workout
+                        // 5. Asymmetrical Bento Grid: Split Row (50/50)
+                        HStack(spacing: 12) {
+                            // Tile 2: Smart Workout
                             Button {
                                 HapticManager.shared.impact(.medium)
                                 showSmartBuilder = true
                             } label: {
                                 PastelBentoCard(
                                     title: "Сессия дня",
-                                    subtitle: "Сборка сессии под готовность",
+                                    subtitle: "Сборка под готовность мышц",
                                     iconName: "wand.and.stars",
                                     accentColor: PastelTheme.pastelSage
                                 )
                             }
                             .buttonStyle(.plain)
 
-                            // Tile 4: Recovery Coach
+                            // Tile 3: Recovery Coach
                             Button {
                                 HapticManager.shared.impact(.medium)
                                 showRestSheet = true
@@ -301,14 +282,59 @@ struct AICoachView: View {
                                     title: "Восстановление",
                                     subtitle: "Оценка утомления и сна",
                                     iconName: "moon.stars.fill",
-                                    accentColor: PastelTheme.pastelOat
+                                    accentColor: PastelTheme.pastelAmber
                                 )
                             }
                             .buttonStyle(.plain)
                         }
                         .padding(.horizontal, 16)
 
-                        // 6. Progress Analytics Full-Width Banner
+                        // 6. Asymmetrical Bento Grid: Program Architect (Full Width)
+                        Button {
+                            HapticManager.shared.impact(.medium)
+                            showAIBuilder = true
+                        } label: {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .fill(PastelTheme.cardSurfaceSubtle)
+                                        .frame(width: 44, height: 44)
+                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                                    Image(systemName: "calendar.badge.plus")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundStyle(PastelTheme.pastelOat)
+                                }
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("План на сезон")
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(PastelTheme.textPrimary)
+
+                                    Text("Персональная периодизация и прогрессия весов")
+                                        .font(.caption)
+                                        .foregroundStyle(PastelTheme.textSecondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(PastelTheme.textTertiary)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 14)
+                            .background(PastelTheme.cardSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
+
+                        // 7. Progress Analytics Full-Width Banner
                         Button {
                             HapticManager.shared.impact(.medium)
                             showProgressSheet = true
@@ -344,13 +370,77 @@ struct AICoachView: View {
                             .padding(.horizontal, 16)
                             .padding(.vertical, 14)
                             .background(PastelTheme.cardSurface)
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                RoundedRectangle(cornerRadius: 18, style: .continuous)
                                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
                             )
                         }
                         .buttonStyle(.plain)
+                        .padding(.horizontal, 16)
+
+                        // 8. Quick Prompt Pills
+                        if !speechRecognizer.isRecording {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(quickPrompts, id: \.self) { prompt in
+                                        Button {
+                                            HapticManager.shared.selection()
+                                            requireAIConsent {
+                                                viewModel.inputText = prompt
+                                                showChatView = true
+                                            }
+                                        } label: {
+                                            Text(prompt)
+                                                .font(.caption.weight(.semibold))
+                                                .foregroundStyle(PastelTheme.textSecondary)
+                                                .padding(.horizontal, 13)
+                                                .padding(.vertical, 7)
+                                                .background(PastelTheme.cardSurfaceSubtle)
+                                                .clipShape(Capsule())
+                                                .overlay(
+                                                    Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1)
+                                                )
+                                        }
+                                        .buttonStyle(.plain)
+                                    }
+                                }
+                                .padding(.horizontal, 16)
+                            }
+                        }
+
+                        // 9. Apple Intelligence Assistant Cockpit (Dictation & Text Input)
+                        PastelAssistantCard(
+                            isListening: Binding(get: { speechRecognizer.isRecording }, set: { _ in }),
+                            textTranscript: $speechRecognizer.transcript,
+                            userQuery: $userQuery,
+                            onMicTap: {
+                                HapticManager.shared.impact(.medium)
+                                if speechRecognizer.isRecording {
+                                    speechRecognizer.stopTranscribing()
+                                    if !speechRecognizer.transcript.isEmpty {
+                                        let text = speechRecognizer.transcript
+                                        speechRecognizer.transcript = ""
+                                        requireAIConsent {
+                                            viewModel.inputText = text
+                                            showChatView = true
+                                        }
+                                    }
+                                } else {
+                                    speechRecognizer.startTranscribing()
+                                }
+                            },
+                            onSubmitQuery: {
+                                if !userQuery.isEmpty {
+                                    let text = userQuery
+                                    userQuery = ""
+                                    requireAIConsent {
+                                        viewModel.inputText = text
+                                        showChatView = true
+                                    }
+                                }
+                            }
+                        )
                         .padding(.horizontal, 16)
                         .padding(.bottom, 30)
                     }
@@ -530,8 +620,8 @@ struct PastelReadinessCard: View {
                             .fill(scoreColor)
                             .frame(width: 6, height: 6)
 
-                        Text("ГОТОВНОСТЬ ЦНС")
-                            .font(.system(size: 10, weight: .black))
+                        Text("Готовность ЦНС")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
 
@@ -596,8 +686,8 @@ struct PastelMetricItem: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title.uppercased())
-                .font(.system(size: 9, weight: .bold))
+            Text(title)
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(PastelTheme.textTertiary)
 
             HStack(alignment: .firstTextBaseline, spacing: 3) {
@@ -734,13 +824,7 @@ struct WaveBar: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 1.5)
-            .fill(
-                LinearGradient(
-                    colors: [.cyberPurple, .cyberCyan, .cyberGreen],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .fill(PastelTheme.pastelLavender)
             .frame(width: 3, height: height)
     }
 }
@@ -758,17 +842,17 @@ struct AISettingsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Coach Persona"), footer: Text("Affects chat style, workouts, and push notifications. Powered by Cloud.")) {
+                Section(header: Text("Характер тренера"), footer: Text("Влияет на стиль общения, подсказки и персональные уведомления.")) {
                     if availablePersonas.isEmpty {
-                        ProgressView("Loading personas...")
+                        ProgressView("Загрузка профилей...")
                     } else {
-                        Picker("Tone", selection: $aiTone) {
+                        Picker("Стиль", selection: $aiTone) {
                             ForEach(availablePersonas) { persona in
                                 Text(persona.displayName).tag(persona.id)
                             }
                         }
                         .pickerStyle(.menu)
-                        .tint(themeManager.current.primaryAccent)
+                        .tint(PastelTheme.pastelOat)
                     }
                 }
 
@@ -779,17 +863,18 @@ struct AISettingsSheet: View {
                     } label: {
                         HStack {
                             Spacer()
-                            Text("Clear Current Chat")
+                            Text("Очистить историю диалога")
                             Spacer()
                         }
                     }
                 }
             }
-            .navigationTitle("AI Settings")
+            .navigationTitle("Настройки ИИ")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Готово") { dismiss() }
+                        .foregroundColor(PastelTheme.pastelOat)
                 }
             }
             .task {
@@ -801,16 +886,16 @@ struct AISettingsSheet: View {
 
 struct WorkoutConfigSheet: View {
     @Environment(\.colorScheme) private var colorScheme 
-    let levels: [(String, WorkoutDifficulty)] = [("Basic", .beginner), ("Advanced", .intermediate), ("Athlete PRO", .advanced)]
+    let levels: [(String, WorkoutDifficulty)] = [("Базовый", .beginner), ("Продвинутый", .intermediate), ("Атлет PRO", .advanced)]
 
     @State private var selectedLevel: WorkoutDifficulty = .intermediate
     @State private var selectedMuscle: CoachMuscleGroup? = nil
 
     func synergyFor(_ muscle: CoachMuscleGroup) -> String? {
         switch muscle {
-        case .chest: return "Triceps, Front Delts"
-        case .back: return "Biceps, Traps"
-        case .legs: return "Glutes, Calves"
+        case .chest: return "Трицепс, дельты"
+        case .back: return "Бицепс, трапеции"
+        case .legs: return "Ягодицы, икры"
         case .shoulders: return nil
         case .arms: return nil
         case .abs: return nil
@@ -820,28 +905,27 @@ struct WorkoutConfigSheet: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-
-                (colorScheme == .dark ? Color(red: 0.1, green: 0.1, blue: 0.11) : Color(UIColor.secondarySystemBackground))
+                (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.secondarySystemBackground))
                     .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
-                    LazyVStack(alignment: .leading, spacing: 32) {
+                    LazyVStack(alignment: .leading, spacing: 28) {
 
-                        Text("Builder")
-                            .font(.system(size: 34, weight: .black, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                        Text("Конструктор программы")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                             .padding(.horizontal, 24)
                             .padding(.top, 24)
 
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("INTENSITY")
-                                .font(.system(size: 13, weight: .black))
-                                .foregroundColor(.gray)
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Интенсивность")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.horizontal, 24)
 
                             ScrollView(.horizontal, showsIndicators: false) {
-                                LazyHStack(spacing: 12) {
-                                    Spacer().frame(width: 12)
+                                LazyHStack(spacing: 10) {
+                                    Spacer().frame(width: 14)
                                     ForEach(levels, id: \.0) { level in
                                         let isSelected = selectedLevel == level.1
                                         Button(action: {
@@ -849,71 +933,71 @@ struct WorkoutConfigSheet: View {
                                             selectedLevel = level.1
                                         }) {
                                             Text(level.0)
-                                                .font(.system(size: 15, weight: .bold))
-                                                .padding(.horizontal, 20).padding(.vertical, 12)
-
-                                                .background(isSelected ? (colorScheme == .dark ? Color.white : Color.cyberBlue) : (colorScheme == .dark ? Color(red: 0.15, green: 0.15, blue: 0.16) : Color.white))
-                                                .foregroundColor(isSelected ? (colorScheme == .dark ? .black : .white) : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)))
-                                                .cornerRadius(12)
-                                                .shadow(color: isSelected && colorScheme == .light ? Color.cyberBlue.opacity(0.3) : .clear, radius: 5, y: 2)
+                                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                                .padding(.horizontal, 18)
+                                                .frame(height: PastelTheme.ButtonMetrics.pillHeight)
+                                                .background(isSelected ? PastelTheme.pastelOat : (colorScheme == .dark ? PastelTheme.cardSurface : Color.white))
+                                                .foregroundColor(isSelected ? PastelTheme.textOnOat : (colorScheme == .dark ? PastelTheme.textPrimary : .black))
+                                                .clipShape(Capsule())
+                                                .overlay(Capsule().stroke(isSelected ? Color.clear : PastelTheme.cardBorder, lineWidth: 1))
                                         }
                                     }
-                                    Spacer().frame(width: 12)
+                                    Spacer().frame(width: 14)
                                 }
-                             }
+                            }
                             .scrollBounceBehavior(.basedOnSize)
                         }
 
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("PRIMARY FOCUS")
-                                .font(.system(size: 13, weight: .black))
-                                .foregroundColor(.gray)
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Целевая мышечная группа")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.horizontal, 24)
 
-                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 14) {
                                 ForEach(CoachMuscleGroup.allCases) { muscle in
                                     Button(action: {
                                         HapticManager.shared.impact(.medium)
                                         selectedMuscle = muscle
                                     }) {
-                                        VStack(alignment: .leading, spacing: 8) {
+                                        VStack(alignment: .leading, spacing: 10) {
                                             HStack {
                                                 Text(muscle.rawValue)
-                                                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                                                    .foregroundColor(colorScheme == .dark ? .white : .black) 
+                                                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                                                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
 
                                                 Spacer()
 
                                                 ZStack {
                                                     Circle()
-                                                        .fill(Color.cyberPurple) 
-                                                        .frame(width: 24, height: 24)
+                                                        .fill(colorScheme == .dark ? PastelTheme.cardSurfaceSubtle : Color.black.opacity(0.05)) 
+                                                        .frame(width: 28, height: 28)
                                                     Image(systemName: "chevron.right")
-                                                        .font(.system(size: 12, weight: .bold))
-                                                        .foregroundColor(.white)
+                                                        .font(.system(size: 11, weight: .bold))
+                                                        .foregroundColor(PastelTheme.pastelLavender)
                                                 }
                                             }
 
                                             if let syn = synergyFor(muscle) {
                                                 HStack(spacing: 4) {
                                                     Image(systemName: "link")
-                                                        .font(.system(size: 11, weight: .bold))
+                                                        .font(.system(size: 10, weight: .semibold))
                                                     Text(syn)
-                                                        .font(.system(size: 12, weight: .medium))
+                                                        .font(.system(size: 11, weight: .medium))
                                                 }
-                                                .foregroundColor(Color.cyberCyan)
+                                                .foregroundColor(PastelTheme.pastelSlate)
                                                 .lineLimit(1)
                                             } else {
-                                                Text("Isolation")
-                                                    .font(.system(size: 12, weight: .medium))
-                                                    .foregroundColor(.gray)
+                                                Text("Изолированная")
+                                                    .font(.system(size: 11, weight: .medium))
+                                                    .foregroundColor(PastelTheme.textMuted)
                                             }
                                         }
                                         .padding(16)
-
-                                        .background(colorScheme == .dark ? Color(red: 0.15, green: 0.15, blue: 0.16) : Color.white)
-                                        .cornerRadius(20)
-                                        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+                                        .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+                                        .cornerRadius(18)
+                                        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+                                        .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 2)
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -925,15 +1009,15 @@ struct WorkoutConfigSheet: View {
                 }
             }
             .navigationBarHidden(true)
-                        .sheet(item: $selectedMuscle) { m in
-                            BestExercisesSheet(muscleGroup: m, difficulty: selectedLevel)
-                                .presentationDetents([.fraction(0.9), .large])
-                                .presentationCornerRadius(35)
-                                .presentationDragIndicator(.visible)
-                        }
+            .sheet(item: $selectedMuscle) { m in
+                BestExercisesSheet(muscleGroup: m, difficulty: selectedLevel)
+                    .presentationDetents([.fraction(0.9), .large])
+                    .presentationCornerRadius(35)
+                    .presentationDragIndicator(.visible)
             }
         }
     }
+}
 
 struct BestExercisesSheet: View {
     @Environment(\.colorScheme) private var colorScheme 
@@ -971,80 +1055,78 @@ struct BestExercisesSheet: View {
             VStack(spacing: 0) {
 
                 HStack {
-                    Text(isGenerating ? "AI is thinking..." : "Protocol: \(muscleGroup.rawValue)")
-                        .font(.system(size: 24, weight: .black, design: .rounded))
-                        .foregroundColor(colorScheme == .dark ? .white : .black) 
+                    Text(isGenerating ? "ИИ составляет протокол..." : "Протокол: \(muscleGroup.rawValue)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     Spacer()
                     if !isGenerating && aiErrorMessage == nil {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .foregroundColor(.cyberCyan)
-                                    .font(.title2)
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundColor(PastelTheme.pastelSage)
+                            .font(.title2)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .padding(.top, 30)
+                .padding(.bottom, 10)
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 16) {
+
+                        if !isGenerating {
+                            if let errorMsg = aiErrorMessage {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill").foregroundColor(PastelTheme.pastelAmber)
+                                    Text(errorMsg).font(.subheadline).foregroundColor(colorScheme == .dark ? .white : .black)
+                                    Spacer()
+                                }
+                                .padding(16)
+                                .background(PastelTheme.pastelAmber.opacity(0.12))
+                                .cornerRadius(16)
+                                .overlay(RoundedRectangle(cornerRadius: 16).stroke(PastelTheme.pastelAmber.opacity(0.3), lineWidth: 1))
+                            } else {
+                                let msg = generatedWorkout?.aiMessage ?? aiCoachMessage
+                                HStack(alignment: .top, spacing: 12) {
+                                    Image(systemName: "brain.head.profile")
+                                        .font(.title2)
+                                        .foregroundStyle(PastelTheme.pastelLavender)
+
+                                    Text(msg)
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
+                                        .lineSpacing(4)
+                                    Spacer()
+                                }
+                                .padding(16)
+                                .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+                                .cornerRadius(16)
+                                .overlay(RoundedRectangle(cornerRadius: 16).stroke(PastelTheme.cardBorder, lineWidth: 1))
+                                .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 5, y: 2)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
                             }
                         }
-                        .padding(.horizontal, 24)
-                        .padding(.top, 30)
-                        .padding(.bottom, 10)
 
-                        ScrollView(showsIndicators: false) {
-                            VStack(spacing: 16) {
-
-                                if !isGenerating {
-                                    if let errorMsg = aiErrorMessage {
-                                        HStack {
-                                            Image(systemName: "exclamationmark.triangle.fill").foregroundColor(.cyberOrange)
-                                            Text(errorMsg).font(.subheadline).foregroundColor(colorScheme == .dark ? .white : .black)
-                                            Spacer()
-                                        }
-                                        .padding(16)
-                                        .background(Color.cyberOrange.opacity(0.15))
-                                        .cornerRadius(16)
-                                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.cyberOrange.opacity(0.3), lineWidth: 1))
-                                    } else {
-                                        let msg = generatedWorkout?.aiMessage ?? aiCoachMessage
-                                        HStack(alignment: .top, spacing: 12) {
-                                            Image(systemName: "brain.head.profile")
-                                                .font(.title2)
-                                                .foregroundStyle(LinearGradient(colors: [.cyberPurple, .cyberCyan], startPoint: .top, endPoint: .bottom))
-
-                                            Text(msg)
-                                                .font(.system(size: 15, weight: .medium))
-                                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.9) : .black.opacity(0.9)) 
-                                                .lineSpacing(4)
-                                            Spacer()
-                                        }
-                                        .padding(16)
-
-                                        .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-                                        .cornerRadius(16)
-                                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.black.opacity(0.05), lineWidth: 1))
-                                        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
-                                        .transition(.opacity.combined(with: .move(edge: .top)))
-                                    }
+                        if aiErrorMessage == nil {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Расчётный объём").font(.system(size: 12, weight: .bold)).foregroundColor(PastelTheme.textSecondary)
+                                    Text("\(Int(estimatedTonnage)) \(unitsManager.weightUnitString())")
+                                        .font(.system(size: 20, weight: .black, design: .rounded).monospacedDigit())
+                                        .foregroundColor(PastelTheme.pastelLavender)
+                                        .contentTransition(.numericText())
                                 }
-
-                                if aiErrorMessage == nil {
-                                    HStack {
-                                        VStack(alignment: .leading) {
-                                            Text("Estimated Volume").font(.system(size: 12, weight: .bold)).foregroundColor(.gray)
-                                            Text("\(Int(estimatedTonnage)) \(unitsManager.weightUnitString())")
-                                                .font(.system(size: 20, weight: .black).monospacedDigit())
-                                                .foregroundColor(.cyberPurple)
-                                                .contentTransition(.numericText())
-                                        }
-                                        Spacer()
-                                        Divider().background(Color.gray.opacity(0.2)).frame(height: 30)
-                                        Spacer()
-                                        VStack(alignment: .trailing) {
-                                            Text("Difficulty").font(.system(size: 12, weight: .bold)).foregroundColor(.gray)
-                                            Text(difficulty.rawValue).font(.system(size: 16, weight: .black)).foregroundColor(.cyberCyan)
-                                        }
-                                    }
-                                    .padding(20)
-
-                                    .background(colorScheme == .dark ? Color.white.opacity(0.05) : Color.white)
-                                    .cornerRadius(20)
-                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.black.opacity(0.05), lineWidth: 1))
-                            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+                                Spacer()
+                                Divider().background(PastelTheme.separator).frame(height: 30)
+                                Spacer()
+                                VStack(alignment: .trailing, spacing: 4) {
+                                    Text("Сложность").font(.system(size: 12, weight: .bold)).foregroundColor(PastelTheme.textSecondary)
+                                    Text(difficulty.rawValue).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(PastelTheme.pastelSlate)
+                                }
+                            }
+                            .padding(20)
+                            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+                            .cornerRadius(20)
+                            .overlay(RoundedRectangle(cornerRadius: 20).stroke(PastelTheme.cardBorder, lineWidth: 1))
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 5, y: 2)
                             .redacted(reason: isGenerating ? .placeholder : [])
                             .opacity(isGenerating ? (isPulsing ? 0.6 : 1.0) : 1.0)
                         }
@@ -1066,35 +1148,35 @@ struct BestExercisesSheet: View {
                                 .transition(.opacity.combined(with: .scale))
                             }
                         } else if !isGenerating {
-                            Text("Failed to create program. Try again.")
-                                .foregroundColor(.gray)
+                            Text("Не удалось составить программу. Попробуйте снова.")
+                                .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.top, 20)
                         }
 
                         if !isGenerating && generatedWorkout != nil && !(generatedWorkout?.exercises.isEmpty ?? true) {
                             Button(action: startGeneratedWorkout) {
-                                HStack {
+                                HStack(spacing: 8) {
                                     if isStarting {
-                                        ProgressView().tint(.white)
+                                        ProgressView().tint(PastelTheme.textOnOat)
                                     } else {
-                                        Text("Start protocol").font(.system(size: 16, weight: .bold))
+                                        Text("Начать тренировку").font(.system(size: 16, weight: .bold, design: .rounded))
                                         Image(systemName: "bolt.fill")
                                     }
                                 }
-                                .frame(maxWidth: .infinity).padding(.vertical, 16)
-                                .background(LinearGradient(colors: [.cyberPurple, .cyberCyan], startPoint: .leading, endPoint: .trailing))
-                                .foregroundColor(.white).cornerRadius(20)
-                                .shadow(color: .cyberCyan.opacity(0.4), radius: 15, y: 5)
+                                .foregroundColor(PastelTheme.textOnOat)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                                .background(PastelTheme.pastelOat)
+                                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                                .shadow(color: PastelTheme.pastelOat.opacity(0.18), radius: 10, y: 3)
                             }
                             .padding(.top, 10)
                             .buttonStyle(ParallaxButtonStyle())
                             .disabled(isStarting)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
-
                     }
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 30)
+                    .padding(.bottom, 40)
                 }
             }
         }
@@ -1199,55 +1281,54 @@ struct AIExerciseRowView: View {
             VStack(spacing: 12) {
                 HStack(alignment: .top) {
                     Text(String(format: "%02d", index + 1))
-                        .font(.system(size: 24, weight: .black, design: .rounded).monospacedDigit())
-                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.2) : .black.opacity(0.15)) 
+                        .font(.system(size: 22, weight: .black, design: .rounded).monospacedDigit())
+                        .foregroundColor(colorScheme == .dark ? PastelTheme.textMuted.opacity(0.6) : .black.opacity(0.2)) 
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise != nil ? LocalizationHelper.shared.translateName(exercise!.name) : "Loading exercise...")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                        Text(exercise != nil ? LocalizationHelper.shared.translateName(exercise!.name) : "Подбор упражнения...")
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
 
-                        Text(exercise?.muscleGroup ?? "Muscle group")
-                            .font(.system(size: 13))
-                            .foregroundColor(.cyberCyan)
+                        Text(exercise?.muscleGroup ?? "Мышечная группа")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(PastelTheme.pastelSlate)
                     }
                     .padding(.leading, 8)
 
                     Spacer()
                     Image(systemName: "chevron.right.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.cyberPurple.opacity(0.8))
+                        .foregroundColor(PastelTheme.pastelLavender.opacity(0.8))
                 }
 
-                Divider().background(Color.gray.opacity(0.2)) 
+                Divider().background(PastelTheme.separator) 
 
                 HStack {
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.2.squarepath")
-                            .foregroundColor(.cyberPurple)
+                            .foregroundColor(PastelTheme.pastelLavender)
                         Text("\(exercise?.sets ?? 3)x\(exercise?.reps ?? 10)")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                            .font(.system(size: 14, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     }
                     Spacer()
                     HStack(spacing: 6) {
                         Image(systemName: "scalemass.fill")
-                            .foregroundColor(.cyberCyan)
+                            .foregroundColor(PastelTheme.pastelAmber)
                         let w = unitsManager.convertFromKilograms(exercise?.recommendedWeightKg ?? 0.0)
-                        Text(w > 0 ? "\(Int(w)) \(unitsManager.weightUnitString())" : "Your weight")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                        Text(w > 0 ? "\(Int(w)) \(unitsManager.weightUnitString())" : "Свой вес")
+                            .font(.system(size: 14, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     }
                 }.padding(.top, 4)
             }
-            .padding(20)
-
-            .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
-            .cornerRadius(24)
-            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.black.opacity(0.05), lineWidth: 1))
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+            .padding(18)
+            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 2)
         }
         .buttonStyle(ParallaxButtonStyle())
     }
@@ -1265,61 +1346,60 @@ struct ExerciseRowView: View {
             VStack(spacing: 12) {
                 HStack(alignment: .top) {
                     Text(String(format: "%02d", index + 1))
-                        .font(.system(size: 24, weight: .black, design: .rounded).monospacedDigit())
-                        .foregroundColor(colorScheme == .dark ? .white.opacity(0.2) : .black.opacity(0.15)) 
+                        .font(.system(size: 22, weight: .black, design: .rounded).monospacedDigit())
+                        .foregroundColor(colorScheme == .dark ? PastelTheme.textMuted.opacity(0.6) : .black.opacity(0.2)) 
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizationHelper.shared.translateName(exercise?.name ?? "Exercise Name"))
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                        Text(LocalizationHelper.shared.translateName(exercise?.name ?? "Упражнение"))
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                             .lineLimit(1)
-                        Text(exercise?.type.rawValue ?? "Type")
-                            .font(.system(size: 13))
-                            .foregroundColor(.gray)
+                        Text(exercise?.type.rawValue ?? "Тип")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(PastelTheme.textSecondary)
                     }
                     .padding(.leading, 8)
 
                     Spacer()
                     Image(systemName: "chevron.right.circle.fill")
                         .font(.title2)
-                        .foregroundColor(.cyberPurple.opacity(0.8))
+                        .foregroundColor(PastelTheme.pastelLavender.opacity(0.8))
                 }
 
-                Divider().background(Color.gray.opacity(0.2)) 
+                Divider().background(PastelTheme.separator) 
 
                 HStack {
                     HStack(spacing: 6) {
-                        Image(systemName: "flame")
-                            .foregroundColor(.cyberOrange)
+                        Image(systemName: "flame.fill")
+                            .foregroundColor(PastelTheme.pastelAmber)
                         Text("RPE \(exercise?.effort ?? 8)")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                            .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     }
                     Spacer()
                     HStack(spacing: 6) {
                         Image(systemName: "arrow.2.squarepath")
-                            .foregroundColor(.cyberPurple)
+                            .foregroundColor(PastelTheme.pastelLavender)
                         Text("\(exercise?.sets ?? 3)x\(exercise?.reps ?? 10)")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                            .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     }
                     Spacer()
                     HStack(spacing: 6) {
                         Image(systemName: "scalemass.fill")
-                            .foregroundColor(.cyberCyan)
+                            .foregroundColor(PastelTheme.pastelAmber)
                         let w = unitsManager.convertFromKilograms(exercise?.recommendedWeightKg ?? 0.0)
-                        Text(w > 0 ? "\(Int(w)) \(unitsManager.weightUnitString())" : "BW")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                        Text(w > 0 ? "\(Int(w)) \(unitsManager.weightUnitString())" : "Свой вес")
+                            .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     }
                 }.padding(.top, 4)
             }
-            .padding(20)
-
-            .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
-            .cornerRadius(24)
-            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.black.opacity(0.05), lineWidth: 1))
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+            .padding(18)
+            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 2)
         }
         .buttonStyle(ParallaxButtonStyle())
     }
@@ -1331,38 +1411,37 @@ struct ExerciseTechniqueSheet: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-
-            (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
+            (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 24) {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text(LocalizationHelper.shared.translateName(exercise.name))
-                            .font(.system(size: 26, weight: .black, design: .rounded))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
 
                         HStack(spacing: 12) {
-                            BadgeView(text: exercise.muscleGroup, color: .cyberPurple)
-                            BadgeView(text: "RPE \(exercise.effort)", color: .cyberOrange)
+                            BadgeView(text: exercise.muscleGroup, color: PastelTheme.pastelLavender)
+                            BadgeView(text: "RPE \(exercise.effort)", color: PastelTheme.pastelAmber)
                         }
                     }.padding(.horizontal, 24).padding(.top, 30)
 
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
-                            Image(systemName: "figure.strengthtraining.traditional").foregroundColor(.cyberCyan)
-                            Text("CORRECT TECHNIQUE").font(.system(size: 12, weight: .black)).foregroundColor(.gray)
+                            Image(systemName: "figure.strengthtraining.traditional").foregroundColor(PastelTheme.pastelSlate)
+                            Text("Правильная техника").font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundColor(PastelTheme.textSecondary)
                         }
                         Text(TechniqueHelper.getDescription(for: exercise.category))
                             .font(.system(size: 15, weight: .medium))
-                            .foregroundColor(colorScheme == .dark ? .white : .black) 
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                             .lineSpacing(6)
                     }
                     .padding(20).frame(maxWidth: .infinity, alignment: .leading)
-
-                    .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
-                    .cornerRadius(24)
-                    .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+                    .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 2)
                     .padding(.horizontal, 24)
 
                     VStack(alignment: .leading, spacing: 14) {
@@ -1462,8 +1541,8 @@ struct ProgressAnalysisSheet: View {
 
     private var loadingView: some View {
         VStack(spacing: 20) {
-            ProgressView().scaleEffect(1.5).tint(.cyan)
-            Text("Collecting data from the database...").font(.headline).foregroundColor(.gray)
+            ProgressView().scaleEffect(1.5).tint(PastelTheme.pastelLavender)
+            Text("Сбор данных из базы...").font(.headline).foregroundColor(PastelTheme.textSecondary)
         }
         .frame(maxWidth: .infinity).padding(.top, 100)
     }
@@ -1471,8 +1550,8 @@ struct ProgressAnalysisSheet: View {
     private var emptyDataView: some View {
         EmptyStateView(
             icon: "chart.pie.fill",
-            title: "Insufficient data",
-            message: "To analyze this period, you need to complete at least several workouts.."
+            title: "Недостаточно данных",
+            message: "Для формирования аналитики проведите ещё несколько тренировок."
         )
         .padding(.top, 50)
     }
@@ -1480,46 +1559,46 @@ struct ProgressAnalysisSheet: View {
     @ViewBuilder
     private var aiPredictorSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Image(systemName: "cpu").foregroundColor(.cyberPurple)
-                Text("AI PREDICTOR").font(.system(size: 12, weight: .black)).foregroundColor(.gray)
+            HStack(spacing: 8) {
+                Image(systemName: "cpu").foregroundColor(PastelTheme.pastelLavender)
+                Text("ИИ-прогноз").font(.caption.bold()).foregroundColor(PastelTheme.textSecondary)
             }
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Growth Impulse").font(.system(size: 14, weight: .medium)).foregroundColor(.gray)
+                    Text("Импульс объёма").font(.system(size: 14, weight: .medium)).foregroundColor(PastelTheme.textSecondary)
                     HStack(alignment: .firstTextBaseline) {
                         Text(impulseValue > 0 ? "+\(impulseValue)%" : "\(impulseValue)%")
                             .font(.system(size: 38, weight: .black, design: .rounded).monospacedDigit())
-                            .foregroundColor(impulseValue > 0 ? .cyberCyan : (impulseValue < 0 ? .cyberOrange : .gray))
+                            .foregroundColor(impulseValue > 0 ? PastelTheme.pastelSage : (impulseValue < 0 ? PastelTheme.pastelPeach : PastelTheme.textSecondary))
                             .contentTransition(.numericText())
-                        Text("to volume").font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
+                        Text("к тоннажу").font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                     }
                 }
                 Spacer()
                 ZStack {
-                    Circle().stroke(Color.cyberCyan.opacity(0.3), lineWidth: 2).frame(width: 60, height: 60)
-                    Circle().fill(Color.cyberCyan.opacity(0.1)).frame(width: 60, height: 60)
+                    Circle().stroke(PastelTheme.pastelSage.opacity(0.3), lineWidth: 2).frame(width: 60, height: 60)
+                    Circle().fill(PastelTheme.pastelSage.opacity(0.1)).frame(width: 60, height: 60)
                     Image(systemName: impulseValue >= 0 ? "arrow.up.forward" : "arrow.down.right")
                         .font(.title2)
-                        .foregroundColor(impulseValue >= 0 ? .cyberCyan : .cyberOrange)
+                        .foregroundColor(impulseValue >= 0 ? PastelTheme.pastelSage : PastelTheme.pastelPeach)
                         .offset(x: appearAnimate ? 5 : -5, y: appearAnimate ? -5 : 5)
                 }.modifier(PulseEffect())
             }
-            Text("Based on current data, strength gains in the **\(impulseMuscle)** group are possible. This is an estimate, not a guarantee.")
-                .font(.system(size: 14)).foregroundColor(.gray)
+            Text("На основе тренировочных данных возможен прирост силовых показателей в группе: **\(impulseMuscle)**.")
+                .font(.system(size: 14)).foregroundColor(PastelTheme.textSecondary)
         }
         .padding(20)
-        .background(colorScheme == .dark ? themeManager.current.surface : Color.white)
+        .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
         .cornerRadius(24)
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(LinearGradient(colors: [.cyberPurple.opacity(0.4), .cyberCyan.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0.05), radius: 10, y: 5)
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(PastelTheme.cardBorder, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.05), radius: 10, y: 5)
         .padding(.horizontal, 24)
     }
 
     @ViewBuilder
     private var analyticsParamsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("DETAILED ANALYTICS").font(.system(size: 12, weight: .black)).foregroundColor(.gray).padding(.horizontal, 24)
+            Text("Детальная аналитика").font(.caption.bold()).foregroundColor(PastelTheme.textSecondary).padding(.horizontal, 24)
             VStack(spacing: 2) {
                 Menu {
                     ForEach(periods, id: \.self) { p in
@@ -1527,16 +1606,16 @@ struct ProgressAnalysisSheet: View {
                     }
                 } label: {
                     HStack {
-                        Text("Period").foregroundColor(.gray)
+                        Text("Период").foregroundColor(PastelTheme.textSecondary)
                         Spacer()
-                        Text(selectedPeriod).fontWeight(.bold).foregroundColor(colorScheme == .dark ? .white : .black)
-                        Image(systemName: "chevron.up.chevron.down").foregroundColor(.cyberCyan).font(.caption)
+                        Text(selectedPeriod).fontWeight(.bold).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                        Image(systemName: "chevron.up.chevron.down").foregroundColor(PastelTheme.pastelSlate).font(.caption)
                     }
                     .padding()
-                    .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
+                    .background(colorScheme == .dark ? PastelTheme.cardSurfaceSubtle : Color.white)
                 }
 
-                Divider().background(Color.gray.opacity(0.2)).padding(.horizontal)
+                Divider().background(PastelTheme.separator).padding(.horizontal)
 
                 Menu {
                     ForEach(focuses, id: \.self) { f in
@@ -1544,13 +1623,13 @@ struct ProgressAnalysisSheet: View {
                     }
                 } label: {
                     HStack {
-                        Text("Emphasis").foregroundColor(.gray)
+                        Text("Акцент").foregroundColor(PastelTheme.textSecondary)
                         Spacer()
-                        Text(selectedFocus).fontWeight(.bold).foregroundColor(colorScheme == .dark ? .white : .black)
-                        Image(systemName: "chevron.up.chevron.down").foregroundColor(.cyberPurple).font(.caption)
+                        Text(selectedFocus).fontWeight(.bold).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                        Image(systemName: "chevron.up.chevron.down").foregroundColor(PastelTheme.pastelLavender).font(.caption)
                     }
                     .padding()
-                    .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
+                    .background(colorScheme == .dark ? PastelTheme.cardSurfaceSubtle : Color.white)
                 }
             }
             .cornerRadius(20)
@@ -1593,20 +1672,20 @@ struct ProgressAnalysisSheet: View {
     @ViewBuilder
     private var aiConclusionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("AI CONCLUSION").font(.system(size: 12, weight: .black)).foregroundColor(.cyberPurple).padding(.horizontal, 24)
+            Text("Заключение ИИ").font(.caption.bold()).foregroundColor(PastelTheme.pastelLavender).padding(.horizontal, 24)
 
             HStack(alignment: .top, spacing: 16) {
                 Image(systemName: "sparkles.tv")
                     .font(.title)
-                    .foregroundStyle(LinearGradient(colors: [.cyberPurple, .cyberCyan], startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(PastelTheme.pastelLavender)
 
                 VStack(alignment: .leading, spacing: 8) {
                     if isAnalyzing {
-                        ProgressView().tint(.cyberPurple)
+                        ProgressView().tint(PastelTheme.pastelLavender)
                     } else {
                         Text(aiConclusion)
                             .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(colorScheme == .dark ? .white : .black)
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                             .lineSpacing(4)
                             .transition(.opacity)
                     }
@@ -1614,10 +1693,10 @@ struct ProgressAnalysisSheet: View {
                 Spacer()
             }
             .padding(20)
-            .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
+            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
             .cornerRadius(24)
-            .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.cyberPurple.opacity(0.2), lineWidth: 1))
-            .shadow(color: .cyberPurple.opacity(0.05), radius: 10, y: 5)
+            .overlay(RoundedRectangle(cornerRadius: 24).stroke(PastelTheme.cardBorder, lineWidth: 1))
+            .shadow(color: Color.black.opacity(0.1), radius: 10, y: 5)
             .padding(.horizontal, 24)
         }
     }
@@ -1625,9 +1704,9 @@ struct ProgressAnalysisSheet: View {
     private var floatingHeader: some View {
         VStack {
             HStack {
-                Text("Progress")
-                    .font(.system(size: 32, weight: .black, design: .rounded))
-                    .foregroundColor(colorScheme == .dark ? .white : .black)
+                Text("Анализ прогресса")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 Spacer()
             }
             .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 10)
@@ -1797,88 +1876,162 @@ struct RestAnalysisSheet: View {
         let waterFactor = max(0, (8 - waterCups) * 2)
         return min(100, 20 + sleepFactor + Double(waterFactor))
     }
-    var cnsColor: Color { switch cnsLoad { case 0..<40: return .cyberGreen; case 40..<75: return .cyberOrange; default: return .cyberRed } }
+    var cnsColor: Color {
+        switch cnsLoad {
+        case 0..<40: return PastelTheme.pastelSage
+        case 40..<75: return PastelTheme.pastelAmber
+        default: return PastelTheme.pastelPeach
+        }
+    }
 
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {
-
-                (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
+                (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
-                    LazyVStack(alignment: .leading, spacing: 32) {
+                    LazyVStack(alignment: .leading, spacing: 28) {
                         Spacer().frame(height: 70)
 
                         VStack(spacing: 16) {
-                            Text("FATIGUE LEVEL (ASSESSMENT)").font(.system(size: 12, weight: .black)).foregroundColor(.gray)
-                            ZStack {
-                                Circle().stroke(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.05), lineWidth: 15).frame(width: 150, height: 150)
-                                Circle().trim(from: 0, to: cnsLoad / 100).stroke(cnsColor, style: StrokeStyle(lineWidth: 15, lineCap: .round)).frame(width: 150, height: 150).rotationEffect(.degrees(-90)).animation(.spring(response: 0.6, dampingFraction: 0.7), value: cnsLoad)
-                                VStack { Text("\(Int(cnsLoad))%").font(.system(size: 36, weight: .black, design: .rounded).monospacedDigit()).foregroundColor(colorScheme == .dark ? .white : .black).contentTransition(.numericText()); Text(cnsLoad < 40 ? "Low" : (cnsLoad < 75 ? "medium" : "High")).font(.system(size: 14, weight: .bold)).foregroundColor(cnsColor) }
-                            }
-                        }.frame(maxWidth: .infinity).padding(.bottom, 10)
+                            Text("Оценка утомления ЦНС")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(PastelTheme.textSecondary)
 
-                        VStack(alignment: .leading, spacing: 20) {
-                            Text("BIOMETRICS").font(.system(size: 12, weight: .black)).foregroundColor(.gray).padding(.horizontal, 24)
+                            ZStack {
+                                Circle()
+                                    .stroke(colorScheme == .dark ? PastelTheme.cardBorder : Color.black.opacity(0.06), lineWidth: 14)
+                                    .frame(width: 150, height: 150)
+                                Circle()
+                                    .trim(from: 0, to: cnsLoad / 100)
+                                    .stroke(cnsColor, style: StrokeStyle(lineWidth: 14, lineCap: .round))
+                                    .frame(width: 150, height: 150)
+                                    .rotationEffect(.degrees(-90))
+                                    .animation(.spring(response: 0.6, dampingFraction: 0.7), value: cnsLoad)
+
+                                VStack(spacing: 4) {
+                                    Text("\(Int(cnsLoad))%")
+                                        .font(.system(size: 34, weight: .black, design: .rounded).monospacedDigit())
+                                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                                        .contentTransition(.numericText())
+                                    Text(cnsLoad < 40 ? "Низкое" : (cnsLoad < 75 ? "Умеренное" : "Высокое"))
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .foregroundColor(cnsColor)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.bottom, 10)
+
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Биометрия")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(PastelTheme.textSecondary)
+                                .padding(.horizontal, 24)
+
                             VStack(spacing: 12) {
-                                HStack { Image(systemName: "moon.zzz.fill").foregroundColor(.cyberPurple); Text("Sleep last night").font(.system(size: 16, weight: .medium)).foregroundColor(colorScheme == .dark ? .white : .black); Spacer(); Text(hasSleepData ? String(format: "%.1f h", sleepHours) : "— h")
-                                        .font(.system(size: 18, weight: .bold, design: .rounded).monospacedDigit())
-                                        .foregroundColor(.cyberPurple).font(.system(size: 18, weight: .bold, design: .rounded).monospacedDigit()).foregroundColor(.cyberPurple) }
+                                HStack {
+                                    Image(systemName: "moon.zzz.fill")
+                                        .foregroundColor(PastelTheme.pastelLavender)
+                                    Text("Сон прошлой ночью")
+                                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                                    Spacer()
+                                    Text(hasSleepData ? String(format: "%.1f ч", sleepHours) : "— ч")
+                                        .font(.system(size: 17, weight: .bold, design: .rounded).monospacedDigit())
+                                        .foregroundColor(PastelTheme.pastelLavender)
+                                }
                                 Slider(value: $sleepHours, in: 3...12, step: 0.5) { _ in
                                     HapticManager.shared.selection()
                                     hasSleepData = true
                                     updateCNS()
-                                }.tint(.cyberPurple)
+                                }
+                                .tint(PastelTheme.pastelLavender)
                             }
                             .padding(20)
-                            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
-                            .cornerRadius(24)
-                            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+                            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 2)
                             .padding(.horizontal, 24)
 
                             VStack(spacing: 12) {
-                                HStack { Image(systemName: "drop.fill", variableValue: Double(waterCups)/10.0).foregroundColor(.cyberCyan); Text("Hydration (glasses)").font(.system(size: 16, weight: .medium)).foregroundColor(colorScheme == .dark ? .white : .black); Spacer(); Text("\(waterCups)").font(.system(size: 18, weight: .bold, design: .rounded).monospacedDigit()).foregroundColor(.cyberCyan) }
-                                Slider(value: Binding(get: { Double(waterCups) }, set: { waterCups = Int($0) }), in: 0...15, step: 1) { _ in HapticManager.shared.selection(); updateCNS() }.tint(.cyberCyan)
+                                HStack {
+                                    Image(systemName: "drop.fill", variableValue: Double(waterCups)/10.0)
+                                        .foregroundColor(PastelTheme.pastelSlate)
+                                    Text("Вода за день (стаканы)")
+                                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                                        .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                                    Spacer()
+                                    Text("\(waterCups)")
+                                        .font(.system(size: 17, weight: .bold, design: .rounded).monospacedDigit())
+                                        .foregroundColor(PastelTheme.pastelSlate)
+                                }
+                                Slider(value: Binding(get: { Double(waterCups) }, set: { waterCups = Int($0) }), in: 0...15, step: 1) { _ in
+                                    HapticManager.shared.selection()
+                                    updateCNS()
+                                }
+                                .tint(PastelTheme.pastelSlate)
                             }
                             .padding(20)
-                            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white))
-                            .cornerRadius(24)
-                            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+                            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+                            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 6, y: 2)
                             .padding(.horizontal, 24)
                         }
 
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("RECOVERY PROTOCOL").font(.system(size: 12, weight: .black)).foregroundColor(.gray).padding(.horizontal, 24)
-                            HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Рекомендации по восстановлению")
+                                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                .foregroundColor(PastelTheme.textSecondary)
+                                .padding(.horizontal, 24)
+
+                            HStack(spacing: 10) {
                                 if cnsLoad < 40 {
-                                    RecoveryBadge(icon: "flame.fill", text: "High carbohydrate intake", color: .cyberOrange)
-                                    RecoveryBadge(icon: "figure.walk", text: "Light activity", color: .cyberGreen)
+                                    RecoveryBadge(icon: "flame.fill", text: "Сложные углеводы", color: PastelTheme.pastelAmber)
+                                    RecoveryBadge(icon: "figure.walk", text: "Лёгкая прогулка", color: PastelTheme.pastelSage)
                                 } else if cnsLoad < 75 {
-                                    RecoveryBadge(icon: "snowflake", text: "Cold shower", color: .cyberCyan)
-                                    RecoveryBadge(icon: "bed.double.fill", text: "Daytime sleep (20min)", color: .cyberPurple)
+                                    RecoveryBadge(icon: "snowflake", text: "Контрастный душ", color: PastelTheme.pastelSlate)
+                                    RecoveryBadge(icon: "bed.double.fill", text: "Дневной сон (20 мин)", color: PastelTheme.pastelLavender)
                                 } else {
-                                    RecoveryBadge(icon: "thermometer.sun.fill", text: "Sauna", color: .cyberRed)
-                                    RecoveryBadge(icon: "figure.mind.and.body", text: "MFR / Rolling", color: .cyberBlue)
+                                    RecoveryBadge(icon: "thermometer.sun.fill", text: "Сауна", color: PastelTheme.pastelPeach)
+                                    RecoveryBadge(icon: "figure.mind.and.body", text: "МФР и растяжка", color: PastelTheme.pastelSlate)
                                 }
-                            }.padding(.horizontal, 24)
+                            }
+                            .padding(.horizontal, 24)
                         }
-                        Text("Fatigue and recovery indicators are estimates based on the data you enter. They are not medical advice.")
+
+                        Text("Показатели утомления и рекомендации носят ориентировочный характер и рассчитываются на основе введённых данных.")
                             .font(.caption2)
-                            .foregroundColor(.gray)
+                            .foregroundColor(PastelTheme.textMuted)
                             .multilineTextAlignment(.leading)
                             .padding(.horizontal, 24)
                             .padding(.top, 4)
-                    }.padding(.bottom, 40)
+                    }
+                    .padding(.bottom, 40)
                 }
 
-                VStack { HStack { Text("Recovery").font(.system(size: 32, weight: .black, design: .rounded)).foregroundColor(colorScheme == .dark ? .white : .black); Spacer() }.padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 10) }.background(.regularMaterial)
-            }.navigationBarHidden(true)
-                .task {
-                    if let sleep = await HealthKitManager.shared.fetchSleepDuration() {
-                        sleepHours = sleep
-                        hasSleepData = true
+                VStack {
+                    HStack {
+                        Text("Восстановление")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                        Spacer()
                     }
+                    .padding(.horizontal, 24)
+                    .padding(.top, 20)
+                    .padding(.bottom, 10)
                 }
+                .background(.ultraThinMaterial)
+            }
+            .navigationBarHidden(true)
+            .task {
+                if let sleep = await HealthKitManager.shared.fetchSleepDuration() {
+                    sleepHours = sleep
+                    hasSleepData = true
+                }
+            }
         }
     }
     private func updateCNS() { cnsScore = 100 - cnsLoad }
@@ -1892,14 +2045,14 @@ struct MicroMetric: View {
     @Environment(\.colorScheme) private var colorScheme
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).font(.system(size: 11, weight: .bold)).foregroundColor(.gray)
+            Text(title).font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundColor(PastelTheme.textSecondary)
             if value == "--" {
-                UnavailableMetricView(icon: "waveform.path.ecg", text: "No Data")
+                UnavailableMetricView(icon: "waveform.path.ecg", text: "Нет данных")
                     .padding(.top, 2)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(value).font(.system(size: 18, weight: .black, design: .rounded).monospacedDigit()).foregroundColor(color)
-                    Text(unit).font(.system(size: 10, weight: .medium)).foregroundColor(.gray)
+                    Text(unit).font(.system(size: 10, weight: .medium, design: .rounded)).foregroundColor(PastelTheme.textMuted)
                 }
             }
         }
@@ -1915,21 +2068,23 @@ struct AICoachIsland: View {
 
     var body: some View {
         Button(action: {
-            HapticManager.shared.impact(.medium)
+            HapticManager.shared.impact(.light)
             action()
         }) {
-            VStack(spacing: 8) {
+            HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 22, weight: .medium))
-                    .foregroundStyle(LinearGradient(colors: [colorScheme == .dark ? .white : color, color], startPoint: .topLeading, endPoint: .bottomTrailing))
-                Text(title).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundColor(colorScheme == .dark ? .white : .black)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(color)
+                Text(title)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
             }
-            .contentShape(Rectangle())
-            .frame(maxWidth: .infinity).padding(.vertical, 12)
-            .background(colorScheme == .dark ? color.opacity(0.1) : Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.clear : Color.black.opacity(0.05), lineWidth: 1))
-            .shadow(color: colorScheme == .dark ? .clear : .black.opacity(0.05), radius: 5, y: 2)
+            .padding(.horizontal, 16)
+            .frame(height: PastelTheme.ButtonMetrics.pillHeight)
+            .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 5, y: 2)
         }
         .buttonStyle(.plain)
     }
@@ -1947,20 +2102,20 @@ struct StatRowView: View {
         VStack(spacing: 6) {
             HStack {
                 Circle().fill(stat.color).frame(width: 8, height: 8).scaleEffect(isSelected ? 1.5 : 1.0)
-                Text(stat.name).font(.system(size: 15, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
+                Text(stat.name).font(.system(size: 15, weight: .bold, design: .rounded)).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 Spacer()
-                Text(diffStr).font(.system(size: 13, weight: .bold).monospacedDigit()).foregroundColor(diff > 0 ? .green : (diff < 0 ? .red : .gray))
-                Text("\(String(format: "%.1f", stat.currentShare))%").font(.system(size: 16, weight: .black).monospacedDigit()).foregroundColor(colorScheme == .dark ? .white : .black).frame(width: 55, alignment: .trailing)
+                Text(diffStr).font(.system(size: 13, weight: .bold, design: .rounded).monospacedDigit()).foregroundColor(diff > 0 ? PastelTheme.pastelSage : (diff < 0 ? PastelTheme.pastelPeach : PastelTheme.textMuted))
+                Text("\(String(format: "%.1f", stat.currentShare))%").font(.system(size: 16, weight: .black, design: .rounded).monospacedDigit()).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black).frame(width: 55, alignment: .trailing)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.gray.opacity(0.15)).frame(height: 6)
                     Capsule()
-                        .fill(LinearGradient(colors: [stat.color.opacity(0.5), stat.color], startPoint: .leading, endPoint: .trailing))
+                        .fill(stat.color)
                         .frame(width: appearAnimate ? geo.size.width * (stat.currentShare / 40.0) : 0, height: 6)
                 }
             }.frame(height: 6)
-        }.padding(.horizontal, 30)
+        }.padding(.horizontal, 24)
     }
 }
 
@@ -1972,13 +2127,16 @@ struct RecoveryBadge: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: icon).foregroundColor(color)
-            Text(text).font(.system(size: 13, weight: .bold)).foregroundColor(colorScheme == .dark ? .white : .black)
+            Text(text)
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                .lineLimit(2)
         }
-        .padding(.horizontal, 16).padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(colorScheme == .dark ? Color(UIColor.secondarySystemGroupedBackground) : Color.white)
-        .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(colorScheme == .dark ? color.opacity(0.2) : Color.black.opacity(0.05), lineWidth: 1))
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
+        .padding(.horizontal, 12).padding(.vertical, 10).frame(maxWidth: .infinity, alignment: .leading)
+        .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.2 : 0.04), radius: 5, y: 2)
     }
 }
 

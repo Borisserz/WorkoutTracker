@@ -50,7 +50,7 @@ struct ContentView: View {
         @Bindable var appState = di.appState
 
         ZStack {
-            AtmosphericGymBackdropView()
+            AtmosphericGymBackdropView(selectedTab: appState.selectedTab)
                 .zIndex(0)
 
             TabView(selection: $appState.selectedTab) {

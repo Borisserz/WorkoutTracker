@@ -372,9 +372,9 @@ struct CNSCalculator {
     }
 
     static func getStatus(for score: Double) -> (text: String, color: Color) {
-        if score >= 80 { return ("Optimal for hypertrophy", .green) }
-        if score >= 60 { return ("Mild Fatigue (Base)", .orange) }
-        if score >= 40 { return ("Recovery required", .orange) }
-        return ("Exhaustion (Rest Only)", .red)
+        if score >= 80 { return ("Оптимально для гипертрофии", PastelTheme.pastelSage) }
+        if score >= 60 { return ("Умеренное утомление", PastelTheme.pastelAmber) }
+        if score >= 40 { return ("Требуется восстановление", PastelTheme.pastelAmber) }
+        return ("Истощение ЦНС (только отдых)", PastelTheme.pastelPeach)
     }
 }
