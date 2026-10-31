@@ -66,7 +66,19 @@ struct AICoachView: View {
 
     @State private var speechRecognizer = SpeechRecognizer()
 
-    let quickPrompts = ["How to break a plateau?", "Bench Press Mechanics", "Recovery Tips", "Hypertrophy Split"]
+    struct QuickPromptItem: Identifiable, Hashable {
+        let id = UUID()
+        let icon: String
+        let text: String
+    }
+
+    let quickPrompts = [
+        QuickPromptItem(icon: "dumbbell.fill", text: "Что качать сегодня?"),
+        QuickPromptItem(icon: "bolt.heart.fill", text: "Проверить готовность"),
+        QuickPromptItem(icon: "flame.fill", text: "Разминка перед тренировкой"),
+        QuickPromptItem(icon: "chart.line.uptrend.xyaxis", text: "Как пробить плато?"),
+        QuickPromptItem(icon: "leaf.fill", text: "Совет по питанию")
+    ]
 
     // AI Hub states
     @State private var path = NavigationPath()
@@ -78,7 +90,12 @@ struct AICoachView: View {
 
     var greeting: String {
         let hour = Calendar.current.component(.hour, from: .now)
-        switch hour { case 6..<12: return "Good morning,"; case 12..<18: return "Good afternoon,"; case 18..<24: return "Evening focus,"; default: return "Recovery time," }
+        switch hour {
+        case 6..<12: return "Доброе утро"
+        case 12..<18: return "Добрый день"
+        case 18..<24: return "Добрый вечер"
+        default: return "Время восстановления"
+        }
     }
     private func requireAIConsent(_ action: @escaping () -> Void) {
         if hasConsentedToAI {
@@ -150,7 +167,13 @@ struct AICoachView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
 
-                        // 2. Apple Watch-Style Readiness & Vitals Hero
+                        // 1. Block: Readiness
+                        SectionHeaderView(
+                            title: "Готовность к нагрузке",
+                            icon: "bolt.heart.fill",
+                            accentColor: PastelTheme.pastelSage
+                        )
+
                         PastelReadinessCard(
                             score: cnsScore,
                             hrv: actualHRV,
@@ -160,50 +183,62 @@ struct AICoachView: View {
                         )
                         .padding(.horizontal, 16)
 
-                        // 3. AI Predictive Recommendation Banner
-                        HStack(alignment: .top, spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(PastelTheme.pastelAmber.opacity(0.15))
-                                    .frame(width: 38, height: 38)
-                                    .overlay(Circle().stroke(PastelTheme.pastelAmber.opacity(0.3), lineWidth: 1))
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(PastelTheme.pastelAmber)
-                            }
+                        // 2. Block: Live Coach Dialog (replaces static recommendation)
+                        SectionHeaderView(
+                            title: "Диалог с тренером",
+                            icon: "bubble.left.and.bubble.right.fill",
+                            accentColor: PastelTheme.pastelLavender
+                        )
 
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text("Рекомендация на сегодня")
-                                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                                        .foregroundStyle(PastelTheme.textPrimary)
-                                    Spacer()
-                                    Text("\(Int(cnsScore))% готовность")
-                                        .font(.system(size: 11, weight: .heavy, design: .rounded))
-                                        .monospacedDigit()
-                                        .foregroundStyle(PastelTheme.pastelSage)
-                                        .padding(.horizontal, 7)
-                                        .padding(.vertical, 3)
-                                        .background(PastelTheme.pastelSage.opacity(0.12))
-                                        .clipShape(Capsule())
+                        InteractiveCoachDialogCard(
+                            score: cnsScore,
+                            quickPrompts: quickPrompts,
+                            isListening: Binding(get: { speechRecognizer.isRecording }, set: { _ in }),
+                            textTranscript: $speechRecognizer.transcript,
+                            userQuery: $userQuery,
+                            onSelectPrompt: { prompt in
+                                requireAIConsent {
+                                    viewModel.inputText = prompt
+                                    showChatView = true
                                 }
-
-                                Text("ЦНС полностью восстановилась. Свежие мышечные группы: грудь и плечи. Идеальное окно для интенсивной силовой нагрузки.")
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundStyle(PastelTheme.textSecondary)
-                                    .lineSpacing(2)
+                            },
+                            onMicTap: {
+                                HapticManager.shared.impact(.medium)
+                                if speechRecognizer.isRecording {
+                                    speechRecognizer.stopTranscribing()
+                                    if !speechRecognizer.transcript.isEmpty {
+                                        let text = speechRecognizer.transcript
+                                        speechRecognizer.transcript = ""
+                                        requireAIConsent {
+                                            viewModel.inputText = text
+                                            showChatView = true
+                                        }
+                                    }
+                                } else {
+                                    speechRecognizer.startTranscribing()
+                                }
+                            },
+                            onSubmitQuery: {
+                                if !userQuery.isEmpty {
+                                    let text = userQuery
+                                    userQuery = ""
+                                    requireAIConsent {
+                                        viewModel.inputText = text
+                                        showChatView = true
+                                    }
+                                }
                             }
-                        }
-                        .padding(14)
-                        .background(PastelTheme.cardSurface)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
                         )
                         .padding(.horizontal, 16)
 
-                        // 4. Asymmetrical Bento Grid: Hero Tile (AI Vision Camera)
+                        // 3. Block: Workout Tools
+                        SectionHeaderView(
+                            title: "Инструменты тренировки",
+                            icon: "figure.strengthtraining.traditional",
+                            accentColor: PastelTheme.pastelSlate
+                        )
+
+                        // Hero Tile: AI Vision Camera
                         Button {
                             HapticManager.shared.impact(.medium)
                             showAICameraSelector = true
@@ -257,9 +292,8 @@ struct AICoachView: View {
                         .buttonStyle(.plain)
                         .padding(.horizontal, 16)
 
-                        // 5. Asymmetrical Bento Grid: Split Row (50/50)
+                        // Split Row (50/50): Daily Session + Recovery
                         HStack(spacing: 12) {
-                            // Tile 2: Smart Workout
                             Button {
                                 HapticManager.shared.impact(.medium)
                                 showSmartBuilder = true
@@ -273,7 +307,6 @@ struct AICoachView: View {
                             }
                             .buttonStyle(.plain)
 
-                            // Tile 3: Recovery Coach
                             Button {
                                 HapticManager.shared.impact(.medium)
                                 showRestSheet = true
@@ -289,158 +322,41 @@ struct AICoachView: View {
                         }
                         .padding(.horizontal, 16)
 
-                        // 6. Asymmetrical Bento Grid: Program Architect (Full Width)
-                        Button {
-                            HapticManager.shared.impact(.medium)
-                            showAIBuilder = true
-                        } label: {
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    Circle()
-                                        .fill(PastelTheme.cardSurfaceSubtle)
-                                        .frame(width: 44, height: 44)
-                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
-
-                                    Image(systemName: "calendar.badge.plus")
-                                        .font(.system(size: 18, weight: .semibold))
-                                        .foregroundStyle(PastelTheme.pastelOat)
-                                }
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("План на сезон")
-                                        .font(.subheadline.weight(.bold))
-                                        .foregroundStyle(PastelTheme.textPrimary)
-
-                                    Text("Персональная периодизация и прогрессия весов")
-                                        .font(.caption)
-                                        .foregroundStyle(PastelTheme.textSecondary)
-                                }
-
-                                Spacer()
-
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(PastelTheme.textTertiary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            .background(PastelTheme.cardSurface)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16)
-
-                        // 7. Progress Analytics Full-Width Banner
-                        Button {
-                            HapticManager.shared.impact(.medium)
-                            showProgressSheet = true
-                        } label: {
-                            HStack(spacing: 14) {
-                                ZStack {
-                                    Circle()
-                                        .fill(PastelTheme.cardSurfaceSubtle)
-                                        .frame(width: 42, height: 42)
-                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
-
-                                    Image(systemName: "chart.xyaxis.line")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(PastelTheme.pastelSage)
-                                }
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Аналитика прогресса")
-                                        .font(.subheadline.weight(.bold))
-                                        .foregroundStyle(PastelTheme.textPrimary)
-
-                                    Text("Биометрический анализ результатов недели")
-                                        .font(.caption2)
-                                        .foregroundStyle(PastelTheme.textSecondary)
-                                }
-
-                                Spacer()
-
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.bold())
-                                    .foregroundStyle(PastelTheme.textTertiary)
-                            }
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 14)
-                            .background(PastelTheme.cardSurface)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                            )
-                        }
-                        .buttonStyle(.plain)
-                        .padding(.horizontal, 16)
-
-                        // 8. Quick Prompt Pills
-                        if !speechRecognizer.isRecording {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(quickPrompts, id: \.self) { prompt in
-                                        Button {
-                                            HapticManager.shared.selection()
-                                            requireAIConsent {
-                                                viewModel.inputText = prompt
-                                                showChatView = true
-                                            }
-                                        } label: {
-                                            Text(prompt)
-                                                .font(.caption.weight(.semibold))
-                                                .foregroundStyle(PastelTheme.textSecondary)
-                                                .padding(.horizontal, 13)
-                                                .padding(.vertical, 7)
-                                                .background(PastelTheme.cardSurfaceSubtle)
-                                                .clipShape(Capsule())
-                                                .overlay(
-                                                    Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1)
-                                                )
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                .padding(.horizontal, 16)
-                            }
-                        }
-
-                        // 9. Apple Intelligence Assistant Cockpit (Dictation & Text Input)
-                        PastelAssistantCard(
-                            isListening: Binding(get: { speechRecognizer.isRecording }, set: { _ in }),
-                            textTranscript: $speechRecognizer.transcript,
-                            userQuery: $userQuery,
-                            onMicTap: {
-                                HapticManager.shared.impact(.medium)
-                                if speechRecognizer.isRecording {
-                                    speechRecognizer.stopTranscribing()
-                                    if !speechRecognizer.transcript.isEmpty {
-                                        let text = speechRecognizer.transcript
-                                        speechRecognizer.transcript = ""
-                                        requireAIConsent {
-                                            viewModel.inputText = text
-                                            showChatView = true
-                                        }
-                                    }
-                                } else {
-                                    speechRecognizer.startTranscribing()
-                                }
-                            },
-                            onSubmitQuery: {
-                                if !userQuery.isEmpty {
-                                    let text = userQuery
-                                    userQuery = ""
-                                    requireAIConsent {
-                                        viewModel.inputText = text
-                                        showChatView = true
-                                    }
-                                }
-                            }
+                        // 4. Block: Strategy & Progress
+                        SectionHeaderView(
+                            title: "Стратегия и прогресс",
+                            icon: "chart.line.uptrend.xyaxis",
+                            accentColor: PastelTheme.pastelOat
                         )
+
+                        // Split Row (50/50): Program Architect + Progress Analytics
+                        HStack(spacing: 12) {
+                            Button {
+                                HapticManager.shared.impact(.medium)
+                                showAIBuilder = true
+                            } label: {
+                                PastelBentoCard(
+                                    title: "План на сезон",
+                                    subtitle: "Периодизация и прогрессия",
+                                    iconName: "calendar.badge.plus",
+                                    accentColor: PastelTheme.pastelOat
+                                )
+                            }
+                            .buttonStyle(.plain)
+
+                            Button {
+                                HapticManager.shared.impact(.medium)
+                                showProgressSheet = true
+                            } label: {
+                                PastelBentoCard(
+                                    title: "Аналитика недели",
+                                    subtitle: "Биометрия и динамика весов",
+                                    iconName: "chart.xyaxis.line",
+                                    accentColor: PastelTheme.pastelSage
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
                         .padding(.horizontal, 16)
                         .padding(.bottom, 30)
                     }
@@ -705,6 +621,204 @@ struct PastelMetricItem: View {
 
 typealias CyberMetric = PastelMetricItem
 
+struct SectionHeaderView: View {
+    let title: String
+    let icon: String
+    var accentColor: Color = PastelTheme.pastelOat
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(accentColor)
+
+            Text(title)
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(PastelTheme.textPrimary)
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 14)
+        .padding(.bottom, 2)
+    }
+}
+
+struct InteractiveCoachDialogCard: View {
+    let score: Double
+    let quickPrompts: [AICoachView.QuickPromptItem]
+    @Binding var isListening: Bool
+    @Binding var textTranscript: String
+    @Binding var userQuery: String
+    let onSelectPrompt: (String) -> Void
+    let onMicTap: () -> Void
+    let onSubmitQuery: () -> Void
+
+    private var coachGreeting: String {
+        if score >= 80 {
+            return "ЦНС восстановилась на \(Int(score))%. Отличное окно для силовых рекордов и тяжелой базы. Что запланируем на сегодня?"
+        } else if score >= 50 {
+            return "Готовность в балансе (\(Int(score))%). Рекомендую среднюю интенсивность и чистую технику. Нужна помощь с подбором веса или разминкой?"
+        } else {
+            return "Замечено утомление ЦНС (\(Int(score))%). Советую сделать разгрузку или кардио с мобильностью. Как самочувствие?"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            // Coach Persona Header
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 44, height: 44)
+                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                    Image(systemName: "brain.head.profile")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(PastelTheme.pastelLavender)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("ИИ-Тренер")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+
+                    Text("Персональный коуч • На связи 24/7")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(PastelTheme.pastelSage)
+                        .frame(width: 7, height: 7)
+
+                    Text("Онлайн")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelSage)
+                }
+                .padding(.horizontal, 9)
+                .padding(.vertical, 4)
+                .background(PastelTheme.pastelSage.opacity(0.12))
+                .clipShape(Capsule())
+            }
+
+            // Direct Speech Bubble
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "quote.bubble.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(PastelTheme.pastelLavender)
+                    .padding(.top, 2)
+
+                Text(coachGreeting)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(PastelTheme.textPrimary)
+                    .lineSpacing(3)
+                    .multilineTextAlignment(.leading)
+            }
+            .padding(12)
+            .background(PastelTheme.cardSurfaceSubtle)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
+
+            // Quick Prompt Pills
+            if !isListening {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(quickPrompts) { item in
+                            Button {
+                                HapticManager.shared.selection()
+                                onSelectPrompt(item.text)
+                            } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: item.icon)
+                                        .font(.system(size: 11, weight: .semibold))
+                                        .foregroundStyle(PastelTheme.pastelLavender)
+
+                                    Text(item.text)
+                                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(PastelTheme.textSecondary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(PastelTheme.cardSurfaceSubtle)
+                                .clipShape(Capsule())
+                                .overlay(
+                                    Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            // Input Bar (Voice Dictation & Text)
+            HStack(spacing: 10) {
+                // Voice Dictation
+                Button(action: onMicTap) {
+                    ZStack {
+                        Circle()
+                            .fill(isListening ? PastelTheme.pastelPeach : PastelTheme.pastelOat)
+                            .frame(width: 38, height: 38)
+                            .overlay(Circle().stroke(PastelTheme.cardBorderFocused, lineWidth: 1))
+
+                        Image(systemName: isListening ? "stop.fill" : "mic.fill")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(PastelTheme.textOnOat)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                // Text field row
+                HStack(spacing: 8) {
+                    Image(systemName: "bubble.left")
+                        .font(.system(size: 13))
+                        .foregroundStyle(PastelTheme.textTertiary)
+
+                    TextField(isListening ? (textTranscript.isEmpty ? "Слушаю..." : textTranscript) : "Спросите тренера о тренировке...", text: $userQuery)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                        .submitLabel(.send)
+                        .onSubmit(onSubmitQuery)
+
+                    if isListening {
+                        SiriWaveformView()
+                    } else if !userQuery.isEmpty {
+                        Button(action: onSubmitQuery) {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundStyle(PastelTheme.pastelOat)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+            }
+        }
+        .padding(16)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+    }
+}
+
 struct PastelAssistantCard: View {
     @Binding var isListening: Bool
     @Binding var textTranscript: String
@@ -713,81 +827,15 @@ struct PastelAssistantCard: View {
     let onSubmitQuery: () -> Void
 
     var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
-                // Microphone Dictation Button
-                Button(action: onMicTap) {
-                    ZStack {
-                        Circle()
-                            .fill(isListening ? PastelTheme.pastelPeach : PastelTheme.pastelOat)
-                            .frame(width: 44, height: 44)
-                            .overlay(
-                                Circle().stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
-                            )
-
-                        Image(systemName: isListening ? "stop.fill" : "mic.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(PastelTheme.textOnOat)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 8) {
-                        Text(isListening ? "Слушаю вас..." : "Спросить AI Тренера")
-                            .font(.subheadline.bold())
-                            .foregroundStyle(PastelTheme.textPrimary)
-
-                        if isListening {
-                            SiriWaveformView()
-                        }
-                    }
-
-                    Text(isListening ? (textTranscript.isEmpty ? "Говорите..." : textTranscript) : "Техника, подбор упражнений, диета")
-                        .font(.caption2)
-                        .foregroundStyle(isListening ? PastelTheme.pastelSage : PastelTheme.textSecondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-            }
-
-            // Text input row
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 13))
-                    .foregroundStyle(PastelTheme.textTertiary)
-
-                TextField("Задайте вопрос тренеру...", text: $userQuery)
-                    .font(.subheadline)
-                    .foregroundStyle(PastelTheme.textPrimary)
-                    .submitLabel(.send)
-                    .onSubmit(onSubmitQuery)
-
-                if !userQuery.isEmpty {
-                    Button(action: onSubmitQuery) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 22))
-                            .foregroundStyle(PastelTheme.pastelOat)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .background(PastelTheme.cardSurfaceSubtle)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-            )
-        }
-        .padding(14)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        InteractiveCoachDialogCard(
+            score: 85,
+            quickPrompts: [],
+            isListening: $isListening,
+            textTranscript: $textTranscript,
+            userQuery: $userQuery,
+            onSelectPrompt: { _ in },
+            onMicTap: onMicTap,
+            onSubmitQuery: onSubmitQuery
         )
     }
 }
