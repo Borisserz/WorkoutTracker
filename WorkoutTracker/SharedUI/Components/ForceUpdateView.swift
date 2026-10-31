@@ -61,13 +61,7 @@ struct ForceUpdateView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 70, height: 70)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [themeManager.current.primaryAccent, .cyan],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
+                        .foregroundStyle(PastelTheme.pastelSlate)
                         .rotationEffect(.degrees(appear ? 360 : 0))
                         .animation(.linear(duration: 20).repeatForever(autoreverses: false), value: appear)
                 }
@@ -76,33 +70,26 @@ struct ForceUpdateView: View {
                 
                 // Content Card
                 VStack(spacing: 16) {
-                    Text(LocalizedStringKey("Time to Update!"))
-                        .font(.system(size: 32, weight: .heavy, design: .rounded))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [themeManager.current.primaryText, themeManager.current.primaryAccent],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
+                    Text("Время обновиться")
+                        .font(.system(size: 30, weight: .heavy, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
                         .multilineTextAlignment(.center)
                         .lineLimit(1).minimumScaleFactor(0.8)
                     
-                    Text(LocalizedStringKey("We've added powerful new features, AI enhancements, and critical fixes. Please update to the latest version to continue crushing your goals."))
+                    Text("Мы добавили новые функции, улучшили ИИ-тренера и повысили стабильность работы приложения. Пожалуйста, обновитесь до актуальной версии.")
                         .font(.system(size: 16, weight: .medium, design: .rounded))
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(PastelTheme.textSecondary)
                         .multilineTextAlignment(.center)
                         .lineSpacing(6)
                 }
                 .padding(32)
-                .background(Color(UIColor.secondarySystemBackground).opacity(0.5))
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+                .background(PastelTheme.cardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(Color.white.opacity(0.15), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
                 )
-                .shadow(color: Color.black.opacity(0.1), radius: 20, x: 0, y: 10)
+                .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
                 .padding(.horizontal, 24)
                 .offset(y: appear ? 0 : 40)
                 .opacity(appear ? 1 : 0)
@@ -115,24 +102,18 @@ struct ForceUpdateView: View {
                     generator.impactOccurred()
                     AppReviewManager.openAppStoreReview()
                 } label: {
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         Image(systemName: "icloud.and.arrow.down.fill")
-                            .font(.title3)
-                        Text(LocalizedStringKey("Update Now"))
-                            .font(.system(size: 18, weight: .bold, design: .rounded))
+                            .font(.system(size: 16, weight: .semibold))
+                        Text("Обновить приложение")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
                     }
+                    .foregroundColor(PastelTheme.textOnOat)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
-                    .background(
-                        LinearGradient(
-                            colors: [themeManager.current.primaryAccent, .cyan],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .foregroundColor(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                    .shadow(color: themeManager.current.primaryAccent.opacity(0.5), radius: 15, x: 0, y: 8)
+                    .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                    .background(PastelTheme.pastelOat)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                    .shadow(color: PastelTheme.pastelOat.opacity(0.16), radius: 10, y: 3)
                 }
                 .padding(.horizontal, 32)
                 .padding(.bottom, 50)

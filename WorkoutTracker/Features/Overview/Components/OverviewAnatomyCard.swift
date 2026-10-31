@@ -75,11 +75,11 @@ struct OverviewAnatomyCard: View {
         }
 
         if selectedMusclePct >= 95 {
-            return "Fully recovered · Primed for high volume training"
+            return "Полное восстановление · Готов к высокой нагрузке"
         } else if let exName = lastExerciseName {
-            return "\(hoursRemaining)h until full recovery · Last hit by \(exName)"
+            return "\(hoursRemaining) ч до восстановления · Нагрузка: \(exName)"
         } else {
-            return "\(hoursRemaining)h remaining until full cellular recovery"
+            return "\(hoursRemaining) ч до полного клеточного восстановления"
         }
     }
 
@@ -89,11 +89,11 @@ struct OverviewAnatomyCard: View {
             // MARK: - Header & Front / Back Toggle
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Muscle Readiness & Anatomy")
+                    Text("Готовность мышц и анатомия")
                         .font(.headline)
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("\(averageReadiness)% Systemic Readiness")
+                    Text("\(averageReadiness)% общая готовность")
                         .font(.caption)
                         .foregroundStyle(PastelTheme.pastelSage)
                 }
@@ -110,7 +110,7 @@ struct OverviewAnatomyCard: View {
                             selectedMuscleSlug = nil
                         }
                     } label: {
-                        Text("Front")
+                        Text("Спереди")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(isFrontView ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                             .padding(.horizontal, 14)
@@ -128,7 +128,7 @@ struct OverviewAnatomyCard: View {
                             selectedMuscleSlug = nil
                         }
                     } label: {
-                        Text("Back")
+                        Text("Сзади")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(!isFrontView ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                             .padding(.horizontal, 14)
@@ -427,7 +427,7 @@ struct OverviewAnatomyCard: View {
                 HStack(spacing: 8) {
                     Image(systemName: "waveform.path.ecg")
                         .font(.system(size: 16, weight: .semibold))
-                    Text("Body Analysis")
+                    Text("Анализ тела")
                         .font(.body.weight(.semibold))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)

@@ -23,58 +23,58 @@ struct AIConsentSheet: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 44))
-                        .foregroundStyle(LinearGradient(colors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
-                                                        startPoint: .topLeading,
-                                                        endPoint: .bottomTrailing))
+                        .foregroundStyle(PastelTheme.pastelLavender)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 12)
 
-                    Text(LocalizedStringKey("AI Coach & Data Processing"))
-                        .font(.title2).bold()
+                    Text("ИИ-тренер и обработка данных")
+                        .font(.title2.bold())
+                        .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text(LocalizedStringKey("To answer your questions and build plans, the AI Coach sends the text you type (your messages and requests) to our secure cloud processing service. Your messages are linked to your account to enforce usage limits. Your body weight and Health data are never sent."))
+                    Text("Чтобы отвечать на вопросы и составлять планы тренировок, ИИ-тренер отправляет ваши сообщения в защищённый облачный сервис. Сообщения привязаны к аккаунту для учёта лимитов. Данные веса и Apple Health никогда не передаются третьим лицам.")
                         .font(.body)
-                        .foregroundColor(themeManager.current.secondaryText)
+                        .foregroundColor(PastelTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
 
                     Link(destination: Constants.Legal.privacyPolicyURL) {
-                        HStack {
+                        HStack(spacing: 8) {
                             Image(systemName: "hand.raised.fill")
-                            Text(LocalizedStringKey("Read our Privacy Policy"))
+                            Text("Политика конфиденциальности")
                         }
                     }
                     .font(.callout.weight(.semibold))
-                    .tint(themeManager.current.primaryAccent)
+                    .tint(PastelTheme.pastelSlate)
                 }
                 .padding(24)
             }
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 12) {
                     Button {
+                        HapticManager.shared.impact(.light)
                         hasConsentedToAI = true
                         onConsent?()
                         dismiss()
                     } label: {
-                        Text(LocalizedStringKey("Agree & Continue"))
+                        Text("Принять и продолжить")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(themeManager.current.primaryAccent)
-                            .foregroundColor(.white)
-                            .cornerRadius(16)
+                            .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                            .background(PastelTheme.pastelOat)
+                            .foregroundColor(PastelTheme.textOnOat)
+                            .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                     }
 
                     Button {
                         dismiss()
                     } label: {
-                        Text(LocalizedStringKey("Not Now"))
+                        Text("Не сейчас")
                             .font(.subheadline)
-                            .foregroundColor(themeManager.current.secondaryText)
+                            .foregroundColor(PastelTheme.textSecondary)
                     }
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 16)
-                .background(.regularMaterial)
+                .background(PastelTheme.canvas.opacity(0.95))
             }
             .navigationBarTitleDisplayMode(.inline)
             .interactiveDismissDisabled(true)   

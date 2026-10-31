@@ -358,14 +358,14 @@ extension Exercise {
     func formattedDetails(unitsManager: UnitsManager) -> String {
         switch type {
         case .strength:
-            return firstSetWeight > 0 ? "\(setsCount)s x \(firstSetReps)r • \(unitsManager.displayWeightWithUnit(forKg: firstSetWeight))" : "\(setsCount)s x \(firstSetReps)r"
+            return firstSetWeight > 0 ? "\(setsCount) подх. × \(firstSetReps) повт. · \(unitsManager.displayWeightWithUnit(forKg: firstSetWeight))" : "\(setsCount) подх. × \(firstSetReps) повт."
         case .cardio:
             if let dist = firstSetDistance, dist > 0 {
-                return "\(unitsManager.displayDistanceWithUnit(forMeters: dist)) in \(formatTime(firstSetTimeSeconds ?? 0))"
+                return "\(unitsManager.displayDistanceWithUnit(forMeters: dist)) за \(formatTime(firstSetTimeSeconds ?? 0))"
             }
-            return "\(setsCount) sets"
+            return "\(setsCount) подх."
         case .duration:
-            return "\(setsCount) sets x \(formatTime(firstSetTimeSeconds ?? 0))"
+            return "\(setsCount) подх. × \(formatTime(firstSetTimeSeconds ?? 0))"
         }
     }
 

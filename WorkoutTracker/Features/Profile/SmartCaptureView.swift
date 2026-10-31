@@ -93,7 +93,7 @@ struct SmartCaptureView: View {
 
                 if referenceImage != nil {
                     Slider(value: $overlayOpacity, in: 0.1...0.8)
-                        .tint(.cyan)
+                        .tint(PastelTheme.pastelSlate)
                         .frame(width: 150)
                 }
             }
@@ -105,7 +105,7 @@ struct SmartCaptureView: View {
                 Text("\(count)")
                     .font(.system(size: 150, weight: .heavy, design: .rounded))
                     .foregroundColor(themeManager.current.background)
-                    .shadow(color: .cyan, radius: 20, x: 0, y: 0)
+                    .shadow(color: PastelTheme.pastelSlate.opacity(0.5), radius: 15, x: 0, y: 0)
                     .transition(.scale.combined(with: .opacity))
             }
 
@@ -114,10 +114,10 @@ struct SmartCaptureView: View {
             VStack(spacing: 16) {
                 if viewModel.countdown == nil {
 
-                    Text(viewModel.isBodyAligned ? "Perfect! Show ✌️ to capture." : "Align your body in the frame.")
+                    Text(viewModel.isBodyAligned ? "Отлично! Покажите ✌️ для снимка." : "Выровняйте положение в кадре.")
                         .font(.subheadline)
                         .fontWeight(.bold)
-                        .foregroundColor(viewModel.isBodyAligned ? .green : themeManager.current.background)
+                        .foregroundColor(viewModel.isBodyAligned ? PastelTheme.pastelSage : PastelTheme.textPrimary)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 10)
                         .background(.ultraThinMaterial)
@@ -132,13 +132,13 @@ struct SmartCaptureView: View {
                         Circle()
                             .trim(from: 0, to: CGFloat(viewModel.gestureController.gestureProgress))
 
-                            .stroke(viewModel.isBodyAligned ? Color.green : Color.cyan, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                            .stroke(viewModel.isBodyAligned ? PastelTheme.pastelSage : PastelTheme.pastelSlate, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                             .frame(width: 60, height: 60)
                             .rotationEffect(.degrees(-90))
 
                         Image(systemName: "hand.point.up.braille.fill")
                             .font(.title2)
-                            .foregroundColor(viewModel.gestureController.gestureProgress > 0 ? (viewModel.isBodyAligned ? .green : .cyan) : .white)
+                            .foregroundColor(viewModel.gestureController.gestureProgress > 0 ? (viewModel.isBodyAligned ? PastelTheme.pastelSage : PastelTheme.pastelSlate) : .white)
                     }
                     .padding(.bottom, 30)
 

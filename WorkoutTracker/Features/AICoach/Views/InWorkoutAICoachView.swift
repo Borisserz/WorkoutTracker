@@ -19,17 +19,17 @@ struct InWorkoutAICoachView: View {
                     HStack {
                         Image(systemName: "bolt.shield.fill")
                             .font(.title3)
-                            .foregroundColor(.cyan)
-                        Text(LocalizedStringKey("Live Tension"))
+                            .foregroundColor(PastelTheme.pastelLavender)
+                        Text("Мышечное напряжение")
                             .font(.headline)
                             .bold()
                         Spacer()
-                        Text(LocalizedStringKey("AI Active"))
+                        Text("ИИ активен")
                             .font(.caption2)
                             .bold()
                             .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(Color.cyan.opacity(0.2))
-                            .foregroundColor(.cyan)
+                            .background(PastelTheme.cardSurfaceSubtle)
+                            .foregroundColor(PastelTheme.pastelLavender)
                             .cornerRadius(6)
                     }
 
@@ -44,38 +44,38 @@ struct InWorkoutAICoachView: View {
                         .frame(width: 80, height: 160)
                         .background(Color.white.opacity(0.05))
                         .cornerRadius(16)
-                        .shadow(color: .cyan.opacity(0.15), radius: 10)
+                        .shadow(color: Color.black.opacity(0.15), radius: 10)
 
                         VStack(alignment: .leading, spacing: 10) {
-                            Text(LocalizedStringKey("Coach is monitoring your output. High tension detected in target muscle groups."))
+                            Text("ИИ анализирует объем работы и мышечную нагрузку целевых групп.")
                                 .font(.subheadline)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(PastelTheme.textSecondary)
                                 .lineSpacing(4)
                             Spacer()
                             HStack {
-                                Circle().fill(Color.green).frame(width: 8, height: 8).symbolEffect(.pulse)
-                                Text(LocalizedStringKey("Ready for adjustments")).font(.caption).foregroundColor(.green)
+                                Circle().fill(PastelTheme.pastelSage).frame(width: 8, height: 8).symbolEffect(.pulse)
+                                Text("Готов к корректировкам").font(.caption).foregroundColor(PastelTheme.pastelSage)
                             }
                         }
                     }
                 }
                 .padding(20)
-                .background(.ultraThinMaterial)
-                .cornerRadius(28)
-                .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                .background(PastelTheme.cardSurface)
+                .cornerRadius(24)
+                .overlay(RoundedRectangle(cornerRadius: 24).stroke(PastelTheme.cardBorder, lineWidth: 1))
 
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text(LocalizedStringKey("Intelligent Adjustments"))
+                    Text("Умные корректировки")
                         .font(.title3)
                         .bold()
                         .padding(.horizontal, 4)
 
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
-                        smartActionTile(id: "busy", title: "Equipment Busy", icon: "lock.fill", command: "Equipment is taken, swap exercise", color: .cyan)
-                        smartActionTile(id: "heavy", title: "Too Heavy", icon: "arrow.down.circle.fill", command: "Weight is too heavy, reduce load", color: .orange)
-                        smartActionTile(id: "easy", title: "Too Easy", icon: "arrow.up.circle.fill", command: "Too easy, increase weight or intensity", color: .green)
-                        smartActionTile(id: "finish", title: "Add Finisher", icon: "flame.fill", command: "Add a final pump isolation exercise", color: .purple)
+                        smartActionTile(id: "busy", title: "Занят снаряд", icon: "lock.fill", command: "Equipment is taken, swap exercise", color: PastelTheme.pastelSlate)
+                        smartActionTile(id: "heavy", title: "Тяжело", icon: "arrow.down.circle.fill", command: "Weight is too heavy, reduce load", color: PastelTheme.pastelAmber)
+                        smartActionTile(id: "easy", title: "Легко", icon: "arrow.up.circle.fill", command: "Too easy, increase weight or intensity", color: PastelTheme.pastelSage)
+                        smartActionTile(id: "finish", title: "Памп-финишер", icon: "flame.fill", command: "Add a final pump isolation exercise", color: PastelTheme.pastelLavender)
                     }
                 }
 
@@ -168,11 +168,11 @@ struct AIProposalPremiumCard: View {
     var body: some View {
         VStack(spacing: 20) {
             HStack {
-                Label(LocalizedStringKey("Coach Recommendation"), systemImage: "sparkles")
+                Label("Рекомендация тренера", systemImage: "sparkles")
                     .font(.caption.bold())
-                    .foregroundColor(.cyan)
+                    .foregroundColor(PastelTheme.pastelLavender)
                     .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(Color.cyan.opacity(0.1))
+                    .background(PastelTheme.cardSurfaceSubtle)
                     .cornerRadius(8)
 
                 Spacer()
@@ -180,37 +180,37 @@ struct AIProposalPremiumCard: View {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.title2)
-                        .foregroundStyle(.secondary, Color.gray.opacity(0.2))
+                        .foregroundStyle(PastelTheme.textMuted, Color.gray.opacity(0.2))
                 }
             }
 
             Text(proposal.reasoning)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
-                .foregroundColor(.primary)
+                .foregroundColor(PastelTheme.textPrimary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .lineSpacing(4)
 
             HStack(spacing: 15) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey("EXERCISE")).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
+                    Text("Упражнение").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
                     Text(LocalizationHelper.shared.translateName(proposal.exerciseName)).font(.subheadline).bold().lineLimit(1)
                 }
                 Divider().frame(height: 30)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(LocalizedStringKey("SETS")).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
+                    Text("Подходы").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
                     Text("\(proposal.setsRemaining)").font(.subheadline).bold()
                 }
                 Divider().frame(height: 30)
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text(LocalizedStringKey("WEIGHT")).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
+                    Text("Вес").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
                     Text("\(Int(unitsManager.convertFromKilograms(proposal.weightValue))) \(unitsManager.weightUnitString())")
                         .font(.subheadline)
                         .bold()
-                        .foregroundColor(.cyan)
+                        .foregroundColor(PastelTheme.pastelSage)
                 }
             }
             .padding()
-            .background(Color.black.opacity(0.15))
+            .background(PastelTheme.cardSurfaceSubtle)
             .cornerRadius(16)
 
             Button(action: {
@@ -218,22 +218,22 @@ struct AIProposalPremiumCard: View {
                 generator.impactOccurred()
                 onApply()
             }) {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "checkmark.seal.fill")
-                    Text(LocalizedStringKey("Apply to Workout")).bold()
+                    Text("Применить к тренировке").bold()
                 }
+                .foregroundColor(PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(LinearGradient(colors: [.indigo, .cyan], startPoint: .leading, endPoint: .trailing))
-                .foregroundColor(.white)
-                .cornerRadius(16)
-                .shadow(color: .cyan.opacity(0.4), radius: 10, x: 0, y: 5)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                .background(PastelTheme.pastelOat)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                .shadow(color: PastelTheme.pastelOat.opacity(0.15), radius: 10, y: 4)
             }
         }
         .padding(24)
-        .background(Color(UIColor.secondarySystemBackground))
-        .cornerRadius(32)
-        .overlay(RoundedRectangle(cornerRadius: 32).stroke(Color.cyan.opacity(0.3), lineWidth: 1.5))
-        .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
+        .background(PastelTheme.cardSurface)
+        .cornerRadius(24)
+        .overlay(RoundedRectangle(cornerRadius: 24).stroke(PastelTheme.cardBorder, lineWidth: 1))
+        .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
     }
 }

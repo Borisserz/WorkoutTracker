@@ -12,11 +12,11 @@ struct FeatureDiscoveryCarouselView: View {
 
     var body: some View {
         ZStack {
-            Color(red: 0.05, green: 0.05, blue: 0.08).ignoresSafeArea()
+            PastelTheme.canvas.ignoresSafeArea()
             
-            // Background glow
+            // Subtle ambient backdrop glow
             Circle()
-                .fill(glowColor.opacity(0.15))
+                .fill(glowColor.opacity(0.12))
                 .frame(width: 300, height: 300)
                 .blur(radius: 80)
                 .offset(y: -150)
@@ -26,25 +26,25 @@ struct FeatureDiscoveryCarouselView: View {
                 TabView(selection: $selectedTab) {
                     FeatureSlide(
                         icon: "sparkles.tv",
-                        title: "AI Coach Camera",
-                        description: "Your personal trainer is watching. Get real-time form tracking and rep counting during your workouts.",
-                        gradientColors: [.purple, .blue]
+                        title: "ИИ-тренер и камера",
+                        description: "Умное отслеживание траектории движения и автоматический подсчет повторений в реальном времени.",
+                        gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelLavender.opacity(0.7)]
                     )
                     .tag(0)
 
                     FeatureSlide(
                         icon: "chart.xyaxis.line",
-                        title: "Deep Analytics",
-                        description: "Track your progress with advanced charts. Find your weak points and see your strength trends.",
-                        gradientColors: [.blue, .cyan]
+                        title: "Глубокая аналитика",
+                        description: "Наглядные графики прогресса, динамика силовых показателей и распределение нагрузки по мышцам.",
+                        gradientColors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)]
                     )
                     .tag(1)
                     
                     FeatureSlide(
                         icon: "camera.viewfinder",
-                        title: "Photo Progress",
-                        description: "The mirror doesn't lie. Take progress photos and compare them side-by-side to see your real transformation.",
-                        gradientColors: [.cyan, .green]
+                        title: "Фото-прогресс",
+                        description: "Фиксируйте трансформацию тела и сравнивайте фотографии до и после в едином ракурсе.",
+                        gradientColors: [PastelTheme.pastelSage, PastelTheme.pastelSage.opacity(0.7)]
                     )
                     .tag(2)
                 }
@@ -58,14 +58,14 @@ struct FeatureDiscoveryCarouselView: View {
                     hasSeenFeatureDiscovery = true
                     onFinish()
                 }) {
-                    Text(selectedTab == 2 ? "Let's Go" : "Skip")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.black)
+                    Text(selectedTab == 2 ? "Начать" : "Пропустить")
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(PastelTheme.textOnOat)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(LinearGradient(colors: [.white, Color(white: 0.85)], startPoint: .top, endPoint: .bottom))
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .shadow(color: .white.opacity(0.3), radius: 10, y: 5)
+                        .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                        .background(PastelTheme.pastelOat)
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                        .shadow(color: PastelTheme.pastelOat.opacity(0.15), radius: 10, y: 4)
                 }
                 .padding(.horizontal, 30)
                 .padding(.bottom, 50)
@@ -75,9 +75,9 @@ struct FeatureDiscoveryCarouselView: View {
 
     private var glowColor: Color {
         switch selectedTab {
-        case 0: return .purple
-        case 1: return .blue
-        case 2: return .cyan
+        case 0: return PastelTheme.pastelLavender
+        case 1: return PastelTheme.pastelSlate
+        case 2: return PastelTheme.pastelSage
         default: return .clear
         }
     }
@@ -95,24 +95,26 @@ struct FeatureSlide: View {
             
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(PastelTheme.cardSurfaceSubtle)
                     .frame(width: 120, height: 120)
-                    .shadow(color: gradientColors[0].opacity(0.5), radius: 20, y: 10)
+                    .overlay(
+                        Circle().stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    )
                 
                 Image(systemName: icon)
-                    .font(.system(size: 50, weight: .light))
-                    .foregroundColor(.white)
+                    .font(.system(size: 48, weight: .light))
+                    .foregroundColor(gradientColors[0])
             }
             .padding(.bottom, 20)
 
             Text(title)
-                .font(.system(size: 32, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundColor(PastelTheme.textPrimary)
                 .multilineTextAlignment(.center)
 
             Text(description)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
+                .foregroundColor(PastelTheme.textSecondary)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
                 .padding(.horizontal, 40)

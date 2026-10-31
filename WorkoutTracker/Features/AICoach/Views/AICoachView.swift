@@ -1365,26 +1365,33 @@ struct ExerciseTechniqueSheet: View {
                     .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, y: 2)
                     .padding(.horizontal, 24)
 
-                    VStack(alignment: .leading, spacing: 16) {
-                        HStack {
-                            Image(systemName: "sparkles").foregroundColor(.orange)
-                            Text("II PRO-COUNCIL").font(.system(size: 12, weight: .black)).foregroundColor(.orange)
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sparkles")
+                                .foregroundColor(PastelTheme.pastelAmber)
+                            Text("Советы по технике")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundColor(PastelTheme.pastelAmber)
                         }
 
                         let tips = TechniqueHelper.getTips(for: exercise.category)
                         ForEach(tips, id: \.self) { tip in
-                            HStack(alignment: .top) {
-                                Text("•").foregroundColor(.orange)
+                            HStack(alignment: .top, spacing: 10) {
+                                RoundedRectangle(cornerRadius: 1.5)
+                                    .fill(PastelTheme.pastelAmber)
+                                    .frame(width: 3, height: 16)
+                                    .padding(.top, 2)
                                 Text(tip)
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(colorScheme == .dark ? .white : .black) 
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                             }
                         }
                     }
-                    .padding(20).frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.cyberOrange.opacity(0.1))
-                    .overlay(RoundedRectangle(cornerRadius: 24).stroke(Color.cyberOrange.opacity(0.3), lineWidth: 1))
-                    .cornerRadius(24).padding(.horizontal, 24)
+                    .padding(18).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(colorScheme == .dark ? PastelTheme.cardSurface : Color.white)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .padding(.horizontal, 24)
 
                 }.padding(.bottom, 40)
             }

@@ -107,7 +107,7 @@ struct SupersetBuilderView: View {
 
                         if let firstSet = ex.setsList.sorted(by: { $0.index < $1.index }).first, let weight = firstSet.weight {
                             let convertedWeight = unitsManager.convertFromKilograms(weight)
-                            Text(LocalizedStringKey("\(ex.setsList.count) sets • \(Int(convertedWeight))\(unitsManager.weightUnitString()) x \(firstSet.reps ?? 0) reps"))
+                            Text("\(ex.setsList.count) подх. · \(Int(convertedWeight)) \(unitsManager.weightUnitString()) × \(firstSet.reps ?? 0) повт.")
                                 .font(.caption)
                                 .foregroundColor(themeManager.current.secondaryText)
                         }

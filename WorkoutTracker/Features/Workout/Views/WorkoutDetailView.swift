@@ -564,15 +564,15 @@ struct WorkoutDetailContentView: View {
 
                             .foregroundStyle(
                                 isSelected
-                                ? LinearGradient(colors: [.yellow, .orange], startPoint: .top, endPoint: .bottom)
-                                : LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom)
+                                ? LinearGradient(colors: [PastelTheme.pastelAmber, PastelTheme.pastelAmber.opacity(0.7)], startPoint: .top, endPoint: .bottom)
+                                : LinearGradient(colors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.55)], startPoint: .top, endPoint: .bottom)
                             )
                             .cornerRadius(6)
                             .annotation(position: .top) {
                                 if isSelected {
                                     Text("\(Int(convertedWeight))")
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                                        .foregroundColor(.orange)
+                                        .foregroundColor(PastelTheme.pastelAmber)
                                         .padding(.bottom, 4)
                                         .contentTransition(.numericText())
                                 } else {

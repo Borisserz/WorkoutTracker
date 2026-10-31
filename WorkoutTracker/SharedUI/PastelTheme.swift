@@ -51,6 +51,9 @@ enum PastelTheme {
     /// Soft warm ivory-gray for clear micro-labels, icons, and captions.
     static let textTertiary = Color(hex: "BDB5A9")
     
+    /// Muted caption color for subtle secondary metadata.
+    static let textMuted = Color(hex: "8E887E")
+    
     /// Deep charcoal for text displayed on bright oat / beige buttons and chips.
     static let textOnOat = Color(hex: "0E0F12")
 

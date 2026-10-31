@@ -149,7 +149,7 @@ struct MorphingSaveButton: View {
                         .font(.title3)
                         .contentTransition(.symbolEffect(.replace))
 
-                    Text("Saved")
+                    Text("Сохранено")
                         .font(.headline)
                         .fontWeight(.bold)
                 } else {
@@ -161,25 +161,20 @@ struct MorphingSaveButton: View {
                         .fontWeight(.bold)
                 }
             }
-            .foregroundColor(.white) 
-            .frame(maxWidth: isSaved ? 140 : .infinity)
-            .padding(.vertical, 18)
+            .foregroundColor(isSaved ? .white : PastelTheme.textOnOat)
+            .frame(maxWidth: isSaved ? 150 : .infinity)
+            .frame(height: PastelTheme.ButtonMetrics.heroHeight)
             .background(
                 Group {
                     if isSaved {
-                        Color.green
+                        PastelTheme.pastelSage
                     } else {
-
-                        if colorScheme == .dark {
-                            LinearGradient(colors: gradientColors, startPoint: .leading, endPoint: .trailing)
-                        } else {
-                            LinearGradient(colors: [.blue, .cyan], startPoint: .leading, endPoint: .trailing)
-                        }
+                        PastelTheme.pastelOat
                     }
                 }
             )
             .clipShape(Capsule())
-            .shadow(color: isSaved ? .clear : (colorScheme == .dark ? gradientColors.first!.opacity(0.4) : .blue.opacity(0.4)), radius: 15, x: 0, y: 8)
+            .shadow(color: isSaved ? .clear : PastelTheme.pastelOat.opacity(0.15), radius: 10, x: 0, y: 4)
             .scaleEffect(popScale)
         }
         .disabled(isSaving || isSaved)

@@ -314,15 +314,15 @@ struct PresetEditorView: View {
                     switch exercise.type {
                     case .strength:
                         let convertedWeight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
-                        Text("\(exercise.setsCount) sets x \(exercise.firstSetReps) reps • \(Int(convertedWeight)) \(unitsManager.weightUnitString())")
+                        Text("\(exercise.setsCount) подх. × \(exercise.firstSetReps) повт. · \(Int(convertedWeight)) \(unitsManager.weightUnitString())")
                     case .cardio:
                         let dist = exercise.firstSetDistance ?? 0
                         let convertedDist = unitsManager.convertFromMeters(dist)
                         let time = exercise.firstSetTimeSeconds ?? 0
-                        Text("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) • \(formatTime(time))")
+                        Text("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) · \(formatTime(time))")
                     case .duration:
                         let time = exercise.firstSetTimeSeconds ?? 0
-                        Text("\(exercise.setsCount) sets • \(formatTime(time))")
+                        Text("\(exercise.setsCount) подх. · \(formatTime(time))")
                     }
                 }
                 .font(.subheadline)

@@ -130,26 +130,26 @@ struct GeneratorSettingsView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             ZStack {
-                                Circle().fill(Color.cyan.opacity(0.15)).frame(width: 36, height: 36)
-                                Image(systemName: "stopwatch.fill").foregroundColor(.cyan)
+                                Circle().fill(PastelTheme.cardSurfaceSubtle).frame(width: 36, height: 36)
+                                Image(systemName: "stopwatch.fill").foregroundColor(PastelTheme.pastelSlate)
                             }
-                            Text("Duration")
+                            Text("Длительность")
                                 .font(.headline)
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                             Spacer()
-                            Text("\(Int(vm.durationMinutes)) min")
+                            Text("\(Int(vm.durationMinutes)) мин")
                                 .font(.title2).bold()
-                                .foregroundColor(.cyan)
+                                .foregroundColor(PastelTheme.pastelSlate)
                                 .contentTransition(.numericText())
                         }
 
                         Slider(value: $vm.durationMinutes, in: 15...120, step: 5)
-                            .tint(.cyan)
+                            .tint(PastelTheme.pastelSlate)
 
                         HStack {
-                            Text("15 min").font(.caption2).bold().foregroundColor(.gray)
+                            Text("15 мин").font(.caption2).bold().foregroundColor(PastelTheme.textSecondary)
                             Spacer()
-                            Text("120 min").font(.caption2).bold().foregroundColor(.gray)
+                            Text("120 мин").font(.caption2).bold().foregroundColor(PastelTheme.textSecondary)
                         }
                     }
                     .modifier(PremiumCardModifier(colorScheme: colorScheme, themeManager: themeManager))

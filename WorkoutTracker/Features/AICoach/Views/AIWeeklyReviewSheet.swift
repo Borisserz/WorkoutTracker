@@ -217,10 +217,10 @@ struct ReviewDashboardView: View {
 
     private var moodColor: Color {
         switch data.coachMood.lowercased() {
-        case "fire": return .orange
-        case "ice": return .cyan
-        case "warning": return .yellow
-        default: return themeManager.current.primaryAccent
+        case "fire": return PastelTheme.pastelAmber
+        case "ice": return PastelTheme.pastelSlate
+        case "warning": return PastelTheme.pastelAmber
+        default: return PastelTheme.pastelLavender
         }
     }
 
@@ -406,10 +406,10 @@ struct MoodBackgroundView: View {
 
     private var moodColors: [Color] {
         switch mood {
-        case "fire": return [.red, .orange]
-        case "ice": return [.cyan, .blue]
-        case "warning": return [.yellow, .orange]
-        default: return [.purple, .indigo]
+        case "fire": return [PastelTheme.pastelAmber, PastelTheme.pastelAmber.opacity(0.7)]
+        case "ice": return [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)]
+        case "warning": return [PastelTheme.pastelAmber, PastelTheme.pastelAmber.opacity(0.6)]
+        default: return [PastelTheme.pastelLavender, PastelTheme.pastelLavender.opacity(0.7)]
         }
     }
 

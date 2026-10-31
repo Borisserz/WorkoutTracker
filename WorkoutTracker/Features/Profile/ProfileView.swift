@@ -1121,10 +1121,10 @@ struct AchievementDesignerCard: View {
         guard achievement.isUnlocked else { return colorScheme == .dark ? Color.white.opacity(0.1) : Color.gray.opacity(0.4) }
         switch achievement.tier {
         case .none: return .clear
-        case .bronze: return .orange
-        case .silver: return .cyan
-        case .gold: return .yellow
-        case .diamond: return .purple
+        case .bronze: return PastelTheme.pastelAmber
+        case .silver: return PastelTheme.pastelOat
+        case .gold: return PastelTheme.pastelAmber
+        case .diamond: return PastelTheme.pastelLavender
         }
     }
 
@@ -1494,10 +1494,10 @@ struct AchievementListRow: View {
         guard achievement.isUnlocked else { return .gray }
         switch achievement.tier {
         case .none: return .clear
-        case .bronze: return .orange
-        case .silver: return .cyan
-        case .gold: return .yellow
-        case .diamond: return .purple
+        case .bronze: return PastelTheme.pastelAmber
+        case .silver: return PastelTheme.pastelOat
+        case .gold: return PastelTheme.pastelAmber
+        case .diamond: return PastelTheme.pastelLavender
         }
     }
 

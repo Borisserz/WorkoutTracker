@@ -128,10 +128,10 @@ private struct WelcomeStepView: View {
                 Image(systemName: "figure.strengthtraining.traditional")
                     .font(.system(size: 52, weight: .semibold))
                     .foregroundStyle(
-                        LinearGradient(colors: [.white, .cyan],
+                        LinearGradient(colors: [.white, PastelTheme.pastelSlate],
                                        startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
-                    .shadow(color: .cyan.opacity(0.4), radius: 20, y: 8)
+                    .shadow(color: PastelTheme.pastelSlate.opacity(0.3), radius: 16, y: 6)
 
                 Text("Welcome 👋")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
@@ -232,21 +232,21 @@ private struct AuroraBackground: View {
     }
 
     private let orbs: [Orb] = [
-        .init(color: .purple, size: 320, from: .init(width: -120, height: -260), to: .init(width: -60,  height: -200)),
-        .init(color: .blue,   size: 300, from: .init(width:  140, height: -110), to: .init(width:  90,  height:  -50)),
-        .init(color: .cyan,   size: 280, from: .init(width:  -80, height:  260), to: .init(width: -140, height:  200))
+        .init(color: PastelTheme.pastelLavender, size: 320, from: .init(width: -120, height: -260), to: .init(width: -60,  height: -200)),
+        .init(color: PastelTheme.pastelSlate,   size: 300, from: .init(width:  140, height: -110), to: .init(width:  90,  height:  -50)),
+        .init(color: PastelTheme.pastelSage,   size: 280, from: .init(width:  -80, height:  260), to: .init(width: -140, height:  200))
     ]
 
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [Color(red: 0.10, green: 0.11, blue: 0.20),
-                         Color(red: 0.20, green: 0.16, blue: 0.34)],
+                colors: [Color(red: 0.06, green: 0.07, blue: 0.09),
+                         Color(red: 0.09, green: 0.10, blue: 0.12)],
                 startPoint: .top, endPoint: .bottom
             )
             ForEach(orbs) { orb in
                 Circle()
-                    .fill(orb.color.opacity(0.35))
+                    .fill(orb.color.opacity(0.25))
                     .frame(width: orb.size, height: orb.size)
                     .blur(radius: 90)
                     .offset(animate ? orb.to : orb.from)
@@ -288,7 +288,7 @@ private struct GuestWarningView: View {
 
     private func bullet(_ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 8) {
-            Circle().fill(Color.cyan).frame(width: 4, height: 4).padding(.top, 6)
+            Circle().fill(PastelTheme.pastelSage).frame(width: 4, height: 4).padding(.top, 6)
             Text(text).font(.system(size: 13)).foregroundStyle(.white.opacity(0.92))
         }
     }
@@ -396,7 +396,7 @@ struct GodModeWelcomeScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Spacer()
-            Text("Your\nNew\nEra.").font(.system(size: 56, weight: .black, design: .rounded)).foregroundStyle(LinearGradient(colors: [.white, .cyan, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)).lineSpacing(-5)
+            Text("Your\nNew\nEra.").font(.system(size: 56, weight: .black, design: .rounded)).foregroundStyle(LinearGradient(colors: [.white, PastelTheme.pastelOat], startPoint: .topLeading, endPoint: .bottomTrailing)).lineSpacing(-5)
                 .offset(y: isVisible ? 0 : 20).opacity(isVisible ? 1 : 0)
             Text("You are the personal architect of your body. No garbage, just a pure focus on the result.\n\nHow to break the limits?").font(.system(size: 16, weight: .medium)).foregroundStyle(.white.opacity(0.7)).offset(y: isVisible ? 0 : 20).opacity(isVisible ? 1 : 0)
             Spacer()
@@ -427,14 +427,14 @@ struct GodModeProfileScreen: View {
                             .fill(Color.white.opacity(0.05))
                             .frame(width: 120, height: 120)
                             .overlay(Circle().stroke(Color.white.opacity(0.1), lineWidth: 1))
-                            .shadow(color: .cyan.opacity(0.2), radius: 15, y: 5)
+                            .shadow(color: PastelTheme.pastelOat.opacity(0.2), radius: 15, y: 5)
                             
                         if let img = metrics.avatarImage {
                             Image(uiImage: img).resizable().scaledToFill().frame(width: 110, height: 110).clipShape(Circle())
                         } else {
                             Image(systemName: "person.crop.circle.badge.plus")
                                 .font(.system(size: 40))
-                                .foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
+                                .foregroundStyle(LinearGradient(colors: [PastelTheme.pastelOat, PastelTheme.pastelSlate], startPoint: .top, endPoint: .bottom))
                         }
                     }
                 }
@@ -487,7 +487,7 @@ struct GodModeMetricsScreen: View {
             }
             .frame(height: 220).background(RoundedRectangle(cornerRadius: 24).fill(Color.white.opacity(0.05)).overlay(RoundedRectangle(cornerRadius: 24).stroke(.white.opacity(0.1), lineWidth: 1))).padding(.horizontal, 20)
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: "cpu").font(.system(size: 24, weight: .light)).foregroundStyle(.cyan)
+                Image(systemName: "cpu").font(.system(size: 24, weight: .light)).foregroundStyle(PastelTheme.pastelSlate)
                 Text("The algorithm uses this data to accurately calculate BMR and adapt loads. No magic, just science.").font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.7))
             }
             .padding(16).background(.ultraThinMaterial).clipShape(RoundedRectangle(cornerRadius: 16)).padding(.horizontal, 20).padding(.top, 30)
@@ -534,9 +534,9 @@ struct GodModeActivityScreen: View {
                                     Text(type.description).font(.system(size: 12, weight: .medium)).foregroundStyle(.white.opacity(0.6))
                                 }
                                 Spacer()
-                                if metrics.activityLevel == type { Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundStyle(.cyan).transition(.scale) }
+                                if metrics.activityLevel == type { Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundStyle(PastelTheme.pastelSage).transition(.scale) }
                             }
-                            .padding(14).background(metrics.activityLevel == type ? Color.cyan.opacity(0.15) : Color.white.opacity(0.03)).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(metrics.activityLevel == type ? Color.cyan : Color.white.opacity(0.1), lineWidth: metrics.activityLevel == type ? 2 : 1))
+                            .padding(14).background(metrics.activityLevel == type ? PastelTheme.pastelSage.opacity(0.15) : Color.white.opacity(0.03)).clipShape(RoundedRectangle(cornerRadius: 18)).overlay(RoundedRectangle(cornerRadius: 18).stroke(metrics.activityLevel == type ? PastelTheme.pastelSage : Color.white.opacity(0.1), lineWidth: metrics.activityLevel == type ? 2 : 1))
                         }.buttonStyle(.plain)
                     }
                 }.padding(.horizontal, 30)
@@ -571,8 +571,8 @@ struct GodModeFinishScreen: View {
             VStack(spacing: 24) {
                 Spacer()
                 ZStack {
-                    Circle().fill(Color.cyan.opacity(0.2)).frame(width: 100, height: 100).blur(radius: 20)
-                    Image(systemName: "bolt.shield.fill").font(.system(size: 50)).foregroundStyle(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom))
+                    Circle().fill(PastelTheme.pastelSage.opacity(0.2)).frame(width: 100, height: 100).blur(radius: 20)
+                    Image(systemName: "bolt.shield.fill").font(.system(size: 50)).foregroundStyle(LinearGradient(colors: [PastelTheme.pastelSage, PastelTheme.pastelOat], startPoint: .top, endPoint: .bottom))
                 }
                 VStack(spacing: 8) {
                     Text("Your profile is ready").font(.system(size: 32, weight: .black, design: .rounded)).foregroundStyle(.white)
@@ -658,7 +658,7 @@ class WarpEngine {
     var isWarping = false
 
     init() {
-        let colors: [Color] = [.white, .cyan, .blue, .white.opacity(0.8)]
+        let colors: [Color] = [.white, PastelTheme.pastelSlate, PastelTheme.pastelOat, .white.opacity(0.8)]
         for _ in 0..<500 {
             stars.append(Star(x: Double.random(in: -2000...2000), y: Double.random(in: -2000...2000), z: Double.random(in: 10...2000), pz: 0, color: colors.randomElement()!))
         }
@@ -694,7 +694,7 @@ struct GodModeButton: View {
     var isDisabled: Bool = false
     var body: some View {
         Button(action: action) {
-            Text(title).font(.system(size: 17, weight: .bold)).foregroundStyle(isDisabled ? Color.white.opacity(0.3) : .black).frame(maxWidth: .infinity).padding(.vertical, 16).background(isDisabled ? AnyShapeStyle(Color.white.opacity(0.1)) : AnyShapeStyle(LinearGradient(colors: [.white, Color(white: 0.85)], startPoint: .top, endPoint: .bottom))).clipShape(RoundedRectangle(cornerRadius: 16)).shadow(color: isDisabled ? .clear : .white.opacity(0.3), radius: 10, y: 5)
+            Text(title).font(.system(size: 17, weight: .bold)).foregroundStyle(isDisabled ? Color.white.opacity(0.3) : PastelTheme.textOnOat).frame(maxWidth: .infinity).padding(.vertical, 16).background(isDisabled ? AnyShapeStyle(Color.white.opacity(0.1)) : AnyShapeStyle(PastelTheme.pastelOat)).clipShape(RoundedRectangle(cornerRadius: 16))
         }.disabled(isDisabled).buttonStyle(BouncyButtonStyle())
     }
 }
@@ -710,8 +710,8 @@ struct GodModeAnimatedBackground: View {
     @State private var move2 = false
     var body: some View {
         ZStack {
-            Circle().fill(Color.cyan.opacity(0.15)).frame(width: 300, height: 300).blur(radius: 80).offset(x: move1 ? 100 : -100, y: move1 ? -150 : 0)
-            Circle().fill(Color.purple.opacity(0.15)).frame(width: 350, height: 350).blur(radius: 100).offset(x: move2 ? -150 : 150, y: move2 ? 200 : 50)
+            Circle().fill(PastelTheme.pastelSlate.opacity(0.12)).frame(width: 300, height: 300).blur(radius: 80).offset(x: move1 ? 100 : -100, y: move1 ? -150 : 0)
+            Circle().fill(PastelTheme.pastelLavender.opacity(0.12)).frame(width: 350, height: 350).blur(radius: 100).offset(x: move2 ? -150 : 150, y: move2 ? 200 : 50)
         }.onAppear {
             withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) { move1 = true }
             withAnimation(.easeInOut(duration: 10).repeatForever(autoreverses: true)) { move2 = true }

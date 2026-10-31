@@ -219,10 +219,10 @@ struct TrainingStyleDetailView: View {
         let bwPct = Double(stats.equipmentDistribution[.bodyweight] ?? 0) / Double(max(stats.totalEquipmentSets, 1))
         let compPct = Double(stats.compoundSets) / Double(max(stats.totalMechanicSets, 1))
 
-        if compPct > 0.6 && fwPct > 0.5 { return ("Free Weight Warrior", "You focus on heavy compound lifts. Great for strength!", "flame.fill", .orange) }
-        else if machPct > 0.5 { return ("Machine Master", "You often use machines. This is a safe approach for hypertrophy.", "gearshape.2.fill", .purple) }
-        else if bwPct > 0.5 { return ("Calisthenics Ninja", "Bodyweight work builds incredible body control.", "figure.core.training", .cyan) }
-        else if stats.isolationSets > stats.compoundSets { return ("Sculptor", "You emphasize isolation. Perfect for muscle detail.", "paintpalette.fill", .pink) }
-        else { return ("Balanced Athlete", "Your workouts are well-balanced across mechanics.", "scale.3d", .green) }
+        if compPct > 0.6 && fwPct > 0.5 { return ("Силовой атлет", "Акцент на базовых движениях со свободными весами. Отличный фундамент для силы.", "flame.fill", PastelTheme.pastelAmber) }
+        else if machPct > 0.5 { return ("Мастер тренажеров", "Частая работа в тренажерах — контролируемый и безопасный путь к гипертрофии.", "gearshape.2.fill", PastelTheme.pastelLavender) }
+        else if bwPct > 0.5 { return ("Мастер калистеники", "Работа с собственным весом развивает превосходный контроль тела и связок.", "figure.core.training", PastelTheme.pastelSlate) }
+        else if stats.isolationSets > stats.compoundSets { return ("Детализация мышц", "Фокус на изоляции для максимальной проработки целевых мышечных волокон.", "paintpalette.fill", PastelTheme.pastelAmber) }
+        else { return ("Гармоничный атлет", "Сбалансированная нагрузка между базой и изоляцией на все тело.", "scale.3d", PastelTheme.pastelSage) }
     }
 }

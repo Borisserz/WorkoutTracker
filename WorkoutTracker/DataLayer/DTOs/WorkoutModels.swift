@@ -108,10 +108,10 @@ enum PRLevel: Int, CaseIterable, Sendable {
 
     var angularColors: [Color] {
         switch self {
-        case .bronze: return [.brown, .orange, .brown]
-        case .silver: return [.gray, .white, .gray]
-        case .gold: return [.yellow, .orange, .yellow]
-        case .diamond: return [.cyan, .white, .purple, .blue, .cyan]
+        case .bronze: return [.brown, Color(red: 0.98, green: 0.75, blue: 0.14), .brown]
+        case .silver: return [.gray, Color(red: 0.94, green: 0.89, blue: 0.83), .gray]
+        case .gold: return [Color(red: 0.98, green: 0.75, blue: 0.14), Color(red: 0.94, green: 0.89, blue: 0.83), Color(red: 0.98, green: 0.75, blue: 0.14)]
+        case .diamond: return [Color(red: 0.38, green: 0.65, blue: 0.98), .white, Color(red: 0.65, green: 0.55, blue: 0.98), Color(red: 0.38, green: 0.65, blue: 0.98)]
         }
     }
 }
@@ -218,10 +218,10 @@ public enum EquipmentCategory: String, Sendable, CaseIterable, Identifiable {
 
     var color: Color {
         switch self {
-        case .freeWeights: return .orange
-        case .machines: return .purple
-        case .bodyweight: return .cyan
-        case .other: return .gray
+        case .freeWeights: return Color(red: 0.98, green: 0.75, blue: 0.14) // warm amber
+        case .machines: return Color(red: 0.65, green: 0.55, blue: 0.98) // pastel lavender
+        case .bodyweight: return Color(red: 0.38, green: 0.65, blue: 0.98) // pastel slate
+        case .other: return Color(white: 0.6)
         }
     }
 }
