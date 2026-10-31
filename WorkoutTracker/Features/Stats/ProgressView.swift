@@ -228,9 +228,11 @@ struct StatsContentView: View {
     @Environment(\.colorScheme) private var colorScheme 
     @AppStorage("userGender") private var userGender = "male"
     @Environment(TutorialManager.self) var tutorialManager
+    @Query private var userStats: [UserStats]
 
     @State private var showingAddGoal = false
     @State private var showProfile = false
+    @State private var showAchievementsFolder = false
     @State private var showProgressComparison = false
 
     @State private var showAIReviewSheet = false
@@ -265,6 +267,14 @@ struct StatsContentView: View {
                     HeaderView(showProfile: $showProfile)
 
                     PersonalRecordsShowcaseView(viewModel: viewModel)
+
+                    // Dossier Folder with Sticking-out Pages for Achievements Showcase
+                    AchievementsFolderButton(
+                        achievements: calculatedAchievements,
+                        onOpenFolder: {
+                            showAchievementsFolder = true
+                        }
+                    )
 
                     GoalsSectionView(showingAddGoal: $showingAddGoal, viewModel: viewModel, unitsManager: unitsManager)
 
@@ -332,6 +342,9 @@ struct StatsContentView: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showAchievementsFolder) {
+            AchievementsFolderSheet(achievements: calculatedAchievements)
+        }
         .fullScreenCover(isPresented: $showProgressComparison) {
             ProgressComparisonWrapper()
                 .environment(unitsManager)
@@ -357,7 +370,17 @@ struct StatsContentView: View {
                 di.appState.showProfileSheet = false
             }
         }
+        .onChange(of: di.appState.showAchievementsSheet) { _, newVal in
+            if newVal {
+                showAchievementsFolder = true
+                di.appState.showAchievementsSheet = false
+            }
+        }
         .onAppear {
+            if di.appState.showAchievementsSheet {
+                showAchievementsFolder = true
+                di.appState.showAchievementsSheet = false
+            }
             if UserDefaults.standard.bool(forKey: "hasSeenFeatureDiscovery") {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
                     if tutorialManager.currentStep == .completed {
@@ -372,6 +395,19 @@ struct StatsContentView: View {
                 }
             }
         }
+    }
+
+    private var calculatedAchievements: [Achievement] {
+        let stats = userStats.first ?? UserStats()
+        return AchievementCalculator.calculateAchievements(
+            totalWorkouts: stats.totalWorkouts,
+            totalVolume: stats.totalVolume,
+            totalDistance: stats.totalDistance,
+            earlyWorkouts: stats.earlyWorkouts,
+            nightWorkouts: stats.nightWorkouts,
+            streak: dashboardViewModel.streakCount,
+            unitsManager: unitsManager
+        )
     }
 
     private func fetchReviewDataAndShowSheet() {

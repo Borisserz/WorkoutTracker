@@ -182,6 +182,14 @@ struct WorkoutTrackerApp: App {
                         di.appState.showProfileSheet = true
                         return
                     }
+                    if url.host == "achievements" {
+                        di.appState.selectedTab = 4
+                        di.appState.showAchievementsSheet = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            di.appState.showAchievementsSheet = true
+                        }
+                        return
+                    }
                 }
                 if url.scheme == "workouttracker" && url.host == "shared" {
                     guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),

@@ -232,6 +232,11 @@ struct WorkoutHubView: View {
                     if showWorkoutModeDiscovery {
                         WorkoutModeDiscoveryPopup(
                             isPresented: $showWorkoutModeDiscovery,
+                            hasTemplates: !userPresets.isEmpty,
+                            onCreateTemplate: {
+                                presetToEdit = nil
+                                showPresetEditor = true
+                            },
                             onSelectEmpty: {
                                 startEmptyWorkout()
                             },

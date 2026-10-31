@@ -477,7 +477,9 @@ struct YearlyTransformationView: View {
     }
 }
 
-/// Tactile folder / dossier button representing the achievements archive
+/// Tactile folder / dossier button representing the achievements archive.
+/// Features stacked physical document sheets sticking out from the top flap,
+/// deep leather-matte texture, corner brass accents, and live completion telemetry.
 struct AchievementsFolderButton: View {
     let achievements: [Achievement]
     let onOpenFolder: () -> Void
@@ -486,83 +488,215 @@ struct AchievementsFolderButton: View {
         achievements.filter { $0.isUnlocked }.count
     }
 
+    private var progressRatio: Double {
+        guard !achievements.isEmpty else { return 0 }
+        return Double(unlockedCount) / Double(achievements.count)
+    }
+
     var body: some View {
-        Button(action: onOpenFolder) {
-            HStack(spacing: 14) {
-                // Folder tab emblem with layered stacked papers aesthetic
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 46, height: 46)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                        )
-                        .rotationEffect(.degrees(-4))
+        Button(action: {
+            HapticManager.playMediumImpact()
+            onOpenFolder()
+        }) {
+            ZStack(alignment: .top) {
+                // 1. Layered Document Sheets Visibly Sticking Out of the Folder Top
+                HStack(spacing: 0) {
+                    Spacer()
+                    ZStack {
+                        // Rear Sheet: Warm Oat Parchment with certificate lines
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(PastelTheme.pastelOat.opacity(0.85))
+                            .frame(width: 88, height: 42)
+                            .overlay(
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Rectangle().fill(Color.black.opacity(0.2)).frame(width: 44, height: 2)
+                                    Rectangle().fill(Color.black.opacity(0.12)).frame(width: 32, height: 2)
+                                }
+                                .padding(6),
+                                alignment: .topLeading
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
+                            .rotationEffect(.degrees(-6))
+                            .offset(x: -28, y: -16)
 
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(PastelTheme.cardSurface)
-                        .frame(width: 46, height: 46)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
-                        )
+                        // Middle Sheet: Blueprint Slate with progress bars
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .fill(PastelTheme.pastelSlate.opacity(0.7))
+                            .frame(width: 82, height: 40)
+                            .overlay(
+                                HStack(alignment: .bottom, spacing: 3) {
+                                    RoundedRectangle(cornerRadius: 1).fill(Color.white.opacity(0.4)).frame(width: 4, height: 10)
+                                    RoundedRectangle(cornerRadius: 1).fill(Color.white.opacity(0.6)).frame(width: 4, height: 16)
+                                    RoundedRectangle(cornerRadius: 1).fill(Color.white.opacity(0.5)).frame(width: 4, height: 12)
+                                }
+                                .padding(6),
+                                alignment: .bottomLeading
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
+                            .rotationEffect(.degrees(5))
+                            .offset(x: 22, y: -14)
 
-                    Image(systemName: "folder.badge.gearshape")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(PastelTheme.pastelAmber)
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Папка наград и достижений")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-
-                    HStack(spacing: 8) {
-                        Text("\(unlockedCount) из \(achievements.count) получено")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .foregroundStyle(PastelTheme.pastelSage)
-
-                        Rectangle()
-                            .fill(PastelTheme.cardBorder)
-                            .frame(width: 1, height: 10)
-
-                        Text("Подробнее")
-                            .font(.system(size: 11, weight: .medium, design: .rounded))
-                            .foregroundStyle(PastelTheme.textSecondary)
+                        // Front Top Sheet: Document header with gold emblem
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .fill(PastelTheme.cardSurfaceSubtle)
+                            .frame(width: 74, height: 36)
+                            .overlay(
+                                HStack(spacing: 4) {
+                                    Circle().fill(PastelTheme.pastelAmber).frame(width: 6, height: 6)
+                                    Rectangle().fill(PastelTheme.pastelOat.opacity(0.5)).frame(width: 30, height: 2)
+                                }
+                                .padding(5),
+                                alignment: .top
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                    .stroke(PastelTheme.cardBorderFocused, lineWidth: 1)
+                            )
+                            .offset(x: -2, y: -11)
                     }
+                    .frame(width: 140, height: 22)
+                    Spacer()
                 }
+                .padding(.top, 4)
 
-                Spacer()
+                // 2. Main Folder Dossier Body Flap
+                VStack(spacing: 10) {
+                    HStack(spacing: 14) {
+                        // Folder Crest / Emblem
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(PastelTheme.cardSurfaceSubtle)
+                                .frame(width: 48, height: 48)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
+                                )
 
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(PastelTheme.textSecondary)
+                            Image(systemName: "trophy.fill")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundStyle(PastelTheme.pastelAmber)
+                                .shadow(color: PastelTheme.pastelAmber.opacity(0.4), radius: 6)
+                        }
+
+                        // Title & Telemetry Counter
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Папка наград и достижений")
+                                .font(.system(size: 16, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.textPrimary)
+
+                            HStack(spacing: 6) {
+                                Text("\(unlockedCount) из \(achievements.count) получено")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(PastelTheme.pastelSage)
+
+                                Rectangle()
+                                    .fill(PastelTheme.cardBorder)
+                                    .frame(width: 1, height: 10)
+
+                                Text("\(Int(progressRatio * 100))%")
+                                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                                    .foregroundStyle(PastelTheme.pastelAmber)
+                            }
+                        }
+
+                        Spacer()
+
+                        // Action Pill
+                        HStack(spacing: 5) {
+                            Text("Архив")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.textSecondary)
+
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(PastelTheme.textTertiary)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(PastelTheme.cardSurfaceSubtle)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                    }
+
+                    // Bottom Micro Progress Bar
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(PastelTheme.cardSurfaceSubtle)
+                                .frame(height: 3.5)
+
+                            Capsule()
+                                .fill(
+                                    LinearGradient(
+                                        colors: [PastelTheme.pastelSage, PastelTheme.pastelAmber],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    )
+                                )
+                                .frame(width: max(6, geo.size.width * CGFloat(progressRatio)), height: 3.5)
+                        }
+                    }
+                    .frame(height: 3.5)
+                }
+                .padding(14)
+                .background(PastelTheme.cardSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.35), radius: 10, y: 5)
+                .padding(.top, 16)
             }
-            .padding(14)
-            .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-            )
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 20)
     }
 }
 
-/// Luxury modal sheet presenting the achievements showcase in elegant tiles.
-/// Supports tapping or long-pressing any achievement to inspect details and meaning.
+/// Filter categories for the achievements showcase
+private enum AchievementCategoryFilter: String, CaseIterable, Identifiable {
+    case all = "Все"
+    case unlocked = "Получено"
+    case inProgress = "В процессе"
+
+    var id: String { rawValue }
+}
+
+/// Luxury modal sheet presenting the achievements showcase in elegant mechanical pressure plates.
+/// As the screen opens, the tiles smoothly pave across the canvas with staggered spring cascades.
 struct AchievementsFolderSheet: View {
     let achievements: [Achievement]
     @Environment(\.dismiss) private var dismiss
 
     @State private var inspectedAchievement: Achievement? = nil
+    @State private var selectedFilter: AchievementCategoryFilter = .all
+    @State private var hasPavedScreen: Bool = false
+
+    private var unlockedCount: Int {
+        achievements.filter { $0.isUnlocked }.count
+    }
+
+    private var filteredAchievements: [Achievement] {
+        switch selectedFilter {
+        case .all:
+            return achievements
+        case .unlocked:
+            return achievements.filter { $0.isUnlocked }
+        case .inProgress:
+            return achievements.filter { !$0.isUnlocked }
+        }
+    }
 
     private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
+        GridItem(.flexible(), spacing: 10),
+        GridItem(.flexible(), spacing: 10)
     ]
 
     var body: some View {
@@ -572,43 +706,27 @@ struct AchievementsFolderSheet: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 16) {
-                        // Header description
-                        HStack {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Коллекция наград")
-                                    .font(.system(size: 22, weight: .heavy, design: .rounded))
-                                    .foregroundStyle(PastelTheme.textPrimary)
+                        // 1. High-Precision Dossier Header HUD
+                        headerTelemetryCard
 
-                                Text("Зажмите любую плитку для проверки условий")
-                                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                                    .foregroundStyle(PastelTheme.textSecondary)
-                            }
+                        // 2. Filter Pills
+                        filterPillRow
 
-                            Spacer()
-                        }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 10)
-
-                        // 2-Column Luxury Achievement Tiles Grid
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            ForEach(achievements) { achievement in
-                                AchievementTileCard(
+                        // 3. Staggered Architectural Pressure Plates Grid
+                        LazyVGrid(columns: columns, spacing: 10) {
+                            ForEach(Array(filteredAchievements.enumerated()), id: \.element.id) { index, achievement in
+                                AchievementPressurePlate(
                                     achievement: achievement,
                                     isSelected: inspectedAchievement?.id == achievement.id,
+                                    delay: min(0.35, Double(index) * 0.022),
+                                    hasPavedScreen: hasPavedScreen,
                                     onTap: {
-                                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                                        withAnimation(.spring(response: 0.32, dampingFraction: 0.78)) {
                                             if inspectedAchievement?.id == achievement.id {
                                                 inspectedAchievement = nil
                                             } else {
                                                 inspectedAchievement = achievement
                                             }
-                                        }
-                                    },
-                                    onLongPress: {
-                                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
-                                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-                                            inspectedAchievement = achievement
                                         }
                                     }
                                 )
@@ -616,11 +734,12 @@ struct AchievementsFolderSheet: View {
                         }
                         .padding(.horizontal, 16)
 
-                        Spacer(minLength: 40)
+                        Spacer(minLength: 50)
                     }
+                    .padding(.top, 12)
                 }
 
-                // Inspection HUD Overlay at the bottom if an achievement is selected
+                // 4. Floating Holographic Inspection Card Overlay
                 if let inspected = inspectedAchievement {
                     VStack {
                         Spacer()
@@ -650,16 +769,111 @@ struct AchievementsFolderSheet: View {
                     .foregroundStyle(PastelTheme.pastelOat)
                 }
             }
+            .onAppear {
+                withAnimation(.spring(response: 0.48, dampingFraction: 0.78)) {
+                    hasPavedScreen = true
+                }
+            }
         }
         .preferredColorScheme(.dark)
     }
+
+    // MARK: - Header Telemetry Card
+    private var headerTelemetryCard: some View {
+        HStack(spacing: 16) {
+            // Circular Completion Dial
+            ZStack {
+                Circle()
+                    .stroke(PastelTheme.cardSurfaceSubtle, lineWidth: 6)
+                    .frame(width: 58, height: 58)
+
+                let ratio = achievements.isEmpty ? 0.0 : Double(unlockedCount) / Double(achievements.count)
+                Circle()
+                    .trim(from: 0, to: CGFloat(ratio))
+                    .stroke(
+                        LinearGradient(
+                            colors: [PastelTheme.pastelSage, PastelTheme.pastelAmber],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                    )
+                    .frame(width: 58, height: 58)
+                    .rotationEffect(.degrees(-90))
+
+                Text("\(Int(ratio * 100))%")
+                    .font(.system(size: 14, weight: .heavy, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Коллекция наград и трофеев")
+                    .font(.system(size: 17, weight: .heavy, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
+                Text("\(unlockedCount) из \(achievements.count) трофеев получено")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(PastelTheme.pastelSage)
+
+                Text("Нажмите любую нажимную плиту для просмотра")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(PastelTheme.textTertiary)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Filter Pills
+    private var filterPillRow: some View {
+        HStack(spacing: 8) {
+            ForEach(AchievementCategoryFilter.allCases) { filter in
+                let isSelected = selectedFilter == filter
+                Button {
+                    HapticManager.playSelection()
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                        selectedFilter = filter
+                    }
+                } label: {
+                    Text(filter.rawValue)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurface)
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule().stroke(isSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+    }
 }
 
-private struct AchievementTileCard: View {
+/// Architectural mechanical pressure plate representing an achievement.
+/// Features bevel lighting, corner micro-screws, physical spring depression,
+/// and staggered cascade entrance animation.
+private struct AchievementPressurePlate: View {
     let achievement: Achievement
     let isSelected: Bool
+    let delay: Double
+    let hasPavedScreen: Bool
     let onTap: () -> Void
-    let onLongPress: () -> Void
+
+    @State private var isDepressed: Bool = false
 
     private var tierColor: Color {
         guard achievement.isUnlocked else { return PastelTheme.cardBorder }
@@ -673,62 +887,136 @@ private struct AchievementTileCard: View {
     }
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(spacing: 8) {
-                HStack {
-                    Text(achievement.tier.name)
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundStyle(tierColor)
+        Button {
+            // Mechanical switch depression tactile feedback
+            isDepressed = true
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.11) {
+                isDepressed = false
+                onTap()
+            }
+        } label: {
+            ZStack {
+                // Slab Surface Background with Bevel Highlights
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(isSelected ? PastelTheme.cardSurfaceSubtle : PastelTheme.cardSurface)
+                    .overlay(
+                        // Top rim specular highlight simulating architectural plate bevel
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(isDepressed ? 0.02 : (achievement.isUnlocked ? 0.12 : 0.05)),
+                                Color.clear
+                            ],
+                            startPoint: .top,
+                            endPoint: .center
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    )
 
-                    Spacer()
+                // 4 Corner Micro-Screws
+                cornerScrews
 
-                    if achievement.isUnlocked {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundStyle(PastelTheme.pastelSage)
-                    } else {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(PastelTheme.textTertiary)
+                // Plate Content
+                VStack(spacing: 6) {
+                    // Top Row: Tier Pill + Status Seal
+                    HStack {
+                        Text(achievement.tier.name)
+                            .font(.system(size: 8.5, weight: .heavy, design: .rounded))
+                            .foregroundStyle(tierColor)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(tierColor.opacity(achievement.isUnlocked ? 0.14 : 0.06))
+                            .clipShape(Capsule())
+
+                        Spacer()
+
+                        if achievement.isUnlocked {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(PastelTheme.pastelSage)
+                        } else {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(PastelTheme.textTertiary)
+                        }
+                    }
+
+                    Spacer(minLength: 2)
+
+                    // Center: Illuminated Emblem Socket
+                    ZStack {
+                        Circle()
+                            .fill(achievement.isUnlocked ? tierColor.opacity(0.16) : PastelTheme.cardSurfaceSubtle)
+                            .frame(width: 40, height: 40)
+                            .overlay(
+                                Circle().stroke(tierColor.opacity(achievement.isUnlocked ? 0.35 : 0.12), lineWidth: 1)
+                            )
+
+                        Image(systemName: achievement.icon)
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundStyle(achievement.isUnlocked ? tierColor : PastelTheme.textTertiary)
+                    }
+
+                    Spacer(minLength: 2)
+
+                    // Bottom: Title & Progress Status
+                    VStack(spacing: 2) {
+                        Text(achievement.title)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(achievement.isUnlocked ? PastelTheme.textPrimary : PastelTheme.textSecondary)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.75)
+                            .frame(height: 30)
+
+                        Text(achievement.progress.isEmpty ? (achievement.isUnlocked ? "Разблокировано" : "В процессе") : achievement.progress)
+                            .font(.system(size: 9, weight: .semibold, design: .rounded))
+                            .foregroundStyle(achievement.isUnlocked ? PastelTheme.pastelSage : PastelTheme.textTertiary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
                     }
                 }
-
-                ZStack {
-                    Circle()
-                        .fill(achievement.isUnlocked ? tierColor.opacity(0.15) : PastelTheme.cardSurfaceSubtle)
-                        .frame(width: 44, height: 44)
-
-                    Image(systemName: achievement.icon)
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(achievement.isUnlocked ? tierColor : PastelTheme.textTertiary)
-                }
-                .padding(.vertical, 4)
-
-                Text(achievement.title)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(achievement.isUnlocked ? PastelTheme.textPrimary : PastelTheme.textSecondary)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .frame(height: 34)
-
-                Text(achievement.progress.isEmpty ? (achievement.isUnlocked ? "Получено" : "В процессе") : achievement.progress)
-                    .font(.system(size: 10, weight: .semibold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textTertiary)
-                    .lineLimit(1)
+                .padding(10)
             }
-            .padding(12)
-            .background(isSelected ? PastelTheme.cardSurfaceSubtle : PastelTheme.cardSurface)
+            .frame(height: 128)
             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(isSelected ? tierColor : (achievement.isUnlocked ? tierColor.opacity(0.3) : PastelTheme.cardBorder), lineWidth: isSelected ? 2 : 1)
+                    .stroke(
+                        isSelected ? tierColor : (achievement.isUnlocked ? tierColor.opacity(0.38) : PastelTheme.cardBorder),
+                        lineWidth: isSelected ? 2 : 1
+                    )
             )
+            .shadow(
+                color: isSelected ? tierColor.opacity(0.35) : Color.black.opacity(isDepressed ? 0.2 : 0.45),
+                radius: isDepressed ? 2 : (isSelected ? 10 : 5),
+                y: isDepressed ? 1 : 4
+            )
+            // Physical Pressure Plate Depression Motion
+            .offset(y: hasPavedScreen ? (isDepressed ? 3.5 : 0) : 32)
+            .scaleEffect(hasPavedScreen ? (isDepressed ? 0.96 : 1.0) : 0.82)
+            .opacity(hasPavedScreen ? 1.0 : 0.0)
+            .animation(.spring(response: 0.44, dampingFraction: 0.76).delay(delay), value: hasPavedScreen)
+            .animation(.spring(response: 0.22, dampingFraction: 0.75), value: isDepressed)
         }
         .buttonStyle(.plain)
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.35)
-                .onEnded { _ in onLongPress() }
-        )
+    }
+
+    private var cornerScrews: some View {
+        VStack {
+            HStack {
+                Circle().fill(PastelTheme.cardBorder.opacity(0.4)).frame(width: 3, height: 3)
+                Spacer()
+                Circle().fill(PastelTheme.cardBorder.opacity(0.4)).frame(width: 3, height: 3)
+            }
+            Spacer()
+            HStack {
+                Circle().fill(PastelTheme.cardBorder.opacity(0.4)).frame(width: 3, height: 3)
+                Spacer()
+                Circle().fill(PastelTheme.cardBorder.opacity(0.4)).frame(width: 3, height: 3)
+            }
+        }
+        .padding(6)
     }
 }
 
@@ -761,13 +1049,10 @@ private struct AchievementInspectionCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         Text(achievement.tier.name)
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundStyle(tierColor)
-
-                        Text("·")
-                            .foregroundStyle(PastelTheme.textTertiary)
 
                         Text(achievement.isUnlocked ? "Награда получена" : "Условие не выполнено")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
