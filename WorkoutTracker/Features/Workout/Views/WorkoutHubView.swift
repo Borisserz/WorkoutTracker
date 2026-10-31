@@ -474,8 +474,8 @@ struct WorkoutHubView: View {
                     }
 
                     if isToday {
-                        Text("СЕГОДНЯ")
-                            .font(.system(size: 8, weight: .black, design: .rounded))
+                        Text("Сегодня")
+                            .font(.system(size: 8, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelAmber)
                     } else {
                         Text(" ")
@@ -739,14 +739,17 @@ struct WorkoutHubView: View {
         switch group.lowercased() {
         case "chest": return "Грудь"
         case "back", "upper-back", "lats", "lower-back": return "Спина"
-        case "legs", "quadriceps", "hamstring", "gluteal", "quads", "glutes": return "Ноги"
+        case "legs", "quadriceps", "hamstring", "hamstrings", "gluteal", "quads", "glutes": return "Ноги"
         case "shoulders", "deltoids": return "Плечи"
         case "arms", "forearm", "forearms": return "Руки"
         case "biceps": return "Бицепс"
         case "triceps": return "Трицепс"
         case "calves": return "Икры"
         case "core", "abs", "obliques": return "Кор"
-        case "trapezius": return "Трапеции"
+        case "trapezius", "traps": return "Трапеции"
+        case "adductors": return "Приводящие"
+        case "abductors": return "Отводящие"
+        case "neck": return "Шея"
         default: return LocalizationHelper.shared.translateName(group)
         }
     }
@@ -1169,14 +1172,14 @@ struct WorkoutHubView: View {
                         .foregroundStyle(PastelTheme.textPrimary)
                         .lineLimit(1)
 
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         Text(muscles)
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
 
-                        Text("•")
-                            .font(.caption2)
-                            .foregroundStyle(PastelTheme.textTertiary)
+                        Rectangle()
+                            .fill(PastelTheme.cardBorder)
+                            .frame(width: 1, height: 10)
 
                         Text(duration)
                             .font(.system(size: 12, weight: .medium))
@@ -1539,11 +1542,10 @@ private struct ActiveWorkoutResumeCard: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 5) {
                 // Designer status row: clean sentence case + stopwatch timer pill
-                HStack(alignment: .center, spacing: 8) {
-                    Text("Идет тренировка")
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                HStack(alignment: .center, spacing: 6) {
+                    Text("Активна")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
-                        .lineLimit(1)
 
                     // Minimal stopwatch timer capsule strictly on ONE line
                     HStack(spacing: 4) {

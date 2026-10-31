@@ -303,8 +303,8 @@ struct WorkoutDetailContentView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 16, weight: .bold))
-                        Text("ЗАКРЫТЬ СЕТ \(pending.setIndex) (\(formatSetWeightReps(pending.set))) • 1-ТАП")
-                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        Text("Закрыть сет \(pending.setIndex) (\(formatSetWeightReps(pending.set)))")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
                     }
@@ -323,8 +323,8 @@ struct WorkoutDetailContentView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "flag.checkered.circle.fill")
                             .font(.system(size: 16, weight: .bold))
-                        Text("ВСЕ СЕТЫ ЗАВЕРШЕНЫ • ФИНИШ")
-                            .font(.system(size: 14, weight: .heavy, design: .rounded))
+                        Text("Все сеты закрыты: Завершить")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     }
@@ -349,12 +349,12 @@ struct WorkoutDetailContentView: View {
                     if timerManager.isRestTimerActive {
                         let mins = timerManager.restTimeRemaining / 60
                         let secs = timerManager.restTimeRemaining % 60
-                        Text(String(format: "%02d:%02d Отдых • Пропустить", mins, secs))
+                        Text(String(format: "%02d:%02d Отдых — Пропустить", mins, secs))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     } else {
-                        Text("01:45 Отдых • Пропустить")
+                        Text("01:45 Отдых — Пропустить")
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)

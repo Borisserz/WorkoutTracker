@@ -343,10 +343,6 @@ struct HistoryView: View {
                                 }
                             } header: {
                                 HStack(alignment: .center, spacing: 8) {
-                                    Circle()
-                                        .fill(PastelTheme.pastelSage)
-                                        .frame(width: 7, height: 7)
-
                                     Text(group.title)
                                         .font(.headline)
                                         .foregroundStyle(PastelTheme.textPrimary)
@@ -354,14 +350,10 @@ struct HistoryView: View {
                                     Spacer()
 
                                     let tons = group.totalVolume / 1000.0
-                                    HStack(spacing: 5) {
+                                    HStack(spacing: 6) {
                                         Text("\(group.workouts.count) сес.")
                                             .font(.caption2.bold())
                                             .foregroundStyle(PastelTheme.pastelSage)
-
-                                        Text("·")
-                                            .font(.caption2)
-                                            .foregroundStyle(PastelTheme.textTertiary)
 
                                         Text("\(String(format: "%.1f", tons)) т")
                                             .font(.caption2.bold())
@@ -418,20 +410,14 @@ private struct HistoryHeaderView: View {
                         .foregroundStyle(PastelTheme.textPrimary)
 
                     if totalCount > 0 {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(PastelTheme.pastelSage)
-                                .frame(width: 6, height: 6)
-
-                            Text("\(totalCount)")
-                                .font(.caption.bold())
-                                .foregroundStyle(PastelTheme.pastelSage)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(PastelTheme.cardSurface)
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                        Text("\(totalCount)")
+                            .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
+                            .foregroundStyle(PastelTheme.pastelSage)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 3)
+                            .background(PastelTheme.cardSurface)
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                     }
                 }
 
@@ -504,12 +490,12 @@ private struct HistoryHeroBentoCard: View {
 
                 // Athletic status badge
                 HStack(spacing: 5) {
-                    Circle()
-                        .fill(PastelTheme.pastelSage)
-                        .frame(width: 6, height: 6)
+                    Image(systemName: workouts.isEmpty ? "moon.fill" : "chart.line.uptrend.xyaxis")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(PastelTheme.pastelSage)
 
                     Text(workouts.isEmpty ? "Отдых" : "Активный прогресс")
-                        .font(.caption2.bold())
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
                 }
                 .padding(.horizontal, 10)
@@ -729,9 +715,9 @@ private struct PastelWorkoutCard: View {
 
                 if workout.isActive {
                     HStack(spacing: 4) {
-                        Circle()
-                            .fill(PastelTheme.pastelSage)
-                            .frame(width: 6, height: 6)
+                        Image(systemName: "bolt.fill")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
 
                         Text("В процессе")
                             .font(.system(size: 10, weight: .bold))
@@ -1017,6 +1003,7 @@ private struct BestWorkoutReplayCard: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
 
                 Spacer()
@@ -1057,7 +1044,7 @@ private struct BestWorkoutReplayCard: View {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .frame(width: 170)
+        .frame(width: 185)
         .background(PastelTheme.cardSurfaceSubtle)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
@@ -1083,6 +1070,7 @@ private struct PresetReplayCard: View {
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                 }
 
                 Spacer()
@@ -1112,7 +1100,7 @@ private struct PresetReplayCard: View {
             .buttonStyle(.plain)
         }
         .padding(12)
-        .frame(width: 170)
+        .frame(width: 185)
         .background(PastelTheme.cardSurfaceSubtle)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(

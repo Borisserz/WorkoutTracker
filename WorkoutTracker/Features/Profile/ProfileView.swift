@@ -518,15 +518,16 @@ struct AchievementsFolderButton: View {
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    HStack(spacing: 6) {
+                    HStack(spacing: 8) {
                         Text("\(unlockedCount) из \(achievements.count) получено")
                             .font(.system(size: 12, weight: .semibold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelSage)
 
-                        Text("·")
-                            .foregroundStyle(PastelTheme.textTertiary)
+                        Rectangle()
+                            .fill(PastelTheme.cardBorder)
+                            .frame(width: 1, height: 10)
 
-                        Text("Удерживайте для деталей")
+                        Text("Подробнее")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }

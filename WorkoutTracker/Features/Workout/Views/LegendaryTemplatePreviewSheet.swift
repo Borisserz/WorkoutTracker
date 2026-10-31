@@ -147,7 +147,9 @@ struct LegendaryTemplatePreviewSheet: View {
                                                             Text("\(exercise.sets)").foregroundColor(.white)
                                                             Text("sets")
                                                         }
-                                                        Text("•").foregroundColor(.white.opacity(0.3))
+                                                        Rectangle()
+                                                            .fill(PastelTheme.cardBorder)
+                                                            .frame(width: 1, height: 10)
                                                         HStack(spacing: 4) {
                                                             Text("\(exercise.reps)").foregroundColor(.white)
                                                             Text("reps")

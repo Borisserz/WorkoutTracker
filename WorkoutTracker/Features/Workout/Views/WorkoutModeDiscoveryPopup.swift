@@ -128,7 +128,7 @@ struct WorkoutModeDiscoveryPopup: View {
                 HStack(spacing: 6) {
                     Image(systemName: "hand.tap.fill")
                         .font(.system(size: 11, weight: .medium))
-                    Text("Наведите или выберите режим • Запуск по нажатию")
+                    Text("Наведите или выберите режим. Запуск по нажатию")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textTertiary)

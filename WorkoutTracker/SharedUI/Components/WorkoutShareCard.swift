@@ -418,7 +418,7 @@ struct WorkoutShareCard: View {
 
                     Spacer()
 
-                    Text("\(completedCount) сетов • \(Int(maxWeight)) кг")
+                    Text("\(completedCount) сетов, \(Int(maxWeight)) кг")
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
                         .foregroundColor(PastelTheme.textSecondary)
                 }

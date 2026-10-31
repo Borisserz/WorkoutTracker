@@ -108,10 +108,6 @@ struct PremiumRoutineCard: View {
                     .background(PastelTheme.pastelSage.opacity(0.12))
                     .clipShape(Capsule())
 
-                Text("•")
-                    .font(.caption2)
-                    .foregroundStyle(PastelTheme.textTertiary)
-
                 Text(exercisesPreviewText)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(PastelTheme.textSecondary)

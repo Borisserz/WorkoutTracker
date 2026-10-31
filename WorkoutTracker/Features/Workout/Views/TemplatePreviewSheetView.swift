@@ -66,12 +66,15 @@ struct TemplatePreviewSheetView: View {
         for char in item.title.utf8 {
             hash = (hash &<< 5) &+ hash &+ Int(char)
         }
-        let hashAbs = abs(hash)
-        let hue1 = Double(hashAbs % 360) / 360.0
-        let hue2 = Double((hashAbs + 45) % 360) / 360.0
-        let c1 = Color(hue: hue1, saturation: 0.8, brightness: colorScheme == .dark ? 0.7 : 0.9)
-        let c2 = Color(hue: hue2, saturation: 0.9, brightness: colorScheme == .dark ? 0.4 : 0.8)
-        return [c1, c2]
+        let palettes: [[Color]] = [
+            [PastelTheme.pastelSage, PastelTheme.pastelSage.opacity(0.75)],
+            [PastelTheme.pastelAmber, PastelTheme.pastelAmber.opacity(0.75)],
+            [PastelTheme.pastelOat, PastelTheme.pastelOat.opacity(0.8)],
+            [PastelTheme.pastelLavender, PastelTheme.pastelLavender.opacity(0.75)],
+            [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.75)]
+        ]
+        let index = abs(hash) % palettes.count
+        return palettes[index]
     }
     
     private var totalSets: Int {
@@ -327,12 +330,13 @@ struct TemplatePreviewSheetView: View {
                                     .foregroundColor(colorScheme == .dark ? .white.opacity(0.7) : .gray)
 
                                     if exercise.type == .strength && exercise.firstSetWeight > 0 {
-                                        Text("•")
-                                            .foregroundColor(.gray.opacity(0.5))
+                                        Rectangle()
+                                            .fill(PastelTheme.cardBorder)
+                                            .frame(width: 1, height: 10)
                                         let weight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
                                         Text("\(LocalizationHelper.shared.formatFlexible(weight)) \(unitsManager.weightUnitString())")
-                                            .font(.system(size: 13, weight: .black, design: .rounded))
-                                            .foregroundStyle(LinearGradient(colors: gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing))
+                                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                                            .foregroundStyle(PastelTheme.pastelOat)
                                     }
                                 }
                             }
