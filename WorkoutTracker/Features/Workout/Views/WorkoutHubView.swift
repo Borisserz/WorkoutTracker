@@ -100,77 +100,9 @@ struct WorkoutHubView: View {
         userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "Today's Plan" && filterPreset($0) }
     }
 
-    private var fallbackLegendaryRoutines: [LegendaryRoutine] {
-        [
-            LegendaryRoutine(
-                title: "ATHLEAN-X: XERO",
-                eraTitle: "8 Weeks, Program 1",
-                shortVibe: "No equipment, maximum definition",
-                loreDescription: "Jeff Cavaliere's science-backed bodyweight program.",
-                gradientColors: [PastelTheme.pastelSlate, PastelTheme.pastelOat],
-                difficulty: .intermediate,
-                estimatedMinutes: 45,
-                benefits: ["Definition", "Endurance", "Core"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: 90, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Pull-ups", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Dips", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 12, recommendedWeightKg: nil, restSeconds: 60)
-                ]
-            ),
-            LegendaryRoutine(
-                title: "ATHLEAN-X: EOP...",
-                eraTitle: "8 Weeks, Program 2",
-                shortVibe: "Elite hypertrophy and strength",
-                loreDescription: "Progressive overload protocol for maximum muscle growth.",
-                gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach],
-                difficulty: .advanced,
-                estimatedMinutes: 60,
-                benefits: ["Strength", "Mass", "V-Taper"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Barbell Deadlift", muscleGroup: "Back", type: "Strength", sets: 3, reps: 6, recommendedWeightKg: 120, restSeconds: 120),
-                    GeneratedExerciseDTO(name: "Overhead Press", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 60, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Barbell Squat", muscleGroup: "Legs", type: "Strength", sets: 4, reps: 8, recommendedWeightKg: 100, restSeconds: 120)
-                ]
-            ),
-            LegendaryRoutine(
-                title: "Arnold's Golden Split",
-                eraTitle: "Golden Era",
-                shortVibe: "High volume, classic V-taper physique",
-                loreDescription: "Arnold's legendary split for chest, back, and arm hypertrophy.",
-                gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelOat],
-                difficulty: .advanced,
-                estimatedMinutes: 75,
-                benefits: ["V-Taper", "Volume", "Mass"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Barbell Bench Press - Medium Grip", muscleGroup: "Chest", type: "Strength", sets: 5, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Incline Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Wide-Grip Lat Pulldown", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Bent-Over Barbell Row", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Dumbbell Bicep Curl", muscleGroup: "Arms", type: "Hypertrophy", sets: 3, reps: 12, recommendedWeightKg: nil, restSeconds: 60)
-                ]
-            ),
-            LegendaryRoutine(
-                title: "Mike Mentzer Heavy Duty",
-                eraTitle: "High Intensity Era",
-                shortVibe: "Peak intensity, failure sets",
-                loreDescription: "Mike Mentzer's HIT system: one all-out set to absolute muscular failure.",
-                gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
-                difficulty: .advanced,
-                estimatedMinutes: 45,
-                benefits: ["HIT", "Intensity", "Strength"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Incline Dumbbell Press", muscleGroup: "Chest", type: "Strength", sets: 2, reps: 8, recommendedWeightKg: nil, restSeconds: 120),
-                    GeneratedExerciseDTO(name: "Dumbbell Flyes", muscleGroup: "Chest", type: "Hypertrophy", sets: 1, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Barbell Deadlift", muscleGroup: "Back", type: "Strength", sets: 2, reps: 6, recommendedWeightKg: nil, restSeconds: 120),
-                    GeneratedExerciseDTO(name: "Pullups", muscleGroup: "Back", type: "Bodyweight", sets: 2, reps: 10, recommendedWeightKg: nil, restSeconds: 90)
-                ]
-            )
-        ]
-    }
-
     private var legendaryPrograms: [LegendaryRoutine] {
         let routines = FirestoreProgramService.shared.legendaryRoutines
-        return routines.isEmpty ? fallbackLegendaryRoutines : routines
+        return routines.isEmpty ? LegendaryFallbackCatalog.routines : routines
     }
 
     var body: some View {

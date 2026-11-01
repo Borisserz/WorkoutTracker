@@ -27,17 +27,23 @@ struct WorkoutGenerationService: Sendable {
            recoveryStatus: [MuscleRecoveryStatus],
            catalog: [String: [String]]
        ) -> ProactiveWorkoutProposal? {
+           // Honesty: unknown recovery is "not measured", never invent 100% / Heavy Legs.
+           guard !recoveryStatus.isEmpty else { return nil }
 
-           let getRec = { (slug: String) -> Int in
-               recoveryStatus.first(where: { $0.muscleGroup == slug })?.recoveryPercentage ?? 100
+           let getRec = { (slug: String) -> Int? in
+               recoveryStatus.first(where: { $0.muscleGroup == slug })?.recoveryPercentage
            }
 
-           let chestRec = getRec("chest")
-           let triRec = getRec("triceps")
-           let backRec = getRec("upper-back")
-           let biRec = getRec("biceps")
-           let quadRec = getRec("quadriceps")
-           let hamRec = getRec("hamstring")
+           guard
+               let chestRec = getRec("chest"),
+               let triRec = getRec("triceps"),
+               let backRec = getRec("upper-back"),
+               let biRec = getRec("biceps"),
+               let quadRec = getRec("quadriceps"),
+               let hamRec = getRec("hamstring")
+           else {
+               return nil
+           }
 
            var message = ""
            var exercises: [GeneratedExerciseDTO] = []

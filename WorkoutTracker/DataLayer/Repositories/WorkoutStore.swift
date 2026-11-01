@@ -135,25 +135,31 @@ actor WorkoutStore: WorkoutStoreProtocol {
             throw WorkoutRepositoryError.modelNotFound
         }
 
-        if let uStats = (try? modelContext.fetch(FetchDescriptor<UserStats>()))?.first {
-            uStats.totalWorkouts = max(0, uStats.totalWorkouts - 1)
-            uStats.totalVolume = max(0, uStats.totalVolume - workout.totalStrengthVolume)
-            uStats.totalDistance = max(0, uStats.totalDistance - workout.totalCardioDistance)
+        // Only reverse aggregates when processCompletedWorkout already ran (sets durationSeconds).
+        // Unfinished / snackbar-pending cancels must not under-count lifetime stats.
+        let wasProcessed = workout.endTime != nil && workout.durationSeconds > 0
 
-            let hour = Calendar.current.component(.hour, from: workout.date)
-            if hour < 9 { uStats.earlyWorkouts = max(0, uStats.earlyWorkouts - 1) }
-            if hour >= 20 { uStats.nightWorkouts = max(0, uStats.nightWorkouts - 1) }
-        }
+        if wasProcessed {
+            if let uStats = (try? modelContext.fetch(FetchDescriptor<UserStats>()))?.first {
+                uStats.totalWorkouts = max(0, uStats.totalWorkouts - 1)
+                uStats.totalVolume = max(0, uStats.totalVolume - workout.totalStrengthVolume)
+                uStats.totalDistance = max(0, uStats.totalDistance - workout.totalCardioDistance)
 
-        let exStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<ExerciseStat>())) ?? []).map { ($0.exerciseName, $0) })
-        let mStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<MuscleStat>())) ?? []).map { ($0.muscleName, $0) })
+                let hour = Calendar.current.component(.hour, from: workout.date)
+                if hour < 9 { uStats.earlyWorkouts = max(0, uStats.earlyWorkouts - 1) }
+                if hour >= 20 { uStats.nightWorkouts = max(0, uStats.nightWorkouts - 1) }
+            }
 
-        for exercise in workout.exercises {
-            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
-            for ex in targets {
-                if let exStat = exStatsDict[ex.name] { exStat.totalCount = max(0, exStat.totalCount - 1) }
-                if ex.type != .cardio && ex.type != .duration {
-                    if let mStat = mStatsDict[ex.muscleGroup] { mStat.totalCount = max(0, mStat.totalCount - 1) }
+            let exStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<ExerciseStat>())) ?? []).map { ($0.exerciseName, $0) })
+            let mStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<MuscleStat>())) ?? []).map { ($0.muscleName, $0) })
+
+            for exercise in workout.exercises {
+                let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+                for ex in targets {
+                    if let exStat = exStatsDict[ex.name] { exStat.totalCount = max(0, exStat.totalCount - 1) }
+                    if ex.type != .cardio && ex.type != .duration {
+                        if let mStat = mStatsDict[ex.muscleGroup] { mStat.totalCount = max(0, mStat.totalCount - 1) }
+                    }
                 }
             }
         }
@@ -222,7 +228,8 @@ actor WorkoutStore: WorkoutStoreProtocol {
             }
 
             if workout.endTime == nil { workout.endTime = Date() }
-            workout.durationSeconds = Int(workout.endTime!.timeIntervalSince(workout.date))
+            // Floor at 1s so delete can tell "processed" apart from finish-snackbar (endTime set, duration still 0).
+            workout.durationSeconds = max(1, Int(workout.endTime!.timeIntervalSince(workout.date)))
 
             var totalEffort = 0
             var exercisesWithCompletedSets = 0

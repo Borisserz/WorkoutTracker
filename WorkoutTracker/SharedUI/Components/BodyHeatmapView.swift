@@ -12,7 +12,7 @@ struct BodyHeatmapView: View {
     let countLabel: String
     let showLabels: Bool
     var selectedMuscleSlug: String? = nil
-    var onMuscleTapped: ((MuscleGroup, Int) -> Void)? = nil
+    var onMuscleTapped: ((MuscleGroup, Int?) -> Void)? = nil
 
     @State private var isFrontViewLocal = true
     @State private var selectedMuscle: MuscleGroup? = nil
@@ -39,7 +39,7 @@ struct BodyHeatmapView: View {
         countLabel: String = "ex.",
         showLabels: Bool = true,
         selectedMuscleSlug: String? = nil,
-        onMuscleTapped: ((MuscleGroup, Int) -> Void)? = nil
+        onMuscleTapped: ((MuscleGroup, Int?) -> Void)? = nil
     ) {
         self.muscleIntensities = muscleIntensities
         self.rawMuscleCounts = rawMuscleCounts
@@ -103,8 +103,11 @@ struct BodyHeatmapView: View {
 
                         Group {
                             if isRecoveryMode {
-                                let percent = muscleIntensities[muscle.slug] ?? 100
-                                Text("\(locName): \(percent)% restored")
+                                if let percent = muscleIntensities[muscle.slug] {
+                                    Text("\(locName): \(percent)% restored")
+                                } else {
+                                    Text("\(locName): —")
+                                }
                             } else {
                                 let count = rawMuscleCounts?[muscle.slug] ?? 0
                                 let locLabel = NSLocalizedString(countLabel, comment: "")
@@ -226,11 +229,11 @@ struct BodyHeatmapView: View {
 
         let isSelected = (selectedMuscle?.id == muscle.id) || (selectedMuscleSlug == muscle.slug)
         let themeColor = activeIsFront ? Color.blue : Color.red
-        let percent = isRecoveryMode ? (animatedIntensities[muscle.slug] ?? 100) : nil
+        let percent: Int? = isRecoveryMode ? animatedIntensities[muscle.slug] : nil
 
         return InteractiveMuscleTag(
             name: muscle.name,
-            percentage: percent, 
+            percentage: percent,
             scale: scale,
             centerX: centerX,
             centerY: centerY,
@@ -250,8 +253,7 @@ struct BodyHeatmapView: View {
             selectedMuscle = isCurrentlySelected ? nil : muscle
         }
 
-        let currentVal = animatedIntensities[muscle.slug] ?? 100
-        onMuscleTapped?(muscle, currentVal)
+        onMuscleTapped?(muscle, animatedIntensities[muscle.slug])
     }
 
     private func getMuscles(isFront: Bool) -> [MuscleGroup] {
@@ -309,8 +311,10 @@ struct InteractiveMuscleTag: View {
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        let pct = percentage ?? 100
-        let indicatorColor: Color = pct >= 80 ? PastelTheme.pastelSage : (pct >= 55 ? PastelTheme.pastelAmber : PastelTheme.pastelPeach)
+        let indicatorColor: Color = {
+            guard let pct = percentage else { return PastelTheme.textSecondary }
+            return pct >= 80 ? PastelTheme.pastelSage : (pct >= 55 ? PastelTheme.pastelAmber : PastelTheme.pastelPeach)
+        }()
 
         Button {
             action()
@@ -324,7 +328,7 @@ struct InteractiveMuscleTag: View {
                     .font(.system(size: 9 / scale, weight: .semibold, design: .rounded))
                     .foregroundStyle(PastelTheme.textOnOat)
 
-                Text("\(pct)%")
+                Text(percentage.map { "\($0)%" } ?? "—")
                     .font(.system(size: 9 / scale, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textOnOat)
             }

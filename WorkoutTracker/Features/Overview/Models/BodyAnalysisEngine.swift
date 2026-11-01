@@ -93,9 +93,14 @@ enum BodyAnalysisEngine {
         // Determine Next Workout Advice based on recent muscle strain
         let advice: NextWorkoutAdvice
         if recentWorkouts.isEmpty {
-            let cnsNote = cnsScore < 0
-                ? "No accumulated training fatigue. CNS readiness has not been measured yet."
-                : "No accumulated fatigue. All muscle groups and the central nervous system are fully recovered (100%)."
+            let cnsNote: String
+            if cnsScore < 0 {
+                cnsNote = "No accumulated training fatigue. CNS readiness has not been measured yet."
+            } else if cnsScore >= 95 {
+                cnsNote = "No accumulated fatigue. Muscle groups and CNS look fully recovered."
+            } else {
+                cnsNote = "No accumulated training fatigue yet. CNS readiness is \(Int(cnsScore))% — train within that budget."
+            }
             advice = NextWorkoutAdvice(
                 recentStrainSummary: cnsNote,
                 recommendedSplitTitle: "Next session: Progressive strength training",
@@ -239,14 +244,14 @@ enum BodyAnalysisEngine {
         if !hasRecoveryData {
             targetTitle = "Moderate technique work / preferred split"
             restrictions = "Keep volume moderate until muscle recovery data is available."
-        } else if chestPct >= 85 && (recoveryDict["triceps"] ?? 100) >= 80 {
+        } else if chestPct >= 85, let tri = recoveryDict["triceps"], tri >= 80 {
             targetTitle = "Push complex (Chest, Shoulders, Triceps)"
             if lowBackPct < 75 {
                 restrictions = "Avoid spinal axial loading and weighted bends for ~18 h."
             } else {
                 restrictions = "Standard training volume. Focus on a controlled eccentric phase."
             }
-        } else if backPct >= 85 && (recoveryDict["biceps"] ?? 100) >= 80 {
+        } else if backPct >= 85, let bi = recoveryDict["biceps"], bi >= 80 {
             targetTitle = "Pull complex (Lats, Back, Biceps)"
             restrictions = "Keep a neutral lumbar spine; avoid fatiguing spinal extensors."
         } else if quadsPct >= 85 {

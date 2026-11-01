@@ -15,7 +15,7 @@ struct OverviewAnatomyCard: View {
 
     @State private var selectedMuscleSlug: String? = nil
     @State private var selectedMuscleName: String? = nil
-    @State private var selectedMusclePct: Int = 100
+    @State private var selectedMusclePct: Int? = nil
     @State private var dragRotationY: Double = 0
 
     init(
@@ -59,8 +59,11 @@ struct OverviewAnatomyCard: View {
 
     private var selectedMuscleDetailText: String {
         guard let slug = selectedMuscleSlug else { return "" }
-        let hoursRemaining = max(0, Int(Double(100 - selectedMusclePct) / 100.0 * 48.0))
-        
+        guard let pct = selectedMusclePct else {
+            return "Recovery not measured for this muscle"
+        }
+        let hoursRemaining = max(0, Int(Double(100 - pct) / 100.0 * 48.0))
+
         // Find most recent exercise targeting this group
         var lastExerciseName: String? = nil
         for workout in recentWorkouts {
@@ -74,7 +77,7 @@ struct OverviewAnatomyCard: View {
             if lastExerciseName != nil { break }
         }
 
-        if selectedMusclePct >= 95 {
+        if pct >= 95 {
             return "Fully recovered — ready for high load"
         } else if let exName = lastExerciseName {
             return "\(hoursRemaining)h to recover — last load: \(exName)"
@@ -170,6 +173,7 @@ struct OverviewAnatomyCard: View {
                             if selectedMuscleSlug == muscle.slug {
                                 selectedMuscleSlug = nil
                                 selectedMuscleName = nil
+                                selectedMusclePct = nil
                             } else {
                                 selectedMuscleSlug = muscle.slug
                                 selectedMuscleName = MuscleDisplayHelper.getDisplayName(for: muscle.slug)
@@ -254,10 +258,11 @@ struct OverviewAnatomyCard: View {
                                     if selectedMuscleSlug == slug {
                                         selectedMuscleSlug = nil
                                         selectedMuscleName = nil
+                                        selectedMusclePct = nil
                                     } else {
                                         selectedMuscleSlug = slug
                                         selectedMuscleName = name
-                                        selectedMusclePct = pct ?? -1
+                                        selectedMusclePct = pct
                                     }
                                 }
                             } label: {
@@ -293,7 +298,7 @@ struct OverviewAnatomyCard: View {
             if let name = selectedMuscleName, !isLocked {
                 HStack(alignment: .center, spacing: 12) {
                     Circle()
-                        .fill(muscleColor(for: selectedMusclePct))
+                        .fill(selectedMusclePct.map(muscleColor(for:)) ?? PastelTheme.textSecondary)
                         .frame(width: 10, height: 10)
 
                     VStack(alignment: .leading, spacing: 3) {
@@ -302,12 +307,12 @@ struct OverviewAnatomyCard: View {
                                 .font(.subheadline.bold())
                                 .foregroundStyle(PastelTheme.textPrimary)
                             Spacer()
-                            Text("\(selectedMusclePct)%")
+                            Text(selectedMusclePct.map { "\($0)%" } ?? "—")
                                 .font(.caption.bold())
                                 .foregroundStyle(PastelTheme.textOnOat)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 2)
-                                .background(muscleColor(for: selectedMusclePct))
+                                .background(selectedMusclePct.map(muscleColor(for:)) ?? PastelTheme.textSecondary)
                                 .clipShape(Capsule())
                         }
 

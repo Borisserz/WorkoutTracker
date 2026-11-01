@@ -142,4 +142,92 @@ final class ResidualPassTests: XCTestCase {
         let activeIDs = try await di.workoutStore.findActiveWorkoutsAndCleanup()
         XCTAssertEqual(activeIDs.count, 1, "Store must contain a single active workout")
     }
+
+    @MainActor
+    func testDeleteUnfinishedWorkoutDoesNotDecrementUserStats() async throws {
+        let (di, context) = try makeInMemoryDI()
+        let stats = UserStats(totalWorkouts: 5, totalVolume: 1000, totalDistance: 0)
+        context.insert(stats)
+        try context.save()
+
+        let pid = try await di.workoutStore.createWorkout(title: "Ghost", fromPresetID: nil, isAIGenerated: false)
+        let workout = try XCTUnwrap(context.model(for: pid) as? Workout)
+        XCTAssertNil(workout.endTime)
+
+        try await di.workoutStore.deleteWorkout(id: workout.id)
+
+        let refreshed = try XCTUnwrap((try context.fetch(FetchDescriptor<UserStats>())).first)
+        XCTAssertEqual(refreshed.totalWorkouts, 5, "Canceling an unfinished session must not under-count lifetime stats")
+        XCTAssertEqual(refreshed.totalVolume, 1000, accuracy: 0.001)
+    }
+
+    @MainActor
+    func testDeleteProcessedWorkoutDecrementsUserStats() async throws {
+        let (di, context) = try makeInMemoryDI()
+        let stats = UserStats(totalWorkouts: 2, totalVolume: 0, totalDistance: 0)
+        context.insert(stats)
+        try context.save()
+
+        let pid = try await di.workoutStore.createWorkout(title: "Done", fromPresetID: nil, isAIGenerated: false)
+        let workout = try XCTUnwrap(context.model(for: pid) as? Workout)
+        let exercise = Exercise(name: "Squat", muscleGroup: "Legs", type: .strength)
+        context.insert(exercise)
+        let set = WorkoutSet(index: 0, weight: 100, reps: 5, isCompleted: true)
+        context.insert(set)
+        exercise.addSafeSet(set)
+        workout.exercises = [exercise]
+        try context.save()
+
+        try await di.workoutStore.processCompletedWorkout(workoutID: pid)
+        let afterProcess = try XCTUnwrap((try context.fetch(FetchDescriptor<UserStats>())).first)
+        XCTAssertEqual(afterProcess.totalWorkouts, 3)
+
+        try await di.workoutStore.deleteWorkout(id: workout.id)
+        let afterDelete = try XCTUnwrap((try context.fetch(FetchDescriptor<UserStats>())).first)
+        XCTAssertEqual(afterDelete.totalWorkouts, 2, "Deleting a processed workout should reverse its stats contribution")
+    }
+
+    @MainActor
+    func testCreateWorkoutBlockedWhileFinishTransitionPending() async throws {
+        let (di, _) = try makeInMemoryDI()
+        di.workoutService.beginFinishTransition()
+        defer { di.workoutService.endFinishTransition() }
+
+        let id = await di.workoutService.createWorkout(title: "During undo window", presetID: nil, isAIGenerated: false)
+        XCTAssertNil(id, "Finish undo window must block a second active session")
+    }
+
+    func testProactiveProposalReturnsNilWhenRecoveryEmpty() {
+        let proposal = WorkoutGenerationService.generateProactiveProposal(
+            recoveryStatus: [],
+            catalog: ["Legs": ["Squat"]]
+        )
+        XCTAssertNil(proposal, "Empty recovery must not invent 100% and emit Heavy Legs")
+    }
+
+    func testLegendaryFallbackXEROIsBodyweightOnly() throws {
+        let xero = LegendaryFallbackCatalog.routines.first { $0.title.contains("XERO") }
+        let routine = try XCTUnwrap(xero)
+        XCTAssertTrue(
+            routine.shortVibe.localizedCaseInsensitiveContains("no equipment")
+            || routine.loreDescription.localizedCaseInsensitiveContains("bodyweight")
+        )
+        for exercise in routine.exercises {
+            let name = exercise.name.lowercased()
+            XCTAssertFalse(name.contains("barbell"), "XERO offline fallback must not list barbell lifts")
+            XCTAssertNil(exercise.recommendedWeightKg, "XERO offline fallback must not invent loaded weights")
+        }
+    }
+
+    @MainActor
+    private func makeInMemoryDI() throws -> (DIContainer, ModelContext) {
+        let schema = Schema([
+            Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
+            ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
+            AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
+        ])
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        return (DIContainer(modelContainer: container), ModelContext(container))
+    }
 }

@@ -24,6 +24,16 @@ final class WorkoutService {
     private let liveActivityManager: LiveActivityManager
     /// Serializes create/start so two awaits cannot both pass `hasActiveWorkout` (TOCTOU).
     private var startInFlight = false
+    /// Blocks new starts during finish snackbar undo window (endTime set but session not committed).
+    private var finishTransitionDepth = 0
+
+    func beginFinishTransition() {
+        finishTransitionDepth += 1
+    }
+
+    func endFinishTransition() {
+        finishTransitionDepth = max(0, finishTransitionDepth - 1)
+    }
 
     init(workoutStore: WorkoutStoreProtocol,
          analyticsService: AnalyticsService,
@@ -242,7 +252,7 @@ final class WorkoutService {
     }
 
     func createWorkout(title: String, presetID: PersistentIdentifier?, isAIGenerated: Bool, exerciseCount: Int = 0, estimatedDuration: Int = 0) async -> PersistentIdentifier? {
-        if startInFlight {
+        if startInFlight || finishTransitionDepth > 0 {
             appState.showError(
                 title: String(localized: "Workout in progress"),
                 message: String(localized: "Finish or delete the current workout before starting another.")
@@ -277,7 +287,7 @@ final class WorkoutService {
 
     @discardableResult
     func startGeneratedWorkout(_ generated: GeneratedWorkoutDTO, source: String = "ai_builder") async -> PersistentIdentifier? {
-        if startInFlight {
+        if startInFlight || finishTransitionDepth > 0 {
             appState.showError(
                 title: String(localized: "Workout in progress"),
                 message: String(localized: "Finish or delete the current workout before starting another.")
@@ -317,6 +327,7 @@ final class WorkoutService {
     }
 
     func hasActiveWorkout() async -> Bool {
+        if finishTransitionDepth > 0 { return true }
         do {
             let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
             return !activeIDs.isEmpty

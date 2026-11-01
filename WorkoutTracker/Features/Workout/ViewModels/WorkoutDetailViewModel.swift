@@ -343,6 +343,7 @@ final class WorkoutDetailViewModel {
         }
 
         workout.endTime = Date()
+        workoutService.beginFinishTransition()
 
         withAnimation {
             self.isShowingSnackbar = true
@@ -365,10 +366,12 @@ final class WorkoutDetailViewModel {
             self.isShowingSnackbar = false
         }
         workout.endTime = nil
+        workoutService.endFinishTransition()
     }
 
     private func commitFinishWorkout(workout: Workout, progressManager: ProgressManager) async {
         withAnimation { self.isShowingSnackbar = false }
+        defer { workoutService.endFinishTransition() }
 
         workoutService.stopLiveActivity()
         PhoneWatchManager.shared.sendFinishWorkoutToWatch(workoutID: workout.id.uuidString)
