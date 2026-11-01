@@ -34,8 +34,8 @@ struct WorkoutHubView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime == nil }, sort: \Workout.date, order: .reverse)
     private var activeWorkouts: [Workout]
 
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \Workout.date, order: .reverse)
-    private var finishedWorkouts: [Workout]
+    /// Cap finished sessions in memory — same window as History (400).
+    @Query private var finishedWorkouts: [Workout]
 
     // MARK: - Filter States
     @State private var searchText = ""
@@ -61,6 +61,15 @@ struct WorkoutHubView: View {
     @State private var selectedPreview: PreviewItem? = nil
     @State private var selectedLegendaryRoutine: LegendaryRoutine? = nil
     @State private var isMuscleGridExpanded: Bool = false
+
+    init() {
+        var finished = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        finished.fetchLimit = 400
+        _finishedWorkouts = Query(finished)
+    }
 
     // MARK: - Filter Logic
     private func filterPreset(_ preset: WorkoutPreset) -> Bool {

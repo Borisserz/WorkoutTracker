@@ -43416,7 +43416,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Предыдущий (%@)"
+            "value": "Ранее (%@)"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous (%@)"
           }
         }
       }
@@ -72806,6 +72812,23 @@
         }
       },
       "extractionState": "manual"
+    },
+    "Period comparison": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Period comparison"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сравнение периодов"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

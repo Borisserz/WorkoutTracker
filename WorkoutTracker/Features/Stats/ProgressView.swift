@@ -293,6 +293,8 @@ struct StatsContentView: View {
 
                             AdvancedStatsSectionView(viewModel: viewModel, userGender: userGender)
 
+                            ComparisonSectionView(viewModel: viewModel, unitsManager: unitsManager)
+
                             AllTimeResultsView(bestStats: dashboardViewModel.bestMonthStats, unitsManager: unitsManager)
                         }
                         .blur(radius: dashboardViewModel.totalWorkouts == 0 ? 15 : 0)
@@ -1447,21 +1449,21 @@ struct InteractiveStatCard: View {
 struct ComparisonSectionView: View {
     let viewModel: StatsViewModel
     let unitsManager: UnitsManager
-    @Environment(\.colorScheme) private var colorScheme
     @State private var animateChart = false
 
-    let chartGradient = LinearGradient(
-        colors: [Color(hex: "E020FF"), Color(hex: "FA64FF")],
-        startPoint: .bottom,
-        endPoint: .top
-    )
+    private var chartGradient: LinearGradient {
+        LinearGradient(
+            colors: [PastelTheme.pastelSage, PastelTheme.pastelOat.opacity(0.85)],
+            startPoint: .bottom,
+            endPoint: .top
+        )
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-
-            Text("Detailed Comparison")
-                .font(.title3).bold()
-                .foregroundColor(colorScheme == .dark ? .white : .black)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Period comparison")
+                .font(.system(size: 17, weight: .bold, design: .rounded))
+                .foregroundStyle(PastelTheme.textPrimary)
 
             VStack(spacing: 0) {
                 if viewModel.chartData.isEmpty {
@@ -1471,10 +1473,13 @@ struct ComparisonSectionView: View {
                         message: "Finish your first workout to unlock detailed analytics and charts.",
                         iconColor: PastelTheme.pastelSlate
                     )
+                    .padding(.vertical, 8)
                 } else {
                     Chart {
                         ForEach(viewModel.chartData) { item in
-                            let displayVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(item.value) : item.value
+                            let displayVal = viewModel.selectedMetric == .volume
+                                ? unitsManager.convertFromKilograms(item.value)
+                                : item.value
 
                             BarMark(
                                 x: .value("Period", item.label),
@@ -1488,13 +1493,14 @@ struct ComparisonSectionView: View {
                     .animation(.spring(response: 0.6, dampingFraction: 0.7), value: animateChart)
                     .chartYAxis(.hidden)
                     .chartXAxis {
-                        AxisMarks { value in
+                        AxisMarks { _ in
                             AxisValueLabel(centered: true)
-                                .foregroundStyle(Color.gray)
-                                .font(.caption2)
+                                .foregroundStyle(PastelTheme.textTertiary)
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
                         }
                     }
-                    .padding(20)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 18)
                     .onAppear {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             animateChart = true
@@ -1502,54 +1508,82 @@ struct ComparisonSectionView: View {
                     }
                 }
 
-                Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
-
-                if let first = viewModel.chartData.first, let last = viewModel.chartData.last, viewModel.chartData.count > 1 {
-                    let fVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(first.value) : first.value
-                    let lVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(last.value) : last.value
-                    let unitStr = viewModel.selectedMetric == .volume ? unitsManager.weightUnitString() : (viewModel.selectedMetric == .time ? "min" : (viewModel.selectedMetric == .distance ? "km" : ""))
+                if let first = viewModel.chartData.first,
+                   let last = viewModel.chartData.last,
+                   viewModel.chartData.count > 1 {
+                    let fVal = viewModel.selectedMetric == .volume
+                        ? unitsManager.convertFromKilograms(first.value) : first.value
+                    let lVal = viewModel.selectedMetric == .volume
+                        ? unitsManager.convertFromKilograms(last.value) : last.value
+                    let unitStr: String = {
+                        switch viewModel.selectedMetric {
+                        case .volume: return unitsManager.weightUnitString()
+                        case .time: return "min"
+                        case .distance: return "km"
+                        default: return ""
+                        }
+                    }()
 
                     let diff = lVal - fVal
-                    let pct = fVal == 0 ? (lVal > 0 ? 100 : 0) : (diff / fVal) * 100.0
+                    let pct = fVal == 0 ? (lVal > 0 ? 100.0 : 0.0) : (diff / fVal) * 100.0
+                    let deltaColor = pct >= 0 ? PastelTheme.pastelSage : PastelTheme.pastelPeach
 
-                    HStack {
+                    Divider()
+                        .background(PastelTheme.cardBorder)
+
+                    HStack(alignment: .center, spacing: 12) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Previous (\(first.label))").font(.caption).foregroundColor(.gray)
+                            Text("Previous (\(first.label))")
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundStyle(PastelTheme.textTertiary)
                             Text("\(LocalizationHelper.shared.formatFlexible(fVal)) \(unitStr)")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.textPrimary)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
 
-                        Spacer()
+                        Spacer(minLength: 4)
 
-                        VStack {
-                            Text("VS")
-                                .font(.system(size: 16, weight: .black))
-                                .foregroundColor(colorScheme == .dark ? .white.opacity(0.2) : .black.opacity(0.15))
+                        VStack(spacing: 4) {
+                            Text("vs")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .foregroundStyle(PastelTheme.textTertiary)
 
                             Text("\(pct >= 0 ? "+" : "")\(Int(pct))%")
-                                .font(.caption).bold()
-                                .foregroundColor(pct >= 0 ? .green : .red)
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(deltaColor)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(deltaColor.opacity(0.14))
+                                .clipShape(Capsule())
                         }
 
-                        Spacer()
+                        Spacer(minLength: 4)
 
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text("Current (\(last.label))").font(.caption).foregroundColor(.gray)
+                            Text("Current (\(last.label))")
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
+                                .foregroundStyle(PastelTheme.textTertiary)
                             Text("\(LocalizationHelper.shared.formatFlexible(lVal)) \(unitStr)")
-                                .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(hex: "E020FF"))
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.pastelOat)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                     }
-                    .padding(20)
+                    .padding(16)
                 }
             }
-            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
-            .cornerRadius(24)
-            .overlay(RoundedRectangle(cornerRadius: 24).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, y: 5)
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
+                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+            )
         }
-        .padding(.top, 10)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("wt.progress.comparison")
     }
 }
 
