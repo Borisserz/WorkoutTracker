@@ -1,0 +1,51 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - workout
+---
+# Phase 2: empty workout → active session → finish empty → delete ghost.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.startWorkout"
+    timeout: 20000
+
+- tapOn:
+    id: "wt.hub.startWorkout"
+
+- extendedWaitUntil:
+    visible: "Empty workout"
+    timeout: 8000
+
+- assertVisible: "Workout format"
+
+- tapOn:
+    id: "wt.discovery.startEmpty"
+
+# Confirmation alert
+- extendedWaitUntil:
+    visible: "Start"
+    timeout: 5000
+- tapOn: "Start"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.session.root"
+    timeout: 15000
+
+- assertVisible:
+    id: "wt.session.finish"
+
+- tapOn:
+    id: "wt.session.finish"
+
+# Empty workout has no sets → delete ghost (single-session hygiene)
+- extendedWaitUntil:
+    visible: "Empty Workout"
+    timeout: 8000
+- tapOn: "Delete"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 15000

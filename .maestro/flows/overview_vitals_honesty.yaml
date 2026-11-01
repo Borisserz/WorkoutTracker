@@ -1,0 +1,26 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - overview
+---
+# Phase 2: Overview chrome + CNS honesty (no invented readiness under UITestMode).
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "Overview"
+- extendedWaitUntil:
+    visible:
+      id: "wt.overview.root"
+    timeout: 10000
+
+- assertVisible:
+    id: "wt.overview.cns"
+
+- tapOn:
+    id: "wt.overview.cns"
+
+- extendedWaitUntil:
+    visible: "Readiness: Not measured"
+    timeout: 8000
+
+- assertVisible: "CNS Readiness"
+- assertVisible: "Done"

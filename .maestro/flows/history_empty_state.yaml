@@ -1,0 +1,20 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - history
+---
+# Phase 2: fresh install History empty state.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "History"
+- extendedWaitUntil:
+    visible:
+      id: "wt.history.root"
+    timeout: 10000
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.history.empty"
+    timeout: 10000
+
+- assertVisible: "Finish your first workout to see it here"
