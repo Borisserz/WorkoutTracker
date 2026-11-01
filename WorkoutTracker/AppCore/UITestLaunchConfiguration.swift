@@ -23,6 +23,8 @@ enum UITestLaunchConfiguration {
         defaults.set(true, forKey: "hasSeenCommitmentSheet")
         // Skip AI consent sheet so Hub chrome flows can open chat/tools.
         defaults.set(true, forKey: Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
+        // Avoid guest sign-up sheet after first finished workout in Maestro.
+        defaults.set(true, forKey: "hasSeenGuestSignUpPrompt")
         // Dark-only lock already enforced by AppearanceMode; keep explicit for suites.
         defaults.set(AppearanceMode.lockedRawValue, forKey: Constants.UserDefaultsKeys.appearanceMode.rawValue)
     }

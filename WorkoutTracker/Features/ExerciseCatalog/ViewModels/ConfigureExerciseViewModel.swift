@@ -40,6 +40,12 @@ final class ConfigureExerciseViewModel {
         self.exerciseName = exerciseName
         self.muscleGroup = muscleGroup
         self.exerciseType = exerciseType
+        // Maestro deep flows: one set keeps E2E under a minute without changing product defaults.
+        if UITestLaunchConfiguration.isUITestMode, exerciseType == .strength {
+            form.sets = 1
+            form.reps = 5
+            form.weight = 40
+        }
     }
     
     var previousPerformanceText: String? {

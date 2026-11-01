@@ -350,7 +350,8 @@ final class WorkoutDetailViewModel {
 
         finishWorkoutTask?.cancel()
         finishWorkoutTask = Task {
-            try? await Task.sleep(for: .seconds(3.5))
+            let undoWindow: Double = UITestLaunchConfiguration.isUITestMode ? 0.4 : 3.5
+            try? await Task.sleep(for: .seconds(undoWindow))
             guard !Task.isCancelled else { return }
             await commitFinishWorkout(workout: workout, progressManager: progressManager)
         }
@@ -464,7 +465,8 @@ final class WorkoutDetailViewModel {
                     self.appState.returnToActiveWorkoutId = nil
 
                     // Show Guest Sign-Up Prompt once after the first workout
-                    if Auth.auth().currentUser?.isAnonymous == true {
+                    if !UITestLaunchConfiguration.isUITestMode,
+                       Auth.auth().currentUser?.isAnonymous == true {
                         let hasSeen = UserDefaults.standard.bool(forKey: "hasSeenGuestSignUpPrompt")
                         if !hasSeen {
                             UserDefaults.standard.set(true, forKey: "hasSeenGuestSignUpPrompt")
