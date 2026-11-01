@@ -1,0 +1,58 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - aihub
+  - deep
+  - ai-live
+---
+# Live OpenRouter chat: send a short question and wait for an AI bubble.
+# Requires network + App Check debug token registered for this simulator.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "AI Hub"
+- extendedWaitUntil:
+    visible:
+      id: "wt.aihub.root"
+    timeout: 10000
+
+- scrollUntilVisible:
+    element: "Ask your coach about training..."
+    direction: UP
+    timeout: 15000
+
+- tapOn: "Ask your coach about training..."
+- inputText: "Give one short squat tip"
+- pressKey: Enter
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.chat.root"
+    timeout: 15000
+
+- assertVisible: "AI Coach"
+
+# Prefer in-chat send if the hub handoff did not auto-fire.
+- runFlow:
+    when:
+      visible:
+        id: "wt.chat.input"
+    commands:
+      - tapOn:
+          id: "wt.chat.input"
+      - inputText: "Give one short squat tip"
+      - tapOn:
+          id: "wt.chat.send"
+
+# Wait for streamed / completed AI reply (free models + fallback can be slow).
+- extendedWaitUntil:
+    visible:
+      id: "wt.chat.message.ai"
+    timeout: 120000
+
+- assertVisible:
+    id: "wt.chat.message.user"
+
+- tapOn: "Close"
+- extendedWaitUntil:
+    visible:
+      id: "wt.aihub.root"
+    timeout: 10000

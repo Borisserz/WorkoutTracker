@@ -1,0 +1,35 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - aihub
+  - deep
+---
+# Open Season plan → AI Architect sheet from AI Hub, then dismiss.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "AI Hub"
+- extendedWaitUntil:
+    visible:
+      id: "wt.aihub.root"
+    timeout: 10000
+
+- scrollUntilVisible:
+    element: "Season plan"
+    direction: DOWN
+    timeout: 15000
+
+- tapOn: "Season plan"
+
+- extendedWaitUntil:
+    visible: "AI Architect"
+    timeout: 12000
+
+- assertVisible: "AI Architect"
+
+- swipe:
+    direction: DOWN
+    duration: 600
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.aihub.root"
+    timeout: 12000

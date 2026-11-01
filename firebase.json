@@ -15,7 +15,10 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "*.local"
+        "*.local",
+        ".env",
+        ".secret.local",
+        "smoke_openrouter.js"
       ]
     }
   ]

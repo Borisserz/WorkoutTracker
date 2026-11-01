@@ -113,89 +113,82 @@ actor GeminiNetworkClient {
         return request
     }
 
-    private func executeWithRetry<T>(maxRetries: Int = 3, operation: () async throws -> T) async throws -> T {
-        var attempts = 0
-        while true {
-            do {
-                return try await operation()
-            } catch let error as AILogicError {
-                if case .rateLimited = error {
-                    attempts += 1
-                    if attempts > maxRetries { throw error }
-                    let delay = pow(2.0, Double(attempts)) // 2s, 4s, 8s
-                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                    continue
-                }
-                throw error
-            } catch {
-                throw error
-            }
+    /// App weekly limits must not be retried (burns nothing useful; confuses UX).
+    /// Transient upstream limits are handled server-side via model/key fallback.
+    private func rateLimitError(from http: HTTPURLResponse, data: Data?) -> AILogicError {
+        let retryAfter: TimeInterval?
+        if let raw = http.value(forHTTPHeaderField: "Retry-After"), let seconds = TimeInterval(raw) {
+            retryAfter = seconds
+        } else if let data,
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let retry = obj["retryAfter"] as? Double {
+            retryAfter = retry
+        } else {
+            retryAfter = nil
         }
+        return .rateLimited(retryAfter: retryAfter)
     }
 
     func generateText(from requestBody: GeminiRequest) async throws -> String {
-        return try await executeWithRetry {
-            let request = try await makeRequest(stream: false, body: requestBody)
-            let (data, response) = try await urlSession.data(for: request)
-            guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
+        let request = try await makeRequest(stream: false, body: requestBody)
+        let (data, response) = try await urlSession.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
 
-            if http.statusCode == 429 {
-                throw AILogicError.rateLimited(retryAfter: nil)
-            }
-
-            guard (200...299).contains(http.statusCode) else {
-                if http.statusCode == 400 {
-                    if let errorResp = try? JSONDecoder().decode(GoogleCloudErrorResponse.self, from: data),
-                       let msg = errorResp.error?.message {
-                        throw AILogicError.badRequest(reason: msg)
-                    }
-                }
-                let msg = String(data: data, encoding: .utf8) ?? "Unknown Error"
-                throw AILogicError.apiError(statusCode: http.statusCode, message: msg)
-            }
-            let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
-            guard let text = decoded.candidates.first?.content.parts.first?.text else { throw AILogicError.noDataReturned }
-            return text
+        if http.statusCode == 429 {
+            throw rateLimitError(from: http, data: data)
         }
+
+        guard (200...299).contains(http.statusCode) else {
+            if http.statusCode == 400 {
+                if let errorResp = try? JSONDecoder().decode(GoogleCloudErrorResponse.self, from: data),
+                   let msg = errorResp.error?.message {
+                    throw AILogicError.badRequest(reason: msg)
+                }
+            }
+            let msg = String(data: data, encoding: .utf8) ?? "Unknown Error"
+            throw AILogicError.apiError(statusCode: http.statusCode, message: msg)
+        }
+        let decoded = try JSONDecoder().decode(GeminiResponse.self, from: data)
+        guard let text = decoded.candidates.first?.content.parts.first?.text else { throw AILogicError.noDataReturned }
+        return text
     }
 
     func streamText(from requestBody: GeminiRequest) async throws -> AsyncThrowingStream<String, Error> {
-        return try await executeWithRetry {
-            let request = try await makeRequest(stream: true, body: requestBody)
-            let (bytes, response) = try await urlSession.bytes(for: request)
-            guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
+        let request = try await makeRequest(stream: true, body: requestBody)
+        let (bytes, response) = try await urlSession.bytes(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AILogicError.invalidResponse }
 
-            if http.statusCode == 429 {
-                throw AILogicError.rateLimited(retryAfter: nil)
-            }
+        if http.statusCode == 429 {
+            throw rateLimitError(from: http, data: nil)
+        }
 
-            guard (200...299).contains(http.statusCode) else {
-                var errorBody = ""
-                for try await line in bytes.lines { errorBody += line }
-                if http.statusCode == 400 {
-                    if let data = errorBody.data(using: .utf8),
-                       let errorResp = try? JSONDecoder().decode(GoogleCloudErrorResponse.self, from: data),
-                       let msg = errorResp.error?.message {
-                        throw AILogicError.badRequest(reason: msg)
-                    }
+        guard (200...299).contains(http.statusCode) else {
+            var errorBody = ""
+            for try await line in bytes.lines { errorBody += line }
+            if http.statusCode == 400 {
+                if let data = errorBody.data(using: .utf8),
+                   let errorResp = try? JSONDecoder().decode(GoogleCloudErrorResponse.self, from: data),
+                   let msg = errorResp.error?.message {
+                    throw AILogicError.badRequest(reason: msg)
                 }
-                throw AILogicError.apiError(statusCode: http.statusCode, message: errorBody)
             }
-            return AsyncThrowingStream { continuation in
-                Task {
-                    do {
-                        for try await line in bytes.lines {
-                            guard line.hasPrefix("data: ") else { continue }
-                            let json = String(line.dropFirst(6))
-                            guard let jsonData = json.data(using: .utf8) else { continue }
-                            if let chunk = try? JSONDecoder().decode(GeminiResponse.self, from: jsonData),
-                               let textChunk = chunk.candidates.first?.content.parts.first?.text {
-                                continuation.yield(textChunk)
-                            }
+            throw AILogicError.apiError(statusCode: http.statusCode, message: errorBody)
+        }
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    for try await line in bytes.lines {
+                        guard line.hasPrefix("data: ") else { continue }
+                        let json = String(line.dropFirst(6))
+                        if json == "[DONE]" { continue }
+                        guard let jsonData = json.data(using: .utf8) else { continue }
+                        if let chunk = try? JSONDecoder().decode(GeminiResponse.self, from: jsonData),
+                           let textChunk = chunk.candidates.first?.content.parts.first?.text {
+                            continuation.yield(textChunk)
                         }
-                        continuation.finish()
-                    } catch { continuation.finish(throwing: error) }
-                }
+                    }
+                    continuation.finish()
+                } catch { continuation.finish(throwing: error) }
             }
         }
     }

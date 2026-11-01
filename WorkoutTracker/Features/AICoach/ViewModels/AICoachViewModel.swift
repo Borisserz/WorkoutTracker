@@ -112,9 +112,8 @@ final class AICoachViewModel {
             await requestWorkoutPlan(prompt: actualPrompt, userWeight: userWeight)
         } else {
 
-            let wantsWorkout = (try? await aiLogicService.classifyIntent(userMessage: actualPrompt)) ?? false
-
-            if wantsWorkout {
+            // On-device heuristic — avoids an extra OpenRouter round-trip / rate-limit hit.
+            if AIIntentClassifier.wantsWorkoutPlan(actualPrompt) {
                 await requestWorkoutPlan(prompt: actualPrompt, userWeight: userWeight)
             } else {
                 await streamChat(prompt: actualPrompt, userWeight: userWeight)
@@ -131,24 +130,54 @@ final class AICoachViewModel {
     private func streamChat(prompt: String, userWeight: Double) async {
            let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? Constants.AIConstants.defaultTone
            let savedName = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? ""
+           let savedRecoveryHours = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userRecoveryHours.rawValue)
+           let fullRecoveryHours = savedRecoveryHours > 0 ? savedRecoveryHours : 48.0
 
            let aiMessageId = UUID()
            let initialAIMessage = AIChatMessage(id: aiMessageId, isUser: false, text: "", proposedWorkout: nil, isAnimating: false)
 
            withAnimation { self.chatHistory.append(initialAIMessage) }
 
+           let workouts = await analyticsService.fetchRecentWorkoutsForAnalytics()
+           let recoveryStatus = await analyticsService.calculateRecovery(hours: fullRecoveryHours, workouts: workouts)
+           let prCache = await analyticsService.getAllPersonalRecords(workouts: workouts, unitsManager: UnitsManager.shared).reduce(into: [String: Double]()) {
+               $0[$1.exerciseName] = Double($1.value.filter("0123456789.".contains)) ?? 0
+           }
+           let weekStart = Calendar.current.date(from: Calendar.current.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) ?? Date()
+           let workoutsThisWeek = workouts.filter { $0.date >= weekStart }.count
+
+           // Compact context for the streamed prompt (PRs / fatigue), without sending body weight.
+           var enrichedPrompt = prompt
+           if !prCache.isEmpty {
+               let top = prCache.sorted { $0.value > $1.value }.prefix(8)
+                   .map { "\($0.key): \($0.value) kg" }.joined(separator: ", ")
+               enrichedPrompt += "\n\nRECENT PRs: \(top)"
+           }
+           let fatigued = recoveryStatus.filter { $0.recoveryPercentage < 50 }.map { $0.muscleGroup }
+           if !fatigued.isEmpty {
+               enrichedPrompt += "\nFATIGUED: \(fatigued.joined(separator: ", "))"
+           }
+
            let userContext = UserProfileContext(
                userName: savedName,
-               weightKg: UnitsManager.shared.convertToKilograms(userWeight), experienceLevel: "Intermediate", favoriteMuscles: [], recentPRs: [:],
+               weightKg: UnitsManager.shared.convertToKilograms(userWeight),
+               experienceLevel: "Intermediate",
+               favoriteMuscles: [],
+               recentPRs: prCache,
                language: LocalizationHelper.shared.getAILanguageName(),
-               workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: [], availableExercises: [], aiCoachTone: savedTone, weightUnit: UnitsManager.shared.weightUnitString()
+               workoutsThisWeek: workoutsThisWeek,
+               currentStreak: 0,
+               fatiguedMuscles: fatigued,
+               availableExercises: [],
+               aiCoachTone: savedTone,
+               weightUnit: UnitsManager.shared.weightUnitString()
            )
 
            currentTask?.cancel()
            currentTask = Task {
                let trace = TrackingManager.shared.startTrace(name: "ai_coach_generation_stream")
                do {
-                   let stream = try await aiLogicService.streamChatResponse(userRequest: prompt, userProfile: userContext)
+                   let stream = try await aiLogicService.streamChatResponse(userRequest: enrichedPrompt, userProfile: userContext)
 
                    guard let messageIndex = self.chatHistory.firstIndex(where: { $0.id == aiMessageId }) else {
                        handleError(AILogicError.friendlyError)

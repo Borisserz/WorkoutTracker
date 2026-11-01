@@ -219,15 +219,22 @@ public actor AILogicService {
 
     // MARK: - Public API
 
+    /// Prefer `AIIntentClassifier` on-device. Kept for callers that still await a Bool.
     public func classifyIntent(userMessage: String) async throws -> Bool {
-        let systemPrompt = "Analyze the user's message. Does the user explicitly ask to create, build, or generate a workout plan or routine? Reply ONLY with 'true' or 'false'."
-        let requestBody = GeminiRequest(
-            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-            contents: [.init(role: "user", parts: [.init(text: userMessage)])],
-            generationConfig: .init(temperature: 0.1, responseMimeType: "text/plain", responseSchema: nil)
-        )
-        let response = try await networkClient.generateText(from: requestBody)
-        return response.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == "true"
+        AIIntentClassifier.wantsWorkoutPlan(userMessage)
+    }
+
+    /// Decode JSON model output after stripping markdown/prose wrappers.
+    private func decodeJSON<T: Decodable>(_ type: T.Type, from raw: String) throws -> T {
+        let cleaned = AIResponseParsing.extractJSONObject(from: raw)
+        guard let jsonData = cleaned.data(using: .utf8) else {
+            throw AILogicError.noDataReturned
+        }
+        do {
+            return try JSONDecoder().decode(type, from: jsonData)
+        } catch {
+            throw AILogicError.decodingFailed(error)
+        }
     }
 
     public func generateChatTitle(for userMessage: String) async throws -> String {
@@ -249,9 +256,14 @@ public actor AILogicService {
             : "REPLY STRICTLY IN \(language.uppercased()) (but keep any JSON keys in English). Be brief and motivational."
         let systemPrompt = """
         You are an elite data analyst and supportive AI strength coach.
-        Analyze the user's weekly statistics.
-        Calculate a weeklyScore (0-100).
-        Assign a coachMood ('fire' for great week, 'ice' for average/consistent, 'warning' for skipped workouts or low volume).
+        Analyze the user's weekly statistics and return ONE JSON object only (no markdown).
+        Fields:
+        - weeklyScore: integer 0-100
+        - title: short punchy title
+        - topHighlight: one sentence best win
+        - weakPointAlert: one sentence gap
+        - coachAdvice: one actionable tip for next week
+        - coachMood: EXACTLY one of: fire | ice | warning
         \(langInstruction)
         """
         let userStatsHeader = "My stats:"
@@ -265,13 +277,23 @@ public actor AILogicService {
             )
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        guard let jsonData = responseText.data(using: .utf8) else {
-            throw AILogicError.noDataReturned
-        }
-        // DTO is MainActor-isolated — decode on main actor.
-        return try await MainActor.run {
-            try JSONDecoder().decode(AIWeeklyReviewDTO.self, from: jsonData)
-        }
+        let review = try decodeJSON(AIWeeklyReviewDTO.self, from: responseText)
+        let score = min(max(review.weeklyScore, 0), 100)
+        // Free models sometimes answer on a 0–10 scale; scale up when mood says it was strong.
+        let normalizedScore: Int = {
+            if score <= 10, ["fire", "ice"].contains(review.coachMood.lowercased()) {
+                return score * 10
+            }
+            return score
+        }()
+        return AIWeeklyReviewDTO(
+            weeklyScore: normalizedScore,
+            title: review.title,
+            topHighlight: review.topHighlight,
+            weakPointAlert: review.weakPointAlert,
+            coachAdvice: review.coachAdvice,
+            coachMood: review.coachMood
+        )
     }
 
     public func streamChatResponse(userRequest: String, userProfile: UserProfileContext) async throws -> AsyncThrowingStream<String, Error> {
@@ -280,8 +302,10 @@ public actor AILogicService {
             : "REPLY STRICTLY IN \(userProfile.language.uppercased())."
         let prompt = """
         You are an elite AI Strength Coach. Your tone is \(userProfile.aiCoachTone).
-        Answer the user's fitness questions conversationally. DO NOT generate structured workout plans here.
+        Answer the user's fitness questions conversationally in plain text (no JSON, no markdown code fences).
+        DO NOT generate structured workout plans or exercise tables here — give coaching advice only.
         Weights must be in \(userProfile.weightUnit).
+        Never ask for body weight. Use experience level and any PRs provided in the user message.
         \(langLine)
         """
         let requestBody = GeminiRequest(
@@ -300,15 +324,17 @@ public actor AILogicService {
             ? "Bench Press, Squat, Deadlift, Pull-ups, Dumbbell Curls, Shoulder Press, Lunges, Plank"
             : availableExercises.joined(separator: ", ")
         var systemPrompt = """
-        You are an elite AI Strength Coach. Your ONLY task right now is to generate a strength workout.
+        You are an elite AI Strength Coach. Return ONE JSON object only (no markdown).
         \(langLine)
-        Weights must be in \(weightUnit).
+        Weights must be in \(weightUnit). recommendedWeightKg is always numeric kilograms even if display unit differs.
         RULES:
-        - Generate EXACTLY 4 or 5 exercises in the "exercises" array. This is MANDATORY.
-        - Choose exercises ONLY from this approved list: \(exerciseList)
-        - User experience level: \(difficulty).
-        - "workoutTitle": Set to "Protocol: \(muscleGroup)".
-        - "aiMessage": Write a short, energetic motivating message. Address the user as \(userName.isEmpty ? "Athlete" : userName).
+        - exercises: EXACTLY 4 or 5 items. MANDATORY.
+        - Choose exercises ONLY from this approved list (match names exactly): \(exerciseList)
+        - Do NOT invent exercise names.
+        - User experience level: \(difficulty). Scale sets/reps/load accordingly.
+        - workoutTitle: "Protocol: \(muscleGroup)"
+        - aiMessage: short energetic greeting addressing \(userName.isEmpty ? "Athlete" : userName)
+        - Each exercise needs: name, muscleGroup, type, sets, reps (integers). Optional: recommendedWeightKg, restSeconds.
         """
         if !fatiguedMuscles.isEmpty {
             systemPrompt += "\n- FATIGUED MUSCLES (avoid heavy loading on these): \(fatiguedMuscles.joined(separator: ", "))"
@@ -323,13 +349,6 @@ public actor AILogicService {
             )
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        let cleaned = responseText.trimmingCharacters(in: .whitespacesAndNewlines)
-            .replacingOccurrences(of: "```json", with: "")
-            .replacingOccurrences(of: "```", with: "")
-            
-        guard let jsonData = cleaned.data(using: .utf8) else {
-            throw AILogicError.noDataReturned
-        }
 
         struct BuilderResponse: Codable {
             let aiMessage: String
@@ -337,7 +356,7 @@ public actor AILogicService {
             let exercises: [GeneratedExerciseDTO]?
         }
 
-        let parsed = try JSONDecoder().decode(BuilderResponse.self, from: jsonData)
+        let parsed = try decodeJSON(BuilderResponse.self, from: responseText)
         guard let exs = parsed.exercises, !exs.isEmpty else {
             throw AILogicError.invalidData
         }
@@ -362,10 +381,7 @@ public actor AILogicService {
             )
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        guard let jsonData = responseText.data(using: .utf8) else {
-            throw AILogicError.noDataReturned
-        }
-        let networkResponse = try JSONDecoder().decode(ChatNetworkResponse.self, from: jsonData)
+        let networkResponse = try decodeJSON(ChatNetworkResponse.self, from: responseText)
         if networkResponse.hasWorkout, let exs = networkResponse.exercises, !exs.isEmpty {
             let workoutDTO = GeneratedWorkoutDTO(
                 title: networkResponse.workoutTitle ?? "Custom Workout",
@@ -387,10 +403,14 @@ public actor AILogicService {
             ? "REPLY STRICTLY IN ENGLISH."
             : "REPLY STRICTLY IN \(language.uppercased()) (but keep any JSON keys in English)."
         let systemPrompt = """
-        You are an elite AI-coach. Your task is to instantly adjust the current workout upon request.
-        If switching from barbell to dumbbells — reduce weight by 15-20%. If "Too Heavy" - reduce by 10%.
+        You are an elite AI coach. Return ONE JSON object only (no markdown) to adjust the live workout.
+        action must be EXACTLY one of: swap | reduce_weight | increase_weight | add_finisher
+        If switching barbell→dumbbells: reduce weight 15-20%. If "Too Heavy": reduce ~10%. If "Too Easy": increase ~5-10%.
+        exerciseName must match an exercise from the current workout (English name).
+        setsRemaining and weightValue are required numbers (use 0 if unused).
+        reasoning: one short motivational sentence.
         \(langInstruction)
-        AVAILABLE EXERCISES FOR SWAP:
+        AVAILABLE EXERCISES FOR SWAP (use exact names only):
         \(catalogContext)
         """
         let userPrompt = "Current workout:\n\(workoutContext)\n\nUser command: \(commandType)"
@@ -400,12 +420,7 @@ public actor AILogicService {
             generationConfig: .init(temperature: 0.3, responseMimeType: "application/json", responseSchema: smartActionSchema)
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        guard let jsonData = responseText.data(using: .utf8) else {
-            throw AILogicError.noDataReturned
-        }
-        return try await MainActor.run {
-            try JSONDecoder().decode(SmartActionDTO.self, from: jsonData)
-        }
+        return try decodeJSON(SmartActionDTO.self, from: responseText)
     }
 
     public func analyzeActiveWorkout(userMessage: String,
@@ -419,8 +434,12 @@ public actor AILogicService {
             ? "REPLY STRICTLY IN ENGLISH."
             : "REPLY STRICTLY IN \(language.uppercased()). Leave exercise names in English."
         let systemPrompt = """
-        You are an elite AI Strength Coach. \(langInstruction)
+        You are an elite AI Strength Coach. Return ONE JSON object only (no markdown).
+        \(langInstruction)
         All weights are in \(weightUnit).
+        actionType must be EXACTLY one of: dropWeight | addSet | replaceExercise | skipExercise | reduceRemainingLoad | none
+        Prefer "none" if the user only asked a question with no workout change.
+        When replacing, replacementExerciseName MUST be from the approved list (exact name).
         AVAILABLE EXERCISES FOR SWAP:
         \(catalogContext)
         """
@@ -430,12 +449,7 @@ public actor AILogicService {
             generationConfig: .init(temperature: 0.2, responseMimeType: "application/json", responseSchema: inWorkoutResponseSchema)
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        guard let jsonData = responseText.data(using: .utf8) else {
-            throw AILogicError.noDataReturned
-        }
-        return try await MainActor.run {
-            try JSONDecoder().decode(InWorkoutResponseDTO.self, from: jsonData)
-        }
+        return try decodeJSON(InWorkoutResponseDTO.self, from: responseText)
     }
 
     public func generateMultiDayProgram(goal: String,
@@ -452,14 +466,16 @@ public actor AILogicService {
         let growList = musclesToGrow.isEmpty ? "None specified" : musclesToGrow.joined(separator: ", ")
         let excludeList = musclesToExclude.isEmpty ? "None specified" : musclesToExclude.joined(separator: ", ")
         let systemPrompt = """
-        You are an elite AI Strength & Conditioning Architect. Design a premium multi-day workout program.
+        You are an elite AI Strength & Conditioning Architect. Return ONE JSON object only (no markdown).
         \(langInstruction)
         RULES:
-        Create EXACTLY \(days) workout days.
-        Goal: \(goal). Experience Level: \(level). Available Equipment: \(equipment).
-        FOCUS HEAVILY on growing: \(growList).
-        EXCLUDE exercises targeting: \(excludeList).
-        MUST use exercises EXCLUSIVELY from this approved list: \(catalogContext). Do NOT invent exercises.
+        - schedule must contain EXACTLY \(days) days (dayName, focus, exercises[]).
+        - Goal: \(goal). Level: \(level). Equipment: \(equipment).
+        - Focus growth on: \(growList). Exclude: \(excludeList).
+        - EVERY exercise name MUST be copied exactly from this approved list (comma-separated). Do NOT invent names:
+        \(catalogContext)
+        - Keep each day to 4–6 exercises. Prefer compound lifts first.
+        - durationWeeks: integer 4–12.
         """
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
@@ -467,19 +483,13 @@ public actor AILogicService {
             generationConfig: .init(temperature: 0.4, responseMimeType: "application/json", responseSchema: multiDayProgramSchema)
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        guard let jsonData = responseText.data(using: .utf8) else {
-            throw AILogicError.noDataReturned
-        }
-        return try await MainActor.run {
-            try JSONDecoder().decode(GeneratedProgramDTO.self, from: jsonData)
-        }
+        return try decodeJSON(GeneratedProgramDTO.self, from: responseText)
     }
 
     public func calculateOptimalRecoveryTime(workoutContext: String) async throws -> Double {
         let systemPrompt = """
-        You are an elite sports scientist. Analyze the workout summary provided by the user.
-        Based on the total volume, number of sets, and average effort (RPE/Intensity), calculate the optimal muscle recovery time in hours.
-        Return ONLY a JSON object containing 'recommendedHours'.
+        You are an elite sports scientist. Return ONE JSON object only: {"recommendedHours": number}.
+        Base the estimate on volume, sets, and effort. Typical range 24–96 hours. No markdown.
         """
         let requestBody = GeminiRequest(
             systemInstruction: .init(parts: [.init(text: systemPrompt)]),
@@ -487,10 +497,7 @@ public actor AILogicService {
             generationConfig: .init(temperature: 0.1, responseMimeType: "application/json", responseSchema: recoverySchema)
         )
         let responseText = try await networkClient.generateText(from: requestBody)
-        guard let jsonData = responseText.data(using: .utf8) else {
-            throw AILogicError.noDataReturned
-        }
-        let response = try JSONDecoder().decode(RecoveryResponseDTO.self, from: jsonData)
+        let response = try decodeJSON(RecoveryResponseDTO.self, from: responseText)
         return min(max(response.recommendedHours, 12.0), 120.0)
     }
 
@@ -503,6 +510,7 @@ public actor AILogicService {
         // [5.1.3] Privacy: do NOT include the user's body weight in the prompt.
         var prompt = """
         \(customInstruction)
+        Return ONE JSON object only (no markdown fences).
         You can chat, answer fitness questions, OR generate workout plans.
         USER PROFILE (non-sensitive):
         Name: \(profile.userName.isEmpty ? "Athlete" : profile.userName)
@@ -510,11 +518,13 @@ public actor AILogicService {
         Workouts this week: \(profile.workoutsThisWeek)
         Current streak: \(profile.currentStreak) days
         RULES FOR JSON RESPONSE:
-        "aiMessage": ALWAYS provide your conversational response here. Occasionally address the user by their name to make the conversation more personal.
-        "hasWorkout": Set to true ONLY if the user explicitly asks for a workout plan or routine. If they just say "Hello" or ask a general question, set it to false.
-        "workoutTitle" and "exercises": ONLY fill these if hasWorkout is true.
+        - aiMessage: ALWAYS fill (conversational). Occasionally use their name.
+        - hasWorkout: true ONLY if they explicitly ask for a workout/routine/program.
+        - workoutTitle + exercises: only when hasWorkout is true; otherwise omit or use empty exercises.
+        - When hasWorkout is true: 4–6 exercises, names ONLY from AVAILABLE EXERCISES (exact match). Do not invent names.
+        - Each exercise: name, muscleGroup, type, sets, reps (ints). Optional recommendedWeightKg, restSeconds.
         Weights must be in \(profile.weightUnit).
-        When recommending loads, use generic strength-training guidelines based on the user's experience level. Do NOT ask the user for their body weight.
+        Use experience + PRs to calibrate load. Do NOT ask for body weight.
         """
 
         if profile.language.lowercased() != "english" {

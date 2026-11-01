@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B2C3D4E5F60718293A4B5C6D /* AIResponseParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */; };
 		0DF9916DE0EBCD3AABDD349B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7FE428EAFDCCB420B43C3A92 /* Foundation.framework */; };
 		24965D87A62E42B5987846A0 /* HapticManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */; };
 		29661A4F4520FD432B45E791 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 7C4118E39E451C7A1AA91DCF /* FirebasePerformance */; };
@@ -147,6 +148,7 @@
 		9815C46A3AB04BB4B2CE36D2 /* AppReviewManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppReviewManagerTests.swift; sourceTree = "<group>"; };
 		A4752778508CADACB44B9D18 /* PatternClassifierTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PatternClassifierTests.swift; sourceTree = "<group>"; };
 		AB3FA907D5A3E4621EC02876 /* AITrackerEngineTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AITrackerEngineTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AIResponseParsingTests.swift; sourceTree = "<group>"; };
 		AC3CB9AB2F81B127008A6777 /* WorkoutTrackerWatch-Watch-App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WorkoutTrackerWatch-Watch-App-Info.plist"; sourceTree = "<group>"; };
 		AC3CB9AC2F81B13A008A6777 /* WorkoutTrackerWatch Watch App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WorkoutTrackerWatch Watch App.entitlements"; sourceTree = "<group>"; };
 		AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -377,6 +379,7 @@
 				5B612D828C4C647FBCABFA55 /* CNSCalculatorTests.swift */,
 				A4752778508CADACB44B9D18 /* PatternClassifierTests.swift */,
 				AB3FA907D5A3E4621EC02876 /* AITrackerEngineTests.swift */,
+				A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */,
 				37E04CF2637E84830C0ABCE9 /* OneRepMaxCalculatorTests.swift */,
 				7DD649EF8B041E49532FD342 /* CalorieCalculatorTests.swift */,
 				DCC4E71E0628C8F616ACDE3C /* UnitsManagerTests.swift */,
@@ -671,6 +674,7 @@
 				51EB443716EB653E6304C70D /* CNSCalculatorTests.swift in Sources */,
 				4A6CB846E170B5463319450A /* PatternClassifierTests.swift in Sources */,
 				76042E56DE01DC8CF47AAB68 /* AITrackerEngineTests.swift in Sources */,
+				B2C3D4E5F60718293A4B5C6D /* AIResponseParsingTests.swift in Sources */,
 				7332698C70030723F9E7630A /* OneRepMaxCalculatorTests.swift in Sources */,
 				FC4ED48F0C2C9E8C39B3DA00 /* CalorieCalculatorTests.swift in Sources */,
 				DFF29FA39E67AE2B62006FC5 /* UnitsManagerTests.swift in Sources */,

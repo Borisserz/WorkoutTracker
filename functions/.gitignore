@@ -1,2 +1,5 @@
 node_modules/
 *.local
+.env
+.secret.local
+*.log

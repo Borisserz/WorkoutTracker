@@ -56,3 +56,6 @@ ui-debug.log
 .maestro/.reports/
 !scripts/
 !scripts/**
+
+# Firebase functions env (API keys)
+functions/.env

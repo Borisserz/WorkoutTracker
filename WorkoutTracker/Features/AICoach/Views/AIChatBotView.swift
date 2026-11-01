@@ -99,6 +99,7 @@ struct AIChatBotView: View {
                             .background(.ultraThinMaterial, in: Capsule())
                             .overlay(Capsule().stroke(speechRecognizer.isRecording ? Color.green.opacity(0.5) : .white.opacity(0.2), lineWidth: 1))
                             .foregroundStyle(.white)
+                            .accessibilityIdentifier("wt.chat.input")
                             .onSubmit { sendMessage() }
 
                         Button {
@@ -109,6 +110,7 @@ struct AIChatBotView: View {
                                 .foregroundStyle(viewModel.inputText.isEmpty ? .gray : themeManager.current.primaryAccent)
                                 .shadow(color: viewModel.inputText.isEmpty ? .clear : themeManager.current.primaryAccent.opacity(0.8), radius: 8)
                         }
+                        .accessibilityIdentifier("wt.chat.send")
                         .disabled(viewModel.inputText.isEmpty || viewModel.isGenerating)
                     }
                     .padding()
@@ -203,6 +205,8 @@ struct AIChatBotView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 20))
                     .shadow(color: msg.isUser ? themeManager.current.primaryAccent.opacity(0.5) : .black.opacity(0.2), radius: 5)
                     .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.2), lineWidth: msg.isUser ? 0 : 1))
+                    .accessibilityIdentifier(msg.isUser ? "wt.chat.message.user" : "wt.chat.message.ai")
+                    .accessibilityValue(msg.text)
 
                     if let workout = msg.proposedWorkout {
                         ProposedWorkoutCardView(workout: workout) {
