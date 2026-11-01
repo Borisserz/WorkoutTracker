@@ -824,13 +824,10 @@ actor AnalyticsService {
             }
 
             // Honesty: with no fatigue history, recovery is "not measured" — do not invent 100% for every slug.
+            // Only report muscles that were actually loaded; missing ≠ fully recovered.
             guard !rawFatigueMap.isEmpty else { return [] }
 
-            let allSlugs = ["chest", "obliques", "abs", "biceps", "triceps", "neck", "trapezius", "deltoids", "adductors", "quadriceps", "knees", "tibialis", "calves", "forearm", "hands", "ankles", "feet", "head", "hair", "upper-back", "lower-back", "gluteal", "hamstring"]
-            var displayFatigueMap: [String: Double] = [:]
-            for slug in allSlugs { displayFatigueMap[slug] = rawFatigueMap[slug] ?? 0.0 }
-
-            return displayFatigueMap.map { slug, fatigue in
+            return rawFatigueMap.map { slug, fatigue in
                 MuscleRecoveryStatus(muscleGroup: slug, recoveryPercentage: max(0, min(100, Int((1.0 - fatigue) * 100))))
             }
         }
@@ -937,7 +934,8 @@ actor AnalyticsService {
     @MainActor
     func fetchRecentWorkoutsForAnalytics() async -> [Workout] {
            // Resolve on the main context so AI callers never cross ModelContext boundaries.
-           let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+           var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+           descriptor.fetchLimit = 150
            return (try? modelContainer.mainContext.fetch(descriptor)) ?? []
        }
 

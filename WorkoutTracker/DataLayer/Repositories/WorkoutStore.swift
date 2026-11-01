@@ -641,6 +641,9 @@ actor WorkoutStore: WorkoutStoreProtocol {
     }
 
     func fetchLatestWorkoutID() async throws -> PersistentIdentifier? {
+            // Prefer a live active session — callers use this to resume, not to open the newest finished row.
+            let activeIDs = try await findActiveWorkoutsAndCleanup()
+            if let active = activeIDs.first { return active }
             var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
             descriptor.fetchLimit = 1
             return try modelContext.fetch(descriptor).first?.persistentModelID

@@ -67,7 +67,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
         completionHandler(options)
     }
 
-    nonisolated func userNotificationcenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let action = response.actionIdentifier
         let identifier = response.notification.request.identifier
 

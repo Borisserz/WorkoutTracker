@@ -308,15 +308,32 @@ struct ExerciseCardView: View {
                 }
                 .fullScreenCover(isPresented: $showAICameraTracker) {
                     AITrackerView(exerciseName: exercise.name) { countedReps in
-                        if countedReps > 0 {
-                            if let targetSet = exercise.setsList.first(where: { !$0.isCompleted }) {
-                                targetSet.reps = countedReps
-                                targetSet.isCompleted = true
-                                let isLast = targetSet.id == exercise.setsList.last?.id
-                                detailViewModel.handleSetCompleted(set: targetSet, isLast: isLast, exerciseName: exercise.name, workout: workout, weightUnit: unitsManager.weightUnitString())
-                                detailViewModel.updateWorkoutAnalytics(for: workout)
+                        guard countedReps > 0,
+                              let targetSet = exercise.setsList.first(where: { !$0.isCompleted }) else { return }
+                        targetSet.reps = countedReps
+                        let isLast = targetSet.id == exercise.setsList.last?.id
+                        let upcomingWeightStr: String? = {
+                            if let next = exercise.sortedSets.drop(while: { $0.id != targetSet.id }).dropFirst().first,
+                               let w = next.weight {
+                                return "\(w) \(unitsManager.weightUnitString())"
                             }
-                        }
+                            return nil
+                        }()
+                        // Match SetRowView.onCheck: rest timer + completion pipeline.
+                        detailViewModel.startTimerIfNeeded(
+                            shouldStartTimer: true,
+                            suggestedDuration: nil,
+                            exerciseName: exercise.name,
+                            upcomingWeight: upcomingWeightStr
+                        )
+                        detailViewModel.handleSetCompleted(
+                            set: targetSet,
+                            isLast: isLast,
+                            exerciseName: exercise.name,
+                            workout: workout,
+                            weightUnit: unitsManager.weightUnitString()
+                        )
+                        detailViewModel.updateWorkoutAnalytics(for: workout)
                     }
                 }
 

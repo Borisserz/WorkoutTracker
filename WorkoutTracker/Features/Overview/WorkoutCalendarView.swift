@@ -395,7 +395,8 @@ struct WorkoutCalendarView: View {
 
         Task.detached(priority: .userInitiated) {
             let bgContext = ModelContext(container)
-            let desc = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+            var desc = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+            desc.fetchLimit = 800
             let allWorkouts = (try? bgContext.fetch(desc)) ?? []
 
             let miniWorkouts = allWorkouts.map { w in

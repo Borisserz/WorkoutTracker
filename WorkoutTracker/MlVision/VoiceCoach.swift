@@ -52,6 +52,13 @@ final class VoiceCoach: NSObject, ObservableObject, AVSpeechSynthesizerDelegate 
         synthesizer.speak(utterance)
     }
 
+    func stop() {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+        try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
 
         Task { @MainActor in

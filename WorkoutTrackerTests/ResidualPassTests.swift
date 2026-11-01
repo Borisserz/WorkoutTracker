@@ -254,6 +254,37 @@ final class ResidualPassTests: XCTestCase {
         )
     }
 
+    func testRecoveryMapDoesNotPadUntrainedMusclesTo100() async {
+        let schema = Schema([
+            Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
+            ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
+            AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
+        ])
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(for: schema, configurations: [config])
+        let context = ModelContext(container)
+
+        let workout = Workout(title: "Chest only", date: Date().addingTimeInterval(-3600))
+        workout.endTime = Date()
+        workout.durationSeconds = 3600
+        let exercise = Exercise(name: "Bench", muscleGroup: "Chest", type: .strength, effort: 8)
+        let set = WorkoutSet(index: 0, weight: 60, reps: 8, isCompleted: true)
+        context.insert(workout)
+        context.insert(exercise)
+        context.insert(set)
+        exercise.addSafeSet(set)
+        workout.exercises = [exercise]
+        try! context.save()
+
+        let store = WorkoutStore(modelContainer: container)
+        let analytics = AnalyticsService(workoutStore: store, modelContainer: container)
+        let recovery = await analytics.calculateRecovery(hours: 48, workouts: [workout])
+        let slugs = Set(recovery.map(\.muscleGroup))
+        XCTAssertTrue(slugs.contains("chest") || recovery.contains(where: { $0.muscleGroup.lowercased().contains("chest") }))
+        XCTAssertFalse(slugs.contains("hair"), "Must not invent 100% recovery for unused anatomy slugs")
+        XCTAssertFalse(slugs.contains("feet"))
+    }
+
     func testCalorieCalculatorDoesNotInventOneHourWhenDurationMissing() {
         let workout = Workout(title: "Short", date: Date().addingTimeInterval(-600))
         workout.endTime = Date()

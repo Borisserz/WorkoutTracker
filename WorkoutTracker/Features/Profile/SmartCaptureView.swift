@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import UIKit
 
 struct SmartCaptureView: View {
     @Environment(\.dismiss) private var dismiss
@@ -32,7 +33,22 @@ struct SmartCaptureView: View {
                 }
 
             } else {
-                ProgressView().tint(.white)
+                VStack(spacing: 16) {
+                    ProgressView().tint(.white)
+                    if viewModel.authorizationDenied {
+                        Text("Camera access is required for Smart Capture.")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        Button("Open Settings") {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
             }
         }
         .preferredColorScheme(.dark)

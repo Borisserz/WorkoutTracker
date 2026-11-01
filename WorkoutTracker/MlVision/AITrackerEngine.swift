@@ -201,7 +201,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 160.0, contracted: 50.0, hysteresis: 15.0),
             maxOccludedFrames: 8,
             primaryMuscles: ["biceps"], secondaryMuscles: ["forearm"],
-            texts: PhaseTexts(contracting: String(localized: "Crunch"), contracted: String(localized: "Squeeze abs"), extending: String(localized: "Lower back"), relaxed: String(localized: "Lie flat")))
+            texts: PhaseTexts(contracting: String(localized: "Curl up"), contracted: String(localized: "Squeeze biceps"), extending: String(localized: "Lower slowly"), relaxed: String(localized: "Arms straight")))
     }
 
     private static func squatPattern(name: String) -> BiomechanicsProfile {
@@ -228,7 +228,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 1.1, contracted: 0.25, hysteresis: 0.15),
             maxOccludedFrames: 8,
             primaryMuscles: ["upper-back", "lats", "biceps"], secondaryMuscles: ["forearm", "deltoids"],
-            texts: PhaseTexts(contracting: String(localized: "Stand up"), contracted: String(localized: "Stand tall"), extending: String(localized: "Hinge forward"), relaxed: String(localized: "Stretch hamstrings")))
+            texts: PhaseTexts(contracting: String(localized: "Pull down"), contracted: String(localized: "Squeeze back"), extending: String(localized: "Reach up"), relaxed: String(localized: "Stretch lats")))
     }
 
     private static func horizontalPull(name: String) -> BiomechanicsProfile {
@@ -237,7 +237,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 165.0, contracted: 85.0, hysteresis: 15.0),
             maxOccludedFrames: 8,
             primaryMuscles: ["upper-back", "lats"], secondaryMuscles: ["biceps", "lower-back", "deltoids"],
-            texts: PhaseTexts(contracting: String(localized: "Pull down"), contracted: String(localized: "Squeeze back"), extending: String(localized: "Reach up"), relaxed: String(localized: "Stretch lats")))
+            texts: PhaseTexts(contracting: String(localized: "Row back"), contracted: String(localized: "Squeeze back"), extending: String(localized: "Reach forward"), relaxed: String(localized: "Arms long")))
     }
 
     private static func verticalPress(name: String) -> BiomechanicsProfile {
@@ -282,7 +282,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 170.0, contracted: 90.0, hysteresis: 15.0),
             maxOccludedFrames: 8,
             primaryMuscles: ["abs"], secondaryMuscles: ["obliques"],
-            texts: PhaseTexts(contracting: String(localized: "Stand up"), contracted: String(localized: "Stand tall"), extending: String(localized: "Squat down"), relaxed: String(localized: "Hold bottom")))
+            texts: PhaseTexts(contracting: String(localized: "Crunch"), contracted: String(localized: "Squeeze abs"), extending: String(localized: "Lower back"), relaxed: String(localized: "Lie flat")))
     }
 
     private static func lateralRaise(name: String) -> BiomechanicsProfile {
@@ -291,7 +291,7 @@ public enum ExerciseRegistry: Sendable {
             thresholds: PhaseThresholds(relaxed: 15.0, contracted: 85.0, hysteresis: 10.0),
             maxOccludedFrames: 8,
             primaryMuscles: ["deltoids"], secondaryMuscles: ["trapezius", "upper-back"],
-            texts: PhaseTexts(contracting: String(localized: "Curl up"), contracted: String(localized: "Squeeze biceps"), extending: String(localized: "Lower slowly"), relaxed: String(localized: "Arms straight")))
+            texts: PhaseTexts(contracting: String(localized: "Raise arms"), contracted: String(localized: "Hold at top"), extending: String(localized: "Lower slowly"), relaxed: String(localized: "Arms at sides")))
     }
 
     private static func calfRaise(name: String) -> BiomechanicsProfile {
@@ -469,19 +469,14 @@ public final class RepetitionTracker {
         // ✅ УЛУЧШЕНИЕ: Нормализованные метрики — значение в единицах торса
         case .normalizedDistance(let j1, let j2):
             guard let p1 = joints[j1], let p2 = joints[j2] else { return nil }
-            let raw = BiomechanicsMath.distance(p1: p1, p2: p2)
-            guard let torso = BiomechanicsMath.torsoHeight(joints: joints) else {
-                return raw  // Fallback: без нормализации если торс не виден
-            }
-            return raw / torso
+            // Missing torso → occlusion, not raw units (raw ≪ normalized thresholds → false reps).
+            guard let torso = BiomechanicsMath.torsoHeight(joints: joints) else { return nil }
+            return BiomechanicsMath.distance(p1: p1, p2: p2) / torso
 
         case .normalizedProjectionY(let j1, let j2):
             guard let p1 = joints[j1], let p2 = joints[j2] else { return nil }
-            let raw = BiomechanicsMath.projectedDistanceY(p1: p1, p2: p2)
-            guard let torso = BiomechanicsMath.torsoHeight(joints: joints) else {
-                return raw  // Fallback: без нормализации если торс не виден
-            }
-            return raw / torso
+            guard let torso = BiomechanicsMath.torsoHeight(joints: joints) else { return nil }
+            return BiomechanicsMath.projectedDistanceY(p1: p1, p2: p2) / torso
 
         case .fallback(let primary, let secondary):
             return extractMetricValue(primary, from: joints)

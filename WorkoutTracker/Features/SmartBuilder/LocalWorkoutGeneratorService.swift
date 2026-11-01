@@ -110,9 +110,13 @@ actor LocalWorkoutGeneratorService {
                 return !low.contains("barbell") && !low.contains("machine") && !low.contains("cable")
             }
         case .bodyweight:
-            return allExercises.filter {
-                let low = $0.lowercased()
-                return ["push up", "pull-up", "plank", "crunch", "squat", "lunges", "running"].contains(where: low.contains)
+            return allExercises.filter { name in
+                let low = name.lowercased()
+                    .replacingOccurrences(of: "-", with: " ")
+                    .replacingOccurrences(of: "_", with: " ")
+                let tokens = ["push up", "pushup", "pull up", "pullup", "chin up", "plank", "crunch", "sit up", "squat", "lunge", "running", "burpee", "dip", "mountain climber", "jumping jack"]
+                let looksMachine = low.contains("machine") || low.contains("cable") || low.contains("barbell") || low.contains("smith")
+                return !looksMachine && tokens.contains(where: low.contains)
             }
         }
     }

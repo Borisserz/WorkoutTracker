@@ -556,9 +556,13 @@ struct WorkoutHubView: View {
 
     // MARK: - 4. Best Workout Today Hero Card (Merged Target Focus + Muscle Readiness Intelligence)
     private var averageReadinessPercentage: Int? {
-        guard !dashboardViewModel.recoveryStatus.isEmpty else { return nil }
-        let total = dashboardViewModel.recoveryStatus.map(\.recoveryPercentage).reduce(0, +)
-        return max(0, min(100, total / max(1, dashboardViewModel.recoveryStatus.count)))
+        let ignoredParts: Set<String> = ["hair", "head", "hands", "feet", "ankles", "knees"]
+        let training = dashboardViewModel.recoveryStatus.filter {
+            !ignoredParts.contains($0.muscleGroup.lowercased())
+        }
+        guard !training.isEmpty else { return nil }
+        let total = training.map(\.recoveryPercentage).reduce(0, +)
+        return max(0, min(100, total / max(1, training.count)))
     }
 
     private var freshMusclesListText: String? {

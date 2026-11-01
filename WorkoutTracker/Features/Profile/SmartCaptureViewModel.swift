@@ -12,6 +12,7 @@ import Combine
 final class SmartCaptureViewModel: NSObject {
 
     var isAuthorized: Bool = false
+    var authorizationDenied: Bool = false
     var countdown: Int? = nil
     var showFlash: Bool = false
     var capturedImage: UIImage? = nil
@@ -56,16 +57,20 @@ final class SmartCaptureViewModel: NSObject {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
             isAuthorized = true
+            authorizationDenied = false
             setupSession()
         case .notDetermined:
+            authorizationDenied = false
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 Task { @MainActor in
                     self?.isAuthorized = granted
+                    self?.authorizationDenied = !granted
                     if granted { self?.setupSession() }
                 }
             }
         default:
             isAuthorized = false
+            authorizationDenied = true
         }
     }
 

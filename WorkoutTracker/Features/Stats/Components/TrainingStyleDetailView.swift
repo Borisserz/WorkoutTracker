@@ -6,8 +6,16 @@ import Charts
 
 struct TrainingStyleDetailView: View {
     @Environment(DIContainer.self) private var di
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
 
     enum TrendPeriod: String, CaseIterable, Identifiable, Sendable {
         case week = "Week", month = "Month", year = "Year", allTime = "All Time"

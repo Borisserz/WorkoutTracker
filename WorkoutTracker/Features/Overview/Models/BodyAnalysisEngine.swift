@@ -58,29 +58,21 @@ enum BodyAnalysisEngine {
         ]
         
         for slug in displayOrder {
-            let pct: Int
-            if let measured = recoveryDict[slug] {
-                pct = measured
-            } else if hasRecoveryData {
-                // Other muscles measured; this one never loaded → treat as recovered.
-                pct = 100
-            } else {
-                // No recovery map at all — don't invent readiness rows.
-                continue
-            }
+            // Only measured muscles — missing slug is unmeasured, not invented 100%.
+            guard let pct = recoveryDict[slug] else { continue }
             let name = MuscleDisplayHelper.getDisplayName(for: slug)
             let remainingHours = max(0, Int(Double(100 - pct) / 100.0 * fullRecoveryHours))
             let item = MuscleReadinessItem(name: name, percentage: pct, hoursRemaining: remainingHours)
-            
+
             if pct >= 80 {
                 prime.append(item)
             } else {
                 recovering.append(item)
             }
         }
-        
+
         func pct(_ key: String) -> Int {
-            recoveryDict[key] ?? (hasRecoveryData ? 100 : -1)
+            recoveryDict[key] ?? -1
         }
         let chestPct = pct("chest")
         let backPct = pct("upper-back")

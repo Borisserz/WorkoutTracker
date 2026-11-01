@@ -1919,8 +1919,18 @@ struct AllTimeResultsView: View {
     let unitsManager: UnitsManager
     @Environment(\.colorScheme) private var colorScheme
 
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
+
+    init(bestStats: PeriodStats, unitsManager: UnitsManager) {
+        self.bestStats = bestStats
+        self.unitsManager = unitsManager
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
 
     private static let stickersList = [
         MoodSticker(emoji: "🔥", title: "Limitless", subtitle: "Beast Mode", color: .orange, motivation: "LFG! You are in Beast Mode today! 🔥"),
@@ -2036,8 +2046,16 @@ struct SetsTrendDetailView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
 
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
 
     enum TrendPeriod: String, CaseIterable, Identifiable {
         case week = "Week"
@@ -2337,10 +2355,19 @@ struct SetsTrendDetailView: View {
     }
 }
 struct RadarChartDetailView: View {
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
+
     enum TrendPeriod: String, CaseIterable, Identifiable {
         case week = "Week", month = "Month", year = "Year", allTime = "All Time"
         var id: String { self.rawValue }
@@ -2830,13 +2857,22 @@ struct RadarChartDetailView: View {
         }}
 
 struct HeatmapDetailView: View {
-       @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-       private var allWorkouts: [Workout]
+       @Query private var allWorkouts: [Workout]
        @Environment(ThemeManager.self) private var themeManager
        let gender: String
-       @Environment(\.colorScheme) private var colorScheme 
+       @Environment(\.colorScheme) private var colorScheme
        @State private var selectedPeriod: SetsTrendDetailView.TrendPeriod = .month
        @State private var aggregatedData: HeatmapAggregatedData? = nil
+
+       init(gender: String) {
+           self.gender = gender
+           var descriptor = FetchDescriptor<Workout>(
+               predicate: #Predicate<Workout> { $0.endTime != nil },
+               sortBy: [SortDescriptor(\.date, order: .reverse)]
+           )
+           descriptor.fetchLimit = 400
+           _allWorkouts = Query(descriptor)
+       }
        @State private var isProcessing = true
 
        var body: some View {
@@ -3228,8 +3264,7 @@ struct HeatmapDetailView: View {
     }
 
     struct MonthlyReportStoryView: View {
-        @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-        private var allWorkouts: [Workout]
+        @Query private var allWorkouts: [Workout]
 
         @Environment(\.dismiss) private var dismiss
         @Environment(UnitsManager.self) var unitsManager
@@ -3237,6 +3272,15 @@ struct HeatmapDetailView: View {
         @State private var payload: PeriodReportPayload?
         @State private var currentSlide: ReportSlide = .intro
         @State private var slideProgress: CGFloat = 0.0
+
+        init() {
+            var descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            descriptor.fetchLimit = 400
+            _allWorkouts = Query(descriptor)
+        }
         @State private var isPaused: Bool = false
         @State private var isProcessing: Bool = true
 

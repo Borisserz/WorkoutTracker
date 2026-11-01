@@ -14,6 +14,7 @@ final class SpeechRecognizer {
     private var audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    private var hasInstalledTap = false
     /// Lazy: constructing `SFSpeechRecognizer` can present the Speech TCC sheet
     /// when AI Hub is merely tabulated. Only create on mic use.
     private var recognizer: SFSpeechRecognizer?
@@ -92,6 +93,7 @@ final class SpeechRecognizer {
             inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
                 self.request?.append(buffer)
             }
+            hasInstalledTap = true
 
             audioEngine.prepare()
             try audioEngine.start()
@@ -106,7 +108,9 @@ final class SpeechRecognizer {
                 }
             }
         } catch {
+            #if DEBUG
             print("Error starting microphone: \(error)")
+            #endif
             errorMessage = "Couldn't start the microphone. Please try again."
             stopTranscribing()
         }
@@ -114,7 +118,10 @@ final class SpeechRecognizer {
 
     func stopTranscribing() {
         audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if hasInstalledTap {
+            audioEngine.inputNode.removeTap(onBus: 0)
+            hasInstalledTap = false
+        }
         request?.endAudio()
         task?.cancel()
 

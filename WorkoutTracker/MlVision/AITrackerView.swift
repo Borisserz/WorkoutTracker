@@ -7,6 +7,7 @@ import Combine
 
 struct AITrackerView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(ThemeManager.self) private var themeManager
 
     @StateObject private var cameraManager = CameraManager()
@@ -109,7 +110,21 @@ struct AITrackerView: View {
             coach.speak("Ready. Let's go!")
         }
         .onDisappear {
+            coach.stop()
             cameraManager.stopSession()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background, .inactive:
+                coach.stop()
+                cameraManager.stopSession()
+            case .active:
+                if cameraManager.isAuthorized, !cameraManager.session.isRunning {
+                    cameraManager.retrySessionSetup()
+                }
+            @unknown default:
+                break
+            }
         }
 
         // MARK: - Body Pose → Engine

@@ -61,7 +61,7 @@ struct PremiumProgramCardView: View {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .stroke(Color.white.opacity(0.2), lineWidth: 1)
         )
-        .shadow(color: program.gradientColors.first!.opacity(0.4), radius: 15, x: 0, y: 8)
+        .shadow(color: (program.gradientColors.first ?? PastelTheme.pastelLavender).opacity(0.4), radius: 15, x: 0, y: 8)
     }
 }
 

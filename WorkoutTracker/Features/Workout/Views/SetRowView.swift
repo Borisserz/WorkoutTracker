@@ -317,11 +317,12 @@ struct SetRowView: View {
             }
             .fullScreenCover(isPresented: $showAITracker) {
                 AITrackerView(exerciseName: exerciseName) { countedReps in
-                    if countedReps > 0 {
-                        set.reps = countedReps
-                        onDataChange?()
+                    guard countedReps > 0 else { return }
+                    set.reps = countedReps
+                    onDataChange?()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        if !set.isCompleted { toggleComplete() }
                     }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { if !set.isCompleted { toggleComplete() } }
                 }
             }
         }

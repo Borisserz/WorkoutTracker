@@ -87,6 +87,21 @@ struct SmartGeneratorEntryView: View {
                     loadingOverlay
                 }
             }
+            .overlay(alignment: .top) {
+                if let error = vm.generationError {
+                    Text(error)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(PastelTheme.textOnOat)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(PastelTheme.pastelPeach.opacity(0.92))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
+            }
             .navigationTitle("Session of the day")
             .navigationBarTitleDisplayMode(.inline)
             .accessibilityIdentifier("wt.smartBuilder.root")

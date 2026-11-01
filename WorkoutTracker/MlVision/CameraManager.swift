@@ -25,10 +25,16 @@ final class CameraManager: ObservableObject {
 
     deinit {
         videoOutput.setSampleBufferDelegate(nil, queue: nil)
-        if session.isRunning {
-            session.stopRunning()
+        // Never stopRunning synchronously from MainActor deinit — AVCapture deadlock risk.
+        let captureSession = session
+        DispatchQueue.global(qos: .userInitiated).async {
+            if captureSession.isRunning {
+                captureSession.stopRunning()
+            }
         }
+        #if DEBUG
         print("♻️ CameraManager deallocated, Vision pipeline cleared")
+        #endif
     }
 
     func checkPermission() {
@@ -54,15 +60,39 @@ final class CameraManager: ObservableObject {
 
     func retrySessionSetup() {
         sessionSetupFailed = false
+        tearDownSessionIO()
         setupSession()
+    }
+
+    private func tearDownSessionIO() {
+        videoOutput.setSampleBufferDelegate(nil, queue: nil)
+        cameraDelegate = nil
+        if session.isRunning {
+            session.stopRunning()
+        }
+        session.beginConfiguration()
+        for input in session.inputs {
+            session.removeInput(input)
+        }
+        for output in session.outputs {
+            session.removeOutput(output)
+        }
+        session.commitConfiguration()
+        joints = [:]
+        handPose = nil
+        bodyPose = nil
     }
 
     private func setupSession() {
         guard !session.isRunning else { return }
         sessionSetupFailed = false
+        // Idempotent: clear orphaned I/O from a previous partial failure before re-adding.
+        if !session.inputs.isEmpty || !session.outputs.isEmpty {
+            tearDownSessionIO()
+        }
         session.beginConfiguration()
 
-        // ✅ УЛУЧШЕНИЕ: HD720 вместо VGA — Vision работает значительно точнее
+        // HD720 — Vision joint accuracy vs VGA.
         session.sessionPreset = .hd1280x720
 
         guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
@@ -77,7 +107,6 @@ final class CameraManager: ObservableObject {
             return
         }
 
-        // Оптимизация: 30 fps, автофокус и авторегулировка экспозиции
         try? videoDevice.lockForConfiguration()
         if videoDevice.isFocusModeSupported(.continuousAutoFocus) {
             videoDevice.focusMode = .continuousAutoFocus
@@ -108,6 +137,9 @@ final class CameraManager: ObservableObject {
         videoOutput.setSampleBufferDelegate(delegate, queue: cameraQueue)
 
         guard session.canAddOutput(videoOutput) else {
+            session.removeInput(videoInput)
+            videoOutput.setSampleBufferDelegate(nil, queue: nil)
+            cameraDelegate = nil
             session.commitConfiguration()
             sessionSetupFailed = true
             return
@@ -124,6 +156,7 @@ final class CameraManager: ObservableObject {
     }
 
     func stopSession() {
+        videoOutput.setSampleBufferDelegate(nil, queue: nil)
         if session.isRunning {
             Task.detached { [weak self] in self?.session.stopRunning() }
         }

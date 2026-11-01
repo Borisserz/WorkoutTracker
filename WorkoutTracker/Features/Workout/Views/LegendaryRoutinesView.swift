@@ -115,10 +115,11 @@ struct LegendaryRoutinesView: View {
             if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "legendary") {
                 di.appState.returnToActiveWorkoutId = id
                 di.appState.selectedTab = 2
+                isStartingWorkout = false
+                dismiss()
+            } else {
+                isStartingWorkout = false
             }
-
-            isStartingWorkout = false
-            dismiss()
         }
     }
 }
