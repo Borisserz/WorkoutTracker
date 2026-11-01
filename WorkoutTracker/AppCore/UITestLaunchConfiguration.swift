@@ -10,7 +10,10 @@ enum UITestLaunchConfiguration {
         if let idx = args.firstIndex(of: "-UITestMode"), args.index(after: idx) < args.endIndex {
             return args[args.index(after: idx)].lowercased() != "false"
         }
-        return ProcessInfo.processInfo.environment["UITEST_MODE"] == "1"
+        if ProcessInfo.processInfo.environment["UITEST_MODE"] == "1" { return true }
+        // Unit tests: skip Health / TCC sheets that can hang xcodebuild test runners.
+        if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil { return true }
+        return false
     }
 
     /// Call as early as possible (AppDelegate) before SwiftUI `@AppStorage` reads.

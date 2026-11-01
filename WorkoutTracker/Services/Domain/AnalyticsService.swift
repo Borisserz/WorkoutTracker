@@ -341,7 +341,9 @@ actor AnalyticsService {
 
             try bgContext.save()
         } catch {
+            #if DEBUG
             print("❌ Analytics rebuild save failed — previous caches may remain: \(error)")
+            #endif
         }
     }
 

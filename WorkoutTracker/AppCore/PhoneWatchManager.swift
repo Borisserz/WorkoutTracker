@@ -27,7 +27,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     nonisolated func session(_ session: WCSession,
                              activationDidCompleteWith state: WCSessionActivationState,
                              error: Error?) {
+        #if DEBUG
         print("📱 activation: \(state.rawValue) reachable:\(session.isReachable) error:\(String(describing: error))")
+        #endif
         if let error = error {
             TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "WCSessionActivation"])
         }
@@ -43,7 +45,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String : Any] = [:]) {
         Task { @MainActor in
             if let request = userInfo["request"] as? String, request == "presets" {
+                #if DEBUG
                 print("📱 got queued presets request (transferUserInfo)")
+                #endif
                 self.sendPresetsToWatch()
             }
             if let data = userInfo["guaranteedSyncPayload"] as? Data,
@@ -95,7 +99,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
                 replyHandler?([:])
             }
         } else if let request = message["request"] as? String, request == "presets" {
+            #if DEBUG
             print("📱 got presets request (sendMessage)")
+            #endif
             Task { @MainActor in
                 self.sendPresetsToWatch()
                 replyHandler?([:])
@@ -161,7 +167,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     private func sendPresetsToWatch() {
         let trace = TrackingManager.shared.startTrace(name: "watch_send_presets")
         guard let container = modelContainer else { 
+            #if DEBUG
             print("📱 ❌ no modelContainer")
+            #endif
             trace?.stop()
             return 
         }
@@ -171,7 +179,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
             let presets = try context.fetch(descriptor)
             let dtos = presets.map { $0.toDTO() }
             let data = try JSONEncoder().encode(dtos)
+            #if DEBUG
             print("📱 sending \(presets.count) presets, \(data.count) bytes")
+            #endif
 
             // ГАРАНТИРОВАННАЯ доставка на симуляторе — не зависит от reachability.
             try WCSession.default.updateApplicationContext([
@@ -184,7 +194,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
             }
             trace?.stop()
         } catch {
+            #if DEBUG
             print("📱 ❌ sendPresetsToWatch failed: \(error)")
+            #endif
             TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "sendPresetsToWatch"])
             trace?.stop()
         }

@@ -28,8 +28,7 @@ struct WorkoutHubView: View {
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
     private var userPresets: [WorkoutPreset]
 
-    @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
-    private var favoriteWorkouts: [Workout]
+    @Query private var favoriteWorkouts: [Workout]
 
     @Query(filter: #Predicate<Workout> { $0.endTime == nil }, sort: \Workout.date, order: .reverse)
     private var activeWorkouts: [Workout]
@@ -69,6 +68,13 @@ struct WorkoutHubView: View {
         )
         finished.fetchLimit = 400
         _finishedWorkouts = Query(finished)
+
+        var favorites = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.isFavorite == true },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        favorites.fetchLimit = 400
+        _favoriteWorkouts = Query(favorites)
     }
 
     // MARK: - Filter Logic

@@ -385,7 +385,9 @@ struct WorkoutTrackerApp: App {
             if let groupURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.borisdev.WorkoutTracker") {
                 dbURL = groupURL.appendingPathComponent("WorkoutDatabase.sqlite")
             } else {
+                #if DEBUG
                 print("⚠️ CRITICAL: App Group container not found. Falling back to local Documents directory. Widgets and Apple Watch may not be able to access the database.")
+                #endif
                 let paths = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
                 dbURL = paths[0].appendingPathComponent("WorkoutDatabase.sqlite")
             }
@@ -403,7 +405,9 @@ struct WorkoutTrackerApp: App {
                 )
                 container = try ModelContainer(for: schema, configurations: [cloudConfig])
             } catch {
+                #if DEBUG
                 print("⚠️ CloudKit didn't open, local rollback: \(error)")
+                #endif
                 let localConfig = ModelConfiguration(schema: schema, url: dbURL, cloudKitDatabase: .none)
                 container = try ModelContainer(for: schema, configurations: [localConfig])
             }
@@ -427,7 +431,9 @@ struct WorkoutTrackerApp: App {
                     _ = try await AnonymousAuthBootstrap.shared.ensureSignedIn()
                     await BlockedUsersStore.shared.startListening()
                 } catch {
+                    #if DEBUG
                     print("⚠️ Anonymous auth bootstrap failed: \(error.localizedDescription)")
+                    #endif
                     // Maestro / UITestMode: keep chrome unobstructed; cloud is optional for smoke.
                     if !UITestLaunchConfiguration.isUITestMode {
                         await MainActor.run {
@@ -454,7 +460,9 @@ struct WorkoutTrackerApp: App {
         } catch {
             TrackingManager.shared.track(.errorOccurred(errorType: "database_load_failed", screen: "WorkoutTrackerApp"))
             self.databaseLoadError = error
+            #if DEBUG
             print("❌ SwiftData Initialization Failed: \(error)")
+            #endif
             TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "SwiftData_init"])
             // Keep DatabaseErrorView reachable — do not crash after setting the error.
         }

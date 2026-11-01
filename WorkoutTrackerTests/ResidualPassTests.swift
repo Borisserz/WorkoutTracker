@@ -1,4 +1,5 @@
 import XCTest
+import SwiftData
 @testable import WorkoutTracker
 
 final class ResidualPassTests: XCTestCase {
@@ -117,5 +118,28 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertTrue(json.contains("aiChatSessions"))
         XCTAssertTrue(json.contains("muscleColors"))
         XCTAssertTrue(json.contains("chest"))
+    }
+
+    /// Concurrent starts must serialize: only one active session survives the race at `hasActiveWorkout` await.
+    @MainActor
+    func testConcurrentCreateWorkoutAllowsOnlyOneActiveSession() async throws {
+        let schema = Schema([
+            Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,
+            ExerciseStat.self, MuscleStat.self, WeightEntry.self, MuscleColorPreference.self,
+            AIChatSession.self, BodyMeasurement.self, ExerciseDictionaryItem.self, UserGoal.self
+        ])
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: [config])
+        let di = DIContainer(modelContainer: container)
+
+        async let first = di.workoutService.createWorkout(title: "Race A", presetID: nil, isAIGenerated: false)
+        async let second = di.workoutService.createWorkout(title: "Race B", presetID: nil, isAIGenerated: false)
+        let results = await [first, second]
+
+        let successes = results.compactMap { $0 }
+        XCTAssertEqual(successes.count, 1, "Exactly one create must win the start race")
+
+        let activeIDs = try await di.workoutStore.findActiveWorkoutsAndCleanup()
+        XCTAssertEqual(activeIDs.count, 1, "Store must contain a single active workout")
     }
 }

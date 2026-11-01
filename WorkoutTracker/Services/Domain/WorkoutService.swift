@@ -249,6 +249,9 @@ final class WorkoutService {
             )
             return nil
         }
+        // Claim the start lock before any await — otherwise two MainActor tasks both pass the check.
+        startInFlight = true
+        defer { startInFlight = false }
         let alreadyActive = await hasActiveWorkout()
         if alreadyActive {
             appState.showError(
@@ -257,8 +260,6 @@ final class WorkoutService {
             )
             return nil
         }
-        startInFlight = true
-        defer { startInFlight = false }
         do {
             try? await HealthKitManager.shared.requestAuthorization()
             let id = try await workoutStore.createWorkout(title: title, fromPresetID: presetID, isAIGenerated: isAIGenerated)
@@ -283,6 +284,8 @@ final class WorkoutService {
             )
             return nil
         }
+        startInFlight = true
+        defer { startInFlight = false }
         let alreadyActive = await hasActiveWorkout()
         if alreadyActive {
             appState.showError(
@@ -291,8 +294,6 @@ final class WorkoutService {
             )
             return nil
         }
-        startInFlight = true
-        defer { startInFlight = false }
         do {
             try? await HealthKitManager.shared.requestAuthorization()
             let id = try await workoutStore.createWorkoutFromAI(generated: generated)
@@ -321,7 +322,9 @@ final class WorkoutService {
             return !activeIDs.isEmpty
         } catch {
             // Fail closed: unknown store state must not allow a second active session.
+            #if DEBUG
             print("Error checking for active workouts: \(error)")
+            #endif
             appState.showError(
                 title: String(localized: "Workout in progress"),
                 message: String(localized: "Could not verify active workouts. Try again in a moment.")
@@ -435,7 +438,9 @@ final class WorkoutService {
                             calories: burnedCalories 
                         )
                     } catch {
+                        #if DEBUG
                         print("⚠️ Failed to sync workout to HealthKit: \(error)")
+                        #endif
                     }
                 }
             } catch {
@@ -469,7 +474,9 @@ final class WorkoutService {
             let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
             if activeIDs.isEmpty { stopLiveActivity() }
         } catch {
+            #if DEBUG
             print("Cleanup failed: \(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -485,7 +492,9 @@ final class WorkoutService {
         do {
             try await exerciseCatalogService.checkAndGenerateDefaultPresets()
         } catch {
+            #if DEBUG
             print("Failed to generate default presets: \(error.localizedDescription)")
+            #endif
         }
     }
 
