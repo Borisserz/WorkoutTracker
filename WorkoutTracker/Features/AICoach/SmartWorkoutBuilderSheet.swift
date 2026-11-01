@@ -42,8 +42,7 @@ struct SmartWorkoutBuilderSheet: View {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 100), spacing: 10)], spacing: 10) {
                             ForEach(availableMuscles, id: \.self) { muscle in
                                 Button {
-                                    let generator = UIImpactFeedbackGenerator(style: .light)
-                                    generator.impactOccurred()
+                                    HapticManager.shared.impact(.light)
 
                                     if selectedMuscles.contains(muscle) {
                                         selectedMuscles.remove(muscle)
@@ -146,8 +145,7 @@ struct SmartWorkoutBuilderSheet: View {
     }
 
     private func generatePromptAndDismiss() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        HapticManager.shared.notification(.success)
 
         let musclesStr = selectedMuscles.isEmpty ? "Full Body" : selectedMuscles.joined(separator: ", ")
 

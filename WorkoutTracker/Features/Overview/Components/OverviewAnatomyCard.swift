@@ -41,8 +41,8 @@ struct OverviewAnatomyCard: View {
     private let frontMuscleSlugs = ["chest", "deltoids", "biceps", "abs", "quadriceps"]
     private let backMuscleSlugs = ["upper-back", "deltoids", "triceps", "lower-back", "gluteal", "hamstring", "calves"]
 
-    private var averageReadiness: Int {
-        guard !recoveryDict.isEmpty else { return 100 }
+    private var averageReadiness: Int? {
+        guard !recoveryDict.isEmpty else { return nil }
         let sum = recoveryDict.values.reduce(0, +)
         return sum / recoveryDict.count
     }
@@ -75,11 +75,11 @@ struct OverviewAnatomyCard: View {
         }
 
         if selectedMusclePct >= 95 {
-            return "Полное восстановление · Готов к высокой нагрузке"
+            return "Fully recovered — ready for high load"
         } else if let exName = lastExerciseName {
-            return "\(hoursRemaining) ч до восстановления · Нагрузка: \(exName)"
+            return "\(hoursRemaining)h to recover — last load: \(exName)"
         } else {
-            return "\(hoursRemaining) ч до полного клеточного восстановления"
+            return "\(hoursRemaining)h until full recovery"
         }
     }
 
@@ -89,13 +89,16 @@ struct OverviewAnatomyCard: View {
             // MARK: - Header & Front / Back Toggle
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Готовность мышц и анатомия")
+                    Text("Muscle readiness and anatomy")
                         .font(.headline)
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("\(averageReadiness)% общая готовность")
+                    Text(
+                        averageReadiness.map { "\($0)% \(String(localized: "overall readiness"))" }
+                        ?? String(localized: "Readiness not measured")
+                    )
                         .font(.caption)
-                        .foregroundStyle(PastelTheme.pastelSage)
+                        .foregroundStyle(averageReadiness == nil ? PastelTheme.textSecondary : PastelTheme.pastelSage)
                 }
 
                 Spacer()
@@ -103,14 +106,14 @@ struct OverviewAnatomyCard: View {
                 // Minimalist Pastel Segmented Toggle with Soft Haptics
                 HStack(spacing: 0) {
                     Button {
-                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        HapticManager.shared.impact(.soft)
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                             isFrontView = true
                             selectedMuscleName = nil
                             selectedMuscleSlug = nil
                         }
                     } label: {
-                        Text("Спереди")
+                        Text("Front")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(isFrontView ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                             .padding(.horizontal, 14)
@@ -121,14 +124,14 @@ struct OverviewAnatomyCard: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        HapticManager.shared.impact(.soft)
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                             isFrontView = false
                             selectedMuscleName = nil
                             selectedMuscleSlug = nil
                         }
                     } label: {
-                        Text("Сзади")
+                        Text("Back")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(!isFrontView ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                             .padding(.horizontal, 14)
@@ -162,7 +165,7 @@ struct OverviewAnatomyCard: View {
                     showLabels: true,
                     selectedMuscleSlug: selectedMuscleSlug,
                     onMuscleTapped: { muscle, pct in
-                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        HapticManager.shared.impact(.soft)
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                             if selectedMuscleSlug == muscle.slug {
                                 selectedMuscleSlug = nil
@@ -193,7 +196,7 @@ struct OverviewAnatomyCard: View {
                         }
                         .onEnded { val in
                             if abs(val.translation.width) > 55 {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                HapticManager.shared.impact(.medium)
                                 withAnimation(.spring(response: 0.42, dampingFraction: 0.72)) {
                                     isFrontView.toggle()
                                     selectedMuscleSlug = nil
@@ -240,13 +243,13 @@ struct OverviewAnatomyCard: View {
                     HStack(spacing: 8) {
                         let slugs = isFrontView ? frontMuscleSlugs : backMuscleSlugs
                         ForEach(slugs, id: \.self) { slug in
-                            let pct = recoveryDict[slug] ?? 100
+                            let pct = recoveryDict[slug]
                             let name = MuscleDisplayHelper.getDisplayName(for: slug)
                             let isCurrentSelected = selectedMuscleSlug == slug
-                            let dotColor = muscleColor(for: pct)
+                            let dotColor = pct.map(muscleColor(for:)) ?? PastelTheme.textSecondary
 
                             Button {
-                                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                                HapticManager.shared.impact(.soft)
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                                     if selectedMuscleSlug == slug {
                                         selectedMuscleSlug = nil
@@ -254,7 +257,7 @@ struct OverviewAnatomyCard: View {
                                     } else {
                                         selectedMuscleSlug = slug
                                         selectedMuscleName = name
-                                        selectedMusclePct = pct
+                                        selectedMusclePct = pct ?? -1
                                     }
                                 }
                             } label: {
@@ -267,7 +270,7 @@ struct OverviewAnatomyCard: View {
                                         .font(.caption.weight(.medium))
                                         .foregroundStyle(isCurrentSelected ? PastelTheme.textOnOat : PastelTheme.textPrimary)
 
-                                    Text("\(pct)%")
+                                    Text(pct.map { "\($0)%" } ?? "—")
                                         .font(.caption.bold())
                                         .foregroundStyle(isCurrentSelected ? PastelTheme.textOnOat : dotColor)
                                 }
@@ -350,7 +353,7 @@ struct OverviewAnatomyCard: View {
                             .font(.caption.bold())
                             .foregroundStyle(PastelTheme.pastelSage)
 
-                        Text("Готовы")
+                        Text("Ready")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -376,7 +379,7 @@ struct OverviewAnatomyCard: View {
                             .font(.caption.bold())
                             .foregroundStyle(PastelTheme.pastelAmber)
 
-                        Text("В норме")
+                        Text("OK")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -402,7 +405,7 @@ struct OverviewAnatomyCard: View {
                             .font(.caption.bold())
                             .foregroundStyle(PastelTheme.pastelPeach)
 
-                        Text("Отдых")
+                        Text("Rest")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -421,13 +424,13 @@ struct OverviewAnatomyCard: View {
 
             // MARK: - Primary Action: Body Analysis CTA Button
             Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                HapticManager.shared.impact(.medium)
                 onBodyAnalysisTap()
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "waveform.path.ecg")
                         .font(.system(size: 16, weight: .semibold))
-                    Text("Анализ тела")
+                    Text("Body analysis")
                         .font(.body.weight(.semibold))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)

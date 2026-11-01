@@ -114,7 +114,7 @@ struct SmartCaptureView: View {
             VStack(spacing: 16) {
                 if viewModel.countdown == nil {
 
-                    Text(viewModel.isBodyAligned ? "Отлично! Покажите ✌️ для снимка." : "Выровняйте положение в кадре.")
+                    Text(viewModel.isBodyAligned ? "Great! Show ✌️ to capture." : "Align your body in the frame.")
                         .font(.subheadline)
                         .fontWeight(.bold)
                         .foregroundColor(viewModel.isBodyAligned ? PastelTheme.pastelSage : PastelTheme.textPrimary)

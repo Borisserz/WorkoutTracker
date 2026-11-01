@@ -2,15 +2,7 @@ internal import SwiftUI
 import Observation
 
 extension Color {
-
     static let premiumBackground = Color(red: 0.05, green: 0.05, blue: 0.08)
-
-    static let neonBlue = Color(red: 0.20, green: 0.60, blue: 1.0)
-    static let neonPurple = Color(red: 0.60, green: 0.20, blue: 1.0)
-    static let neonOrange = Color(red: 1.0, green: 0.40, blue: 0.10)
-    static let neonGreen = Color(red: 0.10, green: 0.85, blue: 0.40)
-    static let neonRed = Color(red: 1.0, green: 0.15, blue: 0.30)
-    static let neonYellow = Color(red: 1.0, green: 0.85, blue: 0.10)
 }
 
 protocol AppTheme: Sendable {
@@ -64,41 +56,6 @@ struct LuxuryPastelTheme: AppTheme {
 
     var overlayGradient: LinearGradient {
         LinearGradient(colors: [PastelTheme.canvas.opacity(0), PastelTheme.canvas.opacity(0.85)], startPoint: .top, endPoint: .bottom)
-    }
-}
-
-struct CyberNeonTheme: AppTheme {
-    var background: Color { .premiumBackground }
-    var surface: Color { Color(red: 0.10, green: 0.10, blue: 0.14) }
-    var surfaceVariant: Color { Color(red: 0.15, green: 0.15, blue: 0.20) }
-
-    var primaryText: Color { .white }
-    var secondaryText: Color { Color(white: 0.6) }
-    var tertiaryText: Color { Color(white: 0.4) }
-    var onAccentText: Color { .white }
-
-    var primaryAccent: Color {
-        return .neonBlue
-    }
-    var secondaryAccent: Color { .neonPurple }
-    var secondaryMidTone: Color { .neonOrange }
-    var deepPremiumAccent: Color { .neonPurple }
-    var lightHighlight: Color { .neonBlue.opacity(0.15) }
-
-    var successColor: Color { .neonGreen }
-    var warningColor: Color { .neonYellow }
-    var errorColor: Color { .neonRed }
-
-    var premiumGradient: LinearGradient {
-        LinearGradient(colors: [.neonBlue, .neonPurple], startPoint: .topLeading, endPoint: .bottomTrailing)
-    }
-
-    var primaryGradient: LinearGradient {
-        LinearGradient(colors: [.neonPurple, .neonOrange], startPoint: .topLeading, endPoint: .bottomTrailing)
-    }
-
-    var overlayGradient: LinearGradient {
-        LinearGradient(colors: [.premiumBackground.opacity(0), .premiumBackground.opacity(0.8)], startPoint: .top, endPoint: .bottom)
     }
 }
 

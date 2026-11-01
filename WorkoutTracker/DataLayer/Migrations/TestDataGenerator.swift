@@ -46,7 +46,19 @@ actor TestDataGenerator {
             if let items = try? modelContext.fetch(FetchDescriptor<ExerciseStat>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<MuscleStat>()) { items.forEach { modelContext.delete($0) } }
             if let items = try? modelContext.fetch(FetchDescriptor<ExerciseNote>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<UserGoal>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<BodyMeasurement>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<MuscleColorPreference>()) { items.forEach { modelContext.delete($0) } }
+            if let items = try? modelContext.fetch(FetchDescriptor<AIChatSession>()) { items.forEach { modelContext.delete($0) } }
             try modelContext.save()
+
+            // Wipe XP + widget payload (I05).
+            UserDefaults.standard.set(0, forKey: "userTotalXP")
+            UserDefaults.standard.set(1, forKey: "userLevel")
+            let suite = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
+            suite?.removeObject(forKey: WidgetDataManager.key)
+            UserDefaults.standard.removeObject(forKey: WidgetDataManager.key)
+            UserDefaults.standard.removeObject(forKey: Constants.UserDefaultsKeys.muscleColors.rawValue)
         } catch {
             print("Fallback deletion error: \(error)")
         }

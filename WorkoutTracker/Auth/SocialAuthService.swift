@@ -121,6 +121,7 @@ final class SocialAuthService {
     // MARK: - Sign Out
 
     func signOut() async throws {
+        GIDSignIn.sharedInstance.signOut()
         try Auth.auth().signOut()
         // Ensure a new anonymous account is created immediately
         try await AnonymousAuthBootstrap.shared.ensureSignedIn()

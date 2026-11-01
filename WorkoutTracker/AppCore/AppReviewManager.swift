@@ -19,7 +19,14 @@ final class AppReviewManager {
         SKStoreReviewController.requestReview(in: scene)
     }
     
-    /// Opens the App Store directly to the review page.
+    /// Opens the App Store product page (for updates / install).
+    static func openAppStoreProductPage() {
+        let urlString = "https://apps.apple.com/app/id\(appStoreID)"
+        guard let url = URL(string: urlString) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    /// Opens the App Store write-review page (ratings only).
     static func openAppStoreReview() {
         let urlString = "https://apps.apple.com/app/id\(appStoreID)?action=write-review"
         guard let url = URL(string: urlString) else { return }

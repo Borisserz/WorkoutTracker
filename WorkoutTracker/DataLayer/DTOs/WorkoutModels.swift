@@ -89,7 +89,17 @@ struct Recommendation: Identifiable, Sendable { var id = UUID(); let type: Recom
 
 enum RecommendationType: Sendable { case frequency, volume, balance, recovery, progression, positive
     var icon: String { self == .frequency ? "calendar" : self == .volume ? "scalemass" : self == .balance ? "scalemass.2" : self == .recovery ? "bed.double" : self == .progression ? "chart.line.uptrend.xyaxis" : "checkmark.circle.fill" }
-    var color: Color { self == .frequency ? .blue : self == .volume ? .purple : self == .balance ? .orange : self == .recovery ? .green : self == .progression ? .pink : .green }
+    var color: Color {
+        // Hex literals (shared with Watch) — matches PastelTheme without AppCore dependency.
+        switch self {
+        case .frequency: return Color(red: 0.45, green: 0.55, blue: 0.70)   // slate
+        case .volume: return Color(red: 0.655, green: 0.545, blue: 0.980)  // lavender
+        case .balance: return Color(red: 0.984, green: 0.749, blue: 0.141) // amber
+        case .recovery: return Color(red: 0.204, green: 0.780, blue: 0.349) // sage
+        case .progression: return Color(red: 0.973, green: 0.443, blue: 0.443) // peach
+        case .positive: return Color(red: 0.204, green: 0.780, blue: 0.349) // sage
+        }
+    }
 }
 struct AppError: Identifiable, Sendable { let id = UUID(); let title: String; let message: String }
 enum PRLevel: Int, CaseIterable, Sendable {

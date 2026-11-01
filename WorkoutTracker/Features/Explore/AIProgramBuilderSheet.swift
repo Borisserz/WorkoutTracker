@@ -12,9 +12,9 @@ extension ProgramGoal {
     }
     var color: Color {
         switch self {
-        case .buildMuscle: return .blue
-        case .getStronger: return .purple
-        case .loseWeight: return .orange
+        case .buildMuscle: return PastelTheme.pastelSlate
+        case .getStronger: return PastelTheme.pastelLavender
+        case .loseWeight: return PastelTheme.pastelAmber
         }
     }
 }
@@ -53,8 +53,7 @@ struct AIProgramBuilderSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        let gen = UIImpactFeedbackGenerator(style: .light)
-                        gen.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
@@ -112,7 +111,7 @@ struct AIProgramBuilderSheet: View {
                                     goal: goal,
                                     isSelected: viewModel.goal == goal
                                 ) {
-                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    HapticManager.shared.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { viewModel.goal = goal }
                                 }
                             }
@@ -132,7 +131,7 @@ struct AIProgramBuilderSheet: View {
                                 ForEach(2...6, id: \.self) { day in
                                     let isSelected = viewModel.daysPerWeek == day
                                     Button {
-                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        HapticManager.shared.selection()
                                         withAnimation { viewModel.daysPerWeek = day }
                                     } label: {
                                         Text("\(day)")
@@ -156,7 +155,7 @@ struct AIProgramBuilderSheet: View {
                                 ForEach(ProgramLevel.allCases) { lvl in
                                     let isSelected = viewModel.level == lvl
                                     Button {
-                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        HapticManager.shared.selection()
                                         withAnimation { viewModel.level = lvl }
                                     } label: {
                                         Text(LocalizedStringKey(lvl.rawValue))
@@ -181,7 +180,7 @@ struct AIProgramBuilderSheet: View {
                                 ForEach(ProgramEquipment.allCases) { eq in
                                     let isSelected = viewModel.equipment == eq
                                     Button {
-                                        UISelectionFeedbackGenerator().selectionChanged()
+                                        HapticManager.shared.selection()
                                         withAnimation { viewModel.equipment = eq }
                                     } label: {
                                         VStack(spacing: 6) {
@@ -190,10 +189,10 @@ struct AIProgramBuilderSheet: View {
                                         }
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 12)
-                                        .background(isSelected ? Color.purple.opacity(0.15) : Color.clear)
-                                        .foregroundColor(isSelected ? .purple : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)))
+                                        .background(isSelected ? PastelTheme.pastelLavender.opacity(0.15) : Color.clear)
+                                        .foregroundColor(isSelected ? PastelTheme.pastelLavender : (colorScheme == .dark ? .white.opacity(0.8) : .black.opacity(0.8)))
                                         .cornerRadius(12)
-                                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? Color.purple : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)), lineWidth: 1))
+                                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? PastelTheme.pastelLavender : (colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1)), lineWidth: 1))
                                     }
                                     .buttonStyle(.plain)
                                 }
@@ -299,8 +298,7 @@ struct AIProgramBuilderSheet: View {
         let state = viewModel.muscleStates[muscle] ?? .neutral
 
         Button {
-            let gen = UISelectionFeedbackGenerator()
-            gen.selectionChanged()
+            HapticManager.shared.selection()
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                 viewModel.muscleStates[muscle]?.toggle()
             }
@@ -417,7 +415,7 @@ struct AIProgramBuilderSheet: View {
             Button {
                 Task {
                     await viewModel.saveProgram(presetService: presetService, dto: dto)
-                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    HapticManager.shared.notification(.success)
                     dismiss()
                 }
             } label: {

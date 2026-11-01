@@ -47,7 +47,7 @@ struct WorkoutTrackerApp: App {
     @State private var catalogViewModel: CatalogViewModel?
     @State private var profileViewModel: ProfileViewModel?
 
-    @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "dark"
+    @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = AppearanceMode.lockedRawValue
     @State private var showImportAlert = false
     @State private var showImportError = false
     @State private var importErrorMessage: String = ""
@@ -62,13 +62,12 @@ struct WorkoutTrackerApp: App {
     @AppStorage("hasCompletedGodModeOnboarding_v1") private var hasCompletedGodModeOnboarding = false
     @AppStorage("hasSeenFoodTrackerPromo") private var hasSeenFoodTrackerPromo = false
     @State private var showFoodTrackerPromo = false
+    /// Survives DI bootstrap: cold open before `diContainer` exists.
+    @State private var queuedOpenURL: URL?
 
     private var colorScheme: ColorScheme? {
-        switch appearanceMode {
-        case "light": return .light
-        case "dark": return .dark
-        default: return nil
-        }
+        _ = appearanceMode
+        return AppearanceMode.preferredColorScheme
     }
 
     var body: some Scene {
@@ -111,14 +110,50 @@ struct WorkoutTrackerApp: App {
                 }
             }
             .task {
+                AppearanceMode.enforceLockedModeInUserDefaults()
+                appearanceMode = AppearanceMode.lockedRawValue
                 await setupDependencies()
+                if let queued = queuedOpenURL, let di = diContainer {
+                    queuedOpenURL = nil
+                    di.appState.pendingOpenURL = queued
+                }
+                if let pending = diContainer?.appState.pendingOpenURL,
+                   hasCompletedGodModeOnboarding,
+                   databaseLoadError == nil,
+                   versionManager.updateRequirement != .hardUpdate {
+                    diContainer?.appState.pendingOpenURL = nil
+                    NotificationCenter.default.post(name: Notification.Name("pendingOpenURLReady"), object: pending)
+                }
+            }
+            .onOpenURL { url in
+                // R14: handle warm deep links here too — nested ContentView handler can miss them.
+                let mainContentReady = diContainer != nil
+                    && hasCompletedGodModeOnboarding
+                    && databaseLoadError == nil
+                    && versionManager.updateRequirement != .hardUpdate
+                if mainContentReady, let di = diContainer {
+                    handleIncomingURL(url, di: di)
+                    return
+                }
+                if let di = diContainer {
+                    di.appState.pendingOpenURL = url
+                } else {
+                    queuedOpenURL = url
+                }
             }
             .onChange(of: scenePhase) { newPhase in
                 if newPhase == .active {
                     TrackingManager.shared.track(.appOpened(source: "scene_active"))
                     UNUserNotificationCenter.current().setBadgeCount(0)
                     UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+                    // Re-evaluate force/soft update when returning to foreground (I16).
+                    Task { await versionManager.checkForUpdates() }
                 }
+            }
+            .onChange(of: hasCompletedGodModeOnboarding) { completed in
+                guard completed, let di = diContainer, let url = di.appState.pendingOpenURL else { return }
+                di.appState.pendingOpenURL = nil
+                NotificationCenter.default.post(name: Notification.Name("pendingOpenURLReady"), object: url)
             }
         }
     }
@@ -156,7 +191,7 @@ struct WorkoutTrackerApp: App {
                 set: { if !$0 { versionManager.hasDismissedSoftUpdate = true } }
             )) {
                 Button("Update Now") {
-                    AppReviewManager.openAppStoreReview()
+                    AppReviewManager.openAppStoreProductPage()
                 }
                 Button("Later", role: .cancel) {
                     versionManager.hasDismissedSoftUpdate = true
@@ -164,84 +199,13 @@ struct WorkoutTrackerApp: App {
             } message: {
                 Text("A new version of the app is available. Update now to get the latest features and fixes.")
             }
+            .onReceive(NotificationCenter.default.publisher(for: Notification.Name("pendingOpenURLReady"))) { note in
+                if let url = note.object as? URL {
+                    handleIncomingURL(url, di: di)
+                }
+            }
             .onOpenURL { url in
-                if url.scheme == "workouttracker" {
-                    if url.host == "tab", let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
-                       let indexStr = components.queryItems?.first(where: { $0.name == "index" })?.value,
-                       let index = Int(indexStr) {
-                        di.appState.selectedTab = index
-                        return
-                    }
-                    if url.host == "discovery" {
-                        di.appState.selectedTab = 2
-                        di.appState.showWorkoutModeDiscovery = true
-                        return
-                    }
-                    if url.host == "profile" {
-                        di.appState.selectedTab = 4
-                        di.appState.showProfileSheet = true
-                        return
-                    }
-                    if url.host == "calendar" {
-                        di.appState.showCalendarSheet = true
-                        return
-                    }
-                    if url.host == "achievements" {
-                        di.appState.selectedTab = 4
-                        di.appState.showAchievementsSheet = false
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            di.appState.showAchievementsSheet = true
-                        }
-                        return
-                    }
-                }
-                if url.scheme == "workouttracker" && url.host == "shared" {
-                    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
-                          let id = components.queryItems?.first(where: { $0.name == "id" })?.value else { return }
-
-                    Task {
-                        do {
-                            let (presetDTO, creatorUid) = try await FirestoreProgramService.shared.downloadSharedPresetWithCreator(id: id)
-                            let newExercises = presetDTO.exercises.map { Exercise(from: $0) }
-
-                            await di.presetService.savePreset(
-                                preset: nil,
-                                name: presetDTO.name + " (Shared)",
-                                icon: presetDTO.icon,
-                                folderName: PresetService.savedRoutinesFolderName,
-                                exercises: newExercises
-                            )
-
-                            // ✅ Guideline 1.2: populate the state the "Report this workout"
-                            //    sheet and the dialog message depend on. Without this, the report
-                            //    sheet's `if let` binding is always nil and the button does nothing.
-                            await MainActor.run {
-                                self.lastImportedWorkoutId = id            // shared-workout doc id used for the report
-                                self.lastImportedCreatorUid = creatorUid   // author being reported
-                                self.lastImportedWorkoutName = presetDTO.name
-                                showImportAlert = true
-                            }
-                        } catch let error as SharedWorkoutError {
-                            await MainActor.run {
-                                importErrorMessage = error.localizedDescription
-                                showImportError = true
-                            }
-                            print("❌ Shared workout import rejected: \(error.localizedDescription)")
-                        } catch {
-                            await MainActor.run {
-                                importErrorMessage = "Failed to load workout. Check your internet connection."
-                                showImportError = true
-                            }
-                            print("❌ Import: \(error)")
-                        }
-                    }
-                } else {
-                    Task {
-                        if await di.presetService.importPreset(from: url) {
-                            await MainActor.run { showImportAlert = true }
-                        }
-                    }
-                }
+                handleIncomingURL(url, di: di)
             }
             .onReceive(NotificationCenter.default.publisher(for: Notification.Name("widgetActionTriggered"))) { notification in
                 if let action = notification.object as? String {
@@ -250,11 +214,15 @@ struct WorkoutTrackerApp: App {
             }
             .confirmationDialog("Template Imported!", isPresented: $showImportAlert, titleVisibility: .visible) {
                 Button("OK", role: .cancel) { }
-                Button("Report this workout", role: .destructive) {
-                    showReportSheet = true
+                if lastImportedWorkoutId != nil, lastImportedCreatorUid != nil {
+                    Button("Report this workout", role: .destructive) {
+                        showReportSheet = true
+                    }
                 }
             } message: {
-                Text("\"\(lastImportedWorkoutName)\" added to Saved Routines.")
+                Text(lastImportedWorkoutName.isEmpty
+                     ? "Added to Saved Routines."
+                     : "\"\(lastImportedWorkoutName)\" added to Saved Routines.")
             }
             .sheet(isPresented: $showReportSheet) {
                 if let workoutId = lastImportedWorkoutId,
@@ -273,11 +241,10 @@ struct WorkoutTrackerApp: App {
                     .preferredColorScheme(.dark)
             }
             .task {
-                // Poll for RemoteConfig to fetch, up to 10 times (5 seconds)
                 for _ in 0..<10 {
                     try? await Task.sleep(nanoseconds: 500_000_000)
                     let showPromo = await RemoteConfigManager.shared.showFoodTrackerPromo
-                    if showPromo && !hasSeenFoodTrackerPromo { 
+                    if showPromo && !hasSeenFoodTrackerPromo {
                         await MainActor.run {
                             self.showFoodTrackerPromo = true
                             self.hasSeenFoodTrackerPromo = true
@@ -290,13 +257,103 @@ struct WorkoutTrackerApp: App {
             }
     }
 
+    private func handleIncomingURL(_ url: URL, di: DIContainer) {
+        if url.scheme == "workouttracker" {
+            if url.host == "tab",
+               let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+               let indexStr = components.queryItems?.first(where: { $0.name == "index" })?.value,
+               let index = Int(indexStr) {
+                di.appState.selectedTab = index
+                return
+            }
+            if url.host == "discovery" {
+                di.appState.selectedTab = 2
+                di.appState.showWorkoutModeDiscovery = true
+                return
+            }
+            if url.host == "profile" {
+                di.appState.selectedTab = 4
+                di.appState.showProfileSheet = true
+                return
+            }
+            if url.host == "calendar" {
+                di.appState.showCalendarSheet = true
+                return
+            }
+            if url.host == "achievements" {
+                di.appState.selectedTab = 4
+                di.appState.showAchievementsSheet = false
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    di.appState.showAchievementsSheet = true
+                }
+                return
+            }
+            if url.host == "shared" {
+                guard let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
+                      let id = components.queryItems?.first(where: { $0.name == "id" })?.value else { return }
+                Task {
+                    do {
+                        let (presetDTO, creatorUid) = try await FirestoreProgramService.shared.downloadSharedPresetWithCreator(id: id)
+                        let newExercises = presetDTO.exercises.map { Exercise(from: $0) }
+                        await di.presetService.savePreset(
+                            preset: nil,
+                            name: presetDTO.name + " (Shared)",
+                            icon: presetDTO.icon,
+                            folderName: PresetService.savedRoutinesFolderName,
+                            exercises: newExercises
+                        )
+                        await MainActor.run {
+                            self.lastImportedWorkoutId = id
+                            self.lastImportedCreatorUid = creatorUid
+                            self.lastImportedWorkoutName = presetDTO.name
+                            showImportAlert = true
+                        }
+                    } catch let error as SharedWorkoutError {
+                        await MainActor.run {
+                            importErrorMessage = error.localizedDescription
+                            showImportError = true
+                        }
+                    } catch {
+                        await MainActor.run {
+                            importErrorMessage = "Failed to load workout. Check your internet connection."
+                            showImportError = true
+                        }
+                    }
+                }
+                return
+            }
+        }
+
+        Task {
+            if await di.presetService.importPreset(from: url) {
+                await MainActor.run {
+                    self.lastImportedWorkoutName = url.deletingPathExtension().lastPathComponent
+                    self.lastImportedWorkoutId = nil
+                    self.lastImportedCreatorUid = nil
+                    showImportAlert = true
+                }
+            }
+        }
+    }
+
     private func handleWidgetAction(_ action: String, appState: AppStateManager) {
         appState.requestedWidgetAction = action
+        let key = Constants.UserDefaultsKeys.pendingWidgetAction.rawValue
+        UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")?.set(action, forKey: key)
+        UserDefaults.standard.set(action, forKey: key)
 
-        if action == "empty_workout" || action == "smart_builder" {
+        switch action {
+        case "empty_workout":
             appState.selectedTab = 2
-        } else if action == "log_weight" {
+            appState.showWorkoutModeDiscovery = true
+        case "smart_builder":
+            appState.selectedTab = 2
+            appState.showSmartBuilder = true
+        case "log_weight":
             appState.selectedTab = 0
+            appState.showWeightLog = true
+        default:
+            break
         }
     }
 
@@ -356,6 +413,12 @@ struct WorkoutTrackerApp: App {
                     await BlockedUsersStore.shared.startListening()
                 } catch {
                     print("⚠️ Anonymous auth bootstrap failed: \(error.localizedDescription)")
+                    await MainActor.run {
+                        di.appState.showError(
+                            title: String(localized: "Sign-in unavailable"),
+                            message: String(localized: "Cloud features may be limited until you reconnect. Pull to refresh or relaunch the app.")
+                        )
+                    }
                 }
 
                 await RemoteConfigManager.shared.fetchCloudValues()
@@ -375,7 +438,7 @@ struct WorkoutTrackerApp: App {
             self.databaseLoadError = error
             print("❌ SwiftData Initialization Failed: \(error)")
             TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "SwiftData_init"])
-            fatalError("Failed to create ModelContainer: \(error.localizedDescription)")
+            // Keep DatabaseErrorView reachable — do not crash after setting the error.
         }
     }
 

@@ -226,8 +226,7 @@ struct ProposedWorkoutCardView: View {
             .padding()
 
             Button {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
+                HapticManager.shared.impact(.medium)
                 onAccept()
             } label: {
                 HStack {

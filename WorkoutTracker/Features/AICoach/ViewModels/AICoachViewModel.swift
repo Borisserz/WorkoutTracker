@@ -36,6 +36,21 @@ final class AICoachViewModel {
 
     deinit { currentTask?.cancel() }
 
+    private func saveContext(file: StaticString = #file, line: UInt = #line) {
+        do {
+            try modelContext.save()
+        } catch {
+            appState.showError(
+                title: String(localized: "Couldn’t save chat"),
+                message: error.localizedDescription
+            )
+            TrackingManager.shared.recordError(
+                error: error,
+                additionalInfo: ["screen": "AICoachViewModel", "file": "\(file)", "line": line]
+            )
+        }
+    }
+
     func loadSession(_ session: AIChatSession) {
         currentTask?.cancel()
         self.isGenerating = false
@@ -67,14 +82,14 @@ final class AICoachViewModel {
             let newSession = AIChatSession(title: "New Chat...", date: Date(), messages: [])
             modelContext.insert(newSession)
             currentSession = newSession
-            try? modelContext.save()
+            saveContext()
         }
 
         if let session = currentSession {
             var updatedMessages = session.messages
             updatedMessages.append(userMessage)
             session.messages = updatedMessages
-            try? modelContext.save()
+            saveContext()
         }
 
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -110,7 +125,7 @@ final class AICoachViewModel {
     private func updateSessionTitle(_ newTitle: String) async {
         guard let session = currentSession else { return }
         session.title = newTitle.replacingOccurrences(of: "\"", with: "")
-        try? modelContext.save()
+        saveContext()
     }
 
     private func streamChat(prompt: String, userWeight: Double) async {
@@ -155,7 +170,7 @@ final class AICoachViewModel {
                        updatedMessages.append(self.chatHistory[messageIndex])
                        session.messages = updatedMessages
                    }
-                   try? modelContext.save()
+                   saveContext()
                    self.isGenerating = false
                    trace?.stop()
 
@@ -209,7 +224,7 @@ final class AICoachViewModel {
                     }
                     self.isGenerating = false
                 }
-                try? modelContext.save()
+                saveContext()
                 trace?.stop()
 
             } catch {
@@ -221,7 +236,7 @@ final class AICoachViewModel {
     }
 
     private func handleError(_ error: Error) {
-        let errorMsg = (error as? AILogicError)?.errorDescription ?? error.localizedDescription
+        let errorMsg = error.userFacingAIMessage
         let errorMessage = AIChatMessage(isUser: false, text: errorMsg, proposedWorkout: nil, isAnimating: false)
 
         withAnimation {
@@ -232,13 +247,13 @@ final class AICoachViewModel {
                 session.messages = updatedMessages
             }
         }
-        try? modelContext.save()
+        saveContext()
     }
 
     func acceptWorkout(dto: GeneratedWorkoutDTO, completion: @escaping (Workout) -> Void) async {
         TrackingManager.shared.track(.aiCoachSuggestionAccepted(suggestionType: "workout"))
-        await workoutService.startGeneratedWorkout(dto)
-        if let newWorkout = await workoutService.fetchLatestWorkout() {
+        guard let id = await workoutService.startGeneratedWorkout(dto, source: "ai_builder") else { return }
+        if let newWorkout = analyticsService.modelContainer.mainContext.model(for: id) as? Workout {
             completion(newWorkout)
         }
     }

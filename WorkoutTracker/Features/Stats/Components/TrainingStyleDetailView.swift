@@ -98,7 +98,7 @@ struct TrainingStyleDetailView: View {
 
             HStack(spacing: 16) {
                 legendItem(title: "Compound", color: .orange, value: stats.compoundSets)
-                legendItem(title: "Isolation", color: .purple, value: stats.isolationSets)
+                legendItem(title: "Isolation", color: PastelTheme.pastelLavender, value: stats.isolationSets)
             }
         }
         .padding(20)
@@ -219,10 +219,10 @@ struct TrainingStyleDetailView: View {
         let bwPct = Double(stats.equipmentDistribution[.bodyweight] ?? 0) / Double(max(stats.totalEquipmentSets, 1))
         let compPct = Double(stats.compoundSets) / Double(max(stats.totalMechanicSets, 1))
 
-        if compPct > 0.6 && fwPct > 0.5 { return ("Силовой атлет", "Акцент на базовых движениях со свободными весами. Отличный фундамент для силы.", "flame.fill", PastelTheme.pastelAmber) }
-        else if machPct > 0.5 { return ("Мастер тренажеров", "Частая работа в тренажерах — контролируемый и безопасный путь к гипертрофии.", "gearshape.2.fill", PastelTheme.pastelLavender) }
-        else if bwPct > 0.5 { return ("Мастер калистеники", "Работа с собственным весом развивает превосходный контроль тела и связок.", "figure.core.training", PastelTheme.pastelSlate) }
-        else if stats.isolationSets > stats.compoundSets { return ("Детализация мышц", "Фокус на изоляции для максимальной проработки целевых мышечных волокон.", "paintpalette.fill", PastelTheme.pastelAmber) }
-        else { return ("Гармоничный атлет", "Сбалансированная нагрузка между базой и изоляцией на все тело.", "scale.3d", PastelTheme.pastelSage) }
+        if compPct > 0.6 && fwPct > 0.5 { return ("Strength athlete", "You lean on compound lifts with free weights—a solid foundation for strength.", "flame.fill", PastelTheme.pastelAmber) }
+        else if machPct > 0.5 { return ("Machine specialist", "Frequent machine work gives you controlled, joint-friendly hypertrophy.", "gearshape.2.fill", PastelTheme.pastelLavender) }
+        else if bwPct > 0.5 { return ("Calisthenics master", "Bodyweight training builds excellent control and connective-tissue resilience.", "figure.core.training", PastelTheme.pastelSlate) }
+        else if stats.isolationSets > stats.compoundSets { return ("Muscle detail", "Isolation focus helps you fully target specific muscle fibers.", "paintpalette.fill", PastelTheme.pastelAmber) }
+        else { return ("Balanced athlete", "An even mix of compounds and isolation across your training.", "scale.3d", PastelTheme.pastelSage) }
     }
 }

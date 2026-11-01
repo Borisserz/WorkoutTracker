@@ -21,11 +21,11 @@ struct AICameraExerciseSelectorSheet: View {
                                 .font(.system(size: 44, weight: .light))
                                 .foregroundStyle(PastelTheme.pastelLavender)
                             
-                            Text("ИИ-контроль формы")
+                            Text("AI form control")
                                 .font(.system(size: 26, weight: .bold, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                             
-                            Text("Выберите упражнение для анализа техники и подсчета повторений в реальном времени.")
+                            Text("Pick an exercise for live form analysis and rep counting.")
                                 .font(.subheadline)
                                 .foregroundColor(PastelTheme.textSecondary)
                                 .multilineTextAlignment(.center)
@@ -36,24 +36,24 @@ struct AICameraExerciseSelectorSheet: View {
                         
                         VStack(spacing: 16) {
                             AICameraExerciseCard(
-                                title: "Приседания",
-                                subtitle: "Контроль глубины седа и положения коленей",
+                                title: "Squats",
+                                subtitle: "Depth and knee tracking",
                                 icon: "figure.strengthtraining.traditional",
                                 colors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)],
                                 action: { handleSelection("Squats") }
                             )
                             
                             AICameraExerciseCard(
-                                title: "Отжимания",
-                                subtitle: "Контроль касания пола и ровной линии корпуса",
+                                title: "Push-ups",
+                                subtitle: "Chest touch and a straight body line",
                                 icon: "figure.core.training",
                                 colors: [PastelTheme.pastelAmber, PastelTheme.pastelAmber.opacity(0.7)],
                                 action: { handleSelection("Pushups") }
                             )
                             
                             AICameraExerciseCard(
-                                title: "Подтягивания",
-                                subtitle: "Контроль подбородка над турником и выпрямления рук",
+                                title: "Pull-ups",
+                                subtitle: "Chin over the bar and full arm extension",
                                 icon: "figure.climbing",
                                 colors: [PastelTheme.pastelLavender, PastelTheme.pastelLavender.opacity(0.7)],
                                 action: { handleSelection("Pullups") }
@@ -81,7 +81,7 @@ struct AICameraExerciseSelectorSheet: View {
     }
     
     private func handleSelection(_ exercise: String) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticManager.shared.impact(.medium)
         dismiss()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             onSelect(exercise)

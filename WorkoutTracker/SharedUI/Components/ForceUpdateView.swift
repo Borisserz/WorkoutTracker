@@ -70,13 +70,13 @@ struct ForceUpdateView: View {
                 
                 // Content Card
                 VStack(spacing: 16) {
-                    Text("Время обновиться")
+                    Text("Time to update")
                         .font(.system(size: 30, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .multilineTextAlignment(.center)
                         .lineLimit(1).minimumScaleFactor(0.8)
                     
-                    Text("Мы добавили новые функции, улучшили ИИ-тренера и повысили стабильность работы приложения. Пожалуйста, обновитесь до актуальной версии.")
+                    Text("We added new features, improved the AI coach, and made the app more stable. Please update to the latest version.")
                         .font(.system(size: 16, weight: .medium, design: .rounded))
                         .foregroundColor(PastelTheme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -98,14 +98,13 @@ struct ForceUpdateView: View {
                 
                 // Action Button
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .heavy)
-                    generator.impactOccurred()
-                    AppReviewManager.openAppStoreReview()
+                    HapticManager.shared.impact(.heavy)
+                    AppReviewManager.openAppStoreProductPage()
                 } label: {
                     HStack(spacing: 10) {
                         Image(systemName: "icloud.and.arrow.down.fill")
                             .font(.system(size: 16, weight: .semibold))
-                        Text("Обновить приложение")
+                        Text("Update app")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(PastelTheme.textOnOat)

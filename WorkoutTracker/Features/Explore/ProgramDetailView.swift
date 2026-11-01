@@ -98,8 +98,7 @@ struct ProgramDetailView: View {
         guard !isSaving && !isSaved else { return }
         isSaving = true
 
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.medium)
 
         Task { @MainActor in
 
@@ -123,7 +122,7 @@ struct ProgramDetailView: View {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                 isSaved = true
             }
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticManager.shared.notification(.success)
         }
     }
 }
@@ -149,7 +148,7 @@ struct MorphingSaveButton: View {
                         .font(.title3)
                         .contentTransition(.symbolEffect(.replace))
 
-                    Text("Сохранено")
+                    Text("Saved")
                         .font(.headline)
                         .fontWeight(.bold)
                 } else {

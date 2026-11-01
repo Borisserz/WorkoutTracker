@@ -63,7 +63,7 @@ struct ProfileView: View {
                             AchievementsFolderButton(
                                 achievements: profileVM.cachedAchievements,
                                 onOpenFolder: {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    HapticManager.shared.impact(.medium)
                                     showAchievementsFolder = true
                                 }
                             )
@@ -177,7 +177,7 @@ struct ProfileView: View {
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(LinearGradient(colors: [.pink, .orange], startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 64, height: 64)
-                        .shadow(color: Color.pink.opacity(0.4), radius: 8, y: 4)
+                        .shadow(color: PastelTheme.pastelPeach.opacity(0.4), radius: 8, y: 4)
                     
                     Image(systemName: "fork.knife")
                         .font(.system(size: 30))
@@ -200,10 +200,10 @@ struct ProfileView: View {
                 VStack {
                     Text("GET")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.pink)
+                        .foregroundStyle(PastelTheme.pastelPeach)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
-                        .background(Color.pink.opacity(0.15))
+                        .background(PastelTheme.pastelPeach.opacity(0.15))
                         .clipShape(Capsule())
                     
                     Text("In-App Purchases")
@@ -219,7 +219,7 @@ struct ProfileView: View {
                     .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
                 
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(LinearGradient(colors: [Color.pink.opacity(0.5), Color.orange.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
+                    .stroke(LinearGradient(colors: [PastelTheme.pastelPeach.opacity(0.5), PastelTheme.pastelAmber.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
             }
         }
         .buttonStyle(.plain)
@@ -372,7 +372,7 @@ struct LevelProgressBar: View {
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(PastelTheme.pastelAmber)
 
-                        Text("Уровень \(progressManager.level)")
+                        Text("Level \(progressManager.level)")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelAmber)
                     }
@@ -416,13 +416,13 @@ struct LevelProgressBar: View {
 
             // Bottom Progress status
             HStack {
-                Text("\(Int(progress * 100))% до уровня \(progressManager.level + 1)")
+                Text("\(Int(progress * 100))% to level \(progressManager.level + 1)")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
 
                 Spacer()
 
-                Text("Цель: \(progressManager.xpToNextLevel) XP")
+                Text("Goal: \(progressManager.xpToNextLevel) XP")
                     .font(.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundStyle(PastelTheme.textTertiary)
             }
@@ -586,12 +586,12 @@ struct AchievementsFolderButton: View {
 
                         // Title & Telemetry Counter
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Папка наград и достижений")
+                            Text("Awards and achievements")
                                 .font(.system(size: 16, weight: .bold, design: .rounded))
                                 .foregroundStyle(PastelTheme.textPrimary)
 
                             HStack(spacing: 6) {
-                                Text("\(unlockedCount) из \(achievements.count) получено")
+                                Text("\(unlockedCount) of \(achievements.count) unlocked")
                                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                                     .foregroundStyle(PastelTheme.pastelSage)
 
@@ -609,7 +609,7 @@ struct AchievementsFolderButton: View {
 
                         // Action Pill
                         HStack(spacing: 5) {
-                            Text("Архив")
+                            Text("Archive")
                                 .font(.system(size: 12, weight: .bold, design: .rounded))
                                 .foregroundStyle(PastelTheme.textSecondary)
 
@@ -662,9 +662,9 @@ struct AchievementsFolderButton: View {
 
 /// Filter categories for the achievements showcase
 private enum AchievementCategoryFilter: String, CaseIterable, Identifiable {
-    case all = "Все"
-    case unlocked = "Получено"
-    case inProgress = "В процессе"
+    case all = "All"
+    case unlocked = "Unlocked"
+    case inProgress = "In progress"
 
     var id: String { rawValue }
 }
@@ -758,11 +758,11 @@ struct AchievementsFolderSheet: View {
                     }
                 }
             }
-            .navigationTitle("Архив наград")
+            .navigationTitle("Awards archive")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Готово") {
+                    Button("Done") {
                         dismiss()
                     }
                     .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -807,15 +807,15 @@ struct AchievementsFolderSheet: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Коллекция наград и трофеев")
+                Text("Awards and trophies")
                     .font(.system(size: 17, weight: .heavy, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
-                Text("\(unlockedCount) из \(achievements.count) трофеев получено")
+                Text("\(unlockedCount) of \(achievements.count) trophies unlocked")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.pastelSage)
 
-                Text("Нажмите любую нажимную плиту для просмотра")
+                Text("Tap any pressure plate to inspect")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textTertiary)
             }
@@ -890,7 +890,7 @@ private struct AchievementPressurePlate: View {
         Button {
             // Mechanical switch depression tactile feedback
             isDepressed = true
-            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            HapticManager.shared.impact(.rigid)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.11) {
                 isDepressed = false
                 onTap()
@@ -969,7 +969,7 @@ private struct AchievementPressurePlate: View {
                             .minimumScaleFactor(0.75)
                             .frame(height: 30)
 
-                        Text(achievement.progress.isEmpty ? (achievement.isUnlocked ? "Разблокировано" : "В процессе") : achievement.progress)
+                        Text(achievement.progress.isEmpty ? (achievement.isUnlocked ? "Unlocked" : "In progress") : achievement.progress)
                             .font(.system(size: 9, weight: .semibold, design: .rounded))
                             .foregroundStyle(achievement.isUnlocked ? PastelTheme.pastelSage : PastelTheme.textTertiary)
                             .lineLimit(1)
@@ -1054,7 +1054,7 @@ private struct AchievementInspectionCard: View {
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundStyle(tierColor)
 
-                        Text(achievement.isUnlocked ? "Награда получена" : "Условие не выполнено")
+                        Text(achievement.isUnlocked ? "Award earned" : "Requirement not met")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(achievement.isUnlocked ? PastelTheme.pastelSage : PastelTheme.textSecondary)
                     }
@@ -1089,7 +1089,7 @@ private struct AchievementInspectionCard: View {
                         .font(.system(size: 11))
                         .foregroundStyle(PastelTheme.pastelAmber)
 
-                    Text("Текущий прогресс: \(achievement.progress)")
+                    Text("Current progress: \(achievement.progress)")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelAmber)
                 }

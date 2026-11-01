@@ -34,7 +34,7 @@ struct GuestSignUpPromptView: View {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 56, weight: .semibold))
                         .foregroundStyle(
-                            LinearGradient(colors: [.white, .green],
+                            LinearGradient(colors: [PastelTheme.pastelOat, PastelTheme.pastelSage],
                                            startPoint: .topLeading, endPoint: .bottomTrailing)
                         )
                         .shadow(color: .green.opacity(0.4), radius: 20, y: 8)

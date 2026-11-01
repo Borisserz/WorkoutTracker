@@ -127,8 +127,7 @@ struct AIChatBotView: View {
 
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
-                        let gen = UIImpactFeedbackGenerator(style: .medium)
-                        gen.impactOccurred()
+                        HapticManager.shared.impact(.medium)
                         showHistorySheet = true
                     } label: {
                         Image(systemName: "clock.arrow.circlepath")
@@ -138,7 +137,7 @@ struct AIChatBotView: View {
                 }
             }
             .onAppear {
-                speechRecognizer.requestPermission()
+                // Mic/speech permission is requested lazily when recording starts.
                 if !viewModel.inputText.isEmpty {
                     sendMessage()
                 }
@@ -252,7 +251,7 @@ struct AIChatBotView: View {
         }
 
         guard !viewModel.inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        HapticManager.shared.impact(.light)
 
         Task {
             await viewModel.sendMessage(userWeight: userBodyWeight)
@@ -288,8 +287,7 @@ struct AIChatHistorySheet: View {
                     List {
                         ForEach(sessions) { session in
                             Button {
-                                let gen = UISelectionFeedbackGenerator()
-                                gen.selectionChanged()
+                                HapticManager.shared.selection()
                                 viewModel.loadSession(session)
                                 dismiss()
                             } label: {
@@ -325,8 +323,7 @@ struct AIChatHistorySheet: View {
                 }
 
                 Button {
-                    let gen = UINotificationFeedbackGenerator()
-                    gen.notificationOccurred(.success)
+                    HapticManager.shared.notification(.success)
                     viewModel.clearChat()
                     dismiss()
                 } label: {

@@ -20,24 +20,12 @@ struct OverviewHeaderView: View {
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, d MMMM"
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter.string(from: Date()).capitalized
     }
 
     private func streakText(for days: Int) -> String {
-        let remainder10 = days % 10
-        let remainder100 = days % 100
-        let word: String
-        if remainder100 >= 11 && remainder100 <= 19 {
-            word = "дней"
-        } else if remainder10 == 1 {
-            word = "день"
-        } else if remainder10 >= 2 && remainder10 <= 4 {
-            word = "дня"
-        } else {
-            word = "дней"
-        }
-        return "\(days) \(word) подряд"
+        days == 1 ? "1-day streak" : "\(days)-day streak"
     }
 
     var body: some View {
@@ -47,7 +35,7 @@ struct OverviewHeaderView: View {
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
 
-                Text("Обзор")
+                Text("Overview")
                     .font(.system(size: 32, weight: .heavy, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
             }
@@ -78,7 +66,7 @@ struct OverviewHeaderView: View {
 
                 // Calendar Button
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onCalendarTap()
                 } label: {
                     Image(systemName: "calendar")
@@ -95,7 +83,7 @@ struct OverviewHeaderView: View {
 
                 // Profile Button
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onProfileTap()
                 } label: {
                     Image(systemName: "person.crop.circle")

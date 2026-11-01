@@ -25,8 +25,10 @@ public enum Constants {
         case voiceCoachDucking
         case hasGeneratedDefaultPresets_v3
         case includeWarmupsInStats
-        case hasConsentedToAI  
+        case hasConsentedToAI
         case preferred1RMFormula
+        /// Survives cold widget/App Intent launch before mainContent listeners mount.
+        case pendingWidgetAction
     }
     enum Legal {
         static let privacyPolicyURL = URL(string: "https://borisserz.github.io/workouttracker-privacy/")!

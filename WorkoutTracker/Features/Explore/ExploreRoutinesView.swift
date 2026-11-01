@@ -84,8 +84,7 @@ struct ExploreRoutinesView: View {
                             .shadow(color: .black.opacity(colorScheme == .dark ? 0.05 : 0), radius: 5, x: 0, y: 2)
 
                         Button {
-                            let generator = UIImpactFeedbackGenerator(style: .light)
-                            generator.impactOccurred()
+                            HapticManager.shared.impact(.light)
                             showFilters = true
                         } label: {
                             ZStack(alignment: .topTrailing) {
@@ -124,8 +123,7 @@ struct ExploreRoutinesView: View {
                         .padding(.top, 16)
 
                         Button {
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
+                            HapticManager.shared.impact(.medium)
                             showAIBuilder = true
                         } label: {
                             PremiumAIBannerView()
@@ -144,7 +142,7 @@ struct ExploreRoutinesView: View {
                                 icon: "magnifyingglass",
                                 title: "No routines found",
                                 message: "Try adjusting your search or clearing your filters.",
-                                iconColor: .purple,
+                                iconColor: PastelTheme.pastelLavender,
                                 actionTitle: "Clear Filters"
                             ) {
                                 viewModel.searchDebouncer.inputText = ""

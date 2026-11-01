@@ -16,10 +16,13 @@ final class AppStateManager {
     var showGuestSignUpPrompt: Bool = false
 
     var requestedWidgetAction: String? = nil
+    var pendingOpenURL: URL? = nil
     var showWorkoutModeDiscovery: Bool = false
     var showProfileSheet: Bool = false
     var showAchievementsSheet: Bool = false
     var showCalendarSheet: Bool = false
+    var showSmartBuilder: Bool = false
+    var showWeightLog: Bool = false
 
     func showError(title: String, message: String) {
         self.currentError = AppError(title: title, message: message)

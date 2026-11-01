@@ -43,8 +43,18 @@ final class AnonymousAuthBootstrap {
         }
 
         let task = Task<Void, Error> { [log] in
+            // Re-check: social sign-in may have completed while this task was queued.
+            if let existingUser = Auth.auth().currentUser {
+                log.debug("Skip anonymous — already signed in as \(existingUser.uid, privacy: .private)")
+                return
+            }
             log.info("Signing in anonymously…")
             let result = try await Auth.auth().signInAnonymously()
+            // If a non-anonymous user appeared mid-flight, prefer them.
+            if let current = Auth.auth().currentUser, !current.isAnonymous, current.uid != result.user.uid {
+                log.info("Social session won over anonymous — keeping \(current.uid, privacy: .private)")
+                return
+            }
             log.info("Anonymous sign-in OK uid=\(result.user.uid, privacy: .public)")
         }
         bootstrapTask = task

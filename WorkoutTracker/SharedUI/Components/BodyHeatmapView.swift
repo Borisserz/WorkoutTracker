@@ -242,8 +242,7 @@ struct BodyHeatmapView: View {
     }
 
     private func selectMuscle(_ muscle: MuscleGroup) {
-        let generator = UISelectionFeedbackGenerator()
-        generator.selectionChanged()
+        HapticManager.shared.selection()
 
         let isCurrentlySelected = (selectedMuscle?.id == muscle.id) || (selectedMuscleSlug == muscle.slug)
 

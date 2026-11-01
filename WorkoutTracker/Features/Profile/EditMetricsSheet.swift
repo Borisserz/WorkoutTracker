@@ -90,8 +90,7 @@ struct EditMetricsSheet: View {
     }
     
     private func saveAndDismiss() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        HapticManager.shared.notification(.success)
         
         age = draftAge
         height = draftHeight

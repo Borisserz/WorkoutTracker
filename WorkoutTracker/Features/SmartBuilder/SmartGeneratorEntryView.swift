@@ -28,7 +28,7 @@ struct SmartGeneratorEntryView: View {
                                 VStack {
                                     Spacer()
                                     Button {
-                                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                        HapticManager.shared.impact(.rigid)
                                         vm.path.append("MuscleSelection")
                                     } label: {
                                         HStack(spacing: 12) {
@@ -110,7 +110,7 @@ struct SmartGeneratorEntryView: View {
                 quickCard(title: "At Home Shred", icon: "house.fill", color: themeManager.current.secondaryMidTone, desc: "Bodyweight, 30m") {
                     vm.applyQuickPreset(name: "Home Shred", muscles: ["Chest", "Core", "Legs"], duration: 30, equipment: .bodyweight, historyCache: dashboard.lastPerformancesCache)
                 }
-                quickCard(title: "Dumbbell Only", icon: "scalemass.fill", color: .purple, desc: "Full Body, 45m") {
+                quickCard(title: "Dumbbell Only", icon: "scalemass.fill", color: PastelTheme.pastelLavender, desc: "Full Body, 45m") {
                     vm.applyQuickPreset(name: "Dumbbell Full Body", muscles: ["Chest", "Back", "Legs"], duration: 45, equipment: .dumbbellsOnly, historyCache: dashboard.lastPerformancesCache)
                 }
                 quickCard(title: "Quick Pump", icon: "bolt.fill", color: themeManager.current.primaryAccent, desc: "Arms & Chest, 20m") {

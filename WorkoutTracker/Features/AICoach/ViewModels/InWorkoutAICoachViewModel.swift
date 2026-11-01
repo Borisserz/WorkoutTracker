@@ -34,8 +34,7 @@ final class InWorkoutAICoachViewModel {
         isProcessing = true
         activeCommandId = command
         activeProposal = nil
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.medium)
 
         currentTask?.cancel()
         currentTask = Task {
@@ -60,8 +59,7 @@ final class InWorkoutAICoachViewModel {
                 self.isProcessing = false
                 self.activeCommandId = nil
 
-                let successGen = UINotificationFeedbackGenerator()
-                successGen.notificationOccurred(.success)
+                HapticManager.shared.notification(.success)
 
             } catch AILogicError.aiConsentRequired {
                 self.isProcessing = false

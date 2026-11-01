@@ -100,7 +100,7 @@ struct PremiumRoutineCard: View {
             // Middle Row: Metadata Badges
             HStack(spacing: 8) {
                 // Exercise count pill
-                Text("\(preset.exercises.count) упр.")
+                Text("\(preset.exercises.count) ex.")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.pastelSage)
                     .padding(.horizontal, 9)
@@ -118,8 +118,7 @@ struct PremiumRoutineCard: View {
 
             // Primary Tier 2 Action: Start Routine Button (Solid Warm Oat #EFE3D3, Pure Black Text)
             Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
+                HapticManager.shared.impact(.medium)
                 onStart()
             }) {
                 HStack(spacing: 7) {

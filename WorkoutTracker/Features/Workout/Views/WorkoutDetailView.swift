@@ -74,7 +74,7 @@ struct WorkoutDetailContentView: View {
                 Button {
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                         selectedTab = tab
-                        UISelectionFeedbackGenerator().selectionChanged()
+                        HapticManager.shared.selection()
                     }
                 } label: {
                     Text(tab.localizedName)
@@ -137,6 +137,16 @@ struct WorkoutDetailContentView: View {
         .onDisappear {
             handleOnDisappear()
             di.appState.isInsideActiveWorkout = false
+            // R04: discard empty ghost sessions when leaving detail without finishing.
+            guard workout.isActive, !isDeletingEmptyWorkout else { return }
+            let hasCompletedSets = workout.exercises.contains { ex in
+                ex.setsList.contains(where: \.isCompleted)
+                || ex.subExercises.contains { $0.setsList.contains(where: \.isCompleted) }
+            }
+            if !hasCompletedSets {
+                let id = workout.id
+                Task { await viewModel.deleteEmptyWorkout(id: id) }
+            }
         }
         .onChange(of: selectedTab) { _, newTab in withAnimation { timerManager.isHidden = (newTab == .aiCoach) } }
         .onChange(of: workout.exercises.count) { _, _ in handleExercisesChanged() }
@@ -258,35 +268,49 @@ struct WorkoutDetailContentView: View {
     }
 
     private func formatSetWeightReps(_ set: WorkoutSet) -> String {
-        let weight = set.weight ?? 90
-        let reps = set.reps ?? 8
-        return "\(Int(weight)) кг × \(reps)"
+        let units = unitsManager.weightUnitString()
+        if let weight = set.weight, let reps = set.reps {
+            let display = unitsManager.convertFromKilograms(weight)
+            return "\(LocalizationHelper.shared.formatInteger(display)) \(units) × \(reps)"
+        }
+        if let reps = set.reps {
+            return "\(reps) \(String(localized: "reps"))"
+        }
+        return String(localized: "Log set")
     }
 
     private func completeNextPendingSet(_ pending: (exercise: Exercise, setIndex: Int, set: WorkoutSet)) {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.medium)
+        let sorted = pending.exercise.sortedSets
+        let isLast = pending.setIndex >= sorted.count
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
             pending.set.isCompleted = true
-            viewModel.updateWorkoutAnalytics(for: workout)
-            timerManager.startRestTimer(duration: 105, exerciseName: pending.exercise.name)
+            viewModel.handleSetCompleted(
+                set: pending.set,
+                isLast: isLast,
+                exerciseName: pending.exercise.name,
+                workout: workout,
+                weightUnit: unitsManager.weightUnitString()
+            )
         }
     }
 
     private func toggleOrSkipRestTimer() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.light)
         if timerManager.isRestTimerActive {
             timerManager.stopRestTimer()
+        } else if let pending = nextPendingSetInfo {
+            let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
+            let rest = saved > 0 ? saved : 90
+            timerManager.startRestTimer(duration: rest, exerciseName: pending.exercise.name)
         } else {
-            timerManager.startRestTimer(duration: 105)
+            timerManager.startRestTimer(duration: 90)
         }
     }
 
     private func finishCurrentWorkout() {
         let isEmpty = workout.exercises.isEmpty
-        let generator = UIImpactFeedbackGenerator(style: isEmpty ? .medium : .heavy)
-        generator.impactOccurred()
+        HapticManager.shared.impact(isEmpty ? .medium : .heavy)
         timerManager.stopRestTimer()
         viewModel.requestFinishWorkout(workout: workout, progressManager: userStatsViewModel.progressManager)
     }
@@ -303,7 +327,7 @@ struct WorkoutDetailContentView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 16, weight: .bold))
-                        Text("Закрыть сет \(pending.setIndex) (\(formatSetWeightReps(pending.set)))")
+                        Text("Complete set \(pending.setIndex) (\(formatSetWeightReps(pending.set)))")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -323,7 +347,7 @@ struct WorkoutDetailContentView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "flag.checkered.circle.fill")
                             .font(.system(size: 16, weight: .bold))
-                        Text("Все сеты закрыты: Завершить")
+                        Text("All sets done: Finish")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
@@ -349,12 +373,14 @@ struct WorkoutDetailContentView: View {
                     if timerManager.isRestTimerActive {
                         let mins = timerManager.restTimeRemaining / 60
                         let secs = timerManager.restTimeRemaining % 60
-                        Text(String(format: "%02d:%02d Отдых — Пропустить", mins, secs))
+                        Text(String(format: "%02d:%02d Rest — Skip", mins, secs))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     } else {
-                        Text("01:45 Отдых — Пропустить")
+                        let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
+                        let secs = saved > 0 ? saved : 90
+                        Text(String(format: "%02d:%02d Rest", secs / 60, secs % 60))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
@@ -395,8 +421,7 @@ struct WorkoutDetailContentView: View {
             Text(LocalizedStringKey("Workout finished")).font(.subheadline).foregroundColor(.white)
             Spacer()
             Button {
-                let generator = UIImpactFeedbackGenerator(style: .light)
-                generator.impactOccurred()
+                HapticManager.shared.impact(.light)
                 viewModel.undoFinishWorkout(workout: workout)
             } label: {
                 Text(LocalizedStringKey("Undo")).font(.subheadline).bold().foregroundColor(.yellow)
@@ -484,7 +509,7 @@ struct WorkoutDetailContentView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "plus")
                         .font(.system(size: 13, weight: .bold))
-                    Text("Упражнение")
+                    Text("Exercise")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textPrimary)
@@ -502,7 +527,7 @@ struct WorkoutDetailContentView: View {
                 HStack(spacing: 6) {
                     Image(systemName: "circle.grid.2x2")
                         .font(.system(size: 13, weight: .bold))
-                    Text("Калькулятор блинов")
+                    Text("Plate calculator")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textPrimary)
@@ -533,7 +558,7 @@ struct WorkoutDetailContentView: View {
                         icon: "chart.bar.xaxis",
                         title: LocalizedStringKey("No Performance Data"),
                         message: LocalizedStringKey("Complete at least one set with weight to see your performance graph."),
-                        iconColor: .purple
+                        iconColor: PastelTheme.pastelLavender
                     )
                 } else {
                     if let selected = selectedChartExerciseName {
@@ -607,7 +632,7 @@ Text(String(translatedName.prefix(3)).capitalized)
                     }
                     .onChange(of: selectedChartExerciseName) { _, newValue in
                         if newValue != nil {
-                            UISelectionFeedbackGenerator().selectionChanged()
+                            HapticManager.shared.selection()
                         }
                     }
                 }

@@ -23,6 +23,9 @@ struct ExerciseCardView: View {
     @State private var showTechniqueSheet = false
     @State private var isAISupported: Bool = false
     @State private var showAICameraTracker = false
+    @State private var showAIConsentSheet = false
+    @AppStorage(Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
+    private var hasConsentedToAI = false
 
     private var isActiveExercise: Bool { isCurrentExercise && !exercise.isCompleted && workout.isActive }
     private var isWorkoutCompleted: Bool { !workout.isActive }
@@ -275,13 +278,17 @@ struct ExerciseCardView: View {
 
                 // AI Camera Tracker pill (Real-time Vision Form & Reps)
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    showAICameraTracker = true
+                    HapticManager.shared.impact(.medium)
+                    if hasConsentedToAI {
+                        showAICameraTracker = true
+                    } else {
+                        showAIConsentSheet = true
+                    }
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "camera.viewfinder")
                             .font(.system(size: 10, weight: .bold))
-                        Text("AI Камера")
+                        Text("AI Camera")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                     }
                     .foregroundColor(PastelTheme.pastelLavender)
@@ -292,6 +299,13 @@ struct ExerciseCardView: View {
                     .overlay(Capsule().stroke(PastelTheme.pastelLavender.opacity(0.3), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
+                .sheet(isPresented: $showAIConsentSheet) {
+                    AIConsentSheet(onConsent: {
+                        showAICameraTracker = true
+                    })
+                    .environment(ThemeManager.shared)
+                    .preferredColorScheme(.dark)
+                }
                 .fullScreenCover(isPresented: $showAICameraTracker) {
                     AITrackerView(exerciseName: exercise.name) { countedReps in
                         if countedReps > 0 {
@@ -369,12 +383,12 @@ struct ExerciseCardView: View {
 
     private var columnHeadersSection: some View {
         HStack(spacing: 8) {
-            Text("СЕТ")
+            Text("Set")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .frame(width: 32)
                 .foregroundColor(PastelTheme.textSecondary)
 
-            Text("ПРЕД.")
+            Text("Prev")
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .frame(width: 70, alignment: .leading)
                 .foregroundColor(PastelTheme.textSecondary)
@@ -382,13 +396,13 @@ struct ExerciseCardView: View {
             HStack(spacing: 8) {
                 switch exercise.type {
                 case .strength:
-                    Text("КГ").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
-                    Text("ПОВТ.").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
+                    Text(unitsManager.weightUnitString()).font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
+                    Text("Reps").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
                 case .cardio:
-                    Text("ДИСТ.").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
-                    Text("ВРЕМЯ").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
+                    Text("Dist").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
+                    Text("Time").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
                 case .duration:
-                    Text("ВРЕМЯ").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
+                    Text("Time").font(.system(size: 11, weight: .bold, design: .rounded)).frame(maxWidth: .infinity).foregroundColor(PastelTheme.textSecondary)
                 }
             }
 
@@ -468,7 +482,7 @@ struct ExerciseCardView: View {
                     HStack(spacing: 8) {
                         ForEach(1...10, id: \.self) { val in
                             Button {
-                                UISelectionFeedbackGenerator().selectionChanged()
+                                HapticManager.shared.selection()
                                 exercise.effort = val
                                 TrackingManager.shared.track(.rpeGiven(rpeValue: val, exerciseName: exercise.name))
                                 withAnimation { showEffortSheet = false }
@@ -510,5 +524,5 @@ struct ExerciseCardView: View {
     }
 
     private func getIcon() -> String { exercise.type == .strength ? "dumbbell.fill" : (exercise.type == .cardio ? "figure.run" : "stopwatch.fill") }
-    private func getColor() -> Color { exercise.type == .strength ? themeManager.current.primaryAccent : (exercise.type == .cardio ? .orange : .purple) }
+    private func getColor() -> Color { exercise.type == .strength ? themeManager.current.primaryAccent : (exercise.type == .cardio ? .orange : PastelTheme.pastelLavender) }
 }

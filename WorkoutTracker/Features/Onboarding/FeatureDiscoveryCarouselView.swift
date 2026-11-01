@@ -26,24 +26,24 @@ struct FeatureDiscoveryCarouselView: View {
                 TabView(selection: $selectedTab) {
                     FeatureSlide(
                         icon: "sparkles.tv",
-                        title: "ИИ-тренер и камера",
-                        description: "Умное отслеживание траектории движения и автоматический подсчет повторений в реальном времени.",
+                        title: "AI coach and camera",
+                        description: "Smart movement tracking and automatic rep counting in real time.",
                         gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelLavender.opacity(0.7)]
                     )
                     .tag(0)
 
                     FeatureSlide(
                         icon: "chart.xyaxis.line",
-                        title: "Глубокая аналитика",
-                        description: "Наглядные графики прогресса, динамика силовых показателей и распределение нагрузки по мышцам.",
+                        title: "Deep analytics",
+                        description: "Clear progress charts, strength trends, and muscle load distribution.",
                         gradientColors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)]
                     )
                     .tag(1)
                     
                     FeatureSlide(
                         icon: "camera.viewfinder",
-                        title: "Фото-прогресс",
-                        description: "Фиксируйте трансформацию тела и сравнивайте фотографии до и после в едином ракурсе.",
+                        title: "Photo progress",
+                        description: "Capture body transformation and compare before/after shots from the same angle.",
                         gradientColors: [PastelTheme.pastelSage, PastelTheme.pastelSage.opacity(0.7)]
                     )
                     .tag(2)
@@ -54,11 +54,11 @@ struct FeatureDiscoveryCarouselView: View {
                 Spacer().frame(height: 30)
 
                 Button(action: {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    HapticManager.shared.impact(.medium)
                     hasSeenFeatureDiscovery = true
                     onFinish()
                 }) {
-                    Text(selectedTab == 2 ? "Начать" : "Пропустить")
+                    Text(selectedTab == 2 ? "Get started" : "Skip")
                         .font(.system(size: 17, weight: .bold, design: .rounded))
                         .foregroundColor(PastelTheme.textOnOat)
                         .frame(maxWidth: .infinity)

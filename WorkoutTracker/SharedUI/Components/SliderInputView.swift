@@ -205,7 +205,7 @@ struct SliderSheetView: View {
 
     private func adjustValue(by amount: Double) {
         isBigTextFocused = false
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        HapticManager.shared.impact(.light)
 
         var newValue = localValue + amount
         if newValue < 0 { newValue = 0 } 

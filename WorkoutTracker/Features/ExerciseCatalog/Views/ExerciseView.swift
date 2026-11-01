@@ -76,8 +76,7 @@ struct ExerciseView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    let gen = UIImpactFeedbackGenerator(style: .medium)
-                    gen.impactOccurred()
+                    HapticManager.shared.impact(.medium)
                     showAddSheet = true
                 } label: {
                     Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
@@ -132,8 +131,7 @@ struct ExerciseView: View {
 
     private func filterButton(title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button {
-            let gen = UISelectionFeedbackGenerator()
-            gen.selectionChanged()
+            HapticManager.shared.selection()
             action()
         } label: {
             Text(LocalizedStringKey(title))

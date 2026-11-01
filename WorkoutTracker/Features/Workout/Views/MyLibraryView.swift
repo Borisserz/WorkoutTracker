@@ -70,7 +70,7 @@ struct MyLibraryView: View {
                 
                 GeometryReader { geo in
                     Circle()
-                        .fill(Color.purple.opacity(0.15))
+                        .fill(PastelTheme.pastelLavender.opacity(0.15))
                         .blur(radius: 80)
                         .frame(width: geo.size.width)
                         .offset(x: -geo.size.width * 0.3, y: -geo.size.height * 0.1)
@@ -175,14 +175,12 @@ struct MyLibraryView: View {
                         Text("Browse Catalog")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                     }
-                    .foregroundColor(.white)
+                    .foregroundStyle(PastelTheme.textOnOat)
                     .padding(.vertical, 16)
                     .padding(.horizontal, 32)
-                    .background(
-                        LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    )
+                    .background(PastelTheme.pastelOat)
                     .clipShape(Capsule())
-                    .shadow(color: .blue.opacity(0.4), radius: 15, x: 0, y: 8)
+                    .shadow(color: PastelTheme.pastelOat.opacity(0.35), radius: 12, x: 0, y: 6)
                     .overlay(
                         Capsule()
                             .stroke(Color.white.opacity(0.2), lineWidth: 1)
@@ -289,12 +287,12 @@ struct MyLibraryView: View {
             
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [.purple.opacity(0.15), .blue.opacity(0.15)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(PastelTheme.pastelOat.opacity(0.14))
                     .frame(width: 120, height: 120)
                 
                 Image(systemName: "dumbbell.fill")
                     .font(.system(size: 48, weight: .light))
-                    .foregroundStyle(LinearGradient(colors: [.purple, .blue], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .foregroundStyle(PastelTheme.pastelOat)
             }
             
             VStack(spacing: 8) {

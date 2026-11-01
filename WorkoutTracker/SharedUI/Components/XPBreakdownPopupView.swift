@@ -100,7 +100,7 @@ struct XPBreakdownPopupView: View {
             .background(
                 RoundedRectangle(cornerRadius: 24)
                     .fill(Color(UIColor.systemGray6))
-                    .shadow(color: Color.purple.opacity(isLevelUp ? 0.6 : 0.2), radius: 30)
+                    .shadow(color: PastelTheme.pastelLavender.opacity(isLevelUp ? 0.6 : 0.2), radius: 30)
             )
             .padding(.horizontal, 32)
             .rotation3DEffect(.degrees(showContent ? 0 : 20), axis: (x: 1, y: 0, z: 0))

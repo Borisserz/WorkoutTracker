@@ -98,26 +98,24 @@ final class GestureController: ObservableObject {
             }
 
             if detected != .none {
-                print("🤚 GestureController: Начал удерживать жест \(detected)")
+                print("🤚 GestureController: Started holding gesture \(detected)")
             }
         }
     }
 
     @MainActor
     private func triggerAction(for gesture: RecognizedGesture) {
-        print("✅ GestureController: Триггер жеста \(gesture)")
-
-        let generator = UINotificationFeedbackGenerator()
+        print("✅ GestureController: Gesture triggered \(gesture)")
 
         switch gesture {
         case .victory:
-            print("🎯 GestureController: Отправка события confirmSet")
-            generator.notificationOccurred(.success)
+            print("🎯 GestureController: Sending confirmSet event")
+            HapticManager.shared.notification(.success)
             gestureAction.send(.confirmSet)
 
         case .openPalm:
-            print("🎯 GestureController: Отправка события cancelSet")
-            generator.notificationOccurred(.error)
+            print("🎯 GestureController: Sending cancelSet event")
+            HapticManager.shared.notification(.error)
             gestureAction.send(.cancelSet)
 
         case .none:

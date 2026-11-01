@@ -25,4 +25,9 @@ class ProfileImageManager {
               let data = try? Data(contentsOf: url) else { return nil }
         return UIImage(data: data)
     }
+
+    func deleteImage() {
+        guard let url = fileURL else { return }
+        try? FileManager.default.removeItem(at: url)
+    }
 }

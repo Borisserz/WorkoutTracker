@@ -130,8 +130,7 @@ struct ExerciseSelectionView: View {
 
     private func filterButton(title: LocalizedStringKey, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button {
-            let gen = UISelectionFeedbackGenerator()
-            gen.selectionChanged()
+            HapticManager.shared.selection()
             action()
         } label: {
             Text(title)

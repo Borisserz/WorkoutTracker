@@ -23,21 +23,27 @@ final class VersionManager {
     
     private init() {}
     
+    /// Set UserDefaults `forceUpdateTestingEnabled` = true to exercise hard/soft update UI in DEBUG/sim (I12).
+    private var forceUpdateTestingEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "forceUpdateTestingEnabled")
+    }
+
     func checkForUpdates() async {
         #if DEBUG || targetEnvironment(simulator)
-        // Bypass force updates in developer / simulator environment
-        self.updateRequirement = .noUpdate
-        #else
+        if !forceUpdateTestingEnabled {
+            self.updateRequirement = .noUpdate
+            return
+        }
+        #endif
         let minVersion = await RemoteConfigManager.shared.minimumAppVersion
         let recVersion = await RemoteConfigManager.shared.recommendedAppVersion
         let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
-        
+
         let newRequirement = evaluateRequirement(current: currentVersion, minimum: minVersion, recommended: recVersion)
-        
+
         if newRequirement != self.updateRequirement {
             self.updateRequirement = newRequirement
         }
-        #endif
     }
     
     private func evaluateRequirement(current: String, minimum: String, recommended: String) -> UpdateRequirement {

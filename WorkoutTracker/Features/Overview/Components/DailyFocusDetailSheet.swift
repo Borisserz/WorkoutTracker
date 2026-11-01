@@ -24,7 +24,8 @@ struct DailyFocusDetailSheet: View {
     }
 
     private var cleanSplitTitle: String {
-        advice.recommendedSplitTitle.replacingOccurrences(of: "Совет на следующую сессию: ", with: "")
+        advice.recommendedSplitTitle
+            .replacingOccurrences(of: "Next session: ", with: "")
     }
 
     var body: some View {
@@ -42,7 +43,7 @@ struct DailyFocusDetailSheet: View {
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(PastelTheme.pastelSlate)
 
-                                Text("Анализ предыдущих нагрузок")
+                                Text("Prior load analysis")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(PastelTheme.pastelSlate)
                             }
@@ -61,7 +62,7 @@ struct DailyFocusDetailSheet: View {
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundStyle(PastelTheme.pastelOat)
 
-                                Text("Рекомендуемый сплит")
+                                Text("Suggested split")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(PastelTheme.pastelOat)
                             }
@@ -84,7 +85,7 @@ struct DailyFocusDetailSheet: View {
                                     .font(.system(size: 13, weight: .semibold))
                                     .foregroundStyle(PastelTheme.pastelSage)
 
-                                Text("Тактические советы тренера")
+                                Text("Coach tactics")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(PastelTheme.pastelSage)
                             }
@@ -115,7 +116,7 @@ struct DailyFocusDetailSheet: View {
                                         .font(.system(size: 13, weight: .semibold))
                                         .foregroundStyle(PastelTheme.pastelLavender)
 
-                                    Text("Рекомендуемые движения")
+                                    Text("Suggested movements")
                                         .font(.caption.weight(.semibold))
                                         .foregroundStyle(PastelTheme.pastelLavender)
                                 }
@@ -153,7 +154,7 @@ struct DailyFocusDetailSheet: View {
                                     .padding(.top, 1)
 
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text("Внимание")
+                                    Text("Attention")
                                         .font(.caption.bold())
                                         .foregroundStyle(PastelTheme.pastelAmber)
 
@@ -175,12 +176,12 @@ struct DailyFocusDetailSheet: View {
                         // MARK: - 6. Action Buttons
                         HStack(spacing: 12) {
                             Button {
-                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                HapticManager.shared.impact(.medium)
                                 dismiss()
                                 onGoToWorkout()
                             } label: {
                                 HStack(spacing: 8) {
-                                    Text("Перейти к тренировкам")
+                                    Text("Go to workouts")
                                         .font(.subheadline.bold())
                                     Image(systemName: "arrow.right")
                                         .font(.caption.bold())
@@ -194,7 +195,7 @@ struct DailyFocusDetailSheet: View {
                             .buttonStyle(.plain)
 
                             Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                HapticManager.shared.impact(.light)
                                 dismiss()
                                 onOpenCatalog()
                             } label: {
@@ -219,7 +220,7 @@ struct DailyFocusDetailSheet: View {
                     .padding(.top, 16)
                 }
             }
-            .navigationTitle("Совет на тренировку")
+            .navigationTitle("Session tip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

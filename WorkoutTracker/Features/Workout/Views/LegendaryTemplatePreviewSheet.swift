@@ -185,8 +185,7 @@ struct LegendaryTemplatePreviewSheet: View {
                                 .padding(.bottom, 8)
                                 
                                 Button {
-                                    let generator = UINotificationFeedbackGenerator()
-                                    generator.notificationOccurred(.success)
+                                    HapticManager.shared.notification(.success)
                                     dismiss()
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                         onStart()
@@ -306,8 +305,7 @@ struct LegendaryTemplatePreviewSheet: View {
             await MainActor.run {
                 showSavedToast = true
                 isSaving = false
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
+                HapticManager.shared.notification(.success)
             }
         }
     }

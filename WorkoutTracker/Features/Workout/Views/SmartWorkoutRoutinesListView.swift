@@ -76,7 +76,7 @@ struct SmartWorkoutRoutinesListView: View {
             LazyVGrid(columns: gridColumns, spacing: 16) {
                 ForEach(myRoutines) { preset in
                     Button {
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        HapticManager.shared.impact(.medium)
                         dismiss()
                         onPresetTap(preset)
                     } label: {

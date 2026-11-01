@@ -65,8 +65,7 @@ struct MuscleSelectionView: View {
             }
 
             Button {
-                let gen = UIImpactFeedbackGenerator(style: .medium)
-                gen.impactOccurred()
+                HapticManager.shared.impact(.medium)
                 vm.path.append("Settings")
             } label: {
                 Text("Next Step")
@@ -133,11 +132,11 @@ struct GeneratorSettingsView: View {
                                 Circle().fill(PastelTheme.cardSurfaceSubtle).frame(width: 36, height: 36)
                                 Image(systemName: "stopwatch.fill").foregroundColor(PastelTheme.pastelSlate)
                             }
-                            Text("Длительность")
+                            Text("Duration")
                                 .font(.headline)
                                 .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                             Spacer()
-                            Text("\(Int(vm.durationMinutes)) мин")
+                            Text("\(Int(vm.durationMinutes)) min")
                                 .font(.title2).bold()
                                 .foregroundColor(PastelTheme.pastelSlate)
                                 .contentTransition(.numericText())
@@ -147,9 +146,9 @@ struct GeneratorSettingsView: View {
                             .tint(PastelTheme.pastelSlate)
 
                         HStack {
-                            Text("15 мин").font(.caption2).bold().foregroundColor(PastelTheme.textSecondary)
+                            Text("15 min").font(.caption2).bold().foregroundColor(PastelTheme.textSecondary)
                             Spacer()
-                            Text("120 мин").font(.caption2).bold().foregroundColor(PastelTheme.textSecondary)
+                            Text("120 min").font(.caption2).bold().foregroundColor(PastelTheme.textSecondary)
                         }
                     }
                     .modifier(PremiumCardModifier(colorScheme: colorScheme, themeManager: themeManager))
@@ -169,7 +168,7 @@ struct GeneratorSettingsView: View {
                             ForEach(WorkoutDifficulty.allCases, id: \.self) { diff in
                                 let isSelected = vm.difficulty == diff
                                 Button {
-                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    HapticManager.shared.selection()
                                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { vm.difficulty = diff }
                                 } label: {
                                     Text(LocalizedStringKey(diff.rawValue))
@@ -190,8 +189,8 @@ struct GeneratorSettingsView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             ZStack {
-                                Circle().fill(Color.purple.opacity(0.15)).frame(width: 36, height: 36)
-                                Image(systemName: "dumbbell.fill").foregroundColor(.purple)
+                                Circle().fill(PastelTheme.pastelLavender.opacity(0.15)).frame(width: 36, height: 36)
+                                Image(systemName: "dumbbell.fill").foregroundColor(PastelTheme.pastelLavender)
                             }
                             Text("Equipment")
                                 .font(.headline)
@@ -202,7 +201,7 @@ struct GeneratorSettingsView: View {
                             ForEach(WorkoutEquipment.allCases, id: \.self) { eq in
                                 let isSelected = vm.equipment == eq
                                 Button {
-                                    UISelectionFeedbackGenerator().selectionChanged()
+                                    HapticManager.shared.selection()
                                     withAnimation(.spring()) { vm.equipment = eq }
                                 } label: {
                                     HStack {
@@ -212,14 +211,14 @@ struct GeneratorSettingsView: View {
                                         Spacer()
                                         if isSelected {
                                             Image(systemName: "checkmark.circle.fill")
-                                                .foregroundColor(.purple)
+                                                .foregroundColor(PastelTheme.pastelLavender)
                                                 .font(.title3)
                                         }
                                     }
                                     .padding()
-                                    .background(isSelected ? Color.purple.opacity(0.1) : Color.clear)
+                                    .background(isSelected ? PastelTheme.pastelLavender.opacity(0.1) : Color.clear)
                                     .cornerRadius(12)
-                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? Color.purple.opacity(0.5) : Color.gray.opacity(0.2), lineWidth: 1))
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? PastelTheme.pastelLavender.opacity(0.5) : Color.gray.opacity(0.2), lineWidth: 1))
                                 }
                                 .buttonStyle(.plain)
                                 .foregroundColor(colorScheme == .dark ? .white : .black)

@@ -18,10 +18,12 @@ final class AuthManager {
 
     init() {
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
-            guard let self = self else { return }
-            self.currentUser = user
-            self.isAnonymous = user?.isAnonymous ?? true
-            self.isAuthenticated = user != nil && !(user?.isAnonymous ?? true)
+            Task { @MainActor in
+                guard let self else { return }
+                self.currentUser = user
+                self.isAnonymous = user?.isAnonymous ?? true
+                self.isAuthenticated = user != nil && !(user?.isAnonymous ?? true)
+            }
         }
     }
 }

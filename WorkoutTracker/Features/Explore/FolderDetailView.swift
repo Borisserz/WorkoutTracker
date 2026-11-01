@@ -67,8 +67,7 @@ struct FolderDetailView: View {
     private func deleteEntireFolder() {
         guard let fName = folderName else { return }
 
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        HapticManager.shared.notification(.success)
 
         Task {
             await presetService.deleteFolder(named: fName)

@@ -16,10 +16,10 @@ struct MiniWorkout: Sendable, Identifiable {
 /// highlighting streaks, total tonnage, and day telemetry with glowing sage dots.
 struct WorkoutCalendarView: View {
     enum TimeRange: String, CaseIterable, Identifiable {
-        case month = "Месяц"
-        case threeMonths = "3 месяца"
-        case year = "Год"
-        case all = "Все время"
+        case month = "Month"
+        case threeMonths = "3 months"
+        case year = "Year"
+        case all = "All time"
 
         var id: String { rawValue }
 
@@ -68,7 +68,7 @@ struct WorkoutCalendarView: View {
     private var totalDurationFormatted: String {
         let totalSeconds = filteredWorkouts.reduce(0) { $0 + $1.durationSeconds }
         let hours = Double(totalSeconds) / 3600.0
-        return String(format: "%.1f ч", hours)
+        return String(format: "%.1f h", hours)
     }
 
     private var monthsToDisplay: [Date] {
@@ -148,7 +148,7 @@ struct WorkoutCalendarView: View {
                 }
             }
         }
-        .navigationTitle("Календарь активности")
+        .navigationTitle("Activity calendar")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -183,22 +183,21 @@ struct WorkoutCalendarView: View {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundStyle(PastelTheme.pastelAmber)
-                    .shadow(color: PastelTheme.pastelAmber.opacity(0.5), radius: 6)
             }
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text("\(streakCount) дн.")
+                    Text("\(streakCount) days")
                         .font(.system(size: 24, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .monospacedDigit()
 
-                    Text("серия тренировок")
+                    Text("workout streak")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelAmber)
                 }
 
-                Text(streakCount > 0 ? "Ударный ритм! Продолжайте отмечать дни тренировок" : "Начните тренировку сегодня, чтобы зажечь серию")
+                Text(streakCount > 0 ? "Great rhythm! Keep logging workout days" : "Start a workout today to begin your streak")
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
                     .lineLimit(1)
@@ -218,9 +217,9 @@ struct WorkoutCalendarView: View {
     // MARK: - Metrics Ribbon
     private var metricsRibbon: some View {
         HStack(spacing: 10) {
-            metricItem(title: "Тренировки", value: "\(filteredWorkouts.count)", accent: PastelTheme.pastelOat)
-            metricItem(title: "Тоннаж", value: totalTonnageFormatted, accent: PastelTheme.pastelSage)
-            metricItem(title: "Время", value: totalDurationFormatted, accent: PastelTheme.pastelSlate)
+            metricItem(title: "Workouts", value: "\(filteredWorkouts.count)", accent: PastelTheme.pastelOat)
+            metricItem(title: "Volume", value: totalTonnageFormatted, accent: PastelTheme.pastelSage)
+            metricItem(title: "Time", value: totalDurationFormatted, accent: PastelTheme.pastelSlate)
         }
     }
 
@@ -352,7 +351,7 @@ struct WorkoutCalendarView: View {
                         .foregroundStyle(PastelTheme.textPrimary)
 
                     let formattedWeight = unitsManager.formatWeight(workout.volumeKg)
-                    Text("\(workout.durationSeconds / 60) мин · \(formattedWeight) \(unitsManager.weightUnitString())")
+                    Text("\(workout.durationSeconds / 60) min — \(formattedWeight) \(unitsManager.weightUnitString())")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textSecondary)
                 }
@@ -379,7 +378,7 @@ struct WorkoutCalendarView: View {
         if let workout = context.model(for: mw.id) as? Workout {
             WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
         } else {
-            Text("Детали тренировки недоступны")
+            Text("Workout details unavailable")
         }
     }
 
@@ -400,7 +399,7 @@ struct WorkoutCalendarView: View {
                 MiniWorkout(
                     id: w.persistentModelID,
                     date: w.date,
-                    name: w.title.isEmpty ? "Тренировка" : w.title,
+                    name: w.title.isEmpty ? "Workout" : w.title,
                     durationSeconds: w.durationSeconds,
                     volumeKg: w.totalStrengthVolume,
                     exercisesCount: w.exercises.count
@@ -482,7 +481,7 @@ private struct ArchitecturalMonthView: View {
 
     private var monthTitle: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = Locale(identifier: "en_US")
         formatter.dateFormat = "LLLL yyyy"
         return formatter.string(from: monthDate).uppercased()
     }
@@ -516,7 +515,7 @@ private struct ArchitecturalMonthView: View {
                 Spacer()
 
                 if !monthWorkouts.isEmpty {
-                    Text("\(monthWorkouts.count) трен.")
+                    Text("\(monthWorkouts.count) workouts")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
                         .padding(.horizontal, 8)
@@ -528,9 +527,9 @@ private struct ArchitecturalMonthView: View {
             }
             .padding(.horizontal, 4)
 
-            // Weekday Strip: ПН, ВТ, СР, ЧТ, ПТ, СБ, ВС
+            // Weekday strip (Mon–Sun)
             HStack(spacing: 6) {
-                ForEach(["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"], id: \.self) { symbol in
+                ForEach(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], id: \.self) { symbol in
                     Text(symbol)
                         .font(.system(size: 10.5, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textTertiary)
@@ -603,7 +602,7 @@ private struct CalendarDayPressurePlate: View {
     var body: some View {
         Button {
             isDepressed = true
-            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            HapticManager.shared.impact(.rigid)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
                 isDepressed = false
                 onTap()
@@ -652,7 +651,6 @@ private struct CalendarDayPressurePlate: View {
                         Circle()
                             .fill(PastelTheme.pastelSage)
                             .frame(width: 5, height: 5)
-                            .shadow(color: PastelTheme.pastelSage.opacity(0.7), radius: 3)
                     } else {
                         Color.clear
                             .frame(width: 5, height: 5)

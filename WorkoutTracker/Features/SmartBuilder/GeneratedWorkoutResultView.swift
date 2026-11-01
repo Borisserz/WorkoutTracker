@@ -218,7 +218,7 @@ struct GeneratedWorkoutResultView: View {
         VStack {
             Spacer()
             Button {
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                HapticManager.shared.notification(.success)
                 onStart(vm.generatedExercises)
             } label: {
                 HStack(spacing: 10) {

@@ -21,7 +21,7 @@ fileprivate struct RPEData {
         case 9:
             return RPEData(value: value, title: "Intense Effort", description: "Could do 1 more rep", color: .red)
         case 10:
-            return RPEData(value: value, title: "Maximal Effort", description: "Absolute failure. 0 reps in reserve", color: .purple)
+            return RPEData(value: value, title: "Maximal Effort", description: "Absolute failure. 0 reps in reserve", color: PastelTheme.pastelAmber)
         default:
             return RPEData(value: 5, title: "Moderate Effort", description: "Could definitely do 4 more reps", color: .green)
         }
@@ -164,8 +164,7 @@ struct EffortInputView: View {
 
     private func selectEffort(_ value: Int, proxy: ScrollViewProxy) {
         if localEffort != value {
-            let generator = UISelectionFeedbackGenerator()
-            generator.selectionChanged()
+            HapticManager.shared.selection()
 
             localEffort = value
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
@@ -175,8 +174,7 @@ struct EffortInputView: View {
     }
 
     private func saveAndDismiss() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.medium)
 
         effort = localEffort
         TrackingManager.shared.track(.rpeGiven(rpeValue: localEffort, exerciseName: exerciseName))

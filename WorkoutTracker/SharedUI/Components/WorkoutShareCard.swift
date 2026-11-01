@@ -180,24 +180,25 @@ struct WorkoutShareCard: View {
         let kg = workout.totalStrengthVolume
         if kg >= 14000 {
             let count = String(format: "%.1f", kg / 6000.0)
-            return ("\(count) Африканских слона", "ТЯЖЕЛОВЕСНЫЙ ЗВЕРЬ", "🐘")
+            return ("\(count) African elephants", "Heavy hitter", "🐘")
         } else if kg >= 8000 {
             let count = String(format: "%.1f", kg / 1850.0)
-            return ("\(count) Tesla Model 3", "ЭЛЕКТРИЧЕСКАЯ МОЩЬ", "⚡️")
+            return ("\(count) Tesla Model 3", "Electric power", "⚡️")
         } else if kg >= 4000 {
             let count = String(format: "%.1f", kg / 1400.0)
-            return ("\(count) Ferrari F40", "СВЕРХСКОРОСТНОЙ ТОННАЖ", "🏎️")
+            return ("\(count) Ferrari F40", "High-speed tonnage", "🏎️")
         } else if kg >= 2000 {
             let count = String(format: "%.1f", kg / 800.0)
-            return ("\(count) Белых медведя", "НЕУКРОТИМАЯ СИЛА", "🐻")
+            return ("\(count) polar bears", "Unstoppable force", "🐻")
         } else if kg >= 800 {
             let count = String(format: "%.1f", kg / 300.0)
-            return ("\(count) Рояля Steinway", "МОНУМЕНТАЛЬНЫЙ ОБЪЕМ", "🎹")
+            return ("\(count) Steinway pianos", "Monumental volume", "🎹")
         } else if kg > 0 {
             let count = max(1, Int(kg / 50.0))
-            return ("\(count) Мешков цемента", "КАЖДЫЙ ПОВТОР В ЦЕЛЬ", "🏋️")
+            let bagLabel = count == 1 ? "bag of cement" : "bags of cement"
+            return ("\(count) \(bagLabel)", "Every rep counts", "🏋️")
         } else {
-            return ("Готов к свершениям", "ПЕРВЫЙ СЕТ ВПЕРЕДИ", "🔥")
+            return ("Ready for greatness", "First set ahead", "🔥")
         }
     }
 
@@ -330,7 +331,7 @@ struct WorkoutShareCard: View {
                     .font(.system(size: 38, weight: .heavy, design: .rounded))
                     .monospacedDigit()
                     .foregroundColor(PastelTheme.textPrimary)
-                Text("КГ ТОННАЖА")
+                Text("kg lifted")
                     .font(.system(size: 13, weight: .black, design: .rounded))
                     .tracking(1)
                     .foregroundColor(PastelTheme.pastelOat)
@@ -340,7 +341,7 @@ struct WorkoutShareCard: View {
             HStack(spacing: 6) {
                 Text(emotionalComparison.emoji)
                     .font(.system(size: 16))
-                Text("≈ \(emotionalComparison.title.uppercased())")
+                Text("≈ \(emotionalComparison.title)")
                     .font(.system(size: 11, weight: .black, design: .rounded))
                     .tracking(0.5)
                     .foregroundColor(PastelTheme.textOnOat)
@@ -357,17 +358,17 @@ struct WorkoutShareCard: View {
     private var telemetryGridSection: some View {
         HStack(spacing: 8) {
             receiptMiniStat(
-                label: "ВРЕМЯ",
-                value: "\(max(1, workout.durationSeconds / 60))м",
+                label: "Time",
+                value: "\(max(1, workout.durationSeconds / 60)) min",
                 color: PastelTheme.pastelAmber
             )
             receiptMiniStat(
-                label: "СЕТЫ",
+                label: "Sets",
                 value: "\(totalSetsCount)",
                 color: PastelTheme.pastelEmerald
             )
             receiptMiniStat(
-                label: "УПРАЖН.",
+                label: "Exercises",
                 value: "\(workout.exercises.count)",
                 color: PastelTheme.pastelSlate
             )
@@ -418,7 +419,7 @@ struct WorkoutShareCard: View {
 
                     Spacer()
 
-                    Text("\(completedCount) сетов, \(Int(maxWeight)) кг")
+                    Text("\(completedCount) sets, \(Int(maxWeight)) kg")
                         .font(.system(size: 10, weight: .semibold, design: .monospaced))
                         .foregroundColor(PastelTheme.textSecondary)
                 }

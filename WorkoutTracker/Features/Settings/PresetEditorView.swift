@@ -79,8 +79,7 @@ struct PresetEditorView: View {
                 }
 
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
+                    HapticManager.shared.impact(.medium)
                     Task { await savePreset() }
                 } label: {
                     Text(preset == nil ? LocalizedStringKey("Save the template") : LocalizedStringKey("Save Changes"))
@@ -212,8 +211,7 @@ struct PresetEditorView: View {
                     .padding(.vertical, 10)
                     .contentShape(Circle())
                     .onTapGesture {
-                        let gen = UISelectionFeedbackGenerator()
-                        gen.selectionChanged()
+                        HapticManager.shared.selection()
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                             vm.selectedIcon = iconName
                         }
@@ -233,8 +231,7 @@ struct PresetEditorView: View {
 
             if vm.exercises.isEmpty {
                 Button {
-                    let gen = UIImpactFeedbackGenerator(style: .medium)
-                    gen.impactOccurred()
+                    HapticManager.shared.impact(.medium)
                     showExerciseSelector = true
                 } label: {
                     VStack(spacing: 16) {
@@ -272,8 +269,7 @@ struct PresetEditorView: View {
                 .padding(.horizontal, 20)
 
                 Button {
-                    let gen = UIImpactFeedbackGenerator(style: .light)
-                    gen.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     showExerciseSelector = true
                 } label: {
                     HStack {
@@ -314,15 +310,15 @@ struct PresetEditorView: View {
                     switch exercise.type {
                     case .strength:
                         let convertedWeight = unitsManager.convertFromKilograms(exercise.firstSetWeight)
-                        Text("\(exercise.setsCount) подх. × \(exercise.firstSetReps) повт. · \(Int(convertedWeight)) \(unitsManager.weightUnitString())")
+                        Text("\(exercise.setsCount) sets × \(exercise.firstSetReps) reps — \(Int(convertedWeight)) \(unitsManager.weightUnitString())")
                     case .cardio:
                         let dist = exercise.firstSetDistance ?? 0
                         let convertedDist = unitsManager.convertFromMeters(dist)
                         let time = exercise.firstSetTimeSeconds ?? 0
-                        Text("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) · \(formatTime(time))")
+                        Text("\(LocalizationHelper.shared.formatTwoDecimals(convertedDist)) \(unitsManager.distanceUnitString()) — \(formatTime(time))")
                     case .duration:
                         let time = exercise.firstSetTimeSeconds ?? 0
-                        Text("\(exercise.setsCount) подх. · \(formatTime(time))")
+                        Text("\(exercise.setsCount) sets — \(formatTime(time))")
                     }
                 }
                 .font(.subheadline)
@@ -334,8 +330,7 @@ struct PresetEditorView: View {
             Spacer()
 
             Button {
-                let gen = UIImpactFeedbackGenerator(style: .light)
-                gen.impactOccurred()
+                HapticManager.shared.impact(.light)
                 exerciseToEdit = exercise
             } label: {
                 Image(systemName: "slider.horizontal.3")
@@ -348,8 +343,7 @@ struct PresetEditorView: View {
             .buttonStyle(.plain)
 
             Button {
-                let gen = UIImpactFeedbackGenerator(style: .medium)
-                gen.impactOccurred()
+                HapticManager.shared.impact(.medium)
                 if let idx = vm.exercises.firstIndex(where: { $0.id == exercise.id }) {
                     exercisesToDelete = IndexSet(integer: idx)
                     showDeleteExerciseAlert = true
@@ -593,8 +587,7 @@ struct PresetExerciseEditor: View {
 
             HStack(spacing: 16) {
                 Button {
-                    let gen = UIImpactFeedbackGenerator(style: .light)
-                    gen.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     if value.wrappedValue > range.lowerBound { value.wrappedValue -= 1 }
                 } label: {
                     Image(systemName: "minus.circle.fill")
@@ -608,8 +601,7 @@ struct PresetExerciseEditor: View {
                     .frame(minWidth: 35, alignment: .center)
 
                 Button {
-                    let gen = UIImpactFeedbackGenerator(style: .light)
-                    gen.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     if value.wrappedValue < range.upperBound { value.wrappedValue += 1 }
                 } label: {
                     Image(systemName: "plus.circle.fill")
@@ -701,8 +693,7 @@ struct PresetExerciseEditor: View {
             return
         }
 
-        let gen = UIImpactFeedbackGenerator(style: .medium)
-        gen.impactOccurred()
+        HapticManager.shared.impact(.medium)
 
         let finalSetsCount = exercise.type == .cardio ? 1 : max(1, vm.setsCount)
         let totalSeconds = (vm.minutes * 60) + vm.seconds

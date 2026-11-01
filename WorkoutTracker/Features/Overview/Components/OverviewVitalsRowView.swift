@@ -31,7 +31,7 @@ struct OverviewVitalsRowView: View {
             // CNS Autonomic Readiness Chip
             VitalChipButton(
                 title: "CNS",
-                value: "\(Int(cnsScore))%",
+                value: cnsScore >= 0 ? "\(Int(cnsScore))%" : "—",
                 dotColor: PastelTheme.pastelLavender,
                 action: onCNSTap
             )
@@ -39,7 +39,7 @@ struct OverviewVitalsRowView: View {
             // Heart Rate / Resting BPM Chip
             VitalChipButton(
                 title: "Pulse",
-                value: heartRate > 0 ? "\(Int(heartRate)) bpm" : "62 bpm",
+                value: heartRate > 0 ? "\(Int(heartRate)) bpm" : "—",
                 dotColor: PastelTheme.pastelSage,
                 action: onPulseTap
             )
@@ -47,7 +47,7 @@ struct OverviewVitalsRowView: View {
             // Water Intake Chip (Guaranteed exact same size as CNS and Pulse)
             VitalChipButton(
                 title: "Hydration",
-                value: waterLiters > 0 ? String(format: "%.1fL", waterLiters) : "2.1L",
+                value: waterLiters > 0 ? String(format: "%.1fL", waterLiters) : "—",
                 dotColor: PastelTheme.pastelSlate,
                 action: onWaterTap
             )
@@ -65,7 +65,7 @@ private struct VitalChipButton: View {
 
     var body: some View {
         Button {
-            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            HapticManager.shared.impact(.soft)
             action?()
         } label: {
             HStack(spacing: 6) {

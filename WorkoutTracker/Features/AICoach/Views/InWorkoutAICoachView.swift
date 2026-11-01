@@ -20,11 +20,11 @@ struct InWorkoutAICoachView: View {
                         Image(systemName: "bolt.shield.fill")
                             .font(.title3)
                             .foregroundColor(PastelTheme.pastelLavender)
-                        Text("Мышечное напряжение")
+                        Text("Muscle tension")
                             .font(.headline)
                             .bold()
                         Spacer()
-                        Text("ИИ активен")
+                        Text("AI active")
                             .font(.caption2)
                             .bold()
                             .padding(.horizontal, 8).padding(.vertical, 4)
@@ -47,14 +47,14 @@ struct InWorkoutAICoachView: View {
                         .shadow(color: Color.black.opacity(0.15), radius: 10)
 
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("ИИ анализирует объем работы и мышечную нагрузку целевых групп.")
+                            Text("AI analyzes training volume and target muscle load.")
                                 .font(.subheadline)
                                 .foregroundColor(PastelTheme.textSecondary)
                                 .lineSpacing(4)
                             Spacer()
                             HStack {
                                 Circle().fill(PastelTheme.pastelSage).frame(width: 8, height: 8).symbolEffect(.pulse)
-                                Text("Готов к корректировкам").font(.caption).foregroundColor(PastelTheme.pastelSage)
+                                Text("Ready for adjustments").font(.caption).foregroundColor(PastelTheme.pastelSage)
                             }
                         }
                     }
@@ -66,16 +66,16 @@ struct InWorkoutAICoachView: View {
 
 
                 VStack(alignment: .leading, spacing: 16) {
-                    Text("Умные корректировки")
+                    Text("Smart adjustments")
                         .font(.title3)
                         .bold()
                         .padding(.horizontal, 4)
 
                     LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
-                        smartActionTile(id: "busy", title: "Занят снаряд", icon: "lock.fill", command: "Equipment is taken, swap exercise", color: PastelTheme.pastelSlate)
-                        smartActionTile(id: "heavy", title: "Тяжело", icon: "arrow.down.circle.fill", command: "Weight is too heavy, reduce load", color: PastelTheme.pastelAmber)
-                        smartActionTile(id: "easy", title: "Легко", icon: "arrow.up.circle.fill", command: "Too easy, increase weight or intensity", color: PastelTheme.pastelSage)
-                        smartActionTile(id: "finish", title: "Памп-финишер", icon: "flame.fill", command: "Add a final pump isolation exercise", color: PastelTheme.pastelLavender)
+                        smartActionTile(id: "busy", title: "Equipment taken", icon: "lock.fill", command: "Equipment is taken, swap exercise", color: PastelTheme.pastelSlate)
+                        smartActionTile(id: "heavy", title: "Too heavy", icon: "arrow.down.circle.fill", command: "Weight is too heavy, reduce load", color: PastelTheme.pastelAmber)
+                        smartActionTile(id: "easy", title: "Too easy", icon: "arrow.up.circle.fill", command: "Too easy, increase weight or intensity", color: PastelTheme.pastelSage)
+                        smartActionTile(id: "finish", title: "Pump finisher", icon: "flame.fill", command: "Add a final pump isolation exercise", color: PastelTheme.pastelLavender)
                     }
                 }
 
@@ -168,7 +168,7 @@ struct AIProposalPremiumCard: View {
     var body: some View {
         VStack(spacing: 20) {
             HStack {
-                Label("Рекомендация тренера", systemImage: "sparkles")
+                Label("Coach recommendation", systemImage: "sparkles")
                     .font(.caption.bold())
                     .foregroundColor(PastelTheme.pastelLavender)
                     .padding(.horizontal, 10).padding(.vertical, 6)
@@ -192,17 +192,17 @@ struct AIProposalPremiumCard: View {
 
             HStack(spacing: 15) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Упражнение").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
+                    Text("Exercise").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
                     Text(LocalizationHelper.shared.translateName(proposal.exerciseName)).font(.subheadline).bold().lineLimit(1)
                 }
                 Divider().frame(height: 30)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Подходы").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
+                    Text("Sets").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
                     Text("\(proposal.setsRemaining)").font(.subheadline).bold()
                 }
                 Divider().frame(height: 30)
                 VStack(alignment: .trailing, spacing: 4) {
-                    Text("Вес").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
+                    Text("Weight").font(.system(size: 11, weight: .semibold)).foregroundColor(PastelTheme.textSecondary)
                     Text("\(Int(unitsManager.convertFromKilograms(proposal.weightValue))) \(unitsManager.weightUnitString())")
                         .font(.subheadline)
                         .bold()
@@ -214,13 +214,12 @@ struct AIProposalPremiumCard: View {
             .cornerRadius(16)
 
             Button(action: {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
+                HapticManager.shared.impact(.medium)
                 onApply()
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.seal.fill")
-                    Text("Применить к тренировке").bold()
+                    Text("Apply to workout").bold()
                 }
                 .foregroundColor(PastelTheme.textOnOat)
                 .frame(maxWidth: .infinity)

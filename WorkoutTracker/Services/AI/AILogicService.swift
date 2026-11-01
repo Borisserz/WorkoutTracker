@@ -36,16 +36,47 @@ public enum AILogicError: Error, LocalizedError, Sendable {
         case .friendlyError:     return "Sorry, I got a little confused. Could you rephrase that?"
         case .badRequest(let reason):
             return "Your request couldn't be processed. \(reason)"
-        case .apiError(let code, let msg):
+        case .apiError(let code, _):
             if code == 400 {
                 return "The request was invalid or too large. Please try asking a shorter question."
             } else if code >= 500 {
                 return "Google's AI servers are currently experiencing issues. Please try again later."
             }
-            return "Server Error (\(code)): \(msg)"
-        case .decodingFailed(let err):
-            return "Decoding failed: \(err.localizedDescription)"
+            return String(localized: "The AI service couldn't complete your request. Please try again.")
+        case .decodingFailed:
+            return String(localized: "We couldn't read the AI response. Please try again.")
         }
+    }
+}
+
+extension Error {
+    /// Human-readable message for AI UI (chat, builders, weekly review).
+    var userFacingAIMessage: String {
+        if let ai = self as? AILogicError, let description = ai.errorDescription {
+            return description
+        }
+        if let urlError = self as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff:
+                return String(localized: "You're offline. Check your connection and try again.")
+            case .timedOut, .cannotConnectToHost, .dnsLookupFailed:
+                return String(localized: "The request timed out. Check your connection and try again.")
+            default:
+                break
+            }
+        }
+        let ns = self as NSError
+        if ns.domain == NSURLErrorDomain {
+            switch ns.code {
+            case NSURLErrorNotConnectedToInternet, NSURLErrorNetworkConnectionLost, NSURLErrorDataNotAllowed:
+                return String(localized: "You're offline. Check your connection and try again.")
+            case NSURLErrorTimedOut, NSURLErrorCannotConnectToHost:
+                return String(localized: "The request timed out. Check your connection and try again.")
+            default:
+                return String(localized: "Couldn't reach the AI service. Please try again.")
+            }
+        }
+        return String(localized: "Something went wrong. Please try again.")
     }
 }
 

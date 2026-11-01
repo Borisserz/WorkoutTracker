@@ -158,8 +158,7 @@ struct FilterChip: View {
 
     var body: some View {
         Button(action: {
-            let gen = UISelectionFeedbackGenerator()
-            gen.selectionChanged()
+            HapticManager.shared.selection()
             action()
         }) {
             Text(LocalizedStringKey(title))

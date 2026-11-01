@@ -22,7 +22,8 @@ struct OverviewDailyFocusCard: View {
     }
 
     private var cleanSplitTitle: String {
-        advice.recommendedSplitTitle.replacingOccurrences(of: "Совет на следующую сессию: ", with: "")
+        advice.recommendedSplitTitle
+            .replacingOccurrences(of: "Next session: ", with: "")
     }
 
     var body: some View {
@@ -40,11 +41,11 @@ struct OverviewDailyFocusCard: View {
                         .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
 
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("Совет на тренировку")
+                        Text("Session tip")
                             .font(.headline)
                             .foregroundStyle(PastelTheme.textPrimary)
 
-                        Text("Анализ восстановления и кинетической цепи")
+                        Text("Recovery and kinetic chain analysis")
                             .font(.caption2)
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -57,7 +58,7 @@ struct OverviewDailyFocusCard: View {
                         .fill(PastelTheme.pastelSage)
                         .frame(width: 6, height: 6)
 
-                    Text("Физиология")
+                    Text("Physiology")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(PastelTheme.pastelSage)
                 }
@@ -69,7 +70,7 @@ struct OverviewDailyFocusCard: View {
 
             // MARK: - Highlighted Recommendation Frame / Inner Box
             Button {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                HapticManager.shared.impact(.soft)
                 onTapDetail()
             } label: {
                 HStack(alignment: .top, spacing: 0) {
@@ -148,7 +149,7 @@ struct OverviewDailyFocusCard: View {
 
             // MARK: - Actionable Teaser Button: Open Full Sheet
             Button {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                HapticManager.shared.impact(.soft)
                 onTapDetail()
             } label: {
                 HStack {
@@ -157,14 +158,14 @@ struct OverviewDailyFocusCard: View {
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(PastelTheme.pastelSage)
 
-                        Text("Подробный тактический разбор")
+                        Text("Detailed tactical breakdown")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(PastelTheme.textPrimary)
                     }
 
                     Spacer()
 
-                    Text("Открыть")
+                    Text("Open")
                         .font(.caption2.bold())
                         .foregroundStyle(PastelTheme.pastelOat)
 

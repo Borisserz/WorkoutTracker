@@ -10,8 +10,8 @@ struct BodyAnalysisReportView: View {
     @State private var selectedMuscleTab: MuscleTab = .prime
 
     enum MuscleTab: String, CaseIterable, Identifiable {
-        case prime = "Готовы к нагрузке"
-        case recovering = "Восстановление"
+        case prime = "Ready to train"
+        case recovering = "Recovering"
 
         var id: String { rawValue }
     }
@@ -22,7 +22,9 @@ struct BodyAnalysisReportView: View {
     }
 
     private var readinessColor: Color {
-        if report.overallReadiness >= 80 {
+        if report.overallReadiness < 0 {
+            return PastelTheme.textSecondary
+        } else if report.overallReadiness >= 80 {
             return PastelTheme.pastelSage
         } else if report.overallReadiness >= 55 {
             return PastelTheme.pastelAmber
@@ -32,14 +34,16 @@ struct BodyAnalysisReportView: View {
     }
 
     private var readinessSummaryText: String {
-        if report.overallReadiness >= 85 {
-            return "Пиковая готовность к нагрузке"
+        if report.overallReadiness < 0 {
+            return "Muscle readiness not measured"
+        } else if report.overallReadiness >= 85 {
+            return "Peak training readiness"
         } else if report.overallReadiness >= 70 {
-            return "Оптимальная рабочая форма"
+            return "Optimal working condition"
         } else if report.overallReadiness >= 55 {
-            return "Умеренное накопленное утомление"
+            return "Moderate accumulated fatigue"
         } else {
-            return "Требуется активный отдых"
+            return "Active rest recommended"
         }
     }
 
@@ -59,7 +63,7 @@ struct BodyAnalysisReportView: View {
                                     .frame(width: 82, height: 82)
 
                                 Circle()
-                                    .trim(from: 0, to: CGFloat(report.overallReadiness) / 100.0)
+                                    .trim(from: 0, to: report.overallReadiness < 0 ? 0 : CGFloat(report.overallReadiness) / 100.0)
                                     .stroke(
                                         readinessColor,
                                         style: StrokeStyle(lineWidth: 8, lineCap: .round)
@@ -68,14 +72,14 @@ struct BodyAnalysisReportView: View {
                                     .rotationEffect(.degrees(-90))
 
                                 VStack(spacing: 0) {
-                                    Text("\(report.overallReadiness)%")
+                                    Text(report.overallReadiness < 0 ? "—" : "\(report.overallReadiness)%")
                                         .font(.system(size: 20, weight: .bold, design: .rounded))
                                         .foregroundStyle(PastelTheme.textPrimary)
                                 }
                             }
 
                             VStack(alignment: .leading, spacing: 5) {
-                                Text("Системная готовность")
+                                Text("System readiness")
                                     .font(.caption)
                                     .foregroundStyle(PastelTheme.textSecondary)
 
@@ -88,7 +92,7 @@ struct BodyAnalysisReportView: View {
                                         .fill(PastelTheme.pastelLavender)
                                         .frame(width: 5, height: 5)
 
-                                    Text("ЦНС: \(report.cnsStatusTitle)")
+                                    Text("CNS: \(report.cnsStatusTitle)")
                                         .font(.caption2.weight(.medium))
                                         .foregroundStyle(PastelTheme.pastelLavender)
                                 }
@@ -109,7 +113,7 @@ struct BodyAnalysisReportView: View {
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundStyle(PastelTheme.pastelSage)
 
-                                Text("Физиологическое резюме")
+                                Text("Physiology summary")
                                     .font(.subheadline.bold())
                                     .foregroundStyle(PastelTheme.textPrimary)
                             }
@@ -123,7 +127,7 @@ struct BodyAnalysisReportView: View {
 
                         // MARK: - 3. Recommended Protocol & Restrictions
                         VStack(alignment: .leading, spacing: 12) {
-                            Text("Рекомендованный протокол")
+                            Text("Recommended protocol")
                                 .font(.subheadline.bold())
                                 .foregroundStyle(PastelTheme.textPrimary)
 
@@ -136,7 +140,7 @@ struct BodyAnalysisReportView: View {
                                         .padding(.top, 5)
 
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Целевой фокус")
+                                        Text("Target focus")
                                             .font(.caption2)
                                             .foregroundStyle(PastelTheme.textTertiary)
 
@@ -157,7 +161,7 @@ struct BodyAnalysisReportView: View {
                                         .padding(.top, 5)
 
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text("Меры предосторожности")
+                                        Text("Safety notes")
                                             .font(.caption2)
                                             .foregroundStyle(PastelTheme.textTertiary)
 
@@ -172,14 +176,14 @@ struct BodyAnalysisReportView: View {
 
                         // MARK: - 4. Muscle Breakdown Tabs (Full-width, clean list)
                         VStack(alignment: .leading, spacing: 14) {
-                            Text("Состояние мышечных групп")
+                            Text("Muscle group status")
                                 .font(.subheadline.bold())
                                 .foregroundStyle(PastelTheme.textPrimary)
 
                             // Segmented Picker
-                            Picker("Мышцы", selection: $selectedMuscleTab) {
-                                Text("Готовы (\(report.primeMuscles.count))").tag(MuscleTab.prime)
-                                Text("Восстановление (\(report.recoveringMuscles.count))").tag(MuscleTab.recovering)
+                            Picker("Muscles", selection: $selectedMuscleTab) {
+                                Text("Ready (\(report.primeMuscles.count))").tag(MuscleTab.prime)
+                                Text("Recovering (\(report.recoveringMuscles.count))").tag(MuscleTab.recovering)
                             }
                             .pickerStyle(.segmented)
 
@@ -192,7 +196,7 @@ struct BodyAnalysisReportView: View {
                                         .font(.title3)
                                         .foregroundStyle(PastelTheme.pastelSage)
 
-                                    Text(selectedMuscleTab == .prime ? "Все мышцы на восстановлении" : "Все мышцы полностью отдохнули")
+                                    Text(selectedMuscleTab == .prime ? "All muscles are recovering" : "All muscles are fully rested")
                                         .font(.subheadline)
                                         .foregroundStyle(PastelTheme.textSecondary)
                                 }
@@ -211,7 +215,7 @@ struct BodyAnalysisReportView: View {
                                                     .font(.subheadline.weight(.semibold))
                                                     .foregroundStyle(PastelTheme.textPrimary)
 
-                                                Text(item.percentage >= 80 ? "Полностью восстановлены" : "~\(item.hoursRemaining) ч до суперкомпенсации")
+                                                Text(item.percentage >= 80 ? "Fully recovered" : "~\(item.hoursRemaining) h until supercompensation")
                                                     .font(.caption2)
                                                     .foregroundStyle(PastelTheme.textSecondary)
                                             }
@@ -245,12 +249,12 @@ struct BodyAnalysisReportView: View {
 
                         // MARK: - 5. Primary Action
                         Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            HapticManager.shared.impact(.medium)
                             dismiss()
                             onGoToWorkout?()
                         } label: {
                             HStack(spacing: 8) {
-                                Text(onGoToWorkout != nil ? "Перейти к тренировкам" : "Закрыть отчёт")
+                                Text(onGoToWorkout != nil ? "Go to workouts" : "Close report")
                                     .font(.subheadline.bold())
                                 if onGoToWorkout != nil {
                                     Image(systemName: "arrow.right")
@@ -272,7 +276,7 @@ struct BodyAnalysisReportView: View {
                     .padding(.top, 16)
                 }
             }
-            .navigationTitle("Анализ тела")
+            .navigationTitle("Body analysis")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

@@ -182,9 +182,7 @@ final class RestTimerManager {
           TrackingManager.shared.track(.restTimerUsed(durationSeconds: initialRestTime, skipped: false))
 
           if !suppressAudio {
-              let generator = UINotificationFeedbackGenerator()
-              generator.prepare()
-              generator.notificationOccurred(.success)
+              HapticManager.shared.notification(.success)
               AudioServicesPlaySystemSound(1005)
           }
 
@@ -198,18 +196,20 @@ final class RestTimerManager {
       }
 
       func stopRestTimer() {
+          let wasFinished = restTimerFinished
+          let duration = initialRestTime
           isRestTimerActive = false
           restTimerFinished = false
           restEndTime = nil
-          restEndTime = nil
           clearTimerState()
           LiveActivityManager().clearRestTimer()
-          
-          if !restTimerFinished {
-              TrackingManager.shared.track(.restTimerUsed(durationSeconds: initialRestTime, skipped: true))
+
+          // Only count as skipped when the user stops before the timer finishes.
+          if !wasFinished {
+              TrackingManager.shared.track(.restTimerUsed(durationSeconds: duration, skipped: true))
           }
 
-          tickerTask?.cancel() 
+          tickerTask?.cancel()
           tickerTask = nil
           NotificationManager.shared.cancelRestTimerNotification()
       }

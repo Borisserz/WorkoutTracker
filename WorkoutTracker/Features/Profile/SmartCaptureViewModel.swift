@@ -106,8 +106,7 @@ final class SmartCaptureViewModel: NSObject {
     func startCountdown() {
         guard countdownTask == nil else { return } 
 
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        HapticManager.shared.notification(.success)
 
         countdownTask = Task {
             for i in (1...3).reversed() {

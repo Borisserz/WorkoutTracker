@@ -5,6 +5,7 @@ struct ProgramDiscoveryView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
     @Environment(WorkoutService.self) private var workoutService
+    @Environment(DIContainer.self) private var di
     
     @State private var selectedLegendaryRoutine: LegendaryRoutine?
     @State private var showActiveWorkoutAlert = false
@@ -35,7 +36,7 @@ struct ProgramDiscoveryView: View {
                 eraTitle: "High Intensity Era",
                 shortVibe: "Maximum Intensity, Low Volume",
                 loreDescription: "The revolutionary High-Intensity Training (HIT) system. Train to absolute failure with one heavy working set, followed by complete rest for ultimate growth.",
-                gradientColors: [.purple, .indigo],
+                gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
                 difficulty: .advanced,
                 estimatedMinutes: 45,
                 benefits: ["HIT", "Intensity", "Hypertrophy"],
@@ -49,6 +50,11 @@ struct ProgramDiscoveryView: View {
         ]
     }
     
+    private var usingOfflineCatalog: Bool {
+        FirestoreProgramService.shared.legendaryRoutines.isEmpty
+            || FirestoreProgramService.shared.explorePrograms.isEmpty
+    }
+
     private var legendaryPrograms: [LegendaryRoutine] {
         let routines = FirestoreProgramService.shared.legendaryRoutines
         if routines.isEmpty {
@@ -68,6 +74,25 @@ struct ProgramDiscoveryView: View {
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 32) {
+                if usingOfflineCatalog {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "icloud.slash")
+                            .foregroundStyle(PastelTheme.pastelAmber)
+                        Text("Showing bundled sample programs. Connect to refresh the live catalog.")
+                            .font(.footnote)
+                            .foregroundStyle(PastelTheme.textSecondary)
+                        Spacer(minLength: 0)
+                    }
+                    .padding(14)
+                    .background(PastelTheme.cardSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    )
+                    .padding(.horizontal, 4)
+                }
+
                 // Legendary Section (Top, Wide Cards)
                 if !legendaryPrograms.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
@@ -78,7 +103,7 @@ struct ProgramDiscoveryView: View {
                         LazyVGrid(columns: legendColumns, spacing: 16) {
                             ForEach(legendaryPrograms) { routine in
                                 Button {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    HapticManager.shared.impact(.medium)
                                     selectedLegendaryRoutine = routine
                                 } label: {
                                     LegendaryGridCardView(routine: routine)
@@ -191,7 +216,10 @@ struct ProgramDiscoveryView: View {
                 exercises: routine.exercises
             )
             
-            await workoutService.startGeneratedWorkout(generatedDTO)
+            if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "legendary") {
+                di.appState.returnToActiveWorkoutId = id
+                di.appState.selectedTab = 2
+            }
             selectedLegendaryRoutine = nil
             isProcessing = false
         }

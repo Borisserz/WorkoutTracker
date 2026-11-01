@@ -24,11 +24,11 @@ struct CurrentStreakDetailSheet: View {
                     }
                 }
             }
-            .navigationTitle("Текущий стрик")
+            .navigationTitle("Current streak")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Готово") { dismiss() }
+                    Button("Done") { dismiss() }
                         .fontWeight(.bold)
                 }
             }
@@ -83,11 +83,11 @@ fileprivate struct StreakFireHeader: View {
             
             // Main Text
             VStack(spacing: 8) {
-                Text("\(streak) дн. стрик")
+                Text("\(streak)-day streak")
                     .font(.system(size: 40, weight: .heavy, design: .rounded))
                     .foregroundStyle(PastelTheme.pastelAmber)
                 
-                Text(streak > 0 ? "Отличный темп! Продолжайте в том же духе." : "Начните серию сегодня, завершив тренировку.")
+                Text(streak > 0 ? "Great pace! Keep it going." : "Start a streak today by finishing a workout.")
                     .font(.body)
                     .foregroundColor(PastelTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -104,7 +104,7 @@ fileprivate struct StreakVisualizer: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Последние 7 дней")
+            Text("Last 7 days")
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
 
@@ -317,7 +317,7 @@ fileprivate struct WeeklyActivityBentoGrid: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Итоги недели")
+            Text("Week in review")
                 .font(.headline)
                 .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 .padding(.horizontal, 24)
@@ -326,14 +326,14 @@ fileprivate struct WeeklyActivityBentoGrid: View {
                 // Left column: Workouts & Time
                 VStack(spacing: 16) {
                     BentoCard(
-                        title: "Тренировки",
+                        title: "Workouts",
                         value: "\(stats.workoutCount)",
                         icon: "figure.run",
                         colors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)]
                     )
                     BentoCard(
-                        title: "Время",
-                        value: "\(stats.totalDuration) мин",
+                        title: "Time",
+                        value: "\(stats.totalDuration) min",
                         icon: "timer",
                         colors: [PastelTheme.pastelAmber, PastelTheme.pastelAmber.opacity(0.7)]
                     )
@@ -358,7 +358,7 @@ fileprivate struct WeeklyActivityBentoGrid: View {
                             Spacer()
                             
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Всего повторений")
+                                Text("Total reps")
                                     .font(.subheadline)
                                     .foregroundColor(PastelTheme.textSecondary)
                                 

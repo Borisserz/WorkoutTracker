@@ -90,20 +90,22 @@ final class StatsViewModel {
     }
 
     func loadActiveGoals(prCache: [String: Double]) async {
-            let bgContext = ModelContext(analyticsService.modelContainer)
+            // Use the shared main context so UserGoal instances stay valid for UI mutation/delete.
+            // Ephemeral ModelContext(container) objects become unsafe once the context deallocates.
+            let context = analyticsService.modelContainer.mainContext
             let descriptor = FetchDescriptor<UserGoal>(predicate: #Predicate { $0.isCompleted == false }, sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
 
-            let goals = (try? bgContext.fetch(descriptor)) ?? []
+            let goals = (try? context.fetch(descriptor)) ?? []
             self.activeGoals = goals
 
             var newValues: [UUID: Double] = [:]
 
             let widgetData = WidgetDataManager.load()
             let weightDesc = FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-            let latestWeight = (try? bgContext.fetch(weightDesc).first)?.weight
+            let latestWeight = (try? context.fetch(weightDesc).first)?.weight
 
             let activeWorkoutsDesc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
-            let activeWorkouts = (try? bgContext.fetch(activeWorkoutsDesc)) ?? []
+            let activeWorkouts = (try? context.fetch(activeWorkoutsDesc)) ?? []
 
             for goal in goals {
                 switch goal.type {
@@ -238,6 +240,9 @@ struct StatsContentView: View {
     @State private var showAIReviewSheet = false
     @State private var isFetchingReviewData = false
     @State private var reviewData: StatsDataResultDTO?
+    @AppStorage(Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
+    private var hasConsentedToAI = false
+    @State private var showAIConsentSheet = false
 
     var body: some View {
         ZStack {
@@ -346,6 +351,11 @@ struct StatsContentView: View {
                     .presentationDetents([.medium])
             }
         }
+        .sheet(isPresented: $showAIConsentSheet) {
+            AIConsentSheet(onConsent: { fetchReviewDataAndShowSheet() })
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .onChange(of: di.appState.showProfileSheet) { _, newVal in
             if newVal {
                 showProfile = true
@@ -394,6 +404,10 @@ struct StatsContentView: View {
 
     private func fetchReviewDataAndShowSheet() {
         guard !isFetchingReviewData else { return }
+        guard hasConsentedToAI else {
+            showAIConsentSheet = true
+            return
+        }
         isFetchingReviewData = true
 
         Task {
@@ -427,11 +441,11 @@ struct HeaderView: View {
     var body: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Прогресс")
+                Text("Progress")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
-                Text("Тренды и спортивная аналитика")
+                Text("Trends and sports analytics")
                     .font(.caption)
                     .foregroundStyle(PastelTheme.textSecondary)
             }
@@ -439,7 +453,7 @@ struct HeaderView: View {
             Spacer()
 
             Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticManager.shared.impact(.light)
                 showProfile = true
             } label: {
                 ZStack {
@@ -514,23 +528,23 @@ struct GoalsSectionView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Цели")
+                    Text("Goals")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(PastelTheme.textPrimary)
-                    Text("Недельные нормативы и задачи")
+                    Text("Weekly targets and tasks")
                         .font(.caption2)
                         .foregroundStyle(PastelTheme.textSecondary)
                 }
                 Spacer()
 
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                     showingAddGoal = true
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
                             .font(.system(size: 11, weight: .bold))
-                        Text("Добавить")
+                        Text("Add")
                             .font(.caption.weight(.bold))
                     }
                     .padding(.horizontal, 12)
@@ -582,11 +596,11 @@ struct CompactGoalEmptyState: View {
         HStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(Color.purple.opacity(0.15))
+                    .fill(PastelTheme.pastelLavender.opacity(0.15))
                     .frame(width: 44, height: 44)
                 Image(systemName: "target")
                     .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(.purple)
+                    .foregroundColor(PastelTheme.pastelLavender)
             }
             
             VStack(alignment: .leading, spacing: 2) {
@@ -601,7 +615,7 @@ struct CompactGoalEmptyState: View {
             Spacer()
             
             Button(action: {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                HapticManager.shared.impact(.light)
                 showingAddGoal = true
             }) {
                 Text("Set Goal")
@@ -745,7 +759,7 @@ struct BodyTransformBannerCard: View {
 
     var body: some View {
         Button(action: {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.impact(.medium)
             onTap()
         }) {
             ZStack {
@@ -805,9 +819,9 @@ struct BodyTransformBannerCard: View {
                             }
                         }
 
-                        Text("Before & after slider · Track your progress")
+                        Text("Before and after photos to track physique changes")
                             .font(.system(size: 13, weight: .medium, design: .rounded))
-                            .foregroundColor(PastelTheme.textSecondary)
+                            .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
                     }
 
@@ -848,7 +862,7 @@ struct AIIslandView: View {
 
     var body: some View {
         Button(action: {
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            HapticManager.shared.impact(.heavy)
             action()
         }) {
             ZStack {
@@ -923,7 +937,7 @@ struct BodyTransformSquareCard: View {
         let subtitleColor = PastelTheme.textSecondary
 
         Button(action: {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.impact(.medium)
             onTap()
         }) {
             ZStack {
@@ -957,7 +971,7 @@ struct BodyTransformSquareCard: View {
                             Circle()
                                 .fill(
                                     LinearGradient(
-                                        colors: [Color.purple.opacity(0.3), Color.blue.opacity(0.2)],
+                                        colors: [PastelTheme.pastelLavender.opacity(0.3), PastelTheme.pastelSlate.opacity(0.2)],
                                         startPoint: .topLeading,
                                         endPoint: .bottomTrailing
                                     )
@@ -973,7 +987,7 @@ struct BodyTransformSquareCard: View {
                                     )
                                 )
                                 .frame(width: 32, height: 32)
-                                .shadow(color: Color.purple.opacity(0.3), radius: 3, y: 2)
+                                .shadow(color: PastelTheme.pastelLavender.opacity(0.3), radius: 3, y: 2)
 
                             Image(systemName: "camera.viewfinder")
                                 .font(.system(size: 15, weight: .bold))
@@ -985,8 +999,8 @@ struct BodyTransformSquareCard: View {
                                 .font(.system(size: 10, weight: .bold))
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Color.purple.opacity(0.18))
-                                .foregroundColor(.purple)
+                                .background(PastelTheme.pastelLavender.opacity(0.18))
+                                .foregroundColor(PastelTheme.pastelLavender)
                                 .clipShape(Capsule())
                         }
                     }
@@ -1044,7 +1058,7 @@ struct AIIslandSquareView: View {
         let subtitleColor = PastelTheme.textSecondary
 
         Button(action: {
-            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            HapticManager.shared.impact(.heavy)
             action()
         }) {
             ZStack {
@@ -1069,7 +1083,7 @@ struct AIIslandSquareView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Анализ формы")
+                        Text("Form analysis")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .minimumScaleFactor(0.9)
@@ -1120,7 +1134,7 @@ struct CurrentStreakSquareCard: View {
         let titleColor = PastelTheme.textPrimary
 
         Button(action: {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            HapticManager.shared.impact(.light)
             showSheet = true
         }) {
             ZStack {
@@ -1144,17 +1158,17 @@ struct CurrentStreakSquareCard: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Серия тренировок")
+                        Text("Workout streak")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .lineLimit(1)
                         
-                        Text("\(streak) дн.")
+                        Text("\(streak) days")
                             .font(.system(size: 20, weight: .heavy, design: .rounded))
                             .foregroundColor(PastelTheme.pastelAmber)
                             .contentTransition(.numericText())
                         
-                        Text(streak > 0 ? "Ударный ритм активен" : "Начните серию сегодня")
+                        Text(streak > 0 ? "Momentum is rolling" : "Start your streak today")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(PastelTheme.textTertiary)
                             .lineLimit(1)
@@ -1198,7 +1212,7 @@ struct ActivityThisWeekSquareCard: View {
         let titleColor = PastelTheme.textPrimary
 
         Button(action: {
-            UISelectionFeedbackGenerator().selectionChanged()
+            HapticManager.shared.selection()
             showSheet = true
         }) {
             ZStack {
@@ -1222,17 +1236,17 @@ struct ActivityThisWeekSquareCard: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Активность недели")
+                        Text("Weekly activity")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .lineLimit(1)
                         
-                        Text("\(stats.workoutCount) тренировок")
+                        Text("\(stats.workoutCount) workouts")
                             .font(.system(size: 18, weight: .heavy, design: .rounded))
                             .foregroundColor(PastelTheme.pastelSlate)
                             .lineLimit(1)
                         
-                        Text("\(stats.totalDuration) мин · \(stats.totalReps) повт.")
+                        Text("\(stats.totalDuration) min — \(stats.totalReps) reps")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(PastelTheme.textTertiary)
                             .lineLimit(1)
@@ -1276,7 +1290,7 @@ struct PeriodPicker: View {
             ForEach(StatsView.Period.allCases) { period in
                 let isSelected = selectedPeriod == period
                 Button(action: {
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    HapticManager.shared.selection()
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                         selectedPeriod = period
                     }
@@ -1393,7 +1407,7 @@ struct InteractiveStatCard: View {
 
     var body: some View {
         Button(action: {
-            UISelectionFeedbackGenerator().selectionChanged()
+            HapticManager.shared.selection()
             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                 selectedMetric = metric
             }
@@ -1454,8 +1468,8 @@ struct ComparisonSectionView: View {
                 if viewModel.chartData.isEmpty {
                     EmptyStateView(
                         icon: "chart.xyaxis.line",
-                        title: "Ожидание данных",
-                        message: "Завершите первую тренировку, чтобы открыть детальную аналитику и графики.",
+                        title: "Waiting for data",
+                        message: "Finish your first workout to unlock detailed analytics and charts.",
                         iconColor: PastelTheme.pastelSlate
                     )
                 } else {
@@ -1608,7 +1622,7 @@ struct AdvancedStatsSectionView: View {
                     title: "Development balance",
                     subtitle: "Load distribution comparison.",
                     icon: "chart.pie.fill",
-                    iconColor: .purple,
+                    iconColor: PastelTheme.pastelLavender,
                     isExpanded: Binding(get: { openTab == 2 }, set: { openTab = $0 ? 2 : nil })
                 ) {
                     VStack(spacing: 16) {
@@ -1635,7 +1649,7 @@ struct AdvancedStatsSectionView: View {
                             }
                             .padding(.vertical, 10)
 
-                            InnerCardNavigationButton(title: "Open Muscle Radar", icon: "viewfinder", color: .purple) {
+                            InnerCardNavigationButton(title: "Open Muscle Radar", icon: "viewfinder", color: PastelTheme.pastelLavender) {
                                 RadarChartDetailView()
                             }
                         } else {
@@ -1708,14 +1722,14 @@ struct AdvancedStatsSectionView: View {
                 }
 
                 PremiumDisclosureCard(
-                    title: "Отчет за 30 дней",
-                    subtitle: "Итоги ваших тренировочных сессий в формате Stories.",
+                    title: "30-day report",
+                    subtitle: "Your training sessions summarized as Stories.",
                     icon: "doc.text.fill",
                     iconColor: PastelTheme.pastelSlate,
                     isExpanded: Binding(get: { openTab == 4 }, set: { openTab = $0 ? 4 : nil })
                 ) {
                     VStack(alignment: .leading) {
-                        InnerCardNavigationButton(title: "Смотреть Stories", icon: "play.rectangle.fill", color: PastelTheme.pastelSlate) {
+                        InnerCardNavigationButton(title: "Watch Stories", icon: "play.rectangle.fill", color: PastelTheme.pastelSlate) {
                             MonthlyReportStoryView()
                         }
                     }
@@ -1738,7 +1752,7 @@ struct PremiumDisclosureCard<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button(action: {
-                UISelectionFeedbackGenerator().selectionChanged()
+                HapticManager.shared.selection()
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                     isExpanded.toggle()
                 }
@@ -1880,7 +1894,7 @@ struct AllTimeResultsView: View {
         MoodSticker(emoji: "⚡", title: "High Energy", subtitle: "Unstoppable", color: .yellow, motivation: "High energy day! Smash those targets! ⚡"),
         MoodSticker(emoji: "🔋", title: "Recovery", subtitle: "Recharging", color: .green, motivation: "Rest and recharge. Muscles grow when you rest! 🔋"),
         MoodSticker(emoji: "💪", title: "Strength", subtitle: "Solid Gains", color: .blue, motivation: "Lift heavy, stay focused. Gains are incoming! 💪"),
-        MoodSticker(emoji: "🚀", title: "Dedication", subtitle: "Pure Focus", color: .purple, motivation: "Pure focus. Consistency is key! 🚀")
+        MoodSticker(emoji: "🚀", title: "Dedication", subtitle: "Pure Focus", color: PastelTheme.pastelLavender, motivation: "Pure focus. Consistency is key! 🚀")
     ]
 
     @State private var selectedStickerIndex = 0
@@ -1907,7 +1921,7 @@ struct AllTimeResultsView: View {
                             let nameColor = isSelected ? (colorScheme == .dark ? Color.white : Color.black) : Color.gray
                             
                             Button(action: {
-                                UISelectionFeedbackGenerator().selectionChanged()
+                                HapticManager.shared.selection()
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                                     selectedStickerIndex = index
                                 }
@@ -1963,9 +1977,9 @@ struct AllTimeResultsView: View {
                         Text("Best Month (Volume)").font(.subheadline).foregroundColor(.gray)
                         let vol = unitsManager.convertFromKilograms(bestStats.totalVolume)
                         if vol > 1000 {
-                            Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) tons").font(.title2).bold().foregroundColor(.purple)
+                            Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) tons").font(.title2).bold().foregroundColor(PastelTheme.pastelLavender)
                         } else {
-                            Text("\(Int(vol)) \(unitsManager.weightUnitString())").font(.title2).bold().foregroundColor(.purple)
+                            Text("\(Int(vol)) \(unitsManager.weightUnitString())").font(.title2).bold().foregroundColor(PastelTheme.pastelLavender)
                         }
                     }
                     Spacer()
@@ -2131,8 +2145,7 @@ struct SetsTrendDetailView: View {
                         let muscleColor = colorManager.getColor(for: muscle)
 
                         Button {
-                            let generator = UISelectionFeedbackGenerator()
-                            generator.selectionChanged()
+                            HapticManager.shared.selection()
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                                 selectedMuscle = muscle
                             }
@@ -2521,8 +2534,7 @@ struct RadarChartDetailView: View {
             .background(isHighlighted ? themeManager.current.primaryAccent.opacity(0.1) : Color.clear)
             .contentShape(Rectangle())
             .onTapGesture {
-                let generator = UISelectionFeedbackGenerator()
-                generator.selectionChanged()
+                HapticManager.shared.selection()
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     highlightedMuscle = isHighlighted ? nil : item.muscle
                 }
@@ -3236,8 +3248,7 @@ struct HeatmapDetailView: View {
                                     dragStartTime = nil
 
                                     if duration < 0.3 {
-                                        let generator = UIImpactFeedbackGenerator(style: .light)
-                                        generator.impactOccurred()
+                                        HapticManager.shared.impact(.light)
                                         if value.location.x < geo.size.width / 2 {
                                             prevSlide()
                                         } else {
@@ -3376,23 +3387,23 @@ struct HeatmapDetailView: View {
                 VStack(spacing: 40) {
                     Spacer()
 
-                    Text("Итоги вашего\nмесяца")
+                    Text("Your month\nin review")
                         .font(.system(size: 46, weight: .black, design: .rounded))
                         .foregroundColor(PastelTheme.textPrimary)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
 
                     VStack(spacing: 16) {
-                        neoGlassCard(title: "Тренировки", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: PastelTheme.pastelSlate)
+                        neoGlassCard(title: "Workouts", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: PastelTheme.pastelSlate)
                             .offset(y: floatAnim1 ? -6 : 6)
                             .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: floatAnim1)
 
-                        neoGlassCard(title: "Минуты", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: PastelTheme.pastelAmber)
+                        neoGlassCard(title: "Minutes", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: PastelTheme.pastelAmber)
                             .offset(y: floatAnim2 ? 6 : -6)
                             .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true).delay(0.5), value: floatAnim2)
 
                         neoGlassCard(
-                            title: "Любимый день",
+                            title: "Favorite day",
                             value: data.favoriteDay.capitalized, 
                             icon: "star.fill",                   
                             color: PastelTheme.pastelSage
@@ -3463,20 +3474,20 @@ struct HeatmapDetailView: View {
                     Spacer()
 
                     VStack(spacing: 8) {
-                        Text("Колоссальный\nобъем")
+                        Text("Massive\nvolume")
                             .font(.system(size: 40, weight: .black, design: .rounded))
                             .foregroundColor(PastelTheme.textPrimary)
                             .multilineTextAlignment(.center)
 
                         let volStr = LocalizationHelper.shared.formatTwoDecimals(data.totalVolumeTons)
 
-                        Text("\(volStr) т")
+                        Text("\(volStr) t")
                             .font(.system(size: 65, weight: .black, design: .rounded))
                             .foregroundColor(PastelTheme.pastelSage)
                             .shadow(color: PastelTheme.pastelSage.opacity(0.35), radius: 15, x: 0, y: 0)
                             .contentTransition(.numericText())
 
-                        Text("Поднятый тоннаж за последние 30 дней")
+                        Text("Tonnage lifted in the last 30 days")
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundColor(PastelTheme.textSecondary)
@@ -3607,21 +3618,21 @@ struct StorySlideOutro: View {
                             .stroke(PastelTheme.cardBorder, lineWidth: 1.5)
 
                         VStack(spacing: 30) {
-                            Text("ДИСЦИПЛИНА")
+                            Text("Discipline")
                                 .font(.system(size: 24, weight: .heavy, design: .rounded))
                                 .tracking(3)
                                 .foregroundStyle(PastelTheme.pastelOat)
 
                             HStack(spacing: 20) {
-                                holoStat(value: "\(data.streakDays)", title: "Макс. стрик", color: PastelTheme.pastelAmber)
-                                holoStat(value: "\(data.activeDays.count)", title: "Тренировки", color: PastelTheme.pastelSlate)
-                                holoStat(value: "\(data.summary.currentSets)", title: "Подходы", color: PastelTheme.pastelSage)
+                                holoStat(value: "\(data.streakDays)", title: "Best streak", color: PastelTheme.pastelAmber)
+                                holoStat(value: "\(data.activeDays.count)", title: "Workouts", color: PastelTheme.pastelSlate)
+                                holoStat(value: "\(data.summary.currentSets)", title: "Sets", color: PastelTheme.pastelSage)
                             }
 
                             Divider().background(Color.white.opacity(0.2))
 
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Активность за 28 дней")
+                                Text("28-day activity")
                                     .font(.caption)
                                     .fontWeight(.bold)
                                     .foregroundColor(PastelTheme.textSecondary)
@@ -3654,8 +3665,7 @@ struct StorySlideOutro: View {
 
               
                     Button {
-                        let generator = UIImpactFeedbackGenerator(style: .heavy)
-                        generator.impactOccurred()
+                        HapticManager.shared.impact(.heavy)
                         
                         let shareView = StorySlideOutroShareCard(data: data)
                             .environment(ThemeManager.shared)
@@ -3670,7 +3680,7 @@ struct StorySlideOutro: View {
                         HStack(spacing: 12) {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.headline.weight(.bold))
-                            Text("Поделиться статистикой")
+                            Text("Share stats")
                                 .font(.headline.weight(.bold))
                         }
                         .foregroundColor(PastelTheme.textOnOat)
@@ -3990,21 +4000,21 @@ struct StorySlideOutro: View {
                         .stroke(PastelTheme.cardBorder, lineWidth: 1.5)
                     
                     VStack(spacing: 30) {
-                        Text("ДИСЦИПЛИНА")
+                        Text("Discipline")
                             .font(.system(size: 24, weight: .black, design: .rounded))
                             .tracking(4)
                             .foregroundStyle(PastelTheme.pastelOat)
                         
                         HStack(spacing: 20) {
-                            holoStat(value: "\(data.streakDays)", title: "Макс. стрик", color: PastelTheme.pastelAmber)
-                            holoStat(value: "\(data.activeDays.count)", title: "Тренировки", color: PastelTheme.pastelSlate)
-                            holoStat(value: "\(data.summary.currentSets)", title: "Подходы", color: PastelTheme.pastelSage)
+                            holoStat(value: "\(data.streakDays)", title: "Best streak", color: PastelTheme.pastelAmber)
+                            holoStat(value: "\(data.activeDays.count)", title: "Workouts", color: PastelTheme.pastelSlate)
+                            holoStat(value: "\(data.summary.currentSets)", title: "Sets", color: PastelTheme.pastelSage)
                         }
                         
                         Divider().background(Color.white.opacity(0.15))
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Активность за 28 дней")
+                            Text("28-day activity")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(PastelTheme.textSecondary)
@@ -4026,7 +4036,7 @@ struct StorySlideOutro: View {
                         
                         HStack {
                             Image(systemName: "applewatch")
-                            Text("Зафиксировано в WorkoutTracker")
+                            Text("Logged in WorkoutTracker")
                         }
                         .font(.caption)
                         .foregroundColor(PastelTheme.textMuted)
@@ -4092,7 +4102,7 @@ struct PremiumStatsEmptyState: View {
             .opacity(appear ? 1.0 : 0)
 
             Button(action: {
-                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                HapticManager.shared.impact(.heavy)
                 onStartWorkout()
             }) {
                 HStack(spacing: 8) {
@@ -4168,7 +4178,7 @@ struct PersonalRecordsShowcaseView: View {
         if !prs.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 6) {
-                    Text("Личные рекорды")
+                    Text("Personal records")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(PastelTheme.textPrimary)
                     

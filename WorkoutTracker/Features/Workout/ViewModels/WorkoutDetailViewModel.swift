@@ -315,7 +315,7 @@ final class WorkoutDetailViewModel {
 
     private func handlePRSet(level: PRLevel) {
         self.activeEvent = .showPR(level)
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        HapticManager.shared.notification(.success)
     }
 
     func generateAndShare(workout: Workout) {
@@ -599,8 +599,7 @@ extension WorkoutDetailViewModel {
     func toggleFavorite(workout: Workout, presetService: PresetService) {
             let isNowFavorite = !workout.isFavorite
             workout.isFavorite = isNowFavorite
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
+            HapticManager.shared.impact(.medium)
 
             Task {
                 await workoutService.updateWorkoutFavoriteStatus(workout: workout, isFavorite: isNowFavorite)

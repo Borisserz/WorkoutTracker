@@ -19,6 +19,7 @@ struct AITrackerView: View {
     @State private var showPlusOne: Bool = false
     @State private var plusOneOffset: CGFloat = .zero
     @State private var plusOneOpacity: Double = 0.0
+    @State private var showMLLoadAlert = false
 
     var onFinish: ((Int) -> Void)?
 
@@ -61,6 +62,8 @@ struct AITrackerView: View {
                 cameraNotSupportedView
             } else if cameraManager.authorizationStatus == .denied || cameraManager.authorizationStatus == .restricted {
                 permissionDeniedView
+            } else if cameraManager.sessionSetupFailed {
+                cameraSetupFailedView
             } else if cameraManager.isAuthorized {
                 VStack {
                     topHUD
@@ -135,7 +138,7 @@ struct AITrackerView: View {
         // MARK: - ✅ ФИКС: Gesture Events через PassthroughSubject (работает каждый раз)
 
         .onReceive(gestureCtrl.gestureAction) { action in
-            print("📩 AITrackerView: Получено событие жеста — \(action)")
+            print("📩 AITrackerView: Received gesture event — \(action)")
             switch action {
             case .confirmSet:
                 coach.speak("Set completed! Great job.")
@@ -161,9 +164,16 @@ struct AITrackerView: View {
         .onChange(of: engine.vbtWarningTriggered) { _, triggered in
             if triggered {
                 coach.speak("Bar speed dropping! Last two reps, push!")
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.warning)
+                HapticManager.shared.notification(.warning)
             }
+        }
+        .onChange(of: engine.mlModelLoadFailed) { _, failed in
+            if failed { showMLLoadAlert = true }
+        }
+        .alert("Motion model unavailable", isPresented: $showMLLoadAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Rep counting still works from pose tracking, but advanced motion detection couldn't load.")
         }
     }
 
@@ -208,6 +218,65 @@ struct AITrackerView: View {
                     .clipShape(Capsule())
             }
             .padding(.top, 16)
+
+            Spacer()
+            finishButton
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 16)
+        .background(Color.black.opacity(0.8))
+        .ignoresSafeArea()
+    }
+
+    // MARK: - Camera Setup Failed
+
+    @ViewBuilder
+    private var cameraSetupFailedView: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "video.slash.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.orange)
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .clipShape(Circle())
+
+            VStack(spacing: 8) {
+                Text("Camera couldn't start")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+
+                Text("We couldn't set up the camera for tracking. Try again or close and reopen the tracker.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.gray)
+                    .padding(.horizontal, 32)
+            }
+
+            HStack(spacing: 12) {
+                Button(action: { cameraManager.retrySessionSetup() }) {
+                    Text("Retry")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 28)
+                        .background(themeManager.current.primaryAccent)
+                        .clipShape(Capsule())
+                }
+
+                Button(action: { dismiss() }) {
+                    Text("Dismiss")
+                        .font(.headline)
+                        .foregroundColor(.white.opacity(0.9))
+                        .padding(.vertical, 14)
+                        .padding(.horizontal, 28)
+                        .background(Color.white.opacity(0.15))
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(.top, 8)
 
             Spacer()
             finishButton
@@ -385,8 +454,7 @@ struct AITrackerView: View {
 
     private var finishButton: some View {
         Button(action: {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticManager.shared.notification(.success)
             onFinish?(engine.repsCount)
             dismiss()
         }) {
@@ -421,8 +489,7 @@ struct AITrackerView: View {
     }
 
     private func triggerRepAnimation() {
-        let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.heavy)
 
         withAnimation(.spring(response: 0.2, dampingFraction: 0.4, blendDuration: 0)) {
             repScale = 1.3

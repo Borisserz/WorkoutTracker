@@ -105,7 +105,7 @@ struct ExerciseHistoryView: View {
                     let isSelected = vm.selectedTab == tab
 
                     Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticManager.shared.impact(.light)
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                             vm.selectedTab = tab
                         }
@@ -347,7 +347,7 @@ struct ExerciseHistoryView: View {
                     Menu {
                         ForEach(ExerciseHistoryViewModel.GraphMetric.allCases, id: \.self) { metric in
                             Button(LocalizedStringKey(metric.rawValue)) {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                HapticManager.shared.impact(.light)
                                 vm.selectedMetric = metric
                             }
                         }
@@ -389,7 +389,7 @@ struct ExerciseHistoryView: View {
                     ForEach(ExerciseHistoryViewModel.TimeRange.allCases, id: \.self) { range in
                         let isSelected = vm.selectedTimeRange == range
                         Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticManager.shared.impact(.light)
                             vm.selectedTimeRange = range
                         } label: {
                             Text(LocalizedStringKey(range.rawValue))

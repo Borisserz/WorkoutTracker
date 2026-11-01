@@ -96,7 +96,7 @@ struct HydrationSheet: View {
 
                         // Quick Log Buttons
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("QUICK LOG")
+                            Text("Quick log")
                                 .font(.caption2.bold())
                                 .tracking(1)
                                 .foregroundStyle(PastelTheme.textTertiary)
@@ -107,7 +107,7 @@ struct HydrationSheet: View {
                                     subtitle: "Glass",
                                     icon: "cup.and.saucer.fill"
                                 ) {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    HapticManager.shared.impact(.medium)
                                     onAddWater(0.25)
                                 }
 
@@ -116,7 +116,7 @@ struct HydrationSheet: View {
                                     subtitle: "Bottle",
                                     icon: "waterbottle.fill"
                                 ) {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    HapticManager.shared.impact(.medium)
                                     onAddWater(0.5)
                                 }
 
@@ -125,7 +125,7 @@ struct HydrationSheet: View {
                                     subtitle: "Clear",
                                     icon: "arrow.counterclockwise"
                                 ) {
-                                    UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                                    HapticManager.shared.impact(.rigid)
                                     onResetWater()
                                 }
                             }

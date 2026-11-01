@@ -29,8 +29,7 @@ struct SetTypeSelectionSheet: View {
                     Divider().padding(.vertical, 8)
 
                     Button {
-                        let generator = UIImpactFeedbackGenerator(style: .medium)
-                        generator.impactOccurred()
+                        HapticManager.shared.impact(.medium)
                         dismiss()
 
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
@@ -69,8 +68,7 @@ struct SetTypeSelectionSheet: View {
     private func typeRow(for type: SetType) -> some View {
         HStack {
             Button {
-                let generator = UISelectionFeedbackGenerator()
-                generator.selectionChanged()
+                HapticManager.shared.selection()
                 selectedType = type
                 dismiss()
             } label: {

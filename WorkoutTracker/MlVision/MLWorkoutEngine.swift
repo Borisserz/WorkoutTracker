@@ -10,6 +10,7 @@ final class MLWorkoutEngine: ObservableObject {
 
     @Published private(set) var isUserActive: Bool = false
     @Published private(set) var confidence: Double = 0.0
+    @Published private(set) var modelLoadFailed: Bool = false
 
     private let predictionWindowSize = 60
     private let stride = 5
@@ -45,6 +46,7 @@ final class MLWorkoutEngine: ObservableObject {
             } catch {
                 print("❌ MLWorkoutEngine: Failed to load WorkoutClassifier")
                 TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "MLWorkoutEngine_init"])
+                await MainActor.run { self.modelLoadFailed = true }
                 trace?.stop()
             }
         }

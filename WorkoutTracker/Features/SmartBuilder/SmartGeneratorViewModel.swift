@@ -19,12 +19,12 @@ final class SmartGeneratorViewModel {
 
     func toggleMuscle(_ muscle: String) {
         if targetMuscles.contains(muscle) { targetMuscles.remove(muscle) } else { targetMuscles.insert(muscle) }
-        UISelectionFeedbackGenerator().selectionChanged()
+        HapticManager.shared.selection()
     }
 
     func generateWorkout(historyCache: [String: Exercise]) async {
         isGenerating = true
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticManager.shared.impact(.medium)
         TrackingManager.shared.track(.smartBuilderUsed(muscleGroupsSelected: Array(targetMuscles), goal: "custom"))
 
         var simpleHistory: [String: ExerciseHistoryContext] = [:]
@@ -49,7 +49,7 @@ final class SmartGeneratorViewModel {
         self.generatedExercises = exercises
         self.isGenerating = false
         self.path.append("ResultView")
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        HapticManager.shared.notification(.success)
     }
 
     func applyQuickPreset(name: String, muscles: [String], duration: Double, equipment: WorkoutEquipment, historyCache: [String: Exercise]) {

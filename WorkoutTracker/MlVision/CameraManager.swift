@@ -12,9 +12,10 @@ final class CameraManager: ObservableObject {
     @Published var joints: [VNHumanBodyPoseObservation.JointName: CGPoint] = [:]
     @Published var handPose: VNHumanHandPoseObservation? = nil
     @Published var bodyPose: VNHumanBodyPoseObservation? = nil
-    var isAuthorized = false
-    var authorizationStatus: AVAuthorizationStatus = .notDetermined
-    var isSimulator = false
+    @Published private(set) var isAuthorized = false
+    @Published private(set) var authorizationStatus: AVAuthorizationStatus = .notDetermined
+    @Published private(set) var isSimulator = false
+    @Published private(set) var sessionSetupFailed = false
 
     let session = AVCaptureSession()
     private let videoOutput = AVCaptureVideoDataOutput()
@@ -51,8 +52,14 @@ final class CameraManager: ObservableObject {
         }
     }
 
+    func retrySessionSetup() {
+        sessionSetupFailed = false
+        setupSession()
+    }
+
     private func setupSession() {
         guard !session.isRunning else { return }
+        sessionSetupFailed = false
         session.beginConfiguration()
 
         // ✅ УЛУЧШЕНИЕ: HD720 вместо VGA — Vision работает значительно точнее
@@ -63,7 +70,9 @@ final class CameraManager: ObservableObject {
               session.canAddInput(videoInput) else {
             session.commitConfiguration()
             #if targetEnvironment(simulator)
-            Task { @MainActor in self.isSimulator = true }
+            isSimulator = true
+            #else
+            sessionSetupFailed = true
             #endif
             return
         }
@@ -98,13 +107,16 @@ final class CameraManager: ObservableObject {
         let cameraQueue = DispatchQueue(label: "com.workouttracker.cameraQueue", qos: .userInitiated)
         videoOutput.setSampleBufferDelegate(delegate, queue: cameraQueue)
 
-        if session.canAddOutput(videoOutput) {
-            session.addOutput(videoOutput)
-            if let connection = videoOutput.connection(with: .video),
-               connection.isVideoOrientationSupported {
-                connection.videoOrientation = .portrait
-                connection.isVideoMirrored = true
-            }
+        guard session.canAddOutput(videoOutput) else {
+            session.commitConfiguration()
+            sessionSetupFailed = true
+            return
+        }
+        session.addOutput(videoOutput)
+        if let connection = videoOutput.connection(with: .video),
+           connection.isVideoOrientationSupported {
+            connection.videoOrientation = .portrait
+            connection.isVideoMirrored = true
         }
 
         session.commitConfiguration()

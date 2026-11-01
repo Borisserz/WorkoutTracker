@@ -183,8 +183,7 @@ struct AddWeightSheet: View {
                                 .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
 
                             Button {
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
+                                HapticManager.shared.impact(.light)
                                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                     selectedImages.remove(at: index)
                                     if index < selectedPhotoItems.count {
@@ -273,8 +272,7 @@ struct AddWeightSheet: View {
     }
 
     private func saveWeight() {
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.success)
+        HapticManager.shared.notification(.success)
 
         if let weightVal = Double(weightString.replacingOccurrences(of: ",", with: ".")) {
             let weightInKg = unitsManager.convertToKilograms(weightVal)

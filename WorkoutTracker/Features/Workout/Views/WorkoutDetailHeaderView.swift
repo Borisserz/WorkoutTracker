@@ -28,7 +28,7 @@ struct WorkoutDetailHeaderView: View {
         HStack(alignment: .center, spacing: 14) {
             // 1. Running Time
             VStack(alignment: .leading, spacing: 2) {
-                Text(workout.isActive ? "Running Time" : "ДАТА")
+                Text(workout.isActive ? "Running Time" : "Date")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
 
@@ -45,13 +45,13 @@ struct WorkoutDetailHeaderView: View {
 
             // 2. Volume Lifted
             VStack(alignment: .leading, spacing: 2) {
-                Text(workout.isActive ? "Total Volume Lifted" : "ОБЩИЙ ВЕС")
+                Text(workout.isActive ? "Total Volume Lifted" : "Volume")
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
 
                 let volume = viewModel.workoutAnalytics.volume
                 let convertedVolume = unitsManager.convertFromKilograms(volume)
-                let displayVolume = convertedVolume > 0 ? convertedVolume : (workout.isActive ? 4850.0 : 0.0)
+                let displayVolume = max(0, convertedVolume)
 
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("\(LocalizationHelper.shared.formatInteger(displayVolume))")
@@ -84,8 +84,8 @@ struct WorkoutDetailHeaderView: View {
                 }
             } else {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("СЕТЫ")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
+                    Text("Sets")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.textSecondary)
 
                     HStack(spacing: 4) {

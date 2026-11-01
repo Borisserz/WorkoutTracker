@@ -139,8 +139,7 @@ struct TemplatePreviewSheetView: View {
                               }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
@@ -362,8 +361,7 @@ struct TemplatePreviewSheetView: View {
 
     private var startWorkoutButton: some View {
         Button {
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticManager.shared.notification(.success)
             dismiss()
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -403,8 +401,7 @@ struct TemplatePreviewSheetView: View {
     }
     private func shareWorkout() {
             isSharing = true
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
+            HapticManager.shared.impact(.medium)
             
             Task {
                 do {

@@ -33,7 +33,7 @@ struct SmartWorkoutLauncherSheet: View {
                     HStack {
                         Spacer()
                         Button {
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            HapticManager.shared.impact(.light)
                             dismiss()
                         } label: {
                             Image(systemName: "xmark.circle.fill")
@@ -51,11 +51,11 @@ struct SmartWorkoutLauncherSheet: View {
                         VStack(spacing: 20) {
                             // Header
                             VStack(spacing: 6) {
-                                Text("Начать тренировку")
+                                Text("Start workout")
                                     .font(.system(size: 28, weight: .black, design: .rounded))
                                     .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                                 
-                                Text("Выберите формат сегодняшней сессии")
+                                Text("Choose today’s session format")
                                     .font(.subheadline)
                                     .foregroundColor(PastelTheme.textSecondary)
                             }
@@ -63,7 +63,7 @@ struct SmartWorkoutLauncherSheet: View {
 
                             // 1. AI Smart Workout Card (Featured Bento - Full Width)
                             Button {
-                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                HapticManager.shared.impact(.heavy)
                                 dismiss()
                                 onSmartWorkoutTap()
                             } label: {
@@ -75,13 +75,13 @@ struct SmartWorkoutLauncherSheet: View {
                             HStack(spacing: 16) {
                                 // Quick Session
                                 Button {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    HapticManager.shared.impact(.medium)
                                     dismiss()
                                     onStartEmptySession()
                                 } label: {
                                     squareBentoCard(
-                                        title: "Быстрый старт",
-                                        subtitle: "Свободный режим",
+                                        title: "Quick Start",
+                                        subtitle: "Open session",
                                         icon: "play.circle.fill",
                                         colors: [PastelTheme.pastelSlate, PastelTheme.pastelSlate.opacity(0.7)],
                                         accentColor: PastelTheme.pastelSlate
@@ -98,8 +98,8 @@ struct SmartWorkoutLauncherSheet: View {
                                     )
                                 } label: {
                                     squareBentoCard(
-                                        title: "Мои шаблоны",
-                                        subtitle: "Сохраненные программы",
+                                        title: "My Templates",
+                                        subtitle: "Saved programs",
                                         icon: "list.bullet.clipboard.fill",
                                         colors: [PastelTheme.pastelSage, PastelTheme.pastelSage.opacity(0.7)],
                                         accentColor: PastelTheme.pastelSage
@@ -141,11 +141,11 @@ struct SmartWorkoutLauncherSheet: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
-                    Text("ИИ-генератор")
+                    Text("AI generator")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                     
-                    Text("ИИ")
+                    Text("AI")
                         .font(.system(size: 9, weight: .bold))
                         .foregroundColor(PastelTheme.textOnOat)
                         .padding(.horizontal, 6)
@@ -154,7 +154,7 @@ struct SmartWorkoutLauncherSheet: View {
                         .cornerRadius(6)
                 }
                 
-                Text("Персональная программа тренировки за пару секунд")
+                Text("A personal training plan in seconds")
                     .font(.caption)
                     .foregroundColor(PastelTheme.textSecondary)
                     .lineLimit(2)
@@ -226,11 +226,11 @@ struct SmartWorkoutLauncherSheet: View {
             }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text("Золотая эра")
+                Text("Golden era")
                     .font(.system(size: 18, weight: .bold, design: .rounded))
                     .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 
-                Text("Классические программы легенд бодибилдинга")
+                Text("Classic programs from bodybuilding legends")
                     .font(.caption)
                     .foregroundColor(PastelTheme.textSecondary)
                     .lineLimit(2)

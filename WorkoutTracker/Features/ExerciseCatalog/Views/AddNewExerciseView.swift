@@ -59,7 +59,7 @@ struct AddNewExerciseView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
@@ -154,8 +154,7 @@ struct AddNewExerciseView: View {
                      let isSelected = selectedMuscles.contains(muscle.slug)
 
                      Button {
-                         let gen = UISelectionFeedbackGenerator()
-                         gen.selectionChanged()
+                         HapticManager.shared.selection()
                          withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                              toggleMuscle(muscle.slug)
                          }
@@ -188,8 +187,7 @@ struct AddNewExerciseView: View {
         let isFormValid = !name.trimmingCharacters(in: .whitespaces).isEmpty && !selectedMuscles.isEmpty && !categories.isEmpty
 
         return Button {
-            let gen = UINotificationFeedbackGenerator()
-            gen.notificationOccurred(.success)
+            HapticManager.shared.notification(.success)
             saveExercise()
         } label: {
             HStack(spacing: 8) {

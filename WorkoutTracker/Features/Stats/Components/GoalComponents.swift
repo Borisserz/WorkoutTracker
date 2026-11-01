@@ -98,8 +98,7 @@ struct ActiveGoalCard: View {
                         .foregroundColor(themeManager.current.secondaryText)
 
                     Button(action: {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         onAddTapped()
                     }) {
                         HStack {
@@ -138,7 +137,7 @@ struct ActiveGoalCard: View {
         @Environment(ThemeManager.self) var themeManager
         switch type { 
             case .strength: return ThemeManager.shared.current.primaryAccent
-            case .bodyweight: return .purple
+            case .bodyweight: return PastelTheme.pastelLavender
             case .consistency: return ThemeManager.shared.current.secondaryMidTone
         }
     }
@@ -272,8 +271,7 @@ struct GoalSelectionSheet: View {
 
     private func goalTypeCard(title: LocalizedStringKey, subtitle: LocalizedStringKey, icon: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: {
-            let generator = UISelectionFeedbackGenerator()
-            generator.selectionChanged()
+            HapticManager.shared.selection()
             action()
         }) {
             HStack(spacing: 16) {
@@ -464,8 +462,7 @@ struct GoalSelectionSheet: View {
             context.insert(newGoal)
             try? context.save()
 
-            let generator = UINotificationFeedbackGenerator()
-            generator.notificationOccurred(.success)
+            HapticManager.shared.notification(.success)
             onComplete()
         }
     }

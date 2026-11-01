@@ -10,25 +10,25 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .empty: return "Пустая"
-        case .aiBuilder: return "AI Билдер"
-        case .templates: return "Шаблоны"
+        case .empty: return String(localized: "Empty")
+        case .aiBuilder: return String(localized: "AI Builder")
+        case .templates: return String(localized: "Templates")
         }
     }
 
     var fullTitle: String {
         switch self {
-        case .empty: return "Пустая тренировка"
-        case .aiBuilder: return "Смарт-тренировка"
-        case .templates: return "История и шаблоны"
+        case .empty: return String(localized: "Empty workout")
+        case .aiBuilder: return String(localized: "Smart workout")
+        case .templates: return String(localized: "History and templates")
         }
     }
 
     var categoryTitle: String {
         switch self {
-        case .empty: return "Свободный выбор"
-        case .aiBuilder: return "Адаптивный подбор"
-        case .templates: return "Золотые сплиты"
+        case .empty: return String(localized: "Free choice")
+        case .aiBuilder: return String(localized: "Adaptive picks")
+        case .templates: return String(localized: "Golden splits")
         }
     }
 
@@ -66,31 +66,43 @@ enum WorkoutLaunchMode: Int, CaseIterable, Identifiable {
 
     var badgeText: String {
         switch self {
-        case .empty: return "Свободный сет"
-        case .aiBuilder: return "Умный план"
-        case .templates: return "Из истории"
+        case .empty: return String(localized: "Free set")
+        case .aiBuilder: return String(localized: "Smart plan")
+        case .templates: return String(localized: "From history")
         }
     }
 
     var editorialDescription: String {
         switch self {
         case .empty:
-            return "Чистый лист для опытных атлетов. Записывайте любые упражнения, меняйте веса и подходы прямо на ходу без жестких рамок."
+            return String(localized: "A clean slate for experienced lifters. Log any exercises and change weights or sets on the fly—no rigid structure.")
         case .aiBuilder:
-            return "Интеллектуальный расчет нагрузки под статус восстановления мышц и вашу текущую выносливость с прогрессией."
+            return String(localized: "Smart load based on muscle recovery and your current capacity, with built-in progression.")
         case .templates:
-            return "Проверенные протоколы и золотые сплиты из вкладки История. Мгновенный повтор вашей лучшей тренировки в 1 тап."
+            return String(localized: "Proven protocols and golden splits from History. Replay your best session in one tap.")
         }
     }
 
     var tags: [String] {
         switch self {
         case .empty:
-            return ["Свобода", "Быстрый старт", "Без рамок"]
+            return [
+                String(localized: "Freedom"),
+                String(localized: "Quick start"),
+                String(localized: "No limits")
+            ]
         case .aiBuilder:
-            return ["Анализ мышц", "Смарт-объем", "Прогрессия"]
+            return [
+                String(localized: "Muscle analysis"),
+                String(localized: "Smart volume"),
+                String(localized: "Progression")
+            ]
         case .templates:
-            return ["Из истории", "Тоннаж", "В 1 тап"]
+            return [
+                String(localized: "From history"),
+                String(localized: "Tonnage"),
+                String(localized: "One tap")
+            ]
         }
     }
 }
@@ -139,7 +151,7 @@ struct WorkoutModeDiscoveryPopup: View {
                 HStack(spacing: 6) {
                     Image(systemName: "hand.tap.fill")
                         .font(.system(size: 11, weight: .medium))
-                    Text("Наведите или выберите режим. Запуск по нажатию")
+                    Text("Preview or pick a mode. Tap to start")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textTertiary)
@@ -165,26 +177,26 @@ struct WorkoutModeDiscoveryPopup: View {
                 let mode = pendingLaunchMode ?? selectedMode
                 executeAction(for: mode)
             }
-            Button("Отмена", role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 pendingLaunchMode = nil
             }
         } message: {
             Text(confirmationMessage)
         }
-        .alert("Шаблонов пока нет", isPresented: $showNoTemplatesAlert) {
-            Button("Создать шаблон") {
+        .alert("No templates yet", isPresented: $showNoTemplatesAlert) {
+            Button("Create template") {
                 dismissPopup()
                 onCreateTemplate?()
             }
-            Button("Открыть историю") {
+            Button("Open History") {
                 dismissPopup()
                 onSelectTemplates()
             }
-            Button("Отмена", role: .cancel) {
+            Button("Cancel", role: .cancel) {
                 pendingLaunchMode = nil
             }
         } message: {
-            Text("У вас пока нет сохранённых шаблонов. Хотите создать свой первый шаблон прямо сейчас?")
+            Text("No saved templates yet. Create your first template now?")
         }
         .onAppear {
             HapticManager.playMediumImpact()
@@ -199,11 +211,11 @@ struct WorkoutModeDiscoveryPopup: View {
         let mode = pendingLaunchMode ?? selectedMode
         switch mode {
         case .empty:
-            return "Начать пустую тренировку?"
+            return "Start an empty workout?"
         case .aiBuilder:
-            return "Открыть AI Билдер?"
+            return "Open AI Builder?"
         case .templates:
-            return "Открыть шаблоны?"
+            return "Open templates?"
         }
     }
 
@@ -211,11 +223,11 @@ struct WorkoutModeDiscoveryPopup: View {
         let mode = pendingLaunchMode ?? selectedMode
         switch mode {
         case .empty:
-            return "Будет создана свободная тренировка без шаблона. Вы сможете записывать подходы прямо на ходу."
+            return "A free-form workout will be created with no template. You can log sets as you go."
         case .aiBuilder:
-            return "Перейти к генерации адаптивного плана тренировки под текущую готовность мышц?"
+            return "Generate an adaptive workout plan based on your current muscle readiness?"
         case .templates:
-            return "Перейти во вкладку «История» для запуска одного из ваших сохраненных сплитов?"
+            return "Go to History to start one of your saved splits?"
         }
     }
 
@@ -223,9 +235,9 @@ struct WorkoutModeDiscoveryPopup: View {
         let mode = pendingLaunchMode ?? selectedMode
         switch mode {
         case .empty:
-            return "Начать"
+            return "Start"
         case .aiBuilder, .templates:
-            return "Перейти"
+            return "Continue"
         }
     }
 
@@ -237,7 +249,7 @@ struct WorkoutModeDiscoveryPopup: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(PastelTheme.pastelLavender)
 
-                Text("Формат тренировки")
+                Text("Workout format")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
             }
@@ -515,9 +527,9 @@ struct WorkoutModeDiscoveryPopup: View {
 
     private func primaryButtonText(for mode: WorkoutLaunchMode) -> String {
         switch mode {
-        case .empty: return "Запустить: Пустая тренировка"
-        case .aiBuilder: return "Перейти в AI Билдер"
-        case .templates: return hasTemplates ? "Открыть шаблоны в Истории" : "Создать первый шаблон"
+        case .empty: return "Start empty workout"
+        case .aiBuilder: return "Open AI Builder"
+        case .templates: return hasTemplates ? "Open templates in History" : "Create first template"
         }
     }
 

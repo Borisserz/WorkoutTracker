@@ -236,27 +236,27 @@ struct PromoAINutritionCoachIllustration: View {
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color.pink.opacity(0.15))
+                .fill(PastelTheme.pastelPeach.opacity(0.15))
                 .frame(width: 110, height: 110)
                 .blur(radius: 12)
                 
             Circle()
                 .stroke(
-                    LinearGradient(colors: [Color.pink.opacity(0.5), .clear, Color.pink.opacity(0.15)], startPoint: .top, endPoint: .bottom),
+                    LinearGradient(colors: [PastelTheme.pastelPeach.opacity(0.5), .clear, PastelTheme.pastelPeach.opacity(0.15)], startPoint: .top, endPoint: .bottom),
                     style: StrokeStyle(lineWidth: 1, lineCap: .round, dash: [4, 6])
                 )
                 .frame(width: 130, height: 130)
                 .rotationEffect(.degrees(rotateOrbit))
                 
             Circle()
-                .fill(Color.pink)
+                .fill(PastelTheme.pastelPeach)
                 .frame(width: 8, height: 8)
                 .shadow(color: .pink, radius: 4)
                 .offset(y: -65)
                 .rotationEffect(.degrees(rotateOrbit))
                 
             Circle()
-                .stroke(Color.pink.opacity(0.3), lineWidth: 1.5)
+                .stroke(PastelTheme.pastelPeach.opacity(0.3), lineWidth: 1.5)
                 .frame(width: 80, height: 80)
                 .scaleEffect(pulseCircle)
                 .opacity(2.0 - pulseCircle)
@@ -264,10 +264,10 @@ struct PromoAINutritionCoachIllustration: View {
             ZStack {
                 Circle()
                     .fill(
-                        LinearGradient(colors: [Color.pink, Color.purple], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        LinearGradient(colors: [PastelTheme.pastelPeach, PastelTheme.pastelLavender], startPoint: .topLeading, endPoint: .bottomTrailing)
                     )
                     .frame(width: 66, height: 66)
-                    .shadow(color: Color.pink.opacity(0.5), radius: 12)
+                    .shadow(color: PastelTheme.pastelPeach.opacity(0.5), radius: 12)
                     
                 Image(systemName: "brain.head.profile")
                     .font(.system(size: 28))
@@ -680,7 +680,7 @@ struct PromoCosmicStarfieldView: View {
                     )
                 
                 Circle()
-                    .fill(Color.purple.opacity(0.12))
+                    .fill(PastelTheme.pastelLavender.opacity(0.12))
                     .frame(width: geo.size.width * 1.2, height: geo.size.width * 1.2)
                     .blur(radius: 100)
                     .offset(

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		780198547EC24A76A9E48031 /* ResidualPassTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DBD6315A1DD4FE7AF83FE15 /* ResidualPassTests.swift */; };
+		C3F81C26EAC348EB8FC229FA /* ImprovePassSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */; };
 		0DF9916DE0EBCD3AABDD349B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7FE428EAFDCCB420B43C3A92 /* Foundation.framework */; };
 		29661A4F4520FD432B45E791 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 7C4118E39E451C7A1AA91DCF /* FirebasePerformance */; };
 		4A6CB846E170B5463319450A /* PatternClassifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4752778508CADACB44B9D18 /* PatternClassifierTests.swift */; };
@@ -32,6 +34,9 @@
 		CBC64DC6807C3445CA4DC264 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 71E8212868B958014C937451 /* FirebaseCrashlytics */; };
 		D1EB5B7B6B0D352395926260 /* MuscleColorManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2067918AA094800EC568D555 /* MuscleColorManagerTests.swift */; };
 		D3B9DF76E613A28638B88C4C /* AppStateManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 753990187F9D5724939F7215 /* AppStateManagerTests.swift */; };
+		C7F3D8A2507346BA995BA2BF /* AppReviewManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9815C46A3AB04BB4B2CE36D2 /* AppReviewManagerTests.swift */; };
+		24965D87A62E42B5987846A0 /* HapticManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */; };
+		7D10EB46197D416C8A745D0B /* AppearanceModeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CD0A15197C64098B4E0305D /* AppearanceModeTests.swift */; };
 		DFF29FA39E67AE2B62006FC5 /* UnitsManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC4E71E0628C8F616ACDE3C /* UnitsManagerTests.swift */; };
 		F5E644603197467223F670C5 /* ProgressManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6B93572A2F5DA01DAC8691 /* ProgressManagerTests.swift */; };
 		FC4ED48F0C2C9E8C39B3DA00 /* CalorieCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD649EF8B041E49532FD342 /* CalorieCalculatorTests.swift */; };
@@ -127,12 +132,17 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		5DBD6315A1DD4FE7AF83FE15 /* ResidualPassTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResidualPassTests.swift; sourceTree = "<group>"; };
+		6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImprovePassSmokeTests.swift; sourceTree = "<group>"; };
 		2067918AA094800EC568D555 /* MuscleColorManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MuscleColorManagerTests.swift; sourceTree = "<group>"; };
 		37E04CF2637E84830C0ABCE9 /* OneRepMaxCalculatorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OneRepMaxCalculatorTests.swift; sourceTree = "<group>"; };
 		5A6B93572A2F5DA01DAC8691 /* ProgressManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProgressManagerTests.swift; sourceTree = "<group>"; };
 		5B612D828C4C647FBCABFA55 /* CNSCalculatorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CNSCalculatorTests.swift; sourceTree = "<group>"; };
 		60F9293A890CA5EDE1FD6CF6 /* VersionManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VersionManagerTests.swift; sourceTree = "<group>"; };
 		753990187F9D5724939F7215 /* AppStateManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppStateManagerTests.swift; sourceTree = "<group>"; };
+		9815C46A3AB04BB4B2CE36D2 /* AppReviewManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppReviewManagerTests.swift; sourceTree = "<group>"; };
+		F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HapticManagerTests.swift; sourceTree = "<group>"; };
+		7CD0A15197C64098B4E0305D /* AppearanceModeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceModeTests.swift; sourceTree = "<group>"; };
 		7DD649EF8B041E49532FD342 /* CalorieCalculatorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieCalculatorTests.swift; sourceTree = "<group>"; };
 		7FE428EAFDCCB420B43C3A92 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		8566D580B51101FBEAF5AA5B /* RestTimerManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestTimerManagerTests.swift; sourceTree = "<group>"; };
@@ -373,8 +383,13 @@
 				8566D580B51101FBEAF5AA5B /* RestTimerManagerTests.swift */,
 				60F9293A890CA5EDE1FD6CF6 /* VersionManagerTests.swift */,
 				753990187F9D5724939F7215 /* AppStateManagerTests.swift */,
+				9815C46A3AB04BB4B2CE36D2 /* AppReviewManagerTests.swift */,
+				F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */,
+				7CD0A15197C64098B4E0305D /* AppearanceModeTests.swift */,
 				5A6B93572A2F5DA01DAC8691 /* ProgressManagerTests.swift */,
 				2067918AA094800EC568D555 /* MuscleColorManagerTests.swift */,
+				5DBD6315A1DD4FE7AF83FE15 /* ResidualPassTests.swift */,
+				6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */,
 			);
 			path = WorkoutTrackerTests;
 			sourceTree = "<group>";
@@ -662,8 +677,13 @@
 				C4AC734CEE957EE512CD8D2F /* RestTimerManagerTests.swift in Sources */,
 				92CA3F9EF84692B9D0AA8288 /* VersionManagerTests.swift in Sources */,
 				D3B9DF76E613A28638B88C4C /* AppStateManagerTests.swift in Sources */,
+				C7F3D8A2507346BA995BA2BF /* AppReviewManagerTests.swift in Sources */,
+				24965D87A62E42B5987846A0 /* HapticManagerTests.swift in Sources */,
+				7D10EB46197D416C8A745D0B /* AppearanceModeTests.swift in Sources */,
 				F5E644603197467223F670C5 /* ProgressManagerTests.swift in Sources */,
 				D1EB5B7B6B0D352395926260 /* MuscleColorManagerTests.swift in Sources */,
+				780198547EC24A76A9E48031 /* ResidualPassTests.swift in Sources */,
+				C3F81C26EAC348EB8FC229FA /* ImprovePassSmokeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

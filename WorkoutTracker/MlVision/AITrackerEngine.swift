@@ -439,7 +439,7 @@ public final class RepetitionTracker {
             if reachedRelaxed {
                 state.phase = .relaxed
                 state.repsCount += 1
-                print("💪 Rep \(state.repsCount) — метрика: \(String(format: "%.2f", value))")
+                print("💪 Rep \(state.repsCount) — metric: \(String(format: "%.2f", value))")
             } else if reachedContracted {
                 state.phase = .contracted
             }
@@ -500,6 +500,7 @@ public final class AITrackerEngine: ObservableObject {
     @Published public private(set) var isTrackingAction: Bool = false
     @Published public var liveMuscleTension: [String: Int] = [:]
     @Published public private(set) var vbtWarningTriggered: Bool = false
+    @Published public private(set) var mlModelLoadFailed: Bool = false
 
     private let exerciseName: String
     private var profile: BiomechanicsProfile?
@@ -523,10 +524,10 @@ public final class AITrackerEngine: ObservableObject {
         if let profile = self.profile {
             self.repetitionTracker = RepetitionTracker(profile: profile)
             self.feedbackMessage = String(localized: "Ready. Waiting for action.")
-            print("🤖 AITrackerEngine: \(profile.exerciseName) — паттерн: \(pattern)")
+            print("🤖 AITrackerEngine: \(profile.exerciseName) — pattern: \(pattern)")
         } else {
             self.feedbackMessage = String(localized: "AI Tracking not supported for this exercise.")
-            print("⚠️ AITrackerEngine: Профиль не найден для '\(exerciseName)'")
+            print("⚠️ AITrackerEngine: Profile not found for '\(exerciseName)'")
         }
     }
 
@@ -535,6 +536,13 @@ public final class AITrackerEngine: ObservableObject {
             .dropFirst()
             .sink { [weak self] isActive in
                 self?.handleMLActionChange(isActive: isActive)
+            }
+            .store(in: &cancellables)
+
+        mlEngine.$modelLoadFailed
+            .filter { $0 }
+            .sink { [weak self] _ in
+                self?.mlModelLoadFailed = true
             }
             .store(in: &cancellables)
     }

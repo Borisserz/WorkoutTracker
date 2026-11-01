@@ -32,8 +32,7 @@ struct AdvancedFiltersSheet: View {
                 }
 
                 Button {
-                    let gen = UINotificationFeedbackGenerator()
-                    gen.notificationOccurred(.success)
+                    HapticManager.shared.notification(.success)
                     dismiss()
                 } label: {
                     Text(LocalizedStringKey("Show \(resultsCount) exercises"))
@@ -59,8 +58,7 @@ struct AdvancedFiltersSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Clear")) {
-                        let gen = UIImpactFeedbackGenerator(style: .rigid)
-                        gen.impactOccurred()
+                        HapticManager.shared.impact(.rigid)
                         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { filterState.clearAdvancedFilters() }
                     }
                     .disabled(filterState.activeAdvancedFiltersCount == 0)
@@ -104,8 +102,7 @@ struct AdvancedFilterSectionView: View {
                         let buttonTitle = displayString(for: item)
 
                         Button {
-                            let gen = UIImpactFeedbackGenerator(style: .light)
-                            gen.impactOccurred()
+                            HapticManager.shared.impact(.light)
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                 filterState.toggle(item: item, in: &selectedItems)
                             }

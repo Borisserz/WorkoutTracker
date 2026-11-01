@@ -6,11 +6,20 @@ struct PulseExplanationSheet: View {
     let timeAgoText: String
     @Environment(\.dismiss) private var dismiss
 
-    private var bpmValue: Int {
-        heartRate > 0 ? Int(heartRate) : 62
+    private var hasHeartRate: Bool { heartRate > 0 }
+
+    private var bpmValue: Int? {
+        hasHeartRate ? Int(heartRate) : nil
     }
 
     private var recoveryCategory: (title: String, description: String, color: Color) {
+        guard let bpmValue else {
+            return (
+                "No resting heart rate yet",
+                "Connect Apple Health or log a reading to evaluate cardiovascular recovery. Zones below are general guidance only.",
+                PastelTheme.textSecondary
+            )
+        }
         if bpmValue < 60 {
             return (
                 "Athletic Efficiency",
@@ -64,7 +73,7 @@ struct PulseExplanationSheet: View {
                                     .font(.caption)
                                     .foregroundStyle(PastelTheme.pastelSage)
 
-                                Text("\(bpmValue) bpm")
+                                Text(bpmValue.map { "\($0) bpm" } ?? "— bpm")
                                     .font(.headline.bold())
                                     .foregroundStyle(PastelTheme.pastelSage)
                             }
@@ -103,7 +112,7 @@ struct PulseExplanationSheet: View {
 
                         // Cardiovascular Training Zones
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("TRAINING TARGET ZONES")
+                            Text("Training target zones")
                                 .font(.caption2.bold())
                                 .tracking(1)
                                 .foregroundStyle(PastelTheme.textTertiary)

@@ -123,17 +123,18 @@ struct ActiveWorkoutBanner: View {
         .alert(LocalizedStringKey("Cancel Workout?"), isPresented: $showDeleteAlert) {
             Button(LocalizedStringKey("Delete"), role: .destructive) {
                 timerManager.stopRestTimer()
-
                 Task {
                     await workoutService.deleteWorkout(workout)
                 }
             }
+            Button(LocalizedStringKey("Keep"), role: .cancel) { }
+        } message: {
+            Text(LocalizedStringKey("This will permanently delete the in-progress workout."))
         }
     }
 
     private func returnToWorkout() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.medium)
 
         di.appState.selectedTab = 2
         di.appState.returnToActiveWorkoutId = workout.persistentModelID

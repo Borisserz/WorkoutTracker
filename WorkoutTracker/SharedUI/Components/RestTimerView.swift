@@ -41,7 +41,7 @@ struct RestTimerView: View {
 
     private var collapsedCircleView: some View {
         Button {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.impact(.medium)
             withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                 isExpanded = true
             }
@@ -123,7 +123,7 @@ struct RestTimerView: View {
         )
         .simultaneousGesture(
             TapGesture(count: 2).onEnded {
-                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                HapticManager.shared.impact(.heavy)
                 withAnimation {
                     timerManager.stopRestTimer()
                 }
@@ -135,7 +135,7 @@ struct RestTimerView: View {
         HStack(spacing: 12) {
             if !timerManager.restTimerFinished {
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                     timerManager.subtractRestTime(15)
                 } label: {
                     Text("-15")
@@ -150,7 +150,7 @@ struct RestTimerView: View {
             }
             
             Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                HapticManager.shared.impact(.medium)
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                     isExpanded = false
                 }
@@ -183,10 +183,10 @@ struct RestTimerView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(timerManager.restTimerFinished ? "Готово" : timeStringLong(time: timerManager.restTimeRemaining))
+                        Text(timerManager.restTimerFinished ? "Done" : timeStringLong(time: timerManager.restTimeRemaining))
                             .font(.system(size: 14, weight: .bold, design: .monospaced))
                             .foregroundColor(PastelTheme.textPrimary)
-                        Text(timerManager.restTimerFinished ? "Нажмите для закрытия" : "Отдых")
+                        Text(timerManager.restTimerFinished ? "Tap to dismiss" : "Rest")
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(PastelTheme.textTertiary)
                     }
@@ -196,7 +196,7 @@ struct RestTimerView: View {
             
             if !timerManager.restTimerFinished {
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                     timerManager.addRestTime(15)
                 } label: {
                     Text("+15")
@@ -211,7 +211,7 @@ struct RestTimerView: View {
             }
             
             Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                HapticManager.shared.impact(.medium)
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                     timerManager.stopRestTimer()
                 }

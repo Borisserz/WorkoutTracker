@@ -266,7 +266,7 @@ private struct GuestWarningView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Continue as a guest?").font(.system(size: 24, weight: .bold, design: .rounded)).foregroundStyle(.white)
-            Text("If you stay as a guest, your training data will not be saved in the cloud.").font(.system(size: 13)).foregroundStyle(.white.opacity(0.86))
+            Text("As a guest you can train offline. Workouts stay on this device (and sync via your private iCloud if enabled). Sign in to unlock sharing and account recovery.").font(.system(size: 13)).foregroundStyle(.white.opacity(0.86))
             Text("Why you should register:").font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
             VStack(alignment: .leading, spacing: 6) {
                 bullet("Saving progress in the cloud")
@@ -378,6 +378,9 @@ struct OnboardingGodMode: View {
         defaults.set(metrics.height, forKey: "userHeight")
         defaults.set(Double(metrics.weight), forKey: "userBodyWeight")
         defaults.set(metrics.name, forKey: Constants.UserDefaultsKeys.userName.rawValue)
+        if metrics.activityLevel != .none {
+            defaults.set(metrics.activityLevel.rawValue, forKey: "userActivityLevel")
+        }
         
         if let avatar = metrics.avatarImage {
             ProfileImageManager.shared.saveImage(avatar)
@@ -804,7 +807,7 @@ struct TheOathView: View {
                         .onChanged { _ in
                             if !isCompleted {
                                 isHolding = true
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                HapticManager.shared.impact(.light)
                             }
                         }
                         .onEnded { _ in
@@ -821,7 +824,7 @@ struct TheOathView: View {
                         holdProgress += 0.05
                         if holdProgress >= 1.0 {
                             isCompleted = true
-                            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                            HapticManager.shared.impact(.heavy)
                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
                                 onComplete()
                             }

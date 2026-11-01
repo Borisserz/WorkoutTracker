@@ -47,8 +47,7 @@ final class AIProgramBuilderViewModel {
 
     func generateProgram() async {
             self.state = .loading
-            let generator = UIImpactFeedbackGenerator(style: .medium)
-            generator.impactOccurred()
+            HapticManager.shared.impact(.medium)
 
             let growList = muscleStates.filter { $0.value == .grow }.map { $0.key }
             let excludeList = muscleStates.filter { $0.value == .exclude }.map { $0.key }
@@ -74,16 +73,16 @@ final class AIProgramBuilderViewModel {
                 )
 
                 try await Task.sleep(for: .seconds(1.5))
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                HapticManager.shared.notification(.success)
                 TrackingManager.shared.track(.aiProgramGenerated(programLengthWeeks: dto.durationWeeks, difficulty: level.rawValue))
                 self.state = .success(dto)
             } catch AILogicError.aiConsentRequired {
-                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                HapticManager.shared.notification(.warning)
                 self.state = .idle
                 self.showConsentSheet = true
             } catch {
-                UINotificationFeedbackGenerator().notificationOccurred(.error)
-                self.state = .error(error.localizedDescription)
+                HapticManager.shared.notification(.error)
+                self.state = .error(error.userFacingAIMessage)
             }
         }
 

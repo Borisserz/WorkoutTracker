@@ -26,7 +26,7 @@ struct OverviewTopExercisesCard: View {
                 Spacer()
 
                 Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onSeeAllTap()
                 } label: {
                     Text("ALL")
@@ -58,7 +58,7 @@ struct OverviewTopExercisesCard: View {
                     HStack(spacing: 12) {
                         ForEach(Array(topExercises.prefix(5).enumerated()), id: \.offset) { index, item in
                             Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                HapticManager.shared.impact(.light)
                                 onExerciseTap(item.name)
                             } label: {
                                 HStack(spacing: 10) {

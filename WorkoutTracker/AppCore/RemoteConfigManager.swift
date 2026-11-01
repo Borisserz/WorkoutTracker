@@ -18,7 +18,8 @@ actor RemoteConfigManager: Sendable {
     private init() {
         let settings = RemoteConfigSettings()
         #if DEBUG
-        settings.minimumFetchInterval = 0
+        // Allow frequent refresh in DEBUG without hammering Remote Config (I13).
+        settings.minimumFetchInterval = 60
         #else
         settings.minimumFetchInterval = 3600
         #endif
@@ -28,9 +29,11 @@ actor RemoteConfigManager: Sendable {
     func fetchCloudValues() async {
         do {
             let status = try await remoteConfig.fetchAndActivate()
+            #if DEBUG
             if status == .successFetchedFromRemote {
                 print("☁️✅ Remote Config: Fresh data downloaded from the cloud!")
             }
+            #endif
             
             let showPromo = remoteConfig.configValue(forKey: "show_foodtracker_promo").boolValue ||
                             getString(forKey: "show_foodtracker_promo") == "1"
@@ -45,7 +48,9 @@ actor RemoteConfigManager: Sendable {
             }
             
         } catch {
+            #if DEBUG
             print("☁️❌ Error Remote Config: \(error.localizedDescription)")
+            #endif
         }
     }
 

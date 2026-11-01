@@ -11,6 +11,9 @@ struct SetRowView: View {
     @Environment(ThemeManager.self) private var themeManager
     @State private var showSetTypeSheet: Bool = false
     @State private var showAITracker: Bool = false
+    @State private var showAIConsentSheet = false
+    @AppStorage(Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
+    private var hasConsentedToAI = false
     @State private var isAISupported: Bool = false
     @State private var swipeOffset: CGFloat = 0
 
@@ -130,7 +133,7 @@ struct SetRowView: View {
                             swipeOffset = swipeDirection * 200
                         }
                         
-                        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                        HapticManager.shared.impact(.heavy)
                         
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                             swipeToLog()
@@ -172,8 +175,7 @@ struct SetRowView: View {
 
     private var indexLabel: some View {
         Button {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+            HapticManager.shared.impact(.light)
             showSetTypeSheet = true
         } label: {
             ZStack {
@@ -284,7 +286,11 @@ struct SetRowView: View {
     private var aiTrackerButton: some View {
         if isAISupported {
             Button {
-                showAITracker = true
+                if hasConsentedToAI {
+                    showAITracker = true
+                } else {
+                    showAIConsentSheet = true
+                }
             } label: {
                 ZStack {
                     RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.squareRadius, style: .continuous)
@@ -302,6 +308,13 @@ struct SetRowView: View {
             }
             .buttonStyle(.plain)
             .disabled(isExerciseCompleted || isWorkoutCompleted)
+            .sheet(isPresented: $showAIConsentSheet) {
+                AIConsentSheet(onConsent: {
+                    showAITracker = true
+                })
+                .environment(ThemeManager.shared)
+                .preferredColorScheme(.dark)
+            }
             .fullScreenCover(isPresented: $showAITracker) {
                 AITrackerView(exerciseName: exerciseName) { countedReps in
                     if countedReps > 0 {
@@ -321,8 +334,7 @@ struct SetRowView: View {
            // so that WorkoutDetailViewModel orchestrates the save on its background context.
 
            if set.isCompleted {
-               let generator = UIImpactFeedbackGenerator(style: .medium)
-               generator.impactOccurred()
+               HapticManager.shared.impact(.medium)
 
                var suggestedDuration: Int? = nil
                if exerciseType == .strength {

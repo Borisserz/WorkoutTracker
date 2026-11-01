@@ -27,11 +27,11 @@ struct AIConsentSheet: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 12)
 
-                    Text("ИИ-тренер и обработка данных")
+                    Text("AI coach and data processing")
                         .font(.title2.bold())
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("Чтобы отвечать на вопросы и составлять планы тренировок, ИИ-тренер отправляет ваши сообщения в защищённый облачный сервис. Сообщения привязаны к аккаунту для учёта лимитов. Данные веса и Apple Health никогда не передаются третьим лицам.")
+                    Text("To answer questions and build plans, the AI coach sends your messages to a secure cloud service. Messages are tied to your account for rate limits. Weight and Apple Health data are never shared with third parties.")
                         .font(.body)
                         .foregroundColor(PastelTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -39,7 +39,7 @@ struct AIConsentSheet: View {
                     Link(destination: Constants.Legal.privacyPolicyURL) {
                         HStack(spacing: 8) {
                             Image(systemName: "hand.raised.fill")
-                            Text("Политика конфиденциальности")
+                            Text("Privacy Policy")
                         }
                     }
                     .font(.callout.weight(.semibold))
@@ -55,7 +55,7 @@ struct AIConsentSheet: View {
                         onConsent?()
                         dismiss()
                     } label: {
-                        Text("Принять и продолжить")
+                        Text("Accept and continue")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .frame(height: PastelTheme.ButtonMetrics.heroHeight)
@@ -67,7 +67,7 @@ struct AIConsentSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Не сейчас")
+                        Text("Not now")
                             .font(.subheadline)
                             .foregroundColor(PastelTheme.textSecondary)
                     }

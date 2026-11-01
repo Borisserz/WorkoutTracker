@@ -25,8 +25,7 @@ struct PremiumExerciseSearchBar: View {
 
                 if !filterState.searchText.isEmpty {
                     Button {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                             filterState.searchText = ""
                         }
@@ -43,8 +42,7 @@ struct PremiumExerciseSearchBar: View {
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
 
             Button {
-                let generator = UIImpactFeedbackGenerator(style: .medium)
-                generator.impactOccurred()
+                HapticManager.shared.impact(.medium)
                 onFilterTap()
             } label: {
                 ZStack(alignment: .topTrailing) {

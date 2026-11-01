@@ -131,8 +131,7 @@ struct SpotlightOverlayView: View {
         withAnimation(.default) {
             shakeTrigger += 1
         }
-        let generator = UINotificationFeedbackGenerator()
-        generator.notificationOccurred(.warning)
+        HapticManager.shared.notification(.warning)
     }
 }
 

@@ -2,13 +2,6 @@
 //  BlockedUsersStore.swift
 //  WorkoutTracker
 //
-//  Created by Boris Serzhanovich on 30.05.2026.
-//
-
-//
-//  BlockedUsersStore.swift
-//  WorkoutTracker
-//
 //  Local cache + Firestore-backed list of blocked creator UIDs. Used to hide
 //  shared workouts from blocked creators in feeds and at deep-link import.
 //
@@ -27,18 +20,30 @@ actor BlockedUsersStore {
     private var cache: Set<String> = []
     private var hydrated: Bool = false
     private var listener: ListenerRegistration?
+    private var listeningUid: String?
 
     private init() {}
 
-    /// Start listening for changes to the current user's blocked list. Idempotent.
+    /// Start listening for changes to the current user's blocked list. Idempotent per uid.
     func startListening() async {
         guard let myUid = await MainActor.run(body: { AnonymousAuthBootstrap.shared.currentUid }) else {
             log.warning("No current user — skipping startListening")
             return
         }
-        guard listener == nil else { return }
+        if listener != nil, listeningUid == myUid { return }
+        if listener != nil {
+            stopListening()
+        }
 
         let db = Firestore.firestore()
+        // One-shot hydrate so import/block checks are not empty until the first snapshot.
+        do {
+            let snapshot = try await db.collection("users").document(myUid).collection("blocked").getDocuments()
+            replaceCache(with: Set(snapshot.documents.map(\.documentID)))
+        } catch {
+            log.error("Initial blocked fetch failed: \(error.localizedDescription, privacy: .public)")
+        }
+
         let registration = db.collection("users").document(myUid).collection("blocked")
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self else { return }
@@ -50,6 +55,7 @@ actor BlockedUsersStore {
                 Task { await self.replaceCache(with: Set(ids)) }
             }
         self.listener = registration
+        self.listeningUid = myUid
         log.info("Listening to blocked list for uid=\(myUid, privacy: .private)")
     }
 
@@ -57,6 +63,7 @@ actor BlockedUsersStore {
     func stopListening() {
         listener?.remove()
         listener = nil
+        listeningUid = nil
         cache.removeAll()
         hydrated = false
     }
@@ -74,6 +81,7 @@ actor BlockedUsersStore {
                 "blockedAt": FieldValue.serverTimestamp()
             ])
         cache.insert(blockedUid)
+        hydrated = true
         log.info("Blocked uid=\(blockedUid, privacy: .private)")
     }
 
@@ -90,9 +98,12 @@ actor BlockedUsersStore {
         log.info("Unblocked uid=\(blockedUid, privacy: .private)")
     }
 
-    /// Check if a creator is blocked (uses cache if hydrated).
-    func isBlocked(uid: String) -> Bool {
-        cache.contains(uid)
+    /// Check if a creator is blocked (hydrates first when needed).
+    func isBlocked(uid: String) async -> Bool {
+        if !hydrated {
+            await startListening()
+        }
+        return cache.contains(uid)
     }
 
     /// Snapshot of currently blocked UIDs.

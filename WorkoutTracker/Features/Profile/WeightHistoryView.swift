@@ -45,8 +45,7 @@ struct WeightHistoryView: View {
 
                         if photosAvailable {
                             Button {
-                                let generator = UIImpactFeedbackGenerator(style: .medium)
-                                generator.impactOccurred()
+                                HapticManager.shared.impact(.medium)
                                 showingComparisonView = true
                             } label: {
                                 HStack {

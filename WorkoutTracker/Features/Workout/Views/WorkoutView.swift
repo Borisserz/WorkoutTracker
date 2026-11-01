@@ -262,6 +262,9 @@ struct DynamicWorkoutListView: View {
     @Environment(DIContainer.self) private var di
     @Environment(\.colorScheme) private var colorScheme
 
+    @State private var workoutPendingDelete: Workout?
+    @State private var showDeleteConfirm = false
+
     var listViewModel: WorkoutListViewModel
     var isEditing: Bool 
     var onFirstWorkoutLoaded: ((Workout) -> Void)?
@@ -322,10 +325,9 @@ struct DynamicWorkoutListView: View {
 
                     if isEditing {
                         Button {
-                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            Task {
-                                await workoutService.deleteWorkout(workout)
-                            }
+                            HapticManager.shared.impact(.medium)
+                            workoutPendingDelete = workout
+                            showDeleteConfirm = true
                         } label: {
                             Image(systemName: "minus.circle.fill")
                                 .font(.title2)
@@ -343,6 +345,22 @@ struct DynamicWorkoutListView: View {
             }
             .onChange(of: workouts, initial: true) { _, newWorkouts in
                 listViewModel.calculateStatsAsync(workouts: newWorkouts)
+            }
+            .confirmationDialog(
+                "Delete this workout?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    guard let workout = workoutPendingDelete else { return }
+                    workoutPendingDelete = nil
+                    Task { await workoutService.deleteWorkout(workout) }
+                }
+                Button("Cancel", role: .cancel) {
+                    workoutPendingDelete = nil
+                }
+            } message: {
+                Text("This cannot be undone.")
             }
         }
     }
@@ -367,7 +385,7 @@ struct PremiumRealWorkoutCard: View {
             }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(workout.title.isEmpty ? "Тренировка" : workout.title)
+                Text(workout.title.isEmpty ? "Workout" : workout.title)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
@@ -380,7 +398,7 @@ struct PremiumRealWorkoutCard: View {
                         .fill(PastelTheme.cardBorder)
                         .frame(width: 1, height: 10)
 
-                    Text("\(workout.exercises.count) упр.")
+                    Text("\(workout.exercises.count) ex.")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textSecondary)
 
@@ -652,109 +670,48 @@ struct PremiumHistoryEmptyState: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ZStack {
-            // Blurred Mock Background
-            VStack(spacing: 12) {
-                MockWorkoutRow(title: "Силовая тренировка ног", duration: "1 ч 15 мин", volume: "12 т", isBlinking: true)
-                MockWorkoutRow(title: "Торс и руки", duration: "45 мин", volume: "8.5 т", isBlinking: false)
-                MockWorkoutRow(title: "Пресс и восстановление", duration: "30 мин", volume: "0 кг", isBlinking: false)
-            }
-            .opacity(0.3)
-            .blur(radius: 8)
+        VStack(spacing: 16) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.system(size: 44, weight: .semibold))
+                .foregroundStyle(PastelTheme.pastelSage)
+                .shadow(color: PastelTheme.pastelSage.opacity(0.4), radius: 10, y: 4)
 
-            // Foreground CTA
-            VStack(spacing: 16) {
-                Image(systemName: "clock.arrow.circlepath")
-                    .font(.system(size: 44, weight: .semibold))
-                    .foregroundStyle(PastelTheme.pastelSage)
-                    .shadow(color: PastelTheme.pastelSage.opacity(0.4), radius: 10, y: 4)
+            Text("Clean slate")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .foregroundStyle(PastelTheme.textPrimary)
 
-                Text("Чистый лист")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
+            Text("Every streak starts at zero.\nFinish your first workout to fill your history with progress.")
+                .font(.system(size: 14, weight: .medium, design: .rounded))
+                .foregroundStyle(PastelTheme.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
+                .lineSpacing(3)
 
-                Text("Каждая серия побед начинается с нуля.\nЗавершите первую тренировку, чтобы наполнить историю прогрессом.")
-                    .font(.system(size: 14, weight: .medium, design: .rounded))
-                    .foregroundStyle(PastelTheme.textSecondary)
-                    .multilineTextAlignment(.center)
+            Button {
+                HapticManager.playMediumImpact()
+                onStartWorkout()
+            } label: {
+                Text("Start first workout")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textOnOat)
                     .padding(.horizontal, 24)
-                    .lineSpacing(3)
-
-                Button {
-                    HapticManager.playMediumImpact()
-                    onStartWorkout()
-                } label: {
-                    Text("Начать первую тренировку")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textOnOat)
-                        .padding(.horizontal, 24)
-                        .frame(height: PastelTheme.ButtonMetrics.heroHeight)
-                        .background(PastelTheme.pastelOat)
-                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, 6)
+                    .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                    .background(PastelTheme.pastelOat)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
             }
-            .padding(26)
-            .background(PastelTheme.cardSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
-            )
-            .shadow(color: Color.black.opacity(0.35), radius: 24, y: 10)
-            .padding(.horizontal, 20)
+            .buttonStyle(.plain)
+            .padding(.top, 6)
         }
+        .padding(26)
         .frame(maxWidth: .infinity)
-        .padding(.top, 30)
-    }
-}
-
-struct MockWorkoutRow: View {
-    let title: String
-    let duration: String
-    let volume: String
-    let isBlinking: Bool
-
-    var body: some View {
-        HStack(spacing: 14) {
-            Circle()
-                .fill(PastelTheme.cardSurfaceSubtle)
-                .frame(width: 38, height: 38)
-                .overlay(
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.system(size: 16))
-                        .foregroundStyle(PastelTheme.pastelSage)
-                )
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(PastelTheme.textPrimary)
-
-                HStack(spacing: 6) {
-                    Text(duration)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(PastelTheme.textSecondary)
-
-                    Rectangle()
-                        .fill(PastelTheme.cardBorder)
-                        .frame(width: 1, height: 10)
-
-                    Text(volume)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(PastelTheme.textSecondary)
-                }
-            }
-            Spacer()
-        }
-        .padding(12)
         .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(isBlinking ? PastelTheme.pastelSage.opacity(0.5) : PastelTheme.cardBorder, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
+        .shadow(color: Color.black.opacity(0.35), radius: 24, y: 10)
         .padding(.horizontal, 20)
+        .padding(.top, 30)
     }
 }

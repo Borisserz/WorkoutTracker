@@ -231,7 +231,7 @@ struct EmptyStateView: View {
 
     init(icon: String, title: LocalizedStringKey, message: LocalizedStringKey, iconSize: CGFloat = 60, iconColor: Color? = nil, actionTitle: LocalizedStringKey? = nil, action: (() -> Void)? = nil) {
         self.icon = icon; self.title = title; self.message = message; self.iconSize = iconSize;
-        self.iconColor = iconColor ?? .cyan
+        self.iconColor = iconColor ?? PastelTheme.pastelSage
         self.actionTitle = actionTitle
         self.action = action
     }

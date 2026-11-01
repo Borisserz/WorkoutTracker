@@ -23,8 +23,7 @@ struct OneRepMaxTabView: View {
                 }
                 Spacer()
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .medium)
-                    generator.impactOccurred()
+                    HapticManager.shared.impact(.medium)
                     showSettingsSheet = true
                 } label: {
                     Image(systemName: "slider.horizontal.3")
@@ -205,7 +204,7 @@ struct OneRepMaxSettingsSheet: View {
                             TextField("0.0", text: $manual1RMString)
                                 .keyboardType(.decimalPad)
                                 .multilineTextAlignment(.trailing)
-                                .foregroundColor(.purple)
+                                .foregroundColor(PastelTheme.pastelLavender)
                                 .fontWeight(.bold)
                                 .onChange(of: manual1RMString) { _, newValue in
                                     if let val = Double(newValue.replacingOccurrences(of: ",", with: ".")) {

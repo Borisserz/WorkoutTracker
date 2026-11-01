@@ -212,11 +212,8 @@ actor AnalyticsService {
     func rebuildAllStats() async {
         let bgContext = ModelContext(modelContainer)
 
-        try? bgContext.delete(model: UserStats.self)
-        try? bgContext.delete(model: ExerciseStat.self)
-        try? bgContext.delete(model: MuscleStat.self)
-        try? bgContext.save()
-
+        // Compute first; only wipe caches after we have a rebuild plan.
+        // Deleting up-front + failing save left users with empty stats.
         var totalWorkouts = 0
         var totalVolume = 0.0
         var totalDistance = 0.0
@@ -326,18 +323,26 @@ actor AnalyticsService {
             offset += batchSize
         }
 
-        let newUStats = UserStats(totalWorkouts: totalWorkouts, totalVolume: totalVolume, totalDistance: totalDistance, earlyWorkouts: earlyWorkouts, nightWorkouts: nightWorkouts)
-        bgContext.insert(newUStats)
+        do {
+            try bgContext.delete(model: UserStats.self)
+            try bgContext.delete(model: ExerciseStat.self)
+            try bgContext.delete(model: MuscleStat.self)
 
-        for (name, data) in exStatsDict {
-            bgContext.insert(ExerciseStat(exerciseName: name, maxWeight: data.maxWeight, totalCount: data.count, lastPerformanceDTO: data.lastDTO))
+            let newUStats = UserStats(totalWorkouts: totalWorkouts, totalVolume: totalVolume, totalDistance: totalDistance, earlyWorkouts: earlyWorkouts, nightWorkouts: nightWorkouts)
+            bgContext.insert(newUStats)
+
+            for (name, data) in exStatsDict {
+                bgContext.insert(ExerciseStat(exerciseName: name, maxWeight: data.maxWeight, totalCount: data.count, lastPerformanceDTO: data.lastDTO))
+            }
+
+            for (muscle, count) in mStatsDict {
+                bgContext.insert(MuscleStat(muscleName: muscle, totalCount: count))
+            }
+
+            try bgContext.save()
+        } catch {
+            print("❌ Analytics rebuild save failed — previous caches may remain: \(error)")
         }
-
-        for (muscle, count) in mStatsDict {
-            bgContext.insert(MuscleStat(muscleName: muscle, totalCount: count))
-        }
-
-        try? bgContext.save()
     }
 
     func getAllPersonalRecords(workouts: [Workout], unitsManager: UnitsManager) -> [BestResult] {
@@ -924,10 +929,11 @@ actor AnalyticsService {
         let currentUnlockedCount = newAchievements.filter { $0.isUnlocked }.count
         return (newUnlocks, currentUnlockedCount)
     }
+    @MainActor
     func fetchRecentWorkoutsForAnalytics() async -> [Workout] {
-           let bgContext = ModelContext(modelContainer)
+           // Resolve on the main context so AI callers never cross ModelContext boundaries.
            let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-           return (try? bgContext.fetch(descriptor)) ?? []
+           return (try? modelContainer.mainContext.fetch(descriptor)) ?? []
        }
 
         func fetchAnatomyStats(for interval: DateInterval, workouts: [Workout]) -> AnatomyStatsDTO {

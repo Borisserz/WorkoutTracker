@@ -56,8 +56,7 @@ struct ProgressComparisonView: View {
                 ToolbarItem(placement: .primaryAction) {
                     HStack {
                         Button {
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
+                            HapticManager.shared.impact(.medium)
                             showAddWeightSheet = true
                         } label: {
                             Image(systemName: "plus")
@@ -65,8 +64,7 @@ struct ProgressComparisonView: View {
                         }
                         
                         Button {
-                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                            generator.impactOccurred()
+                            HapticManager.shared.impact(.medium)
                         } label: {
                             Image(systemName: "square.and.arrow.up")
                                 .fontWeight(.semibold)
@@ -107,8 +105,7 @@ struct ProgressComparisonView: View {
             HStack(alignment: .center) {
 
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     showLeftPicker = true
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
@@ -139,8 +136,7 @@ struct ProgressComparisonView: View {
                 Spacer()
 
                 Button {
-                    let generator = UIImpactFeedbackGenerator(style: .light)
-                    generator.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     showRightPicker = true
                 } label: {
                     VStack(alignment: .trailing, spacing: 4) {
@@ -257,8 +253,7 @@ struct ProgressComparisonView: View {
 
                         ForEach(entriesWithPhotos.sorted(by: { $0.date > $1.date })) { entry in
                             Button {
-                                let generator = UISelectionFeedbackGenerator()
-                                generator.selectionChanged()
+                                HapticManager.shared.selection()
 
                                 withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
                                     if isLeft { leftEntry = entry } else { rightEntry = entry }
@@ -384,8 +379,7 @@ struct BeforeAfterSliderView: View {
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                                     isDragging = false
                                 }
-                                let generator = UIImpactFeedbackGenerator(style: .light)
-                                generator.impactOccurred()
+                                HapticManager.shared.impact(.light)
                             }
                     )
                 } else {

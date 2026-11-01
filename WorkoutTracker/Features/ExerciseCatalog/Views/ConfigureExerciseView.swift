@@ -173,8 +173,7 @@ struct ConfigureExerciseView: View {
 
             HStack(spacing: 12) {
                 Button {
-                    let gen = UIImpactFeedbackGenerator(style: .light)
-                    gen.impactOccurred()
+                    HapticManager.shared.impact(.light)
                     withAnimation(.spring()) { viewModel.showOverloadBanner = false }
                 } label: {
                     Text(LocalizedStringKey("Dismiss"))
@@ -191,8 +190,7 @@ struct ConfigureExerciseView: View {
                 }
 
                 Button {
-                    let gen = UINotificationFeedbackGenerator()
-                    gen.notificationOccurred(.success)
+                    HapticManager.shared.notification(.success)
                     withAnimation(.spring()) { viewModel.applyOverload() }
                 } label: {
                     Text(LocalizedStringKey("Apply"))
@@ -287,8 +285,7 @@ struct ConfigureExerciseView: View {
                         let cur = unitsManager.convertFromKilograms(viewModel.form.weight ?? 0.0)
                         viewModel.form.weight = unitsManager.convertToKilograms(cur + val)
                         
-                        let gen = UIImpactFeedbackGenerator(style: .medium)
-                        gen.impactOccurred()
+                        HapticManager.shared.impact(.medium)
                     } label: {
                         Text("+\(LocalizationHelper.shared.formatFlexible(val))")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
@@ -372,8 +369,7 @@ struct ConfigureExerciseView: View {
 
     private func handleSave() {
         if let newExercise = viewModel.generateExercise(unitsManager: unitsManager) {
-            let gen = UIImpactFeedbackGenerator(style: .medium)
-            gen.impactOccurred()
+            HapticManager.shared.impact(.medium)
             onAdd(newExercise)
             dismiss()
         }
@@ -453,14 +449,12 @@ struct PremiumSliderPicker: View {
     }
     
     private func decrement() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.light)
         value = max((value - step).roundedToStep(step: step), range.lowerBound)
     }
     
     private func increment() {
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.light)
         value = min((value + step).roundedToStep(step: step), range.upperBound)
     }
 }

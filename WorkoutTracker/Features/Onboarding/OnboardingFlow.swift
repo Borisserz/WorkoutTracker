@@ -669,7 +669,7 @@ struct OnboardingIntroView: View {
                            category: "HEALTH TRACKING",
                            title: "Works with Apple Health",
                            description: "Sync your workouts, track sleep, and monitor vitals automatically in one cohesive health dashboard.",
-                           colors: [Color.pink, Color.red.opacity(0.8)],
+                           colors: [PastelTheme.pastelPeach, PastelTheme.pastelPeach.opacity(0.8)],
                            chips: ["Activity", "Vitals", "HealthKit"],
                            decoration: .orb,
                            illustration: .appleHealth,
@@ -678,7 +678,7 @@ struct OnboardingIntroView: View {
                            category: "COMPUTER VISION",
                            title: "AI Camera Coach",
                            description: "\(namePrefix)a flawless eye on your form. Real-time tracking and rep counting that ensures you never cheat a set.",
-                           colors: [.purple, .blue],
+                           colors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
                            chips: ["Rep Count", "Form Check", "Real-Time"],
                            decoration: .stars,
                            illustration: .aiCamera,
@@ -762,7 +762,7 @@ struct OnboardingIntroView: View {
                                 isSelected: (slideIndex ?? 0) == index,
                                 isSaved: savedTargetTab == item.targetTab
                             ) {
-                                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                                HapticManager.shared.impact(.heavy)
                                 savedTargetTab = item.targetTab
                             }
                             .id(index)
@@ -780,7 +780,7 @@ struct OnboardingIntroView: View {
                 .scrollTargetBehavior(.paging)
                 .scrollPosition(id: $slideIndex)
                 .onChange(of: slideIndex) { _, _ in
-                    UISelectionFeedbackGenerator().selectionChanged()
+                    HapticManager.shared.selection()
                     slideProgress = 0.0
                 }
 
@@ -789,7 +789,7 @@ struct OnboardingIntroView: View {
                     .padding(.horizontal, 30)
 
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    HapticManager.shared.impact(.medium)
                     if isLastSlide { onNext(savedTargetTab) }
                     else { withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { slideIndex = (slideIndex ?? 0) + 1 } }
                 } label: {
@@ -801,7 +801,7 @@ struct OnboardingIntroView: View {
             }
             .overlay(alignment: .topTrailing) {
                 Button("Skip") {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    HapticManager.shared.impact(.light)
                     onNext(savedTargetTab)
                 }
                 .font(.system(size: 16, weight: .semibold))

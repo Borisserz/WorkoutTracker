@@ -359,9 +359,20 @@ actor WorkoutStore: WorkoutStoreProtocol {
         for workout in activeWorkouts {
             let hoursSinceStart = Date().timeIntervalSince(workout.date) / 3600
             if hoursSinceStart > 12 {
-
-                workout.endTime = workout.date.addingTimeInterval(3600) 
-                try await processCompletedWorkout(workoutID: workout.persistentModelID)
+                let hasCompletedSets = workout.exercises.contains { ex in
+                    ex.setsList.contains(where: \.isCompleted)
+                    || ex.subExercises.contains { $0.setsList.contains(where: \.isCompleted) }
+                }
+                if !hasCompletedSets {
+                    // Empty abandoned session — discard instead of inventing a 1h workout.
+                    modelContext.delete(workout)
+                } else {
+                    // Close with real elapsed time (capped) rather than a fake +1h stamp.
+                    let elapsed = min(Date().timeIntervalSince(workout.date), 12 * 3600)
+                    workout.endTime = workout.date.addingTimeInterval(elapsed)
+                    workout.durationSeconds = Int(elapsed)
+                    try await processCompletedWorkout(workoutID: workout.persistentModelID)
+                }
             } else {
                 remainingActiveIDs.append(workout.persistentModelID)
             }

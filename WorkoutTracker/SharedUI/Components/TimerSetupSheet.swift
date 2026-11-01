@@ -55,8 +55,7 @@ struct TimerSetupSheet: View {
 
                 HStack(spacing: 16) {
                     Button {
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
+                        HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
                         Text(LocalizedStringKey("Cancel"))
@@ -69,8 +68,7 @@ struct TimerSetupSheet: View {
                     }
 
                     Button {
-                        let generator = UINotificationFeedbackGenerator()
-                        generator.notificationOccurred(.success)
+                        HapticManager.shared.notification(.success)
                         let totalSeconds = (minutes * 60) + seconds
                         timerManager.startRestTimer(duration: totalSeconds > 0 ? totalSeconds : 60)
                         dismiss()

@@ -1,15 +1,32 @@
 
 
 internal import SwiftUI
+import UIKit
 
 class HapticManager {
     static let shared = HapticManager()
+    static let hapticsEnabledKey = "hapticsEnabled"
+
     private init() {}
+
+    static func areHapticsEnabled(in defaults: UserDefaults = .standard) -> Bool {
+        if defaults.object(forKey: hapticsEnabledKey) == nil { return true }
+        return defaults.bool(forKey: hapticsEnabledKey)
+    }
+
+    private var isEnabled: Bool { Self.areHapticsEnabled() }
+
     func impact(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        guard isEnabled else { return }
         UIImpactFeedbackGenerator(style: style).impactOccurred()
     }
     func selection() {
+        guard isEnabled else { return }
         UISelectionFeedbackGenerator().selectionChanged()
+    }
+    func notification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        guard isEnabled else { return }
+        UINotificationFeedbackGenerator().notificationOccurred(type)
     }
 }
 
@@ -90,7 +107,7 @@ struct HistoryBreathingBackground: View {
     @State private var phase = false
     var cnsScore: Double
     var color3: Color { cnsScore > 50 ? .blue : .red }
-    var color4: Color { cnsScore > 50 ? .indigo : .orange }
+    var color4: Color { cnsScore > 50 ? PastelTheme.pastelLavender : .orange }
 
     var body: some View {
         ZStack {
@@ -202,7 +219,7 @@ struct ConfettiView: View {
     }
 
     private func createParticles(in size: CGSize) {
-        let colors: [Color] = [.red, .blue, .green, .yellow, .orange, .purple, .pink, .cyan]
+        let colors: [Color] = [.red, .blue, .green, .yellow, .orange, PastelTheme.pastelLavender, .pink, PastelTheme.pastelSage]
         for _ in 0..<80 {
             let particle = ConfettiParticle(
                 position: CGPoint(x: CGFloat.random(in: 0...size.width), y: CGFloat.random(in: -size.height...0)),
@@ -367,7 +384,7 @@ struct AchievementPopupView: View {
                 // Button
                 Button(action: handleClose) {
                     HStack {
-                        Text(currentIndex < achievements.count - 1 ? "Далее" : "Отлично")
+                        Text(currentIndex < achievements.count - 1 ? "Next" : "Great")
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                         if currentIndex < achievements.count - 1 {
                             Image(systemName: "arrow.right")
@@ -492,16 +509,16 @@ struct AchievementPopupView: View {
 struct PremiumDarkBackground: View {
     var body: some View {
         ZStack {
-            Color.premiumBackground.ignoresSafeArea()
+            PastelTheme.canvas.ignoresSafeArea()
 
             Circle()
-                .fill(Color.neonBlue.opacity(0.15))
+                .fill(PastelTheme.pastelSlate.opacity(0.12))
                 .frame(width: 350)
                 .blur(radius: 120)
                 .offset(x: -100, y: -150)
 
             Circle()
-                .fill(Color.neonPurple.opacity(0.12))
+                .fill(PastelTheme.pastelLavender.opacity(0.10))
                 .frame(width: 400)
                 .blur(radius: 130)
                 .offset(x: 100, y: 100)
@@ -521,7 +538,7 @@ struct PremiumGlassButton: View {
 
     var body: some View {
         Button(action: {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            HapticManager.shared.impact(.light)
             action()
         }) {
             HStack(alignment: .top, spacing: 16) {
@@ -555,7 +572,7 @@ struct SettingRow: View {
             Image(systemName: icon).foregroundStyle(color).frame(width: 20)
             Text(title).font(.system(size: 14, weight: .bold, design: .rounded)).foregroundStyle(.white)
             Spacer()
-            Toggle("", isOn: $isOn).labelsHidden().scaleEffect(0.7).tint(Color.neonBlue)
+            Toggle("", isOn: $isOn).labelsHidden().scaleEffect(0.7).tint(PastelTheme.pastelOat)
         }
     }
 }
@@ -571,9 +588,13 @@ struct SettingsDropdownMenu: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
-            SettingRow(icon: "moon.fill", title: "Dark Theme", color: .indigo, isOn: Binding(
-                get: { appearanceMode == "dark" },
-                set: { appearanceMode = $0 ? "dark" : "light" }
+            // Dark-only: ignore toggle off so this dead menu cannot write light (I14).
+            SettingRow(icon: "moon.fill", title: "Dark Theme", color: PastelTheme.pastelLavender, isOn: Binding(
+                get: { true },
+                set: { _ in
+                    appearanceMode = AppearanceMode.lockedRawValue
+                    AppearanceMode.enforceLockedModeInUserDefaults()
+                }
             ))
 
             SettingRow(icon: "bell.fill", title: "Notifications", color: .orange, isOn: $notificationsEnabled)
@@ -608,7 +629,7 @@ extension HapticManager {
     static func playMediumImpact() { shared.impact(.medium) }
     static func playHeavyImpact() { shared.impact(.heavy) }
     static func playSelection() { shared.selection() }
-    static func playSuccess() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
+    static func playSuccess() { shared.notification(.success) }
+    static func playWarning() { shared.notification(.warning) }
+    static func playError() { shared.notification(.error) }
 }
