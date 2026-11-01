@@ -327,10 +327,8 @@ struct WorkoutHubView: View {
 
     // MARK: - 1. Top Bar: Streak Flame + Create (Exact Mockup Match)
     private var displayStreakCount: Int {
-        if dashboardViewModel.streakCount > 0 {
-            return dashboardViewModel.streakCount
-        }
-        return 14
+        // Never invent a streak for empty / fresh installs (Maestro + honesty).
+        max(0, dashboardViewModel.streakCount)
     }
 
     private var topHeaderRow: some View {
@@ -389,6 +387,7 @@ struct WorkoutHubView: View {
                 )
             }
             .buttonStyle(Tactile3DCardButtonStyle(scale: 0.97, maxTilt: 2.0))
+            .accessibilityIdentifier("wt.hub.create")
         }
         .padding(.horizontal, 16)
     }
@@ -1360,6 +1359,7 @@ struct WorkoutHubView: View {
             .padding(.horizontal, 16)
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.982, maxTilt: 2.8))
+        .accessibilityIdentifier("wt.hub.explore")
     }
 
     // MARK: - Workout Execution Methods

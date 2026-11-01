@@ -92,11 +92,25 @@ struct ProfileView: View {
                 }
             }
             .navigationBarHidden(true)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Close") { dismiss() }
-                        .foregroundColor(.gray)
+            .accessibilityIdentifier("wt.profile.root")
+            .overlay(alignment: .topTrailing) {
+                // Toolbar Close is invisible with navigationBarHidden(true) — keep an explicit control.
+                Button {
+                    dismiss()
+                } label: {
+                    Text("Close")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textSecondary)
+                        .padding(.horizontal, 14)
+                        .frame(height: 36)
+                        .background(PastelTheme.cardSurface)
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(PastelTheme.cardBorder, lineWidth: 1))
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("wt.profile.close")
+                .padding(.top, 12)
+                .padding(.trailing, 16)
             }
         }
         .onAppear {

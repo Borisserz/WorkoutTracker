@@ -4070,10 +4070,14 @@ struct StorySlideOutro: View {
 struct PremiumStatsEmptyState: View {
     var onStartWorkout: () -> Void
     @Environment(\.colorScheme) private var colorScheme
-    @State private var appear = false
+    // Start visible so Maestro / VoiceOver can find "Analytics Locked" without waiting on spring.
+    @State private var appear = true
 
     var body: some View {
         VStack(spacing: 24) {
+            // Marker for E2E — keep on container (child opacity animation previously hid the id).
+            Color.clear.frame(height: 0)
+                .accessibilityIdentifier("wt.progress.empty")
             ZStack {
                 Circle()
                     .fill(PastelTheme.cardSurfaceSubtle)

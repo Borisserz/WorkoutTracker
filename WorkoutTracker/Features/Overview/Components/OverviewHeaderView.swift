@@ -6,15 +6,18 @@ struct OverviewHeaderView: View {
     let streakDays: Int
     let onCalendarTap: () -> Void
     let onProfileTap: () -> Void
+    var onSettingsTap: (() -> Void)? = nil
 
     init(
         streakDays: Int,
         onCalendarTap: @escaping () -> Void,
-        onProfileTap: @escaping () -> Void
+        onProfileTap: @escaping () -> Void,
+        onSettingsTap: (() -> Void)? = nil
     ) {
         self.streakDays = streakDays
         self.onCalendarTap = onCalendarTap
         self.onProfileTap = onProfileTap
+        self.onSettingsTap = onSettingsTap
     }
 
     private var formattedDate: String {
@@ -80,6 +83,27 @@ struct OverviewHeaderView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("wt.overview.calendar")
+
+                // Settings (was dead: anatomy onSettingsTap unused)
+                if let onSettingsTap {
+                    Button {
+                        HapticManager.shared.impact(.light)
+                        onSettingsTap()
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(PastelTheme.textPrimary)
+                            .frame(width: 38, height: 38)
+                            .background(PastelTheme.cardSurface)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle().stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("wt.overview.settings")
+                }
 
                 // Profile Button
                 Button {
@@ -97,6 +121,7 @@ struct OverviewHeaderView: View {
                         )
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("wt.overview.profile")
             }
         }
         .padding(.horizontal, 4)
