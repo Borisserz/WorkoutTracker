@@ -29,7 +29,14 @@ struct CalorieCalculator: Sendable {
             }
         }
 
-        let totalWorkoutSeconds = workout.durationSeconds > 0 ? workout.durationSeconds : 3600 
+        let totalWorkoutSeconds: Int = {
+            if workout.durationSeconds > 0 { return workout.durationSeconds }
+            if let end = workout.endTime {
+                return max(1, Int(end.timeIntervalSince(workout.date)))
+            }
+            let active = totalStrengthActiveSeconds + totalCardioActiveSeconds
+            return max(1, active)
+        }()
 
         let actualStrengthActive = min(totalStrengthActiveSeconds, totalWorkoutSeconds)
         let actualCardioActive = min(totalCardioActiveSeconds, totalWorkoutSeconds - actualStrengthActive)

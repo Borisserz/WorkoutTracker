@@ -72,7 +72,8 @@ struct LegendaryRoutinesView: View {
                     if FirestoreProgramService.shared.legendaryRoutines.isEmpty {
                         await FirestoreProgramService.shared.fetchAllPrograms()
                     }
-                    self.routines = FirestoreProgramService.shared.legendaryRoutines
+                    let remote = FirestoreProgramService.shared.legendaryRoutines
+                    self.routines = remote.isEmpty ? LegendaryFallbackCatalog.routines : remote
 
                     if activeRoutineID == nil, let first = routines.first {
                         activeRoutineID = first.id

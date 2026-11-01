@@ -193,7 +193,7 @@ struct AICoachWidgetView: View {
                     }
                     Text("AI Coach").font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(WidgetTheme.accentGradient)
                 }
-                Text(entry.data.aiTip.isEmpty ? "Open the app to sync coaching tips." : entry.data.aiTip)
+                Text(entry.data.aiTip.isEmpty ? "No tip yet" : entry.data.aiTip)
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundColor(.white.opacity(0.9))
                     .lineLimit(3)

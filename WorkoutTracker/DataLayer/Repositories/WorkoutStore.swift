@@ -227,6 +227,11 @@ actor WorkoutStore: WorkoutStoreProtocol {
                 throw WorkoutRepositoryError.modelNotFound
             }
 
+            // Idempotent: already finalized (stats applied). Snackbar-pending has endTime but durationSeconds == 0.
+            if workout.endTime != nil && workout.durationSeconds > 0 {
+                return
+            }
+
             if workout.endTime == nil { workout.endTime = Date() }
             // Floor at 1s so delete can tell "processed" apart from finish-snackbar (endTime set, duration still 0).
             workout.durationSeconds = max(1, Int(workout.endTime!.timeIntervalSince(workout.date)))
@@ -374,16 +379,33 @@ actor WorkoutStore: WorkoutStoreProtocol {
                     // Empty abandoned session — discard instead of inventing a 1h workout.
                     modelContext.delete(workout)
                 } else {
-                    // Close with real elapsed time (capped) rather than a fake +1h stamp.
+                    // Close with real elapsed time (capped); let processCompletedWorkout set durationSeconds.
                     let elapsed = min(Date().timeIntervalSince(workout.date), 12 * 3600)
                     workout.endTime = workout.date.addingTimeInterval(elapsed)
-                    workout.durationSeconds = Int(elapsed)
                     try await processCompletedWorkout(workoutID: workout.persistentModelID)
                 }
             } else {
                 remainingActiveIDs.append(workout.persistentModelID)
             }
         }
+
+        // Finish-snackbar orphans (app killed after endTime, before process): finalize or discard.
+        let orphanDesc = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil && $0.durationSeconds == 0 }
+        )
+        let orphans = (try? modelContext.fetch(orphanDesc)) ?? []
+        for orphan in orphans {
+            let hasCompletedSets = orphan.exercises.contains { ex in
+                ex.setsList.contains(where: \.isCompleted)
+                || ex.subExercises.contains { $0.setsList.contains(where: \.isCompleted) }
+            }
+            if hasCompletedSets {
+                try await processCompletedWorkout(workoutID: orphan.persistentModelID)
+            } else {
+                modelContext.delete(orphan)
+            }
+        }
+
         try modelContext.save()
         return remainingActiveIDs
     }

@@ -32,6 +32,9 @@ struct HistoryView: View {
 
     /// Cap in-memory history for SwiftData `@Query` — full-library scans blow RAM after years of logging.
     @Query private var allWorkouts: [Workout]
+    /// Favorites are typically few — unbounded so older starred sessions stay visible past the main cap.
+    @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
+    private var favoriteWorkouts: [Workout]
     @Query(sort: \WorkoutPreset.name) private var allPresets: [WorkoutPreset]
 
     @State private var searchText = ""
@@ -44,7 +47,7 @@ struct HistoryView: View {
 
     init() {
         var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        descriptor.fetchLimit = 400
+        descriptor.fetchLimit = 800
         _allWorkouts = Query(descriptor)
     }
 
@@ -70,8 +73,9 @@ struct HistoryView: View {
     private var filteredWorkouts: [Workout] {
         let calendar = Calendar.current
         let now = Date()
+        let source = selectedFilter == .favorites ? favoriteWorkouts : allWorkouts
 
-        return allWorkouts.filter { workout in
+        return source.filter { workout in
             // History shows finished sessions only
             guard workout.endTime != nil else { return false }
 
@@ -87,7 +91,7 @@ struct HistoryView: View {
             case .all:
                 return true
             case .favorites:
-                return workout.isFavorite
+                return true
             case .month:
                 let cutoff = calendar.date(byAdding: .month, value: -1, to: now) ?? .distantPast
                 return workout.date >= cutoff
@@ -175,32 +179,28 @@ struct HistoryView: View {
         }
         Task { @MainActor in
             let title = workout.title.isEmpty ? String(localized: "Replay workout") : workout.title
-            if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
-                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                descriptor.fetchLimit = 1
-                if let newWorkout = try? context.fetch(descriptor).first {
-                    for ex in workout.exercises {
-                        let newEx = Exercise(from: ex.toDTO())
-                        newEx.isCompleted = false
-                        context.insert(newEx)
-                        for set in newEx.setsList { set.isCompleted = false; context.insert(set) }
-                        for sub in newEx.subExercises {
-                            sub.isCompleted = false
-                            context.insert(sub)
-                            for set in sub.setsList { set.isCompleted = false; context.insert(set) }
-                        }
-                        newWorkout.exercises.append(newEx)
-                    }
-                    do {
-                        try context.save()
-                        self.navigateToActiveWorkout = newWorkout
-                    } catch {
-                        di.appState.showError(
-                            title: String(localized: "Replay failed"),
-                            message: error.localizedDescription
-                        )
-                    }
+            guard let newID = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false),
+                  let newWorkout = context.model(for: newID) as? Workout else { return }
+            for ex in workout.exercises {
+                let newEx = Exercise(from: ex.toDTO())
+                newEx.isCompleted = false
+                context.insert(newEx)
+                for set in newEx.setsList { set.isCompleted = false; context.insert(set) }
+                for sub in newEx.subExercises {
+                    sub.isCompleted = false
+                    context.insert(sub)
+                    for set in sub.setsList { set.isCompleted = false; context.insert(set) }
                 }
+                newWorkout.exercises.append(newEx)
+            }
+            do {
+                try context.save()
+                self.navigateToActiveWorkout = newWorkout
+            } catch {
+                di.appState.showError(
+                    title: String(localized: "Replay failed"),
+                    message: error.localizedDescription
+                )
             }
         }
     }
@@ -215,13 +215,13 @@ struct HistoryView: View {
             return
         }
         Task { @MainActor in
-            if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
-                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                descriptor.fetchLimit = 1
-                if let newWorkout = try? context.fetch(descriptor).first {
-                    self.navigateToActiveWorkout = newWorkout
-                }
-            }
+            guard let newID = await workoutService.createWorkout(
+                title: preset.name,
+                presetID: preset.persistentModelID,
+                isAIGenerated: false
+            ),
+            let newWorkout = context.model(for: newID) as? Workout else { return }
+            self.navigateToActiveWorkout = newWorkout
         }
     }
 

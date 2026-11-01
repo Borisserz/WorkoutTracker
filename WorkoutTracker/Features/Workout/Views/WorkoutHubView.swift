@@ -825,7 +825,7 @@ struct WorkoutHubView: View {
 
     // MARK: - 6. Workout Templates Compact Horizontal Swipe-Deck (Concept 1: Zero Walls of Text)
     private var totalTemplateCount: Int {
-        myRoutines.isEmpty ? 3 : myRoutines.count
+        myRoutines.isEmpty ? 2 : myRoutines.count
     }
 
     private var myTemplatesHorizontalSection: some View {

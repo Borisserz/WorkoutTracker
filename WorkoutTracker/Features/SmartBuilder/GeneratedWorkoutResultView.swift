@@ -218,6 +218,7 @@ struct GeneratedWorkoutResultView: View {
         VStack {
             Spacer()
             Button {
+                guard !vm.generatedExercises.isEmpty else { return }
                 HapticManager.shared.notification(.success)
                 onStart(vm.generatedExercises)
             } label: {
@@ -233,6 +234,8 @@ struct GeneratedWorkoutResultView: View {
                 .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.5), radius: 20, x: 0, y: 10)
                 .padding(.horizontal, 24)
             }
+            .disabled(vm.generatedExercises.isEmpty)
+            .opacity(vm.generatedExercises.isEmpty ? 0.45 : 1)
         }
         .padding(.bottom, 16)
         .background(

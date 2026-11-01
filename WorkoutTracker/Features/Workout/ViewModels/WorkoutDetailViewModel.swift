@@ -33,6 +33,8 @@ final class WorkoutDetailViewModel {
     var activeEvent: WorkoutDetailEvent? = nil
     var isShowingSnackbar: Bool = false
     @ObservationIgnored private var finishWorkoutTask: Task<Void, Never>? = nil
+    /// Bumped on undo so a late commit after cancel cannot apply XP/stats twice.
+    @ObservationIgnored private var finishEpoch: Int = 0
 
     private let workoutService: WorkoutService
     private let analyticsService: AnalyticsService
@@ -344,6 +346,7 @@ final class WorkoutDetailViewModel {
 
         workout.endTime = Date()
         workoutService.beginFinishTransition()
+        let epoch = finishEpoch
 
         withAnimation {
             self.isShowingSnackbar = true
@@ -353,12 +356,13 @@ final class WorkoutDetailViewModel {
         finishWorkoutTask = Task {
             let undoWindow: Double = UITestLaunchConfiguration.isUITestMode ? 0.4 : 3.5
             try? await Task.sleep(for: .seconds(undoWindow))
-            guard !Task.isCancelled else { return }
-            await commitFinishWorkout(workout: workout, progressManager: progressManager)
+            guard !Task.isCancelled, epoch == self.finishEpoch else { return }
+            await commitFinishWorkout(workout: workout, progressManager: progressManager, epoch: epoch)
         }
     }
 
     func undoFinishWorkout(workout: Workout) {
+        finishEpoch += 1
         finishWorkoutTask?.cancel()
         finishWorkoutTask = nil
 
@@ -369,7 +373,8 @@ final class WorkoutDetailViewModel {
         workoutService.endFinishTransition()
     }
 
-    private func commitFinishWorkout(workout: Workout, progressManager: ProgressManager) async {
+    private func commitFinishWorkout(workout: Workout, progressManager: ProgressManager, epoch: Int) async {
+        guard epoch == finishEpoch, workout.endTime != nil else { return }
         withAnimation { self.isShowingSnackbar = false }
         defer { workoutService.endFinishTransition() }
 

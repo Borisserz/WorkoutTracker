@@ -12,7 +12,8 @@ final class SmartGeneratorViewModel {
     var equipment: WorkoutEquipment = .fullGym
 
     var isGenerating: Bool = false
-    var generatedExercises: [ExerciseDTO] = [] 
+    var generatedExercises: [ExerciseDTO] = []
+    var generationError: String? = nil
 
     var path = NavigationPath()
     let availableMuscles = ["Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio"]
@@ -24,6 +25,7 @@ final class SmartGeneratorViewModel {
 
     func generateWorkout(historyCache: [String: Exercise]) async {
         isGenerating = true
+        generationError = nil
         HapticManager.shared.impact(.medium)
         TrackingManager.shared.track(.smartBuilderUsed(muscleGroupsSelected: Array(targetMuscles), goal: "custom"))
 
@@ -44,10 +46,15 @@ final class SmartGeneratorViewModel {
 
         let exercises = await LocalWorkoutGeneratorService.shared.generateWorkout(config: config)
 
-        try? await Task.sleep(for: .seconds(0.8)) 
+        try? await Task.sleep(for: .seconds(0.8))
 
         self.generatedExercises = exercises
         self.isGenerating = false
+        guard !exercises.isEmpty else {
+            self.generationError = String(localized: "No exercises matched this equipment and muscle mix. Try Full Gym or different muscles.")
+            HapticManager.shared.notification(.error)
+            return
+        }
         self.path.append("ResultView")
         HapticManager.shared.notification(.success)
     }

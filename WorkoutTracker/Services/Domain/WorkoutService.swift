@@ -27,6 +27,8 @@ final class WorkoutService {
     /// Blocks new starts during finish snackbar undo window (endTime set but session not committed).
     private var finishTransitionDepth = 0
 
+    var isFinishTransitionPending: Bool { finishTransitionDepth > 0 }
+
     func beginFinishTransition() {
         finishTransitionDepth += 1
     }
@@ -68,6 +70,17 @@ final class WorkoutService {
                 switch payload.action {
                 case .startWorkout:
                     guard let uuid = workoutUUID else { return }
+                    // Refuse during phone finish-undo window (endTime already set → actives query empty).
+                    let finishBlocked = await MainActor.run { self.isFinishTransitionPending }
+                    if finishBlocked {
+                        await MainActor.run {
+                            self.appState.showError(
+                                title: String(localized: "Workout in progress"),
+                                message: String(localized: "Finish or delete the current workout before starting another.")
+                            )
+                        }
+                        return
+                    }
                     // R01: refuse dual active sessions from Watch when phone already has one.
                     let activeDesc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime == nil })
                     let actives = (try? bgContext.fetch(activeDesc)) ?? []
@@ -463,20 +476,35 @@ final class WorkoutService {
     }
 
     func deleteWorkout(_ workout: Workout) async {
-        defer { stopLiveActivity() }
+        let wasActiveSession = workout.endTime == nil
         do {
             try await workoutStore.deleteWorkout(id: workout.id)
+            if wasActiveSession {
+                await stopLiveActivityIfNoActiveSession()
+            }
         } catch {
             appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
         }
     }
 
     func deleteWorkout(id: UUID) async {
-        defer { stopLiveActivity() }
         do {
             try await workoutStore.deleteWorkout(id: id)
+            // Never blanket-stop LA: History may delete a finished row while another session is live.
+            await stopLiveActivityIfNoActiveSession()
         } catch {
             appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
+        }
+    }
+
+    private func stopLiveActivityIfNoActiveSession() async {
+        do {
+            let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
+            if activeIDs.isEmpty && !isFinishTransitionPending {
+                stopLiveActivity()
+            }
+        } catch {
+            // Fail closed for LA: if we cannot verify actives, leave Island alone rather than killing a live session.
         }
     }
 

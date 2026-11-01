@@ -113,20 +113,8 @@ enum BodyAnalysisEngine {
                 cautionNotes: "Spend 7–10 minutes on quality joint warm-up before your first working sets.",
                 recommendedExercises: ["Barbell Squat", "Bench Press", "Pull-ups", "Overhead Press"]
             )
-        } else if (avgReadiness >= 0 && avgReadiness < 60) || (cnsScore >= 0 && cnsScore < 70) {
-            advice = NextWorkoutAdvice(
-                recentStrainSummary: "Significant systemic muscle and CNS fatigue detected (average readiness \(avgReadiness)%).",
-                recommendedSplitTitle: "Next session: Active recovery or deload",
-                physiologicalRationale: "Tissues need time to replenish glycogen and stabilize autonomic tone.",
-                actionableTips: [
-                    "Swap heavy strength sets for light cardio (heart rate 110–125 bpm)",
-                    "Do myofascial release (foam rolling) and stretch major muscle groups",
-                    "Intensity: RPE no higher than 5.0"
-                ],
-                cautionNotes: "Avoid training to failure and forced reps entirely.",
-                recommendedExercises: ["Incline Walk", "Foam Rolling", "Joint Mobility", "Chest Stretch"]
-            )
         } else if !hasRecoveryData {
+            // Workouts exist but recovery map missing — never interpolate "-1%" fatigue copy.
             advice = NextWorkoutAdvice(
                 recentStrainSummary: "Recent sessions are logged, but muscle recovery percentages are not available yet.",
                 recommendedSplitTitle: "Next session: Balanced full-body or preferred split",
@@ -138,6 +126,22 @@ enum BodyAnalysisEngine {
                 ],
                 cautionNotes: "Re-open Overview after a completed workout to refresh recovery estimates.",
                 recommendedExercises: ["Barbell Squat", "Bench Press", "Pull-ups", "Overhead Press"]
+            )
+        } else if (avgReadiness >= 0 && avgReadiness < 60) || (cnsScore >= 0 && cnsScore < 70) {
+            let readinessNote = avgReadiness >= 0
+                ? "average readiness \(avgReadiness)%"
+                : "CNS \(Int(cnsScore))%"
+            advice = NextWorkoutAdvice(
+                recentStrainSummary: "Significant systemic muscle and CNS fatigue detected (\(readinessNote)).",
+                recommendedSplitTitle: "Next session: Active recovery or deload",
+                physiologicalRationale: "Tissues need time to replenish glycogen and stabilize autonomic tone.",
+                actionableTips: [
+                    "Swap heavy strength sets for light cardio (heart rate 110–125 bpm)",
+                    "Do myofascial release (foam rolling) and stretch major muscle groups",
+                    "Intensity: RPE no higher than 5.0"
+                ],
+                cautionNotes: "Avoid training to failure and forced reps entirely.",
+                recommendedExercises: ["Incline Walk", "Foam Rolling", "Joint Mobility", "Chest Stretch"]
             )
         } else if chestPct >= 0 && tricepsPct >= 0 && (chestPct < 75 || tricepsPct < 75) {
             // Push was strained recently -> recommend Pull

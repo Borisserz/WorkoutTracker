@@ -220,6 +220,55 @@ final class ResidualPassTests: XCTestCase {
     }
 
     @MainActor
+    func testProcessCompletedWorkoutIsIdempotent() async throws {
+        let (di, context) = try makeInMemoryDI()
+        context.insert(UserStats(totalWorkouts: 0, totalVolume: 0, totalDistance: 0))
+        try context.save()
+
+        let pid = try await di.workoutStore.createWorkout(title: "Once", fromPresetID: nil, isAIGenerated: false)
+        let workout = try XCTUnwrap(context.model(for: pid) as? Workout)
+        let exercise = Exercise(name: "Row", muscleGroup: "Back", type: .strength)
+        context.insert(exercise)
+        let set = WorkoutSet(index: 0, weight: 60, reps: 8, isCompleted: true)
+        context.insert(set)
+        exercise.addSafeSet(set)
+        workout.exercises = [exercise]
+        try context.save()
+
+        try await di.workoutStore.processCompletedWorkout(workoutID: pid)
+        try await di.workoutStore.processCompletedWorkout(workoutID: pid)
+
+        let stats = try XCTUnwrap((try context.fetch(FetchDescriptor<UserStats>())).first)
+        XCTAssertEqual(stats.totalWorkouts, 1, "Double process must not double-count lifetime workouts")
+    }
+
+    func testBodyAnalysisDoesNotPrintNegativeReadinessPercent() {
+        let report = BodyAnalysisEngine.generateReport(
+            cnsScore: 55,
+            recoveryDict: [:],
+            recentWorkouts: [Workout(title: "Past", date: Date().addingTimeInterval(-86400))]
+        )
+        XCTAssertFalse(
+            report.nextWorkoutAdvice.recentStrainSummary.contains("-1%"),
+            "Empty recovery + low CNS must not interpolate average readiness -1%"
+        )
+    }
+
+    func testCalorieCalculatorDoesNotInventOneHourWhenDurationMissing() {
+        let workout = Workout(title: "Short", date: Date().addingTimeInterval(-600))
+        workout.endTime = Date()
+        workout.durationSeconds = 0
+        let exercise = Exercise(name: "Curl", muscleGroup: "Arms", type: .strength, setsList: [
+            WorkoutSet(index: 1, isCompleted: true)
+        ])
+        workout.exercises = [exercise]
+
+        let cals = CalorieCalculator.calculate(for: workout, userWeight: 80)
+        // 600s wall clock ≪ invented 3600s resting calories (~154+)
+        XCTAssertLessThan(cals, 80, "Missing durationSeconds must use endTime-date, not invent 3600s")
+    }
+
+    @MainActor
     private func makeInMemoryDI() throws -> (DIContainer, ModelContext) {
         let schema = Schema([
             Workout.self, WorkoutPreset.self, ExerciseNote.self, UserStats.self,

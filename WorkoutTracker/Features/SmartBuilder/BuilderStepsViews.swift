@@ -231,8 +231,15 @@ struct GeneratorSettingsView: View {
                 .padding(.bottom, 120) 
             }
 
-            VStack {
+            VStack(spacing: 10) {
                 Spacer()
+                if let error = vm.generationError {
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(PastelTheme.pastelPeach)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 28)
+                }
                 Button {
                     Task { await vm.generateWorkout(historyCache: dashboard.lastPerformancesCache) }
                 } label: {

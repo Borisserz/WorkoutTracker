@@ -8,6 +8,8 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     static let shared = PhoneWatchManager()
 
     var modelContainer: ModelContainer?
+    /// When true, Watch must not start (phone finish-undo window or other session gate).
+    var isSessionStartBlocked: (() -> Bool)?
 
     private override init() {
         super.init()
@@ -114,7 +116,9 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     /// True when Watch may create a new session (no fresh active workout on phone).
     @MainActor
     private func phoneAllowsWatchStart() -> Bool {
-        guard let container = modelContainer else { return true }
+        if isSessionStartBlocked?() == true { return false }
+        // Fail closed when store is not ready — Watch must not invent a phone session.
+        guard let container = modelContainer else { return false }
         let context = ModelContext(container)
         let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
         let actives = ((try? context.fetch(desc)) ?? []).filter {

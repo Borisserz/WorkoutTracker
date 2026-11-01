@@ -416,6 +416,9 @@ struct WorkoutTrackerApp: App {
             let di = DIContainer(modelContainer: container)
 
             PhoneWatchManager.shared.start(with: container)
+            PhoneWatchManager.shared.isSessionStartBlocked = { [weak di] in
+                di?.workoutService.isFinishTransitionPending == true
+            }
             MuscleColorManager.shared.initialize(modelContainer: container)
 
             self.dashboardViewModel = di.makeDashboardViewModel()
