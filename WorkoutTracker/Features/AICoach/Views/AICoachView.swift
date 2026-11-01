@@ -2108,6 +2108,7 @@ struct RestAnalysisSheet: View {
                 .background(.ultraThinMaterial)
             }
             .navigationBarHidden(true)
+            .accessibilityIdentifier("wt.recovery.root")
             .task {
                 if let sleep = await HealthKitManager.shared.fetchSleepDuration() {
                     sleepHours = sleep

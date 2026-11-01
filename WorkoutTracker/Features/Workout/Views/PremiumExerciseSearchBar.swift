@@ -40,6 +40,8 @@ struct PremiumExerciseSearchBar: View {
             .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color(UIColor.secondarySystemGroupedBackground)), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(colorScheme == .dark ? Color.white.opacity(0.2) : Color.black.opacity(0.1), lineWidth: 1))
             .shadow(color: Color.black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 5, x: 0, y: 2)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("wt.exercisePicker.search")
 
             Button {
                 HapticManager.shared.impact(.medium)

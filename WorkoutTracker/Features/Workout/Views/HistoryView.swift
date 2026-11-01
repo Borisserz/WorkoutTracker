@@ -652,10 +652,12 @@ private struct HistoryFilterBarView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("wt.history.filter.\(filter.rawValue.replacingOccurrences(of: " ", with: "_").lowercased())")
                 }
             }
             .padding(.horizontal, 1)
         }
+        .accessibilityIdentifier("wt.history.filters")
     }
 }
 

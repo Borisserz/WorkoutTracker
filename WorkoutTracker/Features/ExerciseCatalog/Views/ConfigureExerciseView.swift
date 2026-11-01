@@ -110,6 +110,7 @@ struct ConfigureExerciseView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("wt.configure.root")
             .safeAreaInset(edge: .bottom) {
                 floatingAddButton
             }
@@ -151,6 +152,7 @@ struct ConfigureExerciseView: View {
             )
             .ignoresSafeArea()
         )
+        .accessibilityIdentifier("wt.configure.add")
     }
 
     private var overloadBannerCard: some View {

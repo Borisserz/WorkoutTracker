@@ -340,7 +340,8 @@ struct WorkoutDetailContentView: View {
                     .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                     .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
                 }
-                .buttonStyle(ScaleButtonStyle())
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("wt.session.completeSet")
             } else {
                 Button {
                     finishCurrentWorkout()
@@ -360,7 +361,8 @@ struct WorkoutDetailContentView: View {
                     .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
                     .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
                 }
-                .buttonStyle(ScaleButtonStyle())
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("wt.session.finishAll")
             }
 
             // 2. Secondary Action Button: Rest Timer Control (Hero 48pt Warm Amber)

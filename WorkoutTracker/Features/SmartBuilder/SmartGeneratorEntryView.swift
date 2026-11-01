@@ -66,9 +66,16 @@ struct SmartGeneratorEntryView: View {
             }
             .navigationTitle("Smart Generator")
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("wt.smartBuilder.root")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: { Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(.secondary, Color(UIColor.tertiarySystemFill)) }
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.secondary, Color(UIColor.tertiarySystemFill))
+                    }
+                    .accessibilityIdentifier("wt.smartBuilder.close")
+                    .accessibilityLabel("Close")
                 }
             }
             .navigationDestination(for: String.self) { route in

@@ -95,6 +95,7 @@ struct XPBreakdownPopupView: View {
                 }
                 .padding(.top, 8)
                 .opacity(showContent ? 1 : 0)
+                .accessibilityIdentifier("wt.xp.continue")
             }
             .padding(24)
             .background(
