@@ -81,6 +81,7 @@ struct WorkoutDetailHeaderView: View {
                             .shadow(color: Color.black.opacity(0.3), radius: 6, y: 3)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("wt.session.finish")
                 }
             } else {
                 VStack(alignment: .trailing, spacing: 2) {

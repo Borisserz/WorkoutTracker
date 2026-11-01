@@ -119,6 +119,7 @@ struct WorkoutDetailContentView: View {
                     .transition(.opacity.combined(with: .scale(scale: 0.9)))
             }
         }
+        .accessibilityIdentifier("wt.session.root")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {

@@ -877,6 +877,7 @@ private struct PastelHistoryEmptyState: View {
                 Text(isSearching ? "No results" : "History is empty")
                     .font(.headline)
                     .foregroundStyle(PastelTheme.textPrimary)
+                    .accessibilityIdentifier(isSearching ? "wt.history.noResults" : "wt.history.empty")
 
                 Text(isSearching 
                     ? "Try a different search or filter" 

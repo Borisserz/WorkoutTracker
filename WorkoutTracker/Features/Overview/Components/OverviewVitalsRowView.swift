@@ -35,6 +35,8 @@ struct OverviewVitalsRowView: View {
                 dotColor: PastelTheme.pastelLavender,
                 action: onCNSTap
             )
+            .accessibilityIdentifier("wt.overview.cns")
+            .accessibilityValue(cnsScore >= 0 ? "\(Int(cnsScore))%" : "not measured")
 
             // Heart Rate / Resting BPM Chip
             VitalChipButton(
@@ -43,6 +45,8 @@ struct OverviewVitalsRowView: View {
                 dotColor: PastelTheme.pastelSage,
                 action: onPulseTap
             )
+            .accessibilityIdentifier("wt.overview.pulse")
+            .accessibilityValue(heartRate > 0 ? "\(Int(heartRate)) bpm" : "not measured")
 
             // Water Intake Chip (Guaranteed exact same size as CNS and Pulse)
             VitalChipButton(

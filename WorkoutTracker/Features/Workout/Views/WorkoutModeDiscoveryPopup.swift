@@ -172,6 +172,8 @@ struct WorkoutModeDiscoveryPopup: View {
             .scaleEffect(cardsAppeared ? 1.0 : 0.88)
             .opacity(cardsAppeared ? 1.0 : 0.0)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("wt.discovery.root")
         .alert(confirmationTitle, isPresented: $showConfirmationAlert) {
             Button(confirmationButtonText, role: .none) {
                 let mode = pendingLaunchMode ?? selectedMode
@@ -515,6 +517,7 @@ struct WorkoutModeDiscoveryPopup: View {
             .shadow(color: PastelTheme.pastelOat.opacity(0.2), radius: 8, y: 3)
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 2.0))
+        .accessibilityIdentifier(selectedMode == .empty ? "wt.discovery.startEmpty" : "wt.discovery.start")
     }
 
     private func primaryButtonIcon(for mode: WorkoutLaunchMode) -> String {
