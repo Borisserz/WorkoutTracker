@@ -1108,8 +1108,8 @@ struct CurrentStreakSquareCard: View {
     let streak: Int
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
+    @Environment(DIContainer.self) private var di
     @State private var isPressed = false
-    @State private var showSheet = false
 
     var body: some View {
         let isDark = colorScheme == .dark
@@ -1119,7 +1119,7 @@ struct CurrentStreakSquareCard: View {
 
         Button(action: {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showSheet = true
+            di.appState.showCalendarSheet = true
         }) {
             ZStack {
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
@@ -1176,9 +1176,6 @@ struct CurrentStreakSquareCard: View {
                 .onChanged { _ in isPressed = true }
                 .onEnded { _ in isPressed = false }
         )
-        .sheet(isPresented: $showSheet) {
-            CurrentStreakDetailSheet(streak: streak)
-        }
     }
 }
 
@@ -1856,15 +1853,6 @@ struct MuscleRow: View {
     }
 }
 
-struct MoodSticker: Identifiable, Sendable {
-    let id = UUID()
-    let emoji: String
-    let title: String
-    let subtitle: String
-    let color: Color
-    let motivation: String
-}
-
 struct AllTimeResultsView: View {
     let bestStats: PeriodStats
     let unitsManager: UnitsManager
@@ -1873,112 +1861,96 @@ struct AllTimeResultsView: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
 
-    private static let stickersList = [
-        MoodSticker(emoji: "🔥", title: "Limitless", subtitle: "Beast Mode", color: .orange, motivation: "LFG! You are in Beast Mode today! 🔥"),
-        MoodSticker(emoji: "⚡", title: "High Energy", subtitle: "Unstoppable", color: .yellow, motivation: "High energy day! Smash those targets! ⚡"),
-        MoodSticker(emoji: "🔋", title: "Recovery", subtitle: "Recharging", color: .green, motivation: "Rest and recharge. Muscles grow when you rest! 🔋"),
-        MoodSticker(emoji: "💪", title: "Strength", subtitle: "Solid Gains", color: .blue, motivation: "Lift heavy, stay focused. Gains are incoming! 💪"),
-        MoodSticker(emoji: "🚀", title: "Dedication", subtitle: "Pure Focus", color: .purple, motivation: "Pure focus. Consistency is key! 🚀")
-    ]
-
-    @State private var selectedStickerIndex = 0
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("All Time")
-                .font(.title3).bold()
-                .foregroundColor(colorScheme == .dark ? .white : .black)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 8) {
+                Image(systemName: "trophy.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(PastelTheme.pastelAmber)
 
-            VStack(spacing: 20) {
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Today's Workout Vibe")
-                        .font(.caption).bold()
-                        .foregroundColor(.gray)
-                    
-                    HStack(spacing: 8) {
-                        ForEach(0..<Self.stickersList.count, id: \.self) { index in
-                            let sticker = Self.stickersList[index]
-                            let isSelected = selectedStickerIndex == index
-                            let circleColor = isSelected ? sticker.color.opacity(0.15) : (colorScheme == .dark ? Color.white.opacity(0.05) : Color.black.opacity(0.05))
-                            let borderStrokeColor = isSelected ? sticker.color : Color.clear
-                            let nameColor = isSelected ? (colorScheme == .dark ? Color.white : Color.black) : Color.gray
-                            
-                            Button(action: {
-                                UISelectionFeedbackGenerator().selectionChanged()
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                                    selectedStickerIndex = index
-                                }
-                            }) {
-                                VStack(spacing: 8) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(circleColor)
-                                            .frame(width: 44, height: 44)
-                                            .overlay(
-                                                Circle()
-                                                    .stroke(borderStrokeColor, lineWidth: 2)
-                                            )
-                                            .shadow(color: isSelected ? sticker.color.opacity(0.3) : .clear, radius: 4)
+                Text("Рекорды за всё время")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
 
-                                        Text(sticker.emoji)
-                                            .font(.system(size: 22))
-                                    }
-                                    
-                                    VStack(spacing: 2) {
-                                        Text(sticker.title)
-                                            .font(.system(size: 9, weight: .bold))
-                                            .foregroundColor(nameColor)
-                                            .lineLimit(1)
-                                        Text(sticker.subtitle)
-                                            .font(.system(size: 7))
-                                            .foregroundColor(.gray)
-                                            .lineLimit(1)
-                                    }
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    .padding(.vertical, 8)
-                    
-                    let activeSticker = Self.stickersList[selectedStickerIndex]
-                    
-                    Text(activeSticker.motivation)
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(activeSticker.color)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 6)
-                        .background(activeSticker.color.opacity(0.08))
-                        .cornerRadius(10)
-                }
+                Spacer()
 
-                Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
-
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Best Month (Volume)").font(.subheadline).foregroundColor(.gray)
-                        let vol = unitsManager.convertFromKilograms(bestStats.totalVolume)
-                        if vol > 1000 {
-                            Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) tons").font(.title2).bold().foregroundColor(.purple)
-                        } else {
-                            Text("\(Int(vol)) \(unitsManager.weightUnitString())").font(.title2).bold().foregroundColor(.purple)
-                        }
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing) {
-                        Text("PR Record").font(.subheadline).foregroundColor(.gray)
-                        Text("\(bestStats.workoutCount)").font(.title2).bold().foregroundColor(colorScheme == .dark ? .white : .black)
-                    }
-                }
+                Text("\(allWorkouts.count) сессий")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(PastelTheme.textTertiary)
             }
-            .padding()
-            .background(colorScheme == .dark ? Color.white.opacity(0.03) : Color.white)
-            .cornerRadius(20)
-            .overlay(RoundedRectangle(cornerRadius: 20).stroke(colorScheme == .dark ? Color.white.opacity(0.05) : Color.clear, lineWidth: 1))
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0 : 0.05), radius: 10, y: 5)
+
+            HStack(spacing: 12) {
+                // Best month volume card
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "scalemass.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelAmber)
+                        Text("Лучший месяц")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+
+                    let vol = unitsManager.convertFromKilograms(bestStats.totalVolume)
+                    if vol >= 1000 {
+                        Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) т")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelAmber)
+                    } else {
+                        Text("\(Int(vol)) \(unitsManager.weightUnitString())")
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelAmber)
+                    }
+
+                    Text("Пиковый объём")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(PastelTheme.textTertiary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(PastelTheme.cardBorder.opacity(0.5), lineWidth: 1)
+                )
+
+                // Intensity / workouts count in best month
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                        Text("Интенсивность")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textSecondary)
+                    }
+
+                    Text("\(bestStats.workoutCount) сессий")
+                        .font(.system(size: 20, weight: .heavy, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelSage)
+
+                    Text("В рекордный месяц")
+                        .font(.system(size: 10, weight: .medium, design: .rounded))
+                        .foregroundStyle(PastelTheme.textTertiary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(14)
+                .background(PastelTheme.cardSurfaceSubtle)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .stroke(PastelTheme.cardBorder.opacity(0.5), lineWidth: 1)
+                )
+            }
         }
+        .padding(16)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
         .padding(.top, 10)
     }
 }

@@ -1647,19 +1647,19 @@ struct ProgressAnalysisSheet: View {
     @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
     private var allWorkouts: [Workout]
 
-    let periods = ["Last 7 days", "Mesocycle (4 weeks)", "Macrocycle (12 weeks))"]
-    let focuses = ["Muscle Imbalances, Growth Leaders"]
+    let periods = ["Последние 7 дней", "Мезоцикл (4 недели)", "Макроцикл (12 недель)"]
+    let focuses = ["Мышечный баланс", "Лидеры роста"]
 
-    @State private var selectedPeriod = "Mesocycle (4 weeks)"
-    @State private var selectedFocus = "Muscle imbalance"
+    @State private var selectedPeriod = "Мезоцикл (4 недели)"
+    @State private var selectedFocus = "Мышечный баланс"
 
     @State private var stats: [MuscleStats] = []
     @State private var activeSegment: UUID? = nil
 
     @State private var isAnalyzing = true
     @State private var impulseValue: Int = 0
-    @State private var impulseMuscle: String = "Breast"
-    @State private var aiConclusion: String = "A neural network analyzes your muscle balance..."
+    @State private var impulseMuscle: String = "Грудь"
+    @State private var aiConclusion: String = "Нейросеть анализирует распределение нагрузки на мышцы..."
 
     @State private var appearAnimate = false
 
@@ -1667,7 +1667,7 @@ struct ProgressAnalysisSheet: View {
         NavigationStack {
             ZStack(alignment: .top) {
 
-                (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
+                (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.secondarySystemBackground)).ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     LazyVStack(alignment: .leading, spacing: 30) {
@@ -1880,9 +1880,9 @@ struct ProgressAnalysisSheet: View {
 
         let days: Int
         switch selectedPeriod {
-        case "Last 7 days": days = 7
-        case "Mesocycle (4 weeks)": days = 28
-        case "Macrocycle (12 weeks)": days = 84
+        case "Последние 7 дней", "Last 7 days": days = 7
+        case "Мезоцикл (4 недели)", "Mesocycle (4 weeks)": days = 28
+        case "Макроцикл (12 недель)", "Macrocycle (12 weeks)": days = 84
         default: days = 28
         }
 
@@ -2003,7 +2003,7 @@ struct ProgressAnalysisSheet: View {
             await MainActor.run { self.isAnalyzing = false }
         } catch {
             await MainActor.run {
-                self.aiConclusion = "Unable to connect to the server. But judging by the numbers, you should pay attention to your lagging muscle groups.."
+                self.aiConclusion = "Не удалось связаться с сервером. Но судя по показателям объёма, обратите внимание на отстающие группы мышц."
                 self.isAnalyzing = false
             }
         }
@@ -2011,14 +2011,14 @@ struct ProgressAnalysisSheet: View {
 
     private func localizeMuscle(_ englishName: String) -> String {
         switch englishName {
-        case "Chest": return "Chest"
-        case "Back": return "Back"
-        case "Legs": return "Legs"
-        case "Shoulders": return "Shoulders"
-        case "Arms": return "Arms"
-        case "Core": return "Core"
-        case "Cardio": return "Cardio"
-        default: return englishName
+        case "Chest": return "Грудь"
+        case "Back": return "Спина"
+        case "Legs": return "Ноги"
+        case "Shoulders": return "Плечи"
+        case "Arms": return "Руки"
+        case "Core": return "Кор"
+        case "Cardio": return "Кардио"
+        default: return LocalizationHelper.shared.translateName(englishName)
         }
     }
 }

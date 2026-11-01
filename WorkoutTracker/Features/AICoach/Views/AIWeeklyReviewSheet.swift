@@ -78,12 +78,14 @@ struct AIWeeklyReviewSheet: View {
             Spacer()
             ZStack {
                 Circle()
-                    .fill(themeManager.current.primaryAccent.opacity(0.1))
+                    .fill(PastelTheme.cardSurface)
                     .frame(width: 120, height: 120)
+                    .overlay(
+                        Circle().stroke(PastelTheme.pastelLavender.opacity(0.35), lineWidth: 1.5)
+                    )
                 Image(systemName: "brain.head.profile")
-                    .font(.system(size: 60))
-                    .foregroundStyle(themeManager.current.premiumGradient)
-                    .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 20, y: 10)
+                    .font(.system(size: 54))
+                    .foregroundStyle(PastelTheme.pastelLavender)
             }
 
             VStack(spacing: 8) {
@@ -401,7 +403,6 @@ struct BentoInsightCard: View {
 
 struct MoodBackgroundView: View {
     let mood: String
-    @State private var animateBg = false
     @Environment(\.colorScheme) private var colorScheme 
 
     private var moodColors: [Color] {
@@ -415,26 +416,18 @@ struct MoodBackgroundView: View {
 
     var body: some View {
         ZStack {
-
-            (colorScheme == .dark ? Color(hex: "0A0A0A") : Color(UIColor.secondarySystemBackground))
+            (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.secondarySystemBackground))
                 .ignoresSafeArea()
 
-            Circle()
-                .fill(moodColors[0].opacity(colorScheme == .dark ? 0.25 : 0.15)) 
-                .frame(width: 400, height: 400)
-                .blur(radius: 80)
-                .offset(x: animateBg ? 100 : -100, y: animateBg ? -150 : -250)
-
-            Circle()
-                .fill(moodColors[1].opacity(colorScheme == .dark ? 0.25 : 0.15))
-                .frame(width: 350, height: 350)
-                .blur(radius: 80)
-                .offset(x: animateBg ? -150 : 150, y: animateBg ? 200 : 100)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
-                animateBg = true
-            }
+            LinearGradient(
+                colors: [
+                    moodColors[0].opacity(colorScheme == .dark ? 0.08 : 0.05),
+                    Color.clear
+                ],
+                startPoint: .top,
+                endPoint: .center
+            )
+            .ignoresSafeArea()
         }
     }
 }
