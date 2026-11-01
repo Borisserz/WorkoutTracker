@@ -188,6 +188,7 @@ struct ProgramDiscoveryView: View {
         }
         .navigationTitle(LocalizedStringKey("Browse Catalog"))
         .navigationBarTitleDisplayMode(.large)
+        .accessibilityIdentifier("wt.explore.root")
         .background(colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground))
         .sheet(item: $selectedLegendaryRoutine) { routine in
             LegendaryTemplatePreviewSheet(routine: routine) {

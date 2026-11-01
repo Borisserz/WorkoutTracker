@@ -72,10 +72,12 @@ struct ExerciseSelectionView: View {
             }
             .navigationTitle(LocalizedStringKey("Exercises"))
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("wt.exercisePicker.root")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(LocalizedStringKey("Close")) { dismiss() }
                         .foregroundStyle(colorScheme == .dark ? .white.opacity(0.6) : .black.opacity(0.6))
+                        .accessibilityIdentifier("wt.exercisePicker.close")
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Ready")) { dismiss() }

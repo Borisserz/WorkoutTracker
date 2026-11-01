@@ -106,6 +106,7 @@ struct PresetEditorView: View {
                 )
             }
             .navigationTitle(preset == nil ? LocalizedStringKey("New template") : LocalizedStringKey("Edit Template"))
+            .accessibilityIdentifier("wt.presetEditor.root")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

@@ -21,6 +21,8 @@ enum UITestLaunchConfiguration {
         defaults.set(true, forKey: "hasSeenFeatureDiscovery")
         defaults.set(true, forKey: "hasSeenFoodTrackerPromo")
         defaults.set(true, forKey: "hasSeenCommitmentSheet")
+        // Skip AI consent sheet so Hub chrome flows can open chat/tools.
+        defaults.set(true, forKey: Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
         // Dark-only lock already enforced by AppearanceMode; keep explicit for suites.
         defaults.set(AppearanceMode.lockedRawValue, forKey: Constants.UserDefaultsKeys.appearanceMode.rawValue)
     }

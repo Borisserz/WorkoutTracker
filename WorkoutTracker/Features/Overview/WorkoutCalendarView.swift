@@ -150,6 +150,7 @@ struct WorkoutCalendarView: View {
         }
         .navigationTitle("Activity calendar")
         .navigationBarTitleDisplayMode(.inline)
+        .accessibilityIdentifier("wt.calendar.root")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

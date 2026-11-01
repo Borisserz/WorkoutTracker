@@ -45,6 +45,7 @@ struct SettingsView: View {
                 appVersionSection
             }
             .navigationTitle(LocalizedStringKey("Settings"))
+            .accessibilityIdentifier("wt.settings.root")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(LocalizedStringKey("Done")) { dismiss() }
@@ -247,6 +248,7 @@ struct SettingsView: View {
                     Image(systemName: "square.and.arrow.up").foregroundStyle(Color.accentColor)
                 }
             }
+            .accessibilityIdentifier("wt.settings.export")
 
             Button(role: .destructive) {
                 showDeleteProfileAlert = true

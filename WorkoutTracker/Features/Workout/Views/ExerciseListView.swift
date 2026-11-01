@@ -89,6 +89,7 @@ struct ExerciseListView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("wt.session.addExercise")
 
                     // Build Superset Square Button
                     Button(action: {

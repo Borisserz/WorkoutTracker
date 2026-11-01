@@ -116,6 +116,7 @@ struct AIChatBotView: View {
                 }
             }
             .navigationTitle("AI Coach")
+            .accessibilityIdentifier("wt.chat.root")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
 

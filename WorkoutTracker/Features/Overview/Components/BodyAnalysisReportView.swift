@@ -277,6 +277,7 @@ struct BodyAnalysisReportView: View {
                 }
             }
             .navigationTitle("Body analysis")
+            .accessibilityIdentifier("wt.bodyAnalysis.root")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

@@ -441,6 +441,7 @@ struct OverviewAnatomyCard: View {
                 .shadow(color: PastelTheme.pastelOat.opacity(0.14), radius: 8, y: 2)
             }
             .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 2.8))
+            .accessibilityIdentifier("wt.overview.bodyAnalysis")
         }
         .pastelCard(padding: 16)
     }

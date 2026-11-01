@@ -164,6 +164,7 @@ struct AICoachView: View {
                                 }
                             }
                             .buttonStyle(.plain)
+                            .accessibilityIdentifier("wt.aihub.settings")
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
