@@ -1,0 +1,10 @@
+appId: com.borisdev.WorkoutTracker
+---
+# Clean launch for Maestro: skip onboarding (UITestMode) + deny TCC sheets.
+- launchApp:
+    clearState: true
+    permissions:
+      all: deny
+    arguments:
+      UITestMode: "true"
+- runFlow: ../shared/dismiss_system_alerts.yaml

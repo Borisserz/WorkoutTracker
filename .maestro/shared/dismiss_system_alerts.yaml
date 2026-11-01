@@ -1,0 +1,29 @@
+appId: com.borisdev.WorkoutTracker
+---
+# Best-effort dismiss of leftover TCC sheets (Speech / Health / Notifications).
+# Prefer launchApp permissions + UITestMode; this is a safety net only.
+- runFlow:
+    when:
+      visible: "Don’t Allow"
+    commands:
+      - tapOn: "Don’t Allow"
+- runFlow:
+    when:
+      visible: "Don't Allow"
+    commands:
+      - tapOn: "Don't Allow"
+- runFlow:
+    when:
+      visible: "Cancel"
+    commands:
+      - tapOn: "Cancel"
+- runFlow:
+    when:
+      visible: "OK"
+    commands:
+      - tapOn: "OK"
+- runFlow:
+    when:
+      visible: "Sign-in unavailable"
+    commands:
+      - tapOn: "OK"

@@ -1,0 +1,52 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+---
+# Phase 1: main tab chrome is reachable without system permission sheets.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 20000
+
+- assertVisible:
+    id: "wt.hub.startWorkout"
+
+- assertVisible:
+    id: "wt.hub.title"
+
+# Overview
+- tapOn: "Overview"
+- extendedWaitUntil:
+    visible:
+      id: "wt.overview.root"
+    timeout: 10000
+
+# History
+- tapOn: "History"
+- extendedWaitUntil:
+    visible:
+      id: "wt.history.root"
+    timeout: 10000
+
+# Workout hub again
+- tapOn: "Workout"
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 10000
+
+# AI Hub
+- tapOn: "AI Hub"
+- extendedWaitUntil:
+    visible:
+      id: "wt.aihub.root"
+    timeout: 10000
+
+# Progress
+- tapOn: "Progress"
+- extendedWaitUntil:
+    visible:
+      id: "wt.progress.root"
+    timeout: 15000

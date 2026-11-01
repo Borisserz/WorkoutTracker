@@ -1,0 +1,21 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - workout
+  - smoke
+---
+# Main use case: open Start workout discovery from Hub.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.startWorkout"
+    timeout: 20000
+
+- tapOn:
+    id: "wt.hub.startWorkout"
+
+# Discovery popup cards (EN catalog — WorkoutModeDiscoveryPopup)
+- extendedWaitUntil:
+    visible: "Empty workout"
+    timeout: 8000
+- assertVisible: "Workout format"

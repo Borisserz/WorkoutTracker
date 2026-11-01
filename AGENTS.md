@@ -63,3 +63,12 @@ xcodebuild -scheme WorkoutTracker \
 ```
 
 Fallback: `-destination 'generic/platform=iOS'`. Prefer a physical device when Simulator runtime is unavailable.
+
+### Maestro E2E (Phase 1 smoke)
+
+```bash
+# Once: curl -Ls "https://get.maestro.mobile.dev" | bash
+./scripts/maestro_run.sh smoke
+```
+
+Flows live in `.maestro/flows/` (`smoke`, `workout` tags). Launch uses `-UITestMode` (skips onboarding + Health/Notifications sheets).
