@@ -324,12 +324,10 @@ struct WorkoutHubView: View {
 
     private var topHeaderRow: some View {
         HStack(alignment: .center) {
-            // Streak Button (Left - Tactile Amber Flame)
+            // Streak & Calendar Button (Left - Tactile Amber Flame + Calendar)
             Button {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                    showStreakPopup = true
-                }
+                di.appState.showCalendarSheet = true
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "flame.fill")
@@ -341,6 +339,10 @@ struct WorkoutHubView: View {
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .foregroundStyle(PastelTheme.textPrimary)
+
+                    Image(systemName: "calendar")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(PastelTheme.pastelSage)
                 }
                 .padding(.horizontal, 12)
                 .frame(height: PastelTheme.ButtonMetrics.pillHeight)
@@ -403,81 +405,110 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 2.5 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
+    // MARK: - 2.5 7-Day Consistency Habit Bar (Apple Fitness Philosophy, Tappable Calendar)
     private var weeklyConsistencyBar: some View {
-        HStack(spacing: 0) {
-            let days = [
-                ("ПН", true, "done"),
-                ("ВТ", true, "done"),
-                ("СР", false, "rest"),
-                ("ЧТ", true, "done"),
-                ("ПТ", false, "today"),
-                ("СБ", false, "future"),
-                ("ВС", false, "future")
-            ]
-            ForEach(0..<days.count, id: \.self) { index in
-                let (name, isDone, type) = days[index]
-                let isToday = (name == "ПТ")
-
-                VStack(spacing: 6) {
-                    Text(name)
-                        .font(.system(size: 10, weight: isToday ? .heavy : .semibold, design: .rounded))
-                        .foregroundStyle(isToday ? PastelTheme.pastelAmber : PastelTheme.textTertiary)
-
-                    ZStack {
-                        if isDone {
-                            Circle()
-                                .fill(PastelTheme.pastelSage.opacity(0.18))
-                                .frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(PastelTheme.pastelSage, lineWidth: 1.5))
-
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .black))
-                                .foregroundStyle(PastelTheme.pastelSage)
-                        } else if isToday {
-                            Circle()
-                                .fill(PastelTheme.pastelAmber.opacity(0.16))
-                                .frame(width: 32, height: 32)
-                                .overlay(Circle().stroke(PastelTheme.pastelAmber, lineWidth: 2))
-
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(PastelTheme.pastelAmber)
-                        } else if type == "rest" {
-                            Circle()
-                                .fill(PastelTheme.cardSurfaceSubtle)
-                                .frame(width: 28, height: 28)
-                                .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
-
-                            Text("—")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(PastelTheme.textTertiary)
-                        } else {
-                            Circle()
-                                .fill(PastelTheme.cardSurfaceSubtle.opacity(0.4))
-                                .frame(width: 28, height: 28)
-                                .overlay(Circle().stroke(PastelTheme.cardBorder.opacity(0.5), lineWidth: 1))
-                        }
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            di.appState.showCalendarSheet = true
+        } label: {
+            VStack(spacing: 8) {
+                HStack {
+                    HStack(spacing: 5) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                        Text("Активность недели")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textSecondary)
                     }
-
-                    if isToday {
-                        Text("Сегодня")
-                            .font(.system(size: 8, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.pastelAmber)
-                    } else {
-                        Text(" ")
-                            .font(.system(size: 8))
+                    Spacer()
+                    HStack(spacing: 3) {
+                        Text("Календарь")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelOat)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(PastelTheme.textTertiary)
                     }
                 }
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 4)
+
+                HStack(spacing: 0) {
+                    let days = [
+                        ("ПН", true, "done"),
+                        ("ВТ", true, "done"),
+                        ("СР", false, "rest"),
+                        ("ЧТ", true, "done"),
+                        ("ПТ", false, "today"),
+                        ("СБ", false, "future"),
+                        ("ВС", false, "future")
+                    ]
+                    ForEach(0..<days.count, id: \.self) { index in
+                        let (name, isDone, type) = days[index]
+                        let isToday = (name == "ПТ")
+
+                        VStack(spacing: 6) {
+                            Text(name)
+                                .font(.system(size: 10, weight: isToday ? .heavy : .semibold, design: .rounded))
+                                .foregroundStyle(isToday ? PastelTheme.pastelAmber : PastelTheme.textTertiary)
+
+                            ZStack {
+                                if isDone {
+                                    Circle()
+                                        .fill(PastelTheme.pastelSage.opacity(0.18))
+                                        .frame(width: 30, height: 30)
+                                        .overlay(Circle().stroke(PastelTheme.pastelSage, lineWidth: 1.5))
+
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 11, weight: .black))
+                                        .foregroundStyle(PastelTheme.pastelSage)
+                                } else if isToday {
+                                    Circle()
+                                        .fill(PastelTheme.pastelAmber.opacity(0.16))
+                                        .frame(width: 32, height: 32)
+                                        .overlay(Circle().stroke(PastelTheme.pastelAmber, lineWidth: 2))
+
+                                    Image(systemName: "flame.fill")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundStyle(PastelTheme.pastelAmber)
+                                } else if type == "rest" {
+                                    Circle()
+                                        .fill(PastelTheme.cardSurfaceSubtle)
+                                        .frame(width: 28, height: 28)
+                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                                    Text("—")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(PastelTheme.textTertiary)
+                                } else {
+                                    Circle()
+                                        .fill(PastelTheme.cardSurfaceSubtle.opacity(0.4))
+                                        .frame(width: 28, height: 28)
+                                        .overlay(Circle().stroke(PastelTheme.cardBorder.opacity(0.5), lineWidth: 1))
+                                }
+                            }
+
+                            if isToday {
+                                Text("Сегодня")
+                                    .font(.system(size: 8, weight: .bold, design: .rounded))
+                                    .foregroundStyle(PastelTheme.pastelAmber)
+                            } else {
+                                Text(" ")
+                                    .font(.system(size: 8))
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
             }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+            .padding(.horizontal, 16)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
-        .padding(.horizontal, 16)
+        .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 1.5))
     }
 
     // MARK: - 3. Hero Action Button: "Начать тренировку" (Hearthstone 3-Card Discovery Trigger)
@@ -1269,44 +1300,88 @@ struct WorkoutHubView: View {
         return "\(count) упражнений"
     }
 
-    // MARK: - 6. "Легендарные Программы" Discovery Row (Apple HIG Luxury Athletic)
+    // MARK: - 6. "Легендарные Программы" Discovery Row (Fiery Luxury Flame Aura)
     private var legendarySection: some View {
         Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             navigateToExplore = true
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
+                // Burning Flame Avatar with Layered Fire Glow
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    Circle()
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    PastelTheme.pastelAmber.opacity(0.38),
+                                    PastelTheme.pastelPeach.opacity(0.18),
+                                    Color.clear
+                                ],
+                                center: .center,
+                                startRadius: 4,
+                                endRadius: 28
+                            )
+                        )
+                        .frame(width: 48, height: 48)
+
+                    Circle()
                         .fill(PastelTheme.cardSurfaceSubtle)
                         .frame(width: 42, height: 42)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            Circle()
+                                .stroke(
+                                    LinearGradient(
+                                        colors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach.opacity(0.6)],
+                                        startPoint: .top,
+                                        endPoint: .bottom
+                                    ),
+                                    lineWidth: 1.5
+                                )
                         )
 
                     Image(systemName: "flame.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(PastelTheme.pastelAmber)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [PastelTheme.pastelOat, PastelTheme.pastelAmber],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .shadow(color: PastelTheme.pastelAmber.opacity(0.9), radius: 6, x: 0, y: 1)
                 }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Легендарные Программы")
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text("Легендарные Программы")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+
+                        Image(systemName: "flame")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(PastelTheme.pastelAmber)
+                    }
 
                     HStack(spacing: 6) {
-                        Text("ЭТАЛОН")
-                            .font(.system(size: 9, weight: .black))
-                            .foregroundStyle(PastelTheme.pastelAmber)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(PastelTheme.pastelAmber.opacity(0.14))
-                            .clipShape(Capsule())
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(PastelTheme.pastelAmber)
+                                .frame(width: 5, height: 5)
+                            Text("В ОГНЕ")
+                                .font(.system(size: 9, weight: .black, design: .rounded))
+                                .foregroundStyle(PastelTheme.pastelAmber)
+                        }
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2.5)
+                        .background(PastelTheme.pastelAmber.opacity(0.18))
+                        .clipShape(Capsule())
+                        .overlay(
+                            Capsule().stroke(PastelTheme.pastelAmber.opacity(0.4), lineWidth: 1)
+                        )
 
-                        Text("Золотая эра и HIT")
+                        Text("Золотая эра, Арнольд и HIT")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
@@ -1316,26 +1391,56 @@ struct WorkoutHubView: View {
 
                 Spacer(minLength: 8)
 
-                // Refined 32pt Circular Glass Chevron
+                // 32pt Circular Glass Chevron with Amber Border
                 ZStack {
                     Circle()
                         .fill(PastelTheme.cardSurfaceSubtle)
                         .frame(width: 32, height: 32)
-                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                        .overlay(
+                            Circle()
+                                .stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
+                        )
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(PastelTheme.pastelOat)
+                        .foregroundStyle(PastelTheme.pastelAmber)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(PastelTheme.cardSurface)
+            .background(
+                ZStack {
+                    PastelTheme.cardSurface
+
+                    // Fire Ember Background Aura
+                    LinearGradient(
+                        colors: [
+                            PastelTheme.pastelAmber.opacity(0.14),
+                            PastelTheme.pastelPeach.opacity(0.06),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                }
+            )
             .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                PastelTheme.pastelAmber.opacity(0.75),
+                                PastelTheme.pastelPeach.opacity(0.4),
+                                PastelTheme.cardBorder
+                            ],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: 1.5
+                    )
             )
+            .shadow(color: PastelTheme.pastelAmber.opacity(0.22), radius: 12, x: 0, y: 4)
             .padding(.horizontal, 16)
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.982, maxTilt: 2.8))
