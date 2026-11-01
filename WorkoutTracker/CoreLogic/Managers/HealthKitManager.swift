@@ -29,6 +29,8 @@ actor HealthKitManager: Sendable {
 
     func requestAuthorization() async throws {
          guard isAvailable else { throw HealthKitError.notAvailable }
+         // Maestro / UITestMode: never present the Health Access sheet.
+         if UITestLaunchConfiguration.isUITestMode { return }
 
          let bodyMass = HKObjectType.quantityType(forIdentifier: .bodyMass)!
          let workout = HKObjectType.workoutType()

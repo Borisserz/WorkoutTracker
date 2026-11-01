@@ -32,6 +32,11 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
     }
 
     func requestPermission(completion: (@Sendable (Bool) -> Void)? = nil) {
+        // Maestro / UITestMode: never present the notifications prompt.
+        if UITestLaunchConfiguration.isUITestMode {
+            completion?(false)
+            return
+        }
         let center = UNUserNotificationCenter.current()
         center.getNotificationSettings { settings in
             // Avoid stacking system sheets over HealthKit / other prompts on cold launch.

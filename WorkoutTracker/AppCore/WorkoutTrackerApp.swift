@@ -20,6 +20,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
 
+        UITestLaunchConfiguration.applyIfNeeded()
+
         AppCheck.setAppCheckProviderFactory(AppCheckFactory())
         FirebaseApp.configure()
 
@@ -413,11 +415,14 @@ struct WorkoutTrackerApp: App {
                     await BlockedUsersStore.shared.startListening()
                 } catch {
                     print("⚠️ Anonymous auth bootstrap failed: \(error.localizedDescription)")
-                    await MainActor.run {
-                        di.appState.showError(
-                            title: String(localized: "Sign-in unavailable"),
-                            message: String(localized: "Cloud features may be limited until you reconnect. Pull to refresh or relaunch the app.")
-                        )
+                    // Maestro / UITestMode: keep chrome unobstructed; cloud is optional for smoke.
+                    if !UITestLaunchConfiguration.isUITestMode {
+                        await MainActor.run {
+                            di.appState.showError(
+                                title: String(localized: "Sign-in unavailable"),
+                                message: String(localized: "Cloud features may be limited until you reconnect. Pull to refresh or relaunch the app.")
+                            )
+                        }
                     }
                 }
 

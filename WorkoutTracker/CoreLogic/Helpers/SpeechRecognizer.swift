@@ -14,15 +14,15 @@ final class SpeechRecognizer {
     private var audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
-    private let recognizer: SFSpeechRecognizer?
+    /// Lazy: constructing `SFSpeechRecognizer` can present the Speech TCC sheet
+    /// when AI Hub is merely tabulated. Only create on mic use.
+    private var recognizer: SFSpeechRecognizer?
 
-    init() {
-        // Follow the device locale instead of forcing ru-RU, so Voice Coach
-        // works for every user. Fall back to the system default, then en-US.
-        self.recognizer = SpeechRecognizer.makeRecognizer()
-    }
+    init() {}
 
     private static func makeRecognizer() -> SFSpeechRecognizer? {
+        // Follow the device locale instead of forcing ru-RU, so Voice Coach
+        // works for every user. Fall back to the system default, then en-US.
         // SFSpeechRecognizer(locale:) returns nil if the locale is unsupported.
         if let r = SFSpeechRecognizer(locale: Locale.current) { return r }   // 1) device locale
         if let r = SFSpeechRecognizer() { return r }                         // 2) system default
@@ -30,6 +30,12 @@ final class SpeechRecognizer {
     }
 
     func requestPermission() {
+        // Maestro / UITestMode: never present Speech or Microphone sheets.
+        if UITestLaunchConfiguration.isUITestMode {
+            hasPermission = false
+            errorMessage = "Speech recognition is disabled in UI tests."
+            return
+        }
         SFSpeechRecognizer.requestAuthorization { authStatus in
             Task { @MainActor in
                 self.hasPermission = (authStatus == .authorized)
@@ -50,6 +56,13 @@ final class SpeechRecognizer {
     }
 
     func startTranscribing() {
+        if UITestLaunchConfiguration.isUITestMode {
+            errorMessage = "Speech recognition is disabled in UI tests."
+            return
+        }
+        if recognizer == nil {
+            recognizer = Self.makeRecognizer()
+        }
         // No recognizer for any supported locale → tell the user, don't fail silently.
         guard let recognizer, recognizer.isAvailable else {
             errorMessage = "Speech recognition isn't available on this device for your language."
