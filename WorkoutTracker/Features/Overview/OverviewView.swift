@@ -199,6 +199,7 @@ struct OverviewView: View {
                     MuscleColorSettingsView()
                 }
             }
+            .accessibilityIdentifier("wt.overview.root")
             .sheet(isPresented: $showCommitmentSheet) {
                 FutureSelfCommitmentSheet {
                     hasSeenCommitmentSheet = true

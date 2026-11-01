@@ -190,6 +190,7 @@ struct StatsView: View {
                     loadingView
                 }
             }
+            .accessibilityIdentifier("wt.progress.root")
         }
         .task {
             if viewModel == nil {

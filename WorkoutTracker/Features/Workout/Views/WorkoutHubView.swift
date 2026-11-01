@@ -240,6 +240,7 @@ struct WorkoutHubView: View {
                 }
             }
             .navigationBarHidden(true)
+            .accessibilityIdentifier("wt.workout.root")
             .navigationDestination(item: $navigateToActiveWorkout) { workout in
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
@@ -409,8 +410,13 @@ struct WorkoutHubView: View {
             Text("Workout")
                 .font(.system(size: 34, weight: .heavy, design: .rounded))
                 .foregroundStyle(PastelTheme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("wt.hub.title")
         }
         .padding(.horizontal, 16)
+        // Keep child ids (wt.hub.title) discoverable by Maestro — default combine drops them.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("wt.hub.root")
     }
 
     // MARK: - 2.5 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
@@ -569,6 +575,7 @@ struct WorkoutHubView: View {
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 2.0))
         .padding(.horizontal, 16)
+        .accessibilityIdentifier("wt.hub.startWorkout")
     }
 
     // MARK: - 4. Best Workout Today Hero Card (Merged Target Focus + Muscle Readiness Intelligence)

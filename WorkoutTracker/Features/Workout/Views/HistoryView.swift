@@ -225,6 +225,7 @@ struct HistoryView: View {
                 AtmosphericGymBackdropView(style: .history)
 
                 List {
+
                     Group {
                         // 1. Header with Edit Button
                         HistoryHeaderView(
@@ -388,6 +389,7 @@ struct HistoryView: View {
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
             .navigationBarHidden(true)
+            .accessibilityIdentifier("wt.history.root")
             .confirmationDialog(
                 "Delete this workout?",
                 isPresented: $showDeleteConfirm,

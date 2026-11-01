@@ -56,37 +56,37 @@ struct ContentView: View {
             TabView(selection: $appState.selectedTab) {
                 OverviewView()
                     .tabItem {
-                        Image(systemName: "chart.pie.fill")
-                        Text("Overview")
+                        Label("Overview", systemImage: "chart.pie.fill")
                     }
+                    .accessibilityIdentifier("wt.tab.overview")
                     .tag(0)
 
                 HistoryView()
                     .tabItem {
-                        Image(systemName: "clock.arrow.circlepath")
-                        Text("History")
+                        Label("History", systemImage: "clock.arrow.circlepath")
                     }
+                    .accessibilityIdentifier("wt.tab.history")
                     .tag(1)
 
                 WorkoutHubView()
                     .tabItem {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Workout")
+                        Label("Workout", systemImage: "plus.circle.fill")
                     }
+                    .accessibilityIdentifier("wt.tab.workout")
                     .tag(2)
 
                 AICoachView()
                     .tabItem {
-                        Image(systemName: "sparkles")
-                        Text("AI Hub")
+                        Label("AI Hub", systemImage: "sparkles")
                     }
+                    .accessibilityIdentifier("wt.tab.aihub")
                     .tag(3)
 
                 StatsView()
                     .tabItem {
-                        Image(systemName: "trophy.fill")
-                        Text("Progress")
+                        Label("Progress", systemImage: "trophy.fill")
                     }
+                    .accessibilityIdentifier("wt.tab.progress")
                     .tag(4)
             }
             .tint(PastelTheme.pastelOat)

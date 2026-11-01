@@ -366,6 +366,7 @@ struct AICoachView: View {
                 }
             }
             .navigationBarHidden(true)
+            .accessibilityIdentifier("wt.aihub.root")
             .dynamicTypeSize(.medium ... .accessibility1)
             .onAppear {
                 TrackingManager.shared.track(.aiCoachOpened(source: "tab"))
