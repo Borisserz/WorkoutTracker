@@ -30,6 +30,8 @@ final class WatchActiveWorkoutViewModel: Hashable {
     var activeExercise: ActiveExerciseWrapper? = nil
     var pendingNextExerciseIndex: Int? = nil
     var goBackToWorkoutView = false
+    /// Set when iPhone already has an active session — Watch must not create a second local workout.
+    var phoneBlockedStart = false
 
     var restTimeRemaining: Int = 60
     var initialRestTime: Int = 60
@@ -53,6 +55,14 @@ final class WatchActiveWorkoutViewModel: Hashable {
 
     func initializeWorkout() async {
         guard !isInitialized else { return }
+
+        let allowed = await WatchSyncManager.shared.phoneAllowsNewWorkout()
+        if !allowed {
+            phoneBlockedStart = true
+            WatchSyncManager.shared.requestActiveStateFromPhone()
+            return
+        }
+
         isInitialized = true
         self.startDate = Date()
 

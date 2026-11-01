@@ -19,11 +19,11 @@ struct WorkoutTimerWidget: Widget {
                 DynamicIslandExpandedRegion(.leading) {
                     if let ex = context.state.currentExerciseName {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Далее").font(.caption2).foregroundColor(WidgetPastel.oat.opacity(0.7))
+                            Text("Next").font(.caption2).foregroundColor(WidgetPastel.oat.opacity(0.7))
                             Text(ex).font(.caption).bold().foregroundColor(.white)
                         }
                     } else {
-                        Label("Тренировка", systemImage: "figure.strengthtraining.traditional")
+                        Label("Workout", systemImage: "figure.strengthtraining.traditional")
                             .font(.caption)
                             .foregroundColor(WidgetPastel.sage)
                     }
@@ -41,7 +41,7 @@ struct WorkoutTimerWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.center) {
                     if let weight = context.state.upcomingWeight {
-                        Text("Вес: \(weight)").font(.headline).foregroundColor(WidgetPastel.oat)
+                        Text("Weight: \(weight)").font(.headline).foregroundColor(WidgetPastel.oat)
                     } else {
                         Text(context.attributes.workoutTitle).font(.headline).lineLimit(1)
                     }
@@ -79,16 +79,16 @@ struct LockScreenView: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 if let ex = context.state.currentExerciseName {
-                    Label("Отдых", systemImage: "timer")
+                    Label("Rest", systemImage: "timer")
                         .font(.caption2).foregroundStyle(WidgetPastel.amber)
-                    Text("Далее: \(ex)")
+                    Text("Next: \(ex)")
                         .font(.headline).foregroundStyle(.white)
                     if let weight = context.state.upcomingWeight {
-                        Text("Вес: \(weight)")
+                        Text("Weight: \(weight)")
                             .font(.caption).foregroundStyle(WidgetPastel.oat.opacity(0.85))
                     }
                 } else {
-                    Label("Идет тренировка", systemImage: "record.circle")
+                    Label("Workout in progress", systemImage: "record.circle")
                         .font(.caption2).foregroundStyle(WidgetPastel.sage)
 
                     Text(context.attributes.workoutTitle)

@@ -345,7 +345,10 @@ actor HealthKitManager: Sendable {
 
 struct CNSCalculator {
 
+    /// Returns a 0…100 readiness score, or `-1` when both HRV and RHR are missing
+    /// so the UI can show "not measured" instead of inventing a healthy score.
     static func calculate(sleepHours: Double, hrv: Double?, baselineHRV: Double?, rhr: Double?, baselineRHR: Double?, waterCups: Int = 8) -> Double {
+        guard hrv != nil || rhr != nil else { return -1 }
 
         let sleepScore = min(40.0, max(0, (sleepHours / 8.0) * 40.0))
         let waterScore = min(10.0, max(0, (Double(waterCups) / 8.0) * 10.0))
@@ -356,7 +359,7 @@ struct CNSCalculator {
             let deviation = hrv - base
             hrvScore = min(30.0, max(0, ((deviation + 20.0) / 20.0) * 30.0))
         } else {
-            hrvScore = 20.0 
+            hrvScore = 0
         }
 
         let rhrScore: Double
@@ -365,16 +368,16 @@ struct CNSCalculator {
             let deviation = rhr - base
             rhrScore = min(20.0, max(0, 20.0 - ((deviation / 15.0) * 20.0)))
         } else {
-            rhrScore = 15.0 
+            rhrScore = 0
         }
 
         return sleepScore + waterScore + hrvScore + rhrScore
     }
 
     static func getStatus(for score: Double) -> (text: String, color: Color) {
-        if score >= 80 { return ("Оптимально для гипертрофии", PastelTheme.pastelSage) }
-        if score >= 60 { return ("Умеренное утомление", PastelTheme.pastelAmber) }
-        if score >= 40 { return ("Требуется восстановление", PastelTheme.pastelAmber) }
-        return ("Истощение ЦНС (только отдых)", PastelTheme.pastelPeach)
+        if score >= 80 { return (String(localized: "Optimal for hypertrophy"), PastelTheme.pastelSage) }
+        if score >= 60 { return (String(localized: "Moderate fatigue"), PastelTheme.pastelAmber) }
+        if score >= 40 { return (String(localized: "Needs recovery"), PastelTheme.pastelAmber) }
+        return (String(localized: "CNS depleted — rest only"), PastelTheme.pastelPeach)
     }
 }

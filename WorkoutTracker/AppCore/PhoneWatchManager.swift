@@ -47,19 +47,43 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
                 self.sendPresetsToWatch()
             }
             if let data = userInfo["guaranteedSyncPayload"] as? Data,
-               let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data),
-               payload.action == .saveToHistory {
+               let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
+                // Accept all guaranteed actions (cancel/discard/save), not only saveToHistory.
                 NotificationCenter.default.post(name: .init("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": payload])
             }
         }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
+        handleInboundMessage(message, replyHandler: nil)
+    }
+
+    nonisolated func session(
+        _ session: WCSession,
+        didReceiveMessage message: [String : Any],
+        replyHandler: @escaping ([String : Any]) -> Void
+    ) {
+        handleInboundMessage(message, replyHandler: replyHandler)
+    }
+
+    nonisolated private func handleInboundMessage(
+        _ message: [String : Any],
+        replyHandler: (([String : Any]) -> Void)?
+    ) {
+        if let request = message["request"] as? String, request == "canStartWorkout" {
+            Task { @MainActor in
+                let allowed = self.phoneAllowsWatchStart()
+                replyHandler?(["allowed": allowed])
+            }
+            return
+        }
+
         if let data = message["syncPayload"] as? Data,
            let payload = try? JSONDecoder().decode(LiveSyncPayload.self, from: data) {
             Task { @MainActor in
                 if payload.action == .updateHeartRate, let hr = payload.heartRate {
                     NotificationCenter.default.post(name: NSNotification.Name("LiveHeartRateUpdate"), object: hr)
+                    replyHandler?([:])
                     return
                 }
 
@@ -68,13 +92,29 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
                 } else {
                     NotificationCenter.default.post(name: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, userInfo: ["payload": payload])
                 }
+                replyHandler?([:])
             }
         } else if let request = message["request"] as? String, request == "presets" {
             print("📱 got presets request (sendMessage)")
             Task { @MainActor in
                 self.sendPresetsToWatch()
+                replyHandler?([:])
             }
+        } else {
+            replyHandler?([:])
         }
+    }
+
+    /// True when Watch may create a new session (no fresh active workout on phone).
+    @MainActor
+    private func phoneAllowsWatchStart() -> Bool {
+        guard let container = modelContainer else { return true }
+        let context = ModelContext(container)
+        let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
+        let actives = ((try? context.fetch(desc)) ?? []).filter {
+            Date().timeIntervalSince($0.date) <= 12 * 3600
+        }
+        return actives.isEmpty
     }
 
     // MARK: - Sending
@@ -92,16 +132,29 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
                 workoutTitle: activeWorkout.title,
                 exercises: dtos
             )
-            if let data = try? JSONEncoder().encode(payload), WCSession.default.isReachable {
-                WCSession.default.sendMessage(["syncPayload": data], replyHandler: nil)
+            if let data = try? JSONEncoder().encode(payload) {
+                let session = WCSession.default
+                if session.isReachable {
+                    session.sendMessage(["syncPayload": data], replyHandler: nil) { _ in
+                        session.transferUserInfo(["guaranteedSyncPayload": data])
+                    }
+                } else {
+                    session.transferUserInfo(["guaranteedSyncPayload": data])
+                }
             }
         }
     }
 
     func sendFinishWorkoutToWatch(workoutID: String) {
         let payload = LiveSyncPayload(action: .finishWorkout, workoutID: workoutID)
-        if let data = try? JSONEncoder().encode(payload), WCSession.default.isReachable {
-            WCSession.default.sendMessage(["syncPayload": data], replyHandler: nil)
+        guard let data = try? JSONEncoder().encode(payload) else { return }
+        let session = WCSession.default
+        if session.isReachable {
+            session.sendMessage(["syncPayload": data], replyHandler: nil) { _ in
+                session.transferUserInfo(["guaranteedSyncPayload": data])
+            }
+        } else {
+            session.transferUserInfo(["guaranteedSyncPayload": data])
         }
     }
 

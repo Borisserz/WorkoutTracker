@@ -65,7 +65,7 @@ struct SettingsView: View {
                     deleteProfileAndData()
                 }
             } message: {
-                Text("This will permanently delete your profile, body measurements, all workouts, and settings. This action cannot be undone.")
+                Text("This permanently deletes workouts, profile, and settings on this device. If iCloud sync is enabled, deletions can reach your other devices. Signed-in account data on the server is removed only with Delete Account. This cannot be undone.")
             }
             .alert("Delete Account", isPresented: $showDeleteAccountAlert) {
                 Button("Cancel", role: .cancel) { }
@@ -86,12 +86,13 @@ struct SettingsView: View {
                     Task { await signOut() }
                 }
             } message: {
-                Text("Are you sure you want to sign out? This will clear all data on this device. You can access it again by signing back in.")
+                // Must match R02: sign-out does not wipe SwiftData / CloudKit.
+                Text("Are you sure you want to sign out? Workouts and profile data stay on this device. You will continue as a guest until you sign in again.")
             }
             .alert("Signed Out", isPresented: $showSignOutSuccessAlert) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("You have been successfully signed out. You are now using a guest account.")
+                Text("You are signed out and using a guest account. Your local workouts are still on this device.")
             }
             .alert("Authentication Error", isPresented: Binding(get: { authErrorMessage != nil }, set: { if !$0 { authErrorMessage = nil } })) {
                 Button("OK", role: .cancel) { }
@@ -105,6 +106,9 @@ struct SettingsView: View {
             }
             .alert(LocalizedStringKey("Clear All Data?"), isPresented: $showClearAllAlert) {
                 Button(LocalizedStringKey("Clear All"), role: .destructive) {
+                    #if DEBUG
+                    Task { await clearAllWorkouts() }
+                    #endif
                 }
                 Button(LocalizedStringKey("Cancel"), role: .cancel) { }
             } message: {
@@ -431,7 +435,7 @@ struct SettingsView: View {
         await di.analyticsService.rebuildAllStats()
         await di.workoutService.updateWidgetData()
         self.isProcessing = false
-        self.testDataAlertMessage = "All workouts and weight history cleared."
+        self.testDataAlertMessage = "All workouts, weight history, goals, measurements, XP, and widget data cleared."
         self.showTestDataAlert = true
     }
     #endif
@@ -445,13 +449,35 @@ struct SettingsView: View {
     private func exportAllData(format: ExportFormat) async {
         isProcessing = true
         let bgContext = ModelContext(di.modelContainer)
-        let descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        let workouts = (try? bgContext.fetch(descriptor)) ?? []
+        let workouts = (try? bgContext.fetch(FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+        let weights = (try? bgContext.fetch(FetchDescriptor<WeightEntry>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+        let goals = (try? bgContext.fetch(FetchDescriptor<UserGoal>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)]))) ?? []
+        let measurements = (try? bgContext.fetch(FetchDescriptor<BodyMeasurement>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+        let customPresets = (try? bgContext.fetch(FetchDescriptor<WorkoutPreset>(predicate: #Predicate { !$0.isSystem }))) ?? []
+        let exerciseNotes = (try? bgContext.fetch(FetchDescriptor<ExerciseNote>())) ?? []
+        let aiChatSessions = (try? bgContext.fetch(FetchDescriptor<AIChatSession>(sortBy: [SortDescriptor(\.date, order: .reverse)]))) ?? []
+        let muscleColors = UserDefaults.standard.dictionary(forKey: Constants.UserDefaultsKeys.muscleColors.rawValue) as? [String: String] ?? [:]
 
         let fileURL: URL?
         switch format {
-        case .json: fileURL = DataManager.shared.exportAllDataAsJSON(workouts: workouts)
-        case .csv:  fileURL = DataManager.shared.exportAllDataToCSV(workouts: workouts)
+        case .json:
+            fileURL = DataManager.shared.exportAllDataAsJSON(
+                workouts: workouts,
+                weightEntries: weights,
+                goals: goals,
+                measurements: measurements,
+                customPresets: customPresets,
+                exerciseNotes: exerciseNotes,
+                aiChatSessions: aiChatSessions,
+                muscleColors: muscleColors
+            )
+        case .csv:
+            fileURL = DataManager.shared.exportAllDataToCSV(
+                workouts: workouts,
+                weightEntries: weights,
+                goals: goals,
+                measurements: measurements
+            )
         }
 
         self.isProcessing = false
@@ -468,8 +494,10 @@ struct SettingsView: View {
         isProcessing = true
         defer { isProcessing = false }
         do {
+            // R02: do not wipe SwiftData on sign-out — CloudKit private DB would sync deletes.
+            await BlockedUsersStore.shared.stopListening()
             try await SocialAuthService.shared.signOut()
-            deleteLocalData()
+            await BlockedUsersStore.shared.startListening()
             showSignOutSuccessAlert = true
         } catch {
             authErrorMessage = "Failed to sign out: \(error.localizedDescription)"
@@ -518,7 +546,7 @@ struct SettingsView: View {
         showDeleteSuccessAlert = true
     }
 
-    /// Shared helper that removes all on-device data.
+    /// Shared helper that removes all on-device data (parity with DEBUG Clear All + avatar wipe).
     private func deleteLocalData() {
         do {
             try modelContext.delete(model: Workout.self)
@@ -532,6 +560,7 @@ struct SettingsView: View {
             try modelContext.delete(model: BodyMeasurement.self)
             try modelContext.delete(model: UserGoal.self)
             try modelContext.delete(model: AIChatSession.self)
+            try modelContext.delete(model: MuscleColorPreference.self)
 
             let customPresetsDesc = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.isSystem == false })
             if let customPresets = try? modelContext.fetch(customPresetsDesc) {
@@ -549,11 +578,21 @@ struct SettingsView: View {
             "userHeight",
             "userAge",
             Constants.UserDefaultsKeys.hasConsentedToAI.rawValue,
-            Constants.UserDefaultsKeys.hasSeenTutorial_Final_v8.rawValue
+            Constants.UserDefaultsKeys.hasSeenTutorial_Final_v8.rawValue,
+            Constants.UserDefaultsKeys.muscleColors.rawValue,
+            "userTotalXP",
+            "userLevel"
         ]
         for key in keysToReset {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        UserDefaults.standard.set(0, forKey: "userTotalXP")
+        UserDefaults.standard.set(1, forKey: "userLevel")
+
+        let suite = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
+        suite?.removeObject(forKey: WidgetDataManager.key)
+        UserDefaults.standard.removeObject(forKey: WidgetDataManager.key)
+        ProfileImageManager.shared.deleteImage()
     }
 }
 
@@ -593,17 +632,26 @@ struct UnitsSettingsView: View {
 }
 
 struct AppearanceSettingsView: View {
-    @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = "dark"
+    @AppStorage(Constants.UserDefaultsKeys.appearanceMode.rawValue) private var appearanceMode: String = AppearanceMode.lockedRawValue
     @AppStorage(Constants.UserDefaultsKeys.userGender.rawValue) private var userGender = "male"
+    @AppStorage(HapticManager.hapticsEnabledKey) private var hapticsEnabled: Bool = true
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Form {
-            Section(header: Text(LocalizedStringKey("System Theme"))) {
-                SettingsCheckmarkRow(title: "System", isSelected: appearanceMode == "system") { appearanceMode = "system" }
-                SettingsCheckmarkRow(title: "Light", isSelected: appearanceMode == "light") { appearanceMode = "light" }
-                SettingsCheckmarkRow(title: "Dark", isSelected: appearanceMode == "dark") { appearanceMode = "dark" }
+            Section(
+                header: Text(LocalizedStringKey("Appearance")),
+                footer: Text(LocalizedStringKey("Pastel athletic theme is dark-only for contrast and OLED blacks."))
+            ) {
+                SettingsCheckmarkRow(title: "Dark", isSelected: appearanceMode == AppearanceMode.lockedRawValue) {
+                    appearanceMode = AppearanceMode.lockedRawValue
+                }
+            }
+            Section(header: Text(LocalizedStringKey("Haptics"))) {
+                Toggle(isOn: $hapticsEnabled) {
+                    Text(LocalizedStringKey("Vibration"))
+                }
             }
             Section(header: Text(LocalizedStringKey("Anatomy Model")), footer: Text("This model is used for your personal muscle recovery heatmap.")) {
                 SettingsCheckmarkRow(title: "Male", isSelected: userGender == "male") { userGender = "male" }
@@ -706,8 +754,7 @@ struct SettingsCheckmarkRow: View {
 
     var body: some View {
         Button(action: {
-            let generator = UIImpactFeedbackGenerator(style: .light)
-            generator.impactOccurred()
+            HapticManager.shared.impact(.light)
             action()
         }) {
             HStack {

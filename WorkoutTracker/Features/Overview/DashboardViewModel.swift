@@ -46,6 +46,10 @@ final class DashboardViewModel {
             do {
 
                 try? await HealthKitManager.shared.requestAuthorization()
+                // After Health sheet (if any) returns — ask for notifications once, not stacked.
+                await MainActor.run {
+                    NotificationManager.shared.requestPermission()
+                }
                 let fetchedSteps = (try? await HealthKitManager.shared.fetchSteps()) ?? 0
                 let fetchedWater = (try? await HealthKitManager.shared.fetchWaterLiters()) ?? 0.0
 

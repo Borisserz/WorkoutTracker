@@ -21,9 +21,15 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     }
 
     func sendLiveAction(_ payload: LiveSyncPayload) {
-        guard WCSession.default.isReachable else { return }
-        if let data = try? JSONEncoder().encode(payload) {
-            WCSession.default.sendMessage(["syncPayload": data], replyHandler: nil)
+        guard let data = try? JSONEncoder().encode(payload) else { return }
+        let session = WCSession.default
+        if session.isReachable {
+            session.sendMessage(["syncPayload": data], replyHandler: nil) { _ in
+                // Fall back to guaranteed delivery if live message fails.
+                session.transferUserInfo(["guaranteedSyncPayload": data])
+            }
+        } else {
+            session.transferUserInfo(["guaranteedSyncPayload": data])
         }
     }
 
@@ -49,10 +55,33 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     }
 
     func requestActiveStateFromPhone() {
-        guard WCSession.default.isReachable else { return }
         let payload = LiveSyncPayload(action: .requestActiveState, workoutID: "")
-        if let data = try? JSONEncoder().encode(payload) {
-            WCSession.default.sendMessage(["syncPayload": data], replyHandler: nil)
+        guard let data = try? JSONEncoder().encode(payload) else { return }
+        let message = ["syncPayload": data]
+        let session = WCSession.default
+        if session.isReachable {
+            session.sendMessage(message, replyHandler: nil) { error in
+                print("⌚️ active-state sendMessage failed → transferUserInfo: \(error.localizedDescription)")
+                session.transferUserInfo(message)
+            }
+        } else {
+            session.transferUserInfo(message)
+        }
+    }
+
+    /// Ask iPhone whether a new Watch session is allowed. Unreachable phone → allow (Watch-only).
+    func phoneAllowsNewWorkout() async -> Bool {
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isReachable else {
+            return true
+        }
+        return await withCheckedContinuation { continuation in
+            session.sendMessage(["request": "canStartWorkout"], replyHandler: { reply in
+                continuation.resume(returning: (reply["allowed"] as? Bool) ?? false)
+            }, errorHandler: { _ in
+                // Transport failed — do not invent a phone-active block.
+                continuation.resume(returning: true)
+            })
         }
     }
 
@@ -127,7 +156,11 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             let preset = WorkoutPreset(from: dto)
             context.insert(preset)
         }
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            print("⌚️ ❌ failed to save presets locally: \(error.localizedDescription)")
+        }
     }
 
     #if os(iOS)

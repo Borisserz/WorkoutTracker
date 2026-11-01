@@ -8,8 +8,9 @@
     },
     "fatsecret_secret": {
       "defaultValue": {
-        "value": "2d96a156067b46149b27aa916a410eb3"
+        "value": ""
       },
+      "description": "Set real FatSecret secret only in Firebase Remote Config console — never commit.",
       "valueType": "STRING"
     },
     "recommended_ios_version": {
@@ -40,8 +41,9 @@
     },
     "fatsecret_client_id": {
       "defaultValue": {
-        "value": "b6be4805aa7e4b95bed4354d677d0b89"
+        "value": ""
       },
+      "description": "Set real FatSecret client id only in Firebase Remote Config console — never commit.",
       "valueType": "STRING"
     },
     "show_foodtracker_promo": {

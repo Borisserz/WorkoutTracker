@@ -5,14 +5,19 @@ internal import SwiftUI
 import AppIntents 
 
 struct WidgetTheme {
-    static let background = Color(red: 0.05, green: 0.05, blue: 0.07)
-    static let surface = Color(red: 0.1, green: 0.1, blue: 0.12)
+    // Pastel / OLED — match app PastelTheme (no cyber neon).
+    static let background = Color(red: 0.055, green: 0.059, blue: 0.071) // #0E0F12
+    static let surface = Color(red: 0.090, green: 0.094, blue: 0.114) // #17181D
+    static let oat = Color(red: 0.937, green: 0.890, blue: 0.827) // #EFE3D3
+    static let sage = Color(red: 0.204, green: 0.780, blue: 0.349) // #34C759
+    static let amber = Color(red: 0.984, green: 0.749, blue: 0.141) // #FBBF24
+    static let lavender = Color(red: 0.655, green: 0.545, blue: 0.980) // #A78BFA
 
-    static let primaryCyan = Color(red: 0.0, green: 0.8, blue: 1.0)
-    static let primaryPurple = Color(red: 0.6, green: 0.2, blue: 1.0)
+    static let primaryCyan = sage
+    static let primaryPurple = lavender
 
-    static let neonGradient = LinearGradient(colors: [primaryPurple, primaryCyan], startPoint: .topLeading, endPoint: .bottomTrailing)
-    static let fireGradient = LinearGradient(colors: [.orange, .red], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let accentGradient = LinearGradient(colors: [oat.opacity(0.95), sage.opacity(0.85)], startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let fireGradient = LinearGradient(colors: [amber, oat], startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
 struct StatsEntry: TimelineEntry {
@@ -22,15 +27,16 @@ struct StatsEntry: TimelineEntry {
 
 struct StatsWidgetProvider: TimelineProvider {
     func placeholder(in context: Context) -> StatsEntry {
+        // Neutral gallery placeholder — no invented tip/muscles readiness copy.
         StatsEntry(date: Date(), data: WidgetData(
-            streak: 12,
-            weeklyTarget: 4,
+            streak: 0,
+            weeklyTarget: 3,
             weeklyStats: [
-                .init(label: "Mon", count: 1), .init(label: "Wed", count: 2), .init(label: "Fri", count: 1)
+                .init(label: "Mon", count: 0), .init(label: "Wed", count: 0), .init(label: "Fri", count: 0)
             ],
-            recoveredMuscles: ["Legs", "Core"],
-            aiTip: "Legs are fully charged. Don't skip leg day!",
-            totalVolumeTons: 14.5
+            recoveredMuscles: [],
+            aiTip: "",
+            totalVolumeTons: 0
         ))
     }
 
@@ -90,7 +96,7 @@ struct ProStreakWidgetView: View {
                     Image(systemName: "flame.fill")
                         .font(.title3)
                         .foregroundStyle(WidgetTheme.fireGradient)
-                        .shadow(color: .orange.opacity(0.5), radius: 5)
+                        .shadow(color: .orange.opacity(0.25), radius: 2)
                     Text("\(entry.data.streak)")
                         .font(.system(size: 26, weight: .heavy, design: .rounded))
                         .foregroundColor(.white)
@@ -122,9 +128,9 @@ struct ProStreakWidgetView: View {
                                 VStack {
                                     Spacer()
                                     Capsule()
-                                        .fill(WidgetTheme.neonGradient)
+                                        .fill(WidgetTheme.accentGradient)
                                         .frame(height: max(10, geo.size.height * CGFloat(stat.count) / CGFloat(maxCount)))
-                                        .shadow(color: WidgetTheme.primaryPurple.opacity(0.4), radius: 4, y: 2)
+                                        .shadow(color: WidgetTheme.primaryPurple.opacity(0.15), radius: 2, y: 1)
                                 }
                             }
                             Text(String(stat.label.prefix(3)))
@@ -182,25 +188,33 @@ struct AICoachWidgetView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     ZStack {
-                        Circle().fill(WidgetTheme.neonGradient).frame(width: 28, height: 28).shadow(color: WidgetTheme.primaryCyan.opacity(0.6), radius: 6)
+                        Circle().fill(WidgetTheme.accentGradient).frame(width: 28, height: 28).shadow(color: WidgetTheme.primaryCyan.opacity(0.2), radius: 2)
                         Image(systemName: "brain.head.profile").font(.system(size: 14, weight: .bold)).foregroundColor(.white)
                     }
-                    Text("AI Coach").font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(WidgetTheme.neonGradient)
+                    Text("AI Coach").font(.system(size: 14, weight: .heavy, design: .rounded)).foregroundStyle(WidgetTheme.accentGradient)
                 }
-                Text(entry.data.aiTip).font(.system(size: 12, weight: .medium, design: .rounded)).foregroundColor(.white.opacity(0.9)).lineLimit(3).minimumScaleFactor(0.8)
+                Text(entry.data.aiTip.isEmpty ? "Open the app to sync coaching tips." : entry.data.aiTip)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.9))
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.8)
                 Spacer()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 8) {
-                Text("Ready to Train:").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(.white.opacity(0.5)).textCase(.uppercase)
+                Text(entry.data.recoveredMuscles.isEmpty ? "Recovery" : "Ready to train")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.5))
                 VStack(alignment: .leading, spacing: 6) {
                     if entry.data.recoveredMuscles.isEmpty {
-                        Text("Need rest 🛏️").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(WidgetTheme.primaryCyan)
+                        Text("No recovery data")
+                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.7))
                     } else {
                         ForEach(entry.data.recoveredMuscles.prefix(3), id: \.self) { muscle in
                             HStack {
-                                Image(systemName: "bolt.fill").foregroundColor(.yellow).font(.system(size: 10))
+                                Image(systemName: "bolt.fill").foregroundColor(WidgetTheme.amber).font(.system(size: 10))
                                 Text(muscle).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(.white)
                             }
                             .padding(.horizontal, 10).padding(.vertical, 6).background(Color.white.opacity(0.1)).clipShape(Capsule())
@@ -218,7 +232,7 @@ struct AICoachWidgetView: View {
             Image(systemName: "brain.head.profile").font(.title3)
             VStack(alignment: .leading) {
                 Text("AI Coach").font(.headline)
-                Text(entry.data.recoveredMuscles.isEmpty ? "Take a rest day" : "Train: \(entry.data.recoveredMuscles.joined(separator: ", "))").font(.caption).lineLimit(1)
+                Text(entry.data.recoveredMuscles.isEmpty ? "No recovery data" : "Train: \(entry.data.recoveredMuscles.joined(separator: ", "))").font(.caption).lineLimit(1)
             }
         }
     }
@@ -256,7 +270,7 @@ struct QuickActionsWidgetView: View {
             VStack(spacing: 8) {
                 ZStack {
                     Circle().fill(color.opacity(0.2)).frame(width: 40, height: 40)
-                    Image(systemName: icon).font(.system(size: 18, weight: .bold)).foregroundColor(color).shadow(color: color.opacity(0.5), radius: 4)
+                    Image(systemName: icon).font(.system(size: 18, weight: .bold)).foregroundColor(color).shadow(color: color.opacity(0.2), radius: 2)
                 }
                 Text(title).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(.white.opacity(0.8))
             }

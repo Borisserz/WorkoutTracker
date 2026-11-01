@@ -50,3 +50,9 @@ functions/.runtimeconfig.json
 firebase-debug.log
 firebase-debug.*.log
 ui-debug.log
+
+# Maestro
+.maestro/output/
+.maestro/.reports/
+!scripts/
+!scripts/**

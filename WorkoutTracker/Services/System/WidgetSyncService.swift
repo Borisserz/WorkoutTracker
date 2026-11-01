@@ -18,7 +18,14 @@ actor WidgetSyncService {
         desc.fetchLimit = 100
         guard let workouts = try? bgContext.fetch(desc) else { return }
 
-        let currentStreak = calculateWorkoutStreak(workouts: workouts)
+        // Streak needs full history — a 6-week window undercounts long streaks.
+        var streakDesc = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        streakDesc.fetchLimit = 500
+        let streakWorkouts = (try? bgContext.fetch(streakDesc)) ?? workouts
+        let currentStreak = calculateWorkoutStreak(workouts: streakWorkouts)
         var points: [WidgetData.WeeklyPoint] = []
         let cal = Calendar.current
         for i in (0...5).reversed() {
@@ -31,7 +38,21 @@ actor WidgetSyncService {
             }
         }
 
-        WidgetDataManager.save(streak: currentStreak, weeklyStats: points)
+        let totalVolumeKg = workouts.reduce(0.0) { $0 + $1.totalStrengthVolume }
+        let totalVolumeTons = totalVolumeKg / 1000.0
+        let previous = WidgetDataManager.load()
+        // Honesty: never invent tip or "ready" muscles from recent training groups.
+        // Preserve prior tip/muscles when present; otherwise leave empty for the widget empty state.
+        let tip = previous.aiTip
+        let muscles = previous.recoveredMuscles
+
+        WidgetDataManager.save(
+            streak: currentStreak,
+            weeklyStats: points,
+            recoveredMuscles: muscles,
+            aiTip: tip,
+            totalVolumeTons: totalVolumeTons
+        )
         WidgetCenter.shared.reloadAllTimelines()
     }
 

@@ -110,7 +110,7 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>WorkoutTracker uses the microphone to power the Voice Coach feature, which provides real-time spoken feedback and rep counting during your workouts.</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>WorkoutTracker uses speech recognition to detect voice commands during workouts, allowing you to log sets and navigate hands-free.</string>
+    <string>Ai Workout uses on-device speech recognition for voice commands during workouts (start/stop timer, log set).</string>
     <key>LSApplicationQueriesSchemes</key>
     <array>
         <string>foodtracker</string>

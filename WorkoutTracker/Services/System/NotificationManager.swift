@@ -32,9 +32,17 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate, Sen
     }
 
     func requestPermission(completion: (@Sendable (Bool) -> Void)? = nil) {
-        let options: UNAuthorizationOptions = [.alert, .badge, .sound, .timeSensitive]
-        UNUserNotificationCenter.current().requestAuthorization(options: options) { granted, _ in
-            completion?(granted)
+        let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            // Avoid stacking system sheets over HealthKit / other prompts on cold launch.
+            guard settings.authorizationStatus == .notDetermined else {
+                completion?(settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional)
+                return
+            }
+            let options: UNAuthorizationOptions = [.alert, .badge, .sound, .timeSensitive]
+            center.requestAuthorization(options: options) { granted, _ in
+                completion?(granted)
+            }
         }
     }
 

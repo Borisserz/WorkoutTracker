@@ -42,15 +42,18 @@ struct WatchActiveWorkoutView: View {
         }
         .navigationBarHidden(true)
         .task {
-
-                    if !viewModel.isInitialized {
-
-                        try? await workoutManager.requestAuthorization()
-
-                        await workoutManager.startWorkout()
-                        await viewModel.initializeWorkout()
-                    }
-                }
+            if !viewModel.isInitialized {
+                await viewModel.initializeWorkout()
+                if viewModel.phoneBlockedStart { return }
+                try? await workoutManager.requestAuthorization()
+                await workoutManager.startWorkout()
+            }
+        }
+        .alert("Workout in progress", isPresented: $viewModel.phoneBlockedStart) {
+            Button("OK", role: .cancel) { dismiss() }
+        } message: {
+            Text("Finish the iPhone workout before starting another on Apple Watch.")
+        }
         .onDisappear { viewModel.cleanup() }
         .sheet(isPresented: $showExerciseList) {
             WatchExerciseSelectionView { exerciseName in

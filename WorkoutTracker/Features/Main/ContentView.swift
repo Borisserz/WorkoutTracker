@@ -57,40 +57,40 @@ struct ContentView: View {
                 OverviewView()
                     .tabItem {
                         Image(systemName: "chart.pie.fill")
-                        Text("Обзор")
+                        Text("Overview")
                     }
                     .tag(0)
 
                 HistoryView()
                     .tabItem {
                         Image(systemName: "clock.arrow.circlepath")
-                        Text("История")
+                        Text("History")
                     }
                     .tag(1)
 
                 WorkoutHubView()
                     .tabItem {
                         Image(systemName: "plus.circle.fill")
-                        Text("Тренировка")
+                        Text("Workout")
                     }
                     .tag(2)
 
                 AICoachView()
                     .tabItem {
                         Image(systemName: "sparkles")
-                        Text("ИИ-Хаб")
+                        Text("AI Hub")
                     }
                     .tag(3)
 
                 StatsView()
                     .tabItem {
                         Image(systemName: "trophy.fill")
-                        Text("Прогресс")
+                        Text("Progress")
                     }
                     .tag(4)
             }
             .tint(PastelTheme.pastelOat)
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(AppearanceMode.preferredColorScheme)
             .zIndex(1)
 
             if appState.selectedTab != 2 {
@@ -109,12 +109,17 @@ struct ContentView: View {
         }
         .onAppear {
             dashboardViewModel.refreshAllCaches()
-            NotificationManager.shared.requestPermission()
+            // Notifications are requested after HealthKit settles (see DashboardViewModel).
+            consumePendingWidgetAction()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
                 dashboardViewModel.refreshAllCaches()
+                consumePendingWidgetAction()
             }
+        }
+        .onChange(of: appState.requestedWidgetAction) { _, _ in
+            consumePendingWidgetAction()
         }
         .alert(item: $appState.currentError) { error in
             Alert(
@@ -132,6 +137,32 @@ struct ContentView: View {
             NavigationStack {
                 WorkoutCalendarView()
             }
+        }
+    }
+
+    private func consumePendingWidgetAction() {
+        let appState = di.appState
+        let defaultsKey = Constants.UserDefaultsKeys.pendingWidgetAction.rawValue
+        let suite = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
+        let action = appState.requestedWidgetAction
+            ?? suite?.string(forKey: defaultsKey)
+            ?? UserDefaults.standard.string(forKey: defaultsKey)
+        guard let action, !action.isEmpty else { return }
+        appState.requestedWidgetAction = nil
+        suite?.removeObject(forKey: defaultsKey)
+        UserDefaults.standard.removeObject(forKey: defaultsKey)
+        switch action {
+        case "empty_workout":
+            appState.selectedTab = 2
+            appState.showWorkoutModeDiscovery = true
+        case "smart_builder":
+            appState.selectedTab = 2
+            appState.showSmartBuilder = true
+        case "log_weight":
+            appState.selectedTab = 0
+            appState.showWeightLog = true
+        default:
+            break
         }
     }
 

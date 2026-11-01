@@ -13,12 +13,26 @@ struct WorkoutTrackerWatch_Watch_AppApp: App {
             UserGoal.self
         ])
 
-        let modelConfiguration = ModelConfiguration(
+        let diskConfig = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false,
             cloudKitDatabase: .none
         )
-        return try! ModelContainer(for: schema, configurations: [modelConfiguration])
+        do {
+            return try ModelContainer(for: schema, configurations: [diskConfig])
+        } catch {
+            // Release-safe fallback: never crash the Watch app if the store fails to open.
+            let memoryConfig = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
+            )
+            do {
+                return try ModelContainer(for: schema, configurations: [memoryConfig])
+            } catch {
+                preconditionFailure("Watch ModelContainer could not be created: \(error)")
+            }
+        }
     }()
 
     var body: some Scene {

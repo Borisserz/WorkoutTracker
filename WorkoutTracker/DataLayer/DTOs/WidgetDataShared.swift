@@ -31,8 +31,9 @@ struct WidgetData: Codable {
         streak = try container.decodeIfPresent(Int.self, forKey: .streak) ?? 0
         weeklyTarget = try container.decodeIfPresent(Int.self, forKey: .weeklyTarget) ?? 3
         weeklyStats = try container.decodeIfPresent([WeeklyPoint].self, forKey: .weeklyStats) ?? []
-        recoveredMuscles = try container.decodeIfPresent([String].self, forKey: .recoveredMuscles) ?? ["Chest", "Arms"]
-        aiTip = try container.decodeIfPresent(String.self, forKey: .aiTip) ?? "Ready for your next session. Let's go!"
+        // Never invent readiness copy when keys are missing (partial wipe / schema drift).
+        recoveredMuscles = try container.decodeIfPresent([String].self, forKey: .recoveredMuscles) ?? []
+        aiTip = try container.decodeIfPresent(String.self, forKey: .aiTip) ?? ""
         totalVolumeTons = try container.decodeIfPresent(Double.self, forKey: .totalVolumeTons) ?? 0.0
     }
 }
@@ -69,7 +70,7 @@ class WidgetDataManager {
                 weeklyTarget: 3,
                 weeklyStats: [],
                 recoveredMuscles: [],
-                aiTip: String(localized: "Open the app and log your first workout!"),
+                aiTip: "",
                 totalVolumeTons: 0.0
             )
         }
