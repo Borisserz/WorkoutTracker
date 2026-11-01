@@ -1,140 +1,65 @@
-# WorkoutTracker IDE Agent Directives, Registry & Persistent Memory
+# WorkoutTracker Agent Directives & Persistent Memory
 
-> **Memory Persistence:** Все агенты, правила и архитектурные константы в этом файле являются постоянными директивами и действуют для всех сессий.
+> Applies to every session on this machine. Paths below are for Boris’s checkout.
 
----
+## Workspace
 
-## 📋 Реестр созданных агентов (Agent Registry)
+- **Repo:** `/Users/borisserzhanovich/Projects/WorkoutTracker-repo`
+- **Remote:** `origin` → `https://github.com/Borisserz/WorkoutTracker.git`
+- **Default branch for design work:** `develop` (no `main` on remote; `origin/HEAD` → `develop`)
+- **Xcode project:** `WorkoutTracker.xcodeproj`
+- **Colleague fork (reference only):** `moggerrescure/WorkoutTracker` — do not assume dual-repo sync paths on this Mac
+- **Docs index:** `docs/INDEX.md`
 
-### 1. 🎯 Дизайн Субагент (Chief Design Officer & Apple Design Award Auditor)
-- **Файл навыка:** [.agents/skills/design-critic-subagent/SKILL.md](file:///Users/ilakazdan/WorkoutTracker/.agents/skills/design-critic-subagent/SKILL.md)
-- **Триггеры активации:**
-  - `«дизайн субагент»` / `«дизайн критик»` / `«дизайн аудит»`
-  - `«эпл худ дизайн»` / `«Apple HIG HUD»` / `«дизайн ресерч»`
-  - `«design critic»` / `«design subagent»`
-- **Обязанности:**
-  - Проведение безжалостного дизайн-аудита интерфейсов по стандартам Apple Design Award и iOS 18 HIG.
-  - Контроль соблюдения палитры `PastelTheme` (Strict Dark Mode: OLED `#0E0F12`, Card `#17181D`, Warm Oat `#EFE3D3`, Athletic Emerald `#10B981`, Warm Amber `#FBBF24`).
-  - **Абсолютное ТАБУ на «нейрослоп»:** запрет на случайные многоцветные киберпанк-градиенты, кислотные светящиеся шары и визуальный шум.
-  - Внедрение дофаминовых петель: HapticManager (`.light` на сеты, `.heavy` + `.success` на PR) и виральные 9:16 Instagram Stories чеки.
+## Design system (source of truth)
 
----
+- **Theme:** `PastelTheme` + `LuxuryPastelTheme` via `ThemeManager.current`
+- **Appearance:** dark-only (`AppearanceMode.lockedRawValue`). Do not reintroduce Light/System UI unless a real light palette ships.
+- **Palette:** OLED canvas `#0E0F12`, card `#17181D`, oat `#EFE3D3`, sage `#34C759`, amber `#FBBF24`, lavender `#A78BFA`, peach `#F87171`
+- **Buttons:** `PastelTheme.ButtonMetrics` tiers 1–5 — fixed heights, no vertical padding for action height
+- **Anti-slop:** no decorative middle dots, no ALL-CAPS chrome, no cyber neon gradients
+- **Calendar:** `CalendarDayPressurePlate` in `WorkoutCalendarView.swift`
+- **Backdrop:** `AtmosphericGymBackdropView` on main tabs
 
-### 2. 📐 Агент Геометрии Кнопок и Пиксельного Выравнивания (Button Geometry & Alignment Specialist)
-- **Стандарт:** [button_design_research_deep_dive.md](file:///Users/ilakazdan/.gemini/antigravity-ide/brain/209a705c-eb33-41b5-81a9-f737849095d6/button_design_research_deep_dive.md)
-- **Код-источник:** `PastelTheme.ButtonMetrics` в [PastelTheme.swift](file:///Users/ilakazdan/WorkoutTracker/WorkoutTracker/SharedUI/PastelTheme.swift)
-- **Триггеры активации:**
-  - `«кнопки»` / `«размер кнопок»` / `«выравнивание»` / `«совпадение размера»` / `«button metrics»`
-- **Обязанности:**
-  - Предотвращение разноразмерности кнопок и смещения базовых линий по всей кодовой базе.
-  - Строгое применение 5-уровневой матрицы:
-    1. **Tier 1 (48pt, r=14):** Hero Action & Floating Dock Launchers (`heroHeight`, `heroRadius`).
-    2. **Tier 2 (42pt, r=12):** Split Actions 50/50 (`splitHeight`, `splitRadius`).
-    3. **Tier 3 (36pt, r=10 / Capsule):** In-Card Contextual Triggers (`inCardHeight`, `inCardRadius`).
-    4. **Tier 4 (34pt, Capsule):** Filter Pills & Category Capsules (`pillHeight`).
-    5. **Tier 5 (40×40pt, r=10):** Square Controls, Steppers & Checkmarks (`squareSize`, `squareRadius`).
-  - **Запрет на плавающие паддинги:** Action кнопки никогда не рассчитывают высоту через `padding(.vertical, 16)` — только строгий `.frame(height: ...)`.
-  - Гарантия зоны касания Apple HIG: минимум 44×44pt для каждого интерактивного элемента.
+## Hard rules for agents
 
----
+1. Prefer EN String Catalog keys (`Text("Overview")`); keep `ru` (and other) translations in `Localizable.xcstrings`.
+2. Gate haptics through `HapticManager` (`hapticsEnabled` UserDefaults key).
+3. Never `fatalError` after setting recoverable UI state (see `databaseLoadError`).
+4. Do not revive `CyberNeonTheme` or neon accent colors.
+5. Hub / Overview redesign is finished — extend, don’t rewrite from scratch.
+6. **Single active workout** — start paths go through `WorkoutService` guards (`createWorkout` / `startGeneratedWorkout` / Watch `.startWorkout`). Do not insert a second active session.
+7. **No invented readiness** — CNS `< 0` / missing vitals → “not measured”; never coerce to 100. Widget decoder must not invent tip/muscles.
+8. **Sign-out ≠ wipe** — do not call `deleteLocalData()` on sign-out (CloudKit sync risk). Wipe only on account/profile delete or DEBUG Clear All; keep wipe parity (XP, widget, colors, avatar).
+9. Prefer returned `PersistentIdentifier` from start APIs over `fetchLatestWorkout()` races.
+10. Audit trail: `docs/INDEX.md` → full / residual / fix-status reports. ADR: `docs/adr/0001-session-safety-cns-signout.md`.
 
-### 3. ⚡ Архитектор Apple HUD Эргономики и Телеметрии (Apple Fitness+ HUD Architect)
-- **Обязанности:**
-  - Реализация парадигмы *Dynamic Thumb HUD Cockpit*: перенос основных действий тренировки в зону досягаемости большого пальца без необходимости скроллинга наверх.
-  - Информационная эргономика «Zero Text Walls»: замена длинных текстовых инструкций на считываемые кольца готовности мышц, прогресс-бары и числовые показатели.
-  - Крупные цифры с плавной анимацией: San Francisco Rounded `heavy` (26–34pt) с `monospacedDigit()` и `.contentTransition(.numericText())`.
+## Audit status (2026-11-01)
 
----
+| Pass | Result |
+|------|--------|
+| Breaks B01–B28 | Fixed |
+| Improve I01–I20 | Fixed (I17 deeper suites still optional) |
+| Residual R01–R14 + J01–J16 | Fixed — see `docs/audits/2026-11-01-residual-fix-status.md` |
+| Polish P0/P1 (CNS invent, Pastel accents, Explore honesty) | Fixed — see `docs/audits/2026-11-01-polish-pass.md` |
+| Ideal pass (Profile EN, Rest honesty, full tests) | Fixed — see `docs/audits/2026-11-01-ideal-pass.md` |
 
-### 4. 🔄 Агент Синхронизации Двух Репозиториев и Верификации Сборки (Dual-Repo Sync & Build Verifier)
-- **Рабочие области:**
-  - Основной репозиторий: `/Users/ilakazdan/WorkoutTracker` (remote `origin` -> `Borisserz/WorkoutTracker`).
-  - Вторичный репозиторий: `/Users/ilakazdan/Documents/WorkoutTracker` (remote `origin` -> `moggerrescure/WorkoutTracker`).
-  - Проект Xcode: `/Users/ilakazdan/Documents/WorkoutTracker/WorkoutTracker.xcodeproj`.
-- **Обязанности:**
-  - Зеркалирование любых изменений исходного кода между обеими папками перед сборкой.
-  - Проверка сборки `xcodebuild -scheme WorkoutTracker -destination 'generic/platform=iOS Simulator'` с кодом выхода 0.
-  - Установка и запуск на симуляторе iOS с получением скриншота экрана для подтверждения качества.
-  - Поддержание обеих веток `develop` и `main` в актуальном синхронизированном состоянии в обоих удаленных репозиториях.
+## Local skills (optional)
 
----
+Project-local `.agents/skills/` may be added later. Until then use global Cursor skills under `~/.cursor/skills/` (frontend-design, kill-ai-slop, swiftui-pro, etc.).
 
-### 5. 🛡️ Агент Антислопометра (Antislop Meter)
-- **Файл навыка:** [.agents/skills/antislop/SKILL.md](file:///Users/ilakazdan/WorkoutTracker/.agents/skills/antislop/SKILL.md)
-- **Триггеры активации:** `«антислоп»` / `«слоп»` / `«проверь на слоп»` / `«нейрослоп»`
-- **Обязанности:**
-  - Бескомпромиссная чистка интерфейса от дефолтов ИИ: запрет на декоративные точки-кружки перед текстом, запрет на средние точки (`•`), запрет на пустые серые тени и кислотные свечения.
-  - Строгая модульная сетка: запрет на произвольные сдвиги на «40/80px», элементы выравниваются строго по осям и силовым линиям.
+## Verification
 
----
+```bash
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+# Prefer a concrete simulator when available (iOS 26.3.x):
+xcodebuild -scheme WorkoutTracker \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -configuration Debug build
 
-### 6. ✍️ Редактор Человеческого Языка (Пиши нормально)
-- **Файл навыка:** [.agents/skills/pishi-normalno/SKILL.md](file:///Users/ilakazdan/WorkoutTracker/.agents/skills/pishi-normalno/SKILL.md)
-- **Триггеры активации:** `«пиши нормально»` / `«текст»` / `«человеческий язык»` / `«без роботов»`
-- **Обязанности:**
-  - Запрет на роботизированный капс («ТРЕНИРОВКА ИДЕТ», «ВЫБОР РЕЖИМА»).
-  - Естественный русский регистр предложений (sentence case), живая интонация, правильные падежные окончания для числительных (1 упражнение, 3 упражнения, 5 упражнений).
-  - Запрет на искусственные псевдопанчлайны, разорванные предикаты и фальшивый маркетинг.
+xcodebuild -scheme WorkoutTracker \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -configuration Debug test -only-testing:WorkoutTrackerTests
+```
 
----
-
-### 7. 🎨 Ведущий Дизайнер Интерфейсов (Frontend Design)
-- **Файл навыка:** [.agents/skills/frontend-design/SKILL.md](file:///Users/ilakazdan/WorkoutTracker/.agents/skills/frontend-design/SKILL.md)
-- **Триггеры активации:** `«frontend design»` / `«авторский дизайн»` / `«дизайн интерфейса»`
-- **Обязанности:**
-  - Создание уникального, продуманного визуального почерка вместо шаблонных решений.
-  - Запрет на шаблонный хром: никаких заезженных ALL-CAPS микро-лейблов над заголовками с неестественным трекингом, никаких мета-строк через точки.
-  - Премиальная лаконичность: типографика работает как активный элемент дизайна, а не нейтральный перевозчик текста.
-
----
-
-### 8. 📱 Нативный iOS-Архитектор и Хранитель Системного Опыта Apple (Native iOS Platform Specialist)
-- **Файл навыка:** [.agents/skills/native-ios-specialist/SKILL.md](file:///Users/ilakazdan/WorkoutTracker/.agents/skills/native-ios-specialist/SKILL.md)
-- **Триггеры активации:**
-  - `«нативный»` / `«native ios»` / `«apple hig native»`
-  - `«системный опыт»` / `«ios 18»` / `«виджеты»` / `«live activity»` / `«dynamic island»`
-- **Обязанности:**
-  - Архитектурный контроль глубинной интеграции с iOS 18+: SwiftData (`@Model`, `ModelContext`), Observation Framework (`@Observable`), Swift Charts, Symbol Effects.
-  - Проектирование системных расширений: ActivityKit Live Activities в Dynamic Island, Lock Screen Interactive Widgets, Control Center Widgets.
-  - Реализация бесшовного Thumb Cockpit взаимодействия: Safe Area, `.contentMargins`, нативные `UIContextMenu`, `swipeActions` и физика прокрутки.
-  - Абсолютный запрет на веб-обёртки, чуждые Android-паттерны и визуальные эмуляции, нарушающие философию Apple Fitness+.
-
-### 9. 🗓️ Календарный Архитектор Нажимных Плит (Architectural Calendar & Streak Specialist)
-- **Триггеры активации:** `«календарь»` / `«плитки календаря»` / `«стрик в календаре»` / `«дни тренировок»`
-- **Обязанности:**
-  - Реализация модального полноэкранного календаря активности (`ArchitecturalActivityCalendarSheet`).
-  - Плиточная сетка дней (`CalendarDayPressurePlate`): San Francisco Rounded дни, тактильный отклик `.rigid`, физическое продавливание на 2.5pt.
-  - Точечная индикация: дни тренировок отмечаются тёплой точкой `PastelTheme.pastelSage` (`#34C759`) и счетчиком подходов, дни без тренировок остаются чистыми и ненагруженными.
-  - Телеметрия стрика: текущий непрерывный стрик, огонь стриков `PastelTheme.pastelAmber`, общий тоннаж месяца.
-
----
-
-### 10. 🎬 Мастер Атмосферного Фона и Спортивной Эстетики (Atmospheric Background Specialist)
-- **Триггеры активации:** `«фон»` / `«видео зала»` / `«фото зала»` / `«атмосферный фон»`
-- **Обязанности:**
-  - Внедрение кинематографичного премиального фона тренажерного зала на главных экранах (`AtmosphericGymBackdropView`).
-  - Тонкий градиентный виньетинг в палитре `PastelTheme.canvas` (`#0E0F12`), чтобы текст, графики и карточки всегда оставались на 100% читаемыми и контрастными.
-  - Плавная смена спортивных кадров с эффектом Ken Burns / дыхания глубины.
-
----
-
-### 11. 🎨 Колорист Apple HIG и Анти-ИИ Ревизор (Apple HIG Colorist & Anti-AI Green Reformer)
-- **Триггеры активации:** `«зеленый цвет»` / `«передумай зеленый»` / `«убери градиент»` / `«пастельные тона»`
-- **Обязанности:**
-  - Замена синтетического "нейрослопного" зеленого (`#10B981`) на аутентичный **Apple Nordic Athletic Sage** (`#34C759` / `#48C78E`), гармонирующий с теплым овсом `#EFE3D3`.
-  - Беспощадный поиск и устранение случайных кислотных градиентов (cyan/magenta, purple/pink) по всей кодовой базе и их замена на палитру `PastelTheme`.
-
----
-
-## 🎨 Сводная палитра `PastelTheme` (Strict Dark Mode)
-- **Canvas / Background:** `#0E0F12` (OLED Cashmere Charcoal).
-- **Card Surface:** `#17181D` (глубокий матовый графит).
-- **Card Surface Subtle:** `#121317` (утопленные чипы и фон иконок).
-- **Card Borders:** `#EFE3D3` с 18% opacity (`PastelTheme.cardBorder`).
-- **Focused Borders:** `#EFE3D3` с 42% opacity (`PastelTheme.cardBorderFocused`).
-- **Главный цвет действий (CTA):** `PastelTheme.pastelOat` (`#EFE3D3`) с текстом `PastelTheme.textOnOat` (`#0E0F12`).
-- **Функциональные акценты:**
-  - Athletic Sage (`#34C759`): Завершенные сеты, PR, готовность (без ядовитого ИИ-неона).
-  - Warm Amber (`#FBBF24`): Таймеры отдыха, активная тренировка, огонь стриков.
-  - Pastel Slate (`#60A5FA`): Дистанция и время.
-  - Pastel Lavender (`#A78BFA`): AI-ассистент, CNS-аналитика.
+Fallback: `-destination 'generic/platform=iOS'`. Prefer a physical device when Simulator runtime is unavailable.

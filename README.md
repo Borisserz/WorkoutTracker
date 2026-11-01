@@ -53,7 +53,7 @@ Localized in **English** and **Russian** (`.xcstrings`).
 
 ## Build locally
 
-Requires **Xcode 15+**, **iOS 17+** (device recommended for Vision / HealthKit).
+Requires **Xcode 15+** (audit verified on **Xcode 26.3 / iOS 26.3.x Simulator**), **iOS 17+** deployment (device recommended for Vision / HealthKit).
 
 ```bash
 git clone https://github.com/Borisserz/WorkoutTracker.git
@@ -70,6 +70,8 @@ enum Secrets {
 
 2. In Signing & Capabilities, set App Group `group.com.borisdev.WorkoutTracker` on App, Widget, and Watch targets (or your own group ID).
 3. Select a physical iPhone and run (`Cmd+R`).
+
+Agent / contributor notes: see [`AGENTS.md`](AGENTS.md) and [`docs/INDEX.md`](docs/INDEX.md) (post-redesign audit trail + ADRs).
 
 ---
 
