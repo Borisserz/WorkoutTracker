@@ -1,0 +1,24 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - progress
+---
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "Progress"
+- extendedWaitUntil:
+    visible:
+      id: "wt.progress.root"
+    timeout: 15000
+
+# Fresh install chrome (goals empty is always on-screen).
+- assertVisible: "No Active Goals"
+- assertVisible: "Start your streak today"
+
+- scrollUntilVisible:
+    element: "Analytics Locked"
+    direction: DOWN
+    timeout: 20000
+
+- assertVisible: "Analytics Locked"
+- assertVisible: "Start First Workout"

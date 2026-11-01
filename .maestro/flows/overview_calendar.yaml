@@ -1,0 +1,22 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - overview
+---
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "Overview"
+- extendedWaitUntil:
+    visible:
+      id: "wt.overview.root"
+    timeout: 10000
+
+- tapOn:
+    id: "wt.overview.calendar"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.calendar.root"
+    timeout: 10000
+
+- assertVisible: "Activity calendar"

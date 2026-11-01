@@ -71,4 +71,8 @@ Fallback: `-destination 'generic/platform=iOS'`. Prefer a physical device when S
 ./scripts/maestro_run.sh smoke
 ```
 
-Flows live in `.maestro/flows/` (`smoke`, `workout`, `overview`, `history` tags). Launch uses `-UITestMode` (skips onboarding + Health/Notifications/Speech sheets). Phase 2 covers empty-workout start/finish, Overview CNS honesty, History empty state.
+Flows live in `.maestro/flows/` (`smoke`, `workout`, `overview`, `history`, `settings`, `profile`, `progress`, `aihub` tags). Launch uses `-UITestMode` (skips onboarding + Health/Notifications/Speech sheets + AI consent). Phase 2–3 cover empty-workout start/finish, Add Exercise sheet, Overview CNS/calendar/settings/profile/body analysis, History empty, Progress empty, AI Hub chrome, Hub create/explore.
+
+```bash
+./scripts/maestro_run.sh all    # every flow
+```

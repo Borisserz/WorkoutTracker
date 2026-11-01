@@ -1,0 +1,52 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - aihub
+---
+# AI Hub chrome without mic permission sheets (UITestMode + consent pre-set).
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "AI Hub"
+- extendedWaitUntil:
+    visible:
+      id: "wt.aihub.root"
+    timeout: 10000
+
+- assertVisible: "Load readiness"
+- assertVisible: "Coach dialog"
+
+- tapOn:
+    id: "wt.aihub.settings"
+
+- extendedWaitUntil:
+    visible: "AI settings"
+    timeout: 8000
+- tapOn: "Done"
+- assertVisible:
+    id: "wt.aihub.root"
+
+- scrollUntilVisible:
+    element: "Session of the day"
+    direction: DOWN
+    timeout: 15000
+
+- assertVisible: "Session of the day"
+- assertVisible: "Recovery"
+
+# Open chat via text field (no mic)
+- scrollUntilVisible:
+    element: "Ask your coach about training..."
+    direction: UP
+    timeout: 15000
+
+- tapOn: "Ask your coach about training..."
+- inputText: "Hello"
+- pressKey: Enter
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.chat.root"
+    timeout: 12000
+
+- assertVisible: "AI Coach"
+- tapOn: "Close"

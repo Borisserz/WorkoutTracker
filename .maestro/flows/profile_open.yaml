@@ -1,0 +1,28 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - profile
+---
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "Overview"
+- extendedWaitUntil:
+    visible:
+      id: "wt.overview.root"
+    timeout: 10000
+
+- tapOn:
+    id: "wt.overview.profile"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.profile.root"
+    timeout: 10000
+
+- assertVisible: "Body Metrics"
+- tapOn:
+    id: "wt.profile.close"
+- extendedWaitUntil:
+    visible:
+      id: "wt.overview.root"
+    timeout: 8000

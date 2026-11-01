@@ -63,7 +63,12 @@ xcrun simctl install "${SIM_ID}" "${APP}"
 mkdir -p .maestro/output
 echo "→ maestro test (tag=${TAG})"
 set +e
-maestro test .maestro/flows --include-tags="${TAG}" --output .maestro/output
+if [[ "${TAG}" == "all" ]]; then
+  # Run every flow under .maestro/flows (smoke + workout + …)
+  maestro test .maestro/flows --output .maestro/output
+else
+  maestro test .maestro/flows --include-tags="${TAG}" --output .maestro/output
+fi
 STATUS=$?
 set -e
 if [[ "${STATUS}" -ne 0 ]]; then

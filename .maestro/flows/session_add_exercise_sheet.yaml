@@ -1,0 +1,63 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - workout
+---
+# Open empty session → Add Exercise sheet → Close → finish/delete ghost.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn:
+    id: "wt.hub.startWorkout"
+
+- extendedWaitUntil:
+    visible: "Empty workout"
+    timeout: 8000
+
+- tapOn:
+    id: "wt.discovery.startEmpty"
+
+- extendedWaitUntil:
+    visible: "Start"
+    timeout: 5000
+- tapOn: "Start"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.session.root"
+    timeout: 15000
+
+# Prefer labeled Add Exercise card (avoid bottom Finish CTA).
+- scrollUntilVisible:
+    element:
+      id: "wt.session.addExercise"
+    direction: DOWN
+    timeout: 10000
+
+- tapOn:
+    id: "wt.session.addExercise"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.exercisePicker.root"
+    timeout: 12000
+
+- assertVisible: "Exercises"
+- tapOn:
+    id: "wt.exercisePicker.close"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.session.root"
+    timeout: 8000
+
+- tapOn:
+    id: "wt.session.finish"
+
+- extendedWaitUntil:
+    visible: "Empty Workout"
+    timeout: 8000
+- tapOn: "Delete"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 15000

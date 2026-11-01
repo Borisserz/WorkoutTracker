@@ -1,0 +1,43 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - workout
+---
+- runFlow: ../helpers/launch_uitest.yaml
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.create"
+    timeout: 20000
+
+- tapOn:
+    id: "wt.hub.create"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.presetEditor.root"
+    timeout: 10000
+
+- assertVisible: "New template"
+- tapOn: "Cancel"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 10000
+
+- scrollUntilVisible:
+    element:
+      id: "wt.hub.explore"
+    direction: DOWN
+    timeout: 15000
+
+- tapOn:
+    id: "wt.hub.explore"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.explore.root"
+    timeout: 12000
+
+- assertVisible: "Browse Catalog"

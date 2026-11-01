@@ -1,0 +1,36 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - settings
+---
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "Overview"
+- extendedWaitUntil:
+    visible:
+      id: "wt.overview.root"
+    timeout: 10000
+
+- tapOn:
+    id: "wt.overview.settings"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.settings.root"
+    timeout: 10000
+
+- assertVisible: "Settings"
+
+- scrollUntilVisible:
+    element: "Export All Data"
+    direction: DOWN
+    timeout: 15000
+
+- assertVisible: "Export All Data"
+- assertVisible: "Done"
+
+- tapOn: "Done"
+- extendedWaitUntil:
+    visible:
+      id: "wt.overview.root"
+    timeout: 8000
