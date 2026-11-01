@@ -1,0 +1,41 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - workout
+  - deep
+---
+# Open Smart / AI builder from discovery, then dismiss without starting.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn:
+    id: "wt.hub.startWorkout"
+- extendedWaitUntil:
+    visible: "Workout format"
+    timeout: 8000
+- assertVisible: "Empty workout"
+
+# Card title is short "AI Builder"; HUD then shows "Smart workout".
+- tapOn: "AI Builder"
+- extendedWaitUntil:
+    visible: "Smart workout"
+    timeout: 5000
+
+- tapOn:
+    id: "wt.discovery.start"
+
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 5000
+- tapOn: "Continue"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.smartBuilder.root"
+    timeout: 12000
+- assertVisible: "Don't Want to Think?"
+- tapOn:
+    id: "wt.smartBuilder.close"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 12000

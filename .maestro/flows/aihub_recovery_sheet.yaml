@@ -1,0 +1,39 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - aihub
+  - deep
+---
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "AI Hub"
+- extendedWaitUntil:
+    visible:
+      id: "wt.aihub.root"
+    timeout: 10000
+
+- scrollUntilVisible:
+    element: "Recovery"
+    direction: DOWN
+    timeout: 15000
+
+- tapOn: "Recovery"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.recovery.root"
+    timeout: 10000
+
+- assertVisible: "CNS fatigue score"
+- assertVisible: "Not measured"
+- assertVisible: "Biometrics"
+
+# Sheet has no Done button — dismiss by swipe
+- swipe:
+    direction: DOWN
+    duration: 500
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.aihub.root"
+    timeout: 10000

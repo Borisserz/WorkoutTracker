@@ -1,0 +1,104 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - workout
+  - deep
+---
+# Deep path: empty → Ab Roller → add (1 set in UITest) → complete → finish → XP → History.
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn:
+    id: "wt.hub.startWorkout"
+- extendedWaitUntil:
+    visible: "Empty workout"
+    timeout: 8000
+- tapOn:
+    id: "wt.discovery.startEmpty"
+- extendedWaitUntil:
+    visible: "Start"
+    timeout: 5000
+- tapOn: "Start"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.session.root"
+    timeout: 15000
+
+- tapOn:
+    id: "wt.session.addExercise"
+- extendedWaitUntil:
+    visible:
+      id: "wt.exercisePicker.root"
+    timeout: 12000
+
+- tapOn: "Search for exercises..."
+- inputText: "Ab Roller"
+# Dismiss keyboard without hideKeyboard (custom input fails); tap a filter chip.
+- tapOn: "All"
+- extendedWaitUntil:
+    visible: "Ab Roller"
+    timeout: 10000
+# index 0 is often the search field value — prefer row below filters.
+- tapOn:
+    text: "Ab Roller"
+    below: "Shoulders"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.configure.root"
+    timeout: 12000
+- assertVisible: "Ab Roller"
+- tapOn:
+    id: "wt.configure.add"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.session.root"
+    timeout: 12000
+
+- extendedWaitUntil:
+    visible: "Complete set 1 (40 kg × 5)"
+    timeout: 12000
+- tapOn: "Complete set 1 (40 kg × 5)"
+
+- runFlow:
+    when:
+      visible: ".*Rest — Skip.*"
+    commands:
+      - tapOn: ".*Rest — Skip.*"
+- runFlow:
+    when:
+      visible: "01:30 Rest"
+    commands:
+      - tapOn: "01:30 Rest"
+
+- extendedWaitUntil:
+    visible: "All sets done: Finish"
+    timeout: 15000
+- tapOn: "All sets done: Finish"
+
+# UITest shortens undo snackbar — XP popup may appear immediately.
+- extendedWaitUntil:
+    visible: "WORKOUT COMPLETE"
+    timeout: 20000
+- assertVisible: "Total XP Earned"
+- tapOn: "Continue"
+
+- runFlow:
+    when:
+      visible: "Continue"
+    commands:
+      - tapOn: "Continue"
+
+- tapOn:
+    id: "BackButton"
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 15000
+
+- tapOn: "History"
+- extendedWaitUntil:
+    visible:
+      id: "wt.history.root"
+    timeout: 10000
+- assertVisible: "Ab Roller"

@@ -1,0 +1,36 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - smoke
+  - history
+  - deep
+---
+# Filter chrome on empty History (Favorites → no-results state).
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn: "History"
+- extendedWaitUntil:
+    visible:
+      id: "wt.history.root"
+    timeout: 10000
+
+- assertVisible:
+    id: "wt.history.filters"
+
+- tapOn:
+    id: "wt.history.filter.favorites"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.history.noResults"
+    timeout: 8000
+
+- assertVisible: "No results"
+- assertVisible: "Clear filters"
+
+- tapOn:
+    id: "wt.history.filter.all"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.history.empty"
+    timeout: 8000
