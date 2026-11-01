@@ -16,11 +16,15 @@ struct ChatMessageView: View {
 
                 ZStack {
                     Circle()
-                        .fill(themeManager.current.premiumGradient) 
+                        .fill(PastelTheme.cardSurfaceSubtle) 
                         .frame(width: 32, height: 32)
+                        .overlay(
+                            Circle()
+                                .stroke(PastelTheme.pastelLavender.opacity(0.35), lineWidth: 1)
+                        )
                     Image(systemName: "brain.head.profile")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(PastelTheme.pastelLavender)
                 }
             }
 
@@ -135,11 +139,15 @@ struct AILoadingIndicator: View {
         HStack(alignment: .bottom, spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(themeManager.current.premiumGradient) 
+                    .fill(PastelTheme.cardSurfaceSubtle) 
                     .frame(width: 32, height: 32)
+                    .overlay(
+                        Circle()
+                            .stroke(PastelTheme.pastelLavender.opacity(0.35), lineWidth: 1)
+                    )
                 Image(systemName: "brain.head.profile")
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(PastelTheme.pastelLavender)
             }
 
             HStack(spacing: 4) {
@@ -226,19 +234,21 @@ struct ProposedWorkoutCardView: View {
             .padding()
 
             Button {
-                HapticManager.shared.impact(.medium)
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.impactOccurred()
                 onAccept()
             } label: {
-                HStack {
+                HStack(spacing: 8) {
                     Image(systemName: "play.fill")
-                    Text(LocalizedStringKey("Accept & Start Workout"))
-                        .bold()
+                        .font(.system(size: 13, weight: .bold))
+                    Text("Принять и начать тренировку")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
                 }
                 .frame(maxWidth: .infinity)
-                .padding()
-                .background(themeManager.current.primaryAccent) 
-                .foregroundColor(.white)
-                .cornerRadius(12)
+                .frame(height: PastelTheme.ButtonMetrics.splitHeight)
+                .background(PastelTheme.pastelOat) 
+                .foregroundColor(PastelTheme.textOnOat)
+                .cornerRadius(PastelTheme.ButtonMetrics.splitRadius)
             }
             .padding(.horizontal)
             .padding(.bottom)

@@ -78,12 +78,14 @@ struct AIWeeklyReviewSheet: View {
             Spacer()
             ZStack {
                 Circle()
-                    .fill(themeManager.current.primaryAccent.opacity(0.1))
+                    .fill(PastelTheme.cardSurface)
                     .frame(width: 120, height: 120)
+                    .overlay(
+                        Circle().stroke(PastelTheme.pastelLavender.opacity(0.35), lineWidth: 1.5)
+                    )
                 Image(systemName: "brain.head.profile")
-                    .font(.system(size: 60))
-                    .foregroundStyle(themeManager.current.premiumGradient)
-                    .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 20, y: 10)
+                    .font(.system(size: 54))
+                    .foregroundStyle(PastelTheme.pastelLavender)
             }
 
             VStack(spacing: 8) {
@@ -162,7 +164,8 @@ struct AIWeeklyReviewSheet: View {
     }
 
     private func generateReview() {
-        HapticManager.shared.impact(.medium)
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
         withAnimation(.easeInOut(duration: 0.3)) { isAnalyzing = true }
 
         Task {
@@ -172,7 +175,8 @@ struct AIWeeklyReviewSheet: View {
             do {
                 let dto = try await aiLogicService.generatePerformanceReview(statsContext: context, language: lang)
                 await MainActor.run {
-                    HapticManager.shared.notification(.success)
+                    let successGen = UINotificationFeedbackGenerator()
+                    successGen.notificationOccurred(.success)
                     withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                         self.reviewData = dto
                         self.isAnalyzing = false
@@ -181,7 +185,7 @@ struct AIWeeklyReviewSheet: View {
             } catch {
                 await MainActor.run {
                     withAnimation {
-                        self.errorText = error.userFacingAIMessage
+                        self.errorText = error.localizedDescription
                         self.isAnalyzing = false
                     }
                 }
@@ -282,15 +286,15 @@ struct ReviewDashboardView: View {
         withAnimation(.spring(response: 0.8, dampingFraction: 0.7)) { showGauge = true }
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            HapticManager.shared.impact(.light)
+            let gen = UIImpactFeedbackGenerator(style: .light); gen.impactOccurred()
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { showTitle = true }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            HapticManager.shared.impact(.rigid)
+            let gen = UIImpactFeedbackGenerator(style: .rigid); gen.impactOccurred()
             withAnimation(.spring(response: 0.6, dampingFraction: 0.75)) { showTopRow = true }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            HapticManager.shared.impact(.medium)
+            let gen = UIImpactFeedbackGenerator(style: .medium); gen.impactOccurred()
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { showBottomRow = true }
         }
     }
@@ -399,7 +403,6 @@ struct BentoInsightCard: View {
 
 struct MoodBackgroundView: View {
     let mood: String
-    @State private var animateBg = false
     @Environment(\.colorScheme) private var colorScheme 
 
     private var moodColors: [Color] {
@@ -413,26 +416,18 @@ struct MoodBackgroundView: View {
 
     var body: some View {
         ZStack {
-
-            (colorScheme == .dark ? Color(hex: "0A0A0A") : Color(UIColor.secondarySystemBackground))
+            (colorScheme == .dark ? PastelTheme.canvas : Color(UIColor.secondarySystemBackground))
                 .ignoresSafeArea()
 
-            Circle()
-                .fill(moodColors[0].opacity(colorScheme == .dark ? 0.25 : 0.15)) 
-                .frame(width: 400, height: 400)
-                .blur(radius: 80)
-                .offset(x: animateBg ? 100 : -100, y: animateBg ? -150 : -250)
-
-            Circle()
-                .fill(moodColors[1].opacity(colorScheme == .dark ? 0.25 : 0.15))
-                .frame(width: 350, height: 350)
-                .blur(radius: 80)
-                .offset(x: animateBg ? -150 : 150, y: animateBg ? 200 : 100)
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) {
-                animateBg = true
-            }
+            LinearGradient(
+                colors: [
+                    moodColors[0].opacity(colorScheme == .dark ? 0.08 : 0.05),
+                    Color.clear
+                ],
+                startPoint: .top,
+                endPoint: .center
+            )
+            .ignoresSafeArea()
         }
     }
 }
