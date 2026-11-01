@@ -11,6 +11,9 @@ class HapticManager {
     func selection() {
         UISelectionFeedbackGenerator().selectionChanged()
     }
+    func notification(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        UINotificationFeedbackGenerator().notificationOccurred(type)
+    }
 }
 
 struct GlassCardModifier: ViewModifier {

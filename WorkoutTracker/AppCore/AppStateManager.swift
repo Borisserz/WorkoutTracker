@@ -20,6 +20,8 @@ final class AppStateManager {
     var showProfileSheet: Bool = false
     var showAchievementsSheet: Bool = false
     var showCalendarSheet: Bool = false
+    var showSmartBuilderSheet: Bool = false
+    var showAISettingsSheet: Bool = false
 
     func showError(title: String, message: String) {
         self.currentError = AppError(title: title, message: message)
