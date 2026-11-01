@@ -169,7 +169,7 @@ struct AICoachView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 10)
 
-                        // 1. Block: Readiness
+                        // 1. Block: Readiness (honest CNS)
                         SectionHeaderView(
                             title: String(localized: "Load readiness"),
                             icon: "bolt.heart.fill",
@@ -185,7 +185,7 @@ struct AICoachView: View {
                         )
                         .padding(.horizontal, 16)
 
-                        // 2. Block: Live Coach Dialog (replaces static recommendation)
+                        // 2. Block: Live Coach Dialog
                         SectionHeaderView(
                             title: String(localized: "Coach dialog"),
                             icon: "bubble.left.and.bubble.right.fill",
@@ -399,7 +399,13 @@ struct AICoachView: View {
             .sheet(isPresented: $showRestSheet) { RestAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: $showProgressSheet) { ProgressAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: $showWorkoutSheet) { WorkoutConfigSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
-            .sheet(isPresented: $showAISettings) { AISettingsSheet().presentationDetents([.medium]).presentationDragIndicator(.visible) }
+            .sheet(isPresented: Binding(
+                get: { showAISettings || di.appState.showAISettingsSheet },
+                set: { newVal in
+                    showAISettings = newVal
+                    di.appState.showAISettingsSheet = newVal
+                }
+            )) { AISettingsSheet().presentationDetents([.medium, .large]).presentationDragIndicator(.visible) }
             .sheet(isPresented: $showConsentSheet) {
                 AIConsentSheet(onConsent: {
                     let action = pendingAIAction
@@ -424,7 +430,13 @@ struct AICoachView: View {
                     // Freestyle mode: just dismiss
                 }
             }
-            .sheet(isPresented: $showSmartBuilder) {
+            .sheet(isPresented: Binding(
+                get: { showSmartBuilder || di.appState.showSmartBuilderSheet },
+                set: { newVal in
+                    showSmartBuilder = newVal
+                    di.appState.showSmartBuilderSheet = newVal
+                }
+            )) {
                 SmartGeneratorEntryView(onWorkoutReady: { exerciseDTOs in
                     Task { @MainActor in
                         let generatedDTO = GeneratedWorkoutDTO(
@@ -888,50 +900,166 @@ struct WaveBar: View {
 
 struct AISettingsSheet: View {
     @Environment(\.dismiss) var dismiss
-    @Environment(ThemeManager.self) private var themeManager
     @Environment(AICoachViewModel.self) private var viewModel
-    @Environment(\.colorScheme) private var colorScheme
 
     @AppStorage(Constants.UserDefaultsKeys.aiCoachTone.rawValue) private var aiTone = "motivational"
-    
     @State private var availablePersonas: [AIPersona] = []
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text("Coach style"), footer: Text("Affects chat tone, tips, and personal notifications.")) {
-                    if availablePersonas.isEmpty {
-                        ProgressView("Loading profiles...")
-                    } else {
-                        Picker("Style", selection: $aiTone) {
-                            ForEach(availablePersonas) { persona in
-                                Text(persona.displayName).tag(persona.id)
+            ZStack {
+                PastelTheme.canvas.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 20) {
+                        // Header Banner
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(PastelTheme.cardSurfaceSubtle)
+                                    .frame(width: 44, height: 44)
+                                    .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                                Image(systemName: "slider.horizontal.3")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundStyle(PastelTheme.pastelLavender)
+                            }
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("Coach character & style")
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                                    .foregroundStyle(PastelTheme.textPrimary)
+
+                                Text("Affects chat tone, tips, and personal notifications.")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundStyle(PastelTheme.textSecondary)
+                                    .lineLimit(2)
                             }
                         }
-                        .pickerStyle(.menu)
-                        .tint(PastelTheme.pastelOat)
-                    }
-                }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(PastelTheme.cardSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                        )
 
-                Section {
-                    Button(role: .destructive) {
-                        viewModel.clearChat()
-                        dismiss()
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text("Clear chat history")
-                            Spacer()
+                        // Personas List
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Choose a persona")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.textSecondary)
+                                .padding(.horizontal, 4)
+
+                            if availablePersonas.isEmpty {
+                                HStack {
+                                    Spacer()
+                                    ProgressView("Loading profiles...")
+                                        .tint(PastelTheme.pastelOat)
+                                        .foregroundStyle(PastelTheme.textSecondary)
+                                    Spacer()
+                                }
+                                .padding(.vertical, 24)
+                            } else {
+                                ForEach(availablePersonas) { persona in
+                                    let isSelected = (aiTone == persona.id)
+                                    Button {
+                                        HapticManager.shared.selection()
+                                        aiTone = persona.id
+                                    } label: {
+                                        HStack(spacing: 14) {
+                                            ZStack {
+                                                Circle()
+                                                    .fill(isSelected ? PastelTheme.pastelLavender.opacity(0.18) : PastelTheme.cardSurfaceSubtle)
+                                                    .frame(width: 38, height: 38)
+                                                    .overlay(
+                                                        Circle().stroke(isSelected ? PastelTheme.pastelLavender : PastelTheme.cardBorder, lineWidth: 1)
+                                                    )
+
+                                                Image(systemName: isSelected ? "checkmark" : "brain.head.profile")
+                                                    .font(.system(size: 14, weight: .bold))
+                                                    .foregroundStyle(isSelected ? PastelTheme.pastelLavender : PastelTheme.textTertiary)
+                                            }
+
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(persona.displayName)
+                                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                                    .foregroundStyle(isSelected ? PastelTheme.textPrimary : PastelTheme.textSecondary)
+
+                                                Text(isSelected ? "Active coaching style" : "Tap to switch")
+                                                    .font(.system(size: 11, weight: .medium))
+                                                    .foregroundStyle(PastelTheme.textTertiary)
+                                            }
+
+                                            Spacer()
+
+                                            if isSelected {
+                                                Image(systemName: "checkmark.circle.fill")
+                                                    .font(.system(size: 18))
+                                                    .foregroundStyle(PastelTheme.pastelLavender)
+                                            }
+                                        }
+                                        .padding(14)
+                                        .background(isSelected ? PastelTheme.cardSurface : PastelTheme.cardSurfaceSubtle)
+                                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                                .stroke(isSelected ? PastelTheme.cardBorderFocused : PastelTheme.cardBorder, lineWidth: 1)
+                                        )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+
+                        // Danger Zone: Clear History
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Chat memory")
+                                .font(.system(size: 13, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.textSecondary)
+                                .padding(.horizontal, 4)
+
+                            Button {
+                                HapticManager.shared.notification(.warning)
+                                viewModel.clearChat()
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "trash")
+                                        .font(.system(size: 14, weight: .semibold))
+                                        .foregroundStyle(PastelTheme.pastelPeach)
+
+                                    Text("Clear chat history")
+                                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(PastelTheme.pastelPeach)
+
+                                    Spacer()
+                                }
+                                .padding(14)
+                                .frame(height: 48)
+                                .background(PastelTheme.pastelPeach.opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(PastelTheme.pastelPeach.opacity(0.3), lineWidth: 1)
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
+                    .padding(16)
+                    .padding(.bottom, 24)
                 }
             }
             .navigationTitle("AI settings")
             .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("wt.aihub.settingsSheet")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
-                        .foregroundColor(PastelTheme.pastelOat)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelOat)
                 }
             }
             .task {

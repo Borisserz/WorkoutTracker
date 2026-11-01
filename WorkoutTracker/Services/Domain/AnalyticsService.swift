@@ -821,6 +821,9 @@ actor AnalyticsService {
                 }
             }
 
+            // Honesty: with no fatigue history, recovery is "not measured" — do not invent 100% for every slug.
+            guard !rawFatigueMap.isEmpty else { return [] }
+
             let allSlugs = ["chest", "obliques", "abs", "biceps", "triceps", "neck", "trapezius", "deltoids", "adductors", "quadriceps", "knees", "tibialis", "calves", "forearm", "hands", "ankles", "feet", "head", "hair", "upper-back", "lower-back", "gluteal", "hamstring"]
             var displayFatigueMap: [String: Double] = [:]
             for slug in allSlugs { displayFatigueMap[slug] = rawFatigueMap[slug] ?? 0.0 }

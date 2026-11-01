@@ -15319,8 +15319,15 @@
             "state": "translated",
             "value": "Календарь"
           }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calendar"
+          }
         }
-      }
+      },
+      "extractionState": "manual"
     },
     "Calf Raises": {
       "extractionState": "manual",
@@ -26535,7 +26542,13 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Рекомендуемые"
+            "value": "Избранное"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Featured"
           }
         }
       }
@@ -69813,7 +69826,8 @@
             "value": "Активность недели"
           }
         }
-      }
+      },
+      "extractionState": "manual"
     },
     "Your month\nin review": {
       "localizations": {
@@ -70274,10 +70288,11 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Легендарные Программы"
+            "value": "Легендарные программы"
           }
         }
-      }
+      },
+      "extractionState": "manual"
     },
     "Benchmark": {
       "localizations": {
@@ -72213,7 +72228,8 @@
             "value": "Сессия дня"
           }
         }
-      }
+      },
+      "extractionState": "manual"
     },
     "Built for muscle readiness": {
       "localizations": {
@@ -72484,6 +72500,312 @@
           }
         }
       }
+    },
+    "Golden era, Arnold & HIT": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Golden era, Arnold & HIT"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Золотая эра, Арнольд и HIT"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Build your session": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build your session"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сборка тренировки"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Pick a ready mode for your recovery, or build one yourself": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick a ready mode for your recovery, or build one yourself"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выберите готовый режим под восстановление или соберите вручную"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Muscles recovered": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muscles recovered"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Мышцы восстановились"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Still recovering": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still recovering"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ещё восстанавливаются"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Recovery not measured": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recovery not measured"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Восстановление не измерено"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Fresh groups: %@. A matching preset is highlighted below.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fresh groups: %@. A matching preset is highlighted below."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Свежие группы: %@. Подходящий режим выделен ниже."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "No muscle groups are fully recovered yet. Pick any mode or build custom.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No muscle groups are fully recovered yet. Pick any mode or build custom."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пока нет полностью восстановленных групп. Выберите режим или соберите вручную."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Train first or sync Health data to see recovery suggestions.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Train first or sync Health data to see recovery suggestions."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сначала потренируйтесь или синхронизируйте Health, чтобы видеть подсказки."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Quick modes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quick modes"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Быстрые режимы"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Suggested": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Совет"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Custom builder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom builder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Индивидуальная сборка"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Building your program...": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Building your program..."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Собираем программу..."
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Coach character & style": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coach character & style"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Характер и стиль тренера"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Choose a persona": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a persona"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Выбор персоны"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Active coaching style": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active coaching style"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Активный стиль коучинга"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Tap to switch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to switch"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нажмите для переключения"
+          }
+        }
+      },
+      "extractionState": "manual"
+    },
+    "Chat memory": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chat memory"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Память диалогов"
+          }
+        }
+      },
+      "extractionState": "manual"
     }
   },
   "version": "1.1"

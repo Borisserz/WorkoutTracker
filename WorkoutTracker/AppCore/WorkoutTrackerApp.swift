@@ -265,12 +265,25 @@ struct WorkoutTrackerApp: App {
                let components = URLComponents(url: url, resolvingAgainstBaseURL: true),
                let indexStr = components.queryItems?.first(where: { $0.name == "index" })?.value,
                let index = Int(indexStr) {
+                di.appState.showCalendarSheet = false
+                di.appState.showSmartBuilderSheet = false
+                di.appState.showAISettingsSheet = false
                 di.appState.selectedTab = index
                 return
             }
             if url.host == "discovery" {
                 di.appState.selectedTab = 2
                 di.appState.showWorkoutModeDiscovery = true
+                return
+            }
+            if url.host == "smartbuilder" {
+                di.appState.selectedTab = 3
+                di.appState.showSmartBuilderSheet = true
+                return
+            }
+            if url.host == "aisettings" {
+                di.appState.selectedTab = 3
+                di.appState.showAISettingsSheet = true
                 return
             }
             if url.host == "profile" {

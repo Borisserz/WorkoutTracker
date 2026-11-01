@@ -31,7 +31,8 @@ tags:
     visible:
       id: "wt.smartBuilder.root"
     timeout: 12000
-- assertVisible: "Don't Want to Think?"
+- assertVisible: "Session of the day"
+- assertVisible: "Build your session"
 - tapOn:
     id: "wt.smartBuilder.close"
 

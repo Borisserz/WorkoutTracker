@@ -30,7 +30,8 @@ struct HistoryView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
 
-    @Query(sort: \Workout.date, order: .reverse) private var allWorkouts: [Workout]
+    /// Cap in-memory history for SwiftData `@Query` — full-library scans blow RAM after years of logging.
+    @Query private var allWorkouts: [Workout]
     @Query(sort: \WorkoutPreset.name) private var allPresets: [WorkoutPreset]
 
     @State private var searchText = ""
@@ -40,6 +41,12 @@ struct HistoryView: View {
     @State private var navigateToActiveWorkout: Workout? = nil
     @State private var workoutPendingDelete: Workout? = nil
     @State private var showDeleteConfirm = false
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
 
     private var hasActiveWorkout: Bool {
         allWorkouts.contains { $0.endTime == nil }

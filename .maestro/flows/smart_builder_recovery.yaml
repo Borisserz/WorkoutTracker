@@ -1,0 +1,42 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - workout
+  - deep
+---
+# Smart Builder opens with honest recovery copy (no invented muscles).
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn:
+    id: "wt.hub.startWorkout"
+- extendedWaitUntil:
+    visible: "Workout format"
+    timeout: 8000
+- tapOn: "AI Builder"
+- extendedWaitUntil:
+    visible: "Smart workout"
+    timeout: 5000
+- tapOn:
+    id: "wt.discovery.start"
+- extendedWaitUntil:
+    visible: "Continue"
+    timeout: 5000
+- tapOn: "Continue"
+
+- extendedWaitUntil:
+    visible:
+      id: "wt.smartBuilder.root"
+    timeout: 12000
+- assertVisible:
+    id: "wt.smartBuilder.recovery"
+# Empty install → not measured; never invents ready muscle copy.
+- assertVisible: "Recovery not measured"
+- assertVisible: "Custom builder"
+- assertNotVisible: "Грудь, руки и плечи"
+- assertNotVisible: "Chest, arms and shoulders"
+
+- tapOn:
+    id: "wt.smartBuilder.close"
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 12000

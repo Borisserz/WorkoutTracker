@@ -333,7 +333,7 @@ struct WorkoutHubView: View {
 
     private var topHeaderRow: some View {
         HStack(alignment: .center) {
-            // Streak Button (Left - Tactile Amber Flame)
+            // Streak Button (Left) — calendar opens from weekly bar
             Button {
                 HapticManager.shared.impact(.medium)
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
@@ -392,11 +392,11 @@ struct WorkoutHubView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 2. Title Section with Natural Russian Date
+    // MARK: - 2. Title Section with Locale-Aware Date
     private var currentDateEyebrow: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = "EEEE, d MMMM"
+        formatter.locale = .autoupdatingCurrent
+        formatter.setLocalizedDateFormatFromTemplate("EEEE, d MMMM")
         return formatter.string(from: Date()).capitalized
     }
 
@@ -418,7 +418,7 @@ struct WorkoutHubView: View {
         .accessibilityIdentifier("wt.hub.root")
     }
 
-    // MARK: - 2.5 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
+    // MARK: - 2.5 7-Day Consistency Habit Bar (real data + calendar CTA)
     private var weeklyConsistencyDays: [(name: String, isDone: Bool, isToday: Bool, isFuture: Bool)] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -426,8 +426,7 @@ struct WorkoutHubView: View {
         let daysFromMonday = (weekday + 5) % 7
         guard let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today) else { return [] }
 
-        let symbols = calendar.veryShortWeekdaySymbols // locale-aware
-        // Reorder so Monday is first
+        let symbols = calendar.veryShortWeekdaySymbols
         let mondayFirst: [String] = {
             if symbols.count == 7 {
                 return Array(symbols[1...]) + [symbols[0]]
@@ -435,8 +434,9 @@ struct WorkoutHubView: View {
             return ["M", "T", "W", "T", "F", "S", "S"]
         }()
 
+        // Cap scan window — finishedWorkouts @Query can be large.
         var trainedDays = Set<Date>()
-        for workout in finishedWorkouts.prefix(60) {
+        for workout in finishedWorkouts.prefix(90) {
             trainedDays.insert(calendar.startOfDay(for: workout.date))
         }
 
@@ -455,59 +455,89 @@ struct WorkoutHubView: View {
     }
 
     private var weeklyConsistencyBar: some View {
-        HStack(spacing: 0) {
-            ForEach(Array(weeklyConsistencyDays.enumerated()), id: \.offset) { _, day in
-                VStack(spacing: 6) {
-                    Text(day.name)
-                        .font(.system(size: 10, weight: day.isToday ? .heavy : .semibold, design: .rounded))
-                        .foregroundStyle(day.isToday ? PastelTheme.pastelAmber : PastelTheme.textTertiary)
-
-                    ZStack {
-                        if day.isDone {
-                            Circle()
-                                .fill(PastelTheme.pastelSage.opacity(0.18))
-                                .frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(PastelTheme.pastelSage, lineWidth: 1.5))
-                            Image(systemName: "checkmark")
-                                .font(.system(size: 11, weight: .black))
-                                .foregroundStyle(PastelTheme.pastelSage)
-                        } else if day.isToday {
-                            Circle()
-                                .fill(PastelTheme.pastelAmber.opacity(0.16))
-                                .frame(width: 32, height: 32)
-                                .overlay(Circle().stroke(PastelTheme.pastelAmber, lineWidth: 2))
-                            Image(systemName: "flame.fill")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundStyle(PastelTheme.pastelAmber)
-                        } else if day.isFuture {
-                            Circle()
-                                .fill(PastelTheme.cardSurfaceSubtle.opacity(0.4))
-                                .frame(width: 28, height: 28)
-                                .overlay(Circle().stroke(PastelTheme.cardBorder.opacity(0.5), lineWidth: 1))
-                        } else {
-                            Circle()
-                                .fill(PastelTheme.cardSurfaceSubtle)
-                                .frame(width: 28, height: 28)
-                                .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
-                            Text("—")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundStyle(PastelTheme.textTertiary)
-                        }
+        Button {
+            HapticManager.shared.impact(.medium)
+            di.appState.showCalendarSheet = true
+        } label: {
+            VStack(spacing: 8) {
+                HStack {
+                    HStack(spacing: 5) {
+                        Image(systemName: "calendar")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(PastelTheme.pastelSage)
+                        Text("Weekly activity")
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.textSecondary)
                     }
-
-                    Text(day.isToday ? String(localized: "Today") : " ")
-                        .font(.system(size: 8, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelAmber)
+                    Spacer()
+                    HStack(spacing: 3) {
+                        Text("Calendar")
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelOat)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(PastelTheme.textTertiary)
+                    }
                 }
-                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 4)
+
+                HStack(spacing: 0) {
+                    ForEach(Array(weeklyConsistencyDays.enumerated()), id: \.offset) { _, day in
+                        VStack(spacing: 6) {
+                            Text(day.name)
+                                .font(.system(size: 10, weight: day.isToday ? .heavy : .semibold, design: .rounded))
+                                .foregroundStyle(day.isToday ? PastelTheme.pastelAmber : PastelTheme.textTertiary)
+
+                            ZStack {
+                                if day.isDone {
+                                    Circle()
+                                        .fill(PastelTheme.pastelSage.opacity(0.18))
+                                        .frame(width: 30, height: 30)
+                                        .overlay(Circle().stroke(PastelTheme.pastelSage, lineWidth: 1.5))
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 11, weight: .black))
+                                        .foregroundStyle(PastelTheme.pastelSage)
+                                } else if day.isToday {
+                                    Circle()
+                                        .fill(PastelTheme.pastelAmber.opacity(0.16))
+                                        .frame(width: 32, height: 32)
+                                        .overlay(Circle().stroke(PastelTheme.pastelAmber, lineWidth: 2))
+                                    Image(systemName: "flame.fill")
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundStyle(PastelTheme.pastelAmber)
+                                } else if day.isFuture {
+                                    Circle()
+                                        .fill(PastelTheme.cardSurfaceSubtle.opacity(0.4))
+                                        .frame(width: 28, height: 28)
+                                        .overlay(Circle().stroke(PastelTheme.cardBorder.opacity(0.5), lineWidth: 1))
+                                } else {
+                                    Circle()
+                                        .fill(PastelTheme.cardSurfaceSubtle)
+                                        .frame(width: 28, height: 28)
+                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                                    Text("—")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(PastelTheme.textTertiary)
+                                }
+                            }
+
+                            Text(day.isToday ? String(localized: "Today") : " ")
+                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.pastelAmber)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                }
             }
+            .padding(.vertical, 10)
+            .padding(.horizontal, 10)
+            .background(PastelTheme.cardSurface)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
+            .padding(.horizontal, 16)
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 8)
-        .background(PastelTheme.cardSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
-        .padding(.horizontal, 16)
+        .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 1.5))
+        .accessibilityIdentifier("wt.hub.weeklyActivity")
     }
 
     // MARK: - 3. Hero Action Button: Start Workout (Hearthstone 3-Card Discovery Trigger)
@@ -1289,44 +1319,48 @@ struct WorkoutHubView: View {
         "\(count) exercises"
     }
 
-    // MARK: - 6. Legendary Programs Discovery Row (Apple HIG Luxury Athletic)
+    // MARK: - 6. Legendary Programs Discovery Row (warm Pastel, no ALL-CAPS chrome)
     private var legendarySection: some View {
         Button {
-            HapticManager.shared.impact(.light)
+            HapticManager.shared.impact(.medium)
             navigateToExplore = true
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    Circle()
+                        .fill(PastelTheme.pastelAmber.opacity(0.16))
+                        .frame(width: 48, height: 48)
+
+                    Circle()
                         .fill(PastelTheme.cardSurfaceSubtle)
                         .frame(width: 42, height: 42)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            Circle()
+                                .stroke(PastelTheme.pastelAmber.opacity(0.45), lineWidth: 1.5)
                         )
 
                     Image(systemName: "flame.fill")
-                        .font(.system(size: 20))
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelAmber)
                 }
 
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("Legendary programs")
-                        .font(.system(size: 15.5, weight: .bold, design: .rounded))
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .lineLimit(1)
                         .minimumScaleFactor(0.85)
 
                     HStack(spacing: 6) {
-                        Text("Benchmark")
-                            .font(.system(size: 9, weight: .bold))
+                        Text("Featured")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelAmber)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
                             .background(PastelTheme.pastelAmber.opacity(0.14))
                             .clipShape(Capsule())
 
-                        Text("Golden era & HIT")
+                        Text("Golden era, Arnold & HIT")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
@@ -1336,25 +1370,39 @@ struct WorkoutHubView: View {
 
                 Spacer(minLength: 8)
 
-                // Refined 32pt Circular Glass Chevron
                 ZStack {
                     Circle()
                         .fill(PastelTheme.cardSurfaceSubtle)
                         .frame(width: 32, height: 32)
-                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                        .overlay(
+                            Circle()
+                                .stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
+                        )
 
                     Image(systemName: "chevron.right")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(PastelTheme.pastelOat)
+                        .foregroundStyle(PastelTheme.pastelAmber)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(PastelTheme.cardSurface)
+            .background(
+                ZStack {
+                    PastelTheme.cardSurface
+                    LinearGradient(
+                        colors: [
+                            PastelTheme.pastelAmber.opacity(0.08),
+                            Color.clear
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                }
+            )
             .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                    .stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
             )
             .padding(.horizontal, 16)
         }
@@ -1375,12 +1423,9 @@ struct WorkoutHubView: View {
             }
 
             let title = LocalizationHelper.shared.formatWorkoutDateName()
-            if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
-                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                descriptor.fetchLimit = 1
-                if let newWorkout = try? context.fetch(descriptor).first {
-                    self.navigateToActiveWorkout = newWorkout
-                }
+            if let id = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false),
+               let newWorkout = context.model(for: id) as? Workout {
+                self.navigateToActiveWorkout = newWorkout
             }
             isProcessing = false
         }
@@ -1409,15 +1454,13 @@ struct WorkoutHubView: View {
 
             switch item {
             case .preset(let preset):
-                if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
-                    routeToLatestWorkout()
+                if let id = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
+                    routeToWorkout(id: id)
                 }
             case .favorite(let workout):
-                if let _ = await workoutService.createWorkout(title: workout.title, presetID: nil, isAIGenerated: false) {
-                    var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                    descriptor.fetchLimit = 1
+                if let id = await workoutService.createWorkout(title: workout.title, presetID: nil, isAIGenerated: false) {
                     do {
-                        guard let newWorkout = try context.fetch(descriptor).first else {
+                        guard let newWorkout = context.model(for: id) as? Workout else {
                             di.appState.showError(
                                 title: String(localized: "Replay failed"),
                                 message: String(localized: "Could not open the new workout session.")
@@ -1461,10 +1504,16 @@ struct WorkoutHubView: View {
                 return
             }
 
-            if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
-                routeToLatestWorkout()
+            if let id = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
+                routeToWorkout(id: id)
             }
             isProcessing = false
+        }
+    }
+
+    private func routeToWorkout(id: PersistentIdentifier) {
+        if let newWorkout = context.model(for: id) as? Workout {
+            self.navigateToActiveWorkout = newWorkout
         }
     }
 

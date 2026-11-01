@@ -293,8 +293,6 @@ struct StatsContentView: View {
 
                             AdvancedStatsSectionView(viewModel: viewModel, userGender: userGender)
 
-                            ComparisonSectionView(viewModel: viewModel, unitsManager: unitsManager)
-
                             AllTimeResultsView(bestStats: dashboardViewModel.bestMonthStats, unitsManager: unitsManager)
                         }
                         .blur(radius: dashboardViewModel.totalWorkouts == 0 ? 15 : 0)

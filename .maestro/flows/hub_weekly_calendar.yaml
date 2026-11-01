@@ -1,0 +1,30 @@
+appId: com.borisdev.WorkoutTracker
+tags:
+  - overview
+  - deep
+---
+# Hub weekly activity opens calendar sheet (colleague calendar CTA + real week data).
+- runFlow: ../helpers/launch_uitest.yaml
+
+- tapOn:
+    id: "wt.tab.workout"
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 8000
+
+- tapOn:
+    id: "wt.hub.weeklyActivity"
+- extendedWaitUntil:
+    visible:
+      id: "wt.calendar.root"
+    timeout: 8000
+- assertVisible:
+    id: "wt.calendar.root"
+
+- tapOn:
+    id: "wt.calendar.close"
+- extendedWaitUntil:
+    visible:
+      id: "wt.hub.root"
+    timeout: 8000

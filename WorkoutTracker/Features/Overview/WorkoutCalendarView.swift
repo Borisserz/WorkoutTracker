@@ -160,6 +160,8 @@ struct WorkoutCalendarView: View {
                         .font(.system(size: 20))
                         .foregroundStyle(PastelTheme.textTertiary)
                 }
+                .accessibilityIdentifier("wt.calendar.close")
+                .accessibilityLabel("Close")
             }
         }
         .preferredColorScheme(.dark)
