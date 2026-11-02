@@ -13,7 +13,7 @@ struct ProgramDetailView: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color(UIColor.systemGroupedBackground).ignoresSafeArea()
+            PastelTheme.canvas.ignoresSafeArea()
 
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(spacing: 0) {
@@ -84,7 +84,7 @@ struct ProgramDetailView: View {
             .padding(.bottom, 10)
             .padding(.horizontal, 20)
             .background(
-                LinearGradient(colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0)], startPoint: .bottom, endPoint: .top)
+                LinearGradient(colors: [PastelTheme.canvas, PastelTheme.canvas.opacity(0)], startPoint: .bottom, endPoint: .top)
                     .ignoresSafeArea()
             )
         }
