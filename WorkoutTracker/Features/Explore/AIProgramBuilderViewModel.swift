@@ -89,7 +89,6 @@ final class AIProgramBuilderViewModel {
     func saveProgram(presetService: PresetService, dto: GeneratedProgramDTO) async {
         guard !isSaving else { return }
         isSaving = true
-        var showConsentSheet: Bool = false
         let folderName = dto.title
 
         for routine in dto.schedule {

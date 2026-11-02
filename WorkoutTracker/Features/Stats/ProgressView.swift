@@ -1032,7 +1032,6 @@ struct AIIslandSquareView: View {
     @State private var isPressed = false
 
     var body: some View {
-        let isDark = colorScheme == .dark
         let cardBg = PastelTheme.cardSurface
         let strokeGradient = PastelTheme.cardBorder
         let shadowColor = Color.black.opacity(0.15)

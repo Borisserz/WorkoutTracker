@@ -2,7 +2,7 @@
 
 internal import SwiftUI
 import OSLog
-import AVFoundation
+@preconcurrency import AVFoundation
 import Vision
 import Combine
 
@@ -46,7 +46,7 @@ final class CameraManager: ObservableObject {
             setupSession()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                Task { @MainActor in
+                Task { @MainActor [weak self] in
                     self?.authorizationStatus = granted ? .authorized : .denied
                     self?.isAuthorized = granted
                     if granted { self?.setupSession() }
@@ -144,20 +144,29 @@ final class CameraManager: ObservableObject {
             return
         }
         session.addOutput(videoOutput)
-        if let connection = videoOutput.connection(with: .video),
-           connection.isVideoOrientationSupported {
-            connection.videoOrientation = .portrait
+        if let connection = videoOutput.connection(with: .video) {
+            if connection.isVideoRotationAngleSupported(90) {
+                connection.videoRotationAngle = 90
+            } else if connection.isVideoOrientationSupported {
+                connection.videoOrientation = .portrait
+            }
             connection.isVideoMirrored = true
         }
 
         session.commitConfiguration()
-        Task.detached { [weak self] in self?.session.startRunning() }
+        let startSession = session
+        Task.detached {
+            startSession.startRunning()
+        }
     }
 
     func stopSession() {
         videoOutput.setSampleBufferDelegate(nil, queue: nil)
         if session.isRunning {
-            Task.detached { [weak self] in self?.session.stopRunning() }
+            let stopSession = session
+            Task.detached {
+                stopSession.stopRunning()
+            }
         }
     }
 }
@@ -169,14 +178,14 @@ final class FrameCounter: @unchecked Sendable {
     private let lock = NSLock()
     private var count = 0
 
-    func incrementAndCheck(stride: Int) -> Bool {
+    nonisolated func incrementAndCheck(stride: Int) -> Bool {
         lock.lock()
         defer { lock.unlock() }
         count += 1
         return count % stride == 0
     }
 
-    func reset() {
+    nonisolated func reset() {
         lock.lock()
         defer { lock.unlock() }
         count = 0
@@ -198,7 +207,7 @@ final class VisionProcessor: @unchecked Sendable {
         return req
     }()
 
-    func process(sampleBuffer: CMSampleBuffer) throws -> (
+    nonisolated func process(sampleBuffer: CMSampleBuffer) throws -> (
         joints: [VNHumanBodyPoseObservation.JointName: CGPoint],
         bodyPose: VNHumanBodyPoseObservation?,
         handPose: VNHumanHandPoseObservation?

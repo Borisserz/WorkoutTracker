@@ -15,9 +15,10 @@ final class AuthManager {
     var isAnonymous: Bool = true
     var isAuthenticated: Bool = false
     var currentUser: User?
+    private var authHandle: AuthStateDidChangeListenerHandle?
 
     init() {
-        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+        authHandle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             Task { @MainActor in
                 guard let self else { return }
                 self.currentUser = user

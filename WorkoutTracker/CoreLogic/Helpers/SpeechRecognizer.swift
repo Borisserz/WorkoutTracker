@@ -47,11 +47,22 @@ final class SpeechRecognizer {
             }
         }
 
-        AVAudioSession.sharedInstance().requestRecordPermission { granted in
-            Task { @MainActor in
-                if !granted {
-                    self.hasPermission = false
-                    self.errorMessage = "Microphone access is required for Voice Coach."
+        if #available(iOS 17.0, *) {
+            AVAudioApplication.requestRecordPermission { granted in
+                Task { @MainActor in
+                    if !granted {
+                        self.hasPermission = false
+                        self.errorMessage = "Microphone access is required for Voice Coach."
+                    }
+                }
+            }
+        } else {
+            AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                Task { @MainActor in
+                    if !granted {
+                        self.hasPermission = false
+                        self.errorMessage = "Microphone access is required for Voice Coach."
+                    }
                 }
             }
         }

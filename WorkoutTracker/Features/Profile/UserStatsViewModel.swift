@@ -56,8 +56,8 @@ final class UserStatsViewModel {
         try? await userRepository.deleteWeightEntry(entryID)
     }
 
-    func saveBodyMeasurement(_ measurement: BodyMeasurement) async {
-        try? await userRepository.saveBodyMeasurement(measurement)
+    func saveBodyMeasurement(_ dto: BodyMeasurementDTO) async {
+        try? await userRepository.saveBodyMeasurement(dto)
     }
 
     func deleteBodyMeasurement(_ measurementID: PersistentIdentifier) async {

@@ -3,7 +3,7 @@
 import Foundation
 
 struct StreakCalculator: Sendable {
-    static func calculate(from workoutDates: [Date], maxRestDays: Int) -> Int {
+    nonisolated static func calculate(from workoutDates: [Date], maxRestDays: Int) -> Int {
         guard !workoutDates.isEmpty else { return 0 }
 
         let calendar = Calendar.current
@@ -34,13 +34,13 @@ struct StreakCalculator: Sendable {
 
 struct WeakPointCalculator: Sendable {
 
-    struct MuscleRawData {
+    struct MuscleRawData: Sendable {
         let slug: String
         let frequency: Int
         let totalVolume: Double
     }
 
-    static func calculate(from data: [MuscleRawData]) -> [WeakPoint] {
+    nonisolated static func calculate(from data: [MuscleRawData]) -> [WeakPoint] {
         guard !data.isEmpty else { return [] }
 
         let count = Double(data.count)

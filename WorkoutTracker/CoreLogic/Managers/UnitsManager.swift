@@ -28,8 +28,8 @@ enum SizeUnit: String, Codable, CaseIterable {
 }
 
 @Observable
-final class UnitsManager {
-    static let shared = UnitsManager()
+final class UnitsManager: @unchecked Sendable {
+    nonisolated static let shared = UnitsManager()
 
     private(set) var weightUnit: WeightUnit {
         didSet { UserDefaults.standard.set(weightUnit.rawValue, forKey: "weightUnit") }
@@ -74,26 +74,26 @@ final class UnitsManager {
     func setDistanceUnit(_ unit: DistanceUnit) { distanceUnit = unit }
     func setSizeUnit(_ unit: SizeUnit) { sizeUnit = unit }
 
-    func convertFromKilograms(_ kg: Double) -> Double { weightUnit == .kilograms ? kg : kg * 2.20462 }
-    func convertToKilograms(_ value: Double) -> Double { weightUnit == .kilograms ? value : value / 2.20462 }
-    func formatWeight(_ kg: Double) -> String { LocalizationHelper.shared.formatDecimal(convertFromKilograms(kg)) }
-    func weightUnitString() -> String { weightUnit.shortName }
+    nonisolated func convertFromKilograms(_ kg: Double) -> Double { weightUnit == .kilograms ? kg : kg * 2.20462 }
+    nonisolated func convertToKilograms(_ value: Double) -> Double { weightUnit == .kilograms ? value : value / 2.20462 }
+    nonisolated func formatWeight(_ kg: Double) -> String { LocalizationHelper.shared.formatDecimal(convertFromKilograms(kg)) }
+    nonisolated func weightUnitString() -> String { weightUnit.shortName }
 
-    func convertFromMeters(_ m: Double) -> Double { distanceUnit == .meters ? m : m * 0.000621371 }
-    func convertToMeters(_ value: Double) -> Double { distanceUnit == .meters ? value : value / 0.000621371 }
-    func formatDistance(_ m: Double) -> String { LocalizationHelper.shared.formatDecimal(convertFromMeters(m)) }
-    func distanceUnitString() -> String { distanceUnit.shortName }
+    nonisolated func convertFromMeters(_ m: Double) -> Double { distanceUnit == .meters ? m : m * 0.000621371 }
+    nonisolated func convertToMeters(_ value: Double) -> Double { distanceUnit == .meters ? value : value / 0.000621371 }
+    nonisolated func formatDistance(_ m: Double) -> String { LocalizationHelper.shared.formatDecimal(convertFromMeters(m)) }
+    nonisolated func distanceUnitString() -> String { distanceUnit.shortName }
 
-    func convertFromCentimeters(_ cm: Double) -> Double { sizeUnit == .centimeters ? cm : cm / 2.54 }
-    func convertToCentimeters(_ value: Double) -> Double { sizeUnit == .centimeters ? value : value * 2.54 }
-    func formatSize(_ cm: Double) -> String { LocalizationHelper.shared.formatDecimal(convertFromCentimeters(cm)) }
-    func sizeUnitString() -> String { sizeUnit.shortName }
+    nonisolated func convertFromCentimeters(_ cm: Double) -> Double { sizeUnit == .centimeters ? cm : cm / 2.54 }
+    nonisolated func convertToCentimeters(_ value: Double) -> Double { sizeUnit == .centimeters ? value : value * 2.54 }
+    nonisolated func formatSize(_ cm: Double) -> String { LocalizationHelper.shared.formatDecimal(convertFromCentimeters(cm)) }
+    nonisolated func sizeUnitString() -> String { sizeUnit.shortName }
 
-    func displayWeightWithUnit(forKg kg: Double) -> String {
+    nonisolated func displayWeightWithUnit(forKg kg: Double) -> String {
         "\(LocalizationHelper.shared.formatFlexible(convertFromKilograms(kg))) \(weightUnitString())"
     }
 
-    func displayDistanceWithUnit(forMeters m: Double) -> String {
+    nonisolated func displayDistanceWithUnit(forMeters m: Double) -> String {
         "\(LocalizationHelper.shared.formatTwoDecimals(convertFromMeters(m))) \(distanceUnitString())"
     }
 }

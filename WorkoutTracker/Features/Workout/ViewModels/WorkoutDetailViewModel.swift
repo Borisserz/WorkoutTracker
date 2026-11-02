@@ -501,12 +501,13 @@ final class WorkoutDetailViewModel {
                     unitsManager: UnitsManager.shared
                 )
 
-                var allUnlocks: [Achievement] = []
+                var allUnlocksList: [Achievement] = []
                 if let goalAchieved = goalAchievementToShow {
-                    allUnlocks.append(goalAchieved)
+                    allUnlocksList.append(goalAchieved)
                 }
-                allUnlocks.append(contentsOf: result.newUnlocks)
-                
+                allUnlocksList.append(contentsOf: result.newUnlocks)
+                let finalUnlocks = allUnlocksList
+
                 await MainActor.run {
                     // Queue App Store Review on happy moments
                     AppReviewManager.checkAndQueueReview(completedWorkouts: completedCount)
@@ -518,7 +519,7 @@ final class WorkoutDetailViewModel {
 
                 try? await Task.sleep(for: .seconds(0.5))
                 await MainActor.run { 
-                    self.activeEvent = .showXPBreakdownPopup(xpBreakdown, isLevelUp, newLevel, newTitle, allUnlocks) 
+                    self.activeEvent = .showXPBreakdownPopup(xpBreakdown, isLevelUp, newLevel, newTitle, finalUnlocks) 
                 }
 
             } catch {

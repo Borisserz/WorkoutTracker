@@ -2,7 +2,7 @@
 
 import Foundation
 
-struct WidgetData: Codable {
+struct WidgetData: Codable, Sendable {
     let streak: Int
     let weeklyTarget: Int
     let weeklyStats: [WeeklyPoint]
@@ -11,13 +11,13 @@ struct WidgetData: Codable {
     let aiTip: String
     let totalVolumeTons: Double
 
-    struct WeeklyPoint: Codable, Identifiable {
+    struct WeeklyPoint: Codable, Identifiable, Sendable {
         var id: String { label }
         let label: String
         let count: Int
     }
 
-    init(streak: Int, weeklyTarget: Int, weeklyStats: [WeeklyPoint], recoveredMuscles: [String], aiTip: String, totalVolumeTons: Double) {
+    nonisolated init(streak: Int, weeklyTarget: Int, weeklyStats: [WeeklyPoint], recoveredMuscles: [String], aiTip: String, totalVolumeTons: Double) {
         self.streak = streak
         self.weeklyTarget = weeklyTarget
         self.weeklyStats = weeklyStats
@@ -26,7 +26,7 @@ struct WidgetData: Codable {
         self.totalVolumeTons = totalVolumeTons
     }
 
-    init(from decoder: Decoder) throws {
+    nonisolated init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         streak = try container.decodeIfPresent(Int.self, forKey: .streak) ?? 0
         weeklyTarget = try container.decodeIfPresent(Int.self, forKey: .weeklyTarget) ?? 3
@@ -38,11 +38,11 @@ struct WidgetData: Codable {
     }
 }
 
-class WidgetDataManager {
-    static let suiteName = "group.com.borisdev.WorkoutTracker"
-    static let key = "widget_data"
+final class WidgetDataManager: @unchecked Sendable {
+    nonisolated static let suiteName = "group.com.borisdev.WorkoutTracker"
+    nonisolated static let key = "widget_data"
 
-    static func save(streak: Int, weeklyStats: [WidgetData.WeeklyPoint], recoveredMuscles: [String] = [], aiTip: String = "", totalVolumeTons: Double = 0.0) {
+    nonisolated static func save(streak: Int, weeklyStats: [WidgetData.WeeklyPoint], recoveredMuscles: [String] = [], aiTip: String = "", totalVolumeTons: Double = 0.0) {
         let data = WidgetData(
             streak: streak,
             weeklyTarget: 3,
@@ -58,20 +58,20 @@ class WidgetDataManager {
         }
     }
 
-    static func load() -> WidgetData {
-            if let defaults = UserDefaults(suiteName: suiteName),
-               let data = defaults.data(forKey: key),
-               let decoded = try? JSONDecoder().decode(WidgetData.self, from: data) {
-                return decoded
-            }
-
-            return WidgetData(
-                streak: 0,
-                weeklyTarget: 3,
-                weeklyStats: [],
-                recoveredMuscles: [],
-                aiTip: "",
-                totalVolumeTons: 0.0
-            )
+    nonisolated static func load() -> WidgetData {
+        if let defaults = UserDefaults(suiteName: suiteName),
+           let data = defaults.data(forKey: key),
+           let decoded = try? JSONDecoder().decode(WidgetData.self, from: data) {
+            return decoded
         }
+
+        return WidgetData(
+            streak: 0,
+            weeklyTarget: 3,
+            weeklyStats: [],
+            recoveredMuscles: [],
+            aiTip: "",
+            totalVolumeTons: 0.0
+        )
+    }
 }

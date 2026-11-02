@@ -5,8 +5,8 @@ import FirebaseCrashlytics
 import FirebasePerformance
 
 /// Centralized manager for logging structured Firebase Analytics events.
-public final class TrackingManager {
-    public static let shared = TrackingManager()
+public final class TrackingManager: @unchecked Sendable {
+    public nonisolated static let shared = TrackingManager()
     private init() {}
 
     public enum Event {
@@ -157,7 +157,7 @@ public final class TrackingManager {
         }
     }
 
-    public func track(_ event: Event) {
+    public nonisolated func track(_ event: Event) {
         AppLog.analytics.debug("📊 [Analytics] Logging event: \(event.name) with params: \(event.parameters ?? [:])")
         Analytics.logEvent(event.name, parameters: event.parameters)
         Crashlytics.crashlytics().log(event.name)
@@ -169,13 +169,13 @@ public final class TrackingManager {
         }
     }
 
-    public func setUserProperty(name: String, value: String?) {
+    public nonisolated func setUserProperty(name: String, value: String?) {
         AppLog.analytics.debug("📊 [Analytics] Setting user property: \(name) = \(value ?? "nil")")
         Analytics.setUserProperty(value, forName: name)
         Crashlytics.crashlytics().setCustomValue(value ?? "nil", forKey: name)
     }
 
-    public func recordError(error: Error, additionalInfo: [String: Any]? = nil) {
+    public nonisolated func recordError(error: Error, additionalInfo: [String: Any]? = nil) {
         AppLog.analytics.debug("📊 [Crashlytics] Recording non-fatal error: \(error.localizedDescription)")
         if let info = additionalInfo {
             let nsError = NSError(domain: "WorkoutTracker", code: 1, userInfo: [
@@ -188,12 +188,12 @@ public final class TrackingManager {
         }
     }
 
-    public func setUserID(id: String) {
+    public nonisolated func setUserID(id: String) {
         Analytics.setUserID(id)
         Crashlytics.crashlytics().setUserID(id)
     }
 
-    public func startTrace(name: String) -> PerformanceTrace? {
+    public nonisolated func startTrace(name: String) -> PerformanceTrace? {
         AppLog.analytics.debug("⏱️ [Performance] Starting trace: \(name)")
         if let trace = Performance.startTrace(name: name) {
             return FirebasePerformanceTrace(trace: trace)

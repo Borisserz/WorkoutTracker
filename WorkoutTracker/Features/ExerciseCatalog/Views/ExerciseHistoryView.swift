@@ -223,7 +223,6 @@ struct ExerciseHistoryView: View {
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
 
-            let targetMuscles = MuscleDisplayHelper.getTargetMuscleNames(for: vm.exerciseName, muscleGroup: vm.muscleGroup)
             if !vm.primaryMuscles.isEmpty {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 8) {

@@ -2,11 +2,11 @@
 
 import Foundation
 
-struct MuscleMapping {
+struct MuscleMapping: Sendable {
 
     private static let customMappingKey = "CustomExerciseMappings"
 
-    private static var customMappingsFileURL: URL {
+    nonisolated private static var customMappingsFileURL: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.appendingPathComponent("CustomExerciseMappings.json")
     }
 
@@ -15,7 +15,7 @@ struct MuscleMapping {
     private static var _cachedCustomMappings: [String: [String]]?
     private static var _jsonExerciseToMuscles: [String: [String]]?
 
-    static let groupToMuscles: [String: [String]] = [
+    nonisolated static let groupToMuscles: [String: [String]] = [
         "Chest":     ["chest"],
         "Back":      ["upper-back", "lower-back", "trapezius"],
         "Legs":      ["quadriceps", "hamstring", "gluteal", "calves", "adductors"],
@@ -25,14 +25,14 @@ struct MuscleMapping {
         "Cardio":    ["quadriceps", "hamstring", "calves", "cardio"]
     ]
 
-    static func preload() {
+    nonisolated static func preload() {
         Task.detached(priority: .background) {
             _ = getCustomMappings()
             _ = getJSONMappings()
         }
     }
 
-    private static func getJSONMappings() -> [String: [String]] {
+    nonisolated private static func getJSONMappings() -> [String: [String]] {
         cacheLock.lock()
         if let cached = _jsonExerciseToMuscles {
             cacheLock.unlock()
@@ -90,7 +90,7 @@ struct MuscleMapping {
         }
     }
 
-    private static func getCustomMappings() -> [String: [String]] {
+    nonisolated private static func getCustomMappings() -> [String: [String]] {
         cacheLock.lock()
         if let cached = _cachedCustomMappings {
             cacheLock.unlock()
@@ -123,7 +123,7 @@ struct MuscleMapping {
         return loaded
     }
 
-    static func updateCustomMapping(name: String, muscles: [String]?) {
+    nonisolated static func updateCustomMapping(name: String, muscles: [String]?) {
         var currentMap = getCustomMappings()
         if let muscles = muscles {
             currentMap[name] = muscles
@@ -143,7 +143,7 @@ struct MuscleMapping {
         }
     }
 
-    static func getMuscles(for exerciseName: String, group: String) -> [String] {
+    nonisolated static func getMuscles(for exerciseName: String, group: String) -> [String] {
         let nameKey = exerciseName.lowercased()
 
         let jsonMap = getJSONMappings()
@@ -159,7 +159,7 @@ struct MuscleMapping {
         return groupToMuscles[group] ?? []
     }
 
-    static func isBackFacing(exerciseName: String) -> Bool {
+    nonisolated static func isBackFacing(exerciseName: String) -> Bool {
         let name = exerciseName.lowercased()
         let backKeywords = [
             "deadlift", "row", "pull", "chin", "tricep",

@@ -224,7 +224,7 @@ final class GestureController: ObservableObject {
 // MARK: - CGPoint extension
 
 extension CGPoint {
-    func distance(to point: CGPoint) -> CGFloat {
+    nonisolated func distance(to point: CGPoint) -> CGFloat {
         return hypot(self.x - point.x, self.y - point.y)
     }
 }

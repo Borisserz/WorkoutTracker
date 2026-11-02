@@ -2,46 +2,45 @@
 
 import Foundation
 
-class LocalizationHelper {
+final class LocalizationHelper: @unchecked Sendable {
 
-     private var exerciseNamesRU: [String: String] = [:]
-     private var exerciseInstructionsRU: [String: [String]] = [:]
+    private var exerciseNamesRU: [String: String] = [:]
+    private var exerciseInstructionsRU: [String: [String]] = [:]
 
-     func setTranslations(names: [String: String], instructions: [String: [String]]) {
-         cacheLock.lock()
-         defer { cacheLock.unlock() }
-         self.exerciseNamesRU = names
-         self.exerciseInstructionsRU = instructions
-     }
+    nonisolated func setTranslations(names: [String: String], instructions: [String: [String]]) {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        self.exerciseNamesRU = names
+        self.exerciseInstructionsRU = instructions
+    }
 
-     func translateName(_ englishName: String) -> String {
-         guard Locale.current.language.languageCode?.identifier == "ru" else { return englishName }
-         cacheLock.lock()
-         defer { cacheLock.unlock() }
-         return exerciseNamesRU[englishName.lowercased()] ?? englishName
-     }
+    nonisolated func translateName(_ englishName: String) -> String {
+        guard Locale.current.language.languageCode?.identifier == "ru" else { return englishName }
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return exerciseNamesRU[englishName.lowercased()] ?? englishName
+    }
 
-     func translateInstructions(for englishName: String) -> [String]? {
-         guard Locale.current.language.languageCode?.identifier == "ru" else { return nil }
-         cacheLock.lock()
-         defer { cacheLock.unlock() }
-         return exerciseInstructionsRU[englishName.lowercased()]
-     }
+    nonisolated func translateInstructions(for englishName: String) -> [String]? {
+        guard Locale.current.language.languageCode?.identifier == "ru" else { return nil }
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return exerciseInstructionsRU[englishName.lowercased()]
+    }
 
-    static let shared = LocalizationHelper()
+    nonisolated static let shared = LocalizationHelper()
 
     private var cachedDateFormatters: [String: DateFormatter] = [:]
     private let cacheLock = NSLock()
 
-    private init() {}
+    nonisolated private init() {}
 
-    func formatWorkoutDateName(_ date: Date = Date()) -> String {
-
+    nonisolated func formatWorkoutDateName(_ date: Date = Date()) -> String {
         let dayName = date.formatted(.dateTime.weekday(.wide))
         return "\(dayName) Workout"
     }
 
-    func createDateFormatter(format: String) -> DateFormatter {
+    nonisolated func createDateFormatter(format: String) -> DateFormatter {
         cacheLock.lock()
         defer { cacheLock.unlock() }
 
@@ -57,23 +56,23 @@ class LocalizationHelper {
         return formatter
     }
 
-    func formatDecimal(_ value: Double) -> String {
+    nonisolated func formatDecimal(_ value: Double) -> String {
         return value.formatted(.number.precision(.fractionLength(1)))
     }
 
-    func formatTwoDecimals(_ value: Double) -> String {
+    nonisolated func formatTwoDecimals(_ value: Double) -> String {
         return value.formatted(.number.precision(.fractionLength(2)))
     }
 
-    func formatInteger(_ value: Double) -> String {
+    nonisolated func formatInteger(_ value: Double) -> String {
         return value.formatted(.number.precision(.fractionLength(0)))
     }
 
-    func formatNumber(_ value: Double, fractionDigits: Int) -> String {
+    nonisolated func formatNumber(_ value: Double, fractionDigits: Int) -> String {
         return value.formatted(.number.precision(.fractionLength(fractionDigits)))
     }
 
-    func formatSmart(_ value: Double) -> String {
+    nonisolated func formatSmart(_ value: Double) -> String {
         if value >= 1000 {
             return formatDecimal(value)
         } else if value >= 1 {
@@ -83,7 +82,7 @@ class LocalizationHelper {
         }
     }
 
-    func formatFlexible(_ value: Double, fractionDigits: Int = 1) -> String {
+    nonisolated func formatFlexible(_ value: Double, fractionDigits: Int = 1) -> String {
         if value.truncatingRemainder(dividingBy: 1) == 0 {
             return formatInteger(value)
         } else {
@@ -91,7 +90,7 @@ class LocalizationHelper {
         }
     }
 
-    func getAILanguageName() -> String {
+    nonisolated func getAILanguageName() -> String {
         let code = Locale.current.language.languageCode?.identifier ?? "en"
         return Locale(identifier: "en").localizedString(forIdentifier: code) ?? "English"
     }

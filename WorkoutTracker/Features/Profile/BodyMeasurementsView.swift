@@ -427,7 +427,7 @@ struct AddMeasurementSheet: View {
     }
 
     private func save() {
-        let newMeasurement = BodyMeasurement(
+        let dto = BodyMeasurementDTO(
             date: date, bodyFat: bodyFat,
             neck: neck, shoulders: shoulders, chest: chest,
             waist: waist, abdomen: abdomen, hips: hips,
@@ -438,7 +438,7 @@ struct AddMeasurementSheet: View {
         )
 
         Task {
-            await userStatsViewModel.saveBodyMeasurement(newMeasurement)
+            await userStatsViewModel.saveBodyMeasurement(dto)
             dismiss()
         }
     }

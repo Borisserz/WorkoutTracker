@@ -451,20 +451,10 @@ actor WorkoutStore: WorkoutStoreProtocol {
         return note?.persistentModelID
     }
 
-    func fetchExerciseNote(exerciseName: String) async throws -> ExerciseNote? {
-        let descriptor = FetchDescriptor<ExerciseNote>(predicate: #Predicate { $0.exerciseName == exerciseName })
-        return try modelContext.fetch(descriptor).first
-    }
-
     func deleteAIChatSession(_ sessionID: PersistentIdentifier) async throws {
         guard let session = modelContext.model(for: sessionID) as? AIChatSession else { throw WorkoutRepositoryError.modelNotFound }
         modelContext.delete(session)
         try modelContext.save()
-    }
-
-    func fetchAIChatSessions() async throws -> [AIChatSession] {
-        let descriptor = FetchDescriptor<AIChatSession>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        return try modelContext.fetch(descriptor)
     }
 
     func deleteCustomExercise(name: String, category: String) async throws {

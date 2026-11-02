@@ -58,17 +58,17 @@ final class PresetService {
     }
 
     func exportPresetToFile(_ preset: WorkoutPreset) async throws -> URL {
-        guard let fetchedPreset = try await presetRepository.fetchPreset(by: preset.persistentModelID) else {
+        guard let fetchedPresetDTO = try await presetRepository.fetchPresetDTO(by: preset.persistentModelID) else {
             throw WorkoutRepositoryError.modelNotFound
         }
-        return try WorkoutExportService.exportPresetToFile(fetchedPreset.toDTO())
+        return try WorkoutExportService.exportPresetToFile(fetchedPresetDTO)
     }
 
     func exportPresetToCSV(_ preset: WorkoutPreset) async throws -> URL {
-        guard let fetchedPreset = try await presetRepository.fetchPreset(by: preset.persistentModelID) else {
+        guard let fetchedPresetDTO = try await presetRepository.fetchPresetDTO(by: preset.persistentModelID) else {
             throw WorkoutRepositoryError.modelNotFound
         }
-        return try WorkoutExportService.exportPresetToCSV(fetchedPreset.toDTO())
+        return try WorkoutExportService.exportPresetToCSV(fetchedPresetDTO)
     }
 
     func importPreset(from url: URL) async -> Bool {
@@ -108,18 +108,7 @@ extension PresetService {
 
     func isProgramSaved(title: String, isSingleRoutine: Bool) async -> Bool {
         do {
-            let targetFolder = isSingleRoutine ? Self.savedRoutinesFolderName : title
-
-            let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.folderName == targetFolder })
-            let existingPresets = try await presetRepository.fetchPresets(matching: descriptor)
-
-            if isSingleRoutine {
-
-                return existingPresets.contains { $0.name == title }
-            } else {
-
-                return !existingPresets.isEmpty
-            }
+            return try await presetRepository.isProgramSaved(title: title, isSingleRoutine: isSingleRoutine)
         } catch {
             AppLog.presets.error("Error checking saved status: \(error.localizedDescription, privacy: .public)")
             return false
@@ -130,12 +119,7 @@ extension PresetService {
         guard !folderName.isEmpty else { return } 
 
         do {
-            let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.folderName == folderName })
-            let presetsToDelete = try await presetRepository.fetchPresets(matching: descriptor)
-
-            for preset in presetsToDelete {
-                try await presetRepository.deletePreset(presetID: preset.persistentModelID)
-            }
+            try await presetRepository.deletePresets(inFolder: folderName)
 
             await MainActor.run {
                 let currentFolders = UserDefaults.standard.string(forKey: "customPresetFolders") ?? ""

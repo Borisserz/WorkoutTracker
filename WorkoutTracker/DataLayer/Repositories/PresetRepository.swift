@@ -2,11 +2,12 @@ import Foundation
 import SwiftData
 
 protocol PresetRepositoryProtocol: Sendable {
-    func fetchPresets(matching descriptor: FetchDescriptor<WorkoutPreset>) async throws -> [WorkoutPreset]
     func createPreset(name: String, icon: String, folderName: String?, exercises: [ExerciseDTO]) async throws
     func updatePreset(presetID: PersistentIdentifier, name: String, icon: String, folderName: String?, exercises: [ExerciseDTO]) async throws
     func deletePreset(presetID: PersistentIdentifier) async throws
-    func fetchPreset(by id: PersistentIdentifier) async throws -> WorkoutPreset?
+    func fetchPresetDTO(by id: PersistentIdentifier) async throws -> WorkoutPresetDTO?
+    func isProgramSaved(title: String, isSingleRoutine: Bool) async throws -> Bool
+    func deletePresets(inFolder folderName: String) async throws
 }
 @ModelActor
 actor PresetRepository: PresetRepositoryProtocol {
@@ -64,10 +65,29 @@ actor PresetRepository: PresetRepositoryProtocol {
         try modelContext.save()
     }
 
-    func fetchPreset(by id: PersistentIdentifier) async throws -> WorkoutPreset? {
-        return modelContext.model(for: id) as? WorkoutPreset
+    func fetchPresetDTO(by id: PersistentIdentifier) async throws -> WorkoutPresetDTO? {
+        guard let preset = modelContext.model(for: id) as? WorkoutPreset else { return nil }
+        return preset.toDTO()
     }
-    func fetchPresets(matching descriptor: FetchDescriptor<WorkoutPreset>) async throws -> [WorkoutPreset] {
-            return try modelContext.fetch(descriptor)
+
+    func isProgramSaved(title: String, isSingleRoutine: Bool) async throws -> Bool {
+        let targetFolder = isSingleRoutine ? "Saved Routines" : title
+        let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.folderName == targetFolder })
+        let presets = (try? modelContext.fetch(descriptor)) ?? []
+        if isSingleRoutine {
+            return presets.contains { $0.name == title }
+        } else {
+            return !presets.isEmpty
         }
+    }
+
+    func deletePresets(inFolder folderName: String) async throws {
+        guard !folderName.isEmpty else { return }
+        let descriptor = FetchDescriptor<WorkoutPreset>(predicate: #Predicate { $0.folderName == folderName })
+        let presets = (try? modelContext.fetch(descriptor)) ?? []
+        for preset in presets {
+            modelContext.delete(preset)
+        }
+        try modelContext.save()
+    }
 }

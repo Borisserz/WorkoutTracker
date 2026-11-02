@@ -455,7 +455,7 @@ struct AchievementPopupView: View {
             .zIndex(2)
         }
         .onAppear { setupAnimation() }
-        .onChange(of: currentIndex) { _ in setupAnimation() }
+        .onChange(of: currentIndex) { _, _ in setupAnimation() }
     }
     
     private func setupAnimation() {
