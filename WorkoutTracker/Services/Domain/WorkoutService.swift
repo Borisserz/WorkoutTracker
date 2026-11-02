@@ -1,6 +1,7 @@
 
 
 import Foundation
+import OSLog
 import SwiftData
 import AudioToolbox
 import WidgetKit
@@ -22,6 +23,30 @@ final class WorkoutService {
 
     private let appState: AppStateManager
     private let liveActivityManager: LiveActivityManager
+    /// Serializes create/start so two awaits cannot both pass `hasActiveWorkout` (TOCTOU).
+    private var startInFlight = false
+    /// Blocks new starts during finish snackbar undo window (endTime set but session not committed).
+    private var finishTransitionDepth = 0
+    /// Token for LiveWorkoutSyncEvent; `nonisolated(unsafe)` so `deinit` can unregister.
+    nonisolated(unsafe) private var liveSyncObserver: NSObjectProtocol?
+
+    var isFinishTransitionPending: Bool { finishTransitionDepth > 0 }
+    /// Sync gate for UI (History/Hub) — covers in-flight start and finish-undo window.
+    var isStartBlocked: Bool { startInFlight || finishTransitionDepth > 0 }
+
+    func beginFinishTransition() {
+        finishTransitionDepth += 1
+    }
+
+    func endFinishTransition() {
+        finishTransitionDepth = max(0, finishTransitionDepth - 1)
+    }
+
+    deinit {
+        if let liveSyncObserver {
+            NotificationCenter.default.removeObserver(liveSyncObserver)
+        }
+    }
 
     init(workoutStore: WorkoutStoreProtocol,
          analyticsService: AnalyticsService,
@@ -43,7 +68,7 @@ final class WorkoutService {
         self.appState = appState
         self.liveActivityManager = liveActivityManager
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, queue: .main) { [weak self] notification in
+        liveSyncObserver = NotificationCenter.default.addObserver(forName: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, queue: .main) { [weak self] notification in
             guard let self = self,
                   let payloadDict = notification.userInfo?["payload"],
                   let payload = payloadDict as? LiveSyncPayload else { return }
@@ -56,6 +81,36 @@ final class WorkoutService {
                 switch payload.action {
                 case .startWorkout:
                     guard let uuid = workoutUUID else { return }
+                    // Share phone start mutex so Watch cannot race createWorkout / startGeneratedWorkout.
+                    let claimed = await MainActor.run { () -> Bool in
+                        if self.startInFlight || self.finishTransitionDepth > 0 {
+                            self.appState.showError(
+                                title: String(localized: "Workout in progress"),
+                                message: String(localized: "Finish or delete the current workout before starting another.")
+                            )
+                            return false
+                        }
+                        self.startInFlight = true
+                        return true
+                    }
+                    guard claimed else { return }
+                    defer {
+                        Task { @MainActor in self.startInFlight = false }
+                    }
+                    // R01: refuse dual active sessions from Watch when phone already has one.
+                    let activeDesc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime == nil })
+                    let actives = (try? bgContext.fetch(activeDesc)) ?? []
+                    let freshActives = actives.filter { Date().timeIntervalSince($0.date) <= 12 * 3600 }
+                    if let existing = freshActives.first {
+                        await MainActor.run {
+                            self.appState.returnToActiveWorkoutId = existing.persistentModelID
+                            self.appState.showError(
+                                title: String(localized: "Workout in progress"),
+                                message: String(localized: "Finish or delete the current workout before starting another.")
+                            )
+                        }
+                        return
+                    }
                     TrackingManager.shared.track(.watchWorkoutStarted)
                     let newWorkout = Workout(id: uuid, title: payload.workoutTitle ?? "Watch Workout", date: Date(), exercises: [])
                     newWorkout.icon = "applewatch"
@@ -71,7 +126,17 @@ final class WorkoutService {
                             newWorkout.exercises.append(exercise)
                         }
                     }
-                    try? bgContext.save()
+                    do {
+                        try bgContext.save()
+                    } catch {
+                        await MainActor.run {
+                            self.appState.showError(
+                                title: String(localized: "Watch sync failed"),
+                                message: String(localized: "Could not save the Watch workout on iPhone.")
+                            )
+                        }
+                        return
+                    }
 
                     await MainActor.run {
                         self.liveActivityManager.startWorkoutActivity(title: newWorkout.title)
@@ -86,7 +151,14 @@ final class WorkoutService {
                         bgContext.insert(newEx)
                         newEx.workout = workout
                         workout.exercises.append(newEx)
-                        try? bgContext.save()
+                        do { try bgContext.save() } catch {
+                            await MainActor.run {
+                                self.appState.showError(
+                                    title: String(localized: "Watch sync failed"),
+                                    message: error.localizedDescription
+                                )
+                            }
+                        }
                     }
 
                 case .logSet:
@@ -99,7 +171,14 @@ final class WorkoutService {
                         setToUpdate.weight = payload.weight
                         setToUpdate.reps = payload.reps
                         setToUpdate.isCompleted = payload.isCompleted ?? true
-                        try? bgContext.save()
+                        do { try bgContext.save() } catch {
+                            await MainActor.run {
+                                self.appState.showError(
+                                    title: String(localized: "Watch sync failed"),
+                                    message: error.localizedDescription
+                                )
+                            }
+                        }
                     }
 
                 case .updateEffort:
@@ -109,7 +188,14 @@ final class WorkoutService {
                        let exercise = workout.exercises.first(where: { $0.name == exName }) {
                         exercise.effort = effort
                         exercise.isCompleted = true
-                        try? bgContext.save()
+                        do { try bgContext.save() } catch {
+                            await MainActor.run {
+                                self.appState.showError(
+                                    title: String(localized: "Watch sync failed"),
+                                    message: error.localizedDescription
+                                )
+                            }
+                        }
                     }
 
                 case .finishWorkout:
@@ -194,15 +280,33 @@ final class WorkoutService {
         }
     }
 
-    func createWorkout(title: String, presetID: PersistentIdentifier?, isAIGenerated: Bool) async -> PersistentIdentifier? {
+    func createWorkout(title: String, presetID: PersistentIdentifier?, isAIGenerated: Bool, exerciseCount: Int = 0, estimatedDuration: Int = 0) async -> PersistentIdentifier? {
+        if startInFlight || finishTransitionDepth > 0 {
+            appState.showError(
+                title: String(localized: "Workout in progress"),
+                message: String(localized: "Finish or delete the current workout before starting another.")
+            )
+            return nil
+        }
+        // Claim the start lock before any await — otherwise two MainActor tasks both pass the check.
+        startInFlight = true
+        defer { startInFlight = false }
+        let alreadyActive = await hasActiveWorkout()
+        if alreadyActive {
+            appState.showError(
+                title: String(localized: "Workout in progress"),
+                message: String(localized: "Finish or delete the current workout before starting another.")
+            )
+            return nil
+        }
         do {
             try? await HealthKitManager.shared.requestAuthorization()
             let id = try await workoutStore.createWorkout(title: title, fromPresetID: presetID, isAIGenerated: isAIGenerated)
             
             let source = isAIGenerated ? "ai_builder" : (presetID != nil ? "template" : "manual")
-            TrackingManager.shared.track(.workoutStarted(source: source, exerciseCount: 0, estimatedDuration: 0))
+            TrackingManager.shared.track(.workoutStarted(source: source, exerciseCount: exerciseCount, estimatedDuration: estimatedDuration))
             
-            liveActivityManager.startWorkoutActivity(title: title)   // ← единая точка старта
+            liveActivityManager.startWorkoutActivity(title: title)
             return id
         } catch {
             appState.showError(title: String(localized: "Error"), message: error.localizedDescription)
@@ -210,26 +314,60 @@ final class WorkoutService {
         }
     }
 
-    func startGeneratedWorkout(_ generated: GeneratedWorkoutDTO) async {
+    @discardableResult
+    func startGeneratedWorkout(_ generated: GeneratedWorkoutDTO, source: String = "ai_builder") async -> PersistentIdentifier? {
+        if startInFlight || finishTransitionDepth > 0 {
+            appState.showError(
+                title: String(localized: "Workout in progress"),
+                message: String(localized: "Finish or delete the current workout before starting another.")
+            )
+            return nil
+        }
+        startInFlight = true
+        defer { startInFlight = false }
+        let alreadyActive = await hasActiveWorkout()
+        if alreadyActive {
+            appState.showError(
+                title: String(localized: "Workout in progress"),
+                message: String(localized: "Finish or delete the current workout before starting another.")
+            )
+            return nil
+        }
         do {
             try? await HealthKitManager.shared.requestAuthorization()
-            _ = try await workoutStore.createWorkoutFromAI(generated: generated)
+            let id = try await workoutStore.createWorkoutFromAI(generated: generated)
+            let estimated = generated.exercises.reduce(0) { partial, ex in
+                partial + max(0, ex.sets) * max(45, ex.restSeconds ?? 90)
+            } / 60
+            TrackingManager.shared.track(.workoutStarted(
+                source: source,
+                exerciseCount: generated.exercises.count,
+                estimatedDuration: estimated
+            ))
             liveActivityManager.startWorkoutActivity(title: generated.title)
+            return id
         } catch {
             appState.showError(
                 title: String(localized: "Save Failed"),
                 message: String(localized: "Failed to save generated workout: \(error.localizedDescription)")
             )
+            return nil
         }
     }
 
     func hasActiveWorkout() async -> Bool {
+        if finishTransitionDepth > 0 { return true }
         do {
             let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
             return !activeIDs.isEmpty
         } catch {
-            print("Error checking for active workouts: \(error)")
-            return false
+            // Fail closed: unknown store state must not allow a second active session.
+            AppLog.session.error("Error checking for active workouts: \(error.localizedDescription, privacy: .public)")
+            appState.showError(
+                title: String(localized: "Workout in progress"),
+                message: String(localized: "Could not verify active workouts. Try again in a moment.")
+            )
+            return true
         }
     }
 
@@ -338,7 +476,7 @@ final class WorkoutService {
                             calories: burnedCalories 
                         )
                     } catch {
-                        print("⚠️ Failed to sync workout to HealthKit: \(error)")
+                        AppLog.session.error("⚠️ Failed to sync workout to HealthKit: \(error.localizedDescription, privacy: .public)")
                     }
                 }
             } catch {
@@ -350,20 +488,35 @@ final class WorkoutService {
     }
 
     func deleteWorkout(_ workout: Workout) async {
-        defer { stopLiveActivity() }
+        let wasActiveSession = workout.endTime == nil
         do {
             try await workoutStore.deleteWorkout(id: workout.id)
+            if wasActiveSession {
+                await stopLiveActivityIfNoActiveSession()
+            }
         } catch {
             appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
         }
     }
 
     func deleteWorkout(id: UUID) async {
-        defer { stopLiveActivity() }
         do {
             try await workoutStore.deleteWorkout(id: id)
+            // Never blanket-stop LA: History may delete a finished row while another session is live.
+            await stopLiveActivityIfNoActiveSession()
         } catch {
             appState.showError(title: "Delete Failed", message: "Could not delete workout: \(error.localizedDescription)")
+        }
+    }
+
+    private func stopLiveActivityIfNoActiveSession() async {
+        do {
+            let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
+            if activeIDs.isEmpty && !isFinishTransitionPending {
+                stopLiveActivity()
+            }
+        } catch {
+            // Fail closed for LA: if we cannot verify actives, leave Island alone rather than killing a live session.
         }
     }
 
@@ -372,7 +525,7 @@ final class WorkoutService {
             let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
             if activeIDs.isEmpty { stopLiveActivity() }
         } catch {
-            print("Cleanup failed: \(error.localizedDescription)")
+            AppLog.session.error("Cleanup failed: \(error.localizedDescription)")
         }
     }
 
@@ -388,7 +541,7 @@ final class WorkoutService {
         do {
             try await exerciseCatalogService.checkAndGenerateDefaultPresets()
         } catch {
-            print("Failed to generate default presets: \(error.localizedDescription)")
+            AppLog.session.error("Failed to generate default presets: \(error.localizedDescription)")
         }
     }
 

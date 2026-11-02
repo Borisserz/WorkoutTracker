@@ -59,7 +59,15 @@ struct OverviewView: View {
     @AppStorage("userRecoveryHours") private var storedRecoveryHours: Double = 48.0
     @AppStorage("hasSeenCommitmentSheet") private var hasSeenCommitmentSheet = false
 
-    @Query(sort: \Workout.date, order: .reverse) private var recentWorkouts: [Workout]
+    @Query private var recentWorkouts: [Workout]
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _recentWorkouts = Query(descriptor)
+    }
 
     @State private var router = OverviewRouter()
     @State private var isFrontView = true
@@ -81,8 +89,7 @@ struct OverviewView: View {
                         OverviewHeaderView(
                             streakDays: dashboardViewModel.streakCount,
                             onCalendarTap: { router.push(.calendar) },
-                            onProfileTap: { router.present(.profile) },
-                            onSettingsTap: { router.present(.settings) }
+                            onProfileTap: { router.present(.profile) }
                         )
 
                         // 2. Centerpiece: Muscle Readiness Anatomy with Body Analysis CTA

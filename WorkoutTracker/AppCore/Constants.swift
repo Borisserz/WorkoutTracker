@@ -25,8 +25,10 @@ public enum Constants {
         case voiceCoachDucking
         case hasGeneratedDefaultPresets_v3
         case includeWarmupsInStats
-        case hasConsentedToAI  
+        case hasConsentedToAI
         case preferred1RMFormula
+        /// Survives cold widget/App Intent launch before mainContent listeners mount.
+        case pendingWidgetAction
     }
     enum Legal {
         static let privacyPolicyURL = URL(string: "https://borisserz.github.io/workouttracker-privacy/")!
@@ -36,6 +38,11 @@ public enum Constants {
 
     public enum AIConstants {
         public static let defaultTone = "Motivational"
+    }
+
+    /// Shared CNS / readiness AppStorage defaults. Missing vitals must stay negative (“not measured”).
+    public enum CNS {
+        public static let unmeasuredAppStorageDefault: Double = -1
     }
 
     public enum NotificationIdentifiers: String, CaseIterable {
