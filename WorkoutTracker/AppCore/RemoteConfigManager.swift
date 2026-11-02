@@ -36,8 +36,7 @@ actor RemoteConfigManager: Sendable {
             }
             #endif
             
-            let showPromo = remoteConfig.configValue(forKey: "show_foodtracker_promo").boolValue ||
-                            getString(forKey: "show_foodtracker_promo") == "1"
+            let showPromo = Self.isSisterAppsPromoEnabled(remoteConfig: remoteConfig, getString: getString(forKey:))
             if let sharedDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker") {
                 sharedDefaults.set(showPromo, forKey: "show_foodtracker_promo_enabled")
             }
@@ -66,8 +65,23 @@ actor RemoteConfigManager: Sendable {
     }
 
     var showFoodTrackerPromo: Bool {
-        return remoteConfig.configValue(forKey: "show_foodtracker_promo").boolValue ||
-               getString(forKey: "show_foodtracker_promo") == "1"
+        showSisterAppsPromo
+    }
+
+    /// Legacy `show_foodtracker_promo` OR `show_sister_apps_promo`.
+    var showSisterAppsPromo: Bool {
+        Self.isSisterAppsPromoEnabled(remoteConfig: remoteConfig, getString: getString(forKey:))
+    }
+
+    private static func isSisterAppsPromoEnabled(
+        remoteConfig: RemoteConfig,
+        getString: (String) -> String
+    ) -> Bool {
+        let food = remoteConfig.configValue(forKey: "show_foodtracker_promo").boolValue ||
+            getString("show_foodtracker_promo") == "1"
+        let sister = remoteConfig.configValue(forKey: "show_sister_apps_promo").boolValue ||
+            getString("show_sister_apps_promo") == "1"
+        return food || sister
     }
 
     func getAllPersonas() -> [AIPersona] {

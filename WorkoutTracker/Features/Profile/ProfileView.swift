@@ -80,7 +80,7 @@ struct ProfileView: View {
                         UserMetricsOverviewCard(height: userHeight, age: userAge, weight: userBodyWeight) { showEditMetrics = true }
 
                         if showFoodTrackerPromo {
-                            crossPromoBanner
+                            moreFromUsSection
                                 .padding(.horizontal, 20)
                         }
 
@@ -178,65 +178,19 @@ struct ProfileView: View {
         }
     }
 
-    private var crossPromoBanner: some View {
-        Button(action: {
-            if let url = URL(string: "foodtracker://"), UIApplication.shared.canOpenURL(url) {
-                UIApplication.shared.open(url, options: [:], completionHandler: nil)
-            } else if let storeUrl = URL(string: "https://apps.apple.com/app/id6778506345") {
-                UIApplication.shared.open(storeUrl, options: [:], completionHandler: nil)
-            }
-        }) {
-            HStack(spacing: 16) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(LinearGradient(colors: [.pink, .orange], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 64, height: 64)
-                        .shadow(color: PastelTheme.pastelPeach.opacity(0.4), radius: 8, y: 4)
-                    
-                    Image(systemName: "fork.knife")
-                        .font(.system(size: 30))
-                        .foregroundStyle(.white)
+    private var moreFromUsSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("More from us")
+                .font(.title3.bold())
+                .foregroundStyle(colorScheme == .dark ? .white : .black)
+
+            VStack(spacing: 12) {
+                ForEach(SisterAppsCatalog.all) { app in
+                    SisterAppTile(app: app)
                 }
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Food Tracker")
-                        .font(.system(size: 18, weight: .bold, design: .rounded))
-                        .foregroundStyle(colorScheme == .dark ? .white : .black)
-                    
-                    Text("Smart nutrition & AI coach")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.gray)
-                        .lineLimit(2)
-                }
-                
-                Spacer(minLength: 0)
-                
-                VStack {
-                    Text("GET")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelPeach)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(PastelTheme.pastelPeach.opacity(0.15))
-                        .clipShape(Capsule())
-                    
-                    Text("In-App Purchases")
-                        .font(.system(size: 8))
-                        .foregroundStyle(.gray)
-                        .padding(.top, 2)
-                }
-            }
-            .padding(16)
-            .background {
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(colorScheme == .dark ? AnyShapeStyle(Color.white.opacity(0.05)) : AnyShapeStyle(Color.white))
-                    .shadow(color: .black.opacity(0.06), radius: 12, y: 6)
-                
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(LinearGradient(colors: [PastelTheme.pastelPeach.opacity(0.5), PastelTheme.pastelAmber.opacity(0.5)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
             }
         }
-        .buttonStyle(.plain)
+        .accessibilityIdentifier("wt.profile.moreFromUs")
     }
 }
 

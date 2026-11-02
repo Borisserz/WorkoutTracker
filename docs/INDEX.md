@@ -1,6 +1,6 @@
 # WorkoutTracker documentation index
 
-Last updated: **2026-11-02** (ideal audit fix pass)
+Last updated: **2026-11-02** (sister-apps promo)
 
 ## Agent entry points
 
@@ -15,7 +15,8 @@ Last updated: **2026-11-02** (ideal audit fix pass)
 |-----|--------|
 | [`audits/2026-11-02-ideal-fix-pass.md`](audits/2026-11-02-ideal-fix-pass.md) | Ideal P0–P2 fix pass (**closed**, tests green) |
 | [`audits/2026-11-02-watch-device-smoke.md`](audits/2026-11-02-watch-device-smoke.md) | Hardware smoke checklist (~15 min) for Watch + Live Activity |
-| [`audits/2026-11-02-watch-device-smoke.md`](audits/2026-11-02-watch-device-smoke.md) | Hardware smoke checklist (~15 min) for Watch + Live Activity |
+| [`superpowers/specs/2026-11-02-sister-apps-promo-design.md`](superpowers/specs/2026-11-02-sister-apps-promo-design.md) | Sister apps Profile + one-time promo (**shipped**) |
+| [`superpowers/plans/2026-11-02-sister-apps-promo.md`](superpowers/plans/2026-11-02-sister-apps-promo.md) | Implementation plan |
 
 ## Audits (2026-11-01)
 

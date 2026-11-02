@@ -63,8 +63,7 @@ struct WorkoutTrackerApp: App {
     @State private var versionManager = VersionManager.shared
 
     @AppStorage("hasCompletedGodModeOnboarding_v1") private var hasCompletedGodModeOnboarding = false
-    @AppStorage("hasSeenFoodTrackerPromo") private var hasSeenFoodTrackerPromo = false
-    @State private var showFoodTrackerPromo = false
+    @State private var showSisterAppsPromo = false
     /// Survives DI bootstrap: cold open before `diContainer` exists.
     @State private var queuedOpenURL: URL?
 
@@ -238,22 +237,22 @@ struct WorkoutTrackerApp: App {
             } message: {
                 Text(importErrorMessage)
             }
-            .fullScreenCover(isPresented: $showFoodTrackerPromo) {
-                FoodTrackerPromoView()
+            .fullScreenCover(isPresented: $showSisterAppsPromo) {
+                SisterAppsPromoView()
                     .environment(ThemeManager.shared)
                     .preferredColorScheme(.dark)
             }
             .task {
                 for _ in 0..<10 {
                     try? await Task.sleep(nanoseconds: 500_000_000)
-                    let showPromo = await RemoteConfigManager.shared.showFoodTrackerPromo
-                    if showPromo && !hasSeenFoodTrackerPromo {
+                    let showPromo = await RemoteConfigManager.shared.showSisterAppsPromo
+                    if showPromo && !SisterAppsPromoFlags.hasSeenPromo() {
                         await MainActor.run {
-                            self.showFoodTrackerPromo = true
-                            self.hasSeenFoodTrackerPromo = true
+                            SisterAppsPromoFlags.markSeen()
+                            self.showSisterAppsPromo = true
                         }
                         break
-                    } else if showPromo && hasSeenFoodTrackerPromo {
+                    } else if showPromo && SisterAppsPromoFlags.hasSeenPromo() {
                         break
                     }
                 }

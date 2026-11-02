@@ -4,6 +4,17 @@ import WatchConnectivity
 import Observation
 import SwiftData
 
+
+#if os(watchOS)
+private enum SyncLog {
+    static let logger = WatchAppLog.sync
+}
+#else
+private enum SyncLog {
+    static let logger = AppLog.watch
+}
+#endif
+
 @Observable
 @MainActor
 final class WatchSyncManager: NSObject, WCSessionDelegate {
@@ -36,21 +47,21 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
 
     func requestPresetsFromPhone() {
         let session = WCSession.default
-        AppLog.watch.debug("⌚️ requestPresets — state:\(session.activationState.rawValue) reachable:\(session.isReachable)")
+        SyncLog.logger.debug("⌚️ requestPresets — state:\(session.activationState.rawValue) reachable:\(session.isReachable)")
 
         guard session.activationState == .activated else {
-            AppLog.watch.error("⌚️ ❌ session not activated yet — aborting request")
+            SyncLog.logger.error("⌚️ ❌ session not activated yet — aborting request")
             return
         }
 
         let message = ["request": "presets"]
         if session.isReachable {
             session.sendMessage(message, replyHandler: nil) { error in
-                AppLog.watch.error("⌚️ sendMessage failed → transferUserInfo fallback: \(error.localizedDescription)")
+                SyncLog.logger.error("⌚️ sendMessage failed → transferUserInfo fallback: \(error.localizedDescription)")
                 session.transferUserInfo(message)   // guaranteed, queued
             }
         } else {
-            AppLog.watch.debug("⌚️ not reachable → transferUserInfo (guaranteed)")
+            SyncLog.logger.debug("⌚️ not reachable → transferUserInfo (guaranteed)")
             session.transferUserInfo(message)        // works on Simulator
         }
     }
@@ -62,7 +73,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
         let session = WCSession.default
         if session.isReachable {
             session.sendMessage(message, replyHandler: nil) { error in
-                AppLog.watch.error("⌚️ active-state sendMessage failed → transferUserInfo: \(error.localizedDescription)")
+                SyncLog.logger.error("⌚️ active-state sendMessage failed → transferUserInfo: \(error.localizedDescription)")
                 session.transferUserInfo(message)
             }
         } else {
@@ -126,7 +137,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
                              error: (any Error)?) {
         let reachable = session.isReachable
         let ctx = session.receivedApplicationContext        
-        AppLog.watch.debug("⌚️ activation: \(activationState.rawValue) reachable:\(reachable) ctxKeys:\(ctx.keys)")
+        SyncLog.logger.debug("⌚️ activation: \(activationState.rawValue) reachable:\(reachable) ctxKeys:\(ctx.keys)")
         Task { @MainActor in self.isReachable = reachable }
         if !ctx.isEmpty { handleIncoming(ctx) }
     }
@@ -160,12 +171,12 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             }
 
             if let presetsData {
-                AppLog.watch.debug("⌚️ got presetsBatch \(presetsData.count) bytes")
+                SyncLog.logger.debug("⌚️ got presetsBatch \(presetsData.count) bytes")
                 if let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
-                    AppLog.watch.debug("⌚️ decoded \(dtos.count) presets → saving")
+                    SyncLog.logger.debug("⌚️ decoded \(dtos.count) presets → saving")
                     await self.savePresetsLocally(dtos)
                 } else {
-                    AppLog.watch.error("⌚️ ❌ failed to decode [WorkoutPresetDTO]")
+                    SyncLog.logger.error("⌚️ ❌ failed to decode [WorkoutPresetDTO]")
                 }
             }
         }
@@ -186,7 +197,7 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
         do {
             try context.save()
         } catch {
-            AppLog.watch.error("⌚️ ❌ failed to save presets locally: \(error.localizedDescription)")
+            SyncLog.logger.error("⌚️ ❌ failed to save presets locally: \(error.localizedDescription)")
         }
     }
 
