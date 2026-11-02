@@ -185,8 +185,7 @@ struct LegendaryTemplatePreviewSheet: View {
                                 .padding(.bottom, 8)
                                 
                                 Button {
-                                    let generator = UINotificationFeedbackGenerator()
-                                    generator.notificationOccurred(.success)
+                                    HapticManager.shared.notification(.success)
                                     dismiss()
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                                         onStart()
@@ -229,12 +228,9 @@ struct LegendaryTemplatePreviewSheet: View {
                             .padding(24)
                             .background(Color(red: 0.12, green: 0.12, blue: 0.12))
                         }
-                        .cornerRadius(24)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 24)
-                                .stroke(LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
-                        )
-                        .shadow(color: routine.gradientColors[0].opacity(0.4), radius: 20, x: 0, y: 10)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .flameBorder(cornerRadius: 24, lineWidth: 1.8)
+                        .shadow(color: Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.35), radius: 20, x: 0, y: 10)
                         .padding(.horizontal, 20)
                         
                         Spacer().frame(height: 20)
@@ -306,8 +302,7 @@ struct LegendaryTemplatePreviewSheet: View {
             await MainActor.run {
                 showSavedToast = true
                 isSaving = false
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
+                HapticManager.shared.notification(.success)
             }
         }
     }

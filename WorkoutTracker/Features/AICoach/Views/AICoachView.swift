@@ -108,8 +108,7 @@ struct AICoachView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ZStack {
-                PastelTheme.canvas.ignoresSafeArea()
-                AtmosphericGymBackdropView(style: .aiHub)
+                Color.clear.ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {

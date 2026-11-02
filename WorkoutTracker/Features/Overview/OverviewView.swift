@@ -54,7 +54,8 @@ struct OverviewView: View {
     @Environment(DIContainer.self) private var di
 
     @AppStorage("userGender") private var userGender = "male"
-    @AppStorage("cnsScore") private var cnsScore: Double = 85.0
+    /// -1 = not measured yet (do not invent a “good” readiness score).
+    @AppStorage("cnsScore") private var cnsScore: Double = -1
     @AppStorage("userRecoveryHours") private var storedRecoveryHours: Double = 48.0
     @AppStorage("hasSeenCommitmentSheet") private var hasSeenCommitmentSheet = false
 
@@ -71,8 +72,7 @@ struct OverviewView: View {
     var body: some View {
         NavigationStack(path: $router.path) {
             ZStack {
-                PastelTheme.canvas.ignoresSafeArea()
-                AtmosphericGymBackdropView(style: .overview)
+                Color.clear.ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
@@ -81,7 +81,8 @@ struct OverviewView: View {
                         OverviewHeaderView(
                             streakDays: dashboardViewModel.streakCount,
                             onCalendarTap: { router.push(.calendar) },
-                            onProfileTap: { router.present(.profile) }
+                            onProfileTap: { router.present(.profile) },
+                            onSettingsTap: { router.present(.settings) }
                         )
 
                         // 2. Centerpiece: Muscle Readiness Anatomy with Body Analysis CTA
@@ -198,6 +199,7 @@ struct OverviewView: View {
                     MuscleColorSettingsView()
                 }
             }
+            .accessibilityIdentifier("wt.overview.root")
             .sheet(isPresented: $showCommitmentSheet) {
                 FutureSelfCommitmentSheet {
                     hasSeenCommitmentSheet = true
@@ -234,6 +236,12 @@ struct OverviewView: View {
             }
             .onAppear {
                 vitals.startMonitoring()
+                Task {
+                    await CNSScoreRefresher.refresh(
+                        waterLiters: dashboardViewModel.todayWaterLiters,
+                        setScore: { cnsScore = $0 }
+                    )
+                }
                 dashboardViewModel.refreshAllCaches()
                 if recentWorkouts.isEmpty && !hasSeenCommitmentSheet {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
@@ -261,12 +269,12 @@ final class VitalsMonitor {
     var lastUpdated: Date? = nil
 
     var timeAgoText: String {
-        guard let date = lastUpdated else { return "No data" }
+        guard let date = lastUpdated else { return String(localized: "No data") }
         let minutes = Int(Date().timeIntervalSince(date) / 60)
-        if minutes == 0 { return "Just now" }
-        if minutes < 60 { return "" }
+        if minutes <= 0 { return String(localized: "Just now") }
+        if minutes < 60 { return String(localized: "\(minutes) min ago") }
         let hours = minutes / 60
-        return "\(hours) h back"
+        return String(localized: "\(hours) h ago")
     }
 
     func startMonitoring() {
@@ -288,6 +296,40 @@ final class VitalsMonitor {
                     }
                 }
             }
+        }
+    }
+}
+
+enum CNSScoreRefresher {
+    @MainActor
+    static func refresh(
+        waterLiters: Double,
+        setScore: @escaping (Double) -> Void,
+        setHRV: ((Double?) -> Void)? = nil,
+        setRHR: ((Double?) -> Void)? = nil,
+        setSleep: ((Double, Bool) -> Void)? = nil
+    ) async {
+        try? await HealthKitManager.shared.requestAuthorization()
+        let sleep = await HealthKitManager.shared.fetchSleepDuration() ?? 0
+        let hrv = await HealthKitManager.shared.fetchLatestHRV()
+        let rhr = await HealthKitManager.shared.fetchLatestRHR()
+        let baselineHRV = await HealthKitManager.shared.fetchAverageHRV()
+        let baselineRHR = await HealthKitManager.shared.fetchAverageRHR()
+        let cups = Int((waterLiters * 4.0).rounded()) // ~250ml cups
+
+        let score = CNSCalculator.calculate(
+            sleepHours: sleep,
+            hrv: hrv,
+            baselineHRV: baselineHRV,
+            rhr: rhr,
+            baselineRHR: baselineRHR,
+            waterCups: max(0, cups)
+        )
+        setScore(score)
+        setHRV?(hrv)
+        setRHR?(rhr)
+        if sleep > 0 {
+            setSleep?(sleep, true)
         }
     }
 }
@@ -342,7 +384,7 @@ struct CommitmentButton: View {
 
     var body: some View {
         Button(action: {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.impact(.medium)
             action()
         }) {
             HStack(spacing: 14) {
@@ -392,7 +434,7 @@ struct CNSExplanationSheet: View {
 
                         Spacer()
 
-                        Text("\(Int(cnsScore))%")
+                        Text(cnsScore >= 0 ? "\(Int(cnsScore))%" : "—")
                             .font(.title2.bold())
                             .foregroundStyle(PastelTheme.pastelLavender)
                             .padding(.horizontal, 12)
@@ -408,13 +450,23 @@ struct CNSExplanationSheet: View {
                         .foregroundStyle(PastelTheme.textSecondary)
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text(cnsScore >= 80 ? "Readiness: Prime" : (cnsScore >= 60 ? "Readiness: Moderate" : "Readiness: Strained"))
+                        Text(
+                            cnsScore < 0 ? "Readiness: Not measured"
+                            : (cnsScore >= 80 ? "Readiness: Prime" : (cnsScore >= 60 ? "Readiness: Moderate" : "Readiness: Strained"))
+                        )
                             .font(.footnote.bold())
-                            .foregroundStyle(cnsScore >= 80 ? PastelTheme.pastelSage : (cnsScore >= 60 ? PastelTheme.pastelAmber : PastelTheme.pastelPeach))
+                            .foregroundStyle(
+                                cnsScore < 0 ? PastelTheme.textSecondary
+                                : (cnsScore >= 80 ? PastelTheme.pastelSage : (cnsScore >= 60 ? PastelTheme.pastelAmber : PastelTheme.pastelPeach))
+                            )
 
-                        Text(cnsScore >= 80 
-                            ? "Neural pathways are fully restored. Safe to attempt maximal lifts, progressive overload, and explosive movements."
-                            : "Accumulated fatigue present. Focus on moderate hypertrophy or active recovery, sparing excessive spinal loading.")
+                        Text(
+                            cnsScore < 0
+                            ? "Sync Apple Health or log recovery inputs to estimate CNS readiness. No score is invented until data is available."
+                            : (cnsScore >= 80
+                               ? "Neural pathways are fully restored. Safe to attempt maximal lifts, progressive overload, and explosive movements."
+                               : "Accumulated fatigue present. Focus on moderate hypertrophy or active recovery, sparing excessive spinal loading.")
+                        )
                             .font(.caption)
                             .foregroundStyle(PastelTheme.textSecondary)
                     }

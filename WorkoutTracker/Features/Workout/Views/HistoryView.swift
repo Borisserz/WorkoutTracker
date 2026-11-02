@@ -3,11 +3,11 @@ import SwiftData
 
 /// Filter options for History tab
 enum HistoryFilter: String, CaseIterable, Identifiable {
-    case all = "Все"
-    case favorites = "Избранные ★"
-    case month = "Этот месяц"
-    case threeMonths = "3 месяца"
-    case year = "За год"
+    case all = "All"
+    case favorites = "Favorites"
+    case month = "This month"
+    case threeMonths = "3 months"
+    case year = "This year"
 
     var id: String { rawValue }
 }
@@ -30,7 +30,11 @@ struct HistoryView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
 
-    @Query(sort: \Workout.date, order: .reverse) private var allWorkouts: [Workout]
+    /// Cap in-memory history for SwiftData `@Query` — full-library scans blow RAM after years of logging.
+    @Query private var allWorkouts: [Workout]
+    /// Favorites are typically few — unbounded so older starred sessions stay visible past the main cap.
+    @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
+    private var favoriteWorkouts: [Workout]
     @Query(sort: \WorkoutPreset.name) private var allPresets: [WorkoutPreset]
 
     @State private var searchText = ""
@@ -38,41 +42,39 @@ struct HistoryView: View {
     @State private var selectedFilter: HistoryFilter = .all
     @State private var isEditingList = false
     @State private var navigateToActiveWorkout: Workout? = nil
+    @State private var workoutPendingDelete: Workout? = nil
+    @State private var showDeleteConfirm = false
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
+        descriptor.fetchLimit = 800
+        _allWorkouts = Query(descriptor)
+    }
+
+    private static let monthYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "LLLL yyyy"
+        f.locale = Locale(identifier: "en_US")
+        return f
+    }()
+
+    static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        f.locale = Locale(identifier: "ru_RU")
+        return f
+    }()
+
+    private var hasActiveWorkout: Bool {
+        allWorkouts.contains { $0.endTime == nil }
+    }
 
     private var displayTemplates: [WorkoutPreset] {
+        // Only persisted presets — never invent unsaved mock templates.
         if !allPresets.isEmpty {
             return allPresets
         }
-        return [
-            WorkoutPreset(
-                name: "Силовой День А",
-                icon: "dumbbell.fill",
-                folderName: "Золотые сплиты",
-                exercises: [
-                    Exercise(name: "Жим штанги лежа", muscleGroup: "Chest", setsList: [WorkoutSet(weight: 90, reps: 8)]),
-                    Exercise(name: "Подтягивания", muscleGroup: "Back", setsList: [WorkoutSet(weight: 0, reps: 8)]),
-                    Exercise(name: "Армейский жим", muscleGroup: "Shoulders", setsList: [WorkoutSet(weight: 50, reps: 8)])
-                ]
-            ),
-            WorkoutPreset(
-                name: "Arnold's Golden Split",
-                icon: "flame.fill",
-                folderName: "Золотая эра",
-                exercises: [
-                    Exercise(name: "Жим на наклонной", muscleGroup: "Chest", setsList: [WorkoutSet(weight: 80, reps: 10)]),
-                    Exercise(name: "Тяга верхнего блока", muscleGroup: "Back", setsList: [WorkoutSet(weight: 70, reps: 10)])
-                ]
-            ),
-            WorkoutPreset(
-                name: "Mike Mentzer HIT",
-                icon: "bolt.fill",
-                folderName: "HIT Протокол",
-                exercises: [
-                    Exercise(name: "Жим гантелей лежа", muscleGroup: "Chest", setsList: [WorkoutSet(weight: 36, reps: 8)]),
-                    Exercise(name: "Становая тяга", muscleGroup: "Back", setsList: [WorkoutSet(weight: 120, reps: 6)])
-                ]
-            )
-        ]
+        return []
     }
 
     // MARK: - Computed Best Workouts for Top Hall of Fame
@@ -85,8 +87,12 @@ struct HistoryView: View {
     private var filteredWorkouts: [Workout] {
         let calendar = Calendar.current
         let now = Date()
+        let source = selectedFilter == .favorites ? favoriteWorkouts : allWorkouts
 
-        return allWorkouts.filter { workout in
+        return source.filter { workout in
+            // History shows finished sessions only
+            guard workout.endTime != nil else { return false }
+
             // Search text filter
             if !searchText.isEmpty {
                 let matchTitle = workout.title.localizedCaseInsensitiveContains(searchText)
@@ -99,7 +105,7 @@ struct HistoryView: View {
             case .all:
                 return true
             case .favorites:
-                return workout.isFavorite
+                return true
             case .month:
                 let cutoff = calendar.date(byAdding: .month, value: -1, to: now) ?? .distantPast
                 return workout.date >= cutoff
@@ -121,7 +127,7 @@ struct HistoryView: View {
         guard let startOfThisWeek = calendar.dateInterval(of: .weekOfYear, for: now)?.start,
               let startOfLastWeek = calendar.date(byAdding: .weekOfYear, value: -1, to: startOfThisWeek),
               let startOfThisMonth = calendar.dateInterval(of: .month, for: now)?.start else {
-            return [WorkoutTimelineGroup(id: "all", title: "Все тренировки", workouts: filteredWorkouts)]
+            return [WorkoutTimelineGroup(id: "all", title: "All workouts", workouts: filteredWorkouts)]
         }
 
         var thisWeek: [Workout] = []
@@ -143,18 +149,16 @@ struct HistoryView: View {
 
         var groups: [WorkoutTimelineGroup] = []
         if !thisWeek.isEmpty {
-            groups.append(WorkoutTimelineGroup(id: "thisWeek", title: "На этой неделе", workouts: thisWeek))
+            groups.append(WorkoutTimelineGroup(id: "thisWeek", title: "This week", workouts: thisWeek))
         }
         if !lastWeek.isEmpty {
-            groups.append(WorkoutTimelineGroup(id: "lastWeek", title: "Прошлая неделя", workouts: lastWeek))
+            groups.append(WorkoutTimelineGroup(id: "lastWeek", title: "Last week", workouts: lastWeek))
         }
         if !thisMonth.isEmpty {
-            groups.append(WorkoutTimelineGroup(id: "thisMonth", title: "В этом месяце", workouts: thisMonth))
+            groups.append(WorkoutTimelineGroup(id: "thisMonth", title: "This month", workouts: thisMonth))
         }
         if !older.isEmpty {
-            let monthFormatter = DateFormatter()
-            monthFormatter.dateFormat = "LLLL yyyy"
-            monthFormatter.locale = Locale(identifier: "ru_RU")
+            let monthFormatter = Self.monthYearFormatter
 
             let groupedByMonth = Dictionary(grouping: older) { workout in
                 monthFormatter.string(from: workout.date).capitalized
@@ -177,45 +181,69 @@ struct HistoryView: View {
     }
 
     private func replayWorkout(_ workout: Workout) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticManager.shared.impact(.medium)
+        guard !hasActiveWorkout else {
+            di.appState.showError(
+                title: String(localized: "Workout in progress"),
+                message: String(localized: "Finish or delete the current workout before starting another.")
+            )
+            return
+        }
         Task { @MainActor in
-            let title = workout.title.isEmpty ? "Повтор тренировки" : workout.title
-            if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
-                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                descriptor.fetchLimit = 1
-                if let newWorkout = try? context.fetch(descriptor).first {
-                    for ex in workout.exercises {
-                        let newEx = Exercise(name: ex.name, muscleGroup: ex.muscleGroup, type: ex.type, sets: max(1, ex.setsList.count), reps: ex.setsList.first?.reps ?? 10, weight: ex.setsList.first?.weight ?? 0)
-                        context.insert(newEx)
-                        newWorkout.exercises.append(newEx)
-                    }
-                    try? context.save()
-                    self.navigateToActiveWorkout = newWorkout
+            let title = workout.title.isEmpty ? String(localized: "Replay workout") : workout.title
+            guard let newID = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false),
+                  let newWorkout = context.model(for: newID) as? Workout else { return }
+            for ex in workout.exercises {
+                let newEx = Exercise(from: ex.toDTO())
+                newEx.isCompleted = false
+                context.insert(newEx)
+                for set in newEx.setsList { set.isCompleted = false; context.insert(set) }
+                for sub in newEx.subExercises {
+                    sub.isCompleted = false
+                    context.insert(sub)
+                    for set in sub.setsList { set.isCompleted = false; context.insert(set) }
                 }
+                newWorkout.exercises.append(newEx)
+            }
+            do {
+                try context.save()
+                self.navigateToActiveWorkout = newWorkout
+            } catch {
+                di.appState.showError(
+                    title: String(localized: "Replay failed"),
+                    message: error.localizedDescription
+                )
             }
         }
     }
 
     private func startPreset(_ preset: WorkoutPreset) {
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        HapticManager.shared.impact(.medium)
+        guard !hasActiveWorkout else {
+            di.appState.showError(
+                title: String(localized: "Workout in progress"),
+                message: String(localized: "Finish or delete the current workout before starting another.")
+            )
+            return
+        }
         Task { @MainActor in
-            if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
-                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                descriptor.fetchLimit = 1
-                if let newWorkout = try? context.fetch(descriptor).first {
-                    self.navigateToActiveWorkout = newWorkout
-                }
-            }
+            guard let newID = await workoutService.createWorkout(
+                title: preset.name,
+                presetID: preset.persistentModelID,
+                isAIGenerated: false
+            ),
+            let newWorkout = context.model(for: newID) as? Workout else { return }
+            self.navigateToActiveWorkout = newWorkout
         }
     }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                PastelTheme.canvas.ignoresSafeArea()
-                AtmosphericGymBackdropView(style: .history)
+                Color.clear.ignoresSafeArea()
 
                 List {
+
                     Group {
                         // 1. Header with Edit Button
                         HistoryHeaderView(
@@ -240,7 +268,7 @@ struct HistoryView: View {
                             selectedFilter: $selectedFilter
                         )
 
-                        // 4.5. Золотые сплиты и история лучших тренировок (Шаблоны)
+                        // 4.5. Golden splits and best-workout history (templates)
                         if (!bestHistoricalWorkouts.isEmpty || !displayTemplates.isEmpty) && searchText.isEmpty && selectedFilter == .all {
                             BestWorkoutsAndTemplatesShelf(
                                 bestWorkouts: bestHistoricalWorkouts,
@@ -277,10 +305,9 @@ struct HistoryView: View {
                                     HStack(spacing: 12) {
                                         if isEditingList {
                                             Button {
-                                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                                Task {
-                                                    await workoutService.deleteWorkout(workout)
-                                                }
+                                                HapticManager.shared.impact(.medium)
+                                                workoutPendingDelete = workout
+                                                showDeleteConfirm = true
                                             } label: {
                                                 Image(systemName: "minus.circle.fill")
                                                     .font(.title3)
@@ -301,24 +328,31 @@ struct HistoryView: View {
                                     .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                                     .listRowSeparator(.hidden)
                                     .listRowBackground(Color.clear)
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                         Button(role: .destructive) {
-                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                            Task {
-                                                await workoutService.deleteWorkout(workout)
-                                            }
+                                            HapticManager.shared.impact(.medium)
+                                            workoutPendingDelete = workout
+                                            showDeleteConfirm = true
                                         } label: {
-                                            Label("Удалить", systemImage: "trash.fill")
+                                            Label("Delete", systemImage: "trash.fill")
                                         }
                                         .tint(PastelTheme.pastelPeach)
                                     }
                                     .swipeActions(edge: .leading) {
                                         Button {
-                                            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                                            HapticManager.shared.impact(.soft)
                                             workout.isFavorite.toggle()
-                                            try? context.save()
+                                            do {
+                                                try context.save()
+                                            } catch {
+                                                workout.isFavorite.toggle()
+                                                di.appState.showError(
+                                                    title: String(localized: "Save failed"),
+                                                    message: error.localizedDescription
+                                                )
+                                            }
                                         } label: {
-                                            Label(workout.isFavorite ? "Убрать из избранного" : "В избранное", systemImage: workout.isFavorite ? "star.slash.fill" : "star.fill")
+                                            Label(workout.isFavorite ? "Remove from favorites" : "Add to favorites", systemImage: workout.isFavorite ? "star.slash.fill" : "star.fill")
                                         }
                                         .tint(PastelTheme.pastelAmber)
                                     }
@@ -333,11 +367,11 @@ struct HistoryView: View {
 
                                     let tons = group.totalVolume / 1000.0
                                     HStack(spacing: 6) {
-                                        Text("\(group.workouts.count) сес.")
+                                        Text("\(group.workouts.count) sessions")
                                             .font(.caption2.bold())
                                             .foregroundStyle(PastelTheme.pastelSage)
 
-                                        Text("\(String(format: "%.1f", tons)) т")
+                                        Text("\(String(format: "%.1f", tons)) t")
                                             .font(.caption2.bold())
                                             .foregroundStyle(PastelTheme.pastelOat)
                                     }
@@ -363,7 +397,7 @@ struct HistoryView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(PastelTheme.canvas.ignoresSafeArea())
+                .background(Color.clear)
                 .onTapGesture {
                     hideKeyboard()
                     withAnimation { isSearching = false }
@@ -373,6 +407,23 @@ struct HistoryView: View {
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
             .navigationBarHidden(true)
+            .accessibilityIdentifier("wt.history.root")
+            .confirmationDialog(
+                "Delete this workout?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    guard let workout = workoutPendingDelete else { return }
+                    workoutPendingDelete = nil
+                    Task { await workoutService.deleteWorkout(workout) }
+                }
+                Button("Cancel", role: .cancel) {
+                    workoutPendingDelete = nil
+                }
+            } message: {
+                Text("This cannot be undone.")
+            }
         }
         .preferredColorScheme(.dark)
     }
@@ -387,7 +438,7 @@ private struct HistoryHeaderView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
-                    Text("История")
+                    Text("History")
                         .font(.largeTitle.bold())
                         .foregroundStyle(PastelTheme.textPrimary)
 
@@ -403,7 +454,7 @@ private struct HistoryHeaderView: View {
                     }
                 }
 
-                Text("Журнал тренировок и прогресс")
+                Text("Workout log and progress")
                     .font(.caption)
                     .foregroundStyle(PastelTheme.textSecondary)
             }
@@ -411,12 +462,12 @@ private struct HistoryHeaderView: View {
             Spacer()
 
             Button {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                HapticManager.shared.impact(.soft)
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                     isEditing.toggle()
                 }
             } label: {
-                Text(isEditing ? "Готово" : "Править")
+                Text(isEditing ? "Done" : "Edit")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(isEditing ? PastelTheme.textOnOat : PastelTheme.textPrimary)
                     .padding(.horizontal, 14)
@@ -458,11 +509,12 @@ private struct HistoryHeroBentoCard: View {
                         .font(.system(size: 38, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelOat)
 
-                    Text("Т")
+                    Text("t")
                         .font(.title2.weight(.bold))
                         .foregroundStyle(PastelTheme.pastelOat)
+                        .accessibilityLabel(Text("tons"))
 
-                    Text("поднято")
+                    Text("lifted")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(PastelTheme.textSecondary)
                         .padding(.leading, 2)
@@ -476,7 +528,7 @@ private struct HistoryHeroBentoCard: View {
                         .font(.system(size: 10, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelSage)
 
-                    Text(workouts.isEmpty ? "Отдых" : "Активный прогресс")
+                    Text(workouts.isEmpty ? "Rest day" : "Active progress")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
                 }
@@ -496,11 +548,11 @@ private struct HistoryHeroBentoCard: View {
                         .frame(width: 3, height: 26)
 
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("\(workouts.count) сессий")
+                        Text("\(workouts.count) sessions")
                             .font(.subheadline.bold())
                             .foregroundStyle(PastelTheme.textPrimary)
 
-                        Text("завершено")
+                        Text("completed")
                             .font(.caption2)
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -519,11 +571,11 @@ private struct HistoryHeroBentoCard: View {
                         .frame(width: 3, height: 26)
 
                     VStack(alignment: .leading, spacing: 1) {
-                        Text("\(avgDurationMinutes) мин")
+                        Text("\(avgDurationMinutes) min")
                             .font(.subheadline.bold())
                             .foregroundStyle(PastelTheme.textPrimary)
 
-                        Text("в среднем")
+                        Text("average")
                             .font(.caption2)
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -563,7 +615,7 @@ private struct HistorySearchBarView: View {
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(isSearching ? PastelTheme.pastelOat : PastelTheme.textTertiary)
 
-            TextField("Поиск по названию или упражнениям...", text: $text)
+            TextField("Search by title or exercises...", text: $text)
                 .font(.subheadline)
                 .foregroundStyle(PastelTheme.textPrimary)
                 .onTapGesture { withAnimation { isSearching = true } }
@@ -601,7 +653,7 @@ private struct HistoryFilterBarView: View {
                     let isSelected = selectedFilter == filter
 
                     Button {
-                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        HapticManager.shared.impact(.soft)
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                             selectedFilter = filter
                         }
@@ -618,10 +670,12 @@ private struct HistoryFilterBarView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("wt.history.filter.\(filter.rawValue.replacingOccurrences(of: " ", with: "_").lowercased())")
                 }
             }
             .padding(.horizontal, 1)
         }
+        .accessibilityIdentifier("wt.history.filters")
     }
 }
 
@@ -676,7 +730,7 @@ private struct PastelWorkoutCard: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 8) {
-                        Text(workout.title.isEmpty ? "Тренировка" : workout.title)
+                        Text(workout.title.isEmpty ? "Workout" : workout.title)
                             .font(.headline.weight(.bold))
                             .foregroundStyle(PastelTheme.textPrimary)
                             .lineLimit(1)
@@ -701,7 +755,7 @@ private struct PastelWorkoutCard: View {
                             .font(.system(size: 8, weight: .bold))
                             .foregroundStyle(PastelTheme.pastelSage)
 
-                        Text("В процессе")
+                        Text("In progress")
                             .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(PastelTheme.pastelSage)
                     }
@@ -775,7 +829,7 @@ private struct PastelWorkoutCard: View {
                         .font(.caption2)
                         .foregroundStyle(PastelTheme.pastelSage)
 
-                    Text("\(workout.durationSeconds / 60) мин")
+                    Text("\(workout.durationSeconds / 60) min")
                         .font(.caption.bold())
                         .foregroundStyle(PastelTheme.pastelSage)
                 }
@@ -794,7 +848,7 @@ private struct PastelWorkoutCard: View {
                         .font(.caption2)
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("\(workout.exercises.count) упр.")
+                    Text("\(workout.exercises.count) exercises")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(PastelTheme.textPrimary)
                 }
@@ -840,13 +894,14 @@ private struct PastelHistoryEmptyState: View {
                 .padding(.top, 12)
 
             VStack(spacing: 4) {
-                Text(isSearching ? "Ничего не найдено" : "История пуста")
+                Text(isSearching ? "No results" : "History is empty")
                     .font(.headline)
                     .foregroundStyle(PastelTheme.textPrimary)
+                    .accessibilityIdentifier(isSearching ? "wt.history.noResults" : "wt.history.empty")
 
                 Text(isSearching 
-                    ? "Попробуйте изменить запрос или фильтр" 
-                    : "Завершите вашу первую тренировку, чтобы она появилась в истории")
+                    ? "Try a different search or filter" 
+                    : "Finish your first workout to see it here")
                     .font(.caption)
                     .foregroundStyle(PastelTheme.textSecondary)
                     .multilineTextAlignment(.center)
@@ -857,7 +912,7 @@ private struct PastelHistoryEmptyState: View {
                 Button {
                     onResetFilters()
                 } label: {
-                    Text("Сбросить фильтры")
+                    Text("Clear filters")
                         .font(.caption.bold())
                         .foregroundStyle(PastelTheme.pastelOat)
                         .padding(.horizontal, 16)
@@ -872,7 +927,7 @@ private struct PastelHistoryEmptyState: View {
                     onStartWorkout()
                 } label: {
                     HStack(spacing: 6) {
-                        Text("Начать тренировку")
+                        Text("Start workout")
                             .font(.caption.bold())
                         Image(systemName: "arrow.right")
                             .font(.caption2.bold())
@@ -922,7 +977,7 @@ struct BestWorkoutsAndTemplatesShelf: View {
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(PastelTheme.pastelAmber)
 
-                Text("История лучших тренировок и шаблоны")
+                Text("Best sessions and templates")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
@@ -967,21 +1022,18 @@ private struct BestWorkoutReplayCard: View {
     let onReplay: () -> Void
 
     private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        formatter.locale = Locale(identifier: "ru_RU")
-        return formatter.string(from: workout.date)
+        HistoryView.shortDateFormatter.string(from: workout.date)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Рекорд")
+                    Text("Record")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelAmber)
 
-                    Text(workout.title.isEmpty ? "Тренировка" : workout.title)
+                    Text(workout.title.isEmpty ? "Workout" : workout.title)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .lineLimit(1)
@@ -997,7 +1049,7 @@ private struct BestWorkoutReplayCard: View {
 
             let tons = workout.totalStrengthVolume / 1000.0
             HStack(spacing: 6) {
-                Text(String(format: "%.1f т", tons))
+                Text(String(format: "%.1f t", tons))
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.pastelSage)
                     .padding(.horizontal, 7)
@@ -1005,7 +1057,7 @@ private struct BestWorkoutReplayCard: View {
                     .background(PastelTheme.cardSurfaceSubtle)
                     .clipShape(Capsule())
 
-                Text("\(workout.exercises.count) упр.")
+                Text("\(workout.exercises.count) exercises")
                     .font(.system(size: 11, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
             }
@@ -1014,7 +1066,7 @@ private struct BestWorkoutReplayCard: View {
                 HStack(spacing: 5) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 10, weight: .bold))
-                    Text("Повторить")
+                    Text("Retry")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
@@ -1044,7 +1096,7 @@ private struct PresetReplayCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Шаблон")
+                    Text("Template")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelLavender)
 
@@ -1058,7 +1110,7 @@ private struct PresetReplayCard: View {
                 Spacer()
             }
 
-            Text("\(preset.exercises.count) упр.")
+            Text("\(preset.exercises.count) exercises")
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .foregroundStyle(PastelTheme.textSecondary)
                 .padding(.horizontal, 7)
@@ -1070,7 +1122,7 @@ private struct PresetReplayCard: View {
                 HStack(spacing: 5) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 10, weight: .bold))
-                    Text("Запустить")
+                    Text("Launch")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)

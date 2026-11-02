@@ -72,7 +72,8 @@ struct LegendaryRoutinesView: View {
                     if FirestoreProgramService.shared.legendaryRoutines.isEmpty {
                         await FirestoreProgramService.shared.fetchAllPrograms()
                     }
-                    self.routines = FirestoreProgramService.shared.legendaryRoutines
+                    let remote = FirestoreProgramService.shared.legendaryRoutines
+                    self.routines = remote.isEmpty ? LegendaryFallbackCatalog.routines : remote
 
                     if activeRoutineID == nil, let first = routines.first {
                         activeRoutineID = first.id
@@ -84,8 +85,7 @@ struct LegendaryRoutinesView: View {
                 withAnimation(.easeInOut(duration: 0.8)) {
                     currentBackgroundColors = routine.gradientColors
                 }
-                let gen = UISelectionFeedbackGenerator()
-                gen.selectionChanged()
+                HapticManager.shared.selection()
             }
         }
         .overlay {
@@ -102,8 +102,7 @@ struct LegendaryRoutinesView: View {
         guard !isStartingWorkout else { return }
         isStartingWorkout = true
 
-        let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.heavy)
 
         Task { @MainActor in
 
@@ -113,15 +112,14 @@ struct LegendaryRoutinesView: View {
                 exercises: routine.exercises
             )
 
-            await workoutService.startGeneratedWorkout(generatedDTO)
-
-            if let newWorkout = await workoutService.fetchLatestWorkout() {
-                di.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
-                di.appState.selectedTab = 2 
+            if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "legendary") {
+                di.appState.returnToActiveWorkoutId = id
+                di.appState.selectedTab = 2
+                isStartingWorkout = false
+                dismiss()
+            } else {
+                isStartingWorkout = false
             }
-
-            isStartingWorkout = false
-            dismiss()
         }
     }
 }
@@ -289,18 +287,8 @@ struct LegendaryCardView: View {
         .background(.ultraThinMaterial)
         .environment(\.colorScheme, .dark) 
         .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: routine.gradientColors + [.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 2
-                )
-        )
-        .shadow(color: (routine.gradientColors.first ?? .black).opacity(0.3), radius: 25, x: 0, y: 15)
+        .flameBorder(cornerRadius: 32, lineWidth: 1.8)
+        .shadow(color: Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.35), radius: 24, x: 0, y: 12)
     }
 }
 
@@ -323,7 +311,7 @@ struct MorphingBackgroundView: View {
                 )
 
             Circle()
-                .fill(colors.last ?? .purple)
+                .fill(colors.last ?? PastelTheme.pastelLavender)
                 .frame(width: 400, height: 400)
                 .blur(radius: 120)
                 .offset(

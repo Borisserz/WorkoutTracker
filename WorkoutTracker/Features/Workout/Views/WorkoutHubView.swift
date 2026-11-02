@@ -22,16 +22,19 @@ struct WorkoutHubView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(PresetService.self) var presetService
     @Environment(DashboardViewModel.self) var dashboardViewModel
+    @Environment(UnitsManager.self) var unitsManager
 
     // MARK: - SwiftData Queries
     @Query(filter: #Predicate<WorkoutPreset> { $0.isSystem == false }, sort: \WorkoutPreset.name)
     private var userPresets: [WorkoutPreset]
 
-    @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
-    private var favoriteWorkouts: [Workout]
+    @Query private var favoriteWorkouts: [Workout]
 
     @Query(filter: #Predicate<Workout> { $0.endTime == nil }, sort: \Workout.date, order: .reverse)
     private var activeWorkouts: [Workout]
+
+    /// Cap finished sessions in memory — same window as History (400).
+    @Query private var finishedWorkouts: [Workout]
 
     // MARK: - Filter States
     @State private var searchText = ""
@@ -58,6 +61,22 @@ struct WorkoutHubView: View {
     @State private var selectedLegendaryRoutine: LegendaryRoutine? = nil
     @State private var isMuscleGridExpanded: Bool = false
 
+    init() {
+        var finished = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        finished.fetchLimit = 400
+        _finishedWorkouts = Query(finished)
+
+        var favorites = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.isFavorite == true },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        favorites.fetchLimit = 400
+        _favoriteWorkouts = Query(favorites)
+    }
+
     // MARK: - Filter Logic
     private func filterPreset(_ preset: WorkoutPreset) -> Bool {
         if !searchText.isEmpty {
@@ -81,92 +100,23 @@ struct WorkoutHubView: View {
         userPresets.filter { ($0.folderName ?? "").isEmpty && $0.name != "Today's Plan" && filterPreset($0) }
     }
 
-    private var fallbackLegendaryRoutines: [LegendaryRoutine] {
-        [
-            LegendaryRoutine(
-                title: "ATHLEAN-X: XERO",
-                eraTitle: "8 Недель, Программа 1",
-                shortVibe: "Без оборудования, максимальная рельефность",
-                loreDescription: "Научно разработанная программа Джеффа Кавальера с собственным весом тела.",
-                gradientColors: [PastelTheme.pastelSlate, PastelTheme.pastelOat],
-                difficulty: .intermediate,
-                estimatedMinutes: 45,
-                benefits: ["Рельеф", "Выносливость", "Кор"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Жим штанги лежа", muscleGroup: "Chest", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: 90, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Подтягивания", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Отжимания на брусьях", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 12, recommendedWeightKg: nil, restSeconds: 60)
-                ]
-            ),
-            LegendaryRoutine(
-                title: "ATHLEAN-X: EOP...",
-                eraTitle: "8 Недель, Программа 2",
-                shortVibe: "Элитная гипертрофия и сила",
-                loreDescription: "Протокол прогрессивной перегрузки для максимального роста мышечной массы.",
-                gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach],
-                difficulty: .advanced,
-                estimatedMinutes: 60,
-                benefits: ["Сила", "Масса", "V-Taper"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Становая тяга", muscleGroup: "Back", type: "Strength", sets: 3, reps: 6, recommendedWeightKg: 120, restSeconds: 120),
-                    GeneratedExerciseDTO(name: "Армейский жим", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 60, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Приседания со штангой", muscleGroup: "Legs", type: "Strength", sets: 4, reps: 8, recommendedWeightKg: 100, restSeconds: 120)
-                ]
-            ),
-            LegendaryRoutine(
-                title: "Arnold's Golden Split",
-                eraTitle: "Golden Era",
-                shortVibe: "Высокий объем, классический V-образный торс",
-                loreDescription: "Легендарный сплит Арнольда для максимальной гипертрофии мышц груди, спины и рук.",
-                gradientColors: [PastelTheme.pastelAmber, PastelTheme.pastelOat],
-                difficulty: .advanced,
-                estimatedMinutes: 75,
-                benefits: ["V-Taper", "Объем", "Масса"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Barbell Bench Press - Medium Grip", muscleGroup: "Chest", type: "Strength", sets: 5, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Incline Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Wide-Grip Lat Pulldown", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Bent-Over Barbell Row", muscleGroup: "Back", type: "Strength", sets: 4, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Dumbbell Bicep Curl", muscleGroup: "Arms", type: "Hypertrophy", sets: 3, reps: 12, recommendedWeightKg: nil, restSeconds: 60)
-                ]
-            ),
-            LegendaryRoutine(
-                title: "Mike Mentzer Heavy Duty",
-                eraTitle: "High Intensity Era",
-                shortVibe: "Предельная интенсивность, отказные сеты",
-                loreDescription: "Система высокоинтенсивного тренинга HIT: работа до абсолютного мышечного отказа в одном ключевом подходе.",
-                gradientColors: [PastelTheme.pastelLavender, PastelTheme.pastelSlate],
-                difficulty: .advanced,
-                estimatedMinutes: 45,
-                benefits: ["HIT", "Интенсивность", "Сила"],
-                exercises: [
-                    GeneratedExerciseDTO(name: "Incline Dumbbell Press", muscleGroup: "Chest", type: "Strength", sets: 2, reps: 8, recommendedWeightKg: nil, restSeconds: 120),
-                    GeneratedExerciseDTO(name: "Dumbbell Flyes", muscleGroup: "Chest", type: "Hypertrophy", sets: 1, reps: 10, recommendedWeightKg: nil, restSeconds: 90),
-                    GeneratedExerciseDTO(name: "Barbell Deadlift", muscleGroup: "Back", type: "Strength", sets: 2, reps: 6, recommendedWeightKg: nil, restSeconds: 120),
-                    GeneratedExerciseDTO(name: "Pullups", muscleGroup: "Back", type: "Bodyweight", sets: 2, reps: 10, recommendedWeightKg: nil, restSeconds: 90)
-                ]
-            )
-        ]
-    }
-
     private var legendaryPrograms: [LegendaryRoutine] {
         let routines = FirestoreProgramService.shared.legendaryRoutines
-        return routines.isEmpty ? fallbackLegendaryRoutines : routines
+        return routines.isEmpty ? LegendaryFallbackCatalog.routines : routines
     }
 
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ZStack(alignment: .bottom) {
-                    PastelTheme.canvas.ignoresSafeArea()
-                    AtmosphericGymBackdropView(style: .workout)
+                    Color.clear.ignoresSafeArea()
 
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 18) {
-                            // 1. Top Bar: Streak Flame + "+ Создать"
+                            // 1. Top Bar: Streak Flame + Create
                             topHeaderRow
 
-                            // 2. Large Bold Title: "Тренировка"
+                            // 2. Large Bold Title: Workout
                             titleSection
 
                             // 3. 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
@@ -175,18 +125,18 @@ struct WorkoutHubView: View {
                             // 4. Active Workout In-Progress Card (ONLY if a workout is actually running right now)
                             if let active = activeWorkouts.first, active.isActive, active.endTime == nil, !di.appState.isInsideActiveWorkout, abs(active.date.timeIntervalSinceNow) < 12 * 3600 {
                                 ActiveWorkoutResumeCard(workout: active) {
-                                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                    HapticManager.shared.impact(.medium)
                                     self.navigateToActiveWorkout = active
                                 }
                             }
 
-                            // 5. Hero Action: Unified "Начать тренировку" CTA (Triggers Hearthstone 3-Card Discovery)
+                            // 5. Hero Action: Unified Start Workout CTA (Triggers Hearthstone 3-Card Discovery)
                             startWorkoutHeroSection
 
-                            // 6. Лучшая тренировка на сегодня (Merged Target Focus + Muscle Readiness)
+                            // 6. Best workout for today (Merged Target Focus + Muscle Readiness)
                             todayPlanHeroCard
 
-                            // 7. "Легендарные Программы" Discovery Row
+                            // 7. Legendary Programs Discovery Row
                             legendarySection
 
                             Spacer(minLength: 40)
@@ -236,6 +186,7 @@ struct WorkoutHubView: View {
                 }
             }
             .navigationBarHidden(true)
+            .accessibilityIdentifier("wt.workout.root")
             .navigationDestination(item: $navigateToActiveWorkout) { workout in
                 WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
             }
@@ -265,8 +216,8 @@ struct WorkoutHubView: View {
                                 )
                             }
                         )
-                        await workoutService.startGeneratedWorkout(generatedDTO)
-                        if let newWorkout = await workoutService.fetchLatestWorkout() {
+                        if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "smart_builder"),
+                           let newWorkout = context.model(for: id) as? Workout {
                             self.navigateToActiveWorkout = newWorkout
                         }
                     }
@@ -277,16 +228,16 @@ struct WorkoutHubView: View {
                     startLegendaryRoutine(routine)
                 }
             }
-            .alert("Уже есть активная тренировка", isPresented: $showActiveWorkoutAlert) {
-                Button("Понятно", role: .cancel) { }
+            .alert("Active workout in progress", isPresented: $showActiveWorkoutAlert) {
+                Button("Got it", role: .cancel) { }
             } message: {
-                Text("У вас уже идет тренировка. Завершите или удалите ее, чтобы начать новую.")
+                Text("You already have a workout in progress. Finish or delete it to start a new one.")
             }
-            .alert("Удалить шаблон?", isPresented: $showDeleteAlert) {
-                Button("Удалить", role: .destructive) { confirmDelete() }
-                Button("Отмена", role: .cancel) { itemToDelete = nil }
+            .alert("Delete template?", isPresented: $showDeleteAlert) {
+                Button("Delete", role: .destructive) { confirmDelete() }
+                Button("Cancel", role: .cancel) { itemToDelete = nil }
             } message: {
-                Text("Это действие нельзя отменить.")
+                Text("This can’t be undone.")
             }
             .onChange(of: di.appState.returnToActiveWorkoutId) { _, newId in
                 if let id = newId {
@@ -305,6 +256,12 @@ struct WorkoutHubView: View {
                     di.appState.showWorkoutModeDiscovery = false
                 }
             }
+            .onChange(of: di.appState.showSmartBuilder) { _, newVal in
+                if newVal {
+                    showSmartBuilder = true
+                    di.appState.showSmartBuilder = false
+                }
+            }
             .task {
                 if FirestoreProgramService.shared.explorePrograms.isEmpty || FirestoreProgramService.shared.legendaryRoutines.isEmpty {
                     await FirestoreProgramService.shared.fetchAllPrograms()
@@ -314,20 +271,20 @@ struct WorkoutHubView: View {
         .preferredColorScheme(.dark)
     }
 
-    // MARK: - 1. Top Bar: Streak Flame + "+ Создать" (Exact Mockup Match)
+    // MARK: - 1. Top Bar: Streak Flame + Create (Exact Mockup Match)
     private var displayStreakCount: Int {
-        if dashboardViewModel.streakCount > 0 {
-            return dashboardViewModel.streakCount
-        }
-        return 14
+        // Never invent a streak for empty / fresh installs (Maestro + honesty).
+        max(0, dashboardViewModel.streakCount)
     }
 
     private var topHeaderRow: some View {
         HStack(alignment: .center) {
-            // Streak & Calendar Button (Left - Tactile Amber Flame + Calendar)
+            // Streak Button (Left) — calendar opens from weekly bar
             Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                di.appState.showCalendarSheet = true
+                HapticManager.shared.impact(.medium)
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                    showStreakPopup = true
+                }
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "flame.fill")
@@ -339,10 +296,6 @@ struct WorkoutHubView: View {
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .foregroundStyle(PastelTheme.textPrimary)
-
-                    Image(systemName: "calendar")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(PastelTheme.pastelSage)
                 }
                 .padding(.horizontal, 12)
                 .frame(height: PastelTheme.ButtonMetrics.pillHeight)
@@ -357,16 +310,16 @@ struct WorkoutHubView: View {
 
             Spacer()
 
-            // "+ Создать" Button (Right - Refined Glass Capsule)
+            // Create button (Right - Refined Glass Capsule)
             Button {
-                UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                HapticManager.shared.impact(.soft)
                 presetToEdit = nil
                 showPresetEditor = true
             } label: {
                 HStack(spacing: 5) {
                     Image(systemName: "plus")
                         .font(.system(size: 12, weight: .bold))
-                    Text("Создать")
+                    Text("Create")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.pastelOat)
@@ -380,15 +333,16 @@ struct WorkoutHubView: View {
                 )
             }
             .buttonStyle(Tactile3DCardButtonStyle(scale: 0.97, maxTilt: 2.0))
+            .accessibilityIdentifier("wt.hub.create")
         }
         .padding(.horizontal, 16)
     }
 
-    // MARK: - 2. Title Section with Natural Russian Date
+    // MARK: - 2. Title Section with Locale-Aware Date
     private var currentDateEyebrow: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
-        formatter.dateFormat = "EEEE, d MMMM"
+        formatter.locale = .autoupdatingCurrent
+        formatter.setLocalizedDateFormatFromTemplate("EEEE, d MMMM")
         return formatter.string(from: Date()).capitalized
     }
 
@@ -398,17 +352,57 @@ struct WorkoutHubView: View {
                 .font(.system(size: 13, weight: .medium, design: .rounded))
                 .foregroundStyle(PastelTheme.textSecondary)
 
-            Text("Тренировка")
+            Text("Workout")
                 .font(.system(size: 34, weight: .heavy, design: .rounded))
                 .foregroundStyle(PastelTheme.textPrimary)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("wt.hub.title")
         }
         .padding(.horizontal, 16)
+        // Keep child ids (wt.hub.title) discoverable by Maestro — default combine drops them.
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("wt.hub.root")
     }
 
-    // MARK: - 2.5 7-Day Consistency Habit Bar (Apple Fitness Philosophy, Tappable Calendar)
+    // MARK: - 2.5 7-Day Consistency Habit Bar (real data + calendar CTA)
+    private var weeklyConsistencyDays: [(name: String, isDone: Bool, isToday: Bool, isFuture: Bool)] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let weekday = calendar.component(.weekday, from: today) // 1=Sun
+        let daysFromMonday = (weekday + 5) % 7
+        guard let monday = calendar.date(byAdding: .day, value: -daysFromMonday, to: today) else { return [] }
+
+        let symbols = calendar.veryShortWeekdaySymbols
+        let mondayFirst: [String] = {
+            if symbols.count == 7 {
+                return Array(symbols[1...]) + [symbols[0]]
+            }
+            return ["M", "T", "W", "T", "F", "S", "S"]
+        }()
+
+        // Cap scan window — finishedWorkouts @Query can be large.
+        var trainedDays = Set<Date>()
+        for workout in finishedWorkouts.prefix(90) {
+            trainedDays.insert(calendar.startOfDay(for: workout.date))
+        }
+
+        return (0..<7).map { offset in
+            let date = calendar.date(byAdding: .day, value: offset, to: monday) ?? monday
+            let dayStart = calendar.startOfDay(for: date)
+            let isToday = dayStart == today
+            let isFuture = dayStart > today
+            return (
+                name: mondayFirst[offset],
+                isDone: trainedDays.contains(dayStart),
+                isToday: isToday,
+                isFuture: isFuture
+            )
+        }
+    }
+
     private var weeklyConsistencyBar: some View {
         Button {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.impact(.medium)
             di.appState.showCalendarSheet = true
         } label: {
             VStack(spacing: 8) {
@@ -417,13 +411,13 @@ struct WorkoutHubView: View {
                         Image(systemName: "calendar")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(PastelTheme.pastelSage)
-                        Text("Активность недели")
+                        Text("Weekly activity")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
                     Spacer()
                     HStack(spacing: 3) {
-                        Text("Календарь")
+                        Text("Calendar")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelOat)
                         Image(systemName: "chevron.right")
@@ -434,68 +428,48 @@ struct WorkoutHubView: View {
                 .padding(.horizontal, 4)
 
                 HStack(spacing: 0) {
-                    let days = [
-                        ("ПН", true, "done"),
-                        ("ВТ", true, "done"),
-                        ("СР", false, "rest"),
-                        ("ЧТ", true, "done"),
-                        ("ПТ", false, "today"),
-                        ("СБ", false, "future"),
-                        ("ВС", false, "future")
-                    ]
-                    ForEach(0..<days.count, id: \.self) { index in
-                        let (name, isDone, type) = days[index]
-                        let isToday = (name == "ПТ")
-
+                    ForEach(Array(weeklyConsistencyDays.enumerated()), id: \.offset) { _, day in
                         VStack(spacing: 6) {
-                            Text(name)
-                                .font(.system(size: 10, weight: isToday ? .heavy : .semibold, design: .rounded))
-                                .foregroundStyle(isToday ? PastelTheme.pastelAmber : PastelTheme.textTertiary)
+                            Text(day.name)
+                                .font(.system(size: 10, weight: day.isToday ? .heavy : .semibold, design: .rounded))
+                                .foregroundStyle(day.isToday ? PastelTheme.pastelAmber : PastelTheme.textTertiary)
 
                             ZStack {
-                                if isDone {
+                                if day.isDone {
                                     Circle()
                                         .fill(PastelTheme.pastelSage.opacity(0.18))
                                         .frame(width: 30, height: 30)
                                         .overlay(Circle().stroke(PastelTheme.pastelSage, lineWidth: 1.5))
-
                                     Image(systemName: "checkmark")
                                         .font(.system(size: 11, weight: .black))
                                         .foregroundStyle(PastelTheme.pastelSage)
-                                } else if isToday {
+                                } else if day.isToday {
                                     Circle()
                                         .fill(PastelTheme.pastelAmber.opacity(0.16))
                                         .frame(width: 32, height: 32)
                                         .overlay(Circle().stroke(PastelTheme.pastelAmber, lineWidth: 2))
-
                                     Image(systemName: "flame.fill")
                                         .font(.system(size: 13, weight: .bold))
                                         .foregroundStyle(PastelTheme.pastelAmber)
-                                } else if type == "rest" {
-                                    Circle()
-                                        .fill(PastelTheme.cardSurfaceSubtle)
-                                        .frame(width: 28, height: 28)
-                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
-
-                                    Text("—")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundStyle(PastelTheme.textTertiary)
-                                } else {
+                                } else if day.isFuture {
                                     Circle()
                                         .fill(PastelTheme.cardSurfaceSubtle.opacity(0.4))
                                         .frame(width: 28, height: 28)
                                         .overlay(Circle().stroke(PastelTheme.cardBorder.opacity(0.5), lineWidth: 1))
+                                } else {
+                                    Circle()
+                                        .fill(PastelTheme.cardSurfaceSubtle)
+                                        .frame(width: 28, height: 28)
+                                        .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+                                    Text("—")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(PastelTheme.textTertiary)
                                 }
                             }
 
-                            if isToday {
-                                Text("Сегодня")
-                                    .font(.system(size: 8, weight: .bold, design: .rounded))
-                                    .foregroundStyle(PastelTheme.pastelAmber)
-                            } else {
-                                Text(" ")
-                                    .font(.system(size: 8))
-                            }
+                            Text(day.isToday ? String(localized: "Today") : " ")
+                                .font(.system(size: 8, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.pastelAmber)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -509,10 +483,11 @@ struct WorkoutHubView: View {
             .padding(.horizontal, 16)
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.985, maxTilt: 1.5))
+        .accessibilityIdentifier("wt.hub.weeklyActivity")
     }
 
-    // MARK: - 3. Hero Action Button: "Начать тренировку" (Hearthstone 3-Card Discovery Trigger)
-    // MARK: - 3. Hero Action Button: "Начать тренировку" (Primary High-Contrast CTA)
+    // MARK: - 3. Hero Action Button: Start Workout (Hearthstone 3-Card Discovery Trigger)
+    // MARK: - 3. Hero Action Button: Start Workout (Primary High-Contrast CTA)
     private var startWorkoutHeroSection: some View {
         Button {
             HapticManager.playMediumImpact()
@@ -535,12 +510,12 @@ struct WorkoutHubView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Начать тренировку")
+                    Text("Start workout")
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textOnOat)
                         .lineLimit(1)
 
-                    Text("Свободная, с AI или по плану")
+                    Text("Free, AI, or from a plan")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.textOnOat.opacity(0.8))
                         .lineLimit(1)
@@ -575,27 +550,43 @@ struct WorkoutHubView: View {
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.98, maxTilt: 2.0))
         .padding(.horizontal, 16)
+        .accessibilityIdentifier("wt.hub.startWorkout")
     }
 
     // MARK: - 4. Best Workout Today Hero Card (Merged Target Focus + Muscle Readiness Intelligence)
-    private var averageReadinessPercentage: Int {
-        if dashboardViewModel.recoveryStatus.isEmpty {
-            return 88
+    private var averageReadinessPercentage: Int? {
+        let ignoredParts: Set<String> = ["hair", "head", "hands", "feet", "ankles", "knees"]
+        let training = dashboardViewModel.recoveryStatus.filter {
+            !ignoredParts.contains($0.muscleGroup.lowercased())
         }
-        let total = dashboardViewModel.recoveryStatus.map(\.recoveryPercentage).reduce(0, +)
-        return max(40, min(100, total / max(1, dashboardViewModel.recoveryStatus.count)))
+        guard !training.isEmpty else { return nil }
+        let total = training.map(\.recoveryPercentage).reduce(0, +)
+        return max(0, min(100, total / max(1, training.count)))
     }
 
-    private var freshMusclesListText: String {
+    private var freshMusclesListText: String? {
         let ignoredParts: Set<String> = ["hair", "head", "hands", "feet", "ankles", "knees"]
         let fresh = dashboardViewModel.recoveryStatus
             .filter { !ignoredParts.contains($0.muscleGroup.lowercased()) && $0.recoveryPercentage >= 75 }
             .prefix(2)
             .map { localizedMuscleTitle(for: $0.muscleGroup) }
-        if fresh.isEmpty {
-            return "Грудь, Спина"
-        }
+        guard !fresh.isEmpty else { return nil }
         return fresh.joined(separator: ", ")
+    }
+
+    private var heroMuscleIntensities: [String: Int] {
+        var map: [String: Int] = [:]
+        for status in dashboardViewModel.recoveryStatus {
+            map[status.muscleGroup.lowercased()] = status.recoveryPercentage
+        }
+        return map
+    }
+
+    private var heroExercisePreviewTitles: [String] {
+        if let first = myRoutines.first {
+            return first.exercises.prefix(3).map(\.name)
+        }
+        return []
     }
 
     private var todayPlanHeroCard: some View {
@@ -607,93 +598,93 @@ struct WorkoutHubView: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelAmber)
 
-                    Text("Лучшая тренировка на сегодня")
+                    Text("Best workout for today")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelAmber)
                 }
 
                 Spacer()
 
-                // Integrated Readiness Gauge Pill
-                HStack(spacing: 6) {
-                    ZStack {
-                        Circle()
-                            .stroke(PastelTheme.cardSurfaceSubtle, lineWidth: 3)
-                            .frame(width: 20, height: 20)
+                if let readiness = averageReadinessPercentage {
+                    HStack(spacing: 6) {
+                        ZStack {
+                            Circle()
+                                .stroke(PastelTheme.cardSurfaceSubtle, lineWidth: 3)
+                                .frame(width: 20, height: 20)
 
-                        Circle()
-                            .trim(from: 0, to: CGFloat(averageReadinessPercentage) / 100.0)
-                            .stroke(PastelTheme.pastelSage, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                            .frame(width: 20, height: 20)
-                            .rotationEffect(.degrees(-90))
+                            Circle()
+                                .trim(from: 0, to: CGFloat(readiness) / 100.0)
+                                .stroke(PastelTheme.pastelSage, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                .frame(width: 20, height: 20)
+                                .rotationEffect(.degrees(-90))
+                        }
+
+                        Text("\(readiness)% \(String(localized: "ready"))")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundStyle(PastelTheme.pastelSage)
                     }
-
-                    Text("\(averageReadinessPercentage)% готовность")
-                        .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(PastelTheme.pastelSage)
+                    .padding(.horizontal, 9)
+                    .padding(.vertical, 4)
+                    .background(PastelTheme.pastelSage.opacity(0.12))
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.25), lineWidth: 1))
                 }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(PastelTheme.pastelSage.opacity(0.12))
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(PastelTheme.pastelSage.opacity(0.25), lineWidth: 1))
             }
 
             // Recessed Focus Panel: Workout Info + Compact Anatomical Silhouette
             HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(myRoutines.first?.name ?? "Силовой День А")
+                    Text(myRoutines.first?.name ?? String(localized: "No routine yet"))
                         .font(.system(size: 21, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("Грудь, Спина, Плечи — 4 упр.")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(PastelTheme.textSecondary)
-
-                    HStack(spacing: 6) {
-                        Text("~45 мин")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    if let first = myRoutines.first {
+                        Text("\(first.exercises.count) \(String(localized: "exercises"))")
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
-
-                        Text("Свежие: \(freshMusclesListText)")
-                            .font(.system(size: 10, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.pastelSage)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 3)
-                            .background(PastelTheme.pastelSage.opacity(0.12))
-                            .clipShape(Capsule())
+                    } else {
+                        Text(String(localized: "Start free or build with AI"))
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(PastelTheme.textSecondary)
                     }
 
-                    Text("Целевая силовая нагрузка")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(PastelTheme.textSecondary)
-                        .padding(.top, 2)
+                    HStack(spacing: 6) {
+                        if let fresh = freshMusclesListText {
+                            Text("\(String(localized: "Fresh")): \(fresh)")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundStyle(PastelTheme.pastelSage)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(PastelTheme.pastelSage.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                    }
                 }
 
                 Spacer(minLength: 4)
 
-                // High-End Compact Vector Silhouette Heatmap (Apple HIG Athletic HUD)
                 ZStack {
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(PastelTheme.cardSurfaceSubtle)
                         .frame(width: 82, height: 116)
                         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(PastelTheme.cardBorder, lineWidth: 1))
 
-                    BodyHeatmapView(
-                        muscleIntensities: [
-                            "chest": 100,
-                            "upper-back": 100,
-                            "lats": 90,
-                            "deltoids": 80
-                        ],
-                        isRecoveryMode: true,
-                        isCompactMode: true,
-                        defaultToBack: false,
-                        userGender: "male",
-                        showLabels: false
-                    )
-                    .frame(width: 76, height: 110)
-                    .allowsHitTesting(false)
+                    if !heroMuscleIntensities.isEmpty {
+                        BodyHeatmapView(
+                            muscleIntensities: heroMuscleIntensities,
+                            isRecoveryMode: true,
+                            isCompactMode: true,
+                            defaultToBack: false,
+                            userGender: "male",
+                            showLabels: false
+                        )
+                        .frame(width: 76, height: 110)
+                        .allowsHitTesting(false)
+                    } else {
+                        Image(systemName: "figure.strengthtraining.traditional")
+                            .font(.system(size: 28, weight: .light))
+                            .foregroundStyle(PastelTheme.textTertiary)
+                    }
                 }
             }
             .padding(12)
@@ -704,16 +695,18 @@ struct WorkoutHubView: View {
                     .stroke(PastelTheme.cardBorder, lineWidth: 1)
             )
 
-            // Compact exercise preview capsules on ONE line (responsive, guaranteed no overflow)
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 6) {
-                    exercisePreviewCapsule(title: "Жим 90 кг")
-                    exercisePreviewCapsule(title: "Подтягивания")
-                    exercisePreviewCapsule(title: "Тяга 70 кг")
-                }
-                HStack(spacing: 6) {
-                    exercisePreviewCapsule(title: "Жим 90 кг")
-                    exercisePreviewCapsule(title: "Подтягивания")
+            if !heroExercisePreviewTitles.isEmpty {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 6) {
+                        ForEach(heroExercisePreviewTitles, id: \.self) { title in
+                            exercisePreviewCapsule(title: title)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        ForEach(heroExercisePreviewTitles.prefix(2), id: \.self) { title in
+                            exercisePreviewCapsule(title: title)
+                        }
+                    }
                 }
             }
 
@@ -723,14 +716,14 @@ struct WorkoutHubView: View {
                 if let first = myRoutines.first {
                     startWorkoutFromPreset(first)
                 } else {
-                    startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises)
+                    showWorkoutModeDiscovery = true
                 }
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 13, weight: .bold))
 
-                    Text("Начать: \(myRoutines.first?.name ?? "Силовой День А")")
+                    Text(myRoutines.first.map { "Start: \($0.name)" } ?? String(localized: "Choose workout"))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
@@ -755,19 +748,19 @@ struct WorkoutHubView: View {
     // MARK: - 4. Category Filter Capsules (Exact Mockup Match)
     private func localizedMuscleTitle(for group: String) -> String {
         switch group.lowercased() {
-        case "chest": return "Грудь"
-        case "back", "upper-back", "lats", "lower-back": return "Спина"
-        case "legs", "quadriceps", "hamstring", "hamstrings", "gluteal", "quads", "glutes": return "Ноги"
-        case "shoulders", "deltoids": return "Плечи"
-        case "arms", "forearm", "forearms": return "Руки"
-        case "biceps": return "Бицепс"
-        case "triceps": return "Трицепс"
-        case "calves": return "Икры"
-        case "core", "abs", "obliques": return "Кор"
-        case "trapezius", "traps": return "Трапеции"
-        case "adductors": return "Приводящие"
-        case "abductors": return "Отводящие"
-        case "neck": return "Шея"
+        case "chest": return String(localized: "Chest")
+        case "back", "upper-back", "lats", "lower-back": return String(localized: "Back")
+        case "legs", "quadriceps", "hamstring", "hamstrings", "gluteal", "quads", "glutes": return String(localized: "Legs")
+        case "shoulders", "deltoids": return String(localized: "Shoulders")
+        case "arms", "forearm", "forearms": return String(localized: "Arms")
+        case "biceps": return String(localized: "Biceps")
+        case "triceps": return String(localized: "Triceps")
+        case "calves": return String(localized: "Calves")
+        case "core", "abs", "obliques": return String(localized: "Core")
+        case "trapezius", "traps": return String(localized: "Traps")
+        case "adductors": return String(localized: "Adductors")
+        case "abductors": return String(localized: "Abductors")
+        case "neck": return String(localized: "Neck")
         default: return LocalizationHelper.shared.translateName(group)
         }
     }
@@ -786,29 +779,28 @@ struct WorkoutHubView: View {
     // MARK: - 5. Default Routines Data (Exact Mockup Match)
     private var defaultPowerDayAExercises: [GeneratedExerciseDTO] {
         [
-            GeneratedExerciseDTO(name: "Жим штанги лежа", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 90, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Подтягивания", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: nil, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Армейский жим", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 50, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Тяга штанги в наклоне", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 70, restSeconds: 90)
+            GeneratedExerciseDTO(name: "Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 90, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Pull-ups", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: nil, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Overhead Press", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 50, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Bent-Over Barbell Row", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 70, restSeconds: 90)
         ]
     }
 
     private var defaultFullBodyExercises: [GeneratedExerciseDTO] {
         [
-            GeneratedExerciseDTO(name: "Приседания со штангой", muscleGroup: "Legs", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 100, restSeconds: 120),
-            GeneratedExerciseDTO(name: "Жим штанги лежа", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 90, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Тяга штанги в наклоне", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 70, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Румынская тяга", muscleGroup: "Legs", type: "Strength", sets: 3, reps: 10, recommendedWeightKg: 80, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Армейский жим", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 50, restSeconds: 90),
-            GeneratedExerciseDTO(name: "Сгибания на бицепс", muscleGroup: "Arms", type: "Strength", sets: 3, reps: 12, recommendedWeightKg: 16, restSeconds: 60)
+            GeneratedExerciseDTO(name: "Barbell Squat", muscleGroup: "Legs", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 100, restSeconds: 120),
+            GeneratedExerciseDTO(name: "Barbell Bench Press", muscleGroup: "Chest", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 90, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Bent-Over Barbell Row", muscleGroup: "Back", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 70, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Romanian Deadlift", muscleGroup: "Legs", type: "Strength", sets: 3, reps: 10, recommendedWeightKg: 80, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Overhead Press", muscleGroup: "Shoulders", type: "Strength", sets: 3, reps: 8, recommendedWeightKg: 50, restSeconds: 90),
+            GeneratedExerciseDTO(name: "Barbell Curl", muscleGroup: "Arms", type: "Strength", sets: 3, reps: 12, recommendedWeightKg: 16, restSeconds: 60)
         ]
     }
 
     private func startPresetOrTemplate(name: String, exercises: [GeneratedExerciseDTO]) {
         guard !isProcessing else { return }
         isProcessing = true
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.medium)
 
         Task { @MainActor in
             if await workoutService.hasActiveWorkout() {
@@ -823,20 +815,20 @@ struct WorkoutHubView: View {
 
             let generatedDTO = GeneratedWorkoutDTO(
                 title: name,
-                aiMessage: "Тренировка \(name)",
+                aiMessage: "Workout \(name)",
                 exercises: exercises
             )
-            await workoutService.startGeneratedWorkout(generatedDTO)
-            if let newWorkout = await workoutService.fetchLatestWorkout() {
+            if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "template"),
+               let newWorkout = context.model(for: id) as? Workout {
                 self.navigateToActiveWorkout = newWorkout
             }
             isProcessing = false
         }
     }
 
-    // MARK: - 6. "Шаблоны тренировок" Compact Horizontal Swipe-Deck (Concept 1: Zero Walls of Text)
+    // MARK: - 6. Workout Templates Compact Horizontal Swipe-Deck (Concept 1: Zero Walls of Text)
     private var totalTemplateCount: Int {
-        myRoutines.isEmpty ? 3 : myRoutines.count
+        myRoutines.isEmpty ? 2 : myRoutines.count
     }
 
     private var myTemplatesHorizontalSection: some View {
@@ -844,7 +836,7 @@ struct WorkoutHubView: View {
             // Header Row
             HStack(alignment: .center) {
                 HStack(spacing: 8) {
-                    Text("Шаблоны тренировок")
+                    Text("Workout templates")
                         .font(.system(size: 18, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
@@ -870,7 +862,7 @@ struct WorkoutHubView: View {
                     }
                 )) {
                     HStack(spacing: 4) {
-                        Text("Библиотека")
+                        Text("Library")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelOat)
 
@@ -897,41 +889,29 @@ struct WorkoutHubView: View {
                                 name: preset.name,
                                 icon: preset.icon.isEmpty ? "dumbbell.fill" : preset.icon,
                                 count: preset.exercises.count,
-                                subtitle: "\(preset.exercises.count) упражнений",
+                                subtitle: "\(preset.exercises.count) exercises",
                                 onStart: { startWorkoutFromPreset(preset) },
                                 onInspect: { selectedPreview = .preset(preset) }
                             )
                         }
                     } else {
+                        // No invented templates — nudge into discovery / builder (I18 honesty).
                         compactRoutineDeckCard(
-                            name: "Силовой День А",
-                            icon: "dumbbell.fill",
-                            count: 4,
-                            subtitle: "Грудь, Спина, Плечи",
-                            onStart: { startPresetOrTemplate(name: "Силовой День А", exercises: defaultPowerDayAExercises) },
-                            onInspect: { }
+                            name: "Build a routine",
+                            icon: "plus.circle.fill",
+                            count: 0,
+                            subtitle: "Empty session or AI builder",
+                            onStart: { showWorkoutModeDiscovery = true },
+                            onInspect: { showWorkoutModeDiscovery = true }
                         )
 
                         compactRoutineDeckCard(
-                            name: "Full Body База",
-                            icon: "figure.strengthtraining.traditional",
-                            count: 6,
-                            subtitle: "Комплексная база",
-                            onStart: { startPresetOrTemplate(name: "Full Body Тренировка", exercises: defaultFullBodyExercises) },
-                            onInspect: { }
-                        )
-
-                        compactRoutineDeckCard(
-                            name: "Mike Mentzer HIT",
-                            icon: "bolt.fill",
-                            count: 4,
-                            subtitle: "Отказные подходы",
-                            onStart: {
-                                if let mm = fallbackLegendaryRoutines.first(where: { $0.title.contains("Mentzer") }) {
-                                    startLegendaryRoutine(mm)
-                                }
-                            },
-                            onInspect: { }
+                            name: "Explore programs",
+                            icon: "sparkles",
+                            count: 0,
+                            subtitle: "Legendary & saved splits",
+                            onStart: { di.appState.selectedTab = 1 },
+                            onInspect: { di.appState.selectedTab = 1 }
                         )
                     }
                 }
@@ -980,7 +960,7 @@ struct WorkoutHubView: View {
             Spacer(minLength: 0)
 
             HStack {
-                Text("\(count) упр.")
+                Text("\(count) exercises")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
 
@@ -993,7 +973,7 @@ struct WorkoutHubView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "play.fill")
                             .font(.system(size: 10, weight: .bold))
-                        Text("Старт")
+                        Text("Start")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(PastelTheme.textOnOat)
@@ -1042,7 +1022,7 @@ struct WorkoutHubView: View {
                         .lineLimit(1)
 
                     HStack(spacing: 6) {
-                        Text("\(preset.exercises.count) упр.")
+                        Text("\(preset.exercises.count) exercises")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -1054,26 +1034,26 @@ struct WorkoutHubView: View {
                     Button {
                         startWorkoutFromPreset(preset)
                     } label: {
-                        Label("Начать сейчас", systemImage: "play.fill")
+                        Label("Start now", systemImage: "play.fill")
                     }
 
                     Button {
                         presetToEdit = preset
                         showPresetEditor = true
                     } label: {
-                        Label("Редактировать", systemImage: "pencil")
+                        Label("Edit", systemImage: "pencil")
                     }
 
                     Button {
                         duplicatePreset(preset)
                     } label: {
-                        Label("Дублировать", systemImage: "plus.square.on.square")
+                        Label("Duplicate", systemImage: "plus.square.on.square")
                     }
 
                     Button(role: .destructive) {
                         promptDelete(item: .preset(preset))
                     } label: {
-                        Label("Удалить", systemImage: "trash")
+                        Label("Delete", systemImage: "trash")
                     }
                 } label: {
                     ZStack {
@@ -1114,7 +1094,7 @@ struct WorkoutHubView: View {
                         Spacer()
 
                         if let weight = ex.setsList.first?.weight, weight > 0 {
-                            Text("\(Int(weight)) кг")
+                            Text("\(Int(unitsManager.convertFromKilograms(weight))) \(unitsManager.weightUnitString())")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(PastelTheme.textTertiary)
                         }
@@ -1122,7 +1102,7 @@ struct WorkoutHubView: View {
                 }
 
                 if preset.exercises.count > 4 {
-                    Text("+ еще \(preset.exercises.count - 4) упр.")
+                    Text("+ \(preset.exercises.count - 4) more exercises")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textTertiary)
                         .padding(.top, 2)
@@ -1136,7 +1116,7 @@ struct WorkoutHubView: View {
                 HStack(spacing: 7) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 12, weight: .bold))
-                    Text("Начать тренировку")
+                    Text("Start workout")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
@@ -1208,7 +1188,7 @@ struct WorkoutHubView: View {
                 Spacer(minLength: 6)
 
                 // Exercise count pill
-                Text("\(exerciseCount) упр.")
+                Text("\(exerciseCount) exercises")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.pastelSage)
                     .padding(.horizontal, 9)
@@ -1240,7 +1220,7 @@ struct WorkoutHubView: View {
                         Spacer()
 
                         if let weight = ex.recommendedWeightKg, weight > 0 {
-                            Text("\(Int(weight)) кг")
+                            Text("\(Int(unitsManager.convertFromKilograms(weight))) \(unitsManager.weightUnitString())")
                                 .font(.system(size: 12, weight: .semibold, design: .rounded))
                                 .foregroundStyle(PastelTheme.textTertiary)
                         }
@@ -1248,7 +1228,7 @@ struct WorkoutHubView: View {
                 }
 
                 if exercises.count > 4 {
-                    Text("+ еще \(exercises.count - 4) упр.")
+                    Text("+ \(exercises.count - 4) more exercises")
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textTertiary)
                         .padding(.top, 2)
@@ -1262,7 +1242,7 @@ struct WorkoutHubView: View {
                 HStack(spacing: 7) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 12, weight: .bold))
-                    Text("Начать тренировку")
+                    Text("Start workout")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
@@ -1286,42 +1266,19 @@ struct WorkoutHubView: View {
     }
 
     private func exerciseWord(count: Int) -> String {
-        let remainder10 = count % 10
-        let remainder100 = count % 100
-        if remainder100 >= 11 && remainder100 <= 19 {
-            return "\(count) упражнений"
-        }
-        if remainder10 == 1 {
-            return "\(count) упражнение"
-        }
-        if remainder10 >= 2 && remainder10 <= 4 {
-            return "\(count) упражнения"
-        }
-        return "\(count) упражнений"
+        "\(count) exercises"
     }
 
-    // MARK: - 6. "Легендарные Программы" Discovery Row (Fiery Luxury Flame Aura)
+    // MARK: - 6. Legendary Programs Discovery Row (warm Pastel, no ALL-CAPS chrome)
     private var legendarySection: some View {
         Button {
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            HapticManager.shared.impact(.medium)
             navigateToExplore = true
         } label: {
             HStack(spacing: 14) {
-                // Burning Flame Avatar with Layered Fire Glow
                 ZStack {
                     Circle()
-                        .fill(
-                            RadialGradient(
-                                colors: [
-                                    PastelTheme.pastelAmber.opacity(0.38),
-                                    PastelTheme.pastelPeach.opacity(0.18),
-                                    Color.clear
-                                ],
-                                center: .center,
-                                startRadius: 4,
-                                endRadius: 28
-                            )
-                        )
+                        .fill(PastelTheme.pastelAmber.opacity(0.16))
                         .frame(width: 48, height: 48)
 
                     Circle()
@@ -1329,59 +1286,31 @@ struct WorkoutHubView: View {
                         .frame(width: 42, height: 42)
                         .overlay(
                             Circle()
-                                .stroke(
-                                    LinearGradient(
-                                        colors: [PastelTheme.pastelAmber, PastelTheme.pastelPeach.opacity(0.6)],
-                                        startPoint: .top,
-                                        endPoint: .bottom
-                                    ),
-                                    lineWidth: 1.5
-                                )
+                                .stroke(PastelTheme.pastelAmber.opacity(0.45), lineWidth: 1.5)
                         )
 
                     Image(systemName: "flame.fill")
-                        .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [PastelTheme.pastelOat, PastelTheme.pastelAmber],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .shadow(color: PastelTheme.pastelAmber.opacity(0.9), radius: 6, x: 0, y: 1)
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(PastelTheme.pastelAmber)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Text("Легендарные Программы")
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(PastelTheme.textPrimary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.85)
+                    Text("Legendary programs")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
 
-                        Image(systemName: "flame")
-                            .font(.system(size: 12, weight: .bold))
+                    HStack(spacing: 6) {
+                        Text("Featured")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelAmber)
-                    }
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2.5)
+                            .background(PastelTheme.pastelAmber.opacity(0.14))
+                            .clipShape(Capsule())
 
-                    HStack(spacing: 6) {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(PastelTheme.pastelAmber)
-                                .frame(width: 5, height: 5)
-                            Text("В ОГНЕ")
-                                .font(.system(size: 9, weight: .black, design: .rounded))
-                                .foregroundStyle(PastelTheme.pastelAmber)
-                        }
-                        .padding(.horizontal, 7)
-                        .padding(.vertical, 2.5)
-                        .background(PastelTheme.pastelAmber.opacity(0.18))
-                        .clipShape(Capsule())
-                        .overlay(
-                            Capsule().stroke(PastelTheme.pastelAmber.opacity(0.4), lineWidth: 1)
-                        )
-
-                        Text("Золотая эра, Арнольд и HIT")
+                        Text("Golden era, Arnold & HIT")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)
@@ -1391,7 +1320,6 @@ struct WorkoutHubView: View {
 
                 Spacer(minLength: 8)
 
-                // 32pt Circular Glass Chevron with Amber Border
                 ZStack {
                     Circle()
                         .fill(PastelTheme.cardSurfaceSubtle)
@@ -1411,12 +1339,9 @@ struct WorkoutHubView: View {
             .background(
                 ZStack {
                     PastelTheme.cardSurface
-
-                    // Fire Ember Background Aura
                     LinearGradient(
                         colors: [
-                            PastelTheme.pastelAmber.opacity(0.14),
-                            PastelTheme.pastelPeach.opacity(0.06),
+                            PastelTheme.pastelAmber.opacity(0.08),
                             Color.clear
                         ],
                         startPoint: .leading,
@@ -1425,25 +1350,12 @@ struct WorkoutHubView: View {
                 }
             )
             .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                PastelTheme.pastelAmber.opacity(0.75),
-                                PastelTheme.pastelPeach.opacity(0.4),
-                                PastelTheme.cardBorder
-                            ],
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        ),
-                        lineWidth: 1.5
-                    )
-            )
-            .shadow(color: PastelTheme.pastelAmber.opacity(0.22), radius: 12, x: 0, y: 4)
+            .flameBorder(cornerRadius: PastelTheme.cardRadius, lineWidth: 1.6)
+            .shadow(color: Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.25), radius: 14, x: 0, y: 6)
             .padding(.horizontal, 16)
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.982, maxTilt: 2.8))
+        .accessibilityIdentifier("wt.hub.explore")
     }
 
     // MARK: - Workout Execution Methods
@@ -1459,19 +1371,16 @@ struct WorkoutHubView: View {
             }
 
             let title = LocalizationHelper.shared.formatWorkoutDateName()
-            if let _ = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false) {
-                var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                descriptor.fetchLimit = 1
-                if let newWorkout = try? context.fetch(descriptor).first {
-                    self.navigateToActiveWorkout = newWorkout
-                }
+            if let id = await workoutService.createWorkout(title: title, presetID: nil, isAIGenerated: false),
+               let newWorkout = context.model(for: id) as? Workout {
+                self.navigateToActiveWorkout = newWorkout
             }
             isProcessing = false
         }
     }
 
     private func handleItemStart(item: CarouselItemType) {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        HapticManager.shared.impact(.light)
         switch item {
         case .preset(let preset):
             selectedPreview = .preset(preset)
@@ -1493,14 +1402,19 @@ struct WorkoutHubView: View {
 
             switch item {
             case .preset(let preset):
-                if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
-                    routeToLatestWorkout()
+                if let id = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
+                    routeToWorkout(id: id)
                 }
             case .favorite(let workout):
-                if let _ = await workoutService.createWorkout(title: workout.title, presetID: nil, isAIGenerated: false) {
-                    var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-                    descriptor.fetchLimit = 1
-                    if let newWorkout = try? context.fetch(descriptor).first {
+                if let id = await workoutService.createWorkout(title: workout.title, presetID: nil, isAIGenerated: false) {
+                    do {
+                        guard let newWorkout = context.model(for: id) as? Workout else {
+                            di.appState.showError(
+                                title: String(localized: "Replay failed"),
+                                message: String(localized: "Could not open the new workout session.")
+                            )
+                            break
+                        }
                         for ex in workout.exercises {
                             let newEx = Exercise(from: ex.toDTO())
                             newEx.isCompleted = false
@@ -1512,8 +1426,13 @@ struct WorkoutHubView: View {
                             }
                             newWorkout.exercises.append(newEx)
                         }
-                        try? context.save()
+                        try context.save()
                         self.navigateToActiveWorkout = newWorkout
+                    } catch {
+                        di.appState.showError(
+                            title: String(localized: "Replay failed"),
+                            message: error.localizedDescription
+                        )
                     }
                 }
             }
@@ -1524,8 +1443,7 @@ struct WorkoutHubView: View {
     private func startWorkoutFromPreset(_ preset: WorkoutPreset) {
         guard !isProcessing else { return }
         isProcessing = true
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.medium)
 
         Task { @MainActor in
             if await workoutService.hasActiveWorkout() {
@@ -1534,10 +1452,16 @@ struct WorkoutHubView: View {
                 return
             }
 
-            if let _ = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
-                routeToLatestWorkout()
+            if let id = await workoutService.createWorkout(title: preset.name, presetID: preset.persistentModelID, isAIGenerated: false) {
+                routeToWorkout(id: id)
             }
             isProcessing = false
+        }
+    }
+
+    private func routeToWorkout(id: PersistentIdentifier) {
+        if let newWorkout = context.model(for: id) as? Workout {
+            self.navigateToActiveWorkout = newWorkout
         }
     }
 
@@ -1553,8 +1477,7 @@ struct WorkoutHubView: View {
         guard !isProcessing else { return }
         isProcessing = true
 
-        let generator = UIImpactFeedbackGenerator(style: .heavy)
-        generator.impactOccurred()
+        HapticManager.shared.impact(.heavy)
 
         Task { @MainActor in
             if await workoutService.hasActiveWorkout() {
@@ -1569,9 +1492,8 @@ struct WorkoutHubView: View {
                 exercises: routine.exercises
             )
 
-            await workoutService.startGeneratedWorkout(generatedDTO)
-
-            if let newWorkout = await workoutService.fetchLatestWorkout() {
+            if let id = await workoutService.startGeneratedWorkout(generatedDTO, source: "legendary"),
+               let newWorkout = context.model(for: id) as? Workout {
                 self.navigateToActiveWorkout = newWorkout
             }
 
@@ -1581,10 +1503,10 @@ struct WorkoutHubView: View {
 
     private func duplicatePreset(_ preset: WorkoutPreset) {
         Task { @MainActor in
-            let newName = preset.name + " (Копия)"
+            let newName = preset.name + " (Copy)"
             let copiedExercises = preset.exercises.map { Exercise(from: $0.toDTO()) }
             await presetService.savePreset(preset: nil, name: newName, icon: preset.icon, folderName: preset.folderName, exercises: copiedExercises)
-            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            HapticManager.shared.notification(.success)
         }
     }
 
@@ -1635,7 +1557,7 @@ private struct ActiveWorkoutResumeCard: View {
             VStack(alignment: .leading, spacing: 5) {
                 // Designer status row: clean sentence case + stopwatch timer pill
                 HStack(alignment: .center, spacing: 6) {
-                    Text("Активна")
+                    Text("Active")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
 
@@ -1658,7 +1580,7 @@ private struct ActiveWorkoutResumeCard: View {
                     )
                 }
 
-                Text(workout.title.isEmpty ? "Текущая сессия" : workout.title)
+                Text(workout.title.isEmpty ? "Current session" : workout.title)
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
                     .lineLimit(1)
@@ -1674,7 +1596,7 @@ private struct ActiveWorkoutResumeCard: View {
                 HStack(spacing: 5) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 11, weight: .bold))
-                    Text("Продолжить")
+                    Text("Continue")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .lineLimit(1)
                 }
@@ -1698,18 +1620,7 @@ private struct ActiveWorkoutResumeCard: View {
     }
 
     private func exerciseCountDescription(_ count: Int) -> String {
-        let remainder10 = count % 10
-        let remainder100 = count % 100
-        if remainder100 >= 11 && remainder100 <= 19 {
-            return "\(count) упражнений в процессе"
-        }
-        if remainder10 == 1 {
-            return "\(count) упражнение в процессе"
-        }
-        if remainder10 >= 2 && remainder10 <= 4 {
-            return "\(count) упражнения в процессе"
-        }
-        return "\(count) упражнений в процессе"
+        "\(count) exercises in progress"
     }
 }
 
@@ -1818,20 +1729,15 @@ private struct PastelRoutineCard: View {
                     .lineLimit(1)
 
                 HStack(spacing: 5) {
-                    Text("\(preset.exercises.count) упр.")
+                    Text("\(preset.exercises.count) exercises")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(PastelTheme.pastelSage)
 
                     if !targetedMuscles.isEmpty {
-                        Text("·")
+                        Text(targetedMuscles.joined(separator: ", "))
                             .font(.caption2)
-                            .foregroundStyle(PastelTheme.textTertiary)
-
-                        ForEach(targetedMuscles, id: \.self) { muscle in
-                            Text(muscle)
-                                .font(.caption2)
-                                .foregroundStyle(PastelTheme.textSecondary)
-                        }
+                            .foregroundStyle(PastelTheme.textSecondary)
+                            .lineLimit(1)
                     }
                 }
             }
@@ -1843,7 +1749,7 @@ private struct PastelRoutineCard: View {
                 HStack(spacing: 6) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 11, weight: .bold))
-                    Text("СТАРТ")
+                    Text("Start")
                         .font(.system(size: 12, weight: .heavy, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textOnOat)
@@ -1871,25 +1777,25 @@ private struct PastelRoutineCard: View {
             Button {
                 onPlay()
             } label: {
-                Label("Начать сейчас", systemImage: "play.fill")
+                Label("Start now", systemImage: "play.fill")
             }
 
             Button {
                 onEdit()
             } label: {
-                Label("Редактировать", systemImage: "pencil")
+                Label("Edit", systemImage: "pencil")
             }
 
             Button {
                 onDuplicate()
             } label: {
-                Label("Дублировать", systemImage: "doc.on.doc")
+                Label("Duplicate", systemImage: "doc.on.doc")
             }
 
             Button(role: .destructive) {
                 onDelete()
             } label: {
-                Label("Удалить", systemImage: "trash.fill")
+                Label("Delete", systemImage: "trash.fill")
             }
         }
     }
@@ -1904,8 +1810,8 @@ private struct PastelLegendaryCard: View {
         Button(action: onSelect) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Text(routine.eraTitle.uppercased())
-                        .font(.system(size: 9, weight: .black))
+                    Text(routine.eraTitle)
+                        .font(.system(size: 10, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelAmber)
                         .padding(.horizontal, 8)
                         .frame(height: 22)
@@ -1917,7 +1823,7 @@ private struct PastelLegendaryCard: View {
                     HStack(spacing: 3) {
                         Image(systemName: "clock")
                             .font(.system(size: 10))
-                        Text("\(routine.estimatedMinutes) мин")
+                        Text("\(routine.estimatedMinutes) min")
                             .font(.system(size: 11, weight: .bold))
                     }
                     .foregroundStyle(PastelTheme.textSecondary)
@@ -1989,13 +1895,13 @@ struct WorkoutHubEmptyStateView: View {
                     .foregroundStyle(PastelTheme.pastelOat)
             }
 
-            Text(isFiltering ? "Ничего не найдено" : "Нет сохраненных шаблонов")
+            Text(isFiltering ? "No results" : "No saved templates")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(PastelTheme.textPrimary)
 
             if isFiltering, let onReset = onReset {
                 Button(action: onReset) {
-                    Text("Сбросить")
+                    Text("Reset")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(PastelTheme.pastelOat)
                         .padding(.horizontal, 14)
@@ -2010,7 +1916,7 @@ struct WorkoutHubEmptyStateView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "plus")
                             .font(.system(size: 13, weight: .bold))
-                        Text("Создать первый шаблон")
+                        Text("Create first template")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                     }
                     .foregroundStyle(PastelTheme.textOnOat)
@@ -2097,8 +2003,8 @@ struct PremiumCarouselCardView: View {
 
     private var subtitle: String {
         switch item {
-        case .preset(let p): return "\(p.exercises.count) упр."
-        case .favorite(let w): return "\(w.exercises.count) упр. · Избранное"
+        case .preset(let p): return "\(p.exercises.count) exercises"
+        case .favorite(let w): return "\(w.exercises.count) exercises — Favorite"
         }
     }
 
@@ -2136,11 +2042,11 @@ struct StreakMascotPopup: View {
                 }
 
                 VStack(spacing: 6) {
-                    Text("\(streakDays) ДНЕЙ СЕРИИ")
+                    Text("\(streakDays)-day streak")
                         .font(.system(size: 24, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("Каждая завершенная тренировка укрепляет дисциплину и непрерывный прогресс.")
+                    Text("Every finished session builds discipline and steady progress.")
                         .font(.subheadline)
                         .foregroundStyle(PastelTheme.textSecondary)
                         .multilineTextAlignment(.center)
@@ -2148,12 +2054,12 @@ struct StreakMascotPopup: View {
                 }
 
                 Button {
-                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    HapticManager.shared.impact(.medium)
                     withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
                         isShowing = false
                     }
                 } label: {
-                    Text("Продолжить серию")
+                    Text("Continue streak")
                         .font(.subheadline.bold())
                         .foregroundStyle(PastelTheme.textOnOat)
                         .frame(maxWidth: .infinity)
