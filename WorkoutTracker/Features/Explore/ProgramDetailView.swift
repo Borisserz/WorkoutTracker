@@ -148,7 +148,7 @@ struct MorphingSaveButton: View {
                         .font(.title3)
                         .contentTransition(.symbolEffect(.replace))
 
-                    Text("Сохранено")
+                    Text("Saved")
                         .font(.headline)
                         .fontWeight(.bold)
                 } else {
