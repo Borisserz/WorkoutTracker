@@ -138,16 +138,10 @@ struct WorkoutDetailContentView: View {
         .onDisappear {
             handleOnDisappear()
             di.appState.isInsideActiveWorkout = false
-            // R04: discard empty ghost sessions when leaving detail without finishing.
-            guard workout.isActive, !isDeletingEmptyWorkout else { return }
-            let hasCompletedSets = workout.exercises.contains { ex in
-                ex.setsList.contains(where: \.isCompleted)
-                || ex.subExercises.contains { $0.setsList.contains(where: \.isCompleted) }
-            }
-            if !hasCompletedSets {
-                let id = workout.id
-                Task { await viewModel.deleteEmptyWorkout(id: id) }
-            }
+            // Discard only true ghosts (no exercises). Preset rows without completed sets must survive tab switches.
+            guard workout.isActive, !isDeletingEmptyWorkout, workout.exercises.isEmpty else { return }
+            let id = workout.id
+            Task { await viewModel.deleteEmptyWorkout(id: id) }
         }
         .onChange(of: selectedTab) { _, newTab in withAnimation { timerManager.isHidden = (newTab == .aiCoach) } }
         .onChange(of: workout.exercises.count) { _, _ in handleExercisesChanged() }

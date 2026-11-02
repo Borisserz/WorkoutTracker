@@ -285,6 +285,20 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertFalse(slugs.contains("feet"))
     }
 
+    @MainActor
+    func testPeriodComparisonUsesPeriodTotalsNotChartEdges() {
+        let previous = PeriodStats(workoutCount: 2, totalReps: 0, totalDuration: 3600, totalVolume: 1000, totalDistance: 0)
+        let current = PeriodStats(workoutCount: 4, totalReps: 0, totalDuration: 7200, totalVolume: 2000, totalDistance: 0)
+        let units = UnitsManager.shared
+        let prevVal = ComparisonSectionView.metricValue(previous, metric: .count, units: units)
+        let currVal = ComparisonSectionView.metricValue(current, metric: .count, units: units)
+        XCTAssertEqual(prevVal, 2)
+        XCTAssertEqual(currVal, 4)
+        let volumePrev = ComparisonSectionView.metricValue(previous, metric: .volume, units: units)
+        let volumeCurr = ComparisonSectionView.metricValue(current, metric: .volume, units: units)
+        XCTAssertGreaterThan(volumeCurr, volumePrev)
+    }
+
     func testCalorieCalculatorDoesNotInventOneHourWhenDurationMissing() {
         let workout = Workout(title: "Short", date: Date().addingTimeInterval(-600))
         workout.endTime = Date()

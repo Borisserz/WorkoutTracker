@@ -69,18 +69,26 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
         }
     }
 
-    /// Ask iPhone whether a new Watch session is allowed. Unreachable phone → allow (Watch-only).
+    /// Ask iPhone whether a new Watch session is allowed.
+    /// Companion installed but unreachable → refuse (avoids dual active sessions).
+    /// No companion → allow Watch-only standalone.
     func phoneAllowsNewWorkout() async -> Bool {
         let session = WCSession.default
-        guard session.activationState == .activated, session.isReachable else {
-            return true
+        guard session.activationState == .activated else { return false }
+        #if os(watchOS)
+        let hasCompanion = session.isCompanionAppInstalled
+        #else
+        let hasCompanion = true
+        #endif
+        if !session.isReachable {
+            return !hasCompanion
         }
         return await withCheckedContinuation { continuation in
             session.sendMessage(["request": "canStartWorkout"], replyHandler: { reply in
                 continuation.resume(returning: (reply["allowed"] as? Bool) ?? false)
             }, errorHandler: { _ in
-                // Transport failed — do not invent a phone-active block.
-                continuation.resume(returning: true)
+                // Transport failed with companion present — fail closed.
+                continuation.resume(returning: !hasCompanion)
             })
         }
     }

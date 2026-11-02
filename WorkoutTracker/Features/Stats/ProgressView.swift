@@ -1438,6 +1438,16 @@ struct ComparisonSectionView: View {
         endPoint: .top
     )
 
+    /// Period totals for the selected metric (display units).
+    static func metricValue(_ stats: PeriodStats, metric: StatsView.GraphMetric, units: UnitsManager) -> Double {
+        switch metric {
+        case .count: return Double(stats.workoutCount)
+        case .volume: return units.convertFromKilograms(stats.totalVolume)
+        case .time: return Double(stats.totalDuration) / 60.0
+        case .distance: return stats.totalDistance
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
 
@@ -1486,20 +1496,38 @@ struct ComparisonSectionView: View {
 
                 Divider().background(colorScheme == .dark ? Color.white.opacity(0.1) : Color.black.opacity(0.1))
 
-                if let first = viewModel.chartData.first, let last = viewModel.chartData.last, viewModel.chartData.count > 1 {
-                    let fVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(first.value) : first.value
-                    let lVal = viewModel.selectedMetric == .volume ? unitsManager.convertFromKilograms(last.value) : last.value
-                    let unitStr = viewModel.selectedMetric == .volume ? unitsManager.weightUnitString() : (viewModel.selectedMetric == .time ? "min" : (viewModel.selectedMetric == .distance ? "km" : ""))
+                // Compare previous calendar period vs current — not first/last chart bars.
+                if let previous = viewModel.previousStats,
+                   let current = viewModel.currentStats {
+                    let pVal = Self.metricValue(previous, metric: viewModel.selectedMetric, units: unitsManager)
+                    let cVal = Self.metricValue(current, metric: viewModel.selectedMetric, units: unitsManager)
+                    let unitStr: String = {
+                        switch viewModel.selectedMetric {
+                        case .volume: return unitsManager.weightUnitString()
+                        case .time: return "min"
+                        case .distance: return "km"
+                        case .count: return ""
+                        }
+                    }()
+                    let periodLabel: String = {
+                        switch viewModel.selectedPeriod {
+                        case .week: return "week"
+                        case .month: return "month"
+                        case .year: return "year"
+                        }
+                    }()
 
-                    let diff = lVal - fVal
-                    let pct = fVal == 0 ? (lVal > 0 ? 100 : 0) : (diff / fVal) * 100.0
+                    let diff = cVal - pVal
+                    let pct = pVal == 0 ? (cVal > 0 ? 100.0 : 0.0) : (diff / pVal) * 100.0
 
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Previous (\(first.label))").font(.caption).foregroundColor(.gray)
-                            Text("\(LocalizationHelper.shared.formatFlexible(fVal)) \(unitStr)")
+                            Text("Previous \(periodLabel)").font(.caption).foregroundColor(.gray)
+                            Text("\(LocalizationHelper.shared.formatFlexible(pVal)) \(unitStr)")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
                                 .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
 
                         Spacer()
@@ -1517,10 +1545,12 @@ struct ComparisonSectionView: View {
                         Spacer()
 
                         VStack(alignment: .trailing, spacing: 4) {
-                            Text("Current (\(last.label))").font(.caption).foregroundColor(.gray)
-                            Text("\(LocalizationHelper.shared.formatFlexible(lVal)) \(unitStr)")
+                            Text("Current \(periodLabel)").font(.caption).foregroundColor(.gray)
+                            Text("\(LocalizationHelper.shared.formatFlexible(cVal)) \(unitStr)")
                                 .font(.system(size: 20, weight: .bold, design: .rounded))
-                                .foregroundColor(Color(hex: "E020FF"))
+                                .foregroundStyle(PastelTheme.pastelOat)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
                         }
                     }
                     .padding(20)

@@ -38,7 +38,11 @@ final class ProfileViewModel {
         )
 
         let bgContext = ModelContext(modelContainer)
-        let descriptor = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime != nil })
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
         let allWorkouts = (try? bgContext.fetch(descriptor)) ?? []
 
         let records = await analyticsService.getAllPersonalRecords(workouts: allWorkouts, unitsManager: unitsManager)

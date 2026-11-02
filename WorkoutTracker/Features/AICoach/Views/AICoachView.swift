@@ -2035,6 +2035,8 @@ struct RestAnalysisSheet: View {
         let waterFactor = max(0, (8 - waterCups) * 2)
         return min(100, 20 + sleepFactor + Double(waterFactor))
     }
+    /// Rest tips only after sleep/vitals are measured — never invent recovery advice from defaults.
+    private var showsMeasuredFatigue: Bool { hasSleepData }
     var cnsColor: Color {
         switch cnsLoad {
         case 0..<40: return PastelTheme.pastelSage
@@ -2146,16 +2148,24 @@ struct RestAnalysisSheet: View {
                                 .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.horizontal, 24)
 
-                            HStack(spacing: 10) {
-                                if cnsLoad < 40 {
-                                    RecoveryBadge(icon: "flame.fill", text: "Сложные углеводы", color: PastelTheme.pastelAmber)
-                                    RecoveryBadge(icon: "figure.walk", text: "Лёгкая прогулка", color: PastelTheme.pastelSage)
-                                } else if cnsLoad < 75 {
-                                    RecoveryBadge(icon: "snowflake", text: "Контрастный душ", color: PastelTheme.pastelSlate)
-                                    RecoveryBadge(icon: "bed.double.fill", text: "Дневной сон (20 мин)", color: PastelTheme.pastelLavender)
+                            Group {
+                                if showsMeasuredFatigue {
+                                    HStack(spacing: 10) {
+                                        if cnsLoad < 40 {
+                                            RecoveryBadge(icon: "flame.fill", text: "Сложные углеводы", color: PastelTheme.pastelAmber)
+                                            RecoveryBadge(icon: "figure.walk", text: "Лёгкая прогулка", color: PastelTheme.pastelSage)
+                                        } else if cnsLoad < 75 {
+                                            RecoveryBadge(icon: "snowflake", text: "Контрастный душ", color: PastelTheme.pastelSlate)
+                                            RecoveryBadge(icon: "bed.double.fill", text: "Дневной сон (20 мин)", color: PastelTheme.pastelLavender)
+                                        } else {
+                                            RecoveryBadge(icon: "thermometer.sun.fill", text: "Сауна", color: PastelTheme.pastelPeach)
+                                            RecoveryBadge(icon: "figure.mind.and.body", text: "МФР и растяжка", color: PastelTheme.pastelSlate)
+                                        }
+                                    }
                                 } else {
-                                    RecoveryBadge(icon: "thermometer.sun.fill", text: "Сауна", color: PastelTheme.pastelPeach)
-                                    RecoveryBadge(icon: "figure.mind.and.body", text: "МФР и растяжка", color: PastelTheme.pastelSlate)
+                                    Text("Сдвиньте сон или воду выше, чтобы открыть рекомендации.")
+                                        .font(.footnote)
+                                        .foregroundStyle(PastelTheme.textSecondary)
                                 }
                             }
                             .padding(.horizontal, 24)
