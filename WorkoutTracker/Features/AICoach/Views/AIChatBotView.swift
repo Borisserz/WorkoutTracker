@@ -102,16 +102,29 @@ struct AIChatBotView: View {
                             .accessibilityIdentifier("wt.chat.input")
                             .onSubmit { sendMessage() }
 
-                        Button {
-                            sendMessage()
-                        } label: {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 38))
-                                .foregroundStyle(viewModel.inputText.isEmpty ? .gray : themeManager.current.primaryAccent)
-                                .shadow(color: viewModel.inputText.isEmpty ? .clear : themeManager.current.primaryAccent.opacity(0.8), radius: 8)
+                        if viewModel.isGenerating {
+                            Button {
+                                HapticManager.shared.impact(.medium)
+                                viewModel.cancelGeneration()
+                            } label: {
+                                Image(systemName: "stop.circle.fill")
+                                    .font(.system(size: 38))
+                                    .foregroundStyle(PastelTheme.pastelPeach)
+                            }
+                            .accessibilityIdentifier("wt.chat.stop")
+                            .accessibilityLabel(Text("Stop"))
+                        } else {
+                            Button {
+                                sendMessage()
+                            } label: {
+                                Image(systemName: "arrow.up.circle.fill")
+                                    .font(.system(size: 38))
+                                    .foregroundStyle(viewModel.inputText.isEmpty ? .gray : themeManager.current.primaryAccent)
+                                    .shadow(color: viewModel.inputText.isEmpty ? .clear : themeManager.current.primaryAccent.opacity(0.8), radius: 8)
+                            }
+                            .accessibilityIdentifier("wt.chat.send")
+                            .disabled(viewModel.inputText.isEmpty)
                         }
-                        .accessibilityIdentifier("wt.chat.send")
-                        .disabled(viewModel.inputText.isEmpty || viewModel.isGenerating)
                     }
                     .padding()
                     .background(themeManager.current.background.opacity(0.9)) 

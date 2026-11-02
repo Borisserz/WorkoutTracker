@@ -46,6 +46,16 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertNotEqual(Constants.CNS.unmeasuredAppStorageDefault, 85)
     }
 
+    func testAILogicErrorServerMessageDoesNotBlameGoogle() {
+        let message = AILogicError.apiError(statusCode: 503, message: "upstream").errorDescription ?? ""
+        XCTAssertFalse(message.localizedCaseInsensitiveContains("Google"))
+        XCTAssertTrue(
+            message.localizedCaseInsensitiveContains("AI")
+            || message.localizedCaseInsensitiveContains("coach")
+            || message.localizedCaseInsensitiveContains("try again")
+        )
+    }
+
     func testBodyAnalysisTreatsUnknownCNSAsNotMeasured() {
         let report = BodyAnalysisEngine.generateReport(
             cnsScore: Constants.CNS.unmeasuredAppStorageDefault,

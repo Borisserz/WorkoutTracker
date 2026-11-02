@@ -40,7 +40,7 @@ public enum AILogicError: Error, LocalizedError, Sendable {
             if code == 400 {
                 return "The request was invalid or too large. Please try asking a shorter question."
             } else if code >= 500 {
-                return "Google's AI servers are currently experiencing issues. Please try again later."
+                return String(localized: "The AI coach service is temporarily unavailable. Please try again later.")
             }
             return String(localized: "The AI service couldn't complete your request. Please try again.")
         case .decodingFailed:

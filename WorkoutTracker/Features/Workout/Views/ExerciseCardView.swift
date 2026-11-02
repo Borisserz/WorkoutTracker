@@ -23,9 +23,6 @@ struct ExerciseCardView: View {
     @State private var showTechniqueSheet = false
     @State private var isAISupported: Bool = false
     @State private var showAICameraTracker = false
-    @State private var showAIConsentSheet = false
-    @AppStorage(Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
-    private var hasConsentedToAI = false
 
     private var isActiveExercise: Bool { isCurrentExercise && !exercise.isCompleted && workout.isActive }
     private var isWorkoutCompleted: Bool { !workout.isActive }
@@ -276,14 +273,10 @@ struct ExerciseCardView: View {
                 }
                 .buttonStyle(.plain)
 
-                // AI Camera Tracker pill (Real-time Vision Form & Reps)
+                // On-device Vision form/reps — no cloud AI consent required.
                 Button {
                     HapticManager.shared.impact(.medium)
-                    if hasConsentedToAI {
-                        showAICameraTracker = true
-                    } else {
-                        showAIConsentSheet = true
-                    }
+                    showAICameraTracker = true
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "camera.viewfinder")
@@ -299,13 +292,6 @@ struct ExerciseCardView: View {
                     .overlay(Capsule().stroke(PastelTheme.pastelLavender.opacity(0.3), lineWidth: 1))
                 }
                 .buttonStyle(.plain)
-                .sheet(isPresented: $showAIConsentSheet) {
-                    AIConsentSheet(onConsent: {
-                        showAICameraTracker = true
-                    })
-                    .environment(ThemeManager.shared)
-                    .preferredColorScheme(.dark)
-                }
                 .fullScreenCover(isPresented: $showAICameraTracker) {
                     AITrackerView(exerciseName: exercise.name) { countedReps in
                         guard countedReps > 0,

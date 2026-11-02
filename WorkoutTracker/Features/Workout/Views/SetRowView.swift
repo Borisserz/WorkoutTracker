@@ -11,9 +11,6 @@ struct SetRowView: View {
     @Environment(ThemeManager.self) private var themeManager
     @State private var showSetTypeSheet: Bool = false
     @State private var showAITracker: Bool = false
-    @State private var showAIConsentSheet = false
-    @AppStorage(Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
-    private var hasConsentedToAI = false
     @State private var isAISupported: Bool = false
     @State private var swipeOffset: CGFloat = 0
 
@@ -286,11 +283,8 @@ struct SetRowView: View {
     private var aiTrackerButton: some View {
         if isAISupported {
             Button {
-                if hasConsentedToAI {
-                    showAITracker = true
-                } else {
-                    showAIConsentSheet = true
-                }
+                // On-device Vision — cloud AI consent not required.
+                showAITracker = true
             } label: {
                 ZStack {
                     RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.squareRadius, style: .continuous)
@@ -308,13 +302,6 @@ struct SetRowView: View {
             }
             .buttonStyle(.plain)
             .disabled(isExerciseCompleted || isWorkoutCompleted)
-            .sheet(isPresented: $showAIConsentSheet) {
-                AIConsentSheet(onConsent: {
-                    showAITracker = true
-                })
-                .environment(ThemeManager.shared)
-                .preferredColorScheme(.dark)
-            }
             .fullScreenCover(isPresented: $showAITracker) {
                 AITrackerView(exerciseName: exerciseName) { countedReps in
                     guard countedReps > 0 else { return }
