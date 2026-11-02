@@ -28,6 +28,8 @@ final class WorkoutService {
     private var finishTransitionDepth = 0
 
     var isFinishTransitionPending: Bool { finishTransitionDepth > 0 }
+    /// Sync gate for UI (History/Hub) — covers in-flight start and finish-undo window.
+    var isStartBlocked: Bool { startInFlight || finishTransitionDepth > 0 }
 
     func beginFinishTransition() {
         finishTransitionDepth += 1
@@ -70,16 +72,21 @@ final class WorkoutService {
                 switch payload.action {
                 case .startWorkout:
                     guard let uuid = workoutUUID else { return }
-                    // Refuse during phone finish-undo window (endTime already set → actives query empty).
-                    let finishBlocked = await MainActor.run { self.isFinishTransitionPending }
-                    if finishBlocked {
-                        await MainActor.run {
+                    // Share phone start mutex so Watch cannot race createWorkout / startGeneratedWorkout.
+                    let claimed = await MainActor.run { () -> Bool in
+                        if self.startInFlight || self.finishTransitionDepth > 0 {
                             self.appState.showError(
                                 title: String(localized: "Workout in progress"),
                                 message: String(localized: "Finish or delete the current workout before starting another.")
                             )
+                            return false
                         }
-                        return
+                        self.startInFlight = true
+                        return true
+                    }
+                    guard claimed else { return }
+                    defer {
+                        Task { @MainActor in self.startInFlight = false }
                     }
                     // R01: refuse dual active sessions from Watch when phone already has one.
                     let activeDesc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.endTime == nil })

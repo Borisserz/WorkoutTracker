@@ -52,7 +52,7 @@ struct HistoryView: View {
     }
 
     private var hasActiveWorkout: Bool {
-        allWorkouts.contains { $0.endTime == nil }
+        workoutService.isStartBlocked || allWorkouts.contains { $0.endTime == nil }
     }
 
     private var displayTemplates: [WorkoutPreset] {

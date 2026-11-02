@@ -417,10 +417,11 @@ struct AICoachView: View {
                                 )
                             }
                         )
-                        await di.workoutService.startGeneratedWorkout(generatedDTO)
-                        if let newWorkout = await di.workoutService.fetchLatestWorkout() {
-                            path.append(newWorkout)
+                        guard let id = await di.workoutService.startGeneratedWorkout(generatedDTO),
+                              let newWorkout = di.analyticsService.modelContainer.mainContext.model(for: id) as? Workout else {
+                            return
                         }
+                        path.append(newWorkout)
                     }
                 })
             }
@@ -1418,11 +1419,10 @@ struct BestExercisesSheet: View {
         HapticManager.shared.impact(.heavy)
 
         Task {
-            await workoutService.startGeneratedWorkout(dto)
-            if let newWorkout = await workoutService.fetchLatestWorkout() {
-                di.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
-                di.appState.selectedTab = 2 
-            }
+            defer { isStarting = false }
+            guard let id = await workoutService.startGeneratedWorkout(dto) else { return }
+            di.appState.returnToActiveWorkoutId = id
+            di.appState.selectedTab = 2
             dismiss()
         }
     }
