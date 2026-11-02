@@ -54,6 +54,20 @@ struct HistoryView: View {
 
     private static let finishedPageSize = 50
 
+    private static let monthYearFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "LLLL yyyy"
+        f.locale = Locale(identifier: "en_US")
+        return f
+    }()
+
+    static let shortDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "d MMM"
+        f.locale = Locale(identifier: "ru_RU")
+        return f
+    }()
+
     private var hasActiveWorkout: Bool {
         workoutService.isStartBlocked || !activeWorkouts.isEmpty
     }
@@ -171,9 +185,7 @@ struct HistoryView: View {
             groups.append(WorkoutTimelineGroup(id: "thisMonth", title: "This month", workouts: thisMonth))
         }
         if !older.isEmpty {
-            let monthFormatter = DateFormatter()
-            monthFormatter.dateFormat = "LLLL yyyy"
-            monthFormatter.locale = Locale(identifier: "en_US")
+            let monthFormatter = Self.monthYearFormatter
 
             let groupedByMonth = Dictionary(grouping: older) { workout in
                 monthFormatter.string(from: workout.date).capitalized
@@ -255,8 +267,7 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                PastelTheme.canvas.ignoresSafeArea()
-                AtmosphericGymBackdropView(style: .history)
+                Color.clear.ignoresSafeArea()
 
                 List {
 
@@ -441,7 +452,7 @@ struct HistoryView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(PastelTheme.canvas.ignoresSafeArea())
+                .background(Color.clear)
                 .onTapGesture {
                     hideKeyboard()
                     withAnimation { isSearching = false }
@@ -1079,10 +1090,7 @@ private struct BestWorkoutReplayCard: View {
     let onReplay: () -> Void
 
     private var formattedDate: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "d MMM"
-        formatter.locale = .autoupdatingCurrent
-        return formatter.string(from: workout.date)
+        HistoryView.shortDateFormatter.string(from: workout.date)
     }
 
     var body: some View {

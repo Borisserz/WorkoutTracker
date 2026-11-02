@@ -101,28 +101,31 @@ struct AtmosphericGymBackdropView: View {
             }
             .ignoresSafeArea()
 
-            // 1.5. Tab-Specific Organic Pastel Mist (Zero neon, pure ambient depth)
-            GeometryReader { geo in
-                let width = geo.size.width
-                let height = geo.size.height
+            // 1.5. Tab-Specific Organic Pastel Mist (Zero-blur hardware-accelerated GPU light pools)
+            ZStack {
+                RadialGradient(
+                    colors: [
+                        currentStyle.topColor.opacity(currentStyle.topOpacity * 1.5),
+                        currentStyle.topColor.opacity(currentStyle.topOpacity * 0.4),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: 0.12, y: 0.08),
+                    startRadius: 24,
+                    endRadius: 340
+                )
 
-                ZStack {
-                    // Top ambient light sphere
-                    Circle()
-                        .fill(currentStyle.topColor.opacity(currentStyle.topOpacity))
-                        .frame(width: width * 0.85, height: width * 0.85)
-                        .blur(radius: 95)
-                        .offset(x: -width * 0.15, y: -height * 0.12)
-
-                    // Bottom ambient light sphere
-                    Circle()
-                        .fill(currentStyle.bottomColor.opacity(currentStyle.bottomOpacity))
-                        .frame(width: width * 0.75, height: width * 0.75)
-                        .blur(radius: 90)
-                        .offset(x: width * 0.20, y: height * 0.18)
-                }
-                .animation(.easeInOut(duration: 0.6), value: currentStyle.topOpacity)
+                RadialGradient(
+                    colors: [
+                        currentStyle.bottomColor.opacity(currentStyle.bottomOpacity * 1.5),
+                        currentStyle.bottomColor.opacity(currentStyle.bottomOpacity * 0.3),
+                        Color.clear
+                    ],
+                    center: UnitPoint(x: 0.88, y: 0.82),
+                    startRadius: 24,
+                    endRadius: 320
+                )
             }
+            .animation(.easeInOut(duration: 0.5), value: currentStyle.topOpacity)
             .ignoresSafeArea()
 
             // 2. Protective Vignette Gradient Layers

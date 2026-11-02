@@ -54,6 +54,8 @@ struct StatsDataResultDTO: Sendable {
     let recentPRs: [PersonalRecord]
     let detailedComparison: [DetailedComparison]
     let chartData: [ChartDataPoint]
+    var anatomyStats: AnatomyStatsDTO? = nil
+    var setsOverTime: [SetsOverTimePoint] = []
 }
 
 struct ExerciseChartDTO: Sendable, Identifiable {

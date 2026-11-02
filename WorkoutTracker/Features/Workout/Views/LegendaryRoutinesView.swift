@@ -287,18 +287,8 @@ struct LegendaryCardView: View {
         .background(.ultraThinMaterial)
         .environment(\.colorScheme, .dark) 
         .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(
-                    LinearGradient(
-                        colors: routine.gradientColors + [.clear],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    ),
-                    lineWidth: 2
-                )
-        )
-        .shadow(color: (routine.gradientColors.first ?? .black).opacity(0.3), radius: 25, x: 0, y: 15)
+        .flameBorder(cornerRadius: 32, lineWidth: 1.8)
+        .shadow(color: Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.35), radius: 24, x: 0, y: 12)
     }
 }
 

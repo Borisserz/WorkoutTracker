@@ -42,22 +42,13 @@ final class StatsViewModel {
             prCache: prCache
         )
 
-        let bgContext = ModelContext(analyticsService.modelContainer)
-        let minDate = currentInterval.start
-        let maxDate = currentInterval.end
-        var desc = FetchDescriptor<Workout>(predicate: #Predicate<Workout> { $0.date >= minDate && $0.date <= maxDate })
-        let workouts = (try? bgContext.fetch(desc)) ?? []
-
-        let anatomy = await analyticsService.fetchAnatomyStats(for: currentInterval, workouts: workouts)
-        let setsData = await analyticsService.fetchSetsOverTime(period: selectedPeriod, workouts: workouts)
-
         self.currentStats = result.currentStats
         self.previousStats = result.previousStats
         self.recentPRs = result.recentPRs
         self.detailedComparison = result.detailedComparison
         self.chartData = result.chartData
-        self.anatomyStats = anatomy
-        self.setsOverTime = setsData
+        self.anatomyStats = result.anatomyStats
+        self.setsOverTime = result.setsOverTime
 
         await loadActiveGoals(prCache: prCache)
 
@@ -190,10 +181,17 @@ struct StatsView: View {
                 }
             }
         }
+        .onAppear {
+            if viewModel == nil {
+                viewModel = di.makeStatsViewModel()
+            }
+        }
         .task {
             if viewModel == nil {
                 viewModel = di.makeStatsViewModel()
-                await viewModel?.loadPeriodData(prCache: dashboardViewModel.personalRecordsCache)
+            }
+            if let vm = viewModel, !vm.isDataLoaded {
+                await vm.loadPeriodData(prCache: dashboardViewModel.personalRecordsCache)
             }
         }
         .onChange(of: viewModel?.selectedPeriod) { _, _ in refreshData() }
@@ -242,8 +240,7 @@ struct StatsContentView: View {
 
     var body: some View {
         ZStack {
-            PastelTheme.canvas.ignoresSafeArea()
-            AtmosphericGymBackdropView(style: .progress)
+            Color.clear.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 20) {

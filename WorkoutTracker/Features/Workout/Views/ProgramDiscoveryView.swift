@@ -317,12 +317,11 @@ struct LegendaryGridCardView: View {
             ZStack {
                 LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
                 LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(LinearGradient(colors: [.white.opacity(0.3), .clear], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1.5)
             }
         )
-        .cornerRadius(16)
-        .shadow(color: routine.gradientColors[0].opacity(0.3), radius: 8, x: 0, y: 4)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .flameBorder(cornerRadius: 16, lineWidth: 1.5)
+        .shadow(color: Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.35), radius: 10, x: 0, y: 5)
     }
 }
 

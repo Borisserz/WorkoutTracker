@@ -109,8 +109,7 @@ struct WorkoutHubView: View {
         NavigationStack {
             ScrollViewReader { proxy in
                 ZStack(alignment: .bottom) {
-                    PastelTheme.canvas.ignoresSafeArea()
-                    AtmosphericGymBackdropView(style: .workout)
+                    Color.clear.ignoresSafeArea()
 
                     ScrollView(showsIndicators: false) {
                         VStack(alignment: .leading, spacing: 18) {
@@ -1351,10 +1350,8 @@ struct WorkoutHubView: View {
                 }
             )
             .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
-                    .stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1)
-            )
+            .flameBorder(cornerRadius: PastelTheme.cardRadius, lineWidth: 1.6)
+            .shadow(color: Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.25), radius: 14, x: 0, y: 6)
             .padding(.horizontal, 16)
         }
         .buttonStyle(Tactile3DCardButtonStyle(scale: 0.982, maxTilt: 2.8))

@@ -93,12 +93,18 @@ actor AnalyticsService {
         let detailedComparison = getDetailedComparison(workouts: bgWorkouts, period: period)
         let chartData = getChartData(for: period, metric: metric, workouts: bgWorkouts)
 
+        let currentWorkouts = bgWorkouts.filter { $0.date >= currentInterval.start && $0.date <= currentInterval.end }
+        let anatomy = fetchAnatomyStats(for: currentInterval, workouts: currentWorkouts)
+        let setsData = fetchSetsOverTime(period: period, workouts: currentWorkouts)
+
         return StatsDataResultDTO(
             currentStats: currentStats,
             previousStats: previousStats,
             recentPRs: recentPRs,
             detailedComparison: detailedComparison,
-            chartData: chartData
+            chartData: chartData,
+            anatomyStats: anatomy,
+            setsOverTime: setsData
         )
     }
 

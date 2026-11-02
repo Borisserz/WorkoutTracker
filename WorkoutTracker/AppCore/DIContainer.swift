@@ -86,7 +86,15 @@ final class DIContainer: @unchecked Sendable {
 
     @MainActor func makeDashboardViewModel() -> DashboardViewModel { DashboardViewModel(analyticsService: analyticsService) }
     @MainActor func makeCatalogViewModel() -> CatalogViewModel { CatalogViewModel(exerciseCatalogService: exerciseCatalogService) }
-    @MainActor func makeStatsViewModel() -> StatsViewModel { StatsViewModel(analyticsService: analyticsService) }
+    @MainActor private var cachedStatsViewModel: StatsViewModel?
+    @MainActor func makeStatsViewModel() -> StatsViewModel {
+        if let existing = cachedStatsViewModel {
+            return existing
+        }
+        let vm = StatsViewModel(analyticsService: analyticsService)
+        cachedStatsViewModel = vm
+        return vm
+    }
     @MainActor func makeWorkoutDetailViewModel() -> WorkoutDetailViewModel { WorkoutDetailViewModel(workoutService: workoutService, analyticsService: analyticsService, exerciseCatalogService: exerciseCatalogService, appState: appState) }
     @MainActor func makeExerciseHistoryViewModel(exerciseName: String) -> ExerciseHistoryViewModel { ExerciseHistoryViewModel(exerciseName: exerciseName, analyticsService: analyticsService) }
     @MainActor func makeWorkoutListViewModel() -> WorkoutListViewModel { WorkoutListViewModel() }
