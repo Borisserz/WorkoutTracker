@@ -1013,7 +1013,7 @@ private struct BestWorkoutReplayCard: View {
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMM"
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = .autoupdatingCurrent
         return formatter.string(from: workout.date)
     }
 

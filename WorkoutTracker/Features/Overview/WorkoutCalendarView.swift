@@ -572,9 +572,9 @@ private struct ArchitecturalMonthView: View {
 
     private var monthTitle: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = .autoupdatingCurrent
         formatter.dateFormat = "LLLL yyyy"
-        return formatter.string(from: monthDate).uppercased()
+        return formatter.string(from: monthDate).capitalized
     }
 
     private var daysInMonth: [Date] {
@@ -822,7 +822,7 @@ struct DayInspectionSheet: View {
 
     private var formattedDate: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = .autoupdatingCurrent
         formatter.dateFormat = "EEEE, d MMMM yyyy"
         let raw = formatter.string(from: data.date)
         return raw.prefix(1).uppercased() + raw.dropFirst()
