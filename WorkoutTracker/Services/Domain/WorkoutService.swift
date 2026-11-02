@@ -27,6 +27,8 @@ final class WorkoutService {
     private var startInFlight = false
     /// Blocks new starts during finish snackbar undo window (endTime set but session not committed).
     private var finishTransitionDepth = 0
+    /// Token for LiveWorkoutSyncEvent; `nonisolated(unsafe)` so `deinit` can unregister.
+    nonisolated(unsafe) private var liveSyncObserver: NSObjectProtocol?
 
     var isFinishTransitionPending: Bool { finishTransitionDepth > 0 }
     /// Sync gate for UI (History/Hub) — covers in-flight start and finish-undo window.
@@ -38,6 +40,12 @@ final class WorkoutService {
 
     func endFinishTransition() {
         finishTransitionDepth = max(0, finishTransitionDepth - 1)
+    }
+
+    deinit {
+        if let liveSyncObserver {
+            NotificationCenter.default.removeObserver(liveSyncObserver)
+        }
     }
 
     init(workoutStore: WorkoutStoreProtocol,
@@ -60,7 +68,7 @@ final class WorkoutService {
         self.appState = appState
         self.liveActivityManager = liveActivityManager
 
-        NotificationCenter.default.addObserver(forName: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, queue: .main) { [weak self] notification in
+        liveSyncObserver = NotificationCenter.default.addObserver(forName: NSNotification.Name("LiveWorkoutSyncEvent"), object: nil, queue: .main) { [weak self] notification in
             guard let self = self,
                   let payloadDict = notification.userInfo?["payload"],
                   let payload = payloadDict as? LiveSyncPayload else { return }
