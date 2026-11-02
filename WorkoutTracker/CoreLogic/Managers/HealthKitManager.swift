@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import HealthKit
 internal import SwiftUI
 enum HealthKitError: LocalizedError {
@@ -174,25 +175,17 @@ actor HealthKitManager: Sendable {
     }
 
     func saveWorkout(title: String, startDate: Date, endDate: Date, durationSeconds: Int, calories: Int) async throws {
-        #if DEBUG
-        print("🔄 HealthKitManager: Initiating save...")
-        #endif
+        AppLog.health.debug("🔄 HealthKitManager: Initiating save...")
         guard isAvailable else {
-            #if DEBUG
-            print("❌ HealthKit: Not available on this device")
-            #endif
+            AppLog.health.error("❌ HealthKit: Not available on this device")
             return
         }
 
         let actualDuration = max(Double(durationSeconds), endDate.timeIntervalSince(startDate))
-        #if DEBUG
-        print("📊 Data: Duration = \(actualDuration) sec, Calories = \(calories) kcal")
-        #endif
+        AppLog.health.debug("📊 Data: Duration = \(actualDuration) sec, Calories = \(calories) kcal")
 
         guard actualDuration >= 60 else {
-            #if DEBUG
-            print("⚠️ Cancelled: Workout is under 60 seconds. Apple Health will ignore it.")
-            #endif
+            AppLog.health.warning("⚠️ Cancelled: Workout is under 60 seconds. Apple Health will ignore it.")
             return
         }
 
@@ -214,21 +207,15 @@ actor HealthKitManager: Sendable {
 
         do {
             try await healthStore.save(workout)
-            #if DEBUG
-            print("✅ SUCCESS: HKWorkout written to DB!")
-            #endif
+            AppLog.health.debug("✅ SUCCESS: HKWorkout written to DB!")
 
             if let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
                 let energySample = HKQuantitySample(type: energyType, quantity: energyQuantity, start: startDate, end: endDate)
                 try await healthStore.save(energySample)
-                #if DEBUG
-                print("✅ SUCCESS: Calories added to Move Ring!")
-                #endif
+                AppLog.health.debug("✅ SUCCESS: Calories added to Move Ring!")
             }
         } catch {
-            #if DEBUG
-            print("❌ HealthKit save ERROR: \(error.localizedDescription)")
-            #endif
+            AppLog.health.error("❌ HealthKit save ERROR: \(error.localizedDescription)")
             throw HealthKitError.saveFailed(error)
         }
     }

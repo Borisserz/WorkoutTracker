@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import OSLog
 import Vision
 import CoreML
 import Combine
@@ -30,9 +31,7 @@ final class MLWorkoutEngine: ObservableObject {
 
     deinit {
         predictionTask?.cancel()
-        #if DEBUG
-        print("♻️ MLWorkoutEngine deallocated, prediction tasks cancelled")
-        #endif
+        AppLog.ml.debug("♻️ MLWorkoutEngine deallocated, prediction tasks cancelled")
     }
 
     private func loadModel() {
@@ -46,9 +45,7 @@ final class MLWorkoutEngine: ObservableObject {
                 }
                 trace?.stop()
             } catch {
-                #if DEBUG
-                print("❌ MLWorkoutEngine: Failed to load WorkoutClassifier")
-                #endif
+                AppLog.ml.error("❌ MLWorkoutEngine: Failed to load WorkoutClassifier")
                 TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "MLWorkoutEngine_init"])
                 await MainActor.run { self.modelLoadFailed = true }
                 trace?.stop()
@@ -119,9 +116,7 @@ final class MLWorkoutEngine: ObservableObject {
 
             return (labelFeature.stringValue, conf)
         } catch {
-            #if DEBUG
-            print("⚠️ Action classification failed: \(error.localizedDescription)")
-            #endif
+            AppLog.ml.error("⚠️ Action classification failed: \(error.localizedDescription)")
             return nil
         }
     }

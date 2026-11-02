@@ -1,4 +1,5 @@
 internal import SwiftUI
+import OSLog
 import SwiftData
 import Charts
 import Combine
@@ -565,7 +566,7 @@ struct GoalsSectionView: View {
             do {
                 try context.save()
             } catch {
-                print("Error deleting goal: \(error)")
+                AppLog.ui.error("Error deleting goal: \(error.localizedDescription, privacy: .public)")
             }
         }
     }

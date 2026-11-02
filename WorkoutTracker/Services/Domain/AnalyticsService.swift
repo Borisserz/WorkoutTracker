@@ -1,6 +1,7 @@
 
 
 import Foundation
+import OSLog
 import SwiftData
 
 actor AnalyticsService {
@@ -341,9 +342,7 @@ actor AnalyticsService {
 
             try bgContext.save()
         } catch {
-            #if DEBUG
-            print("❌ Analytics rebuild save failed — previous caches may remain: \(error)")
-            #endif
+            AppLog.data.error("❌ Analytics rebuild save failed — previous caches may remain: \(error.localizedDescription, privacy: .public)")
         }
     }
 

@@ -74321,6 +74321,38 @@
           }
         }
       }
+    },
+    "Accept and start workout": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accept and start workout"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Принять и начать тренировку"
+          }
+        }
+      }
+    },
+    "Load older workouts": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Load older workouts"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Загрузить более старые тренировки"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

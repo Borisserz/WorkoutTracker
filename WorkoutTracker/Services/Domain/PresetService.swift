@@ -1,6 +1,7 @@
 
 
 import Foundation
+import OSLog
 import SwiftData
 import Observation
 
@@ -120,7 +121,7 @@ extension PresetService {
                 return !existingPresets.isEmpty
             }
         } catch {
-            print("Error checking saved status: \(error)")
+            AppLog.presets.error("Error checking saved status: \(error.localizedDescription, privacy: .public)")
             return false
         }
     }

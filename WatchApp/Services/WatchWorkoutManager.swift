@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import HealthKit
 internal import SwiftUI
 import Observation
@@ -48,7 +49,7 @@ final class WatchWorkoutManager: NSObject {
 
             self.isRunning = true
         } catch {
-            print("WatchWorkoutManager: Failed to start session - \(error)")
+            WatchAppLog.workout.error("WatchWorkoutManager: Failed to start session - \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -62,7 +63,7 @@ final class WatchWorkoutManager: NSObject {
             self.isRunning = false
             self.heartRate = 0.0
         } catch {
-            print("WatchWorkoutManager: Failed to end workout - \(error)")
+            WatchAppLog.workout.error("WatchWorkoutManager: Failed to end workout - \(error.localizedDescription, privacy: .public)")
         }
     }
 }

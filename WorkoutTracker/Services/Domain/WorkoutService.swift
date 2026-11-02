@@ -1,6 +1,7 @@
 
 
 import Foundation
+import OSLog
 import SwiftData
 import AudioToolbox
 import WidgetKit
@@ -353,9 +354,7 @@ final class WorkoutService {
             return !activeIDs.isEmpty
         } catch {
             // Fail closed: unknown store state must not allow a second active session.
-            #if DEBUG
-            print("Error checking for active workouts: \(error)")
-            #endif
+            AppLog.session.error("Error checking for active workouts: \(error.localizedDescription, privacy: .public)")
             appState.showError(
                 title: String(localized: "Workout in progress"),
                 message: String(localized: "Could not verify active workouts. Try again in a moment.")
@@ -469,9 +468,7 @@ final class WorkoutService {
                             calories: burnedCalories 
                         )
                     } catch {
-                        #if DEBUG
-                        print("⚠️ Failed to sync workout to HealthKit: \(error)")
-                        #endif
+                        AppLog.session.error("⚠️ Failed to sync workout to HealthKit: \(error.localizedDescription, privacy: .public)")
                     }
                 }
             } catch {
@@ -520,9 +517,7 @@ final class WorkoutService {
             let activeIDs = try await workoutStore.findActiveWorkoutsAndCleanup()
             if activeIDs.isEmpty { stopLiveActivity() }
         } catch {
-            #if DEBUG
-            print("Cleanup failed: \(error.localizedDescription)")
-            #endif
+            AppLog.session.error("Cleanup failed: \(error.localizedDescription)")
         }
     }
 
@@ -538,9 +533,7 @@ final class WorkoutService {
         do {
             try await exerciseCatalogService.checkAndGenerateDefaultPresets()
         } catch {
-            #if DEBUG
-            print("Failed to generate default presets: \(error.localizedDescription)")
-            #endif
+            AppLog.session.error("Failed to generate default presets: \(error.localizedDescription)")
         }
     }
 

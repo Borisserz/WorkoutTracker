@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import FirebaseAnalytics
 import FirebaseCrashlytics
 import FirebasePerformance
@@ -157,9 +158,7 @@ public final class TrackingManager {
     }
 
     public func track(_ event: Event) {
-        #if DEBUG
-        print("📊 [Analytics] Logging event: \(event.name) with params: \(event.parameters ?? [:])")
-        #endif
+        AppLog.analytics.debug("📊 [Analytics] Logging event: \(event.name) with params: \(event.parameters ?? [:])")
         Analytics.logEvent(event.name, parameters: event.parameters)
         Crashlytics.crashlytics().log(event.name)
         
@@ -171,17 +170,13 @@ public final class TrackingManager {
     }
 
     public func setUserProperty(name: String, value: String?) {
-        #if DEBUG
-        print("📊 [Analytics] Setting user property: \(name) = \(value ?? "nil")")
-        #endif
+        AppLog.analytics.debug("📊 [Analytics] Setting user property: \(name) = \(value ?? "nil")")
         Analytics.setUserProperty(value, forName: name)
         Crashlytics.crashlytics().setCustomValue(value ?? "nil", forKey: name)
     }
 
     public func recordError(error: Error, additionalInfo: [String: Any]? = nil) {
-        #if DEBUG
-        print("📊 [Crashlytics] Recording non-fatal error: \(error.localizedDescription)")
-        #endif
+        AppLog.analytics.debug("📊 [Crashlytics] Recording non-fatal error: \(error.localizedDescription)")
         if let info = additionalInfo {
             let nsError = NSError(domain: "WorkoutTracker", code: 1, userInfo: [
                 NSUnderlyingErrorKey: error,
@@ -199,9 +194,7 @@ public final class TrackingManager {
     }
 
     public func startTrace(name: String) -> PerformanceTrace? {
-        #if DEBUG
-        print("⏱️ [Performance] Starting trace: \(name)")
-        #endif
+        AppLog.analytics.debug("⏱️ [Performance] Starting trace: \(name)")
         if let trace = Performance.startTrace(name: name) {
             return FirebasePerformanceTrace(trace: trace)
         }

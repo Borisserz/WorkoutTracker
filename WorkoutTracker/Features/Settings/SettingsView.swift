@@ -1,4 +1,5 @@
 internal import SwiftUI
+import OSLog
 internal import UniformTypeIdentifiers
 import SwiftData
 import UIKit
@@ -570,7 +571,7 @@ struct SettingsView: View {
             }
             try modelContext.save()
         } catch {
-            print("Failed to clear SwiftData: \(error)")
+            AppLog.data.error("Failed to clear SwiftData: \(error.localizedDescription, privacy: .public)")
         }
 
         let keysToReset = [

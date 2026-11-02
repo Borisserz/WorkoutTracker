@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import ActivityKit
 
 final class LiveActivityManager: Sendable {
@@ -19,7 +20,7 @@ final class LiveActivityManager: Sendable {
                 pushType: nil
             )
         } catch {
-            print("❌ LiveActivityManager: Failed to start activity: \(error)")
+            AppLog.liveActivity.error("❌ LiveActivityManager: Failed to start activity: \(error.localizedDescription, privacy: .public)")
             TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "LiveActivityManager_start"])
         }
     }

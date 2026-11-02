@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B2C3D4E5F60718293A4B5C6D /* AIResponseParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */; };
 		0DF9916DE0EBCD3AABDD349B /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7FE428EAFDCCB420B43C3A92 /* Foundation.framework */; };
 		24965D87A62E42B5987846A0 /* HapticManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */; };
 		29661A4F4520FD432B45E791 /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = 7C4118E39E451C7A1AA91DCF /* FirebasePerformance */; };
@@ -32,6 +31,7 @@
 		ACE68D102EFC421700FD186D /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = ACE68D0F2EFC421700FD186D /* SwiftUI.framework */; };
 		ACF45A212F9E43F800206681 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A202F9E43F800206681 /* FirebaseFirestore */; };
 		ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A222F9E43F800206681 /* FirebaseRemoteConfig */; };
+		B2C3D4E5F60718293A4B5C6D /* AIResponseParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */; };
 		C3F81C26EAC348EB8FC229FA /* ImprovePassSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */; };
 		C4AC734CEE957EE512CD8D2F /* RestTimerManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8566D580B51101FBEAF5AA5B /* RestTimerManagerTests.swift */; };
 		C7F3D8A2507346BA995BA2BF /* AppReviewManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9815C46A3AB04BB4B2CE36D2 /* AppReviewManagerTests.swift */; };
@@ -146,9 +146,9 @@
 		7FE428EAFDCCB420B43C3A92 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		8566D580B51101FBEAF5AA5B /* RestTimerManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestTimerManagerTests.swift; sourceTree = "<group>"; };
 		9815C46A3AB04BB4B2CE36D2 /* AppReviewManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppReviewManagerTests.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AIResponseParsingTests.swift; sourceTree = "<group>"; };
 		A4752778508CADACB44B9D18 /* PatternClassifierTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PatternClassifierTests.swift; sourceTree = "<group>"; };
 		AB3FA907D5A3E4621EC02876 /* AITrackerEngineTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AITrackerEngineTests.swift; sourceTree = "<group>"; };
-		A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AIResponseParsingTests.swift; sourceTree = "<group>"; };
 		AC3CB9AB2F81B127008A6777 /* WorkoutTrackerWatch-Watch-App-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "WorkoutTrackerWatch-Watch-App-Info.plist"; sourceTree = "<group>"; };
 		AC3CB9AC2F81B13A008A6777 /* WorkoutTrackerWatch Watch App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "WorkoutTrackerWatch Watch App.entitlements"; sourceTree = "<group>"; };
 		AC55B4E82FCA2A790081A8D1 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -169,6 +169,7 @@
 		AC3CB9A12F81B006008A6777 /* Exceptions for "WorkoutTracker" folder in "WorkoutTrackerWatch Watch App" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				AppCore/AppLog.swift,
 				AppCore/Constants.swift,
 				CoreLogic/Helpers/LocalizationHelper.swift,
 				CoreLogic/Managers/UnitsManager.swift,

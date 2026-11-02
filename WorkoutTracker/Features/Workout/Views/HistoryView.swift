@@ -30,12 +30,19 @@ struct HistoryView: View {
     @Environment(WorkoutService.self) var workoutService
     @Environment(UnitsManager.self) var unitsManager
 
-    /// Cap in-memory history for SwiftData `@Query` — full-library scans blow RAM after years of logging.
-    @Query private var allWorkouts: [Workout]
-    /// Favorites are typically few — unbounded so older starred sessions stay visible past the main cap.
+    /// Active sessions only — tiny set, used for dual-start guards.
+    @Query(filter: #Predicate<Workout> { $0.endTime == nil }, sort: \Workout.date, order: .reverse)
+    private var activeWorkouts: [Workout]
+    /// Favorites are typically few — unbounded so older starred sessions stay visible past the main page.
     @Query(filter: #Predicate<Workout> { $0.isFavorite == true }, sort: \Workout.date, order: .reverse)
     private var favoriteWorkouts: [Workout]
     @Query(sort: \WorkoutPreset.name) private var allPresets: [WorkoutPreset]
+
+    /// Finished workouts loaded in pages (not one giant `@Query`).
+    @State private var finishedPage: [Workout] = []
+    @State private var finishedFetchLimit = HistoryView.finishedPageSize
+    @State private var hasMoreFinished = true
+    @State private var isLoadingMore = false
 
     @State private var searchText = ""
     @State private var isSearching = false
@@ -45,14 +52,10 @@ struct HistoryView: View {
     @State private var workoutPendingDelete: Workout? = nil
     @State private var showDeleteConfirm = false
 
-    init() {
-        var descriptor = FetchDescriptor<Workout>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-        descriptor.fetchLimit = 800
-        _allWorkouts = Query(descriptor)
-    }
+    private static let finishedPageSize = 50
 
     private var hasActiveWorkout: Bool {
-        workoutService.isStartBlocked || allWorkouts.contains { $0.endTime == nil }
+        workoutService.isStartBlocked || !activeWorkouts.isEmpty
     }
 
     private var displayTemplates: [WorkoutPreset] {
@@ -65,7 +68,7 @@ struct HistoryView: View {
 
     // MARK: - Computed Best Workouts for Top Hall of Fame
     private var bestHistoricalWorkouts: [Workout] {
-        let completed = allWorkouts.filter { $0.endTime != nil }
+        let completed = finishedPage
         return Array(completed.sorted(by: { $0.totalStrengthVolume > $1.totalStrengthVolume }).prefix(6))
     }
 
@@ -73,7 +76,7 @@ struct HistoryView: View {
     private var filteredWorkouts: [Workout] {
         let calendar = Calendar.current
         let now = Date()
-        let source = selectedFilter == .favorites ? favoriteWorkouts : allWorkouts
+        let source = selectedFilter == .favorites ? favoriteWorkouts : finishedPage
 
         return source.filter { workout in
             // History shows finished sessions only
@@ -103,6 +106,30 @@ struct HistoryView: View {
                 return workout.date >= cutoff
             }
         }
+    }
+
+    @MainActor
+    private func refreshFinished(reset: Bool) {
+        if reset {
+            finishedFetchLimit = Self.finishedPageSize
+        }
+        isLoadingMore = true
+        defer { isLoadingMore = false }
+
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = finishedFetchLimit
+        let fetched = (try? context.fetch(descriptor)) ?? []
+        finishedPage = fetched
+        hasMoreFinished = fetched.count >= finishedFetchLimit
+    }
+
+    private func loadMoreFinished() {
+        guard hasMoreFinished, !isLoadingMore, selectedFilter != .favorites else { return }
+        finishedFetchLimit += Self.finishedPageSize
+        refreshFinished(reset: false)
     }
 
     // MARK: - Timeline Groups
@@ -378,6 +405,34 @@ struct HistoryView: View {
                         }
                     }
 
+                    if selectedFilter != .favorites, hasMoreFinished, !filteredWorkouts.isEmpty {
+                        Section {
+                            Button {
+                                HapticManager.shared.impact(.soft)
+                                loadMoreFinished()
+                            } label: {
+                                HStack {
+                                    Spacer()
+                                    if isLoadingMore {
+                                        ProgressView()
+                                            .tint(PastelTheme.pastelSage)
+                                    } else {
+                                        Text("Load older workouts")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(PastelTheme.pastelSage)
+                                    }
+                                    Spacer()
+                                }
+                                .padding(.vertical, 12)
+                            }
+                            .disabled(isLoadingMore)
+                            .accessibilityIdentifier("wt.history.loadMore")
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        }
+                    }
+
                     Color.clear
                         .frame(height: 100)
                         .listRowInsets(EdgeInsets())
@@ -390,6 +445,16 @@ struct HistoryView: View {
                 .onTapGesture {
                     hideKeyboard()
                     withAnimation { isSearching = false }
+                }
+                .onAppear {
+                    if finishedPage.isEmpty {
+                        refreshFinished(reset: true)
+                    }
+                }
+                .onChange(of: selectedFilter) { _, _ in
+                    if selectedFilter != .favorites {
+                        refreshFinished(reset: true)
+                    }
                 }
             }
             .navigationDestination(item: $navigateToActiveWorkout) { workout in
@@ -405,7 +470,10 @@ struct HistoryView: View {
                 Button("Delete", role: .destructive) {
                     guard let workout = workoutPendingDelete else { return }
                     workoutPendingDelete = nil
-                    Task { await workoutService.deleteWorkout(workout) }
+                    Task {
+                        await workoutService.deleteWorkout(workout)
+                        refreshFinished(reset: true)
+                    }
                 }
                 Button("Cancel", role: .cancel) {
                     workoutPendingDelete = nil

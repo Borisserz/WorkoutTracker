@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 #if os(iOS)
 import FirebaseStorage
 #endif
@@ -122,9 +123,9 @@ public actor ExerciseDatabaseService {
             if let localizedRef = localizedRef {
                 localizedData = try await localizedRef.data(maxSize: 5 * 1024 * 1024)
             }
-            print("☁️✅ The exercise catalog has been successfully uploaded from Firebase Storage!")
+            AppLog.catalog.info("☁️✅ The exercise catalog has been successfully uploaded from Firebase Storage!")
         } catch {
-            print("☁️⚠️ Error downloading from Firebase: \(error.localizedDescription). We switch to local files.")
+            AppLog.catalog.error("☁️⚠️ Error downloading from Firebase: \(error.localizedDescription). We switch to local files.")
         }
         #endif
         
@@ -133,7 +134,7 @@ public actor ExerciseDatabaseService {
             if let localEnUrl = Bundle.main.url(forResource: "exercises", withExtension: "json") {
                 enData = try? Data(contentsOf: localEnUrl)
                 #if os(iOS)
-                print("📱 The LOCAL English directory has been loaded.")
+                AppLog.catalog.info("📱 The LOCAL English directory has been loaded.")
                 #endif
             }
         }
@@ -143,13 +144,13 @@ public actor ExerciseDatabaseService {
             if let localLocUrl = Bundle.main.url(forResource: fileName, withExtension: "json") {
                 localizedData = try? Data(contentsOf: localLocUrl)
                 #if os(iOS)
-                print("📱 The LOCAL \(fileName) directory has been loaded.")
+                AppLog.catalog.info("📱 The LOCAL \(fileName) directory has been loaded.")
                 #endif
             }
         }
         
         guard let finalEnData = enData else {
-            print("❌ Error: Could not find the base exercise directory either in the cloud or locally.")
+            AppLog.catalog.error("❌ Error: Could not find the base exercise directory either in the cloud or locally.")
             return
         }
 
@@ -193,7 +194,7 @@ public actor ExerciseDatabaseService {
             self.isLoaded = true
             
         } catch {
-            print("❌ JSON parsing error for exercises: \(error)")
+            AppLog.catalog.error("❌ JSON parsing error for exercises: \(error.localizedDescription, privacy: .public)")
         }
         
         self.isLoading = false

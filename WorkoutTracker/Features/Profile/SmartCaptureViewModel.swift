@@ -1,6 +1,7 @@
 
 
 import Foundation
+import OSLog
 internal import SwiftUI
 import AVFoundation
 import Vision
@@ -205,14 +206,14 @@ extension SmartCaptureViewModel: AVCaptureVideoDataOutputSampleBufferDelegate, A
                     gestureController.processHandPose(observation: hand)
                 }
             } catch {
-                print("Vision error: \(error)")
+                AppLog.ml.error("Vision error: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
 
     nonisolated func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         if let error {
-            print("Photo capture error: \(error)")
+            AppLog.ml.error("Photo capture error: \(error.localizedDescription, privacy: .public)")
             Task { @MainActor in self.handleCaptureFailure() }
             return
         }

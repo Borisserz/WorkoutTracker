@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import OSLog
 import Observation
 
 @Observable
@@ -45,7 +46,7 @@ final class CatalogViewModel {
             self.customExercises = custom
             self.deletedDefaultExercises = deleted
         } catch {
-            print("Failed to load catalog dictionary: \(error.localizedDescription)")
+            AppLog.catalog.error("Failed to load catalog dictionary: \(error.localizedDescription)")
         }
     }
 
@@ -60,7 +61,7 @@ final class CatalogViewModel {
             MuscleMapping.updateCustomMapping(name: name, muscles: muscles)
             await loadDictionary()
         } catch {
-            print("Failed to add custom exercise: \(error.localizedDescription)")
+            AppLog.catalog.error("Failed to add custom exercise: \(error.localizedDescription)")
         }
     }
 
@@ -70,7 +71,7 @@ final class CatalogViewModel {
 
                 await loadDictionary()
             } catch {
-                print("Failed to delete custom exercise: \(error.localizedDescription)")
+                AppLog.catalog.error("Failed to delete custom exercise: \(error.localizedDescription)")
             }
         }
 
@@ -82,7 +83,7 @@ final class CatalogViewModel {
                 try await exerciseCatalogService.hideDefaultExercise(name: name, category: category)
                 await loadDictionary()
             } catch {
-                print("Failed to hide default exercise: \(error.localizedDescription)")
+                AppLog.catalog.error("Failed to hide default exercise: \(error.localizedDescription)")
             }
         }
     }

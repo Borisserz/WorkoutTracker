@@ -2,6 +2,7 @@
 
 #if DEBUG
 import Foundation
+import OSLog
 import SwiftData
 
 @ModelActor
@@ -60,7 +61,7 @@ actor TestDataGenerator {
             UserDefaults.standard.removeObject(forKey: WidgetDataManager.key)
             UserDefaults.standard.removeObject(forKey: Constants.UserDefaultsKeys.muscleColors.rawValue)
         } catch {
-            print("Fallback deletion error: \(error)")
+            AppLog.migration.debug("Fallback deletion error: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -105,7 +106,7 @@ actor TestDataGenerator {
         }
 
         try? modelContext.save()
-        print("✅ Generated \(workoutNumber) workouts from the new JSON.")
+        AppLog.migration.info("✅ Generated \(workoutNumber) workouts from the new JSON.")
     }
 
     private func generateWeights(from startDate: Date, to endDate: Date) async {
@@ -137,7 +138,7 @@ actor TestDataGenerator {
         }
 
         try? modelContext.save()
-        print("✅ \(count) body weight records generated.")
+        AppLog.migration.info("✅ \(count) body weight records generated.")
     }
 
     private enum WorkoutType: String, CaseIterable {

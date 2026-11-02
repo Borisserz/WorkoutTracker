@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import OSLog
 import FirebaseRemoteConfig
 
 actor RemoteConfigManager: Sendable {
@@ -31,7 +32,7 @@ actor RemoteConfigManager: Sendable {
             let status = try await remoteConfig.fetchAndActivate()
             #if DEBUG
             if status == .successFetchedFromRemote {
-                print("☁️✅ Remote Config: Fresh data downloaded from the cloud!")
+                AppLog.remoteConfig.info("☁️✅ Remote Config: Fresh data downloaded from the cloud!")
             }
             #endif
             
@@ -48,9 +49,7 @@ actor RemoteConfigManager: Sendable {
             }
             
         } catch {
-            #if DEBUG
-            print("☁️❌ Error Remote Config: \(error.localizedDescription)")
-            #endif
+            AppLog.remoteConfig.error("☁️❌ Error Remote Config: \(error.localizedDescription)")
         }
     }
 

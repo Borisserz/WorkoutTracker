@@ -1,3 +1,4 @@
+import OSLog
 
 
 import AVFoundation
@@ -31,9 +32,7 @@ final class VoiceCoach: NSObject, ObservableObject, AVSpeechSynthesizerDelegate 
                    options: options
                )
            } catch {
-               #if DEBUG
-               print("VoiceCoach: Failed to configure AVAudioSession - \(error)")
-               #endif
+               AppLog.ml.error("VoiceCoach: Failed to configure AVAudioSession - \(error.localizedDescription, privacy: .public)")
            }
        }
 

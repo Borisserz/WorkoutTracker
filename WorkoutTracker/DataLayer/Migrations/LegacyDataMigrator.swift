@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 
 @ModelActor
@@ -16,7 +17,7 @@ actor LegacyDataMigrator {
         do {
             try modelContext.save()
         } catch {
-            print("❌ Legacy migration save failed — sources kept for retry: \(error)")
+            AppLog.migration.error("❌ Legacy migration save failed — sources kept for retry: \(error.localizedDescription, privacy: .public)")
             return
         }
 
@@ -32,7 +33,7 @@ actor LegacyDataMigrator {
         }
 
         defaults.set(true, forKey: Constants.UserDefaultsKeys.hasMigratedToSwiftData_v2.rawValue)
-        print("✅ Successful background data migration in SwiftData")
+        AppLog.migration.info("✅ Successful background data migration in SwiftData")
     }
 
     private func migrateWeightHistory() async -> URL? {
