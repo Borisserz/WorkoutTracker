@@ -30,7 +30,9 @@ final class MLWorkoutEngine: ObservableObject {
 
     deinit {
         predictionTask?.cancel()
+        #if DEBUG
         print("♻️ MLWorkoutEngine deallocated, prediction tasks cancelled")
+        #endif
     }
 
     private func loadModel() {
@@ -44,7 +46,9 @@ final class MLWorkoutEngine: ObservableObject {
                 }
                 trace?.stop()
             } catch {
+                #if DEBUG
                 print("❌ MLWorkoutEngine: Failed to load WorkoutClassifier")
+                #endif
                 TrackingManager.shared.recordError(error: error, additionalInfo: ["context": "MLWorkoutEngine_init"])
                 await MainActor.run { self.modelLoadFailed = true }
                 trace?.stop()
@@ -115,7 +119,9 @@ final class MLWorkoutEngine: ObservableObject {
 
             return (labelFeature.stringValue, conf)
         } catch {
+            #if DEBUG
             print("⚠️ Action classification failed: \(error.localizedDescription)")
+            #endif
             return nil
         }
     }

@@ -87,10 +87,6 @@ private struct ChatNetworkResponse: Codable, Sendable {
     let exercises: [GeneratedExerciseDTO]?
 }
 
-private struct RecoveryResponseDTO: Codable, Sendable {
-    let recommendedHours: Double
-}
-
 public actor AILogicService {
 
     private let networkClient: GeminiNetworkClient
@@ -189,16 +185,6 @@ public actor AILogicService {
                 "exercises": GeminiSchema(type: .array, items: exerciseSchema, description: "The exercises (only if hasWorkout is true)")
             ],
             required: ["aiMessage", "hasWorkout"]
-        )
-    }
-
-    nonisolated private var recoverySchema: GeminiSchema {
-        GeminiSchema(
-            type: .object,
-            properties: [
-                "recommendedHours": GeminiSchema(type: .number, description: "Recommended recovery time in hours (e.g., 24, 48, 72, 96).")
-            ],
-            required: ["recommendedHours"]
         )
     }
 
@@ -484,21 +470,6 @@ public actor AILogicService {
         )
         let responseText = try await networkClient.generateText(from: requestBody)
         return try decodeJSON(GeneratedProgramDTO.self, from: responseText)
-    }
-
-    public func calculateOptimalRecoveryTime(workoutContext: String) async throws -> Double {
-        let systemPrompt = """
-        You are an elite sports scientist. Return ONE JSON object only: {"recommendedHours": number}.
-        Base the estimate on volume, sets, and effort. Typical range 24–96 hours. No markdown.
-        """
-        let requestBody = GeminiRequest(
-            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-            contents: [.init(role: "user", parts: [.init(text: "WORKOUT SUMMARY:\n\(workoutContext)")])],
-            generationConfig: .init(temperature: 0.1, responseMimeType: "application/json", responseSchema: recoverySchema)
-        )
-        let responseText = try await networkClient.generateText(from: requestBody)
-        let response = try decodeJSON(RecoveryResponseDTO.self, from: responseText)
-        return min(max(response.recommendedHours, 12.0), 120.0)
     }
 
     // MARK: - Private prompt builder

@@ -35,21 +35,29 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
 
     func requestPresetsFromPhone() {
         let session = WCSession.default
+        #if DEBUG
         print("⌚️ requestPresets — state:\(session.activationState.rawValue) reachable:\(session.isReachable)")
+        #endif
 
         guard session.activationState == .activated else {
+            #if DEBUG
             print("⌚️ ❌ session not activated yet — aborting request")
+            #endif
             return
         }
 
         let message = ["request": "presets"]
         if session.isReachable {
             session.sendMessage(message, replyHandler: nil) { error in
+                #if DEBUG
                 print("⌚️ sendMessage failed → transferUserInfo fallback: \(error.localizedDescription)")
+                #endif
                 session.transferUserInfo(message)   // guaranteed, queued
             }
         } else {
+            #if DEBUG
             print("⌚️ not reachable → transferUserInfo (guaranteed)")
+            #endif
             session.transferUserInfo(message)        // works on Simulator
         }
     }
@@ -61,7 +69,9 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
         let session = WCSession.default
         if session.isReachable {
             session.sendMessage(message, replyHandler: nil) { error in
+                #if DEBUG
                 print("⌚️ active-state sendMessage failed → transferUserInfo: \(error.localizedDescription)")
+                #endif
                 session.transferUserInfo(message)
             }
         } else {
@@ -107,7 +117,9 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
                              error: (any Error)?) {
         let reachable = session.isReachable
         let ctx = session.receivedApplicationContext        
+        #if DEBUG
         print("⌚️ activation: \(activationState.rawValue) reachable:\(reachable) ctxKeys:\(ctx.keys)")
+        #endif
         Task { @MainActor in self.isReachable = reachable }
         if !ctx.isEmpty { handleIncoming(ctx) }
     }
@@ -141,12 +153,18 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
             }
 
             if let presetsData {
+                #if DEBUG
                 print("⌚️ got presetsBatch \(presetsData.count) bytes")
+                #endif
                 if let dtos = try? JSONDecoder().decode([WorkoutPresetDTO].self, from: presetsData) {
+                    #if DEBUG
                     print("⌚️ decoded \(dtos.count) presets → saving")
+                    #endif
                     await self.savePresetsLocally(dtos)
                 } else {
+                    #if DEBUG
                     print("⌚️ ❌ failed to decode [WorkoutPresetDTO]")
+                    #endif
                 }
             }
         }
@@ -167,7 +185,9 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
         do {
             try context.save()
         } catch {
+            #if DEBUG
             print("⌚️ ❌ failed to save presets locally: \(error.localizedDescription)")
+            #endif
         }
     }
 

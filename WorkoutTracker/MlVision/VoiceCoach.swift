@@ -31,7 +31,9 @@ final class VoiceCoach: NSObject, ObservableObject, AVSpeechSynthesizerDelegate 
                    options: options
                )
            } catch {
+               #if DEBUG
                print("VoiceCoach: Failed to configure AVAudioSession - \(error)")
+               #endif
            }
        }
 

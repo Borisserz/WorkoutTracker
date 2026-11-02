@@ -274,7 +274,9 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         } catch {
             // Не спамим логами на каждый фрейм — только важные ошибки
             if (error as NSError).code != -10810 {
+                #if DEBUG
                 print("⚠️ Vision request failed: \(error.localizedDescription)")
+                #endif
             }
         }
     }

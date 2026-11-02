@@ -439,7 +439,9 @@ public final class RepetitionTracker {
             if reachedRelaxed {
                 state.phase = .relaxed
                 state.repsCount += 1
+                #if DEBUG
                 print("💪 Rep \(state.repsCount) — metric: \(String(format: "%.2f", value))")
+                #endif
             } else if reachedContracted {
                 state.phase = .contracted
             }
@@ -519,10 +521,14 @@ public final class AITrackerEngine: ObservableObject {
         if let profile = self.profile {
             self.repetitionTracker = RepetitionTracker(profile: profile)
             self.feedbackMessage = String(localized: "Ready. Waiting for action.")
+            #if DEBUG
             print("🤖 AITrackerEngine: \(profile.exerciseName) — pattern: \(pattern)")
+            #endif
         } else {
             self.feedbackMessage = String(localized: "AI Tracking not supported for this exercise.")
+            #if DEBUG
             print("⚠️ AITrackerEngine: Profile not found for '\(exerciseName)'")
+            #endif
         }
     }
 

@@ -305,7 +305,7 @@ struct WorkoutShareCard: View {
                     Circle()
                         .fill(PastelTheme.pastelEmerald)
                         .frame(width: 6, height: 6)
-                    Text("VERIFIED RECORD")
+                    Text("Personal record")
                         .font(.system(size: 9, weight: .black, design: .monospaced))
                         .foregroundColor(PastelTheme.pastelEmerald)
                 }
@@ -449,7 +449,7 @@ struct WorkoutShareCard: View {
             ReceiptBarcodeView()
 
             HStack {
-                Text("AUTHENTIC ATHLETIC HUD SLIP")
+                Text("WorkoutTracker share card")
                     .font(.system(size: 8, weight: .bold, design: .monospaced))
                     .tracking(1)
                     .foregroundColor(PastelTheme.textTertiary)
