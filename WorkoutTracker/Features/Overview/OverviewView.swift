@@ -85,11 +85,12 @@ struct OverviewView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: 18) {
                         
-                        // 1. Header with greeting, date, streak, calendar and profile
+                        // 1. Header with greeting, date, streak, calendar, settings and profile
                         OverviewHeaderView(
                             streakDays: dashboardViewModel.streakCount,
                             onCalendarTap: { router.push(.calendar) },
-                            onProfileTap: { router.present(.profile) }
+                            onProfileTap: { router.present(.profile) },
+                            onSettingsTap: { router.present(.settings) }
                         )
 
                         // 2. Centerpiece: Muscle Readiness Anatomy with Body Analysis CTA
@@ -108,9 +109,6 @@ struct OverviewView: View {
                                     fullRecoveryHours: storedRecoveryHours
                                 )
                                 router.present(.bodyAnalysis(report))
-                            },
-                            onSettingsTap: {
-                                router.present(.settings)
                             }
                         )
 

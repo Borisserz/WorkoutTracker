@@ -11,7 +11,7 @@ struct OverviewAnatomyCard: View {
     let isLocked: Bool
     let recentWorkouts: [Workout]
     let onBodyAnalysisTap: () -> Void
-    let onSettingsTap: () -> Void
+    var onSettingsTap: (() -> Void)? = nil
 
     @State private var selectedMuscleSlug: String? = nil
     @State private var selectedMuscleName: String? = nil
@@ -26,7 +26,7 @@ struct OverviewAnatomyCard: View {
         isLocked: Bool,
         recentWorkouts: [Workout] = [],
         onBodyAnalysisTap: @escaping () -> Void,
-        onSettingsTap: @escaping () -> Void
+        onSettingsTap: (() -> Void)? = nil
     ) {
         self._isFrontView = isFrontView
         self.cnsScore = cnsScore
