@@ -105,86 +105,103 @@ struct WorkoutHubView: View {
         return routines.isEmpty ? LegendaryFallbackCatalog.routines : routines
     }
 
-    var body: some View {
-        NavigationStack {
-            ScrollViewReader { proxy in
-                ZStack(alignment: .bottom) {
-                    Color.clear.ignoresSafeArea()
+    @ViewBuilder
+    private var scrollContent: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            // 1. Top Bar: Streak Flame + Create
+            topHeaderRow
 
-                    ScrollView(showsIndicators: false) {
-                        VStack(alignment: .leading, spacing: 18) {
-                            // 1. Top Bar: Streak Flame + Create
-                            topHeaderRow
+            // 2. Large Bold Title: Workout
+            titleSection
 
-                            // 2. Large Bold Title: Workout
-                            titleSection
+            // 3. 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
+            weeklyConsistencyBar
 
-                            // 3. 7-Day Consistency Habit Bar (Apple Fitness Philosophy)
-                            weeklyConsistencyBar
-
-                            // 4. Active Workout In-Progress Card (ONLY if a workout is actually running right now)
-                            if let active = activeWorkouts.first, active.isActive, active.endTime == nil, !di.appState.isInsideActiveWorkout, abs(active.date.timeIntervalSinceNow) < 12 * 3600 {
-                                ActiveWorkoutResumeCard(workout: active) {
-                                    HapticManager.shared.impact(.medium)
-                                    self.navigateToActiveWorkout = active
-                                }
-                            }
-
-                            // 5. Hero Action: Unified Start Workout CTA (Triggers Hearthstone 3-Card Discovery)
-                            startWorkoutHeroSection
-
-                            // 6. Best workout for today (Merged Target Focus + Muscle Readiness)
-                            todayPlanHeroCard
-
-                            // 7. Legendary Programs Discovery Row
-                            legendarySection
-
-                            Spacer(minLength: 40)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 10)
-                        .padding(.bottom, 24)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    // Streak mascot popup overlay
-                    if showStreakPopup {
-                        StreakMascotPopup(
-                            streakDays: dashboardViewModel.streakCount,
-                            isShowing: $showStreakPopup
-                        )
-                        .transition(.asymmetric(
-                            insertion: .scale(scale: 0.85).combined(with: .opacity),
-                            removal: .scale(scale: 0.95).combined(with: .opacity)
-                        ))
-                        .zIndex(100)
-                    }
-
-                    // Hearthstone 3-Card Discovery Popup Overlay
-                    if showWorkoutModeDiscovery {
-                        WorkoutModeDiscoveryPopup(
-                            isPresented: $showWorkoutModeDiscovery,
-                            hasTemplates: !userPresets.isEmpty,
-                            onCreateTemplate: {
-                                presetToEdit = nil
-                                showPresetEditor = true
-                            },
-                            onSelectEmpty: {
-                                startEmptyWorkout()
-                            },
-                            onSelectAI: {
-                                showSmartBuilder = true
-                            },
-                            onSelectTemplates: {
-                                // Navigate directly to History tab where best workouts and templates live
-                                di.appState.selectedTab = 1
-                            }
-                        )
-                        .transition(.opacity)
-                        .zIndex(200)
-                    }
+            // 4. Active Workout In-Progress Card (ONLY if a workout is actually running right now)
+            if let active = activeWorkouts.first, active.isActive, active.endTime == nil, !di.appState.isInsideActiveWorkout, abs(active.date.timeIntervalSinceNow) < 12 * 3600 {
+                ActiveWorkoutResumeCard(workout: active) {
+                    HapticManager.shared.impact(.medium)
+                    self.navigateToActiveWorkout = active
                 }
             }
+
+            // 5. Hero Action: Unified Start Workout CTA (Triggers Hearthstone 3-Card Discovery)
+            startWorkoutHeroSection
+
+            // 6. Best workout for today (Merged Target Focus + Muscle Readiness)
+            todayPlanHeroCard
+
+            // 7. Legendary Programs Discovery Row
+            legendarySection
+
+            Spacer(minLength: 40)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, 10)
+        .padding(.bottom, 24)
+    }
+
+    @ViewBuilder
+    private var streakPopupOverlay: some View {
+        StreakMascotPopup(
+            streakDays: dashboardViewModel.streakCount,
+            isShowing: $showStreakPopup
+        )
+        .transition(.asymmetric(
+            insertion: .scale(scale: 0.85).combined(with: .opacity),
+            removal: .scale(scale: 0.95).combined(with: .opacity)
+        ))
+        .zIndex(100)
+    }
+
+    @ViewBuilder
+    private var discoveryPopupOverlay: some View {
+        WorkoutModeDiscoveryPopup(
+            isPresented: $showWorkoutModeDiscovery,
+            hasTemplates: !userPresets.isEmpty,
+            onCreateTemplate: {
+                presetToEdit = nil
+                showPresetEditor = true
+            },
+            onSelectEmpty: {
+                startEmptyWorkout()
+            },
+            onSelectAI: {
+                showSmartBuilder = true
+            },
+            onSelectTemplates: {
+                di.appState.selectedTab = 1
+            }
+        )
+        .transition(.opacity)
+        .zIndex(200)
+    }
+
+    @ViewBuilder
+    private var hubContent: some View {
+        ScrollViewReader { _ in
+            ZStack(alignment: .bottom) {
+                Color.clear.ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    scrollContent
+                }
+                .frame(maxWidth: .infinity)
+
+                if showStreakPopup {
+                    streakPopupOverlay
+                }
+
+                if showWorkoutModeDiscovery {
+                    discoveryPopupOverlay
+                }
+            }
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            hubContent
             .navigationBarHidden(true)
             .accessibilityIdentifier("wt.workout.root")
             .navigationDestination(item: $navigateToActiveWorkout) { workout in

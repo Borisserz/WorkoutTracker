@@ -89,8 +89,7 @@ struct OverviewView: View {
                         OverviewHeaderView(
                             streakDays: dashboardViewModel.streakCount,
                             onCalendarTap: { router.push(.calendar) },
-                            onProfileTap: { router.present(.profile) },
-                            onSettingsTap: { router.present(.settings) }
+                            onProfileTap: { router.present(.profile) }
                         )
 
                         // 2. Centerpiece: Muscle Readiness Anatomy with Body Analysis CTA
