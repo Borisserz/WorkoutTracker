@@ -1,110 +1,198 @@
-
-
 internal import SwiftUI
 import SwiftData
 
+/// Hall of Fame — Legendary Routines Showcase
+/// Architectural mechanical pressure plates grid styled after the awards & trophies in ProgressView.
+/// Features high-precision dossier header HUD, era filter pills with tactile haptics,
+/// 2-column spring cascade pressure plates, and zero neon/living flame slop.
 struct LegendaryRoutinesView: View {
     @Environment(DIContainer.self) private var di
     @Environment(WorkoutService.self) private var workoutService
     @Environment(\.dismiss) private var dismiss
 
     @State private var routines: [LegendaryRoutine] = []
-    @State private var activeRoutineID: UUID?
+    @State private var selectedFilter: String = "All"
+    @State private var selectedRoutineForPreview: LegendaryRoutine? = nil
+    @State private var hasPavedScreen: Bool = false
+    @State private var isStartingWorkout: Bool = false
+    @State private var showActiveWorkoutAlert: Bool = false
 
-    @State private var currentBackgroundColors: [Color] = [.black, .gray]
-    @State private var isStartingWorkout = false
-
-    var body: some View {
-        ZStack {
-
-            MorphingBackgroundView(colors: currentBackgroundColors)
-                .ignoresSafeArea()
-
-            VStack(spacing: 0) {
-
-                VStack(spacing: 4) {
-                    Text(LocalizedStringKey("Hall of Fame"))
-                        .font(.system(size: 34, weight: .heavy, design: .rounded))
-                        .foregroundColor(.white)
-
-                    Text(LocalizedStringKey("Train like the legends of every era."))
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.8))
-                }
-                .padding(.top, 20)
-                .padding(.bottom, 20)
-
-                ScrollView(.horizontal, showsIndicators: false) {
-                    LazyHStack(spacing: 16) {
-                        ForEach(routines) { routine in
-                            LegendaryCardView(routine: routine) {
-                                startRoutine(routine)
-                            }
-                            .containerRelativeFrame(.horizontal, count: 1, spacing: 16)
-                            .scrollTransition(axis: .horizontal) { content, phase in
-                                content
-                                    .scaleEffect(phase.isIdentity ? 1.0 : 0.85)
-                                    .rotation3DEffect(
-                                        .degrees(phase.value * -15),
-                                        axis: (x: 0, y: 1, z: 0),
-                                        perspective: 0.5
-                                    )
-                                    .opacity(phase.isIdentity ? 1.0 : 0.6)
-                                    .blur(radius: phase.isIdentity ? 0 : 3)
-                            }
-                            .id(routine.id)
-                        }
-                    }
-                    .padding(.vertical, 20)
-                    .scrollTargetLayout()
-                }
-                .scrollTargetBehavior(.viewAligned)
-                .scrollPosition(id: $activeRoutineID)
-                .safeAreaPadding(.horizontal, 32) 
-
-                Spacer()
+    private var availableEras: [String] {
+        var eras = ["All"]
+        let rawEras = routines.map { $0.eraTitle }
+        for era in rawEras {
+            let trimmed = era.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty && !eras.contains(trimmed) {
+                eras.append(trimmed)
             }
         }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .task {
-                    if FirestoreProgramService.shared.legendaryRoutines.isEmpty {
-                        await FirestoreProgramService.shared.fetchAllPrograms()
-                    }
-                    let remote = FirestoreProgramService.shared.legendaryRoutines
-                    self.routines = remote.isEmpty ? LegendaryFallbackCatalog.routines : remote
+        return eras
+    }
 
-                    if activeRoutineID == nil, let first = routines.first {
-                        activeRoutineID = first.id
-                        currentBackgroundColors = first.gradientColors
-                    }
-                }
-        .onChange(of: activeRoutineID) { _, newID in
-            if let id = newID, let routine = routines.first(where: { $0.id == id }) {
-                withAnimation(.easeInOut(duration: 0.8)) {
-                    currentBackgroundColors = routine.gradientColors
-                }
-                HapticManager.shared.selection()
-            }
+    private var filteredRoutines: [LegendaryRoutine] {
+        if selectedFilter == "All" {
+            return routines
         }
-        .overlay {
-            if isStartingWorkout {
-                ZStack {
-                    Color.black.opacity(0.4).ignoresSafeArea()
-                    ProgressView().tint(.white).scaleEffect(1.5)
-                }
-            }
+        return routines.filter { routine in
+            routine.eraTitle.localizedCaseInsensitiveContains(selectedFilter)
         }
     }
 
+    private let columns = [
+        GridItem(.flexible(), spacing: 12),
+        GridItem(.flexible(), spacing: 12)
+    ]
+
+    var body: some View {
+        ZStack {
+            PastelTheme.canvas.ignoresSafeArea()
+            AtmosphericGymBackdropView(style: .overview)
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 18) {
+                    // 1. Header Telemetry Card
+                    headerTelemetryCard
+
+                    // 2. Filter Pills Row
+                    if availableEras.count > 1 {
+                        eraFilterPills
+                    }
+
+                    // 3. Staggered 2-Column Mechanical Pressure Plates Grid
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ForEach(Array(filteredRoutines.enumerated()), id: \.element.id) { index, routine in
+                            LegendaryPressurePlate(
+                                routine: routine,
+                                isSelected: selectedRoutineForPreview?.id == routine.id,
+                                delay: min(0.35, Double(index) * 0.03),
+                                hasPavedScreen: hasPavedScreen
+                            ) {
+                                HapticManager.shared.impact(.light)
+                                selectedRoutineForPreview = routine
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+
+                    Spacer(minLength: 60)
+                }
+                .padding(.top, 14)
+            }
+
+            if isStartingWorkout {
+                ZStack {
+                    Color.black.opacity(0.45).ignoresSafeArea()
+                    ProgressView().tint(PastelTheme.pastelOat).scaleEffect(1.4)
+                }
+            }
+        }
+        .navigationTitle("Hall of fame")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .task {
+            if FirestoreProgramService.shared.legendaryRoutines.isEmpty {
+                await FirestoreProgramService.shared.fetchAllPrograms()
+            }
+            let remote = FirestoreProgramService.shared.legendaryRoutines
+            self.routines = remote.isEmpty ? LegendaryFallbackCatalog.routines : remote
+            withAnimation(.spring(response: 0.48, dampingFraction: 0.78)) {
+                hasPavedScreen = true
+            }
+        }
+        .sheet(item: $selectedRoutineForPreview) { routine in
+            LegendaryTemplatePreviewSheet(routine: routine) {
+                startRoutine(routine)
+            }
+        }
+        .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
+            Button(LocalizedStringKey("OK"), role: .cancel) { }
+        } message: {
+            Text(LocalizedStringKey("You already have an active workout in progress. Please finish or delete it before starting a new one."))
+        }
+    }
+
+    // MARK: - Header Telemetry Card
+    private var headerTelemetryCard: some View {
+        HStack(spacing: 16) {
+            // Crown / Trophy Seal Socket
+            ZStack {
+                Circle()
+                    .fill(PastelTheme.cardSurfaceSubtle)
+                    .frame(width: 54, height: 54)
+                    .overlay(Circle().stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1.5))
+
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundStyle(PastelTheme.pastelAmber)
+            }
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Hall of fame")
+                    .font(.system(size: 20, weight: .heavy, design: .rounded))
+                    .foregroundStyle(PastelTheme.textPrimary)
+
+                Text("Train like the legends of every era")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(PastelTheme.textSecondary)
+
+                Text("\(routines.count) master protocols archived")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(PastelTheme.pastelAmber)
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(PastelTheme.cardSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(PastelTheme.cardBorder, lineWidth: 1)
+        )
+        .padding(.horizontal, 16)
+    }
+
+    // MARK: - Era Filter Pills
+    private var eraFilterPills: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(availableEras, id: \.self) { era in
+                    let isSelected = selectedFilter == era
+                    Button {
+                        HapticManager.playSelection()
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.76)) {
+                            selectedFilter = era
+                        }
+                    } label: {
+                        Text(era)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundStyle(isSelected ? PastelTheme.textOnOat : PastelTheme.textSecondary)
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 7)
+                            .background(isSelected ? PastelTheme.pastelOat : PastelTheme.cardSurface)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule().stroke(isSelected ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    // MARK: - Workout Execution
     private func startRoutine(_ routine: LegendaryRoutine) {
         guard !isStartingWorkout else { return }
         isStartingWorkout = true
 
-        HapticManager.shared.impact(.heavy)
-
         Task { @MainActor in
+            if await workoutService.hasActiveWorkout() {
+                showActiveWorkoutAlert = true
+                isStartingWorkout = false
+                return
+            }
 
             let generatedDTO = GeneratedWorkoutDTO(
                 title: routine.title,
@@ -124,222 +212,20 @@ struct LegendaryRoutinesView: View {
     }
 }
 
+// MARK: - Backward-Compatible Views
 struct LegendaryCardView: View {
     let routine: LegendaryRoutine
     let onStart: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-
-            // Header Section
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Image(systemName: "star.fill")
-                        .font(.title3)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: routine.gradientColors,
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            )
-                        )
-                    Text(LocalizedStringKey(routine.eraTitle))
-                        .font(.headline)
-                        .fontWeight(.heavy)
-                        .tracking(2)
-                        .foregroundColor(.white)
-                }
-
-                Text(LocalizedStringKey(routine.title))
-                    .font(.system(size: 32, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-                    .shadow(color: routine.gradientColors.first?.opacity(0.5) ?? .clear, radius: 10, x: 0, y: 4)
-
-                Text(LocalizedStringKey(routine.shortVibe))
-                    .font(.subheadline)
-                    .italic()
-                    .foregroundStyle(
-                        LinearGradient(
-                            colors: routine.gradientColors,
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-            }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(
-                    colors: [
-                        (routine.gradientColors.first ?? .black).opacity(0.3),
-                        Color.black.opacity(0.6)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-
-            // Content Section
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 20) {
-
-                    Text(LocalizedStringKey(routine.loreDescription))
-                        .font(.body)
-                        .foregroundColor(.white.opacity(0.9))
-                        .lineSpacing(6)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: 20) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "stopwatch.fill").foregroundColor(.white.opacity(0.6))
-                            Text(LocalizedStringKey("~\(routine.estimatedMinutes) min")).fontWeight(.bold)
-                        }
-                        HStack(spacing: 4) {
-                            Image(systemName: "flame.fill").foregroundColor(routine.gradientColors.last ?? .orange)
-                            Text(LocalizedStringKey(routine.difficulty.rawValue)).fontWeight(.bold)
-                        }
-                    }
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-
-                    HStack {
-                        ForEach(routine.benefits.prefix(3), id: \.self) { benefit in
-                            Text(LocalizedStringKey(benefit))
-                                .font(.caption2)
-                                .fontWeight(.bold)
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.black.opacity(0.4))
-                                )
-                                .overlay(
-                                    Capsule()
-                                        .stroke(
-                                            LinearGradient(
-                                                colors: routine.gradientColors,
-                                                startPoint: .topLeading,
-                                                endPoint: .bottomTrailing
-                                            ),
-                                            lineWidth: 1
-                                        )
-                                )
-                                .foregroundColor(.white)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(LocalizedStringKey("Exercises in Protocol:"))
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
-
-                        Text(LocalizedStringKey("\(routine.exercises.count) main exercises included."))
-                            .font(.subheadline)
-                            .bold()
-                            .foregroundColor(.white)
-                    }
-                    .padding(.top, 10)
-                }
-                .padding(24)
-            }
-
-            Spacer(minLength: 20)
-
-            // Button Section
-            Button(action: onStart) {
-                HStack {
-                    Text(LocalizedStringKey("Start Routine"))
-                        .font(.title3)
-                        .fontWeight(.bold)
-                    Image(systemName: "bolt.fill")
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-                .background(
-                    LinearGradient(
-                        colors: routine.gradientColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .cornerRadius(20)
-                .shadow(color: (routine.gradientColors.first ?? .white).opacity(0.5), radius: 15, x: 0, y: 8)
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 24)
-        }
-        .background(
-            ZStack {
-                Color.black.opacity(0.5)
-                LinearGradient(
-                    colors: [
-                        (routine.gradientColors.first ?? .clear).opacity(0.1),
-                        .clear
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            }
-        )
-        .background(.ultraThinMaterial)
-        .environment(\.colorScheme, .dark) 
-        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
-        .flameBorder(cornerRadius: 32, lineWidth: 1.8)
-        .shadow(color: Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.35), radius: 24, x: 0, y: 12)
+        LegendaryPressurePlate(routine: routine, onSelect: onStart)
     }
 }
 
 struct MorphingBackgroundView: View {
-    var colors: [Color]
-    @State private var isAnimating = false
+    var colors: [Color] = []
 
     var body: some View {
-        ZStack {
-
-            Color(hex: "0A0A0A").ignoresSafeArea()
-
-            Circle()
-                .fill(colors.first ?? .blue)
-                .frame(width: 450, height: 450)
-                .blur(radius: 120)
-                .offset(
-                    x: isAnimating ? 150 : -100,
-                    y: isAnimating ? -250 : 200
-                )
-
-            Circle()
-                .fill(colors.last ?? PastelTheme.pastelLavender)
-                .frame(width: 400, height: 400)
-                .blur(radius: 120)
-                .offset(
-                    x: isAnimating ? -200 : 150,
-                    y: isAnimating ? 250 : -150
-                )
-
-            if colors.count > 2 {
-                Circle()
-                    .fill(colors[1])
-                    .frame(width: 300, height: 300)
-                    .blur(radius: 120)
-                    .offset(
-                        x: isAnimating ? -50 : 50,
-                        y: isAnimating ? 50 : -50
-                    )
-            }
-
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-        }
-
-        .onAppear {
-            withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) {
-                isAnimating = true
-            }
-        }
-
-        .animation(.easeInOut(duration: 1.2), value: colors)
+        PastelTheme.canvas.ignoresSafeArea()
     }
 }

@@ -93,22 +93,26 @@ struct ProgramDiscoveryView: View {
                     .padding(.horizontal, 4)
                 }
 
-                // Legendary Section (Top, Wide Cards)
+                // Legendary Section (Top, Architectural Pressure Plates)
                 if !legendaryPrograms.isEmpty {
-                    VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 14) {
                         Text(LocalizedStringKey("Legendary Programs"))
-                            .font(.title2).bold()
-                        let legendColumns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+                            .font(.system(size: 20, weight: .heavy, design: .rounded))
+                            .foregroundStyle(PastelTheme.textPrimary)
+                            .padding(.horizontal, 20)
                         
-                        LazyVGrid(columns: legendColumns, spacing: 16) {
-                            ForEach(legendaryPrograms) { routine in
-                                Button {
-                                    HapticManager.shared.impact(.medium)
+                        let legendColumns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 2)
+                        
+                        LazyVGrid(columns: legendColumns, spacing: 12) {
+                            ForEach(Array(legendaryPrograms.enumerated()), id: \.element.id) { index, routine in
+                                LegendaryPressurePlate(
+                                    routine: routine,
+                                    isSelected: selectedLegendaryRoutine?.id == routine.id,
+                                    delay: Double(index) * 0.04,
+                                    hasPavedScreen: true
+                                ) {
                                     selectedLegendaryRoutine = routine
-                                } label: {
-                                    LegendaryGridCardView(routine: routine)
                                 }
-                                .buttonStyle(PremiumScaleButtonStyle())
                             }
                         }
                         .padding(.horizontal, 20)
@@ -270,58 +274,12 @@ struct CompactProgramCardView: View {
     }
 }
 
-// A compact square card for Legendary Programs in a 2-column grid
+// A compact plate for Legendary Programs
 struct LegendaryGridCardView: View {
     let routine: LegendaryRoutine
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                HStack(spacing: 4) {
-                    Image(systemName: "crown.fill").foregroundColor(.orange).font(.system(size: 10))
-                    Text(LocalizedStringKey(routine.eraTitle))
-                        .font(.system(size: 8, weight: .bold))
-                        .tracking(1.0)
-                        .foregroundColor(.orange)
-                }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
-                .background(Color.orange.opacity(0.15))
-                .cornerRadius(4)
-                
-                Spacer()
-            }
-            
-            Spacer()
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(LocalizedStringKey(routine.title))
-                    .font(.system(size: 14, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "stopwatch").font(.system(size: 10))
-                    Text(LocalizedStringKey("\(routine.estimatedMinutes) min"))
-                        .font(.system(size: 10, weight: .bold))
-                }
-                .foregroundColor(.white.opacity(0.7))
-                .padding(.top, 4)
-            }
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity)
-        .aspectRatio(1, contentMode: .fill)
-        .background(
-            ZStack {
-                LinearGradient(colors: routine.gradientColors, startPoint: .topLeading, endPoint: .bottomTrailing)
-                LinearGradient(colors: [.clear, .black.opacity(0.8)], startPoint: .center, endPoint: .bottom)
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .flameBorder(cornerRadius: 16, lineWidth: 1.5)
-        .shadow(color: Color(red: 0.98, green: 0.45, blue: 0.09).opacity(0.35), radius: 10, x: 0, y: 5)
+        LegendaryPressurePlate(routine: routine, onSelect: {})
     }
 }
 
