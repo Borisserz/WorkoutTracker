@@ -40,9 +40,15 @@ final class ResidualPassTests: XCTestCase {
         XCTAssertEqual(decoded.totalVolumeTons, 1.5, accuracy: 0.001)
     }
 
+    func testCNSAppStorageDefaultIsUnmeasuredNotInvented() {
+        XCTAssertEqual(Constants.CNS.unmeasuredAppStorageDefault, -1)
+        XCTAssertLessThan(Constants.CNS.unmeasuredAppStorageDefault, 0)
+        XCTAssertNotEqual(Constants.CNS.unmeasuredAppStorageDefault, 85)
+    }
+
     func testBodyAnalysisTreatsUnknownCNSAsNotMeasured() {
         let report = BodyAnalysisEngine.generateReport(
-            cnsScore: -1,
+            cnsScore: Constants.CNS.unmeasuredAppStorageDefault,
             recoveryDict: ["chest": 90, "upper-back": 90, "quadriceps": 90, "hamstring": 90, "lower-back": 90, "triceps": 90, "biceps": 90, "deltoids": 90, "abs": 90, "calves": 90, "gluteal": 90],
             recentWorkouts: []
         )

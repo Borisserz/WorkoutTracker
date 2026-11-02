@@ -59,7 +59,7 @@ struct AICoachView: View {
     @State private var sphereDragOffset: CGSize = .zero
     @State private var shimmerOffset: CGFloat = -1.0
 
-    @AppStorage("cnsScore") private var cnsScore: Double = 85.0
+    @AppStorage("cnsScore") private var cnsScore: Double = Constants.CNS.unmeasuredAppStorageDefault
     @AppStorage("sleepHours") private var sleepHours: Double = 7.5
     @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
@@ -2027,7 +2027,7 @@ struct RestAnalysisSheet: View {
     @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage("sleepHours") private var sleepHours: Double = 7.5
     @AppStorage("waterCups") private var waterCups: Int = 4
-    @AppStorage("cnsScore") private var cnsScore: Double = 85.0
+    @AppStorage("cnsScore") private var cnsScore: Double = Constants.CNS.unmeasuredAppStorageDefault
     @Environment(\.colorScheme) private var colorScheme 
 
     var cnsLoad: Double {

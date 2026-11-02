@@ -40,6 +40,11 @@ public enum Constants {
         public static let defaultTone = "Motivational"
     }
 
+    /// Shared CNS / readiness AppStorage defaults. Missing vitals must stay negative (“not measured”).
+    public enum CNS {
+        public static let unmeasuredAppStorageDefault: Double = -1
+    }
+
     public enum NotificationIdentifiers: String, CaseIterable {
         case restTimerDone = "rest_timer_done"
         case restTimerCategory = "REST_TIMER_CATEGORY"
