@@ -224,7 +224,7 @@ struct GeneratedWorkoutResultView: View {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: "bolt.fill").font(.title2)
-                    Text("START WORKOUT").font(.title3).bold().tracking(1.0)
+                    Text("Start Workout").font(.title3).bold().tracking(1.0)
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)

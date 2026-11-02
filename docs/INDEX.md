@@ -1,6 +1,6 @@
 # WorkoutTracker documentation index
 
-Last updated: **2026-11-01** (post-redesign audit + residual fix pass)
+Last updated: **2026-11-02** (ideal audit fix pass)
 
 ## Agent entry points
 
@@ -8,6 +8,12 @@ Last updated: **2026-11-01** (post-redesign audit + residual fix pass)
 |-----|---------|
 | [`AGENTS.md`](../AGENTS.md) | Hard rules, design system, verification |
 | [`README.md`](../README.md) | Public product overview + local build |
+
+## Audits (2026-11-02)
+
+| Doc | Status |
+|-----|--------|
+| [`audits/2026-11-02-ideal-fix-pass.md`](audits/2026-11-02-ideal-fix-pass.md) | Ideal P0–P2 fix pass (**closed**, tests green) |
 
 ## Audits (2026-11-01)
 

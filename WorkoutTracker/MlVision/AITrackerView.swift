@@ -153,7 +153,9 @@ struct AITrackerView: View {
         // MARK: - ✅ ФИКС: Gesture Events через PassthroughSubject (работает каждый раз)
 
         .onReceive(gestureCtrl.gestureAction) { action in
+            #if DEBUG
             print("📩 AITrackerView: Received gesture event — \(action)")
+            #endif
             switch action {
             case .confirmSet:
                 coach.speak("Set completed! Great job.")

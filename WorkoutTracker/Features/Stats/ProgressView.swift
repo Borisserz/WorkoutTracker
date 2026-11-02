@@ -425,11 +425,11 @@ struct HeaderView: View {
     var body: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Прогресс")
+                Text("Progress")
                     .font(.system(size: 32, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
-                Text("Тренды и спортивная аналитика")
+                Text("Trends and training analytics")
                     .font(.caption)
                     .foregroundStyle(PastelTheme.textSecondary)
             }
@@ -512,10 +512,10 @@ struct GoalsSectionView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Цели")
+                    Text("Goals")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(PastelTheme.textPrimary)
-                    Text("Недельные нормативы и задачи")
+                    Text("Weekly targets and tasks")
                         .font(.caption2)
                         .foregroundStyle(PastelTheme.textSecondary)
                 }
@@ -528,7 +528,7 @@ struct GoalsSectionView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
                             .font(.system(size: 11, weight: .bold))
-                        Text("Добавить")
+                        Text("Add")
                             .font(.caption.weight(.bold))
                     }
                     .padding(.horizontal, 12)
@@ -1067,7 +1067,7 @@ struct AIIslandSquareView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Анализ формы")
+                        Text("Form analysis")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .minimumScaleFactor(0.9)
@@ -1142,17 +1142,17 @@ struct CurrentStreakSquareCard: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Серия тренировок")
+                        Text("Workout streak")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .lineLimit(1)
                         
-                        Text("\(streak) дн.")
+                        Text("\(streak) days")
                             .font(.system(size: 20, weight: .heavy, design: .rounded))
                             .foregroundColor(PastelTheme.pastelAmber)
                             .contentTransition(.numericText())
                         
-                        Text(streak > 0 ? "Ударный ритм активен" : "Начните серию сегодня")
+                        Text(streak > 0 ? "Strong rhythm active" : "Start a streak today")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(PastelTheme.textTertiary)
                             .lineLimit(1)
@@ -1217,17 +1217,17 @@ struct ActivityThisWeekSquareCard: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Активность недели")
+                        Text("Week activity")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(titleColor)
                             .lineLimit(1)
                         
-                        Text("\(stats.workoutCount) тренировок")
+                        Text("\(stats.workoutCount) workouts")
                             .font(.system(size: 18, weight: .heavy, design: .rounded))
                             .foregroundColor(PastelTheme.pastelSlate)
                             .lineLimit(1)
                         
-                        Text("\(stats.totalDuration) мин · \(stats.totalReps) повт.")
+                        Text("\(stats.totalDuration) min · \(stats.totalReps) reps")
                             .font(.system(size: 11, weight: .medium, design: .rounded))
                             .foregroundColor(PastelTheme.textTertiary)
                             .lineLimit(1)
@@ -1459,8 +1459,8 @@ struct ComparisonSectionView: View {
                 if viewModel.chartData.isEmpty {
                     EmptyStateView(
                         icon: "chart.xyaxis.line",
-                        title: "Ожидание данных",
-                        message: "Завершите первую тренировку, чтобы открыть детальную аналитику и графики.",
+                        title: "Waiting for data",
+                        message: "Finish your first workout to unlock detailed analytics and charts.",
                         iconColor: PastelTheme.pastelSlate
                     )
                 } else {
@@ -1733,14 +1733,14 @@ struct AdvancedStatsSectionView: View {
                 }
 
                 PremiumDisclosureCard(
-                    title: "Отчет за 30 дней",
-                    subtitle: "Итоги ваших тренировочных сессий в формате Stories.",
+                    title: "30-day report",
+                    subtitle: "Your training sessions as Stories.",
                     icon: "doc.text.fill",
                     iconColor: PastelTheme.pastelSlate,
                     isExpanded: Binding(get: { openTab == 4 }, set: { openTab = $0 ? 4 : nil })
                 ) {
                     VStack(alignment: .leading) {
-                        InnerCardNavigationButton(title: "Смотреть Stories", icon: "play.rectangle.fill", color: PastelTheme.pastelSlate) {
+                        InnerCardNavigationButton(title: "View Stories", icon: "play.rectangle.fill", color: PastelTheme.pastelSlate) {
                             MonthlyReportStoryView()
                         }
                     }
@@ -1888,8 +1888,18 @@ struct AllTimeResultsView: View {
     let unitsManager: UnitsManager
     @Environment(\.colorScheme) private var colorScheme
 
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
+
+    init(bestStats: PeriodStats, unitsManager: UnitsManager) {
+        self.bestStats = bestStats
+        self.unitsManager = unitsManager
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -1898,13 +1908,13 @@ struct AllTimeResultsView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(PastelTheme.pastelAmber)
 
-                Text("Рекорды за всё время")
+                Text("All-time records")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
                 Spacer()
 
-                Text("\(allWorkouts.count) сессий")
+                Text("\(allWorkouts.count) sessions")
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(PastelTheme.textTertiary)
             }
@@ -1916,14 +1926,14 @@ struct AllTimeResultsView: View {
                         Image(systemName: "scalemass.fill")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(PastelTheme.pastelAmber)
-                        Text("Лучший месяц")
+                        Text("Best month")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
 
                     let vol = unitsManager.convertFromKilograms(bestStats.totalVolume)
                     if vol >= 1000 {
-                        Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) т")
+                        Text("\(LocalizationHelper.shared.formatTwoDecimals(vol / 1000.0)) t")
                             .font(.system(size: 20, weight: .heavy, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelAmber)
                     } else {
@@ -1932,7 +1942,7 @@ struct AllTimeResultsView: View {
                             .foregroundStyle(PastelTheme.pastelAmber)
                     }
 
-                    Text("Пиковый объём")
+                    Text("Peak volume")
                         .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textTertiary)
                 }
@@ -1951,16 +1961,16 @@ struct AllTimeResultsView: View {
                         Image(systemName: "flame.fill")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(PastelTheme.pastelSage)
-                        Text("Интенсивность")
+                        Text("Intensity")
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
 
-                    Text("\(bestStats.workoutCount) сессий")
+                    Text("\(bestStats.workoutCount) sessions")
                         .font(.system(size: 20, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
 
-                    Text("В рекордный месяц")
+                    Text("In the record month")
                         .font(.system(size: 10, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textTertiary)
                 }
@@ -1989,8 +1999,16 @@ struct SetsTrendDetailView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
 
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
 
     enum TrendPeriod: String, CaseIterable, Identifiable {
         case week = "Week"
@@ -2291,10 +2309,19 @@ struct SetsTrendDetailView: View {
     }
 }
 struct RadarChartDetailView: View {
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
+
     enum TrendPeriod: String, CaseIterable, Identifiable {
         case week = "Week", month = "Month", year = "Year", allTime = "All Time"
         var id: String { self.rawValue }
@@ -2785,14 +2812,23 @@ struct RadarChartDetailView: View {
         }}
 
 struct HeatmapDetailView: View {
-       @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-       private var allWorkouts: [Workout]
+       @Query private var allWorkouts: [Workout]
        @Environment(ThemeManager.self) private var themeManager
        let gender: String
        @Environment(\.colorScheme) private var colorScheme 
        @State private var selectedPeriod: SetsTrendDetailView.TrendPeriod = .month
        @State private var aggregatedData: HeatmapAggregatedData? = nil
        @State private var isProcessing = true
+
+       init(gender: String) {
+           self.gender = gender
+           var descriptor = FetchDescriptor<Workout>(
+               predicate: #Predicate<Workout> { $0.endTime != nil },
+               sortBy: [SortDescriptor(\.date, order: .reverse)]
+           )
+           descriptor.fetchLimit = 400
+           _allWorkouts = Query(descriptor)
+       }
 
        var body: some View {
            ScrollView {
@@ -3183,8 +3219,7 @@ struct HeatmapDetailView: View {
     }
 
     struct MonthlyReportStoryView: View {
-        @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-        private var allWorkouts: [Workout]
+        @Query private var allWorkouts: [Workout]
 
         @Environment(\.dismiss) private var dismiss
         @Environment(UnitsManager.self) var unitsManager
@@ -3199,6 +3234,15 @@ struct HeatmapDetailView: View {
         let ticksPerSlide: CGFloat = 140.0
 
         @State private var dragStartTime: Date? = nil
+
+        init() {
+            var descriptor = FetchDescriptor<Workout>(
+                predicate: #Predicate<Workout> { $0.endTime != nil },
+                sortBy: [SortDescriptor(\.date, order: .reverse)]
+            )
+            descriptor.fetchLimit = 400
+            _allWorkouts = Query(descriptor)
+        }
 
         var body: some View {
             ZStack {
@@ -3376,23 +3420,23 @@ struct HeatmapDetailView: View {
                 VStack(spacing: 40) {
                     Spacer()
 
-                    Text("Итоги вашего\nмесяца")
+                    Text("Your month\nin review")
                         .font(.system(size: 46, weight: .black, design: .rounded))
                         .foregroundColor(PastelTheme.textPrimary)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
 
                     VStack(spacing: 16) {
-                        neoGlassCard(title: "Тренировки", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: PastelTheme.pastelSlate)
+                        neoGlassCard(title: "Workouts", value: "\(data.summary.currentWorkouts)", icon: "bolt.fill", color: PastelTheme.pastelSlate)
                             .offset(y: floatAnim1 ? -6 : 6)
                             .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: floatAnim1)
 
-                        neoGlassCard(title: "Минуты", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: PastelTheme.pastelAmber)
+                        neoGlassCard(title: "Minutes", value: "\(data.summary.currentDuration)", icon: "stopwatch.fill", color: PastelTheme.pastelAmber)
                             .offset(y: floatAnim2 ? 6 : -6)
                             .animation(.easeInOut(duration: 2.5).repeatForever(autoreverses: true).delay(0.5), value: floatAnim2)
 
                         neoGlassCard(
-                            title: "Любимый день",
+                            title: "Favorite day",
                             value: data.favoriteDay.capitalized, 
                             icon: "star.fill",                   
                             color: PastelTheme.pastelSage
@@ -3463,20 +3507,20 @@ struct HeatmapDetailView: View {
                     Spacer()
 
                     VStack(spacing: 8) {
-                        Text("Колоссальный\nобъем")
+                        Text("Monthly\nvolume")
                             .font(.system(size: 40, weight: .black, design: .rounded))
                             .foregroundColor(PastelTheme.textPrimary)
                             .multilineTextAlignment(.center)
 
                         let volStr = LocalizationHelper.shared.formatTwoDecimals(data.totalVolumeTons)
 
-                        Text("\(volStr) т")
+                        Text("\(volStr) t")
                             .font(.system(size: 65, weight: .black, design: .rounded))
                             .foregroundColor(PastelTheme.pastelSage)
                             .shadow(color: PastelTheme.pastelSage.opacity(0.35), radius: 15, x: 0, y: 0)
                             .contentTransition(.numericText())
 
-                        Text("Поднятый тоннаж за последние 30 дней")
+                        Text("Tonnage lifted in the last 30 days")
                             .font(.caption)
                             .fontWeight(.medium)
                             .foregroundColor(PastelTheme.textSecondary)
@@ -3607,21 +3651,21 @@ struct StorySlideOutro: View {
                             .stroke(PastelTheme.cardBorder, lineWidth: 1.5)
 
                         VStack(spacing: 30) {
-                            Text("ДИСЦИПЛИНА")
+                            Text("Discipline")
                                 .font(.system(size: 24, weight: .heavy, design: .rounded))
                                 .tracking(3)
                                 .foregroundStyle(PastelTheme.pastelOat)
 
                             HStack(spacing: 20) {
-                                holoStat(value: "\(data.streakDays)", title: "Макс. стрик", color: PastelTheme.pastelAmber)
-                                holoStat(value: "\(data.activeDays.count)", title: "Тренировки", color: PastelTheme.pastelSlate)
-                                holoStat(value: "\(data.summary.currentSets)", title: "Подходы", color: PastelTheme.pastelSage)
+                                holoStat(value: "\(data.streakDays)", title: "Best streak", color: PastelTheme.pastelAmber)
+                                holoStat(value: "\(data.activeDays.count)", title: "Workouts", color: PastelTheme.pastelSlate)
+                                holoStat(value: "\(data.summary.currentSets)", title: "Sets", color: PastelTheme.pastelSage)
                             }
 
                             Divider().background(Color.white.opacity(0.2))
 
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Активность за 28 дней")
+                                Text("Activity over 28 days")
                                     .font(.caption)
                                     .fontWeight(.bold)
                                     .foregroundColor(PastelTheme.textSecondary)
@@ -3670,7 +3714,7 @@ struct StorySlideOutro: View {
                         HStack(spacing: 12) {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.headline.weight(.bold))
-                            Text("Поделиться статистикой")
+                            Text("Share stats")
                                 .font(.headline.weight(.bold))
                         }
                         .foregroundColor(PastelTheme.textOnOat)
@@ -3990,21 +4034,21 @@ struct StorySlideOutro: View {
                         .stroke(PastelTheme.cardBorder, lineWidth: 1.5)
                     
                     VStack(spacing: 30) {
-                        Text("ДИСЦИПЛИНА")
+                        Text("Discipline")
                             .font(.system(size: 24, weight: .black, design: .rounded))
                             .tracking(4)
                             .foregroundStyle(PastelTheme.pastelOat)
                         
                         HStack(spacing: 20) {
-                            holoStat(value: "\(data.streakDays)", title: "Макс. стрик", color: PastelTheme.pastelAmber)
-                            holoStat(value: "\(data.activeDays.count)", title: "Тренировки", color: PastelTheme.pastelSlate)
-                            holoStat(value: "\(data.summary.currentSets)", title: "Подходы", color: PastelTheme.pastelSage)
+                            holoStat(value: "\(data.streakDays)", title: "Best streak", color: PastelTheme.pastelAmber)
+                            holoStat(value: "\(data.activeDays.count)", title: "Workouts", color: PastelTheme.pastelSlate)
+                            holoStat(value: "\(data.summary.currentSets)", title: "Sets", color: PastelTheme.pastelSage)
                         }
                         
                         Divider().background(Color.white.opacity(0.15))
                         
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Активность за 28 дней")
+                            Text("Activity over 28 days")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(PastelTheme.textSecondary)
@@ -4026,7 +4070,7 @@ struct StorySlideOutro: View {
                         
                         HStack {
                             Image(systemName: "applewatch")
-                            Text("Зафиксировано в WorkoutTracker")
+                            Text("Logged in WorkoutTracker")
                         }
                         .font(.caption)
                         .foregroundColor(PastelTheme.textMuted)
@@ -4168,7 +4212,7 @@ struct PersonalRecordsShowcaseView: View {
         if !prs.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(spacing: 6) {
-                    Text("Личные рекорды")
+                    Text("Personal records")
                         .font(.headline.weight(.bold))
                         .foregroundStyle(PastelTheme.textPrimary)
                     

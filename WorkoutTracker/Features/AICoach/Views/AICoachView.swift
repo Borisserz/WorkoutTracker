@@ -59,7 +59,7 @@ struct AICoachView: View {
     @State private var sphereDragOffset: CGSize = .zero
     @State private var shimmerOffset: CGFloat = -1.0
 
-    @AppStorage("cnsScore") private var cnsScore: Double = 85.0
+    @AppStorage("cnsScore") private var cnsScore: Double = Constants.CNS.unmeasuredAppStorageDefault
     @AppStorage("sleepHours") private var sleepHours: Double = 7.5
     @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
@@ -73,11 +73,11 @@ struct AICoachView: View {
     }
 
     let quickPrompts = [
-        QuickPromptItem(icon: "dumbbell.fill", text: "Что качать сегодня?"),
-        QuickPromptItem(icon: "bolt.heart.fill", text: "Проверить готовность"),
-        QuickPromptItem(icon: "flame.fill", text: "Разминка перед тренировкой"),
-        QuickPromptItem(icon: "chart.line.uptrend.xyaxis", text: "Как пробить плато?"),
-        QuickPromptItem(icon: "leaf.fill", text: "Совет по питанию")
+        QuickPromptItem(icon: "dumbbell.fill", text: "What should I train today?"),
+        QuickPromptItem(icon: "bolt.heart.fill", text: "Check readiness"),
+        QuickPromptItem(icon: "flame.fill", text: "Warm-up before training"),
+        QuickPromptItem(icon: "chart.line.uptrend.xyaxis", text: "How do I break a plateau?"),
+        QuickPromptItem(icon: "leaf.fill", text: "Nutrition tip")
     ]
 
     // AI Hub states
@@ -91,10 +91,10 @@ struct AICoachView: View {
     var greeting: String {
         let hour = Calendar.current.component(.hour, from: .now)
         switch hour {
-        case 6..<12: return "Доброе утро"
-        case 12..<18: return "Добрый день"
-        case 18..<24: return "Добрый вечер"
-        default: return "Время восстановления"
+        case 6..<12: return "Good morning"
+        case 12..<18: return "Good afternoon"
+        case 18..<24: return "Good evening"
+        default: return "Recovery time"
         }
     }
     private func requireAIConsent(_ action: @escaping () -> Void) {
@@ -118,7 +118,7 @@ struct AICoachView: View {
                         HStack(alignment: .center) {
                             VStack(alignment: .leading, spacing: 2) {
                                 HStack(spacing: 8) {
-                                    Text("ИИ-Хаб")
+                                    Text("AI Hub")
                                         .font(.system(size: 32, weight: .bold, design: .rounded))
                                         .foregroundStyle(PastelTheme.textPrimary)
 
@@ -128,7 +128,7 @@ struct AICoachView: View {
                                                 .font(.caption2)
                                                 .foregroundStyle(PastelTheme.pastelSage)
                                                 .symbolEffect(.pulse, options: .repeating)
-                                            Text("Синхронизировано")
+                                            Text("Synced")
                                                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                                                 .foregroundStyle(PastelTheme.pastelSage)
                                         }
@@ -140,7 +140,7 @@ struct AICoachView: View {
                                     }
                                 }
 
-                                Text("Биомеханика и готовность ЦНС")
+                                Text("Biomechanics and CNS readiness")
                                     .font(.caption)
                                     .foregroundStyle(PastelTheme.textSecondary)
                             }
@@ -169,7 +169,7 @@ struct AICoachView: View {
 
                         // 1. Block: Live Coach Dialog (Supreme Hero Feature)
                         SectionHeaderView(
-                            title: "Диалог с тренером",
+                            title: "Coach chat",
                             icon: "bubble.left.and.bubble.right.fill",
                             accentColor: PastelTheme.pastelLavender
                         )
@@ -217,7 +217,7 @@ struct AICoachView: View {
 
                         // 3. Block: Workout Tools
                         SectionHeaderView(
-                            title: "Инструменты тренировки",
+                            title: "Training tools",
                             icon: "figure.strengthtraining.traditional",
                             accentColor: PastelTheme.pastelSlate
                         )
@@ -233,16 +233,16 @@ struct AICoachView: View {
                                         Circle()
                                             .fill(PastelTheme.pastelLavender)
                                             .frame(width: 6, height: 6)
-                                        Text("Компьютерное зрение")
+                                        Text("Computer vision")
                                             .font(.system(size: 11, weight: .bold))
                                             .foregroundStyle(PastelTheme.pastelLavender)
                                     }
 
-                                    Text("AI-Камера и трекинг техники")
+                                    Text("AI Camera and form tracking")
                                         .font(.system(size: 17, weight: .bold, design: .rounded))
                                         .foregroundStyle(PastelTheme.textPrimary)
 
-                                    Text("Анализ углов в суставах, траектории штанги и амплитуды в реальном времени")
+                                    Text("Joint angles, bar path, and range of motion in real time")
                                         .font(.system(size: 12, weight: .medium))
                                         .foregroundStyle(PastelTheme.textSecondary)
                                         .lineLimit(2)
@@ -283,8 +283,8 @@ struct AICoachView: View {
                                 showSmartBuilder = true
                             } label: {
                                 PastelBentoCard(
-                                    title: "Сессия дня",
-                                    subtitle: "Сборка под готовность мышц",
+                                    title: "Session of the day",
+                                    subtitle: "Built around muscle readiness",
                                     iconName: "wand.and.stars",
                                     accentColor: PastelTheme.pastelSage
                                 )
@@ -296,8 +296,8 @@ struct AICoachView: View {
                                 showRestSheet = true
                             } label: {
                                 PastelBentoCard(
-                                    title: "Восстановление",
-                                    subtitle: "Оценка утомления и сна",
+                                    title: "Recovery",
+                                    subtitle: "Fatigue and sleep check",
                                     iconName: "moon.stars.fill",
                                     accentColor: PastelTheme.pastelAmber
                                 )
@@ -308,7 +308,7 @@ struct AICoachView: View {
 
                         // 4. Block: Strategy & Progress
                         SectionHeaderView(
-                            title: "Стратегия и прогресс",
+                            title: "Strategy and progress",
                             icon: "chart.line.uptrend.xyaxis",
                             accentColor: PastelTheme.pastelOat
                         )
@@ -320,8 +320,8 @@ struct AICoachView: View {
                                 showAIBuilder = true
                             } label: {
                                 PastelBentoCard(
-                                    title: "План на сезон",
-                                    subtitle: "Периодизация и прогрессия",
+                                    title: "Season plan",
+                                    subtitle: "Periodization and progression",
                                     iconName: "calendar.badge.plus",
                                     accentColor: PastelTheme.pastelOat
                                 )
@@ -333,8 +333,8 @@ struct AICoachView: View {
                                 showProgressSheet = true
                             } label: {
                                 PastelBentoCard(
-                                    title: "Аналитика недели",
-                                    subtitle: "Биометрия и динамика весов",
+                                    title: "Weekly analytics",
+                                    subtitle: "Biometrics and weight trends",
                                     iconName: "chart.xyaxis.line",
                                     accentColor: PastelTheme.pastelSage
                                 )
@@ -417,10 +417,11 @@ struct AICoachView: View {
                                 )
                             }
                         )
-                        await di.workoutService.startGeneratedWorkout(generatedDTO)
-                        if let newWorkout = await di.workoutService.fetchLatestWorkout() {
-                            path.append(newWorkout)
+                        guard let id = await di.workoutService.startGeneratedWorkout(generatedDTO),
+                              let newWorkout = di.analyticsService.modelContainer.mainContext.model(for: id) as? Workout else {
+                            return
                         }
+                        path.append(newWorkout)
                     }
                 })
             }
@@ -498,11 +499,11 @@ struct PastelReadinessCard: View {
 
     private var adviceText: String {
         if score >= 80 {
-            return "ЦНС полностью восстановилась. Отличный день для базовых силовых нагрузок высокой интенсивности."
+            return "CNS fully recovered. Great day for high-intensity compound lifts."
         } else if score >= 50 {
-            return "Умеренная нагрузка. Рекомендуется работа с 70-80% от максимума и фокус на чистой технике."
+            return "Moderate load. Work at 70–80% of your max with a focus on clean form."
         } else {
-            return "Высокая усталость ЦНС. Рекомендуется день разгрузки, легкое кардио или растяжка."
+            return "High CNS fatigue. Prefer a deload day, light cardio, or mobility work."
         }
     }
 
@@ -532,7 +533,7 @@ struct PastelReadinessCard: View {
                             .fill(scoreColor)
                             .frame(width: 6, height: 6)
 
-                        Text("Готовность ЦНС")
+                        Text("CNS Readiness")
                             .font(.system(size: 11, weight: .bold, design: .rounded))
                             .foregroundStyle(PastelTheme.textSecondary)
                     }
@@ -550,11 +551,11 @@ struct PastelReadinessCard: View {
 
             // Micro-metrics row
             HStack {
-                PastelMetricItem(title: "HRV", value: hrv != nil ? "\(Int(hrv!))" : "--", unit: "мс", color: PastelTheme.pastelSlate)
+                PastelMetricItem(title: "HRV", value: hrv != nil ? "\(Int(hrv!))" : "--", unit: "ms", color: PastelTheme.pastelSlate)
                 Spacer()
-                PastelMetricItem(title: "ЧСС покоя", value: rhr != nil ? "\(Int(rhr!))" : "--", unit: "уд/м", color: PastelTheme.pastelLavender)
+                PastelMetricItem(title: "Resting HR", value: rhr != nil ? "\(Int(rhr!))" : "--", unit: "bpm", color: PastelTheme.pastelLavender)
                 Spacer()
-                PastelMetricItem(title: "Сон", value: hasSleep ? String(format: "%.1f", sleep) : "--", unit: "ч", color: PastelTheme.pastelAmber)
+                PastelMetricItem(title: "Sleep", value: hasSleep ? String(format: "%.1f", sleep) : "--", unit: "h", color: PastelTheme.pastelAmber)
             }
 
             // Actionable 1-sentence verdict
@@ -652,11 +653,11 @@ struct InteractiveCoachDialogCard: View {
 
     private var coachGreeting: String {
         if score >= 80 {
-            return "ЦНС восстановилась на \(Int(score))%. Отличное окно для силовых рекордов и тяжелой базы. Что запланируем на сегодня?"
+            return "CNS recovered to \(Int(score))%. Strong window for heavy compound work. What should we plan today?"
         } else if score >= 50 {
-            return "Готовность в балансе (\(Int(score))%). Рекомендую среднюю интенсивность и чистую технику. Нужна помощь с подбором веса или разминкой?"
+            return "Readiness is balanced (\(Int(score))%). Aim for moderate intensity and clean form. Need help with load or warm-up?"
         } else {
-            return "Замечено утомление ЦНС (\(Int(score))%). Советую сделать разгрузку или кардио с мобильностью. Как самочувствие?"
+            return "CNS fatigue noted (\(Int(score))%). Consider a deload or light cardio with mobility. How do you feel?"
         }
     }
 
@@ -676,11 +677,11 @@ struct InteractiveCoachDialogCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("ИИ-Тренер")
+                    Text("AI Coach")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("Персональный коуч • На связи 24/7")
+                    Text("Personal coach, available anytime")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(PastelTheme.textSecondary)
                 }
@@ -692,7 +693,7 @@ struct InteractiveCoachDialogCard: View {
                         .fill(PastelTheme.pastelSage)
                         .frame(width: 7, height: 7)
 
-                    Text("Онлайн")
+                    Text("Ready")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
                 }
@@ -778,7 +779,7 @@ struct InteractiveCoachDialogCard: View {
                         .font(.system(size: 13))
                         .foregroundStyle(PastelTheme.textTertiary)
 
-                    TextField(isListening ? (textTranscript.isEmpty ? "Слушаю..." : textTranscript) : "Спросите тренера о тренировке...", text: $userQuery)
+                    TextField(isListening ? (textTranscript.isEmpty ? "Listening…" : textTranscript) : "Ask the coach about your workout…", text: $userQuery)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .submitLabel(.send)
@@ -901,11 +902,11 @@ struct AISettingsSheet: View {
                             }
 
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Характер и стиль тренера")
+                                Text("Coach style")
                                     .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .foregroundStyle(PastelTheme.textPrimary)
 
-                                Text("Определяет манеру общения, фокус рекомендаций и тон советов")
+                                Text("Sets tone, focus, and how advice is delivered")
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundStyle(PastelTheme.textSecondary)
                                     .lineLimit(2)
@@ -922,7 +923,7 @@ struct AISettingsSheet: View {
 
                         // Personas List
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Выбор персоны")
+                            Text("Choose persona")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundStyle(PastelTheme.textSecondary)
                                 .padding(.horizontal, 4)
@@ -930,7 +931,7 @@ struct AISettingsSheet: View {
                             if availablePersonas.isEmpty {
                                 HStack {
                                     Spacer()
-                                    ProgressView("Загрузка профилей...")
+                                    ProgressView("Loading profiles…")
                                         .tint(PastelTheme.pastelOat)
                                         .foregroundStyle(PastelTheme.textSecondary)
                                     Spacer()
@@ -962,7 +963,7 @@ struct AISettingsSheet: View {
                                                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                                                     .foregroundStyle(isSelected ? PastelTheme.textPrimary : PastelTheme.textSecondary)
 
-                                                Text(isSelected ? "Активный стиль коучинга" : "Нажмите для переключения")
+                                                Text(isSelected ? "Active coaching style" : "Tap to switch")
                                                     .font(.system(size: 11, weight: .medium))
                                                     .foregroundStyle(PastelTheme.textTertiary)
                                             }
@@ -990,7 +991,7 @@ struct AISettingsSheet: View {
 
                         // Danger Zone: Clear History
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Память диалогов")
+                            Text("Chat memory")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundStyle(PastelTheme.textSecondary)
                                 .padding(.horizontal, 4)
@@ -1005,7 +1006,7 @@ struct AISettingsSheet: View {
                                         .font(.system(size: 14, weight: .semibold))
                                         .foregroundStyle(PastelTheme.pastelPeach)
 
-                                    Text("Очистить историю диалога")
+                                    Text("Clear chat history")
                                         .font(.system(size: 14, weight: .semibold, design: .rounded))
                                         .foregroundStyle(PastelTheme.pastelPeach)
 
@@ -1027,11 +1028,11 @@ struct AISettingsSheet: View {
                     .padding(.bottom, 24)
                 }
             }
-            .navigationTitle("Настройки ИИ")
+            .navigationTitle("AI Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Готово") { dismiss() }
+                    Button("Done") { dismiss() }
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelOat)
                 }
@@ -1045,16 +1046,16 @@ struct AISettingsSheet: View {
 
 struct WorkoutConfigSheet: View {
     @Environment(\.colorScheme) private var colorScheme 
-    let levels: [(String, WorkoutDifficulty)] = [("Базовый", .beginner), ("Продвинутый", .intermediate), ("Атлет PRO", .advanced)]
+    let levels: [(String, WorkoutDifficulty)] = [("Basic", .beginner), ("Advanced", .intermediate), ("Athlete PRO", .advanced)]
 
     @State private var selectedLevel: WorkoutDifficulty = .intermediate
     @State private var selectedMuscle: CoachMuscleGroup? = nil
 
     func synergyFor(_ muscle: CoachMuscleGroup) -> String? {
         switch muscle {
-        case .chest: return "Трицепс, дельты"
-        case .back: return "Бицепс, трапеции"
-        case .legs: return "Ягодицы, икры"
+        case .chest: return "Triceps, delts"
+        case .back: return "Biceps, traps"
+        case .legs: return "Glutes, calves"
         case .shoulders: return nil
         case .arms: return nil
         case .abs: return nil
@@ -1070,14 +1071,14 @@ struct WorkoutConfigSheet: View {
                 ScrollView(showsIndicators: false) {
                     LazyVStack(alignment: .leading, spacing: 28) {
 
-                        Text("Конструктор программы")
+                        Text("Program builder")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                             .padding(.horizontal, 24)
                             .padding(.top, 24)
 
                         VStack(alignment: .leading, spacing: 14) {
-                            Text("Интенсивность")
+                            Text("Intensity")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.horizontal, 24)
@@ -1108,7 +1109,7 @@ struct WorkoutConfigSheet: View {
                         }
 
                         VStack(alignment: .leading, spacing: 14) {
-                            Text("Целевая мышечная группа")
+                            Text("Target muscle group")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.horizontal, 24)
@@ -1147,7 +1148,7 @@ struct WorkoutConfigSheet: View {
                                                 .foregroundColor(PastelTheme.pastelSlate)
                                                 .lineLimit(1)
                                             } else {
-                                                Text("Изолированная")
+                                                Text("Isolation")
                                                     .font(.system(size: 11, weight: .medium))
                                                     .foregroundColor(PastelTheme.textMuted)
                                             }
@@ -1214,7 +1215,7 @@ struct BestExercisesSheet: View {
             VStack(spacing: 0) {
 
                 HStack {
-                    Text(isGenerating ? "ИИ составляет протокол..." : "Протокол: \(muscleGroup.rawValue)")
+                    Text(isGenerating ? "AI is building a protocol…" : "Protocol: \(muscleGroup.rawValue)")
                         .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     Spacer()
@@ -1267,7 +1268,7 @@ struct BestExercisesSheet: View {
                         if aiErrorMessage == nil {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text("Расчётный объём").font(.system(size: 12, weight: .bold)).foregroundColor(PastelTheme.textSecondary)
+                                    Text("Estimated volume").font(.system(size: 12, weight: .bold)).foregroundColor(PastelTheme.textSecondary)
                                     Text("\(Int(estimatedTonnage)) \(unitsManager.weightUnitString())")
                                         .font(.system(size: 20, weight: .black, design: .rounded).monospacedDigit())
                                         .foregroundColor(PastelTheme.pastelLavender)
@@ -1277,7 +1278,7 @@ struct BestExercisesSheet: View {
                                 Divider().background(PastelTheme.separator).frame(height: 30)
                                 Spacer()
                                 VStack(alignment: .trailing, spacing: 4) {
-                                    Text("Сложность").font(.system(size: 12, weight: .bold)).foregroundColor(PastelTheme.textSecondary)
+                                    Text("Difficulty").font(.system(size: 12, weight: .bold)).foregroundColor(PastelTheme.textSecondary)
                                     Text(difficulty.rawValue).font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(PastelTheme.pastelSlate)
                                 }
                             }
@@ -1307,7 +1308,7 @@ struct BestExercisesSheet: View {
                                 .transition(.opacity.combined(with: .scale))
                             }
                         } else if !isGenerating {
-                            Text("Не удалось составить программу. Попробуйте снова.")
+                            Text("Could not build a program. Try again.")
                                 .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.top, 20)
                         }
@@ -1318,7 +1319,7 @@ struct BestExercisesSheet: View {
                                     if isStarting {
                                         ProgressView().tint(PastelTheme.textOnOat)
                                     } else {
-                                        Text("Начать тренировку").font(.system(size: 16, weight: .bold, design: .rounded))
+                                        Text("Start Workout").font(.system(size: 16, weight: .bold, design: .rounded))
                                         Image(systemName: "bolt.fill")
                                     }
                                 }
@@ -1418,11 +1419,10 @@ struct BestExercisesSheet: View {
         HapticManager.shared.impact(.heavy)
 
         Task {
-            await workoutService.startGeneratedWorkout(dto)
-            if let newWorkout = await workoutService.fetchLatestWorkout() {
-                di.appState.returnToActiveWorkoutId = newWorkout.persistentModelID
-                di.appState.selectedTab = 2 
-            }
+            defer { isStarting = false }
+            guard let id = await workoutService.startGeneratedWorkout(dto) else { return }
+            di.appState.returnToActiveWorkoutId = id
+            di.appState.selectedTab = 2
             dismiss()
         }
     }
@@ -1444,13 +1444,13 @@ struct AIExerciseRowView: View {
                         .foregroundColor(colorScheme == .dark ? PastelTheme.textMuted.opacity(0.6) : .black.opacity(0.2)) 
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(exercise != nil ? LocalizationHelper.shared.translateName(exercise!.name) : "Подбор упражнения...")
+                        Text(exercise != nil ? LocalizationHelper.shared.translateName(exercise!.name) : "Picking an exercise…")
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
 
-                        Text(exercise?.muscleGroup ?? "Мышечная группа")
+                        Text(exercise?.muscleGroup ?? "Muscle group")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(PastelTheme.pastelSlate)
                     }
@@ -1477,7 +1477,7 @@ struct AIExerciseRowView: View {
                         Image(systemName: "scalemass.fill")
                             .foregroundColor(PastelTheme.pastelAmber)
                         let w = unitsManager.convertFromKilograms(exercise?.recommendedWeightKg ?? 0.0)
-                        Text(w > 0 ? "\(Int(w)) \(unitsManager.weightUnitString())" : "Свой вес")
+                        Text(w > 0 ? "\(Int(w)) \(unitsManager.weightUnitString())" : "Bodyweight")
                             .font(.system(size: 14, weight: .bold, design: .rounded).monospacedDigit())
                             .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     }
@@ -1509,11 +1509,11 @@ struct ExerciseRowView: View {
                         .foregroundColor(colorScheme == .dark ? PastelTheme.textMuted.opacity(0.6) : .black.opacity(0.2)) 
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(LocalizationHelper.shared.translateName(exercise?.name ?? "Упражнение"))
+                        Text(LocalizationHelper.shared.translateName(exercise?.name ?? "Exercise"))
                             .font(.system(size: 17, weight: .bold, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                             .lineLimit(1)
-                        Text(exercise?.type.rawValue ?? "Тип")
+                        Text(exercise?.type.rawValue ?? "Type")
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(PastelTheme.textSecondary)
                     }
@@ -1548,7 +1548,7 @@ struct ExerciseRowView: View {
                         Image(systemName: "scalemass.fill")
                             .foregroundColor(PastelTheme.pastelAmber)
                         let w = unitsManager.convertFromKilograms(exercise?.recommendedWeightKg ?? 0.0)
-                        Text(w > 0 ? "\(Int(w)) \(unitsManager.weightUnitString())" : "Свой вес")
+                        Text(w > 0 ? "\(Int(w)) \(unitsManager.weightUnitString())" : "Bodyweight")
                             .font(.system(size: 12, weight: .bold, design: .rounded).monospacedDigit())
                             .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black) 
                     }
@@ -1589,7 +1589,7 @@ struct ExerciseTechniqueSheet: View {
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
                             Image(systemName: "figure.strengthtraining.traditional").foregroundColor(PastelTheme.pastelSlate)
-                            Text("Правильная техника").font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundColor(PastelTheme.textSecondary)
+                            Text("Good form").font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundColor(PastelTheme.textSecondary)
                         }
                         Text(TechniqueHelper.getDescription(for: exercise.category))
                             .font(.system(size: 15, weight: .medium))
@@ -1607,7 +1607,7 @@ struct ExerciseTechniqueSheet: View {
                         HStack(spacing: 6) {
                             Image(systemName: "sparkles")
                                 .foregroundColor(PastelTheme.pastelAmber)
-                            Text("Советы по технике")
+                            Text("Form tips")
                                 .font(.system(size: 13, weight: .bold, design: .rounded))
                                 .foregroundColor(PastelTheme.pastelAmber)
                         }
@@ -1644,22 +1644,30 @@ struct ProgressAnalysisSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var colorManager = MuscleColorManager.shared
 
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
 
-    let periods = ["Последние 7 дней", "Мезоцикл (4 недели)", "Макроцикл (12 недель)"]
-    let focuses = ["Мышечный баланс", "Лидеры роста"]
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
 
-    @State private var selectedPeriod = "Мезоцикл (4 недели)"
-    @State private var selectedFocus = "Мышечный баланс"
+    let periods = ["Last 7 days", "Mesocycle (4 weeks)", "Macrocycle (12 weeks)"]
+    let focuses = ["Muscle balance", "Growth leaders"]
+
+    @State private var selectedPeriod = "Mesocycle (4 weeks)"
+    @State private var selectedFocus = "Muscle balance"
 
     @State private var stats: [MuscleStats] = []
     @State private var activeSegment: UUID? = nil
 
     @State private var isAnalyzing = true
     @State private var impulseValue: Int = 0
-    @State private var impulseMuscle: String = "Грудь"
-    @State private var aiConclusion: String = "Нейросеть анализирует распределение нагрузки на мышцы..."
+    @State private var impulseMuscle: String = "Chest"
+    @State private var aiConclusion: String = "Analyzing muscle load distribution…"
 
     @State private var appearAnimate = false
 
@@ -1701,7 +1709,7 @@ struct ProgressAnalysisSheet: View {
     private var loadingView: some View {
         VStack(spacing: 20) {
             ProgressView().scaleEffect(1.5).tint(PastelTheme.pastelLavender)
-            Text("Сбор данных из базы...").font(.headline).foregroundColor(PastelTheme.textSecondary)
+            Text("Gathering training data…").font(.headline).foregroundColor(PastelTheme.textSecondary)
         }
         .frame(maxWidth: .infinity).padding(.top, 100)
     }
@@ -1709,8 +1717,8 @@ struct ProgressAnalysisSheet: View {
     private var emptyDataView: some View {
         EmptyStateView(
             icon: "chart.pie.fill",
-            title: "Недостаточно данных",
-            message: "Для формирования аналитики проведите ещё несколько тренировок."
+            title: "Not enough data",
+            message: "Log a few more workouts to unlock analytics."
         )
         .padding(.top, 50)
     }
@@ -1720,17 +1728,17 @@ struct ProgressAnalysisSheet: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
                 Image(systemName: "cpu").foregroundColor(PastelTheme.pastelLavender)
-                Text("ИИ-прогноз").font(.caption.bold()).foregroundColor(PastelTheme.textSecondary)
+                Text("AI forecast").font(.caption.bold()).foregroundColor(PastelTheme.textSecondary)
             }
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Импульс объёма").font(.system(size: 14, weight: .medium)).foregroundColor(PastelTheme.textSecondary)
+                    Text("Volume impulse").font(.system(size: 14, weight: .medium)).foregroundColor(PastelTheme.textSecondary)
                     HStack(alignment: .firstTextBaseline) {
                         Text(impulseValue > 0 ? "+\(impulseValue)%" : "\(impulseValue)%")
                             .font(.system(size: 38, weight: .black, design: .rounded).monospacedDigit())
                             .foregroundColor(impulseValue > 0 ? PastelTheme.pastelSage : (impulseValue < 0 ? PastelTheme.pastelPeach : PastelTheme.textSecondary))
                             .contentTransition(.numericText())
-                        Text("к тоннажу").font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                        Text("to tonnage").font(.system(size: 16, weight: .bold)).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                     }
                 }
                 Spacer()
@@ -1743,7 +1751,7 @@ struct ProgressAnalysisSheet: View {
                         .offset(x: appearAnimate ? 5 : -5, y: appearAnimate ? -5 : 5)
                 }.modifier(PulseEffect())
             }
-            Text("На основе тренировочных данных возможен прирост силовых показателей в группе: **\(impulseMuscle)**.")
+            Text("Based on your training data, possible strength gains in: **\(impulseMuscle)**.")
                 .font(.system(size: 14)).foregroundColor(PastelTheme.textSecondary)
         }
         .padding(20)
@@ -1757,7 +1765,7 @@ struct ProgressAnalysisSheet: View {
     @ViewBuilder
     private var analyticsParamsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Детальная аналитика").font(.caption.bold()).foregroundColor(PastelTheme.textSecondary).padding(.horizontal, 24)
+            Text("Detailed analytics").font(.caption.bold()).foregroundColor(PastelTheme.textSecondary).padding(.horizontal, 24)
             VStack(spacing: 2) {
                 Menu {
                     ForEach(periods, id: \.self) { p in
@@ -1765,7 +1773,7 @@ struct ProgressAnalysisSheet: View {
                     }
                 } label: {
                     HStack {
-                        Text("Период").foregroundColor(PastelTheme.textSecondary)
+                        Text("Period").foregroundColor(PastelTheme.textSecondary)
                         Spacer()
                         Text(selectedPeriod).fontWeight(.bold).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                         Image(systemName: "chevron.up.chevron.down").foregroundColor(PastelTheme.pastelSlate).font(.caption)
@@ -1782,7 +1790,7 @@ struct ProgressAnalysisSheet: View {
                     }
                 } label: {
                     HStack {
-                        Text("Акцент").foregroundColor(PastelTheme.textSecondary)
+                        Text("Focus").foregroundColor(PastelTheme.textSecondary)
                         Spacer()
                         Text(selectedFocus).fontWeight(.bold).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                         Image(systemName: "chevron.up.chevron.down").foregroundColor(PastelTheme.pastelLavender).font(.caption)
@@ -1831,7 +1839,7 @@ struct ProgressAnalysisSheet: View {
     @ViewBuilder
     private var aiConclusionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Заключение ИИ").font(.caption.bold()).foregroundColor(PastelTheme.pastelLavender).padding(.horizontal, 24)
+            Text("AI summary").font(.caption.bold()).foregroundColor(PastelTheme.pastelLavender).padding(.horizontal, 24)
 
             HStack(alignment: .top, spacing: 16) {
                 Image(systemName: "sparkles.tv")
@@ -1863,7 +1871,7 @@ struct ProgressAnalysisSheet: View {
     private var floatingHeader: some View {
         VStack {
             HStack {
-                Text("Анализ прогресса")
+                Text("Progress analysis")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 Spacer()
@@ -1880,9 +1888,9 @@ struct ProgressAnalysisSheet: View {
 
         let days: Int
         switch selectedPeriod {
-        case "Последние 7 дней", "Last 7 days": days = 7
-        case "Мезоцикл (4 недели)", "Mesocycle (4 weeks)": days = 28
-        case "Макроцикл (12 недель)", "Macrocycle (12 weeks)": days = 84
+        case "Last 7 days", "Last 7 days": days = 7
+        case "Mesocycle (4 weeks)", "Mesocycle (4 weeks)": days = 28
+        case "Macrocycle (12 weeks)", "Macrocycle (12 weeks)": days = 84
         default: days = 28
         }
 
@@ -2003,7 +2011,7 @@ struct ProgressAnalysisSheet: View {
             await MainActor.run { self.isAnalyzing = false }
         } catch {
             await MainActor.run {
-                self.aiConclusion = "Не удалось связаться с сервером. Но судя по показателям объёма, обратите внимание на отстающие группы мышц."
+                self.aiConclusion = "Could not reach the server. Based on your volume, focus on lagging muscle groups."
                 self.isAnalyzing = false
             }
         }
@@ -2011,13 +2019,13 @@ struct ProgressAnalysisSheet: View {
 
     private func localizeMuscle(_ englishName: String) -> String {
         switch englishName {
-        case "Chest": return "Грудь"
-        case "Back": return "Спина"
-        case "Legs": return "Ноги"
-        case "Shoulders": return "Плечи"
-        case "Arms": return "Руки"
-        case "Core": return "Кор"
-        case "Cardio": return "Кардио"
+        case "Chest": return "Chest"
+        case "Back": return "Back"
+        case "Legs": return "Legs"
+        case "Shoulders": return "Shoulders"
+        case "Arms": return "Arms"
+        case "Core": return "Core"
+        case "Cardio": return "Cardio"
         default: return LocalizationHelper.shared.translateName(englishName)
         }
     }
@@ -2027,7 +2035,7 @@ struct RestAnalysisSheet: View {
     @AppStorage("hasSleepData") private var hasSleepData = false
     @AppStorage("sleepHours") private var sleepHours: Double = 7.5
     @AppStorage("waterCups") private var waterCups: Int = 4
-    @AppStorage("cnsScore") private var cnsScore: Double = 85.0
+    @AppStorage("cnsScore") private var cnsScore: Double = Constants.CNS.unmeasuredAppStorageDefault
     @Environment(\.colorScheme) private var colorScheme 
 
     var cnsLoad: Double {
@@ -2055,7 +2063,7 @@ struct RestAnalysisSheet: View {
                         Spacer().frame(height: 70)
 
                         VStack(spacing: 16) {
-                            Text("Оценка утомления ЦНС")
+                            Text("CNS fatigue estimate")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(PastelTheme.textSecondary)
 
@@ -2075,7 +2083,7 @@ struct RestAnalysisSheet: View {
                                         .font(.system(size: 34, weight: .black, design: .rounded).monospacedDigit())
                                         .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                                         .contentTransition(.numericText())
-                                    Text(cnsLoad < 40 ? "Низкое" : (cnsLoad < 75 ? "Умеренное" : "Высокое"))
+                                    Text(cnsLoad < 40 ? "Low" : (cnsLoad < 75 ? "Moderate" : "High"))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundColor(cnsColor)
                                 }
@@ -2085,7 +2093,7 @@ struct RestAnalysisSheet: View {
                         .padding(.bottom, 10)
 
                         VStack(alignment: .leading, spacing: 14) {
-                            Text("Биометрия")
+                            Text("Biometrics")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.horizontal, 24)
@@ -2094,11 +2102,11 @@ struct RestAnalysisSheet: View {
                                 HStack {
                                     Image(systemName: "moon.zzz.fill")
                                         .foregroundColor(PastelTheme.pastelLavender)
-                                    Text("Сон прошлой ночью")
+                                    Text("Last night's sleep")
                                         .font(.system(size: 15, weight: .medium, design: .rounded))
                                         .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                                     Spacer()
-                                    Text(hasSleepData ? String(format: "%.1f ч", sleepHours) : "— ч")
+                                    Text(hasSleepData ? String(format: "%.1f h", sleepHours) : "— h")
                                         .font(.system(size: 17, weight: .bold, design: .rounded).monospacedDigit())
                                         .foregroundColor(PastelTheme.pastelLavender)
                                 }
@@ -2120,7 +2128,7 @@ struct RestAnalysisSheet: View {
                                 HStack {
                                     Image(systemName: "drop.fill", variableValue: Double(waterCups)/10.0)
                                         .foregroundColor(PastelTheme.pastelSlate)
-                                    Text("Вода за день (стаканы)")
+                                    Text("Water today (cups)")
                                         .font(.system(size: 15, weight: .medium, design: .rounded))
                                         .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                                     Spacer()
@@ -2143,7 +2151,7 @@ struct RestAnalysisSheet: View {
                         }
 
                         VStack(alignment: .leading, spacing: 14) {
-                            Text("Рекомендации по восстановлению")
+                            Text("Recovery recommendations")
                                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                                 .foregroundColor(PastelTheme.textSecondary)
                                 .padding(.horizontal, 24)
@@ -2152,18 +2160,18 @@ struct RestAnalysisSheet: View {
                                 if showsMeasuredFatigue {
                                     HStack(spacing: 10) {
                                         if cnsLoad < 40 {
-                                            RecoveryBadge(icon: "flame.fill", text: "Сложные углеводы", color: PastelTheme.pastelAmber)
-                                            RecoveryBadge(icon: "figure.walk", text: "Лёгкая прогулка", color: PastelTheme.pastelSage)
+                                            RecoveryBadge(icon: "flame.fill", text: "Complex carbs", color: PastelTheme.pastelAmber)
+                                            RecoveryBadge(icon: "figure.walk", text: "Easy walk", color: PastelTheme.pastelSage)
                                         } else if cnsLoad < 75 {
-                                            RecoveryBadge(icon: "snowflake", text: "Контрастный душ", color: PastelTheme.pastelSlate)
-                                            RecoveryBadge(icon: "bed.double.fill", text: "Дневной сон (20 мин)", color: PastelTheme.pastelLavender)
+                                            RecoveryBadge(icon: "snowflake", text: "Contrast shower", color: PastelTheme.pastelSlate)
+                                            RecoveryBadge(icon: "bed.double.fill", text: "Nap (20 min)", color: PastelTheme.pastelLavender)
                                         } else {
-                                            RecoveryBadge(icon: "thermometer.sun.fill", text: "Сауна", color: PastelTheme.pastelPeach)
-                                            RecoveryBadge(icon: "figure.mind.and.body", text: "МФР и растяжка", color: PastelTheme.pastelSlate)
+                                            RecoveryBadge(icon: "thermometer.sun.fill", text: "Sauna", color: PastelTheme.pastelPeach)
+                                            RecoveryBadge(icon: "figure.mind.and.body", text: "Foam roll and stretch", color: PastelTheme.pastelSlate)
                                         }
                                     }
                                 } else {
-                                    Text("Сдвиньте сон или воду выше, чтобы открыть рекомендации.")
+                                    Text("Log more sleep or water to unlock recommendations.")
                                         .font(.footnote)
                                         .foregroundStyle(PastelTheme.textSecondary)
                                 }
@@ -2171,7 +2179,7 @@ struct RestAnalysisSheet: View {
                             .padding(.horizontal, 24)
                         }
 
-                        Text("Показатели утомления и рекомендации носят ориентировочный характер и рассчитываются на основе введённых данных.")
+                        Text("Fatigue scores and tips are approximate and based on the data you enter.")
                             .font(.caption2)
                             .foregroundColor(PastelTheme.textMuted)
                             .multilineTextAlignment(.leading)
@@ -2183,7 +2191,7 @@ struct RestAnalysisSheet: View {
 
                 VStack {
                     HStack {
-                        Text("Восстановление")
+                        Text("Recovery")
                             .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                         Spacer()
@@ -2216,7 +2224,7 @@ struct MicroMetric: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundColor(PastelTheme.textSecondary)
             if value == "--" {
-                UnavailableMetricView(icon: "waveform.path.ecg", text: "Нет данных")
+                UnavailableMetricView(icon: "waveform.path.ecg", text: "No data")
                     .padding(.top, 2)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {

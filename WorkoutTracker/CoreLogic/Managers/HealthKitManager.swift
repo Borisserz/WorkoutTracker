@@ -174,17 +174,25 @@ actor HealthKitManager: Sendable {
     }
 
     func saveWorkout(title: String, startDate: Date, endDate: Date, durationSeconds: Int, calories: Int) async throws {
+        #if DEBUG
         print("🔄 HealthKitManager: Initiating save...")
+        #endif
         guard isAvailable else {
+            #if DEBUG
             print("❌ HealthKit: Not available on this device")
+            #endif
             return
         }
 
         let actualDuration = max(Double(durationSeconds), endDate.timeIntervalSince(startDate))
+        #if DEBUG
         print("📊 Data: Duration = \(actualDuration) sec, Calories = \(calories) kcal")
+        #endif
 
         guard actualDuration >= 60 else {
+            #if DEBUG
             print("⚠️ Cancelled: Workout is under 60 seconds. Apple Health will ignore it.")
+            #endif
             return
         }
 
@@ -206,15 +214,21 @@ actor HealthKitManager: Sendable {
 
         do {
             try await healthStore.save(workout)
+            #if DEBUG
             print("✅ SUCCESS: HKWorkout written to DB!")
+            #endif
 
             if let energyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) {
                 let energySample = HKQuantitySample(type: energyType, quantity: energyQuantity, start: startDate, end: endDate)
                 try await healthStore.save(energySample)
+                #if DEBUG
                 print("✅ SUCCESS: Calories added to Move Ring!")
+                #endif
             }
         } catch {
+            #if DEBUG
             print("❌ HealthKit save ERROR: \(error.localizedDescription)")
+            #endif
             throw HealthKitError.saveFailed(error)
         }
     }

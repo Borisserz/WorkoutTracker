@@ -28,10 +28,10 @@ struct InspectedDayData: Identifiable {
 /// and rich interactive day inspection sheets.
 struct WorkoutCalendarView: View {
     enum TimeRange: String, CaseIterable, Identifiable {
-        case month = "Месяц"
-        case threeMonths = "3 месяца"
-        case year = "Год"
-        case all = "Все время"
+        case month = "Month"
+        case threeMonths = "3 months"
+        case year = "Year"
+        case all = "All time"
 
         var id: String { rawValue }
 
@@ -45,7 +45,7 @@ struct WorkoutCalendarView: View {
         }
     }
 
-    @Query(sort: \Workout.date, order: .reverse) private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(ThemeManager.self) private var themeManager
@@ -53,6 +53,14 @@ struct WorkoutCalendarView: View {
     @Environment(DashboardViewModel.self) private var dashboardViewModel
     @Environment(DIContainer.self) private var di
     @Environment(\.dismiss) private var dismiss
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 800
+        _allWorkouts = Query(descriptor)
+    }
 
     @State private var selectedTimeRange: TimeRange = .month
     @State private var allMiniWorkouts: [MiniWorkout] = []
@@ -83,7 +91,7 @@ struct WorkoutCalendarView: View {
     private var totalDurationFormatted: String {
         let totalSeconds = filteredWorkouts.reduce(0) { $0 + $1.durationSeconds }
         let hours = Double(totalSeconds) / 3600.0
-        return String(format: "%.1f ч", hours)
+        return String(format: "%.1f h", hours)
     }
 
     private var monthsToDisplay: [Date] {
@@ -161,7 +169,7 @@ struct WorkoutCalendarView: View {
                 }
             }
         }
-        .navigationTitle("Календарь активности")
+        .navigationTitle("Activity calendar")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -226,7 +234,7 @@ struct WorkoutCalendarView: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text("\(streakCount) дн.")
+                    Text("\(streakCount) days")
                         .font(.system(size: 24, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
                         .monospacedDigit()
@@ -234,7 +242,7 @@ struct WorkoutCalendarView: View {
                     if streakCount >= 5 {
                         HStack(spacing: 4) {
                             Circle().fill(PastelTheme.pastelAmber).frame(width: 5, height: 5)
-                            Text("В ОГНЕ")
+                            Text("In the zone")
                                 .font(.system(size: 9.5, weight: .black, design: .rounded))
                                 .foregroundStyle(PastelTheme.pastelAmber)
                         }
@@ -243,15 +251,15 @@ struct WorkoutCalendarView: View {
                         .background(PastelTheme.pastelAmber.opacity(0.18))
                         .clipShape(Capsule())
                     } else {
-                        Text("серия тренировок")
+                        Text("workout streak")
                             .font(.system(size: 13, weight: .semibold, design: .rounded))
                             .foregroundStyle(PastelTheme.pastelAmber)
                     }
                 }
 
                 Text(streakCount >= 5
-                     ? "Серия в огне! Непрерывный темп более 5 дней подряд"
-                     : (streakCount > 0 ? "Ударный ритм! Продолжайте отмечать дни тренировок" : "Начните тренировку сегодня, чтобы зажечь серию"))
+                     ? "Hot streak — more than 5 days in a row"
+                     : (streakCount > 0 ? "Strong rhythm — keep logging training days" : "Train today to start a streak"))
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
                     .lineLimit(1)
@@ -276,9 +284,9 @@ struct WorkoutCalendarView: View {
     // MARK: - Metrics Ribbon
     private var metricsRibbon: some View {
         HStack(spacing: 10) {
-            metricItem(title: "Тренировки", value: "\(filteredWorkouts.count)", accent: PastelTheme.pastelOat)
-            metricItem(title: "Тоннаж", value: totalTonnageFormatted, accent: PastelTheme.pastelSage)
-            metricItem(title: "Время", value: totalDurationFormatted, accent: PastelTheme.pastelSlate)
+            metricItem(title: "Workouts", value: "\(filteredWorkouts.count)", accent: PastelTheme.pastelOat)
+            metricItem(title: "Tonnage", value: totalTonnageFormatted, accent: PastelTheme.pastelSage)
+            metricItem(title: "Time", value: totalDurationFormatted, accent: PastelTheme.pastelSlate)
         }
     }
 
@@ -366,7 +374,7 @@ struct WorkoutCalendarView: View {
     // MARK: - Calendar Legend Section
     private var calendarLegendSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Обозначения на сетке")
+            Text("Grid legend")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(PastelTheme.textSecondary)
 
@@ -379,8 +387,8 @@ struct WorkoutCalendarView: View {
                             .foregroundStyle(PastelTheme.pastelAmber)
                             .shadow(color: PastelTheme.pastelAmber.opacity(0.8), radius: 3)
                     ),
-                    title: "Стрик 5+ дней",
-                    subtitle: "Серия в огне"
+                    title: "Streak 5+ days",
+                    subtitle: "Hot streak"
                 )
 
                 // 2. Green Dot: Streak up to 5 days
@@ -391,8 +399,8 @@ struct WorkoutCalendarView: View {
                             .frame(width: 7, height: 7)
                             .shadow(color: PastelTheme.pastelSage.opacity(0.8), radius: 3)
                     ),
-                    title: "Стрик до 5 дней",
-                    subtitle: "Тренировка"
+                    title: "Streak under 5 days",
+                    subtitle: "Workout"
                 )
 
                 // 3. Gray Square with subtle face: Rest day
@@ -412,8 +420,8 @@ struct WorkoutCalendarView: View {
                                 .foregroundStyle(PastelTheme.textTertiary.opacity(0.8))
                         }
                     ),
-                    title: "Без тренировки",
-                    subtitle: "День отдыха"
+                    title: "No workout",
+                    subtitle: "Rest day"
                 )
             }
         }
@@ -465,7 +473,7 @@ struct WorkoutCalendarView: View {
             return MiniWorkout(
                 id: w.persistentModelID,
                 date: w.date,
-                name: w.title.isEmpty ? "Силовая тренировка" : w.title,
+                name: w.title.isEmpty ? "Strength workout" : w.title,
                 durationSeconds: w.durationSeconds,
                 volumeKg: w.totalStrengthVolume,
                 exercisesCount: w.exercises.count,
@@ -570,11 +578,19 @@ private struct ArchitecturalMonthView: View {
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
 
+    private static var weekdaySymbols: [String] {
+        var calendar = Calendar.autoupdatingCurrent
+        calendar.firstWeekday = 2 // Monday-first grid
+        let symbols = calendar.veryShortWeekdaySymbols
+        let start = calendar.firstWeekday - 1
+        return Array(symbols[start...] + symbols[..<start])
+    }
+
     private var monthTitle: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = .autoupdatingCurrent
         formatter.dateFormat = "LLLL yyyy"
-        return formatter.string(from: monthDate).uppercased()
+        return formatter.string(from: monthDate).capitalized
     }
 
     private var daysInMonth: [Date] {
@@ -605,7 +621,7 @@ private struct ArchitecturalMonthView: View {
                 Spacer()
 
                 if !monthWorkouts.isEmpty {
-                    Text("\(monthWorkouts.count) трен.")
+                    Text("\(monthWorkouts.count) workouts")
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.pastelSage)
                         .padding(.horizontal, 8)
@@ -619,7 +635,7 @@ private struct ArchitecturalMonthView: View {
 
             // Weekday Strip: ПН, ВТ, СР, ЧТ, ПТ, СБ, ВС
             HStack(spacing: 6) {
-                ForEach(["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"], id: \.self) { symbol in
+                ForEach(Self.weekdaySymbols, id: \.self) { symbol in
                     Text(symbol)
                         .font(.system(size: 10.5, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textTertiary)
@@ -822,7 +838,7 @@ struct DayInspectionSheet: View {
 
     private var formattedDate: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = .autoupdatingCurrent
         formatter.dateFormat = "EEEE, d MMMM yyyy"
         let raw = formatter.string(from: data.date)
         return raw.prefix(1).uppercased() + raw.dropFirst()
@@ -848,7 +864,7 @@ struct DayInspectionSheet: View {
                                             Image(systemName: "flame.fill")
                                                 .font(.system(size: 11, weight: .bold))
                                                 .foregroundStyle(PastelTheme.pastelAmber)
-                                            Text("Стрик: \(data.streakAtDay) дней подряд • В ОГНЕ")
+                                            Text("Streak: \(data.streakAtDay) days in a row")
                                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                                 .foregroundStyle(PastelTheme.pastelAmber)
                                         }
@@ -862,7 +878,7 @@ struct DayInspectionSheet: View {
                                             Circle()
                                                 .fill(PastelTheme.pastelSage)
                                                 .frame(width: 6, height: 6)
-                                            Text("День тренировки • Стрик: \(data.streakAtDay) дн.")
+                                            Text("Training day — streak: \(data.streakAtDay) days")
                                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                                                 .foregroundStyle(PastelTheme.pastelSage)
                                         }
@@ -877,7 +893,7 @@ struct DayInspectionSheet: View {
                                         Image(systemName: "moon.stars.fill")
                                             .font(.system(size: 11))
                                             .foregroundStyle(PastelTheme.pastelSlate)
-                                        Text("День отдыха и восстановления")
+                                        Text("Rest and recovery day")
                                             .font(.system(size: 11, weight: .bold, design: .rounded))
                                             .foregroundStyle(PastelTheme.pastelSlate)
                                     }
@@ -954,22 +970,22 @@ struct DayInspectionSheet: View {
             // 3 Key Metrics
             HStack(spacing: 8) {
                 metricCell(
-                    title: "Время",
-                    value: "\(workout.durationSeconds / 60) мин",
+                    title: "Time",
+                    value: "\(workout.durationSeconds / 60) min",
                     icon: "clock.fill",
                     color: PastelTheme.pastelSlate
                 )
 
                 metricCell(
-                    title: "Тоннаж",
+                    title: "Tonnage",
                     value: "\(unitsManager.formatWeight(workout.volumeKg)) \(unitsManager.weightUnitString())",
                     icon: "scalemass.fill",
                     color: PastelTheme.pastelSage
                 )
 
                 metricCell(
-                    title: "Нагрузка",
-                    value: "\(workout.exercisesCount) упр. · \(workout.totalSets) с.",
+                    title: "Load",
+                    value: "\(workout.exercisesCount) ex · \(workout.totalSets) sets",
                     icon: "flame.fill",
                     color: PastelTheme.pastelAmber
                 )
@@ -978,7 +994,7 @@ struct DayInspectionSheet: View {
             // Targeted Muscles
             if !workout.muscleGroups.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Мышечные группы:")
+                    Text("Muscle groups:")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(PastelTheme.textTertiary)
 
@@ -1001,7 +1017,7 @@ struct DayInspectionSheet: View {
             if let w = context.model(for: workout.id) as? Workout {
                 NavigationLink(destination: WorkoutDetailView(workout: w, viewModel: di.makeWorkoutDetailViewModel())) {
                     HStack {
-                        Text("Подробный лог подходов")
+                        Text("Detailed set log")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
                         Spacer()
                         Image(systemName: "chevron.right")
@@ -1068,11 +1084,11 @@ struct DayInspectionSheet: View {
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Мышцы восстанавливаются")
+                    Text("Muscles recovering")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("Плановая суперкомпенсация")
+                    Text("Planned supercompensation")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(PastelTheme.textSecondary)
                 }
@@ -1080,7 +1096,7 @@ struct DayInspectionSheet: View {
                 Spacer()
             }
 
-            Text("В этот день тренировки не было. Время отдыха необходимо волокнам для синтеза белка, восстановления гликогена и регенерации нервной системы перед новыми силовыми рекордами.")
+            Text("No workout this day. Rest helps muscle protein synthesis, glycogen refill, and nervous-system recovery before the next hard session.")
                 .font(.system(size: 12.5, weight: .medium))
                 .foregroundStyle(PastelTheme.textSecondary)
                 .lineSpacing(3)
@@ -1090,7 +1106,7 @@ struct DayInspectionSheet: View {
                     .font(.system(size: 14))
                     .foregroundStyle(PastelTheme.pastelLavender)
 
-                Text("Совет: полноценный сон 7–8 часов и баланс белков с углеводами гарантируют ускоренный мышечный рост.")
+                Text("Tip: 7–8 hours of sleep and balanced protein plus carbs support recovery and growth.")
                     .font(.system(size: 11.5, weight: .medium))
                     .foregroundStyle(PastelTheme.textTertiary)
                     .lineSpacing(2)

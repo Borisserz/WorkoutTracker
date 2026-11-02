@@ -98,23 +98,31 @@ final class GestureController: ObservableObject {
             }
 
             if detected != .none {
+                #if DEBUG
                 print("🤚 GestureController: Started holding gesture \(detected)")
+                #endif
             }
         }
     }
 
     @MainActor
     private func triggerAction(for gesture: RecognizedGesture) {
+        #if DEBUG
         print("✅ GestureController: Gesture triggered \(gesture)")
+        #endif
 
         switch gesture {
         case .victory:
+            #if DEBUG
             print("🎯 GestureController: Sending confirmSet event")
+            #endif
             HapticManager.shared.notification(.success)
             gestureAction.send(.confirmSet)
 
         case .openPalm:
+            #if DEBUG
             print("🎯 GestureController: Sending cancelSet event")
+            #endif
             HapticManager.shared.notification(.error)
             gestureAction.send(.cancelSet)
 

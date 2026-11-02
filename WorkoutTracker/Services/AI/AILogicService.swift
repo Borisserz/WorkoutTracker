@@ -40,7 +40,7 @@ public enum AILogicError: Error, LocalizedError, Sendable {
             if code == 400 {
                 return "The request was invalid or too large. Please try asking a shorter question."
             } else if code >= 500 {
-                return "Google's AI servers are currently experiencing issues. Please try again later."
+                return String(localized: "The AI coach service is temporarily unavailable. Please try again later.")
             }
             return String(localized: "The AI service couldn't complete your request. Please try again.")
         case .decodingFailed:
@@ -85,10 +85,6 @@ private struct ChatNetworkResponse: Codable, Sendable {
     let hasWorkout: Bool
     let workoutTitle: String?
     let exercises: [GeneratedExerciseDTO]?
-}
-
-private struct RecoveryResponseDTO: Codable, Sendable {
-    let recommendedHours: Double
 }
 
 public actor AILogicService {
@@ -189,16 +185,6 @@ public actor AILogicService {
                 "exercises": GeminiSchema(type: .array, items: exerciseSchema, description: "The exercises (only if hasWorkout is true)")
             ],
             required: ["aiMessage", "hasWorkout"]
-        )
-    }
-
-    nonisolated private var recoverySchema: GeminiSchema {
-        GeminiSchema(
-            type: .object,
-            properties: [
-                "recommendedHours": GeminiSchema(type: .number, description: "Recommended recovery time in hours (e.g., 24, 48, 72, 96).")
-            ],
-            required: ["recommendedHours"]
         )
     }
 
@@ -484,21 +470,6 @@ public actor AILogicService {
         )
         let responseText = try await networkClient.generateText(from: requestBody)
         return try decodeJSON(GeneratedProgramDTO.self, from: responseText)
-    }
-
-    public func calculateOptimalRecoveryTime(workoutContext: String) async throws -> Double {
-        let systemPrompt = """
-        You are an elite sports scientist. Return ONE JSON object only: {"recommendedHours": number}.
-        Base the estimate on volume, sets, and effort. Typical range 24–96 hours. No markdown.
-        """
-        let requestBody = GeminiRequest(
-            systemInstruction: .init(parts: [.init(text: systemPrompt)]),
-            contents: [.init(role: "user", parts: [.init(text: "WORKOUT SUMMARY:\n\(workoutContext)")])],
-            generationConfig: .init(temperature: 0.1, responseMimeType: "application/json", responseSchema: recoverySchema)
-        )
-        let responseText = try await networkClient.generateText(from: requestBody)
-        let response = try decodeJSON(RecoveryResponseDTO.self, from: responseText)
-        return min(max(response.recommendedHours, 12.0), 120.0)
     }
 
     // MARK: - Private prompt builder

@@ -52,7 +52,7 @@ struct HistoryView: View {
     }
 
     private var hasActiveWorkout: Bool {
-        allWorkouts.contains { $0.endTime == nil }
+        workoutService.isStartBlocked || allWorkouts.contains { $0.endTime == nil }
     }
 
     private var displayTemplates: [WorkoutPreset] {
@@ -1013,7 +1013,7 @@ private struct BestWorkoutReplayCard: View {
     private var formattedDate: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMM"
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = .autoupdatingCurrent
         return formatter.string(from: workout.date)
     }
 

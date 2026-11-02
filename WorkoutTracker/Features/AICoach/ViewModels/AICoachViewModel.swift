@@ -66,6 +66,12 @@ final class AICoachViewModel {
         self.inputText = ""
     }
 
+    func cancelGeneration() {
+        currentTask?.cancel()
+        currentTask = nil
+        isGenerating = false
+    }
+
     func sendMessage(userWeight: Double, uiText: String? = nil, aiPrompt: String? = nil, isExplicitWorkoutRequest: Bool = false, context: String = "hub") async {
         let displayText = uiText ?? inputText
         let actualPrompt = aiPrompt ?? displayText.trimmingCharacters(in: .whitespacesAndNewlines)
