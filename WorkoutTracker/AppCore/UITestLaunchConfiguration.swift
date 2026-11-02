@@ -23,6 +23,7 @@ enum UITestLaunchConfiguration {
         defaults.set(true, forKey: "hasCompletedGodModeOnboarding_v1")
         defaults.set(true, forKey: "hasSeenFeatureDiscovery")
         defaults.set(true, forKey: "hasSeenFoodTrackerPromo")
+        defaults.set(true, forKey: SisterAppsPromoFlags.seenKey)
         defaults.set(true, forKey: "hasSeenCommitmentSheet")
         // Skip AI consent sheet so Hub chrome flows can open chat/tools.
         defaults.set(true, forKey: Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)

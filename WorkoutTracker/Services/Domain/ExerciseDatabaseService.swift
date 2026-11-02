@@ -150,7 +150,9 @@ public actor ExerciseDatabaseService {
         }
         
         guard let finalEnData = enData else {
+            #if os(iOS)
             AppLog.catalog.error("❌ Error: Could not find the base exercise directory either in the cloud or locally.")
+            #endif
             return
         }
 
@@ -194,7 +196,9 @@ public actor ExerciseDatabaseService {
             self.isLoaded = true
             
         } catch {
+            #if os(iOS)
             AppLog.catalog.error("❌ JSON parsing error for exercises: \(error.localizedDescription, privacy: .public)")
+            #endif
         }
         
         self.isLoading = false

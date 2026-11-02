@@ -50,6 +50,14 @@
       "defaultValue": {
         "value": "1"
       },
+      "description": "Legacy sister-apps gate (also enables Profile More from us + one-time sheet).",
+      "valueType": "STRING"
+    },
+    "show_sister_apps_promo": {
+      "defaultValue": {
+        "value": "0"
+      },
+      "description": "Alias for show_foodtracker_promo; either key ON shows sister apps promo.",
       "valueType": "STRING"
     }
   }
