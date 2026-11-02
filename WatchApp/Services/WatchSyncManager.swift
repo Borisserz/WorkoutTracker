@@ -75,22 +75,40 @@ final class WatchSyncManager: NSObject, WCSessionDelegate {
     /// No companion → allow Watch-only standalone.
     func phoneAllowsNewWorkout() async -> Bool {
         let session = WCSession.default
-        guard session.activationState == .activated else { return false }
         #if os(watchOS)
         let hasCompanion = session.isCompanionAppInstalled
         #else
         let hasCompanion = true
         #endif
-        if !session.isReachable {
-            return !hasCompanion
-        }
-        return await withCheckedContinuation { continuation in
-            session.sendMessage(["request": "canStartWorkout"], replyHandler: { reply in
-                continuation.resume(returning: (reply["allowed"] as? Bool) ?? false)
-            }, errorHandler: { _ in
-                // Transport failed with companion present — fail closed.
-                continuation.resume(returning: !hasCompanion)
-            })
+        switch WatchSessionPolicy.watchMayAttemptStart(
+            sessionActivated: session.activationState == .activated,
+            isReachable: session.isReachable,
+            hasCompanionApp: hasCompanion
+        ) {
+        case .refuse:
+            return false
+        case .allowStandalone:
+            return true
+        case .askPhone:
+            return await withCheckedContinuation { continuation in
+                session.sendMessage(["request": "canStartWorkout"], replyHandler: { reply in
+                    continuation.resume(
+                        returning: WatchSessionPolicy.watchMayStartAfterPhoneHandshake(
+                            phoneAllowed: reply["allowed"] as? Bool,
+                            transportFailed: false,
+                            hasCompanionApp: hasCompanion
+                        )
+                    )
+                }, errorHandler: { _ in
+                    continuation.resume(
+                        returning: WatchSessionPolicy.watchMayStartAfterPhoneHandshake(
+                            phoneAllowed: nil,
+                            transportFailed: true,
+                            hasCompanionApp: hasCompanion
+                        )
+                    )
+                })
+            }
         }
     }
 

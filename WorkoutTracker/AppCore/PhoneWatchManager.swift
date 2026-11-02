@@ -111,15 +111,24 @@ final class PhoneWatchManager: NSObject, WCSessionDelegate {
     /// True when Watch may create a new session (no fresh active workout on phone).
     @MainActor
     private func phoneAllowsWatchStart() -> Bool {
-        if isSessionStartBlocked?() == true { return false }
-        // Fail closed when store is not ready — Watch must not invent a phone session.
-        guard let container = modelContainer else { return false }
+        let blocked = isSessionStartBlocked?() == true
+        guard let container = modelContainer else {
+            return WatchSessionPolicy.phoneAllowsWatchStart(
+                isSessionStartBlocked: blocked,
+                hasModelContainer: false,
+                freshActiveWorkoutCount: 0
+            )
+        }
         let context = ModelContext(container)
         let desc = FetchDescriptor<Workout>(predicate: #Predicate { $0.endTime == nil })
         let actives = ((try? context.fetch(desc)) ?? []).filter {
             Date().timeIntervalSince($0.date) <= 12 * 3600
         }
-        return actives.isEmpty
+        return WatchSessionPolicy.phoneAllowsWatchStart(
+            isSessionStartBlocked: blocked,
+            hasModelContainer: true,
+            freshActiveWorkoutCount: actives.count
+        )
     }
 
     // MARK: - Sending
