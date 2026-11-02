@@ -1,5 +1,6 @@
 
 import Foundation
+import OSLog
 import SwiftData
 
 final class DataManager: Sendable {
@@ -153,7 +154,7 @@ final class DataManager: Sendable {
             try jsonData.write(to: tempURL)
             return tempURL
         } catch {
-            print("❌ Failed to encode JSON: \(error.localizedDescription)")
+            AppLog.export.error("❌ Failed to encode JSON: \(error.localizedDescription)")
             return nil
         }
     }
@@ -228,7 +229,7 @@ final class DataManager: Sendable {
             try csvData.write(to: tempURL)
             return tempURL
         } catch {
-            print("❌ Failed to encode CSV: \(error.localizedDescription)")
+            AppLog.export.error("❌ Failed to encode CSV: \(error.localizedDescription)")
             return nil
         }
     }

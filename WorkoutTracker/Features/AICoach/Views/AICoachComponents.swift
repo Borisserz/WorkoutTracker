@@ -241,7 +241,7 @@ struct ProposedWorkoutCardView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "play.fill")
                         .font(.system(size: 13, weight: .bold))
-                    Text("Принять и начать тренировку")
+                    Text("Accept and start workout")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                 }
                 .frame(maxWidth: .infinity)

@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import OSLog
 import SwiftData
 import Observation
 import FirebaseAuth
@@ -418,7 +419,7 @@ final class WorkoutDetailViewModel {
             do {
                 try await HealthKitManager.shared.saveWorkout(title: wTitle, startDate: wStart, endDate: wEnd, durationSeconds: wDuration, calories: burnedCalories)
             } catch {
-                print("❌ ViewModel: HealthKit call error- \(error)")
+                AppLog.health.error("❌ ViewModel: HealthKit call error- \(error.localizedDescription, privacy: .public)")
             }
         }
 

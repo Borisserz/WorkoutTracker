@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Speech
 import AVFoundation
 import Combine
@@ -108,9 +109,7 @@ final class SpeechRecognizer {
                 }
             }
         } catch {
-            #if DEBUG
-            print("Error starting microphone: \(error)")
-            #endif
+            AppLog.speech.error("Error starting microphone: \(error.localizedDescription, privacy: .public)")
             errorMessage = "Couldn't start the microphone. Please try again."
             stopTranscribing()
         }

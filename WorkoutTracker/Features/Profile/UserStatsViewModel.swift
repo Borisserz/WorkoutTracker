@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import OSLog
 import SwiftData
 import Observation
 
@@ -25,7 +26,7 @@ final class UserStatsViewModel {
                 try? await userRepository.addWeightEntry(weight: hkWeight, date: Date(), imageFileNames: [])
             }
         } catch {
-            print("HealthKit sync skipped: \(error.localizedDescription)")
+            AppLog.health.error("HealthKit sync skipped: \(error.localizedDescription)")
         }
     }
 
@@ -36,7 +37,7 @@ final class UserStatsViewModel {
             do {
                 savedFileNames = try await LocalImageStore.shared.saveImages(images)
             } catch {
-                print("❌ Failed to save progress photos: \(error.localizedDescription)")
+                AppLog.health.error("❌ Failed to save progress photos: \(error.localizedDescription)")
             }
         }
 

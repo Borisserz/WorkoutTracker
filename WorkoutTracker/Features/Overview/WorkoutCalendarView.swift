@@ -45,7 +45,6 @@ struct WorkoutCalendarView: View {
         }
     }
 
-    @Query private var allWorkouts: [Workout]
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(ThemeManager.self) private var themeManager
@@ -54,15 +53,10 @@ struct WorkoutCalendarView: View {
     @Environment(DIContainer.self) private var di
     @Environment(\.dismiss) private var dismiss
 
-    init() {
-        var descriptor = FetchDescriptor<Workout>(
-            sortBy: [SortDescriptor(\.date, order: .reverse)]
-        )
-        descriptor.fetchLimit = 800
-        _allWorkouts = Query(descriptor)
-    }
-
     @State private var selectedTimeRange: TimeRange = .month
+    @State private var rawWorkouts: [Workout] = []
+    @State private var calendarFetchLimit = WorkoutCalendarView.calendarPageSize
+    @State private var hasMoreCalendar = false
     @State private var allMiniWorkouts: [MiniWorkout] = []
     @State private var workoutsByMonth: [Int: [MiniWorkout]] = [:]
     @State private var workoutsByDay: [String: [MiniWorkout]] = [:]
@@ -72,6 +66,8 @@ struct WorkoutCalendarView: View {
     @State private var selectedDate: Date? = nil
     @State private var streakCount: Int = 0
     @State private var inspectedDay: InspectedDayData? = nil
+
+    private static let calendarPageSize = 120
 
     private var filteredWorkouts: [MiniWorkout] {
         let cutoff: Date
@@ -149,6 +145,20 @@ struct WorkoutCalendarView: View {
                         if isLoaded {
                             monthsSection
 
+                            if selectedTimeRange == .all, hasMoreCalendar {
+                                Button {
+                                    HapticManager.shared.impact(.soft)
+                                    loadMoreCalendar()
+                                } label: {
+                                    Text("Load older workouts")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(PastelTheme.pastelSage)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 12)
+                                }
+                                .accessibilityIdentifier("wt.calendar.loadMore")
+                            }
+
                             // 5. Calendar Activity Legend (Below Month Grid)
                             calendarLegendSection
                                 .padding(.top, 4)
@@ -184,10 +194,10 @@ struct WorkoutCalendarView: View {
         }
         .preferredColorScheme(.dark)
         .onAppear {
-            loadCalendarData()
+            fetchCalendarWorkouts(reset: true)
         }
-        .onChange(of: allWorkouts.count) { _, _ in
-            loadCalendarData()
+        .onChange(of: selectedTimeRange) { _, _ in
+            fetchCalendarWorkouts(reset: true)
         }
         .sheet(item: $inspectedDay) { data in
             DayInspectionSheet(
@@ -465,8 +475,34 @@ struct WorkoutCalendarView: View {
         return "\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)"
     }
 
+    private func fetchCalendarWorkouts(reset: Bool) {
+        if reset {
+            calendarFetchLimit = Self.calendarPageSize
+        }
+        let needed: Int
+        switch selectedTimeRange {
+        case .month: needed = 60
+        case .threeMonths: needed = 120
+        case .year: needed = 400
+        case .all: needed = calendarFetchLimit
+        }
+        var descriptor = FetchDescriptor<Workout>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = needed
+        rawWorkouts = (try? context.fetch(descriptor)) ?? []
+        hasMoreCalendar = selectedTimeRange == .all && rawWorkouts.count >= calendarFetchLimit
+        loadCalendarData()
+    }
+
+    private func loadMoreCalendar() {
+        guard selectedTimeRange == .all, hasMoreCalendar else { return }
+        calendarFetchLimit += Self.calendarPageSize
+        fetchCalendarWorkouts(reset: false)
+    }
+
     private func loadCalendarData() {
-        let miniWorkouts = allWorkouts.map { w in
+        let miniWorkouts = rawWorkouts.map { w in
             let slugs = w.exercises.map { $0.muscleGroup }
             let uniqueGroups = Array(Set(slugs.filter { !$0.isEmpty }))
             let setsCount = w.exercises.reduce(0) { $0 + $1.setsCount }

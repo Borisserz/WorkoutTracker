@@ -1,4 +1,5 @@
 internal import SwiftUI
+import OSLog
 import SwiftData
 import Observation
 import Combine
@@ -100,7 +101,7 @@ final class DashboardViewModel {
                     trace?.stop()
                 }
             } catch {
-                print("Dashboard cache refresh error: \(error)")
+                AppLog.ui.error("Dashboard cache refresh error: \(error.localizedDescription, privacy: .public)")
                 trace?.stop()
             }
         }

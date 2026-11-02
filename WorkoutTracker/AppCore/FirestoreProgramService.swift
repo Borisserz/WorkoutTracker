@@ -55,7 +55,7 @@ final class FirestoreProgramService {
                     )
                     fetchedLegendary.append(routine)
                 } catch {
-                    print("❌ Error decoding FBLegendaryRoutine for doc \(doc.documentID): \(error)")
+                    AppLog.firestore.error("❌ Error decoding FBLegendaryRoutine for doc \(doc.documentID): \(error.localizedDescription, privacy: .public)")
                 }
             }
 
@@ -77,7 +77,7 @@ final class FirestoreProgramService {
                     )
                     fetchedPrograms.append(prog)
                 } catch {
-                    print("❌ Error decoding FBWorkoutProgram for doc \(doc.documentID): \(error)")
+                    AppLog.firestore.error("❌ Error decoding FBWorkoutProgram for doc \(doc.documentID): \(error.localizedDescription, privacy: .public)")
                 }
             }
 

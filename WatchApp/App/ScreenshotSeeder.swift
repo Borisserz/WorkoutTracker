@@ -1,6 +1,7 @@
 
 #if DEBUG
 import Foundation
+import OSLog
 import SwiftData
 
 @MainActor
@@ -39,7 +40,7 @@ enum ScreenshotSeeder {
 
         presets.forEach { context.insert($0) }
         try? context.save()
-        print("⌚️ 🌱 seeded \(presets.count) screenshot presets")
+        WatchAppLog.seed.info("⌚️ 🌱 seeded \(presets.count) screenshot presets")
     }
 }
 #endif

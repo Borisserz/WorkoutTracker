@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import OSLog
 import AVFoundation
 import Vision
 import Combine
@@ -32,9 +33,7 @@ final class CameraManager: ObservableObject {
                 captureSession.stopRunning()
             }
         }
-        #if DEBUG
-        print("♻️ CameraManager deallocated, Vision pipeline cleared")
-        #endif
+        AppLog.ml.debug("♻️ CameraManager deallocated, Vision pipeline cleared")
     }
 
     func checkPermission() {
@@ -274,9 +273,7 @@ final class CameraDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelega
         } catch {
             // Не спамим логами на каждый фрейм — только важные ошибки
             if (error as NSError).code != -10810 {
-                #if DEBUG
-                print("⚠️ Vision request failed: \(error.localizedDescription)")
-                #endif
+                AppLog.ml.error("⚠️ Vision request failed: \(error.localizedDescription)")
             }
         }
     }

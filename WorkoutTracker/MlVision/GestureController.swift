@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import OSLog
 import Vision
 import CoreGraphics
 import Combine
@@ -98,31 +99,23 @@ final class GestureController: ObservableObject {
             }
 
             if detected != .none {
-                #if DEBUG
-                print("🤚 GestureController: Started holding gesture \(detected)")
-                #endif
+                AppLog.ml.debug("🤚 GestureController: Started holding gesture \(String(describing: detected))")
             }
         }
     }
 
     @MainActor
     private func triggerAction(for gesture: RecognizedGesture) {
-        #if DEBUG
-        print("✅ GestureController: Gesture triggered \(gesture)")
-        #endif
+        AppLog.ml.debug("✅ GestureController: Gesture triggered \(String(describing: gesture))")
 
         switch gesture {
         case .victory:
-            #if DEBUG
-            print("🎯 GestureController: Sending confirmSet event")
-            #endif
+            AppLog.ml.debug("🎯 GestureController: Sending confirmSet event")
             HapticManager.shared.notification(.success)
             gestureAction.send(.confirmSet)
 
         case .openPalm:
-            #if DEBUG
-            print("🎯 GestureController: Sending cancelSet event")
-            #endif
+            AppLog.ml.debug("🎯 GestureController: Sending cancelSet event")
             HapticManager.shared.notification(.error)
             gestureAction.send(.cancelSet)
 

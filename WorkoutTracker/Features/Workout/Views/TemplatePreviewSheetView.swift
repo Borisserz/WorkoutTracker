@@ -1,6 +1,7 @@
 
 
 internal import SwiftUI
+import OSLog
 import SwiftData
 
 enum PreviewItem: Identifiable, Hashable {
@@ -438,7 +439,7 @@ struct TemplatePreviewSheetView: View {
                         }
                     }
                 } catch {
-                    print("❌ The sharing error: \(error)")
+                    AppLog.ui.error("❌ The sharing error: \(error.localizedDescription, privacy: .public)")
                     await MainActor.run { self.isSharing = false }
                 }
             }
