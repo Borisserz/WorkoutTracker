@@ -45,7 +45,7 @@ struct WorkoutCalendarView: View {
         }
     }
 
-    @Query(sort: \Workout.date, order: .reverse) private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
     @Environment(\.modelContext) private var context
     @Environment(WorkoutService.self) var workoutService
     @Environment(ThemeManager.self) private var themeManager
@@ -53,6 +53,14 @@ struct WorkoutCalendarView: View {
     @Environment(DashboardViewModel.self) private var dashboardViewModel
     @Environment(DIContainer.self) private var di
     @Environment(\.dismiss) private var dismiss
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 800
+        _allWorkouts = Query(descriptor)
+    }
 
     @State private var selectedTimeRange: TimeRange = .month
     @State private var allMiniWorkouts: [MiniWorkout] = []

@@ -1644,8 +1644,16 @@ struct ProgressAnalysisSheet: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var colorManager = MuscleColorManager.shared
 
-    @Query(filter: #Predicate<Workout> { $0.endTime != nil }, sort: \.date, order: .reverse)
-    private var allWorkouts: [Workout]
+    @Query private var allWorkouts: [Workout]
+
+    init() {
+        var descriptor = FetchDescriptor<Workout>(
+            predicate: #Predicate<Workout> { $0.endTime != nil },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        descriptor.fetchLimit = 400
+        _allWorkouts = Query(descriptor)
+    }
 
     let periods = ["Последние 7 дней", "Мезоцикл (4 недели)", "Макроцикл (12 недель)"]
     let focuses = ["Мышечный баланс", "Лидеры роста"]
