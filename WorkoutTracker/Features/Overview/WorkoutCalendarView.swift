@@ -578,6 +578,14 @@ private struct ArchitecturalMonthView: View {
     private let calendar = Calendar.current
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
 
+    private static var weekdaySymbols: [String] {
+        var calendar = Calendar.autoupdatingCurrent
+        calendar.firstWeekday = 2 // Monday-first grid
+        let symbols = calendar.veryShortWeekdaySymbols
+        let start = calendar.firstWeekday - 1
+        return Array(symbols[start...] + symbols[..<start])
+    }
+
     private var monthTitle: String {
         let formatter = DateFormatter()
         formatter.locale = .autoupdatingCurrent
