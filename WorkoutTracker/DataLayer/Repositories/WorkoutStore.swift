@@ -151,8 +151,8 @@ actor WorkoutStore: WorkoutStoreProtocol {
                 if hour >= 20 { uStats.nightWorkouts = max(0, uStats.nightWorkouts - 1) }
             }
 
-            let exStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<ExerciseStat>())) ?? []).map { ($0.exerciseName, $0) })
-            let mStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<MuscleStat>())) ?? []).map { ($0.muscleName, $0) })
+            let exStatsDict = exerciseStats(named: statExerciseNames(in: workout))
+            let mStatsDict = muscleStats(named: statMuscleNames(in: workout))
 
             for exercise in workout.exercises {
                 let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
@@ -308,8 +308,8 @@ actor WorkoutStore: WorkoutStoreProtocol {
             if hour < 9 { uStats.earlyWorkouts += 1 }
             if hour >= 20 { uStats.nightWorkouts += 1 }
 
-            var exStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<ExerciseStat>())) ?? []).map { ($0.exerciseName, $0) })
-            var mStatsDict = Dictionary(uniqueKeysWithValues: ((try? modelContext.fetch(FetchDescriptor<MuscleStat>())) ?? []).map { ($0.muscleName, $0) })
+            var exStatsDict = exerciseStats(named: statExerciseNames(in: workout))
+            var mStatsDict = muscleStats(named: statMuscleNames(in: workout))
 
             for exercise in workout.exercises {
                 let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
@@ -728,6 +728,54 @@ extension WorkoutStore {
             }
         }
         try modelContext.save()
+    }
+
+    private func statExerciseNames(in workout: Workout) -> Set<String> {
+        var names = Set<String>()
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            for ex in targets {
+                names.insert(ex.name)
+            }
+        }
+        return names
+    }
+
+    private func statMuscleNames(in workout: Workout) -> Set<String> {
+        var names = Set<String>()
+        for exercise in workout.exercises {
+            let targets = exercise.isSuperset ? exercise.subExercises : [exercise]
+            for ex in targets {
+                names.insert(ex.muscleGroup)
+            }
+        }
+        return names
+    }
+
+    private func exerciseStats(named names: Set<String>) -> [String: ExerciseStat] {
+        var dict: [String: ExerciseStat] = [:]
+        for name in names {
+            let wanted = name
+            var descriptor = FetchDescriptor<ExerciseStat>(predicate: #Predicate { $0.exerciseName == wanted })
+            descriptor.fetchLimit = 1
+            if let row = try? modelContext.fetch(descriptor).first {
+                dict[name] = row
+            }
+        }
+        return dict
+    }
+
+    private func muscleStats(named names: Set<String>) -> [String: MuscleStat] {
+        var dict: [String: MuscleStat] = [:]
+        for name in names {
+            let wanted = name
+            var descriptor = FetchDescriptor<MuscleStat>(predicate: #Predicate { $0.muscleName == wanted })
+            descriptor.fetchLimit = 1
+            if let row = try? modelContext.fetch(descriptor).first {
+                dict[name] = row
+            }
+        }
+        return dict
     }
 }
 

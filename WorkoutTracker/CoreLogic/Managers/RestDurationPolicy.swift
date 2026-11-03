@@ -44,4 +44,23 @@ enum RestDurationPolicy {
         }
         return userDefaultRest > 0 ? userDefaultRest : 60
     }
+
+    /// Label and tap on the session rest button. Both must use this so the printed time is the time that starts.
+    /// No pending set → saved default, else 60 (same fallback as `resolveSeconds`).
+    static func manualButtonSeconds(
+        pendingTemplateRest: Int?,
+        pendingEffort: Int?,
+        pendingType: ExerciseType?,
+        userDefaultRest: Int
+    ) -> Int {
+        if let pendingType {
+            return resolveSeconds(
+                templateRestSeconds: pendingTemplateRest,
+                effort: pendingEffort ?? EffortScale.minimum,
+                exerciseType: pendingType,
+                userDefaultRest: userDefaultRest
+            )
+        }
+        return userDefaultRest > 0 ? userDefaultRest : 60
+    }
 }

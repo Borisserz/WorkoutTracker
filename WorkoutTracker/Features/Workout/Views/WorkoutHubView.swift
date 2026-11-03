@@ -548,11 +548,13 @@ struct WorkoutHubView: View {
                         .font(.system(size: 18, weight: .heavy, design: .rounded))
                         .foregroundStyle(PastelTheme.textOnOat)
                         .lineLimit(1)
+                        .minimumScaleFactor(0.7)
 
                     Text("Free, AI, or from a plan")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundStyle(PastelTheme.textOnOat.opacity(0.8))
-                        .lineLimit(1)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.75)
                 }
 
                 Spacer(minLength: 12)
@@ -1517,7 +1519,13 @@ private struct ActiveWorkoutResumeCard: View {
                     )
                 }
 
-                Text(workout.title.isEmpty ? "Current session" : workout.title)
+                Group {
+                    if workout.title.isEmpty {
+                        Text("Current session")
+                    } else {
+                        Text(workout.title)
+                    }
+                }
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
                     .lineLimit(1)
@@ -1767,7 +1775,13 @@ struct WorkoutHubEmptyStateView: View {
                     .foregroundStyle(PastelTheme.pastelOat)
             }
 
-            Text(isFiltering ? "No results" : "No saved templates")
+            Group {
+                if isFiltering {
+                    Text("No results")
+                } else {
+                    Text("No saved templates")
+                }
+            }
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(PastelTheme.textPrimary)
 

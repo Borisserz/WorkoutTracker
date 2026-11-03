@@ -237,7 +237,14 @@ final class WorkoutDetailViewModel {
                           let w = set.weight ?? 0.0
                           let r = set.reps ?? 0
 
-                          if w >= goal.targetValue && r >= goal.targetReps {
+                          if StrengthGoalMatcher.isMet(
+                            setType: set.type,
+                            isCompleted: set.isCompleted,
+                            weight: w,
+                            reps: r,
+                            targetWeight: goal.targetValue,
+                            targetReps: goal.targetReps
+                          ) {
                               goal.isCompleted = true
                               achieved = true
                           }

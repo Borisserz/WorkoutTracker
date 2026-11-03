@@ -30833,7 +30833,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Как работают полосы"
+            "value": "Как работает серия"
           }
         }
       }
@@ -66475,7 +66475,7 @@
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "Твойа серия сбросится, если вы не будете тренироваться в течение этого количества дней отдыха."
+            "value": "Твоя серия сбросится, если не тренироваться в течение этого количества дней отдыха."
           }
         }
       }
@@ -77180,6 +77180,310 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ожидание"
+          }
+        }
+      }
+    },
+    "Create Routine": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create Routine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать программу"
+          }
+        }
+      }
+    },
+    "Build your own best": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build your own best"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Собери свою"
+          }
+        }
+      }
+    },
+    "Today's split": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today's split"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Сплит на сегодня"
+          }
+        }
+      }
+    },
+    "From catalog": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From catalog"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Из каталога"
+          }
+        }
+      }
+    },
+    "Classic volume & intensity samples": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Classic volume & intensity samples"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Классические примеры объёма и интенсивности"
+          }
+        }
+      }
+    },
+    "Current session": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current session"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Текущая тренировка"
+          }
+        }
+      }
+    },
+    "No saved templates": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No saved templates"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Нет сохранённых шаблонов"
+          }
+        }
+      }
+    },
+    "No results": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No results"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ничего не найдено"
+          }
+        }
+      }
+    },
+    "Showing bundled sample programs (generic names only). Connect to refresh the live catalog.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showing bundled sample programs (generic names only). Connect to refresh the live catalog."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Показаны встроенные примеры программ (общие названия). Подключись к сети, чтобы обновить каталог."
+          }
+        }
+      }
+    },
+    "To begin": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To begin"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Начать"
+          }
+        }
+      }
+    },
+    "Create a profile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a profile"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Создать профиль"
+          }
+        }
+      }
+    },
+    "Log in to the system": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log in to the system"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Войти"
+          }
+        }
+      }
+    },
+    "Name / alias": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name / alias"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Имя"
+          }
+        }
+      }
+    },
+    "CNS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "CNS"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ЦНС"
+          }
+        }
+      }
+    },
+    "Pulse": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pulse"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Пульс"
+          }
+        }
+      }
+    },
+    "Routine builder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Routine builder"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Конструктор тренировки"
+          }
+        }
+      }
+    },
+    "Picks exercises on this device. Weights come only from sets you have already logged.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Picks exercises on this device. Weights come only from sets you have already logged."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Упражнения подбираются на устройстве. Вес берётся только из подходов, которые ты уже записал."
+          }
+        }
+      }
+    },
+    "Build routine": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build routine"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Собрать тренировку"
+          }
+        }
+      }
+    },
+    "To answer questions and build plans, the AI coach sends your messages to a secure cloud service. Messages are tied to your account for rate limits. Body weight and Apple Health data are not included. The app also sends usage and crash reports. Those reports do not include body weight, Apple Health samples, or the weight and reps of a set.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "To answer questions and build plans, the AI coach sends your messages to a secure cloud service. Messages are tied to your account for rate limits. Body weight and Apple Health data are not included. The app also sends usage and crash reports. Those reports do not include body weight, Apple Health samples, or the weight and reps of a set."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Чтобы отвечать и собирать планы, тренер отправляет твои сообщения в облачный сервис. Сообщения привязаны к аккаунту для лимитов. Вес тела и данные Apple Health туда не входят. Приложение также отправляет отчёты об использовании и сбоях. В них нет веса тела, данных Apple Health и веса с повторами подхода."
           }
         }
       }

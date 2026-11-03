@@ -24,9 +24,9 @@ struct ProfileView: View {
 
     @AppStorage(Constants.UserDefaultsKeys.userName.rawValue) private var userName = ""
     @AppStorage(Constants.UserDefaultsKeys.userAvatar.rawValue) private var userAvatar = ""
-    @AppStorage("userHeight") private var userHeight = 180
+    @AppStorage("userHeight") private var userHeight = 0
     @AppStorage("userAge") private var userAge = 25
-    @AppStorage("userBodyWeight") private var userBodyWeight: Double = 75.0
+    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var userBodyWeight: Double = 0
 
     @Environment(UnitsManager.self) var unitsManager
     @Environment(DashboardViewModel.self) var dashboardViewModel
@@ -86,7 +86,17 @@ struct ProfileView: View {
                             BodyProgressChartView(weightHistory: weightHistory, unitsManager: unitsManager)
                         }
 
-                        UserMetricsOverviewCard(height: userHeight, age: userAge, weight: userBodyWeight) { showEditMetrics = true }
+                        UserMetricsOverviewCard(
+                            age: userAge,
+                            height: ProfileMetricsFormatter.height(
+                                storedCm: userHeight > 0 ? Double(userHeight) : nil,
+                                unit: unitsManager.sizeUnit
+                            ),
+                            weight: ProfileMetricsFormatter.weight(
+                                storedKg: userBodyWeight > 10 ? userBodyWeight : nil,
+                                unit: unitsManager.weightUnit
+                            )
+                        ) { showEditMetrics = true }
 
                         if showFoodTrackerPromo {
                             moreFromUsSection
@@ -1312,9 +1322,9 @@ struct BodyProgressChartView: View {
 }
 
 struct UserMetricsOverviewCard: View {
-    var height: Int
     var age: Int
-    var weight: Double
+    var height: (value: String, unit: String)
+    var weight: (value: String, unit: String)
     var onEdit: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
@@ -1337,14 +1347,14 @@ struct UserMetricsOverviewCard: View {
 
             HStack(spacing: 12) {
                 metricBox(title: "Age", value: "\(age)", unit: "yrs", icon: "calendar")
-                metricBox(title: "Height", value: "\(height)", unit: "cm", icon: "ruler")
-                metricBox(title: "Weight", value: String(format: "%.1f", weight), unit: "kg", icon: "scalemass")
+                metricBox(title: "Height", value: height.value, unit: height.unit, icon: "ruler")
+                metricBox(title: "Weight", value: weight.value, unit: weight.unit, icon: "scalemass")
             }
             .padding(.horizontal, 20)
         }
     }
     
-    private func metricBox(title: LocalizedStringKey, value: String, unit: LocalizedStringKey, icon: String) -> some View {
+    private func metricBox(title: LocalizedStringKey, value: String, unit: String, icon: String) -> some View {
         VStack(spacing: 8) {
             HStack(spacing: 4) {
                 Image(systemName: icon)

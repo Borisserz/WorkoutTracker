@@ -82,8 +82,15 @@ struct SetRowView: View {
     private var repsBinding: Binding<Double?> {
         Binding<Double?>(get: { set.reps.map { Double($0) } }, set: { set.reps = $0.map { InputValidator.validateReps(Int($0)).clampedValue }; onDataChange?() })
     }
+    private var timeField: SetTimeField {
+        exerciseType == .cardio ? .minutes : .seconds
+    }
+
     private var timeBinding: Binding<Double?> {
-        Binding<Double?>(get: { set.time.map { Double($0) } }, set: { set.time = $0.map { InputValidator.validateTime(Int($0)).clampedValue }; onDataChange?() })
+        Binding<Double?>(
+            get: { set.time.map { SetTimeCodec.displayValue(fromStoredSeconds: $0, field: timeField) } },
+            set: { set.time = $0.map { SetTimeCodec.storedSeconds(fromDisplay: $0, field: timeField) }; onDataChange?() }
+        )
     }
     private var weightBinding: Binding<Double?> {
         Binding<Double?>(get: { set.weight.map { unitsManager.convertFromKilograms($0) } }, set: { set.weight = $0.map { InputValidator.validateWeight(unitsManager.convertToKilograms($0)).clampedValue }; onDataChange?() })

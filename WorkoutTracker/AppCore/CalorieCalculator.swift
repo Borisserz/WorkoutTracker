@@ -5,7 +5,9 @@ import Foundation
 struct CalorieCalculator: Sendable {
 
     static func calculate(for workout: Workout, userWeight: Double) -> Int {
-        let safeWeight = userWeight > 10 ? userWeight : 75.0
+        // Missing or placeholder weight must not burn calories as a made-up 75 kg body.
+        guard userWeight > 10 else { return 0 }
+        let safeWeight = userWeight
 
         var totalStrengthActiveSeconds = 0
         var totalCardioActiveSeconds = 0

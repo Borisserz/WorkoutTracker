@@ -298,11 +298,12 @@ struct ExerciseCardView: View {
                         guard countedReps > 0,
                               let targetSet = exercise.setsList.first(where: { !$0.isCompleted }) else { return }
                         targetSet.reps = countedReps
+                        targetSet.isCompleted = true
                         let isLast = targetSet.id == exercise.setsList.last?.id
                         let upcomingWeightStr: String? = {
                             if let next = exercise.sortedSets.drop(while: { $0.id != targetSet.id }).dropFirst().first,
                                let w = next.weight {
-                                return "\(w) \(unitsManager.weightUnitString())"
+                                return "\(unitsManager.formatWeight(w)) \(unitsManager.weightUnitString())"
                             }
                             return nil
                         }()

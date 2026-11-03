@@ -225,7 +225,12 @@ final class WorkoutService {
                         await MainActor.run {
                             let mainContext = container.mainContext
                             if let mainWorkout = mainContext.model(for: pid) as? Workout {
-                                Task { await self.processCompletedWorkout(mainWorkout) }
+                                Task {
+                                    await self.processCompletedWorkout(
+                                        mainWorkout,
+                                        mirrorToHealthKit: payload.healthKitSavedOnWatch != true
+                                    )
+                                }
                                 self.appState.returnToActiveWorkoutId = nil
                             }
                         }
@@ -254,7 +259,12 @@ final class WorkoutService {
                             TrackingManager.shared.track(.watchSyncCompleted(success: true, itemsSynced: itemsCount))
                             let mainContext = container.mainContext
                             if let mainWorkout = mainContext.model(for: pid) as? Workout {
-                                Task { await self.processCompletedWorkout(mainWorkout) }
+                                Task {
+                                    await self.processCompletedWorkout(
+                                        mainWorkout,
+                                        mirrorToHealthKit: payload.healthKitSavedOnWatch != true
+                                    )
+                                }
                                 self.appState.returnToActiveWorkoutId = nil
                             }
                         }
@@ -474,17 +484,19 @@ final class WorkoutService {
         }
     }
 
-    func processCompletedWorkout(_ workout: Workout) async {
+    func processCompletedWorkout(_ workout: Workout, mirrorToHealthKit: Bool = true) async {
             defer { liveActivityManager.stopAllActivities() }
             do {
                 try await workoutStore.processCompletedWorkout(workoutID: workout.persistentModelID)
+
+                guard mirrorToHealthKit else { return }
 
                 let wTitle = workout.title
                 let wStart = workout.date
                 let wEnd = workout.endTime ?? Date()
                 let wDuration = workout.durationSeconds > 0 ? workout.durationSeconds : Int(wEnd.timeIntervalSince(wStart))
 
-                let userWeight = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.userBodyWeight.rawValue)
+                let userWeight = BodyMetricStore.weightKilograms() ?? 0
                 let burnedCalories = CalorieCalculator.calculate(for: workout, userWeight: userWeight)
 
                 Task.detached {

@@ -31,7 +31,7 @@ struct AIConsentSheet: View {
                         .font(.title2.bold())
                         .foregroundStyle(PastelTheme.textPrimary)
 
-                    Text("To answer questions and build plans, the AI coach sends your messages to a secure cloud service. Messages are tied to your account for rate limits. Weight and Apple Health data are never shared with third parties.")
+                    Text("To answer questions and build plans, the AI coach sends your messages to a secure cloud service. Messages are tied to your account for rate limits. Body weight and Apple Health data are not included. The app also sends usage and crash reports. Those reports do not include body weight, Apple Health samples, or the weight and reps of a set.")
                         .font(.body)
                         .foregroundColor(PastelTheme.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)

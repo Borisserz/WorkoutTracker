@@ -79,7 +79,7 @@ private struct VitalChipButton: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 3) {
-                        Text(title)
+                        Text(LocalizedStringKey(title))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(PastelTheme.textSecondary)
                             .lineLimit(1)

@@ -295,18 +295,23 @@ struct WorkoutDetailContentView: View {
         if timerManager.isRestTimerActive {
             timerManager.stopRestTimer()
         } else if let pending = nextPendingSetInfo {
-            let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
-            let rest = RestDurationPolicy.resolveSeconds(
-                templateRestSeconds: pending.exercise.restSeconds,
-                effort: pending.exercise.effort,
-                exerciseType: pending.exercise.type,
-                userDefaultRest: saved
+            timerManager.startRestTimer(
+                duration: restButtonSeconds(pending: pending),
+                exerciseName: pending.exercise.name
             )
-            timerManager.startRestTimer(duration: rest, exerciseName: pending.exercise.name)
         } else {
-            let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
-            timerManager.startRestTimer(duration: saved > 0 ? saved : 60)
+            timerManager.startRestTimer(duration: restButtonSeconds(pending: nil))
         }
+    }
+
+    private func restButtonSeconds(pending: (exercise: Exercise, setIndex: Int, set: WorkoutSet)?) -> Int {
+        let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
+        return RestDurationPolicy.manualButtonSeconds(
+            pendingTemplateRest: pending?.exercise.restSeconds,
+            pendingEffort: pending?.exercise.effort,
+            pendingType: pending?.exercise.type,
+            userDefaultRest: saved
+        )
     }
 
     private func finishCurrentWorkout() {
@@ -381,8 +386,7 @@ struct WorkoutDetailContentView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     } else {
-                        let saved = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.defaultRestTime.rawValue)
-                        let secs = saved > 0 ? saved : 90
+                        let secs = restButtonSeconds(pending: nextPendingSetInfo)
                         Text(String(format: "%02d:%02d Rest", secs / 60, secs % 60))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .lineLimit(1)

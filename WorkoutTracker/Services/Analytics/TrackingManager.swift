@@ -107,14 +107,14 @@ public final class TrackingManager: @unchecked Sendable {
                 ]
             case .workoutCancelled(let duration, let exercisesDone, let reason):
                 return ["duration_minutes": duration, "exercises_done": exercisesDone, "reason": reason]
-            case .exerciseAdded(let exerciseName, let source):
-                return ["exercise_name": exerciseName, "source": source]
-            case .setLogged(let exerciseName, let weight, let reps, let setType):
-                return ["exercise_name": exerciseName, "weight": weight, "reps": reps, "set_type": setType]
+            case .exerciseAdded(_, let source):
+                return ["source": source]
+            case .setLogged(_, _, _, let setType):
+                return ["set_type": setType]
             case .restTimerUsed(let duration, let skipped):
                 return ["duration_seconds": duration, "skipped": skipped]
-            case .rpeGiven(let rpeValue, let exerciseName):
-                return ["rpe_value": rpeValue, "exercise_name": exerciseName]
+            case .rpeGiven(let rpeValue, _):
+                return ["rpe_value": rpeValue]
             case .aiCoachOpened(let source):
                 return ["source": source]
             case .aiCoachMessageSent(let context, let length, let hasAttachment):
@@ -127,8 +127,8 @@ public final class TrackingManager: @unchecked Sendable {
                 return ["program_length_weeks": weeks, "difficulty": difficulty]
             case .proactiveWorkoutShown(let reason):
                 return ["reason": reason]
-            case .weightLogged(let value, let unit, let source):
-                return ["value": value, "unit": unit, "source": source]
+            case .weightLogged(_, let unit, let source):
+                return ["unit": unit, "source": source]
             case .bodyMeasurementUpdated(let type):
                 return ["measurement_type": type]
             case .statsViewed(let tab):

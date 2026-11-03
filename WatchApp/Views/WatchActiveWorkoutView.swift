@@ -93,7 +93,7 @@ struct WatchActiveWorkoutView: View {
             Button("Discard", role: .destructive) {
                 Task {
                     await viewModel.cancelWorkout()
-                    await workoutManager.endWorkout()
+                    await workoutManager.endWorkout(saveToHealthKit: false)
                     dismiss()
                 }
             }
@@ -199,9 +199,11 @@ struct WatchActiveWorkoutView: View {
 
                 Button {
                     Task {
-                        await workoutManager.endWorkout()
-
-                        await viewModel.finishWorkout(activeEnergy: workoutManager.activeEnergy)
+                        let savedOnWatch = await workoutManager.endWorkout(saveToHealthKit: true)
+                        await viewModel.finishWorkout(
+                            activeEnergy: workoutManager.activeEnergy,
+                            healthKitSavedOnWatch: savedOnWatch
+                        )
                     }
                 } label: {
                     Text("Finish")

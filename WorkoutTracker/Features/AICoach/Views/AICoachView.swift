@@ -1431,18 +1431,30 @@ struct ProgressAnalysisSheet: View {
             contextStr += "- \(stat.name): Was \(Int(stat.pastShare))%, Became \(Int(stat.currentShare))% (Trend: \(sign)\(Int(diff))%)\n"
         }
 
-        let prompt = """
-        You are a professional AI trainer.
-        The user is looking at the muscle load distribution analytics.
-        Their emphasis is now: "(selectedFocus)".
-        Analyze the provided data and write a short, motivating, and direct conclusion/advice in the user's language (2-3 sentences maximum).
-        Point out obvious imbalances or praise focus. Do not use Markdown formatting (no asterisks or bold).
-        """
+        let prompt = WeeklyReviewPromptBuilder.userRequest(focus: selectedFocus, statsBlock: contextStr)
 
-        let userContext = UserProfileContext(userName: "Athlete", weightKg: 80, experienceLevel: "Pro", favoriteMuscles: [], recentPRs: [:], language: Locale.autoupdatingCurrent.language.languageCode?.identifier == "ru" ? "Russian" : "English", workoutsThisWeek: 0, currentStreak: 0, fatiguedMuscles: [], availableExercises: [], aiCoachTone: "Strict", weightUnit: "kg")
+        let weekAgo = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+        let workoutsThisWeek = allWorkouts.filter { $0.date >= weekAgo }.count
+        let savedRest = UserDefaults.standard.integer(forKey: Constants.UserDefaultsKeys.streakRestDays.rawValue)
+        let streak = StreakCalculator.calculate(
+            from: allWorkouts.map(\.date),
+            maxRestDays: savedRest > 0 ? savedRest : 2
+        )
+        let savedTone = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.aiCoachTone.rawValue) ?? "motivational"
+        let savedName = UserDefaults.standard.string(forKey: Constants.UserDefaultsKeys.userName.rawValue) ?? ""
+        let language = Locale.autoupdatingCurrent.language.languageCode?.identifier == "ru" ? "Russian" : "English"
+        let userContext = WeeklyReviewPromptBuilder.profile(
+            userName: savedName,
+            weightKg: BodyMetricStore.weightKilograms() ?? 0,
+            weightUnit: unitsManager.weightUnitString(),
+            tone: savedTone,
+            workoutsThisWeek: workoutsThisWeek,
+            currentStreak: streak,
+            language: language
+        )
 
         do {
-            let stream = try await di.aiLogicService.streamChatResponse(userRequest: prompt + "\n\n" + contextStr, userProfile: userContext)
+            let stream = try await di.aiLogicService.streamChatResponse(userRequest: prompt, userProfile: userContext)
 
             var fullResponse = ""
             for try await chunk in stream {

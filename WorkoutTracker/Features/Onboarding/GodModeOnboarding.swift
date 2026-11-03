@@ -697,7 +697,7 @@ struct GodModeButton: View {
     var isDisabled: Bool = false
     var body: some View {
         Button(action: action) {
-            Text(title).font(.system(size: 17, weight: .bold)).foregroundStyle(isDisabled ? Color.white.opacity(0.3) : PastelTheme.textOnOat).frame(maxWidth: .infinity).padding(.vertical, 16).background(isDisabled ? AnyShapeStyle(Color.white.opacity(0.1)) : AnyShapeStyle(PastelTheme.pastelOat)).clipShape(RoundedRectangle(cornerRadius: 16))
+            Text(LocalizedStringKey(title)).font(.system(size: 17, weight: .bold)).foregroundStyle(isDisabled ? Color.white.opacity(0.3) : PastelTheme.textOnOat).frame(maxWidth: .infinity).padding(.vertical, 16).background(isDisabled ? AnyShapeStyle(Color.white.opacity(0.1)) : AnyShapeStyle(PastelTheme.pastelOat)).clipShape(RoundedRectangle(cornerRadius: 16))
         }.disabled(isDisabled).buttonStyle(BouncyButtonStyle())
     }
 }

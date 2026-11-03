@@ -48,6 +48,8 @@ struct LiveSyncPayload: Codable, Sendable {
     let activeEnergy: Double?
     let durationSeconds: Int?
     let heartRate: Double?
+    /// Watch already called `HKLiveWorkoutBuilder.finishWorkout()`. Phone must not write a second Health workout.
+    let healthKitSavedOnWatch: Bool?
     init(
         action: SyncActionType,
         workoutID: String,
@@ -61,7 +63,8 @@ struct LiveSyncPayload: Codable, Sendable {
         exercises: [ExerciseDTO]? = nil,
         activeEnergy: Double? = nil,
         durationSeconds: Int? = nil,
-        heartRate: Double? = nil
+        heartRate: Double? = nil,
+        healthKitSavedOnWatch: Bool? = nil
     ) {
         self.action = action
         self.workoutID = workoutID
@@ -75,6 +78,7 @@ struct LiveSyncPayload: Codable, Sendable {
         self.exercises = exercises
         self.activeEnergy = activeEnergy
         self.durationSeconds = durationSeconds
-        self.heartRate = heartRate 
+        self.heartRate = heartRate
+        self.healthKitSavedOnWatch = healthKitSavedOnWatch
     }
 }

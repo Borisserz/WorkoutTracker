@@ -68,10 +68,10 @@ actor LocalWorkoutGeneratorService {
                 if exerciseType == .strength {
                     let setsCount = config.difficulty.setsPerExercise
                     let reps = historyData?.reps ?? (config.difficulty == .advanced ? 6 : 10)
-                    let weight = historyData?.weight ?? estimateBaseWeight(for: name, difficulty: config.difficulty, equipment: config.equipment)
+                    let weight = historyData?.weight
 
                     for i in 1...setsCount {
-                        setsList.append(WorkoutSetDTO(index: i, weight: weight > 0 ? weight : nil, reps: reps, distance: nil, time: nil, isCompleted: false, type: .normal))
+                        setsList.append(WorkoutSetDTO(index: i, weight: (weight ?? 0) > 0 ? weight : nil, reps: reps, distance: nil, time: nil, isCompleted: false, type: .normal))
                     }
                 } else if exerciseType == .cardio || exerciseType == .duration {
                     let durationSeconds = Int((config.durationMinutes / Double(targetExerciseCount)) * 60)
@@ -121,11 +121,4 @@ actor LocalWorkoutGeneratorService {
         }
     }
 
-    private func estimateBaseWeight(for exercise: String, difficulty: WorkoutDifficulty, equipment: WorkoutEquipment) -> Double {
-        if equipment == .bodyweight { return 0.0 }
-        let baseWeight = 20.0
-        let multiplier: Double = difficulty == .advanced ? 2.5 : (difficulty == .intermediate ? 1.5 : 1.0)
-        let isHeavyCompound = exercise.lowercased().contains("squat") || exercise.lowercased().contains("deadlift") || exercise.lowercased().contains("bench")
-        return isHeavyCompound ? baseWeight * multiplier * 1.5 : baseWeight * multiplier * 0.6
     }
-}

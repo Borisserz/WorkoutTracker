@@ -5,11 +5,13 @@ struct EditMetricsSheet: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
 
-    @AppStorage("userAge") private var age: Int = 25
-    @AppStorage("userHeight") private var height: Int = 175
-    @AppStorage("userBodyWeight") private var weight: Double = 75.0
+    @Environment(UnitsManager.self) private var unitsManager
 
-    // Local state for editing before saving
+    @AppStorage("userAge") private var age: Int = 25
+    @AppStorage("userHeight") private var height: Int = 0
+    @AppStorage(Constants.UserDefaultsKeys.userBodyWeight.rawValue) private var weight: Double = 0
+
+    // Local state for editing before saving. Wheels show the active unit. Storage stays cm and kg.
     @State private var draftAge: Int = 25
     @State private var draftHeight: Int = 175
     @State private var draftWeight: Int = 75
@@ -34,8 +36,8 @@ struct EditMetricsSheet: View {
                         
                         HStack(spacing: 0) {
                             MetricsWheelColumn(title: "Age", range: 14...100, suffix: "yrs", selection: $draftAge)
-                            MetricsWheelColumn(title: "Height", range: 140...230, suffix: "cm", selection: $draftHeight)
-                            MetricsWheelColumn(title: "Weight", range: 40...200, suffix: "kg", selection: $draftWeight)
+                            MetricsWheelColumn(title: "Height", range: heightRange, suffix: unitsManager.sizeUnitString(), selection: $draftHeight)
+                            MetricsWheelColumn(title: "Weight", range: weightRange, suffix: unitsManager.weightUnitString(), selection: $draftWeight)
                         }
                         .frame(height: 220)
                         .background(
@@ -82,19 +84,37 @@ struct EditMetricsSheet: View {
                 }
             }
             .onAppear {
-                draftAge = age
-                draftHeight = height
-                draftWeight = Int(weight)
+                draftAge = age > 0 ? age : 25
+                if height > 0 {
+                    draftHeight = Int(unitsManager.convertFromCentimeters(Double(height)).rounded())
+                } else {
+                    draftHeight = unitsManager.sizeUnit == .centimeters ? 175 : Int((175.0 / 2.54).rounded())
+                }
+                if weight > 10 {
+                    draftWeight = Int(unitsManager.convertFromKilograms(weight).rounded())
+                } else {
+                    draftWeight = unitsManager.weightUnit == .kilograms ? 75 : Int((75.0 * 2.20462).rounded())
+                }
+                draftHeight = min(max(draftHeight, heightRange.lowerBound), heightRange.upperBound)
+                draftWeight = min(max(draftWeight, weightRange.lowerBound), weightRange.upperBound)
             }
         }
+    }
+
+    private var heightRange: ClosedRange<Int> {
+        unitsManager.sizeUnit == .centimeters ? 140...230 : 55...90
+    }
+
+    private var weightRange: ClosedRange<Int> {
+        unitsManager.weightUnit == .kilograms ? 40...200 : 90...440
     }
     
     private func saveAndDismiss() {
         HapticManager.shared.notification(.success)
         
         age = draftAge
-        height = draftHeight
-        weight = Double(draftWeight)
+        height = Int(unitsManager.convertToCentimeters(Double(draftHeight)).rounded())
+        weight = unitsManager.convertToKilograms(Double(draftWeight))
         
         dismiss()
     }

@@ -71,17 +71,28 @@ final class WatchWorkoutManager: NSObject {
         }
     }
 
-    func endWorkout() async {
-        guard let session = session, let builder = builder else { return }
+    /// `saveToHealthKit` writes one Apple Health workout. Discard passes false so a cancelled session is not saved.
+    /// Returns whether HealthKit received the workout. The phone must skip its own save when this is true.
+    @discardableResult
+    func endWorkout(saveToHealthKit: Bool) async -> Bool {
+        guard let session = session, let builder = builder else { return false }
         session.end()
 
         do {
-            try await builder.endCollection(at: Date())
-            _ = try await builder.finishWorkout()
+            if saveToHealthKit {
+                try await builder.endCollection(at: Date())
+                _ = try await builder.finishWorkout()
+            } else {
+                builder.discardWorkout()
+            }
             self.isRunning = false
             self.heartRate = 0.0
+            self.session = nil
+            self.builder = nil
+            return saveToHealthKit
         } catch {
             WatchAppLog.workout.error("WatchWorkoutManager: Failed to end workout - \(error.localizedDescription, privacy: .public)")
+            return false
         }
     }
 }

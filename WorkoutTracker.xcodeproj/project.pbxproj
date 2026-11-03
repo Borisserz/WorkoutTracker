@@ -33,7 +33,6 @@
 		ACF45A232F9E43F800206681 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = ACF45A222F9E43F800206681 /* FirebaseRemoteConfig */; };
 		B2C3D4E5F60718293A4B5C6D /* AIResponseParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* AIResponseParsingTests.swift */; };
 		C3F81C26EAC348EB8FC229FA /* ImprovePassSmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */; };
-		F9C4D5E6A7B80910293A0C01 /* UserFacingAIMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D5E6A7B80910293A0C02 /* UserFacingAIMessageTests.swift */; };
 		C4AC734CEE957EE512CD8D2F /* RestTimerManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8566D580B51101FBEAF5AA5B /* RestTimerManagerTests.swift */; };
 		C7F3D8A2507346BA995BA2BF /* AppReviewManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9815C46A3AB04BB4B2CE36D2 /* AppReviewManagerTests.swift */; };
 		CBC64DC6807C3445CA4DC264 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 71E8212868B958014C937451 /* FirebaseCrashlytics */; };
@@ -43,7 +42,9 @@
 		E7A1B2C3D4E5F60718293A01 /* WatchConnectivityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */; };
 		E8B2C3D4E5F60718293A0B01 /* SisterAppsCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B2C3D4E5F60718293A0B02 /* SisterAppsCatalogTests.swift */; };
 		A11B22C33D4E5F60718293A11 /* HonestyWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */; };
+		B22C33D44E5F60718293A0B21 /* PreTestFlightHonestyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B22C33D44E5F60718293A0B22 /* PreTestFlightHonestyTests.swift */; };
 		F5E644603197467223F670C5 /* ProgressManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A6B93572A2F5DA01DAC8691 /* ProgressManagerTests.swift */; };
+		F9C4D5E6A7B80910293A0C01 /* UserFacingAIMessageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D5E6A7B80910293A0C02 /* UserFacingAIMessageTests.swift */; };
 		FC4ED48F0C2C9E8C39B3DA00 /* CalorieCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DD649EF8B041E49532FD342 /* CalorieCalculatorTests.swift */; };
 /* End PBXBuildFile section */
 
@@ -144,7 +145,6 @@
 		5DBD6315A1DD4FE7AF83FE15 /* ResidualPassTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ResidualPassTests.swift; sourceTree = "<group>"; };
 		60F9293A890CA5EDE1FD6CF6 /* VersionManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VersionManagerTests.swift; sourceTree = "<group>"; };
 		6BD6A05972714141ACF5DE83 /* ImprovePassSmokeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ImprovePassSmokeTests.swift; sourceTree = "<group>"; };
-		F9C4D5E6A7B80910293A0C02 /* UserFacingAIMessageTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserFacingAIMessageTests.swift; sourceTree = "<group>"; };
 		753990187F9D5724939F7215 /* AppStateManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppStateManagerTests.swift; sourceTree = "<group>"; };
 		7CD0A15197C64098B4E0305D /* AppearanceModeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppearanceModeTests.swift; sourceTree = "<group>"; };
 		7DD649EF8B041E49532FD342 /* CalorieCalculatorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CalorieCalculatorTests.swift; sourceTree = "<group>"; };
@@ -169,8 +169,10 @@
 		E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityTests.swift; sourceTree = "<group>"; };
 		E8B2C3D4E5F60718293A0B02 /* SisterAppsCatalogTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SisterAppsCatalogTests.swift; sourceTree = "<group>"; };
 		A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HonestyWindowTests.swift; sourceTree = "<group>"; };
+		B22C33D44E5F60718293A0B22 /* PreTestFlightHonestyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PreTestFlightHonestyTests.swift; sourceTree = "<group>"; };
 		F414296D08C64A43BAE5B983 /* HapticManagerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HapticManagerTests.swift; sourceTree = "<group>"; };
 		F8D3C33349C62742653F1E18 /* WorkoutTrackerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkoutTrackerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F9C4D5E6A7B80910293A0C02 /* UserFacingAIMessageTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = UserFacingAIMessageTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -406,6 +408,7 @@
 				E7A1B2C3D4E5F60718293A02 /* WatchConnectivityTests.swift */,
 				E8B2C3D4E5F60718293A0B02 /* SisterAppsCatalogTests.swift */,
 				A11B22C33D4E5F60718293A12 /* HonestyWindowTests.swift */,
+				B22C33D44E5F60718293A0B22 /* PreTestFlightHonestyTests.swift */,
 			);
 			path = WorkoutTrackerTests;
 			sourceTree = "<group>";
@@ -479,7 +482,6 @@
 				ACE68CD62EFBFD1900FD186D /* Frameworks */,
 				ACE68CD72EFBFD1900FD186D /* Resources */,
 				ACE68D262EFC421800FD186D /* Embed Foundation Extensions */,
-				ACF4FCAD2F01698F00850F6E /* Embed Watch Content */,
 				2C8C5B7DF210F68765FED759 /* Firebase Crashlytics */,
 			);
 			buildRules = (
@@ -492,7 +494,6 @@
 				AC7165402F0169FC00C0DCDE /* PBXTargetDependency */,
 				AC7165422F016A0000C0DCDE /* PBXTargetDependency */,
 				ACDA5BAE2F06CF78007FF65F /* PBXTargetDependency */,
-				AC3CB9922F8176AB008A6777 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				ACE68CDB2EFBFD1A00FD186D /* WorkoutTracker */,
@@ -706,6 +707,7 @@
 				E7A1B2C3D4E5F60718293A01 /* WatchConnectivityTests.swift in Sources */,
 				E8B2C3D4E5F60718293A0B01 /* SisterAppsCatalogTests.swift in Sources */,
 				A11B22C33D4E5F60718293A11 /* HonestyWindowTests.swift in Sources */,
+				B22C33D44E5F60718293A0B21 /* PreTestFlightHonestyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -808,7 +810,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.watchapp2026;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -845,7 +847,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.watchapp2026;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -879,7 +881,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.statswidget2026;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -910,7 +912,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.statswidget2026;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1059,7 +1061,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -1106,7 +1108,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = WorkoutTracker/WorkoutTracker.Release.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = LSCCP92LMG;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -1166,7 +1168,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.WorkoutTimerWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1199,7 +1201,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.0.5;
 				PRODUCT_BUNDLE_IDENTIFIER = com.borisdev.WorkoutTracker.WorkoutTimerWidget;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

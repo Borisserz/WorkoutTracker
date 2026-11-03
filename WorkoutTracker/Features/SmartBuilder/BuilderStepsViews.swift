@@ -115,10 +115,10 @@ struct GeneratorSettingsView: View {
                 VStack(spacing: 24) {
 
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("AI Configuration")
+                        Text("Routine builder")
                             .font(.system(size: 32, weight: .heavy, design: .rounded))
                             .foregroundColor(colorScheme == .dark ? .white : .black)
-                        Text("Refine parameters to generate your perfect workout.")
+                        Text("Picks exercises on this device. Weights come only from sets you have already logged.")
                             .font(.subheadline)
                             .foregroundColor(colorScheme == .dark ? themeManager.current.secondaryText : .gray)
                     }
@@ -246,7 +246,7 @@ struct GeneratorSettingsView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "sparkles")
                             .font(.title3)
-                        Text("Generate AI Routine")
+                        Text("Build routine")
                             .font(.headline).bold()
                     }
                     .foregroundColor(.white)

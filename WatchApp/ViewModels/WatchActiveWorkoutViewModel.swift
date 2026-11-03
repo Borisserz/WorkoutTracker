@@ -311,7 +311,7 @@ final class WatchActiveWorkoutViewModel: Hashable {
         exercises.remove(at: index)
     }
 
-    func finishWorkout(activeEnergy: Double) async {
+    func finishWorkout(activeEnergy: Double, healthKitSavedOnWatch: Bool = false) async {
            totalDurationSeconds = Int(Date().timeIntervalSince(startDate))
 
            _ = try? await store.finishWorkout(workoutID: workoutID.uuidString)
@@ -322,7 +322,8 @@ final class WatchActiveWorkoutViewModel: Hashable {
                workoutTitle: workoutTitle,
                exercises: self.exercises,
                activeEnergy: activeEnergy,
-               durationSeconds: totalDurationSeconds
+               durationSeconds: totalDurationSeconds,
+               healthKitSavedOnWatch: healthKitSavedOnWatch
            )
            WatchSyncManager.shared.transferGuaranteedPayload(payload)
 

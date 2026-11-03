@@ -108,83 +108,116 @@ enum BodyAnalysisEngine {
                 recommendedSplitTitle: String(localized: "Next session: Balanced full-body or preferred split"),
                 physiologicalRationale: String(localized: "Without a recovery map, default to technique-focused work and moderate volume."),
                 actionableTips: [
-                    "Keep intensity around RPE 7.0–7.5",
-                    "Favor compounds you know well",
-                    "Stop short of failure until readiness data returns"
+                    String(localized: "Keep intensity around RPE 7.0–7.5"),
+                    String(localized: "Favor compounds you know well"),
+                    String(localized: "Stop short of failure until readiness data returns")
                 ],
-                cautionNotes: "Re-open Overview after a completed workout to refresh recovery estimates.",
+                cautionNotes: String(localized: "Re-open Overview after a completed workout to refresh recovery estimates."),
                 recommendedExercises: ["Barbell Squat", "Bench Press", "Pull-ups", "Overhead Press"]
             )
         } else if (avgReadiness >= 0 && avgReadiness < 60) || (cnsScore >= 0 && cnsScore < 70) {
             let readinessNote = avgReadiness >= 0
-                ? "average readiness \(avgReadiness)%"
-                : "CNS \(Int(cnsScore))%"
+                ? String(format: String(localized: "average readiness %lld%%"), avgReadiness)
+                : String(format: String(localized: "CNS %lld%%"), Int(cnsScore))
             advice = NextWorkoutAdvice(
-                recentStrainSummary: "Significant systemic muscle and CNS fatigue detected (\(readinessNote)).",
-                recommendedSplitTitle: "Next session: Active recovery or deload",
-                physiologicalRationale: "Tissues need time to replenish glycogen and stabilize autonomic tone.",
+                recentStrainSummary: String(format: String(localized: "Significant systemic muscle and CNS fatigue detected (%@)."), readinessNote),
+                recommendedSplitTitle: String(localized: "Next session: Active recovery or deload"),
+                physiologicalRationale: String(localized: "Tissues need time to replenish glycogen and stabilize autonomic tone."),
                 actionableTips: [
-                    "Swap heavy strength sets for light cardio (heart rate 110–125 bpm)",
-                    "Do myofascial release (foam rolling) and stretch major muscle groups",
-                    "Intensity: RPE no higher than 5.0"
+                    String(localized: "Swap heavy strength sets for light cardio (heart rate 110–125 bpm)"),
+                    String(localized: "Do myofascial release (foam rolling) and stretch major muscle groups"),
+                    String(localized: "Intensity: RPE no higher than 5.0")
                 ],
-                cautionNotes: "Avoid training to failure and forced reps entirely.",
+                cautionNotes: String(localized: "Avoid training to failure and forced reps entirely."),
                 recommendedExercises: ["Incline Walk", "Foam Rolling", "Joint Mobility", "Chest Stretch"]
             )
         } else if chestPct >= 0 && tricepsPct >= 0 && (chestPct < 75 || tricepsPct < 75) {
             // Push was strained recently -> recommend Pull
+            let pullRationale: String = {
+                if backPct >= 70 {
+                    return String(format: String(localized: "Lats and elbow flexors are at %lld%% recovery."), backPct)
+                }
+                if backPct >= 0 {
+                    return String(format: String(localized: "Back is also still recovering (%lld%%)."), backPct)
+                }
+                return String(localized: "Chest and triceps are still recovering. Back recovery was not measured, so it is not marked ready.")
+            }()
             advice = NextWorkoutAdvice(
-                recentStrainSummary: "Recent session heavily loaded chest and triceps (recovery ~\(chestPct)%). Muscle fibers are in active regeneration.",
-                recommendedSplitTitle: "Next session: Pull split (Back & Biceps)",
-                physiologicalRationale: "Lats and elbow flexors are at \(backPct)% recovery with peak contractile capacity.",
+                recentStrainSummary: String(format: String(localized: "Recent session heavily loaded chest and triceps (recovery ~%lld%%). Muscle fibers are in active regeneration."), chestPct),
+                recommendedSplitTitle: String(localized: "Next session: Pull split (Back & Biceps)"),
+                physiologicalRationale: pullRationale,
                 actionableTips: [
-                    "Prioritize rows to the hips and pull-ups with varied grips",
-                    "Target volume: 12–15 quality working sets for back and biceps",
-                    "Intensity: RPE 7.5–8.0 without burning out in early sets"
+                    String(localized: "Prioritize rows to the hips and pull-ups with varied grips"),
+                    String(localized: "Target volume: 12–15 quality working sets for back and biceps"),
+                    String(localized: "Intensity: RPE 7.5–8.0 without burning out in early sets")
                 ],
-                cautionNotes: "Skip incline pressing and deep push-ups for ~24 h to protect shoulder joints.",
+                cautionNotes: String(localized: "Skip incline pressing and deep push-ups for ~24 h to protect shoulder joints."),
                 recommendedExercises: ["Pull-ups", "Barbell Row", "Lat Pulldown", "Dumbbell Curl"]
             )
         } else if backPct >= 0 && bicepsPct >= 0 && (backPct < 75 || bicepsPct < 75) {
             // Pull was strained recently -> recommend Push or Legs
+            let pushRationale: String = {
+                if chestPct >= 70 {
+                    return String(format: String(localized: "Chest is measured at %lld%% and can take volume."), chestPct)
+                }
+                if chestPct >= 0 {
+                    return String(format: String(localized: "Chest is also still recovering (%lld%%)."), chestPct)
+                }
+                return String(localized: "Back and biceps are still recovering. Chest recovery was not measured.")
+            }()
             advice = NextWorkoutAdvice(
-                recentStrainSummary: "Recent session loaded back, lats, and biceps (recovery ~\(backPct)%).",
-                recommendedSplitTitle: "Next session: Push day (Chest & Shoulders)",
-                physiologicalRationale: "Chest and front delts have fully replenished glycogen (\(chestPct)%) and are ready for volume.",
+                recentStrainSummary: String(format: String(localized: "Recent session loaded back, lats, and biceps (recovery ~%lld%%)."), backPct),
+                recommendedSplitTitle: String(localized: "Next session: Push day (Chest & Shoulders)"),
+                physiologicalRationale: pushRationale,
                 actionableTips: [
-                    "Priority: flat bench press and incline dumbbell press",
-                    "Keep scapulae neutral and control tempo",
-                    "Intensity: RPE 7.5–8.0 with emphasis on chest stretch"
+                    String(localized: "Priority: flat bench press and incline dumbbell press"),
+                    String(localized: "Keep scapulae neutral and control tempo"),
+                    String(localized: "Intensity: RPE 7.5–8.0 with emphasis on chest stretch")
                 ],
-                cautionNotes: "Avoid deadlifts and bent-over rows to let long back muscles recover.",
+                cautionNotes: String(localized: "Avoid deadlifts and bent-over rows to let long back muscles recover."),
                 recommendedExercises: ["Barbell Bench Press", "Seated Dumbbell Press", "Lateral Raises", "Skull Crushers"]
             )
         } else if quadsPct >= 0 && hamsPct >= 0 && (quadsPct < 75 || hamsPct < 75) {
             // Legs strained -> recommend Upper
+            let upperRationale: String = {
+                let upperReady = chestPct >= 70 && backPct >= 70
+                if upperReady {
+                    return String(localized: "Chest and back are measured as ready for the main training volume.")
+                }
+                return String(localized: "Legs are still recovering. Upper-body readiness was not marked ready.")
+            }()
             advice = NextWorkoutAdvice(
-                recentStrainSummary: "Recent session loaded quads and hamstrings (recovery ~\(quadsPct)%).",
-                recommendedSplitTitle: "Next session: Upper body",
-                physiologicalRationale: "Shoulders, chest, and back are fully rested and ready for the main training volume.",
+                recentStrainSummary: String(format: String(localized: "Recent session loaded quads and hamstrings (recovery ~%lld%%)."), quadsPct),
+                recommendedSplitTitle: String(localized: "Next session: Upper body"),
+                physiologicalRationale: upperRationale,
                 actionableTips: [
-                    "Balance push and pull exercises in equal proportion",
-                    "Use supersets to save time and increase session density",
-                    "Intensity: RPE 7.0–8.0"
+                    String(localized: "Balance push and pull exercises in equal proportion"),
+                    String(localized: "Use supersets to save time and increase session density"),
+                    String(localized: "Intensity: RPE 7.0–8.0")
                 ],
-                cautionNotes: "Exclude axial leg loading entirely: no squats or lunges.",
+                cautionNotes: String(localized: "Exclude axial leg loading entirely: no squats or lunges."),
                 recommendedExercises: ["Bench Press", "One-Arm Dumbbell Row", "Standing Overhead Press", "Hammer Curls"]
             )
         } else {
             // Balanced
+            let majorKeys = ["chest", "upper-back", "quadriceps", "hamstring", "lower-back", "triceps", "biceps"]
+            let majorValues = majorKeys.compactMap { key -> Int? in
+                guard let value = recoveryDict[key], value >= 0 else { return nil }
+                return value
+            }
+            let allMajorGroupsHigh = majorValues.count == majorKeys.count && majorValues.allSatisfy { $0 >= 85 }
             advice = NextWorkoutAdvice(
-                recentStrainSummary: "All major muscle groups are above 85% recovered. Tissue has adapted to prior training.",
-                recommendedSplitTitle: "Next session: Targeted strength work",
-                physiologicalRationale: "Skeletal muscle and the autonomic nervous system are ready for intense work without overload risk.",
+                recentStrainSummary: allMajorGroupsHigh
+                    ? String(localized: "All tracked major muscle groups are at 85% or higher.")
+                    : String(localized: "Measured muscle groups are outside the deep fatigue band. Groups without a percentage were not estimated."),
+                recommendedSplitTitle: String(localized: "Next session: Targeted strength work"),
+                physiologicalRationale: String(localized: "Use the measured groups only. Do not treat a missing muscle as recovered."),
                 actionableTips: [
-                    "Pick a split aligned with your weekly priorities",
-                    "Focus on technique in the 6–10 rep range",
-                    "Intensity: RPE 8.0"
+                    String(localized: "Pick a split aligned with your weekly priorities"),
+                    String(localized: "Focus on technique in the 6–10 rep range"),
+                    String(localized: "Intensity: RPE 8.0")
                 ],
-                cautionNotes: "Stay hydrated and rest 90–120 seconds between sets.",
+                cautionNotes: String(localized: "Stay hydrated and rest 90–120 seconds between sets."),
                 recommendedExercises: ["Barbell Bench Press", "Weighted Pull-ups", "Squats", "Overhead Press"]
             )
         }
@@ -221,12 +254,24 @@ enum BodyAnalysisEngine {
         let muscularNarrative: String
         if !hasRecoveryData {
             muscularNarrative = String(localized: "Muscle-group recovery percentages are unavailable, so intensity should stay conservative until the map refreshes.")
-        } else if lowBackPct < 70 || hamsPct < 70 {
-            muscularNarrative = String(localized: "The posterior chain is actively regenerating fiber microstructure after pulling work. The anterior chain has fully restored glycogen stores.")
-        } else if chestPct < 70 {
-            muscularNarrative = String(localized: "Chest and front delt bundles are in protein synthesis and supercompensation. Back and legs are fully ready to train.")
+        } else if (lowBackPct >= 0 && lowBackPct < 70) || (hamsPct >= 0 && hamsPct < 70) {
+            if chestPct >= 70 {
+                muscularNarrative = String(localized: "The posterior chain is still recovering. The chest is measured as ready.")
+            } else if chestPct >= 0 {
+                muscularNarrative = String(localized: "The posterior chain is still recovering. The chest is not ready either.")
+            } else {
+                muscularNarrative = String(localized: "The posterior chain is still recovering. Other muscle groups were not measured.")
+            }
+        } else if chestPct >= 0 && chestPct < 70 {
+            let backReady = backPct >= 70
+            let legsReady = quadsPct >= 70 && hamsPct >= 70
+            if backReady && legsReady {
+                muscularNarrative = String(localized: "Chest is still recovering. Back and legs are measured as ready to train.")
+            } else {
+                muscularNarrative = String(localized: "Chest is still recovering. Other muscle groups were not marked ready.")
+            }
         } else {
-            muscularNarrative = String(localized: "Major muscle groups and stabilizers maintain high cellular readiness across movement planes.")
+            muscularNarrative = String(localized: "Measured muscle groups are outside the fatigue band used for this summary.")
         }
         
         let assessment = "\(cnsNarrative) \(muscularNarrative)"
@@ -240,7 +285,7 @@ enum BodyAnalysisEngine {
             restrictions = String(localized: "Keep volume moderate until muscle recovery data is available.")
         } else if chestPct >= 85, let tri = recoveryDict["triceps"], tri >= 80 {
             targetTitle = String(localized: "Push complex (Chest, Shoulders, Triceps)")
-            if lowBackPct < 75 {
+            if lowBackPct >= 0 && lowBackPct < 75 {
                 restrictions = String(localized: "Avoid spinal axial loading and weighted bends for ~18 h.")
             } else {
                 restrictions = String(localized: "Standard training volume. Focus on a controlled eccentric phase.")
