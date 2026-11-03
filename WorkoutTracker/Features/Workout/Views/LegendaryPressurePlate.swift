@@ -88,7 +88,7 @@ struct LegendaryPressurePlate: View {
                         HStack(spacing: 3) {
                             Image(systemName: "stopwatch")
                                 .font(.system(size: 9, weight: .medium))
-                            Text("\(routine.estimatedMinutes)m")
+                            Text(String(localized: "\(routine.estimatedMinutes)m"))
                                 .font(.system(size: 9.5, weight: .bold, design: .rounded))
                         }
                         .foregroundStyle(PastelTheme.textSecondary)
@@ -269,7 +269,7 @@ struct CompactLegendaryPressurePlate: View {
                         HStack(spacing: 3) {
                             Image(systemName: "stopwatch")
                                 .font(.system(size: 10, weight: .medium))
-                            Text("\(routine.estimatedMinutes) min")
+                            Text(String(localized: "\(routine.estimatedMinutes) min"))
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
                         }
                         .foregroundStyle(PastelTheme.textSecondary)

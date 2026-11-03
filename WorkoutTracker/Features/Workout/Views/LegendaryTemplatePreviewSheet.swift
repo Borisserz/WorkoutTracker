@@ -231,7 +231,7 @@ struct LegendaryTemplatePreviewSheet: View {
                 
                 Spacer()
                 
-                Text("\(routine.exercises.count) exercises")
+                Text(String(localized: "\(routine.exercises.count) exercises"))
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(eraColor)
             }
@@ -258,20 +258,14 @@ struct LegendaryTemplatePreviewSheet: View {
                                 .lineLimit(1)
                             
                             HStack(spacing: 6) {
-                                Text("\(exercise.sets) sets")
+                                Text(String(localized: "\(exercise.sets) sets"))
                                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                                     .foregroundStyle(PastelTheme.textSecondary)
-                                Text("•")
-                                    .font(.system(size: 8))
-                                    .foregroundStyle(PastelTheme.textTertiary)
-                                Text("\(exercise.reps) reps")
+                                Text(String(localized: "\(exercise.reps) reps"))
                                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                                     .foregroundStyle(PastelTheme.textSecondary)
                                 if let rest = exercise.restSeconds {
-                                    Text("•")
-                                        .font(.system(size: 8))
-                                        .foregroundStyle(PastelTheme.textTertiary)
-                                    Text("\(rest)s rest")
+                                    Text(String(localized: "\(rest)s rest"))
                                         .font(.system(size: 11, weight: .medium, design: .rounded))
                                         .foregroundStyle(PastelTheme.textTertiary)
                                 }

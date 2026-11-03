@@ -86,7 +86,7 @@ struct LegendaryRoutinesView: View {
                 }
             }
         }
-        .navigationTitle("Hall of fame")
+        .navigationTitle("Hall of Fame")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .task {
@@ -127,7 +127,7 @@ struct LegendaryRoutinesView: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Hall of fame")
+                Text("Hall of Fame")
                     .font(.system(size: 20, weight: .heavy, design: .rounded))
                     .foregroundStyle(PastelTheme.textPrimary)
 
@@ -135,7 +135,7 @@ struct LegendaryRoutinesView: View {
                     .font(.system(size: 12, weight: .medium, design: .rounded))
                     .foregroundStyle(PastelTheme.textSecondary)
 
-                Text("\(routines.count) master protocols archived")
+                Text(String(localized: "\(routines.count) master protocols archived"))
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.pastelAmber)
             }

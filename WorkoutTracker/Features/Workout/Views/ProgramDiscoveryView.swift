@@ -217,7 +217,7 @@ struct ProgramDiscoveryView: View {
 
                 Spacer()
 
-                Text("\(filteredFeatured.count) available")
+                Text(String(localized: "\(filteredFeatured.count) available"))
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(PastelTheme.pastelSage)
                     .padding(.horizontal, 8)
@@ -453,12 +453,12 @@ struct ProgramPressurePlate: View {
                             let exerciseCount = program.routines.first?.exercises.count ?? 0
                             Image(systemName: "list.bullet")
                                 .font(.system(size: 9))
-                            Text("\(exerciseCount) exercises")
+                            Text(String(localized: "\(exerciseCount) exercises"))
                                 .font(.system(size: 9.5, weight: .semibold, design: .rounded))
                         } else {
                             Image(systemName: "square.stack.3d.up.fill")
                                 .font(.system(size: 9))
-                            Text("\(program.routines.count) routines")
+                            Text(String(localized: "\(program.routines.count) routines"))
                                 .font(.system(size: 9.5, weight: .semibold, design: .rounded))
                         }
                     }

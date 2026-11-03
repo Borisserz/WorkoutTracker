@@ -34,7 +34,7 @@ struct SmartGeneratorEntryView: View {
         switch lower {
         case "neck": return String(localized: "Neck")
         case "deltoids", "shoulders": return String(localized: "Shoulders")
-        case "upper-back", "upper back": return String(localized: "Upper back")
+        case "upper-back", "upper back": return String(localized: "Upper Back")
         case "lower-back", "lower back": return String(localized: "Lower back")
         case "lats": return String(localized: "Lats")
         case "trapezius", "traps": return String(localized: "Traps")

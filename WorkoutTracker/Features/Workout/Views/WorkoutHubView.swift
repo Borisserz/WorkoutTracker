@@ -266,7 +266,7 @@ struct WorkoutHubView: View {
             } message: {
                 Text("You already have a workout in progress. Finish or delete it to start a new one.")
             }
-            .alert("Delete template?", isPresented: $showDeleteAlert) {
+            .alert("Delete Template?", isPresented: $showDeleteAlert) {
                 Button("Delete", role: .destructive) { confirmDelete() }
                 Button("Cancel", role: .cancel) { itemToDelete = nil }
             } message: {
@@ -1140,7 +1140,7 @@ struct WorkoutHubView: View {
                 }
 
                 if preset.exercises.count > 4 {
-                    Text("+ \(preset.exercises.count - 4) more exercises")
+                    Text(String(localized: "+ \(preset.exercises.count - 4) more exercises"))
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textTertiary)
                         .padding(.top, 2)
@@ -1266,7 +1266,7 @@ struct WorkoutHubView: View {
                 }
 
                 if exercises.count > 4 {
-                    Text("+ \(exercises.count - 4) more exercises")
+                    Text(String(localized: "+ \(exercises.count - 4) more exercises"))
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(PastelTheme.textTertiary)
                         .padding(.top, 2)

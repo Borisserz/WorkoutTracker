@@ -641,6 +641,14 @@ struct AppearanceSettingsView: View {
     @Environment(ThemeManager.self) private var themeManager
     @Environment(\.colorScheme) private var colorScheme
 
+    private var currentLanguageDisplayName: String {
+        let code = Locale.current.language.languageCode?.identifier ?? "en"
+        if let name = Locale.current.localizedString(forLanguageCode: code) {
+            return name.localizedCapitalized
+        }
+        return String(localized: code == "ru" ? "Russian" : "English")
+    }
+
     var body: some View {
         Form {
             Section(
@@ -667,7 +675,8 @@ struct AppearanceSettingsView: View {
                     HStack {
                         Text(LocalizedStringKey("Language"))
                         Spacer()
-                        Text(Locale.current.language.languageCode?.identifier == "ru" ? "Русский" : "English").foregroundColor(themeManager.current.secondaryText)
+                        Text(currentLanguageDisplayName)
+                            .foregroundColor(themeManager.current.secondaryText)
                         Image(systemName: "arrow.up.forward.app").font(.caption).foregroundColor(themeManager.current.secondaryText)
                     }
                 }
@@ -719,7 +728,9 @@ struct StreakSettingsView: View {
                     HStack {
                         Text(LocalizedStringKey("Max Rest Days"))
                         Spacer()
-                        Text("\(streakRestDays) " + (streakRestDays > 1 ? "days" : "day"))
+                        Text(streakRestDays == 1
+                             ? String(localized: "\(streakRestDays) day")
+                             : String(localized: "\(streakRestDays) days"))
                             .foregroundColor(themeManager.current.secondaryText)
                             .bold()
                     }
