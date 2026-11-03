@@ -63,9 +63,7 @@ struct AIWeeklyReviewSheet: View {
             Spacer()
 
             Button { dismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.secondary, Color(UIColor.tertiarySystemFill))
+                ChromeDismissMark()
             }
         }
         .padding(20)

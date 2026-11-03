@@ -56,9 +56,7 @@ struct AIProgramBuilderSheet: View {
                         HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.3) : Color.black.opacity(0.3))
+                        ChromeDismissMark()
                     }
                 }
             }
@@ -245,15 +243,14 @@ struct AIProgramBuilderSheet: View {
                 .shadow(color: themeManager.current.deepPremiumAccent.opacity(0.4), radius: 15, x: 0, y: 8)
             }
             .padding(.horizontal, 24)
+            .padding(.top, 12)
             .padding(.bottom, 16)
-            .background(
-                LinearGradient(colors: [colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground), .clear], startPoint: .bottom, endPoint: .top)
-                    .frame(height: 100)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-            )
+            .background(sheetCanvas)
         }
+    }
+
+    private var sheetCanvas: Color {
+        colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground)
     }
 
     private func sectionHeader(title: String, icon: String) -> some View {
@@ -436,14 +433,9 @@ struct AIProgramBuilderSheet: View {
             }
             .disabled(viewModel.isSaving)
             .padding(.horizontal, 24)
+            .padding(.top, 12)
             .padding(.bottom, 16)
-            .background(
-                LinearGradient(colors: [colorScheme == .dark ? themeManager.current.background : Color(UIColor.systemGroupedBackground), .clear], startPoint: .bottom, endPoint: .top)
-                    .frame(height: 100)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
-            )
+            .background(sheetCanvas)
         }
     }
 

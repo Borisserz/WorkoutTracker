@@ -21,9 +21,7 @@ struct GuestSignUpPromptView: View {
                 HStack {
                     Spacer()
                     Button(action: { dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(.white.opacity(0.6))
+                        ChromeDismissMark()
                     }
                     .padding()
                 }

@@ -142,6 +142,41 @@ struct OverviewView: View {
                             }
                         )
 
+                        Button {
+                            HapticManager.shared.impact(.light)
+                            router.push(.exercises)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "books.vertical")
+                                    .font(.system(size: 15, weight: .semibold))
+                                    .foregroundStyle(PastelTheme.pastelOat)
+                                    .frame(width: 28, height: 28)
+                                    .background(PastelTheme.cardSurfaceSubtle)
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+
+                                Text("Exercise Catalog")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(PastelTheme.textPrimary)
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.bold())
+                                    .foregroundStyle(PastelTheme.textTertiary)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 12)
+                            .background(PastelTheme.cardSurface)
+                            .clipShape(RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: PastelTheme.cardRadius, style: .continuous)
+                                    .stroke(PastelTheme.cardBorder, lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("wt.overview.exerciseCatalog")
+
                         Spacer(minLength: 100)
                     }
                     .padding(.horizontal, 16)
@@ -180,10 +215,6 @@ struct OverviewView: View {
                         onGoToWorkout: {
                             router.dismissSheet()
                             di.appState.selectedTab = 2
-                        },
-                        onOpenCatalog: {
-                            router.dismissSheet()
-                            router.push(.exercises)
                         }
                     )
                 }
@@ -215,9 +246,21 @@ struct OverviewView: View {
                     waterLiters: dashboardViewModel.todayWaterLiters,
                     onAddWater: { liters in
                         dashboardViewModel.addWater(liters: liters)
+                        Task {
+                            await CNSScoreRefresher.refresh(
+                                waterLiters: dashboardViewModel.todayWaterLiters,
+                                setScore: { cnsScore = $0 }
+                            )
+                        }
                     },
                     onResetWater: {
                         dashboardViewModel.resetWater()
+                        Task {
+                            await CNSScoreRefresher.refresh(
+                                waterLiters: dashboardViewModel.todayWaterLiters,
+                                setScore: { cnsScore = $0 }
+                            )
+                        }
                     }
                 )
                 .presentationDetents([.height(390), .medium])

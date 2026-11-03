@@ -535,25 +535,6 @@ struct GoalsSectionView: View {
                         .foregroundStyle(PastelTheme.textSecondary)
                 }
                 Spacer()
-
-                Button {
-                    HapticManager.shared.impact(.light)
-                    showingAddGoal = true
-                } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 11, weight: .bold))
-                        Text("Add")
-                            .font(.caption.weight(.bold))
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(PastelTheme.pastelOat)
-                    .foregroundStyle(PastelTheme.textOnOat)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(PastelTheme.cardBorderFocused, lineWidth: 1))
-                }
-                .buttonStyle(.plain)
             }
 
             if viewModel.activeGoals.isEmpty {
@@ -1143,7 +1124,6 @@ struct CurrentStreakSquareCard: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(ThemeManager.self) private var themeManager
     @Environment(DIContainer.self) private var di
-    @State private var isPressed = false
 
     var body: some View {
         let isDark = colorScheme == .dark
@@ -1171,6 +1151,7 @@ struct CurrentStreakSquareCard: View {
                             Image(systemName: "flame.fill")
                                 .font(.system(size: 18, weight: .bold))
                                 .foregroundColor(PastelTheme.pastelAmber)
+                                .offset(y: 1.5)
                         }
                         Spacer()
                     }
@@ -1201,15 +1182,8 @@ struct CurrentStreakSquareCard: View {
                     .stroke(strokeColor, lineWidth: 1)
             )
             .shadow(color: .black.opacity(isDark ? 0 : 0.05), radius: 8, y: 4)
-            .scaleEffect(isPressed ? 0.97 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
         }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in isPressed = true }
-                .onEnded { _ in isPressed = false }
-        )
+        .buttonStyle(PressScaleButtonStyle())
     }
 }
 
@@ -1287,7 +1261,7 @@ struct ActivityThisWeekSquareCard: View {
         )
         .sheet(isPresented: $showSheet) {
             NavigationStack {
-                WorkoutCalendarView()
+                WorkoutCalendarView(showsCloseButton: true)
             }
         }
     }
@@ -4049,6 +4023,16 @@ struct PremiumStatsEmptyState: View {
     }
 }
 
+private struct LeadingScrollAnchor: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content.defaultScrollAnchor(.leading)
+        } else {
+            content
+        }
+    }
+}
+
 // MARK: - Personal Records Showcase View
 struct PersonalRecordsShowcaseView: View {
     @Bindable var viewModel: StatsViewModel
@@ -4110,9 +4094,10 @@ struct PersonalRecordsShowcaseView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 20)
                     .padding(.vertical, 4)
                 }
+                .contentMargins(.horizontal, 20, for: .scrollContent)
+                .modifier(LeadingScrollAnchor())
             }
         }
     }

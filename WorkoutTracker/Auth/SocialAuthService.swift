@@ -303,6 +303,27 @@ private final class AppleAuthorizationDelegate: NSObject,
     ) -> ASPresentationAnchor {
         let scene = UIApplication.shared.connectedScenes
             .first { $0.activationState == .foregroundActive } as? UIWindowScene
-        return scene?.keyWindow ?? ASPresentationAnchor()
+        if let window = scene?.windows.first(where: \.isKeyWindow) ?? scene?.windows.first {
+            return window
+        }
+        if let scene {
+            return UIWindow(windowScene: scene)
+        }
+        return ASPresentationAnchor()
+    }
+}
+
+enum AuthFlow {
+    static func isCancellation(_ error: Error) -> Bool {
+        let ns = error as NSError
+        if ns.domain == ASAuthorizationError.errorDomain,
+           ns.code == ASAuthorizationError.canceled.rawValue {
+            return true
+        }
+        if ns.domain == GIDSignInError.errorDomain,
+           ns.code == GIDSignInError.canceled.rawValue {
+            return true
+        }
+        return false
     }
 }

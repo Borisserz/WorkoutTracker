@@ -286,7 +286,6 @@ struct HistoryView: View {
                     Group {
                         // 1. Header with Edit Button
                         HistoryHeaderView(
-                            isEditing: $isEditingList,
                             totalCount: filteredWorkouts.count
                         )
 
@@ -322,6 +321,16 @@ struct HistoryView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
 
+                    if !filteredWorkouts.isEmpty {
+                        HStack {
+                            Spacer()
+                            HistoryEditButton(isEditing: $isEditingList)
+                        }
+                        .listRowInsets(EdgeInsets(top: 2, leading: 16, bottom: 0, trailing: 16))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                    }
+
                     // 5. Timeline Grouped Workouts List
                     if filteredWorkouts.isEmpty {
                         PastelHistoryEmptyState(
@@ -355,14 +364,12 @@ struct HistoryView: View {
                                             .transition(.move(edge: .leading).combined(with: .opacity))
                                         }
 
-                                        ZStack {
-                                            NavigationLink(destination: WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())) {
-                                                EmptyView()
-                                            }
-                                            .opacity(0)
-
+                                        NavigationLink {
+                                            WorkoutDetailView(workout: workout, viewModel: di.makeWorkoutDetailViewModel())
+                                        } label: {
                                             PastelWorkoutCard(workout: workout, unitsManager: unitsManager)
                                         }
+                                        .buttonStyle(.plain)
                                     }
                                     .listRowInsets(EdgeInsets(top: 5, leading: 16, bottom: 5, trailing: 16))
                                     .listRowSeparator(.hidden)
@@ -464,14 +471,17 @@ struct HistoryView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                .scrollDismissesKeyboard(.immediately)
                 .background(Color.clear)
-                .onTapGesture {
-                    hideKeyboard()
-                    withAnimation { isSearching = false }
-                }
                 .onAppear {
-                    if finishedPage.isEmpty {
-                        refreshFinished(reset: true)
+                    refreshFinished(reset: false)
+                }
+                .onChange(of: workoutService.finishedSessionRevision) { _, _ in
+                    refreshFinished(reset: false)
+                }
+                .onChange(of: di.appState.selectedTab) { _, tab in
+                    if tab == 1 {
+                        refreshFinished(reset: false)
                     }
                 }
                 .onChange(of: selectedFilter) { _, _ in
@@ -510,8 +520,33 @@ struct HistoryView: View {
 }
 
 // MARK: - 1. Header View
-private struct HistoryHeaderView: View {
+private struct HistoryEditButton: View {
     @Binding var isEditing: Bool
+
+    var body: some View {
+        Button {
+            HapticManager.shared.impact(.soft)
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
+                isEditing.toggle()
+            }
+        } label: {
+            Text(isEditing ? "Done" : "Edit")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(isEditing ? PastelTheme.textOnOat : PastelTheme.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .background(isEditing ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule().stroke(isEditing ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("wt.history.edit")
+    }
+}
+
+private struct HistoryHeaderView: View {
     let totalCount: Int
 
     var body: some View {
@@ -539,26 +574,6 @@ private struct HistoryHeaderView: View {
                     .foregroundStyle(PastelTheme.textSecondary)
             }
 
-            Spacer()
-
-            Button {
-                HapticManager.shared.impact(.soft)
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                    isEditing.toggle()
-                }
-            } label: {
-                Text(isEditing ? "Done" : "Edit")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(isEditing ? PastelTheme.textOnOat : PastelTheme.textPrimary)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 7)
-                    .background(isEditing ? PastelTheme.pastelOat : PastelTheme.cardSurfaceSubtle)
-                    .clipShape(Capsule())
-                    .overlay(
-                        Capsule().stroke(isEditing ? PastelTheme.pastelOat : PastelTheme.cardBorder, lineWidth: 1)
-                    )
-            }
-            .buttonStyle(.plain)
         }
         .padding(.top, 4)
     }
@@ -704,9 +719,7 @@ private struct HistorySearchBarView: View {
                 Button {
                     text = ""
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(PastelTheme.textTertiary)
+                    ChromeDismissMark()
                 }
                 .buttonStyle(.plain)
             }
@@ -809,11 +822,12 @@ private struct PastelWorkoutCard: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(workout.title.isEmpty ? "Workout" : workout.title)
                             .font(.headline.weight(.bold))
                             .foregroundStyle(PastelTheme.textPrimary)
-                            .lineLimit(1)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         if workout.isFavorite {
                             Image(systemName: "star.fill")
@@ -1032,16 +1046,6 @@ private struct PastelHistoryEmptyState: View {
     }
 }
 
-#if canImport(UIKit)
-import UIKit
-
-extension View {
-    fileprivate func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-    }
-}
-#endif
-
 // MARK: - Best Workouts & Templates Shelf
 struct BestWorkoutsAndTemplatesShelf: View {
     let bestWorkouts: [Workout]
@@ -1116,8 +1120,8 @@ private struct BestWorkoutReplayCard: View {
                     Text(workout.title.isEmpty ? "Workout" : workout.title)
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(PastelTheme.textPrimary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Spacer()

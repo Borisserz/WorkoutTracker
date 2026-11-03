@@ -55,6 +55,8 @@ struct OverviewVitalsRowView: View {
                 dotColor: PastelTheme.pastelSlate,
                 action: onWaterTap
             )
+            .accessibilityIdentifier("wt.overview.hydration")
+            .accessibilityValue(waterLiters > 0 ? String(format: "%.1fL", waterLiters) : "not measured")
         }
         .frame(maxWidth: .infinity)
     }

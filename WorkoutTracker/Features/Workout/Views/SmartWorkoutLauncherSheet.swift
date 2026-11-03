@@ -36,10 +36,7 @@ struct SmartWorkoutLauncherSheet: View {
                             HapticManager.shared.impact(.light)
                             dismiss()
                         } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title2)
-                                .symbolRenderingMode(.hierarchical)
-                                .foregroundStyle(colorScheme == .dark ? Color.white.opacity(0.3) : Color.black.opacity(0.15))
+                            ChromeDismissMark()
                         }
                         .buttonStyle(PremiumScaleButtonStyle())
                     }

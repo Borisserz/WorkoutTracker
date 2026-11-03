@@ -82,28 +82,25 @@ struct PresetEditorView: View {
                     HapticManager.shared.impact(.medium)
                     Task { await savePreset() }
                 } label: {
+                    let canSave = vm.nameIsValid && vm.exercisesAreValid
                     Text(preset == nil ? LocalizedStringKey("Save the template") : LocalizedStringKey("Save Changes"))
                         .font(.headline)
                         .bold()
-                        .foregroundColor(themeManager.current.background)
+                        .foregroundStyle(canSave ? PastelTheme.textOnOat : PastelTheme.textSecondary)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(
-                            (!vm.nameIsValid || !vm.exercisesAreValid)
-                            ? AnyShapeStyle(Color.gray.opacity(0.8))
-                            : AnyShapeStyle(themeManager.current.primaryGradient)
+                        .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                        .background(canSave ? PastelTheme.pastelOat : PastelTheme.cardSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(canSave ? Color.clear : PastelTheme.cardBorder, lineWidth: 1)
                         )
-                        .cornerRadius(20)
-                        .shadow(color: (!vm.nameIsValid || !vm.exercisesAreValid) ? .clear : themeManager.current.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 5)
                 }
                 .disabled(!vm.nameIsValid || !vm.exercisesAreValid)
                 .padding(.horizontal, 20)
+                .padding(.top, 12)
                 .padding(.bottom, 10)
-                .background(
-
-                    LinearGradient(colors: [(colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white), (colorScheme == .dark ? Color(UIColor.systemGroupedBackground) : Color.white).opacity(0)], startPoint: .bottom, endPoint: .top)
-                        .ignoresSafeArea()
-                )
+                .background(PastelTheme.canvas)
             }
             .navigationTitle(preset == nil ? LocalizedStringKey("New template") : LocalizedStringKey("Edit Template"))
             .accessibilityIdentifier("wt.presetEditor.root")
@@ -502,7 +499,7 @@ struct PresetExerciseEditor: View {
                     Spacer(minLength: 20)
                 }
             }
-            .background(Color(UIColor.systemGroupedBackground).ignoresSafeArea())
+            .background(PastelTheme.canvas.ignoresSafeArea())
             .safeAreaInset(edge: .bottom) {
                 Button {
                     save()
@@ -510,24 +507,16 @@ struct PresetExerciseEditor: View {
                     Text(LocalizedStringKey("Save Changes"))
                         .font(.headline)
                         .bold()
-                        .foregroundColor(themeManager.current.background)
+                        .foregroundStyle(PastelTheme.textOnOat)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 18)
-                        .background(themeManager.current.primaryGradient)
-                        .cornerRadius(20)
-                        .shadow(color: themeManager.current.primaryAccent.opacity(0.4), radius: 10, x: 0, y: 5)
+                        .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                        .background(PastelTheme.pastelOat)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 10)
-                .padding(.top, 24)
-                .background(
-                    LinearGradient(
-                        colors: [Color(UIColor.systemGroupedBackground), Color(UIColor.systemGroupedBackground).opacity(0)],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
-                    .ignoresSafeArea()
-                )
+                .padding(.top, 12)
+                .background(PastelTheme.canvas)
             }
             .navigationTitle(LocalizedStringKey("Configure Preset"))
             .navigationBarTitleDisplayMode(.inline)

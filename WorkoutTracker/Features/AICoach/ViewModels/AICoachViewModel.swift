@@ -66,6 +66,22 @@ final class AICoachViewModel {
         self.inputText = ""
     }
 
+    func deleteAllChatHistory() {
+        clearChat()
+        do {
+            let sessions = try modelContext.fetch(FetchDescriptor<AIChatSession>())
+            for session in sessions {
+                modelContext.delete(session)
+            }
+            try modelContext.save()
+        } catch {
+            appState.showError(
+                title: String(localized: "Couldn’t clear chat"),
+                message: error.localizedDescription
+            )
+        }
+    }
+
     func cancelGeneration() {
         currentTask?.cancel()
         currentTask = nil

@@ -143,10 +143,7 @@ struct TemplatePreviewSheetView: View {
                         HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(colorScheme == .dark ? Color(UIColor.tertiarySystemFill) : .gray.opacity(0.5)) 
+                        ChromeDismissMark() 
                     }
                 }
             }

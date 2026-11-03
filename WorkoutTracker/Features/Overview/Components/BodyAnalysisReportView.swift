@@ -284,9 +284,7 @@ struct BodyAnalysisReportView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(PastelTheme.textSecondary)
+                        ChromeDismissMark()
                     }
                     .buttonStyle(.plain)
                 }

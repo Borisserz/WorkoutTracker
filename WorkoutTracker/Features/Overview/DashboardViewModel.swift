@@ -18,6 +18,7 @@ final class DashboardViewModel {
 
     var todaySteps: Int = 0
     var todayWaterLiters: Double = 0.0
+    private var waterRevision = 0
 
     var streakCount: Int = 0
     var totalWorkouts: Int = 0
@@ -62,15 +63,14 @@ final class DashboardViewModel {
                     catalog: currentCatalog
                 )
 
-                let formatter = DateFormatter()
-                formatter.dateFormat = "yyyy-MM-dd"
-                let dateString = formatter.string(from: Date())
-                let dateKey = "water_liters_\(dateString)"
-                let appGroupWater = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")?.double(forKey: dateKey) ?? 0.0
+                let revision = self.waterRevision
+                let stored = HydrationLog.storedLiters()
 
                 await MainActor.run {
                     self.todaySteps = fetchedSteps
-                    self.todayWaterLiters = max(fetchedWater, appGroupWater)
+                    if revision == self.waterRevision {
+                        self.todayWaterLiters = HydrationLog.displayLiters(stored: stored, health: fetchedWater)
+                    }
 
                     self.proactiveProposal = proposal
                     if let prop = proposal {
@@ -108,24 +108,54 @@ final class DashboardViewModel {
     }
 
     func addWater(liters: Double) {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let dateString = formatter.string(from: Date())
-        let dateKey = "water_liters_\(dateString)"
-        let appGroupDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
-        let current = appGroupDefaults?.double(forKey: dateKey) ?? todayWaterLiters
-        let updated = max(0.0, current + liters)
-        appGroupDefaults?.set(updated, forKey: dateKey)
+        waterRevision += 1
+        let base = HydrationLog.storedLiters() ?? todayWaterLiters
+        let updated = max(0.0, base + liters)
+        HydrationLog.write(updated)
         todayWaterLiters = updated
+        let added = liters
+        Task {
+            try? await HealthKitManager.shared.saveDietaryWater(liters: added)
+        }
     }
 
     func resetWater() {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        let dateString = formatter.string(from: Date())
-        let dateKey = "water_liters_\(dateString)"
-        let appGroupDefaults = UserDefaults(suiteName: "group.com.borisdev.WorkoutTracker")
-        appGroupDefaults?.set(0.0, forKey: dateKey)
+        waterRevision += 1
+        HydrationLog.write(0)
         todayWaterLiters = 0.0
+    }
+}
+
+enum HydrationLog {
+    static let suiteName = "group.com.borisdev.WorkoutTracker"
+
+    static func storageKey(for date: Date = Date()) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return "water_liters_\(formatter.string(from: date))"
+    }
+
+    static func defaults() -> UserDefaults {
+        UserDefaults(suiteName: suiteName) ?? .standard
+    }
+
+    /// `nil` means the app has not logged water today, so Health can fill in.
+    /// An explicit `0` is a reset and must stay `0`.
+    static func storedLiters(on date: Date = Date()) -> Double? {
+        let key = storageKey(for: date)
+        let store = defaults()
+        guard store.object(forKey: key) != nil else { return nil }
+        return store.double(forKey: key)
+    }
+
+    static func write(_ liters: Double, on date: Date = Date()) {
+        defaults().set(max(0, liters), forKey: storageKey(for: date))
+    }
+
+    static func displayLiters(stored: Double?, health: Double) -> Double {
+        if let stored { return max(0, stored) }
+        return max(0, health)
     }
 }

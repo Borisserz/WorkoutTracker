@@ -309,7 +309,9 @@ struct SettingsView: View {
                         do {
                             try await SocialAuthService.shared.signInWithApple()
                         } catch {
-                            authErrorMessage = error.localizedDescription
+                            if !AuthFlow.isCancellation(error) {
+                                authErrorMessage = error.localizedDescription
+                            }
                         }
                         isProcessing = false
                     }
@@ -324,17 +326,18 @@ struct SettingsView: View {
                 .buttonStyle(SettingsGlassAuthButtonStyle())
                 .disabled(isProcessing)
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
 
                 Button(action: {
                     Task {
                         isProcessing = true
                         do {
                             try await SocialAuthService.shared.signInWithGoogle()
-                        } catch let error as NSError where error.code == GIDSignInError.canceled.rawValue {
-                            // Ignored
                         } catch {
-                            authErrorMessage = error.localizedDescription
+                            if !AuthFlow.isCancellation(error) {
+                                authErrorMessage = error.localizedDescription
+                            }
                         }
                         isProcessing = false
                     }
@@ -349,7 +352,8 @@ struct SettingsView: View {
                 .buttonStyle(SettingsGlassAuthButtonStyle())
                 .disabled(isProcessing)
                 .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets(top: 6, leading: 20, bottom: 6, trailing: 20))
             }
         } else {
             Section(
@@ -548,6 +552,9 @@ struct SettingsView: View {
             // 3) Stop the blocked-list listener and wipe local storage.
             await BlockedUsersStore.shared.stopListening()
             deleteLocalData()
+            // 4) Guest session so the app is usable without a restart.
+            try? await AnonymousAuthBootstrap.shared.ensureSignedIn()
+            await BlockedUsersStore.shared.startListening()
             showDeleteSuccessAlert = true
         } catch {
             deleteAccountError = error.localizedDescription
@@ -816,19 +823,19 @@ struct SettingsCheckmarkRow: View {
 }
 
 struct SettingsGlassAuthButtonStyle: ButtonStyle {
-    @Environment(\.colorScheme) private var colorScheme
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 16, weight: .semibold, design: .rounded))
-            .foregroundStyle(colorScheme == .dark ? .white : .black)
-            .frame(maxWidth: .infinity)
-            .frame(height: 48)
+            .foregroundStyle(PastelTheme.textPrimary)
             .padding(.horizontal, 16)
-            .background(colorScheme == .dark ? AnyShapeStyle(.ultraThinMaterial) : AnyShapeStyle(Color.white), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background(PastelTheme.cardSurface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .strokeBorder(Color.accentColor.opacity(colorScheme == .dark ? 0.6 : 0.4), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(PastelTheme.cardBorder, lineWidth: 1)
             )
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: configuration.isPressed)
     }

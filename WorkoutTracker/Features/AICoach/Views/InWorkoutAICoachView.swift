@@ -178,9 +178,7 @@ struct AIProposalPremiumCard: View {
                 Spacer()
 
                 Button(action: onDismiss) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title2)
-                        .foregroundStyle(PastelTheme.textMuted, Color.gray.opacity(0.2))
+                    ChromeDismissMark()
                 }
             }
 

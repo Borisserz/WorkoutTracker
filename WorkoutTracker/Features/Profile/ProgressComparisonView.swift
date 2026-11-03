@@ -50,10 +50,7 @@ struct ProgressComparisonView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(action: { dismiss() }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .symbolRenderingMode(.hierarchical)
-                            .foregroundStyle(.secondary, Color(UIColor.tertiarySystemFill))
+                        ChromeDismissMark()
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {

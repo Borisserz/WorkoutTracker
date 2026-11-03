@@ -111,9 +111,7 @@ struct SmartGeneratorEntryView: View {
                         HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(PastelTheme.textSecondary, PastelTheme.cardSurfaceSubtle)
+                        ChromeDismissMark()
                     }
                     .accessibilityIdentifier("wt.smartBuilder.close")
                     .accessibilityLabel("Close")

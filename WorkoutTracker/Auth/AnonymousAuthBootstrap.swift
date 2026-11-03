@@ -27,6 +27,8 @@ final class AnonymousAuthBootstrap {
     private init() {}
 
     /// Call once at app launch. Idempotent — multiple calls await the same task.
+    /// After sign-out or account deletion the cached task is finished and
+    /// `currentUser` is nil, so a new anonymous session must start.
     @discardableResult
     func ensureSignedIn() async throws -> User {
         if let user = Auth.auth().currentUser {
@@ -34,12 +36,14 @@ final class AnonymousAuthBootstrap {
             return user
         }
 
-        if let existing = bootstrapTask {
+        if AnonymousBootstrapPlan.next(hasCurrentUser: false, hasCachedTask: bootstrapTask != nil) == .awaitCachedTask,
+           let existing = bootstrapTask {
             try await existing.value
-            guard let user = Auth.auth().currentUser else {
-                throw AuthBootstrapError.noUserAfterSignIn
+            if AnonymousBootstrapPlan.afterCachedTask(hasCurrentUser: Auth.auth().currentUser != nil) == .useCurrentUser,
+               let user = Auth.auth().currentUser {
+                return user
             }
-            return user
+            bootstrapTask = nil
         }
 
         let task = Task<Void, Error> { [log] in
@@ -76,6 +80,24 @@ final class AnonymousAuthBootstrap {
     /// Synchronously returns the current UID if available (no I/O).
     var currentUid: String? {
         Auth.auth().currentUser?.uid
+    }
+}
+
+enum AnonymousBootstrapPlan: Equatable {
+    case useCurrentUser
+    case awaitCachedTask
+    case beginAnonymousSignIn
+
+    static func next(hasCurrentUser: Bool, hasCachedTask: Bool) -> Self {
+        if hasCurrentUser { return .useCurrentUser }
+        if hasCachedTask { return .awaitCachedTask }
+        return .beginAnonymousSignIn
+    }
+
+    /// A finished bootstrap from launch must not block a new guest session
+    /// after sign-out or account deletion.
+    static func afterCachedTask(hasCurrentUser: Bool) -> Self {
+        hasCurrentUser ? .useCurrentUser : .beginAnonymousSignIn
     }
 }
 

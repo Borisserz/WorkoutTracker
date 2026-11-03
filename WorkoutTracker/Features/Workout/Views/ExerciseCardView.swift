@@ -189,40 +189,39 @@ struct ExerciseCardView: View {
     }
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                // Reorder handle
+            HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "line.3.horizontal")
                     .foregroundColor(PastelTheme.textTertiary)
                     .font(.caption)
                     .frame(width: 16)
-                
-                // Exercise Icon and Title (tap to see history)
+                    .padding(.top, 4)
+
                 Button {
                     showHistory = true
                 } label: {
-                    HStack(spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Image(systemName: getIcon())
                             .foregroundColor(getColor())
                             .font(.system(size: 14, weight: .bold))
-                        
+
                         Text(LocalizationHelper.shared.translateName(exercise.name))
                             .font(.system(size: 18, weight: .bold, design: .rounded))
                             .foregroundColor(PastelTheme.textPrimary)
-                            .lineLimit(1)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.plain)
 
-                Spacer()
-                
-                // Completed Sets pill/text
                 let completedCount = exercise.setsList.filter { $0.isCompleted }.count
                 let totalCount = exercise.setsList.count
                 Text("\(completedCount)/\(totalCount) Completed")
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(PastelTheme.textSecondary)
-                
-                // Menu dots
+                    .fixedSize()
+                    .padding(.top, 4)
+
                 Menu {
                     Button { showHistory = true } label: { Label(LocalizedStringKey("Exercise Info & History"), systemImage: "info.circle") }
                     if !isEmbeddedInSuperset {
@@ -246,6 +245,7 @@ struct ExerciseCardView: View {
                             .font(.system(size: 10))
                         Text(targetMuscles.joined(separator: ", "))
                             .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .foregroundColor(PastelTheme.textSecondary)
                     .padding(.horizontal, 8)

@@ -101,9 +101,7 @@ struct SmartCaptureView: View {
 
             HStack {
                 Button { dismiss() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title)
-                        .foregroundStyle(.white, Color.black.opacity(0.5))
+                    ChromeDismissMark()
                 }
                 Spacer()
 

@@ -571,7 +571,7 @@ struct DebouncedSearchBar: View {
 
             if !debouncer.inputText.isEmpty {
                 Button(action: { debouncer.inputText = "" }) {
-                    Image(systemName: "xmark.circle.fill").foregroundColor(themeManager.current.secondaryAccent)
+                    ChromeDismissMark()
                 }
             }
         }

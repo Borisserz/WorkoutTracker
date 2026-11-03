@@ -250,14 +250,32 @@ struct WorkoutDetailContentView: View {
     }
 
     // MARK: - Active Workout 1-Tap Thumb HUD Cockpit (Exact Mockup Match)
-    private var nextPendingSetInfo: (exercise: Exercise, setIndex: Int, set: WorkoutSet)? {
-        for exercise in workout.exercises {
-            let sortedSets = exercise.sortedSets
-            for (idx, set) in sortedSets.enumerated() {
-                if !set.isCompleted {
-                    return (exercise, idx + 1, set)
-                }
+    private enum ThumbAction {
+        case completeSet(Exercise, Int, WorkoutSet)
+        case finishExercise(Exercise)
+        case finishWorkout
+    }
+
+    private func setsToLog(in exercise: Exercise) -> [Exercise] {
+        exercise.isSuperset ? exercise.subExercises : [exercise]
+    }
+
+    private var thumbAction: ThumbAction {
+        guard let current = workout.exercises.first(where: { !$0.isCompleted }) else {
+            return .finishWorkout
+        }
+        for target in setsToLog(in: current) {
+            let sorted = target.sortedSets
+            if let index = sorted.firstIndex(where: { !$0.isCompleted }) {
+                return .completeSet(target, index + 1, sorted[index])
             }
+        }
+        return .finishExercise(current)
+    }
+
+    private var pendingSetForRest: (exercise: Exercise, setIndex: Int, set: WorkoutSet)? {
+        if case .completeSet(let exercise, let index, let set) = thumbAction {
+            return (exercise, index, set)
         }
         return nil
     }
@@ -274,19 +292,32 @@ struct WorkoutDetailContentView: View {
         return String(localized: "Log set")
     }
 
-    private func completeNextPendingSet(_ pending: (exercise: Exercise, setIndex: Int, set: WorkoutSet)) {
+    private func completeNextPendingSet(_ exercise: Exercise, setIndex: Int, set: WorkoutSet) {
         HapticManager.shared.impact(.medium)
-        let sorted = pending.exercise.sortedSets
-        let isLast = pending.setIndex >= sorted.count
+        let isLast = setIndex >= exercise.sortedSets.count
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-            pending.set.isCompleted = true
+            set.isCompleted = true
             viewModel.handleSetCompleted(
-                set: pending.set,
+                set: set,
                 isLast: isLast,
-                exerciseName: pending.exercise.name,
+                exerciseName: exercise.name,
                 workout: workout,
                 weightUnit: unitsManager.weightUnitString()
             )
+        }
+    }
+
+    private func finishExerciseFromCockpit(_ exercise: Exercise) {
+        HapticManager.shared.impact(.medium)
+        viewModel.handleExerciseFinished(
+            exerciseId: exercise.id,
+            workout: workout,
+            weightUnit: unitsManager.weightUnitString()
+        ) { nextId in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                expandedExercises[exercise.id] = false
+                expandedExercises[nextId] = true
+            }
         }
     }
 
@@ -294,7 +325,7 @@ struct WorkoutDetailContentView: View {
         HapticManager.shared.impact(.light)
         if timerManager.isRestTimerActive {
             timerManager.stopRestTimer()
-        } else if let pending = nextPendingSetInfo {
+        } else if let pending = pendingSetForRest {
             timerManager.startRestTimer(
                 duration: restButtonSeconds(pending: pending),
                 exerciseName: pending.exercise.name
@@ -326,14 +357,14 @@ struct WorkoutDetailContentView: View {
             Spacer()
 
             // 1. Primary Action Button: 1-Tap Set Completion (Hero 48pt Warm Oat)
-            if let pending = nextPendingSetInfo {
+            if case .completeSet(let exercise, let setIndex, let set) = thumbAction {
                 Button {
-                    completeNextPendingSet(pending)
+                    completeNextPendingSet(exercise, setIndex: setIndex, set: set)
                 } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 16, weight: .bold))
-                        Text("Complete set \(pending.setIndex) (\(formatSetWeightReps(pending.set)))")
+                        Text("Complete set \(setIndex) (\(formatSetWeightReps(set)))")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .lineLimit(1)
                             .minimumScaleFactor(0.8)
@@ -347,6 +378,27 @@ struct WorkoutDetailContentView: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("wt.session.completeSet")
+            } else if case .finishExercise(let exercise) = thumbAction {
+                Button {
+                    finishExerciseFromCockpit(exercise)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 16, weight: .bold))
+                        Text("Finish \(LocalizationHelper.shared.translateName(exercise.name))")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .foregroundStyle(PastelTheme.textOnOat)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                    .background(PastelTheme.pastelEmerald)
+                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.4), radius: 10, y: 5)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("wt.session.finishExercise")
             } else {
                 Button {
                     finishCurrentWorkout()
@@ -386,7 +438,7 @@ struct WorkoutDetailContentView: View {
                             .lineLimit(1)
                             .minimumScaleFactor(0.85)
                     } else {
-                        let secs = restButtonSeconds(pending: nextPendingSetInfo)
+                        let secs = restButtonSeconds(pending: pendingSetForRest)
                         Text(String(format: "%02d:%02d Rest", secs / 60, secs % 60))
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .lineLimit(1)
@@ -532,9 +584,9 @@ struct WorkoutDetailContentView: View {
                 activeSheet = .supersetBuilder(nil)
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "circle.grid.2x2")
+                    Image(systemName: "plus")
                         .font(.system(size: 13, weight: .bold))
-                    Text("Plate calculator")
+                    Text("Superset")
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                 }
                 .foregroundStyle(PastelTheme.textPrimary)

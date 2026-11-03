@@ -117,12 +117,11 @@ struct WorkoutModeDiscoveryPopup: View {
     var onSelectEmpty: () -> Void
     var onSelectAI: () -> Void
     var onSelectTemplates: () -> Void
+    var onOpenHistory: () -> Void = {}
 
     @State private var selectedMode: WorkoutLaunchMode = .empty
     @State private var cardsAppeared: Bool = false
-    @State private var showConfirmationAlert: Bool = false
     @State private var showNoTemplatesAlert: Bool = false
-    @State private var pendingLaunchMode: WorkoutLaunchMode? = nil
 
     var body: some View {
         ZStack {
@@ -161,6 +160,7 @@ struct WorkoutModeDiscoveryPopup: View {
                     .padding(.horizontal, 14)
             }
             .padding(.vertical, 20)
+            .frame(maxWidth: .infinity)
             .background(PastelTheme.cardSurface)
             .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
             .overlay(
@@ -174,72 +174,30 @@ struct WorkoutModeDiscoveryPopup: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("wt.discovery.root")
-        .alert(confirmationTitle, isPresented: $showConfirmationAlert) {
-            Button(confirmationButtonText, role: .none) {
-                let mode = pendingLaunchMode ?? selectedMode
-                executeAction(for: mode)
-            }
-            Button("Cancel", role: .cancel) {
-                pendingLaunchMode = nil
-            }
-        } message: {
-            Text(confirmationMessage)
-        }
-        .alert("No templates yet", isPresented: $showNoTemplatesAlert) {
-            Button("Create template") {
-                dismissPopup()
-                onCreateTemplate?()
-            }
-            Button("Open History") {
-                dismissPopup()
-                onSelectTemplates()
-            }
-            Button("Cancel", role: .cancel) {
-                pendingLaunchMode = nil
-            }
-        } message: {
-            Text("No saved templates yet. Create your first template now?")
+        .sheet(isPresented: $showNoTemplatesAlert) {
+            NoTemplatesSheet(
+                onCreate: {
+                    showNoTemplatesAlert = false
+                    dismissPopup()
+                    onCreateTemplate?()
+                },
+                onOpenHistory: {
+                    showNoTemplatesAlert = false
+                    dismissPopup()
+                    onOpenHistory()
+                },
+                onStay: { showNoTemplatesAlert = false }
+            )
+            .presentationDetents([.height(420)])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(28)
+            .presentationBackground(PastelTheme.canvas)
         }
         .onAppear {
             HapticManager.playMediumImpact()
             withAnimation(.spring(response: 0.44, dampingFraction: 0.74)) {
                 cardsAppeared = true
             }
-        }
-    }
-
-    // MARK: - Confirmation Copy
-    private var confirmationTitle: String {
-        let mode = pendingLaunchMode ?? selectedMode
-        switch mode {
-        case .empty:
-            return "Start an empty workout?"
-        case .aiBuilder:
-            return "Open AI Builder?"
-        case .templates:
-            return "Open templates?"
-        }
-    }
-
-    private var confirmationMessage: String {
-        let mode = pendingLaunchMode ?? selectedMode
-        switch mode {
-        case .empty:
-            return "A free-form workout will be created with no template. You can log sets as you go."
-        case .aiBuilder:
-            return "Generate an adaptive workout plan based on your current muscle readiness?"
-        case .templates:
-            return "Go to History to start one of your saved splits?"
-        }
-    }
-
-    private var confirmationButtonText: String {
-        let mode = pendingLaunchMode ?? selectedMode
-        switch mode {
-        case .empty:
-            return "Start"
-        case .aiBuilder, .templates:
-            return "Continue"
         }
     }
 
@@ -294,8 +252,8 @@ struct WorkoutModeDiscoveryPopup: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(PastelTheme.textSecondary)
                     .lineSpacing(2.5)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(minHeight: 44, alignment: .topLeading)
+                    .lineLimit(3)
+                    .frame(height: 48, alignment: .topLeading)
 
                 // Dynamic Tag Pills
                 HStack(spacing: 6) {
@@ -304,7 +262,7 @@ struct WorkoutModeDiscoveryPopup: View {
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundStyle(selectedMode.accentColor)
                             .lineLimit(1)
-                            .fixedSize(horizontal: true, vertical: false)
+                            .minimumScaleFactor(0.8)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 3)
                             .background(selectedMode.accentColor.opacity(0.12))
@@ -480,7 +438,7 @@ struct WorkoutModeDiscoveryPopup: View {
             )
             .shadow(color: isSelected ? mode.accentColor.opacity(0.35) : Color.black.opacity(0.2), radius: isSelected ? 10 : 4, y: isSelected ? 5 : 2)
             .offset(y: isSelected ? -7 : 0)
-            .scaleEffect(x: isSelected ? 1.01 : 0.98, y: isSelected ? 1.02 : 0.98)
+            .scaleEffect(isSelected ? 1.0 : 0.98)
             .opacity(isSelected ? 1.0 : 0.88)
             .rotationEffect(.degrees(fanAngle))
             .rotation3DEffect(.degrees(fanYAxisTilt), axis: (x: 0, y: 1, z: 0), perspective: 0.3)
@@ -548,14 +506,82 @@ struct WorkoutModeDiscoveryPopup: View {
     }
 
     private func requestLaunch(for mode: WorkoutLaunchMode) {
-        HapticManager.playMediumImpact()
-        pendingLaunchMode = mode
         if mode == .templates && !hasTemplates {
+            HapticManager.playMediumImpact()
             showNoTemplatesAlert = true
         } else {
-            showConfirmationAlert = true
+            executeAction(for: mode)
         }
     }
+
+struct NoTemplatesSheet: View {
+    let onCreate: () -> Void
+    let onOpenHistory: () -> Void
+    let onStay: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(spacing: 12) {
+                Image(systemName: "square.stack")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(PastelTheme.pastelAmber)
+                    .frame(width: 44, height: 44)
+                    .background(PastelTheme.pastelAmber.opacity(0.14), in: Circle())
+                    .overlay(Circle().stroke(PastelTheme.pastelAmber.opacity(0.35), lineWidth: 1))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("No templates yet")
+                        .font(.title3.bold())
+                        .foregroundStyle(PastelTheme.textPrimary)
+                    Text("History is still empty")
+                        .font(.caption)
+                        .foregroundStyle(PastelTheme.textSecondary)
+                }
+            }
+
+            Text("Save a workout as a template, or open History and replay a finished session.")
+                .font(.subheadline)
+                .foregroundStyle(PastelTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(spacing: 10) {
+                sheetButton("Create template", fill: PastelTheme.pastelOat, title: PastelTheme.textOnOat, action: onCreate)
+                sheetButton("Open History", fill: PastelTheme.cardSurface, title: PastelTheme.textPrimary, border: PastelTheme.cardBorder, action: onOpenHistory)
+                sheetButton("Stay here", fill: PastelTheme.cardSurface, title: PastelTheme.textSecondary, border: PastelTheme.cardBorder, action: onStay)
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(PastelTheme.canvas)
+        .preferredColorScheme(.dark)
+    }
+
+    private func sheetButton(
+        _ title: String,
+        fill: Color,
+        title titleColor: Color,
+        border: Color? = nil,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: {
+            HapticManager.shared.impact(.light)
+            action()
+        }) {
+            Text(title)
+                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .foregroundStyle(titleColor)
+                .frame(maxWidth: .infinity)
+                .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                .background(fill)
+                .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
+                        .stroke(border ?? Color.clear, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
 
     private func executeAction(for mode: WorkoutLaunchMode) {
         HapticManager.playMediumImpact()

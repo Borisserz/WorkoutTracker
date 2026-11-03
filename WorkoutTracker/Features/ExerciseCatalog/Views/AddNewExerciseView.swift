@@ -62,9 +62,7 @@ struct AddNewExerciseView: View {
                         HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .foregroundStyle(Color.gray.opacity(0.5))
+                        ChromeDismissMark()
                     }
                 }
             }

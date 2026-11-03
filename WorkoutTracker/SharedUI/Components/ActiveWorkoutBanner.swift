@@ -128,16 +128,21 @@ struct ActiveWorkoutBanner: View {
         .onAppear {
             isBlinking = true
         }
-        .alert(LocalizedStringKey("Cancel Workout?"), isPresented: $showDeleteAlert) {
-            Button(LocalizedStringKey("Delete"), role: .destructive) {
-                timerManager.stopRestTimer()
-                Task {
-                    await workoutService.deleteWorkout(workout)
+        .sheet(isPresented: $showDeleteAlert) {
+            CancelWorkoutSheet(
+                onKeep: { showDeleteAlert = false },
+                onDelete: {
+                    showDeleteAlert = false
+                    timerManager.stopRestTimer()
+                    Task {
+                        await workoutService.deleteWorkout(workout)
+                    }
                 }
-            }
-            Button(LocalizedStringKey("Keep"), role: .cancel) { }
-        } message: {
-            Text(LocalizedStringKey("This will permanently delete the in-progress workout."))
+            )
+            .presentationDetents([.height(320)])
+            .presentationDragIndicator(.visible)
+            .presentationCornerRadius(28)
+            .presentationBackground(PastelTheme.canvas)
         }
     }
 
@@ -146,5 +151,75 @@ struct ActiveWorkoutBanner: View {
 
         di.appState.selectedTab = 2
         di.appState.returnToActiveWorkoutId = workout.persistentModelID
+    }
+}
+
+struct CancelWorkoutSheet: View {
+    let onKeep: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(spacing: 12) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(PastelTheme.pastelPeach)
+                    .frame(width: 44, height: 44)
+                    .background(PastelTheme.pastelPeach.opacity(0.14), in: Circle())
+                    .overlay(Circle().stroke(PastelTheme.pastelPeach.opacity(0.35), lineWidth: 1))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Cancel this workout?")
+                        .font(.title3.bold())
+                        .foregroundStyle(PastelTheme.textPrimary)
+                    Text("Only the session in progress")
+                        .font(.caption)
+                        .foregroundStyle(PastelTheme.textSecondary)
+                }
+            }
+
+            Text("Sets logged in this open session are removed. Finished workouts in History stay.")
+                .font(.subheadline)
+                .foregroundStyle(PastelTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            VStack(spacing: 10) {
+                Button(action: {
+                    HapticManager.shared.impact(.light)
+                    onKeep()
+                }) {
+                    Text("Keep workout")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.textOnOat)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                        .background(PastelTheme.pastelOat)
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                }
+                .buttonStyle(.plain)
+
+                Button(action: {
+                    HapticManager.shared.notification(.warning)
+                    onDelete()
+                }) {
+                    Text("Delete session")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundStyle(PastelTheme.pastelPeach)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: PastelTheme.ButtonMetrics.heroHeight)
+                        .background(PastelTheme.cardSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: PastelTheme.ButtonMetrics.heroRadius, style: .continuous)
+                                .stroke(PastelTheme.pastelPeach.opacity(0.45), lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(PastelTheme.canvas)
+        .preferredColorScheme(.dark)
     }
 }

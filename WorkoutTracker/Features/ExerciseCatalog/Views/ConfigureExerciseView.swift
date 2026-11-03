@@ -86,7 +86,13 @@ struct ConfigureExerciseView: View {
                             
                             Spacer()
                             
-                            MuscleSilhouetteBadge(muscleGroup: viewModel.muscleGroup)
+                            NavigationLink {
+                                ExerciseHistoryView(exerciseName: viewModel.exerciseName)
+                            } label: {
+                                MuscleSilhouetteBadge(muscleGroup: viewModel.muscleGroup)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("wt.configure.exercisePage")
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 16)

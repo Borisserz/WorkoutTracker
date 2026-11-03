@@ -108,9 +108,7 @@ struct FoodTrackerPromoView: View {
                         HapticManager.shared.impact(.light)
                         dismiss()
                     }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(.white.opacity(0.6))
+                        ChromeDismissMark()
                     }
                     .padding()
                 }

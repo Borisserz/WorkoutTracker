@@ -177,6 +177,13 @@ struct OverviewAnatomyCard: View {
                                 selectedMusclePct = pct
                             }
                         }
+                    },
+                    onSelectionCleared: {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                            selectedMuscleSlug = nil
+                            selectedMuscleName = nil
+                            selectedMusclePct = nil
+                        }
                     }
                 )
                 .frame(height: 340)

@@ -90,6 +90,29 @@ struct Tactile3DCardButtonStyle: ButtonStyle {
     }
 }
 
+struct PressScaleButtonStyle: ButtonStyle {
+    var scale: CGFloat = 0.97
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? scale : 1)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+/// Solid close mark. `xmark.circle.fill` paints a translucent disc with a knocked-out X.
+struct ChromeDismissMark: View {
+    var body: some View {
+        Image(systemName: "xmark")
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(PastelTheme.textPrimary)
+            .frame(width: 32, height: 32)
+            .background(PastelTheme.cardSurface, in: Circle())
+            .overlay(Circle().stroke(PastelTheme.cardBorder, lineWidth: 1))
+            .contentShape(Circle())
+    }
+}
+
 struct PulseEffect: ViewModifier {
     @State private var isPulsing = false
     func body(content: Content) -> some View {

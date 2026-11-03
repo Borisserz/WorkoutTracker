@@ -14,6 +14,7 @@ struct ProgramDiscoveryView: View {
     @State private var isProcessing = false
     @State private var selectedFilter: CatalogFilter = .all
     @State private var hasPavedScreen = false
+    @State private var selectedProgram: WorkoutProgramDefinition?
     
     private var usingOfflineCatalog: Bool {
         FirestoreProgramService.shared.legendaryRoutines.isEmpty
@@ -85,6 +86,14 @@ struct ProgramDiscoveryView: View {
         .sheet(item: $selectedLegendaryRoutine) { routine in
             LegendaryTemplatePreviewSheet(routine: routine) {
                 startLegendaryRoutine(routine)
+            }
+        }
+        .navigationDestination(isPresented: Binding(
+            get: { selectedProgram != nil },
+            set: { if !$0 { selectedProgram = nil } }
+        )) {
+            if let selectedProgram {
+                ProgramDetailView(program: selectedProgram)
             }
         }
         .alert(LocalizedStringKey("Active Workout Exists"), isPresented: $showActiveWorkoutAlert) {
@@ -224,14 +233,7 @@ struct ProgramDiscoveryView: View {
                     
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(Array(programs.enumerated()), id: \.element.id) { index, program in
-                            NavigationLink(destination: ProgramDetailView(program: program)) {
-                                ProgramPressurePlate(
-                                    program: program,
-                                    delay: min(0.3, Double(index) * 0.03),
-                                    hasPavedScreen: hasPavedScreen
-                                )
-                            }
-                            .buttonStyle(.plain)
+                            programCard(program, index: index)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -267,14 +269,7 @@ struct ProgramDiscoveryView: View {
                     
                     LazyVGrid(columns: columns, spacing: 12) {
                         ForEach(Array(soloWorkouts.enumerated()), id: \.element.id) { index, program in
-                            NavigationLink(destination: ProgramDetailView(program: program)) {
-                                ProgramPressurePlate(
-                                    program: program,
-                                    delay: min(0.3, Double(index) * 0.03),
-                                    hasPavedScreen: hasPavedScreen
-                                )
-                            }
-                            .buttonStyle(.plain)
+                            programCard(program, index: index)
                         }
                     }
                     .padding(.horizontal, 16)
@@ -283,6 +278,20 @@ struct ProgramDiscoveryView: View {
         }
     }
     
+    private func programCard(_ program: WorkoutProgramDefinition, index: Int) -> some View {
+        Button {
+            HapticManager.shared.impact(.light)
+            selectedProgram = program
+        } label: {
+            ProgramPressurePlate(
+                program: program,
+                delay: min(0.3, Double(index) * 0.03),
+                hasPavedScreen: hasPavedScreen
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     private func startLegendaryRoutine(_ routine: LegendaryRoutine) {
         guard !isProcessing else { return }
         isProcessing = true
@@ -318,8 +327,6 @@ struct ProgramPressurePlate: View {
     var delay: Double = 0.0
     var hasPavedScreen: Bool = true
 
-    @State private var isDepressed: Bool = false
-
     var levelColor: Color {
         switch program.level {
         case .beginner: return PastelTheme.pastelSage
@@ -336,7 +343,7 @@ struct ProgramPressurePlate: View {
                 .overlay(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(isDepressed ? 0.02 : 0.09),
+                            Color.white.opacity(0.09),
                             Color.clear
                         ],
                         startPoint: .top,
@@ -441,28 +448,11 @@ struct ProgramPressurePlate: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .stroke(PastelTheme.cardBorder, lineWidth: 1)
         )
-        .shadow(
-            color: Color.black.opacity(isDepressed ? 0.2 : 0.45),
-            radius: isDepressed ? 2 : 6,
-            y: isDepressed ? 1 : 4
-        )
-        .offset(y: hasPavedScreen ? (isDepressed ? 3 : 0) : 24)
-        .scaleEffect(hasPavedScreen ? (isDepressed ? 0.95 : 1.0) : 0.88)
+        .shadow(color: Color.black.opacity(0.45), radius: 6, y: 4)
+        .offset(y: hasPavedScreen ? 0 : 24)
+        .scaleEffect(hasPavedScreen ? 1.0 : 0.88)
         .opacity(hasPavedScreen ? 1.0 : 0.0)
         .animation(.spring(response: 0.42, dampingFraction: 0.76).delay(delay), value: hasPavedScreen)
-        .animation(.spring(response: 0.20, dampingFraction: 0.72), value: isDepressed)
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { _ in
-                    if !isDepressed {
-                        isDepressed = true
-                        HapticManager.shared.impact(.rigid)
-                    }
-                }
-                .onEnded { _ in
-                    isDepressed = false
-                }
-        )
     }
 }
 

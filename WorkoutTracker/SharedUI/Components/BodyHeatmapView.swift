@@ -13,6 +13,7 @@ struct BodyHeatmapView: View {
     let showLabels: Bool
     var selectedMuscleSlug: String? = nil
     var onMuscleTapped: ((MuscleGroup, Int?) -> Void)? = nil
+    var onSelectionCleared: (() -> Void)? = nil
 
     @State private var isFrontViewLocal = true
     @State private var selectedMuscle: MuscleGroup? = nil
@@ -39,7 +40,8 @@ struct BodyHeatmapView: View {
         countLabel: String = "ex.",
         showLabels: Bool = true,
         selectedMuscleSlug: String? = nil,
-        onMuscleTapped: ((MuscleGroup, Int?) -> Void)? = nil
+        onMuscleTapped: ((MuscleGroup, Int?) -> Void)? = nil,
+        onSelectionCleared: (() -> Void)? = nil
     ) {
         self.muscleIntensities = muscleIntensities
         self.rawMuscleCounts = rawMuscleCounts
@@ -51,6 +53,7 @@ struct BodyHeatmapView: View {
         self.showLabels = showLabels
         self.selectedMuscleSlug = selectedMuscleSlug
         self.onMuscleTapped = onMuscleTapped
+        self.onSelectionCleared = onSelectionCleared
     }
 
     private var activeIsFront: Bool {
@@ -76,7 +79,10 @@ struct BodyHeatmapView: View {
                 let centeringOffset = getCenteringOffset(isFront: activeIsFront, muscles: currentMuscles)
 
                 ZStack {
-                    // Silhouette vector paths with direct path-level hit-testing
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { clearSelection() }
+
                     ZStack {
                         ForEach(currentMuscles) { muscle in
                             drawGhostMuscle(muscle, centeringOffset: centeringOffset)
@@ -94,7 +100,11 @@ struct BodyHeatmapView: View {
                 .scaleEffect(scale)
                 .frame(width: canvasWidth * scale, height: canvasHeight * scale)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color.clear)
+                .background(
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { clearSelection() }
+                )
                 .overlay(alignment: .bottom) {
                     if let muscle = selectedMuscle, !isCompactMode {
                         let locName = NSLocalizedString(muscle.name, comment: "")
@@ -253,6 +263,15 @@ struct BodyHeatmapView: View {
         }
 
         onMuscleTapped?(muscle, animatedIntensities[muscle.slug])
+    }
+
+    private func clearSelection() {
+        guard selectedMuscle != nil || selectedMuscleSlug != nil else { return }
+        HapticManager.shared.selection()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            selectedMuscle = nil
+        }
+        onSelectionCleared?()
     }
 
     private func getMuscles(isFront: Bool) -> [MuscleGroup] {

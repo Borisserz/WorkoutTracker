@@ -5,18 +5,15 @@ internal import SwiftUI
 struct DailyFocusDetailSheet: View {
     let report: BodyAnalysisReport
     let onGoToWorkout: () -> Void
-    let onOpenCatalog: () -> Void
 
     @Environment(\.dismiss) private var dismiss
 
     init(
         report: BodyAnalysisReport,
-        onGoToWorkout: @escaping () -> Void,
-        onOpenCatalog: @escaping () -> Void
+        onGoToWorkout: @escaping () -> Void
     ) {
         self.report = report
         self.onGoToWorkout = onGoToWorkout
-        self.onOpenCatalog = onOpenCatalog
     }
 
     private var advice: NextWorkoutAdvice {
@@ -193,24 +190,6 @@ struct DailyFocusDetailSheet: View {
                                 .clipShape(RoundedRectangle(cornerRadius: PastelTheme.buttonRadius, style: .continuous))
                             }
                             .buttonStyle(.plain)
-
-                            Button {
-                                HapticManager.shared.impact(.light)
-                                dismiss()
-                                onOpenCatalog()
-                            } label: {
-                                Image(systemName: "books.vertical")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(PastelTheme.pastelOat)
-                                    .frame(width: 50, height: 50)
-                                    .background(PastelTheme.cardSurface)
-                                    .clipShape(RoundedRectangle(cornerRadius: PastelTheme.buttonRadius, style: .continuous))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: PastelTheme.buttonRadius, style: .continuous)
-                                            .stroke(PastelTheme.cardBorder, lineWidth: 1)
-                                    )
-                            }
-                            .buttonStyle(.plain)
                         }
                         .padding(.top, 4)
 
@@ -227,9 +206,7 @@ struct DailyFocusDetailSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(PastelTheme.textSecondary)
+                        ChromeDismissMark()
                     }
                     .buttonStyle(.plain)
                 }

@@ -30,8 +30,9 @@ struct PremiumExerciseSearchBar: View {
                             filterState.searchText = ""
                         }
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(colorScheme == .dark ? .white.opacity(0.5) : .black.opacity(0.5))
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(PastelTheme.textSecondary)
                             .transition(.scale.combined(with: .opacity))
                     }
                 }

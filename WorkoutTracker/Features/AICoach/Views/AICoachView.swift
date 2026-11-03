@@ -26,6 +26,7 @@ struct AICoachView: View {
     @State private var showChatView = false
     @State private var showProgressSheet = false
     @State private var showRestSheet = false
+    @AppStorage("recoveryCheckDay") private var recoveryCheckDay = ""
     @State private var showAISettings = false
     @AppStorage(Constants.UserDefaultsKeys.hasConsentedToAI.rawValue)
     private var hasConsentedToAI = false
@@ -266,7 +267,8 @@ struct AICoachView: View {
                                     title: "Recovery",
                                     subtitle: "Fatigue and sleep check",
                                     iconName: "moon.stars.fill",
-                                    accentColor: PastelTheme.pastelAmber
+                                    accentColor: PastelTheme.pastelAmber,
+                                    showsDailyBadge: RecoveryDailyCheck.isDue(storedDay: recoveryCheckDay)
                                 )
                             }
                             .buttonStyle(.plain)
@@ -319,7 +321,9 @@ struct AICoachView: View {
             .onAppear {
                 TrackingManager.shared.track(.aiCoachOpened(source: "tab"))
             }
-            .sheet(isPresented: $showRestSheet) { RestAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
+            .sheet(isPresented: $showRestSheet, onDismiss: {
+                recoveryCheckDay = RecoveryDailyCheck.todayKey()
+            }) { RestAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: $showProgressSheet) { ProgressAnalysisSheet().presentationDetents([.large]).presentationCornerRadius(35).presentationDragIndicator(.visible) }
             .sheet(isPresented: Binding(
                 get: { showAISettings || di.appState.showAISettingsSheet },
@@ -391,11 +395,23 @@ struct AICoachView: View {
 
 // MARK: - Apple HIG & PastelTheme UI Components
 
+enum RecoveryDailyCheck {
+    static func todayKey(now: Date = Date(), calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: calendar.startOfDay(for: now))
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    static func isDue(storedDay: String, now: Date = Date(), calendar: Calendar = .current) -> Bool {
+        storedDay != todayKey(now: now, calendar: calendar)
+    }
+}
+
 struct PastelBentoCard: View {
     let title: String
     let subtitle: String?
     let iconName: String
     let accentColor: Color
+    var showsDailyBadge: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -411,6 +427,12 @@ struct PastelBentoCard: View {
                         .foregroundStyle(accentColor)
                 }
                 Spacer()
+                if showsDailyBadge {
+                    Circle()
+                        .fill(PastelTheme.pastelPeach)
+                        .frame(width: 9, height: 9)
+                        .accessibilityLabel("Check recovery today")
+                }
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -825,7 +847,7 @@ struct AISettingsSheet: View {
 
                             Button {
                                 HapticManager.shared.notification(.warning)
-                                viewModel.clearChat()
+                                viewModel.deleteAllChatHistory()
                                 dismiss()
                             } label: {
                                 HStack(spacing: 10) {
@@ -1747,7 +1769,12 @@ struct StatRowView: View {
                 Text(stat.name).font(.system(size: 15, weight: .bold, design: .rounded)).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
                 Spacer()
                 Text(diffStr).font(.system(size: 13, weight: .bold, design: .rounded).monospacedDigit()).foregroundColor(diff > 0 ? PastelTheme.pastelSage : (diff < 0 ? PastelTheme.pastelPeach : PastelTheme.textMuted))
-                Text("\(String(format: "%.1f", stat.currentShare))%").font(.system(size: 16, weight: .black, design: .rounded).monospacedDigit()).foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black).frame(width: 55, alignment: .trailing)
+                Text("\(String(format: "%.1f", stat.currentShare))%")
+                    .font(.system(size: 16, weight: .black, design: .rounded).monospacedDigit())
+                    .foregroundColor(colorScheme == .dark ? PastelTheme.textPrimary : .black)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(minWidth: 72, alignment: .trailing)
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {

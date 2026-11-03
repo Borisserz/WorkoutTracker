@@ -15,9 +15,7 @@ struct SisterAppsPromoView: View {
                         HapticManager.shared.impact(.light)
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundStyle(PastelTheme.textSecondary)
+                        ChromeDismissMark()
                     }
                     .padding(.trailing, 16)
                     .padding(.top, 12)

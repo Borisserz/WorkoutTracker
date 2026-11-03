@@ -139,7 +139,7 @@ struct ProfileView: View {
         .onChange(of: selectedPhotoItem) { _, newItem in handlePhotoSelection(newItem) }
         .sheet(isPresented: $showEditMetrics) {
             EditMetricsSheet()
-                .presentationDetents([.height(450)])
+                .presentationDetents([.large])
                 .presentationCornerRadius(35)
                 .presentationDragIndicator(.visible)
         }

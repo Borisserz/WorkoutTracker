@@ -135,7 +135,7 @@ struct ContentView: View {
         }
         .sheet(isPresented: $appState.showCalendarSheet) {
             NavigationStack {
-                WorkoutCalendarView()
+                WorkoutCalendarView(showsCloseButton: true)
             }
         }
     }

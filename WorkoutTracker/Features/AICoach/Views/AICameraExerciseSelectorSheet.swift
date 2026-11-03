@@ -71,9 +71,7 @@ struct AICameraExerciseSelectorSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.title3)
-                            .foregroundColor(PastelTheme.textMuted)
+                        ChromeDismissMark()
                     }
                 }
             }

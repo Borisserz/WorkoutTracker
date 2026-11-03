@@ -52,6 +52,7 @@ struct WorkoutCalendarView: View {
     @Environment(DashboardViewModel.self) private var dashboardViewModel
     @Environment(DIContainer.self) private var di
     @Environment(\.dismiss) private var dismiss
+    var showsCloseButton: Bool = false
 
     @State private var selectedTimeRange: TimeRange = .month
     @State private var rawWorkouts: [Workout] = []
@@ -183,13 +184,14 @@ struct WorkoutCalendarView: View {
         .navigationTitle("Activity calendar")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    dismiss()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20))
-                        .foregroundStyle(PastelTheme.textTertiary)
+            if showsCloseButton {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        ChromeDismissMark()
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }
@@ -216,32 +218,38 @@ struct WorkoutCalendarView: View {
     private var streakTelemetryCard: some View {
         HStack(spacing: 14) {
             // Animated Streak Flame Crest
-            ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(PastelTheme.cardSurfaceSubtle)
-                    .frame(width: 52, height: 52)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .stroke(
-                                streakCount >= 5
-                                    ? PastelTheme.pastelAmber.opacity(0.6)
-                                    : PastelTheme.cardBorder,
-                                lineWidth: 1.2
-                            )
-                    )
+            Button {
+                HapticManager.shared.impact(.light)
+                inspectDay(Date())
+            } label: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(PastelTheme.cardSurfaceSubtle)
+                        .frame(width: 52, height: 52)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .stroke(
+                                    streakCount >= 5
+                                        ? PastelTheme.pastelAmber.opacity(0.6)
+                                        : PastelTheme.cardBorder,
+                                    lineWidth: 1.2
+                                )
+                        )
 
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(
-                        streakCount >= 5
-                            ? PastelTheme.pastelAmber
-                            : (streakCount > 0 ? PastelTheme.pastelAmber.opacity(0.85) : PastelTheme.textTertiary)
-                    )
-                    .shadow(
-                        color: streakCount >= 5 ? PastelTheme.pastelAmber.opacity(0.6) : .clear,
-                        radius: 8
-                    )
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(
+                            streakCount >= 5
+                                ? PastelTheme.pastelAmber
+                                : (streakCount > 0 ? PastelTheme.pastelAmber.opacity(0.85) : PastelTheme.textTertiary)
+                        )
+                        .offset(y: 2)
+                }
+                .frame(width: 52, height: 52)
+                .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Workout streak")
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
@@ -367,15 +375,7 @@ struct WorkoutCalendarView: View {
                     streaksByDay: streaksByDay,
                     selectedDate: $selectedDate,
                     onInspectDay: { dayDate in
-                        let dKey = dayKey(for: dayDate)
-                        let w = workoutsByDay[dKey] ?? []
-                        let s = streaksByDay[dKey] ?? (w.isEmpty ? 0 : 1)
-                        inspectedDay = InspectedDayData(
-                            date: dayDate,
-                            dateKey: dKey,
-                            workouts: w,
-                            streakAtDay: s
-                        )
+                        inspectDay(dayDate)
                     }
                 )
             }
@@ -474,6 +474,19 @@ struct WorkoutCalendarView: View {
     private func dayKey(for date: Date) -> String {
         let comps = Calendar.current.dateComponents([.year, .month, .day], from: date)
         return "\(comps.year ?? 0)-\(comps.month ?? 0)-\(comps.day ?? 0)"
+    }
+
+    private func inspectDay(_ date: Date) {
+        let dKey = dayKey(for: date)
+        let workouts = workoutsByDay[dKey] ?? []
+        let streak = streaksByDay[dKey] ?? (workouts.isEmpty ? 0 : 1)
+        selectedDate = date
+        inspectedDay = InspectedDayData(
+            date: date,
+            dateKey: dKey,
+            workouts: workouts,
+            streakAtDay: streak
+        )
     }
 
     private func fetchCalendarWorkouts(reset: Bool) {
@@ -699,7 +712,6 @@ private struct ArchitecturalMonthView: View {
                         streakAtDay: streakAtDay,
                         isSelected: isSelected,
                         onTap: {
-                            selectedDate = date
                             onInspectDay(date)
                         }
                     )
@@ -738,11 +750,13 @@ private struct CalendarDayPressurePlate: View {
 
     var body: some View {
         Button {
-            isDepressed = true
             HapticManager.shared.impact(.rigid)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.10) {
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.78)) {
+                isDepressed = true
+            }
+            onTap()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
                 isDepressed = false
-                onTap()
             }
         } label: {
             ZStack {
@@ -794,7 +808,7 @@ private struct CalendarDayPressurePlate: View {
                             Image(systemName: "flame.fill")
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundStyle(PastelTheme.pastelAmber)
-                                .shadow(color: PastelTheme.pastelAmber.opacity(0.85), radius: 3)
+                                .offset(y: 1)
                         } else {
                             Circle()
                                 .fill(PastelTheme.pastelSage)
@@ -840,11 +854,12 @@ private struct CalendarDayPressurePlate: View {
                 radius: isDepressed ? 1 : (isSelected ? 6 : 3),
                 y: isDepressed ? 0.5 : 2
             )
+            .contentShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
             .offset(y: isDepressed ? 2.5 : 0)
             .scaleEffect(isDepressed ? 0.96 : 1.0)
             .animation(.spring(response: 0.22, dampingFraction: 0.78), value: isDepressed)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
     }
 
     private var cornerScrews: some View {
@@ -947,10 +962,9 @@ struct DayInspectionSheet: View {
                             Button {
                                 dismiss()
                             } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 24))
-                                    .foregroundStyle(PastelTheme.textTertiary, PastelTheme.cardSurfaceSubtle)
+                                ChromeDismissMark()
                             }
+                            .buttonStyle(.plain)
                         }
                         .padding(.top, 16)
 

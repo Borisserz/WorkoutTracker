@@ -40,12 +40,20 @@ final class WorkoutService {
             || WatchSessionPolicy.isWatchStartReservationActive(until: watchStartReservedUntil)
     }
 
+    var finishedSessionRevision: Int = 0
+
     func beginFinishTransition() {
         finishTransitionDepth += 1
+        if finishTransitionDepth == 1 {
+            finishedSessionRevision += 1
+        }
     }
 
     func endFinishTransition() {
         finishTransitionDepth = max(0, finishTransitionDepth - 1)
+        if finishTransitionDepth == 0 {
+            finishedSessionRevision += 1
+        }
     }
 
     func noteWatchStartReserved(seconds: TimeInterval = WatchSessionPolicy.watchStartReservationSeconds) {

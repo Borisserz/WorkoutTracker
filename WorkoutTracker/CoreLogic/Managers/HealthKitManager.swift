@@ -45,7 +45,7 @@ actor HealthKitManager: Sendable {
          let steps = HKObjectType.quantityType(forIdentifier: .stepCount)!
          let water = HKObjectType.quantityType(forIdentifier: .dietaryWater)!
 
-         let typesToShare: Set = [bodyMass, workout, activeEnergy]
+         let typesToShare: Set = [bodyMass, workout, activeEnergy, water]
          let typesToRead: Set = [bodyMass, heartRate, activeEnergy, steps, water, hrv, rhr, sleep]
 
          do {
@@ -283,6 +283,17 @@ actor HealthKitManager: Sendable {
                 continuation.resume(returning: steps)
             }
             healthStore.execute(query)
+        }
+    }
+
+    func saveDietaryWater(liters: Double, date: Date = Date()) async throws {
+        guard isAvailable, liters > 0, let waterType = HKObjectType.quantityType(forIdentifier: .dietaryWater) else { return }
+        let quantity = HKQuantity(unit: .liter(), doubleValue: liters)
+        let sample = HKQuantitySample(type: waterType, quantity: quantity, start: date, end: date)
+        do {
+            try await healthStore.save(sample)
+        } catch {
+            throw HealthKitError.saveFailed(error)
         }
     }
 
